@@ -5,8 +5,12 @@
 
 //go:build tools
 
+//go:generate go run github.com/DataDog/orchestrion pin -generate
+
 package ddiast
 
 import (
 	_ "github.com/DataDog/orchestrion" // integration
+
+	_ "github.com/DataDog/dd-iast-go/crypto/hash" // integration
 )
