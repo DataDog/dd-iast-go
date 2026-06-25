@@ -36,8 +36,8 @@ func TestMD5(t *testing.T) {
 		[md5.Size]byte{0x5d, 0x41, 0x40, 0x2a, 0xbc, 0x4b, 0x2a, 0x76, 0xb9, 0x71, 0x9d, 0x91, 0x10, 0x17, 0xc5, 0x92},
 		md5.Sum([]byte("hello")))
 
-	_ = mockTracer.FinishedSpans()
-	//TODO: Implement once wired
+	spans := mockTracer.FinishedSpans()
+	require.Len(t, spans, 1)
 }
 
 func TestSHA1(t *testing.T) {

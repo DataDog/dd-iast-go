@@ -1,0 +1,79 @@
+# Unless explicitly stated otherwise all files in this repository are licensed
+# under the Apache License Version 2.0.
+# This product includes software developed at Datadog (https://www.datadoghq.com/).
+# Copyright 2023-present Datadog, Inc.
+---
+# $schema: https://datadoghq.dev/orchestrion/schema.json
+meta:
+  name: github.com/DataDog/dd-iast-go/iast/crypto/hash
+  description: Weak hash detection
+
+aspects:
+  - id: golang.org/x/crypto/md4
+    join-point:
+      all-of:
+        - import-path: golang.org/x/crypto/md4
+        - function-body:
+            function:
+              - name: Sum
+    advice:
+      - inject-declarations:
+          links:
+            - github.com/DataDog/dd-iast-go/iast/crypto/hash
+          imports:
+            context: context
+            crypto: crypto
+          template: |-
+            //go:linkname __dd__iast_ReportWeakHash__ github.com/DataDog/dd-iast-go/iast/crypto/hash.ReportWeakHash
+            func __dd__iast_ReportWeakHash__(context.Context, crypto.Hash)
+      - prepend-statements:
+          imports:
+            crypto: crypto
+            iast: github.com/DataDog/dd-iast-go/iast/crypto/hash
+          template: __dd__iast_ReportWeakHash__(nil, crypto.MD4)
+
+  - id: crypto/md5
+    join-point:
+      all-of:
+        - import-path: crypto/md5
+        - function-body:
+            function:
+              - name: Sum
+    advice:
+      - inject-declarations:
+          links:
+            - github.com/DataDog/dd-iast-go/iast/crypto/hash
+          imports:
+            context: context
+            crypto: crypto
+          template: |-
+            //go:linkname __dd__iast_ReportWeakHash__ github.com/DataDog/dd-iast-go/iast/crypto/hash.ReportWeakHash
+            func __dd__iast_ReportWeakHash__(context.Context, crypto.Hash)
+      - prepend-statements:
+          imports:
+            crypto: crypto
+            iast: github.com/DataDog/dd-iast-go/iast/crypto/hash
+          template: __dd__iast_ReportWeakHash__(nil, crypto.MD5)
+
+  - id: crypto/sha1
+    join-point:
+      all-of:
+        - import-path: crypto/sha1
+        - function-body:
+            function:
+              - name: Sum
+    advice:
+      - inject-declarations:
+          links:
+            - github.com/DataDog/dd-iast-go/iast/crypto/hash
+          imports:
+            context: context
+            crypto: crypto
+          template: |-
+            //go:linkname __dd__iast_ReportWeakHash__ github.com/DataDog/dd-iast-go/iast/crypto/hash.ReportWeakHash
+            func __dd__iast_ReportWeakHash__(context.Context, crypto.Hash)
+      - prepend-statements:
+          imports:
+            crypto: crypto
+            iast: github.com/DataDog/dd-iast-go/iast/crypto/hash
+          template: __dd__iast_ReportWeakHash__(nil, crypto.SHA1)

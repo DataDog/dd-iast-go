@@ -23,6 +23,21 @@ As a consequence of these principles:
 - all data storage must guarantee a maximum memory footprint that will never be
   exceeded, and we can accept dropping data if the allowed storage is saturated.
 
+## Project Structure
+
+- `/iast/` contains sub-directories for each kind of IAST vulnerability
+  supported by this package. These directories contain the `orchestrion.yml`
+  files, and all packages containing one such `orchestrion.yml` file is imported
+  from `orchestrion.tool.go` at the package root. This gives users an easy way
+  to bring in all supported instrumentation while keeping the flexibility to
+  only enable the things they want.
+- `/internal/` contains all implementation details not intended for external
+  consumption. Those details are those that are not necessary to implement new
+  IAST detections externally to this package (but building on public features
+  from it).
+- `/taint/` contains all the taint tracking machinery; exposing a simple API
+  that instrumentation will use to track untrusted values through the program
+  flow.
 
 ## Testing
 

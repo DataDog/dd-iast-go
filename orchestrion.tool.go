@@ -12,5 +12,5 @@ package ddiast
 import (
 	_ "github.com/DataDog/orchestrion" // integration
 
-	_ "github.com/DataDog/dd-iast-go/crypto/hash" // integration
+	_ "github.com/DataDog/dd-iast-go/iast/crypto/hash" // integration
 )

@@ -8,6 +8,8 @@ package hash
 import (
 	"context"
 	"crypto"
+	"encoding/json"
+	"runtime"
 
 	"github.com/DataDog/dd-iast-go/internal/constants"
 	"github.com/DataDog/dd-trace-go/v2/instrumentation/appsec/dyngo"
@@ -20,6 +22,7 @@ func ReportWeakHash(ctx context.Context, hash crypto.Hash) {
 		// No dyngo context, cannot report the finding...
 		return
 	}
+
 	dyngo.EmitData(op, trace.SpanTag{Key: constants.SpanTagEnabled, Value: 1})
 	dyngo.EmitData(op, trace.SpanTag{Key: constants.SpanTagEnabled, Value: `{"":""}`})
 }
