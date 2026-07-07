@@ -39,6 +39,23 @@ As a consequence of these principles:
   that instrumentation will use to track untrusted values through the program
   flow.
 
+## Plans
+
+Before implementing any significant feature:
+1. a detailed plan should be created and stored under `_docs/plans/<slug>.md`
+2. the plan is to be reviewed by a critic sub-agent (if possible from another
+   provider and with maximum effort budget), and refined until both agents agree
+   the plan is solid
+3. the plan is to be reviewed by the user, and refined until the user agrees the
+   plan is solid
+4. the plan is to be committed yo the repository with a commit message which
+   title is of the form `wip(plan): <feature tag line>`
+
+Then, once the feature is implemented, and the user is satisfied with the
+delivered code; the plan should be deleted from `_docs/plans`. This way, the
+plan exists in the history of the pull request, but does not stay permanently
+in the codebase where it would be dead weight.
+
 ## Testing
 
 All tests in this module require [orchestrion], so the correct way to execute
