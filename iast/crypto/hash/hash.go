@@ -9,49 +9,62 @@ import (
 	"context"
 	"crypto"
 	"encoding/json"
-	"runtime"
+	"strings"
 
 	"github.com/DataDog/dd-iast-go/internal/constants"
+	"github.com/DataDog/dd-iast-go/internal/model"
 	"github.com/DataDog/dd-iast-go/internal/spans"
-	"github.com/DataDog/dd-trace-go/v2/instrumentation/appsec/dyngo"
-	"github.com/DataDog/dd-trace-go/v2/instrumentation/appsec/trace"
+	"github.com/DataDog/dd-iast-go/internal/stack"
+	"github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
+	"github.com/DataDog/dd-trace-go/v2/instrumentation"
 )
 
 func ReportWeakHash(ctx context.Context, hash crypto.Hash) {
-	op, _ := dyngo.FindOperation[trace.SpanOperation](ctx)
-	if op == nil {
-		op, ctx = trace.StartSpanOperation(ctx)
-
-		defer func() {
-			span := spans.NewOrphanVulnerabilitySpan()
-			defer span.Finish()
-			op.Finish(span)
-		}()
+	if ctx == nil {
+		ctx = context.Background()
 	}
 
-	dyngo.EmitData(op, trace.SpanTag{Key: constants.SpanTagEnabled, Value: 1})
-
-	//TODO: Figure out a way to slap the SpanID properly.
-	var location *model.Location
-	if _, file, line, ok := runtime.Caller(1); ok {
-		location = &model.Location{Path: file, Line: &line}
+	span, ok := tracer.SpanFromContext(ctx)
+	if !ok {
+		span = spans.NewOrphanVulnerabilitySpan()
+		defer span.Finish()
 	}
 
-	event, err := json.Marshal(model.Event{
-		Sources: []model.Source{{
-			Origin: model.Origin(model.WEAK_HASH),
-			Value:  hash.String(),
-		}},
-		Vulnerabilities: []model.Vulnerability{{
-			Type:     model.WEAK_HASH,
-			Evidence: &model.UnredactedStringValue{Value: hash.String()},
-			Location: location,
-		}},
+	span.SetTag(constants.SpanTagEnabled, 1)
+	event := spans.AnnotationFor(span)
+
+	location := &model.Location{SpanID: span.Context().SpanID()}
+	for frame := range stack.Frames(1) {
+		if frame.File == "<generated>" {
+			continue
+		}
+		location.Path = frame.File
+		location.Line = new(frame.Line - 1) // Zero-based
+		if frame.Function != "" {
+			lastDot := strings.LastIndex(frame.Function, ".")
+			location.Method = frame.Function[lastDot+1:]
+			if lastDot >= 0 {
+				location.Type = frame.Function[:lastDot]
+			}
+		}
+		break
+	}
+
+	event.Lock()
+	defer event.Unlock()
+
+	event.Vulnerabilities = append(event.Vulnerabilities, &model.Vulnerability{
+		Type:     model.VulnerabilityTypeWeakHash,
+		Evidence: &model.UnredactedStringValue{Value: hash.String()},
+		Location: location,
 	})
+
+	data, err := json.Marshal(event)
 	if err != nil {
-		//TODO: Log something?
+		instrumentation.Load(instrumentation.Package("github.com/DataDog/dd-iast-go/iast")).
+			Logger().
+			Warn("failed to marshal vulnerability event: %s", err)
 		return
 	}
-
-	dyngo.EmitData(op, trace.SpanTag{Key: constants.SpanTagJson, Value: string(event)})
+	span.SetTag(constants.SpanTagJson, string(data))
 }

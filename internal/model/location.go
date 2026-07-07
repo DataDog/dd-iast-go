@@ -8,7 +8,7 @@ package model
 type Location struct {
 	// SpanID is the ID of the active span when the vulnerability was triggered,
 	// for later use in correlation APIs.
-	SpanID string `json:"spanId"`
+	SpanID uint64 `json:"spanId"`
 	// Path is the name of the file containing the vulnerability.
 	Path string `json:"path,omitempty"`
 	// Type is the name of the type containing the vulnerability.

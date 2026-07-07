@@ -32,7 +32,34 @@ aspects:
             iast: github.com/DataDog/dd-iast-go/iast/crypto/hash
           template: __dd__iast_ReportWeakHash__(nil, crypto.MD4)
 
-  - id: crypto/md5
+  # crypto/md5 declares Sum twice within the same file: the free-standing
+  # `func Sum(data []byte) [Size]byte` and the `hash.Hash` interface method
+  # `func (d *digest) Sum(in []byte) []byte`. `inject-declarations` appends its
+  # declaration once per matched node, so declaring the go:linkname alias from a
+  # join-point matching both would emit it twice ("redeclared in this block").
+  # We therefore inject the declaration from a join-point that matches the method
+  # only (via its receiver, which occurs exactly once), while the report call is
+  # prepended to both Sum functions. The declaration is package-scoped, so it is
+  # visible to the free-standing Sum even though it is anchored on the method.
+  - id: crypto/md5 (declaration)
+    join-point:
+      all-of:
+        - import-path: crypto/md5
+        - function-body:
+            function:
+              - name: Sum
+              - receiver: '*crypto/md5.digest'
+    advice:
+      - inject-declarations:
+          links:
+            - github.com/DataDog/dd-iast-go/iast/crypto/hash
+          imports:
+            context: context
+            crypto: crypto
+          template: |-
+            //go:linkname __dd__iast_ReportWeakHash__ github.com/DataDog/dd-iast-go/iast/crypto/hash.ReportWeakHash
+            func __dd__iast_ReportWeakHash__(context.Context, crypto.Hash)
+  - id: crypto/md5 (report)
     join-point:
       all-of:
         - import-path: crypto/md5
@@ -40,28 +67,22 @@ aspects:
             function:
               - name: Sum
     advice:
-      - inject-declarations:
-          links:
-            - github.com/DataDog/dd-iast-go/iast/crypto/hash
-          imports:
-            context: context
-            crypto: crypto
-          template: |-
-            //go:linkname __dd__iast_ReportWeakHash__ github.com/DataDog/dd-iast-go/iast/crypto/hash.ReportWeakHash
-            func __dd__iast_ReportWeakHash__(context.Context, crypto.Hash)
       - prepend-statements:
           imports:
             crypto: crypto
             iast: github.com/DataDog/dd-iast-go/iast/crypto/hash
           template: __dd__iast_ReportWeakHash__(nil, crypto.MD5)
 
-  - id: crypto/sha1
+  # See the crypto/md5 aspects above for why the declaration and report advice
+  # are split into two join-points.
+  - id: crypto/sha1 (declaration)
     join-point:
       all-of:
         - import-path: crypto/sha1
         - function-body:
             function:
               - name: Sum
+              - receiver: '*crypto/sha1.digest'
     advice:
       - inject-declarations:
           links:
@@ -72,6 +93,14 @@ aspects:
           template: |-
             //go:linkname __dd__iast_ReportWeakHash__ github.com/DataDog/dd-iast-go/iast/crypto/hash.ReportWeakHash
             func __dd__iast_ReportWeakHash__(context.Context, crypto.Hash)
+  - id: crypto/sha1 (report)
+    join-point:
+      all-of:
+        - import-path: crypto/sha1
+        - function-body:
+            function:
+              - name: Sum
+    advice:
       - prepend-statements:
           imports:
             crypto: crypto

@@ -1,12 +1,13 @@
 module github.com/DataDog/dd-iast-go
 
-go 1.25.0
+go 1.26.0
 
 tool github.com/DataDog/orchestrion
 
 require (
 	github.com/DataDog/dd-trace-go/v2 v2.8.1
 	github.com/DataDog/orchestrion v1.10.0
+	github.com/puzpuzpuz/xsync/v3 v3.5.1
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/crypto v0.50.0
 )
@@ -83,7 +84,6 @@ require (
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/polyfloyd/go-errorlint v1.8.1-0.20250906200200-9b25878c4dea // indirect
 	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
-	github.com/puzpuzpuz/xsync/v3 v3.5.1 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/rs/zerolog v1.34.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect

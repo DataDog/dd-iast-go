@@ -5,11 +5,15 @@
 
 package model
 
+import "sync"
+
 type Event struct {
+	sync.RWMutex `json:"-"`
+
 	// Sources is the list of sources where the input data for the vulnerabilities
 	// originated (request parameters, headers ...).
-	Sources []Source `json:"sources,omitempty"`
+	Sources []*Source `json:"sources,omitempty"`
 	// Vulnerabilities is the list of vulnerabilities found in the current
 	// execution context.
-	Vulnerabilities []Vulnerability `json:"vulnerabilities"`
+	Vulnerabilities []*Vulnerability `json:"vulnerabilities"`
 }

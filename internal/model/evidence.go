@@ -5,6 +5,11 @@
 
 package model
 
+import (
+	"encoding/json"
+	"fmt"
+)
+
 type Evidence interface {
 	isEvidence() // marker method
 }
@@ -40,3 +45,24 @@ var (
 	_ ValuePart = (TaintedValue)(nil)
 	_ ValuePart = (StringValue)(nil)
 )
+
+func unmarshalValuePart(raw json.RawMessage) (ValuePart, error) {
+	var partial map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &partial); err != nil {
+		return nil, err
+	}
+
+	if src, ok := partial["source"]; ok {
+		var srcIndex int
+		if err := json.Unmarshal(src, &srcIndex); err != nil {
+			return nil, fmt.Errorf("cannot unmarshal ValuePart.source: %w", err)
+		}
+		return unmarshalTaintedValue(partial, srcIndex)
+	}
+
+	value, err := unmarshalStringValue(partial)
+	if err != nil {
+		return nil, fmt.Errorf("cannot unmarshal ValuePart: %w", err)
+	}
+	return value, nil
+}

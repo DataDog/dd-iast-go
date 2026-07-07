@@ -14,69 +14,120 @@ type Origin uint8
 
 const (
 	_ Origin = iota
-	HTTP_REQUEST_PARAMETER
-	HTTP_REQUEST_PARAMETER_NAME
-	HTTP_REQUEST_HEADER
-	HTTP_REQUEST_HEADER_NAME
-	HTTP_REQUEST_PATH
-	HTTP_REQUEST_BODY
-	HTTP_REQUEST_QUERY
-	HTTP_REQUEST_PATH_PARAMETER
-	HTTP_REQUEST_MATRIX_PARAMETER
-	HTTP_REQUEST_COOKIE_NAME
-	HTTP_REQUEST_COOKIE_VALUE
-	HTTP_REQUEST_URI
-	GRPC_REQUEST_BODY
-	HTTP_REQUEST_MULTIPART_PARAMETER
-	KAFKA_MESSAGE_KEY
-	KAFKA_MESSAGE_VALUE
-	GRAPHQL_RESOLVER_ARGUMENT
-	SQL_ROW_VALUE
+	OriginHttpRequestParameter
+	OriginHttpRequestParameterName
+	OriginHttpRequestHeader
+	OriginHttpRequestHeaderName
+	OriginHttpRequestPath
+	OriginHttpRequestBody
+	OriginHttpRequestQuery
+	OriginHttpRequestPathParameter
+	OriginHttpRequestMatrixParameter
+	OriginHttpRequestCookieName
+	OriginHttpRequestCookieValue
+	OriginHttpRequestUri
+	OriginGrpcRequestBody
+	OriginHttpRequestMultipartParameter
+	OriginKafkaMessageKey
+	OriginKafkaMessageValue
+	OriginGraphqlResolverArgument
+	OriginSqlRowValue
 )
 
-var _ json.Marshaler = Origin(0)
+var (
+	_ json.Marshaler   = Origin(0)
+	_ json.Unmarshaler = (*Origin)(nil)
+)
 
 func (o Origin) MarshalJSON() ([]byte, error) {
 	return json.Marshal(o.String())
 }
 
+func (o *Origin) UnmarshalJSON(data []byte) error {
+	var s string
+	if err := json.Unmarshal(data, &s); err != nil {
+		return err
+	}
+	switch s {
+	case "http.request.parameter":
+		*o = OriginHttpRequestParameter
+	case "http.request.parameter.name":
+		*o = OriginHttpRequestParameterName
+	case "http.request.header":
+		*o = OriginHttpRequestHeader
+	case "http.request.header.name":
+		*o = OriginHttpRequestHeaderName
+	case "http.request.path":
+		*o = OriginHttpRequestPath
+	case "http.request.body":
+		*o = OriginHttpRequestBody
+	case "http.request.query":
+		*o = OriginHttpRequestQuery
+	case "http.request.path.parameter":
+		*o = OriginHttpRequestPathParameter
+	case "http.request.matrix.parameter":
+		*o = OriginHttpRequestMatrixParameter
+	case "http.request.cookie.name":
+		*o = OriginHttpRequestCookieName
+	case "http.request.cookie.value":
+		*o = OriginHttpRequestCookieValue
+	case "http.request.uri":
+		*o = OriginHttpRequestUri
+	case "grpc.request.body":
+		*o = OriginGrpcRequestBody
+	case "http.request.multipart.parameter":
+		*o = OriginHttpRequestMultipartParameter
+	case "kafka.message.key":
+		*o = OriginKafkaMessageKey
+	case "kafka.message.value":
+		*o = OriginKafkaMessageValue
+	case "graphql.resolver.argument":
+		*o = OriginGraphqlResolverArgument
+	case "sql.row.value":
+		*o = OriginSqlRowValue
+	default:
+		return fmt.Errorf("invalid origin: %s", s)
+	}
+	return nil
+}
+
 func (o Origin) String() string {
 	switch o {
-	case HTTP_REQUEST_PARAMETER:
+	case OriginHttpRequestParameter:
 		return "http.request.parameter"
-	case HTTP_REQUEST_PARAMETER_NAME:
+	case OriginHttpRequestParameterName:
 		return "http.request.parameter.name"
-	case HTTP_REQUEST_HEADER:
+	case OriginHttpRequestHeader:
 		return "http.request.header"
-	case HTTP_REQUEST_HEADER_NAME:
+	case OriginHttpRequestHeaderName:
 		return "http.request.header.name"
-	case HTTP_REQUEST_PATH:
+	case OriginHttpRequestPath:
 		return "http.request.path"
-	case HTTP_REQUEST_BODY:
+	case OriginHttpRequestBody:
 		return "http.request.body"
-	case HTTP_REQUEST_QUERY:
+	case OriginHttpRequestQuery:
 		return "http.request.query"
-	case HTTP_REQUEST_PATH_PARAMETER:
+	case OriginHttpRequestPathParameter:
 		return "http.request.path.parameter"
-	case HTTP_REQUEST_MATRIX_PARAMETER:
+	case OriginHttpRequestMatrixParameter:
 		return "http.request.matrix.parameter"
-	case HTTP_REQUEST_COOKIE_NAME:
+	case OriginHttpRequestCookieName:
 		return "http.request.cookie.name"
-	case HTTP_REQUEST_COOKIE_VALUE:
+	case OriginHttpRequestCookieValue:
 		return "http.request.cookie.value"
-	case HTTP_REQUEST_URI:
+	case OriginHttpRequestUri:
 		return "http.request.uri"
-	case GRPC_REQUEST_BODY:
+	case OriginGrpcRequestBody:
 		return "grpc.request.body"
-	case HTTP_REQUEST_MULTIPART_PARAMETER:
+	case OriginHttpRequestMultipartParameter:
 		return "http.request.multipart.parameter"
-	case KAFKA_MESSAGE_KEY:
+	case OriginKafkaMessageKey:
 		return "kafka.message.key"
-	case KAFKA_MESSAGE_VALUE:
+	case OriginKafkaMessageValue:
 		return "kafka.message.value"
-	case GRAPHQL_RESOLVER_ARGUMENT:
+	case OriginGraphqlResolverArgument:
 		return "graphql.resolver.argument"
-	case SQL_ROW_VALUE:
+	case OriginSqlRowValue:
 		return "sql.row.value"
 	default:
 		panic(fmt.Errorf("invalid origin: %d", o))
