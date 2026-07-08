@@ -7,6 +7,7 @@ package spans
 
 import (
 	"runtime"
+	"sync"
 	"weak"
 
 	"github.com/DataDog/dd-iast-go/internal/model"
@@ -16,16 +17,21 @@ import (
 
 var (
 	maxAnnotations = 128
-	store          = xsync.NewMapOf[weak.Pointer[tracer.Span], *model.Event](xsync.WithPresize(maxAnnotations))
+	store          = xsync.NewMapOf[weak.Pointer[tracer.Span], *Annotation](xsync.WithPresize(maxAnnotations))
 )
 
-func AnnotationFor(span *tracer.Span) *model.Event {
+type Annotation struct {
+	sync.RWMutex
+	model.Event
+}
+
+func AnnotationFor(span *tracer.Span) *Annotation {
 	trimStore()
 
 	ptr := weak.Make(span)
 	event, _ := store.LoadOrCompute(
 		ptr,
-		func() *model.Event {
+		func() *Annotation {
 			runtime.AddCleanup(
 				span,
 				func(ptr weak.Pointer[tracer.Span]) {
@@ -33,7 +39,7 @@ func AnnotationFor(span *tracer.Span) *model.Event {
 				},
 				ptr,
 			)
-			return new(model.Event)
+			return new(Annotation)
 		},
 	)
 	return event
@@ -43,7 +49,7 @@ func trimStore() {
 	if store.Size() < maxAnnotations {
 		return
 	}
-	store.Range(func(key weak.Pointer[tracer.Span], _ *model.Event) bool {
+	store.Range(func(key weak.Pointer[tracer.Span], _ *Annotation) bool {
 		if key.Value() == nil {
 			store.Delete(key)
 		}
