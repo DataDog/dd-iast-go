@@ -12,11 +12,11 @@ import (
 	"strings"
 
 	"github.com/DataDog/dd-iast-go/internal/constants"
+	"github.com/DataDog/dd-iast-go/internal/instrumentation"
 	"github.com/DataDog/dd-iast-go/internal/model"
 	"github.com/DataDog/dd-iast-go/internal/spans"
 	"github.com/DataDog/dd-iast-go/internal/stack"
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
-	"github.com/DataDog/dd-trace-go/v2/instrumentation"
 )
 
 func ReportWeakHash(ctx context.Context, hash crypto.Hash) {
@@ -61,7 +61,7 @@ func ReportWeakHash(ctx context.Context, hash crypto.Hash) {
 
 	data, err := json.Marshal(event)
 	if err != nil {
-		instrumentation.Load(instrumentation.Package("github.com/DataDog/dd-iast-go/iast")).
+		instrumentation.Instrumentation.
 			Logger().
 			Warn("failed to marshal vulnerability event: %s", err)
 		return
