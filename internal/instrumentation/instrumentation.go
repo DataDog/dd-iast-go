@@ -7,9 +7,14 @@ package instrumentation
 
 import "github.com/DataDog/dd-trace-go/v2/instrumentation"
 
-const packageName = "github.com/DataDog/dd-iast-go"
+const packageName = "DataDog/dd-iast-go"
 
 var (
-	pkg             = instrumentation.Package(packageName)
-	Instrumentation = instrumentation.Load(pkg)
+	pkg     = instrumentation.Package(packageName)
+	pkgInfo = instrumentation.PackageInfo{
+		TracedPackage: "github.com/DataDog/dd-iast-go",
+		IsStdLib:      false,
+		EnvVarPrefix:  "DD_IAST",
+	}
+	Instance = instrumentation.RegisterAndLoad(pkg, pkgInfo)
 )

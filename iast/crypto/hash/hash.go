@@ -9,8 +9,8 @@ import (
 	"context"
 	"crypto"
 	"encoding/json"
-	"strings"
 
+	"github.com/DataDog/dd-iast-go/internal/config"
 	"github.com/DataDog/dd-iast-go/internal/constants"
 	"github.com/DataDog/dd-iast-go/internal/instrumentation"
 	"github.com/DataDog/dd-iast-go/internal/model"
@@ -20,6 +20,10 @@ import (
 )
 
 func ReportWeakHash(ctx context.Context, hash crypto.Hash) {
+	if !config.Enabled {
+		return
+	}
+
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -30,22 +34,14 @@ func ReportWeakHash(ctx context.Context, hash crypto.Hash) {
 		defer span.Finish()
 	}
 
-	span.SetTag(constants.SpanTagEnabled, 1)
 	event := spans.AnnotationFor(span)
 
 	location := &model.Location{SpanID: span.Context().SpanID()}
 	for frame := range stack.Frames(1) {
-		if frame.File == "<generated>" {
-			continue
-		}
 		location.Path = frame.File
 		location.Line = new(frame.Line - 1) // Zero-based
 		if frame.Function != "" {
-			lastDot := strings.LastIndex(frame.Function, ".")
-			location.Method = frame.Function[lastDot+1:]
-			if lastDot >= 0 {
-				location.Type = frame.Function[:lastDot]
-			}
+			location.Type, location.Method = stack.MethodAndTypeFrom(frame.Function)
 		}
 		break
 	}
@@ -53,15 +49,17 @@ func ReportWeakHash(ctx context.Context, hash crypto.Hash) {
 	event.Lock()
 	defer event.Unlock()
 
-	event.Vulnerabilities = append(event.Vulnerabilities, &model.Vulnerability{
+	if !event.AddVulnerability(model.Vulnerability{
 		Type:     model.VulnerabilityTypeWeakHash,
 		Evidence: &model.UnredactedStringValue{Value: hash.String()},
 		Location: location,
-	})
+	}) {
+		return
+	}
 
 	data, err := json.Marshal(event)
 	if err != nil {
-		instrumentation.Instrumentation.
+		instrumentation.Instance.
 			Logger().
 			Warn("failed to marshal vulnerability event: %s", err)
 		return
