@@ -9,11 +9,13 @@ import (
 	"context"
 	"crypto"
 	"encoding/json"
+	"log/slog"
 
 	"github.com/DataDog/dd-iast-go/internal/config"
-	"github.com/DataDog/dd-iast-go/internal/constants"
 	"github.com/DataDog/dd-iast-go/internal/instrumentation"
+	"github.com/DataDog/dd-iast-go/internal/instrumentation/telemetry"
 	"github.com/DataDog/dd-iast-go/internal/model"
+	"github.com/DataDog/dd-iast-go/internal/model/constants"
 	"github.com/DataDog/dd-iast-go/internal/spans"
 	"github.com/DataDog/dd-iast-go/internal/stack"
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
@@ -35,6 +37,11 @@ func ReportWeakHash(ctx context.Context, hash crypto.Hash) {
 	}
 
 	event := spans.AnnotationFor(span)
+	if !event.Sampled {
+		return
+	}
+
+	telemetry.ExecutedSink.WeakHash.Add(1)
 
 	location := &model.Location{SpanID: span.Context().SpanID()}
 	for frame := range stack.Frames(1) {
@@ -49,11 +56,14 @@ func ReportWeakHash(ctx context.Context, hash crypto.Hash) {
 	event.Lock()
 	defer event.Unlock()
 
-	if !event.AddVulnerability(model.Vulnerability{
-		Type:     model.VulnerabilityTypeWeakHash,
+	vuln := model.Vulnerability{
+		Type:     constants.VulnerabilityTypeWeakHash,
 		Evidence: &model.UnredactedStringValue{Value: hash.String()},
 		Location: location,
-	}) {
+	}
+	if !event.AddVulnerability(vuln) {
+		instrumentation.Instance.TelemetryLog().
+			Warn("failed to add vulnerability to event (out of capacity?)", slog.Any("vulnerability", vuln))
 		return
 	}
 
@@ -64,5 +74,5 @@ func ReportWeakHash(ctx context.Context, hash crypto.Hash) {
 			Warn("failed to marshal vulnerability event: %s", err)
 		return
 	}
-	span.SetTag(constants.SpanTagJson, string(data))
+	span.SetTag(spans.SpanTagJson, string(data))
 }

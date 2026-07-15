@@ -8,6 +8,8 @@ package model
 import (
 	"encoding/json"
 	"fmt"
+
+	"github.com/DataDog/dd-iast-go/internal/model/constants"
 )
 
 type StringValue interface {
@@ -145,7 +147,7 @@ type UnredactedTaintedValue struct {
 	// SourceIndex is the index of the source in the sources array.
 	SourceIndex int `json:"source"`
 	// SecureMarks is the secure marks for the evidence part.
-	SecureMarks []VulnerabilityType `json:"secure_marks,omitempty"`
+	SecureMarks []constants.VulnerabilityType `json:"secure_marks,omitempty"`
 	// Truncated indicates whether the value has been truncated or not.
 	Truncated Truncation `json:"truncated,omitzero"`
 }
@@ -161,7 +163,7 @@ type RedactedTaintedValue struct {
 	// SourceIndex is the index of the source in the sources array.
 	SourceIndex int `json:"source"`
 	// SecureMarks is the secure marks for the evidence part.
-	SecureMarks []VulnerabilityType `json:"secure_marks,omitempty"`
+	SecureMarks []constants.VulnerabilityType `json:"secure_marks,omitempty"`
 	// Truncated indicates whether the value has been truncated or not.
 	Truncated Truncation `json:"truncated,omitzero"`
 }

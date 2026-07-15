@@ -23,9 +23,15 @@ aspects:
           imports:
             context: context
             crypto: crypto
+            telemetry: github.com/DataDog/dd-iast-go/internal/instrumentation/telemetry
+            model: github.com/DataDog/dd-iast-go/internal/model/constants
           template: |-
             //go:linkname __dd__iast_ReportWeakHash__ github.com/DataDog/dd-iast-go/iast/crypto/hash.ReportWeakHash
             func __dd__iast_ReportWeakHash__(context.Context, crypto.Hash)
+
+            func init() {
+              telemetry.InstrumentedSink[model.VulnerabilityTypeWeakHash] += 1
+            }
       - prepend-statements:
           imports:
             crypto: crypto
@@ -56,9 +62,15 @@ aspects:
           imports:
             context: context
             crypto: crypto
+            telemetry: github.com/DataDog/dd-iast-go/internal/instrumentation/telemetry
+            model: github.com/DataDog/dd-iast-go/internal/model/constants
           template: |-
             //go:linkname __dd__iast_ReportWeakHash__ github.com/DataDog/dd-iast-go/iast/crypto/hash.ReportWeakHash
             func __dd__iast_ReportWeakHash__(context.Context, crypto.Hash)
+
+            func init() {
+              telemetry.InstrumentedSink[model.VulnerabilityTypeWeakHash] += 2 // Method + free-standing function
+            }
   - id: crypto/md5 (report)
     join-point:
       all-of:
@@ -90,9 +102,15 @@ aspects:
           imports:
             context: context
             crypto: crypto
+            telemetry: github.com/DataDog/dd-iast-go/internal/instrumentation/telemetry
+            model: github.com/DataDog/dd-iast-go/internal/model/constants
           template: |-
             //go:linkname __dd__iast_ReportWeakHash__ github.com/DataDog/dd-iast-go/iast/crypto/hash.ReportWeakHash
             func __dd__iast_ReportWeakHash__(context.Context, crypto.Hash)
+
+            func init() {
+              telemetry.InstrumentedSink[model.VulnerabilityTypeWeakHash] += 2 // Method + free-standing function
+            }
   - id: crypto/sha1 (report)
     join-point:
       all-of:

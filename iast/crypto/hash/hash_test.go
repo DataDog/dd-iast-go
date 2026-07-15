@@ -14,8 +14,9 @@ import (
 	"testing"
 
 	"github.com/DataDog/dd-iast-go/internal/config"
-	"github.com/DataDog/dd-iast-go/internal/constants"
 	"github.com/DataDog/dd-iast-go/internal/model"
+	"github.com/DataDog/dd-iast-go/internal/model/constants"
+	"github.com/DataDog/dd-iast-go/internal/spans"
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/ext"
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/mocktracer"
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
@@ -43,22 +44,22 @@ func TestMD5(t *testing.T) {
 		[md5.Size]byte{0x5d, 0x41, 0x40, 0x2a, 0xbc, 0x4b, 0x2a, 0x76, 0xb9, 0x71, 0x9d, 0x91, 0x10, 0x17, 0xc5, 0x92},
 		indirectCall(md5.Sum, []byte("hello")))
 
-	spans := mockTracer.FinishedSpans()
-	require.Len(t, spans, 1)
-	assert.Equal(t, 1.0, spans[0].Tag(constants.SpanTagEnabled))
+	spanList := mockTracer.FinishedSpans()
+	require.Len(t, spanList, 1)
+	assert.Equal(t, 1.0, spanList[0].Tag(spans.SpanTagEnabled))
 	var event model.Event
-	require.NoError(t, json.Unmarshal([]byte(spans[0].Tag(constants.SpanTagJson).(string)), &event))
-	require.Equal(t, "vulnerability", spans[0].OperationName())
-	require.Equal(t, "vulnerability", spans[0].Tag(ext.SpanType))
+	require.NoError(t, json.Unmarshal([]byte(spanList[0].Tag(spans.SpanTagJson).(string)), &event))
+	require.Equal(t, "vulnerability", spanList[0].OperationName())
+	require.Equal(t, "vulnerability", spanList[0].Tag(ext.SpanType))
 	assert.Equal(t,
 		&model.Event{
 			Vulnerabilities: []model.Vulnerability{
 				{
-					Type:     model.VulnerabilityTypeWeakHash,
+					Type:     constants.VulnerabilityTypeWeakHash,
 					Hash:     0xf3fd573f80904b52,
 					Evidence: &model.UnredactedStringValue{Value: "MD5"},
 					Location: &model.Location{
-						SpanID: spans[0].Context().SpanID(),
+						SpanID: spanList[0].Context().SpanID(),
 						Path:   "/path/to/file.go",
 						Line:   new(1336),
 						Method: "github.com/DataDog/dd-iast-go/iast/crypto/hash_test.indirectCall[...]",
@@ -80,22 +81,22 @@ func TestSHA1(t *testing.T) {
 		[sha1.Size]byte{0xaa, 0xf4, 0xc6, 0x1d, 0xdc, 0xc5, 0xe8, 0xa2, 0xda, 0xbe, 0xde, 0xf, 0x3b, 0x48, 0x2c, 0xd9, 0xae, 0xa9, 0x43, 0x4d},
 		indirectCall(sha1.Sum, []byte("hello")))
 
-	spans := mockTracer.FinishedSpans()
-	require.Len(t, spans, 1)
-	assert.Equal(t, 1.0, spans[0].Tag(constants.SpanTagEnabled))
+	spanList := mockTracer.FinishedSpans()
+	require.Len(t, spanList, 1)
+	assert.Equal(t, 1.0, spanList[0].Tag(spans.SpanTagEnabled))
 	var event model.Event
-	require.NoError(t, json.Unmarshal([]byte(spans[0].Tag(constants.SpanTagJson).(string)), &event))
-	require.Equal(t, "vulnerability", spans[0].OperationName())
-	require.Equal(t, "vulnerability", spans[0].Tag(ext.SpanType))
+	require.NoError(t, json.Unmarshal([]byte(spanList[0].Tag(spans.SpanTagJson).(string)), &event))
+	require.Equal(t, "vulnerability", spanList[0].OperationName())
+	require.Equal(t, "vulnerability", spanList[0].Tag(ext.SpanType))
 	assert.Equal(t,
 		&model.Event{
 			Vulnerabilities: []model.Vulnerability{
 				{
-					Type:     model.VulnerabilityTypeWeakHash,
+					Type:     constants.VulnerabilityTypeWeakHash,
 					Hash:     0xf3fd573f80904b52,
 					Evidence: &model.UnredactedStringValue{Value: "SHA-1"},
 					Location: &model.Location{
-						SpanID: spans[0].Context().SpanID(),
+						SpanID: spanList[0].Context().SpanID(),
 						Path:   "/path/to/file.go",
 						Line:   new(1336),
 						Method: "github.com/DataDog/dd-iast-go/iast/crypto/hash_test.indirectCall[...]",
@@ -156,7 +157,7 @@ func TestHash(t *testing.T) {
 
 			span, _ := tracer.SpanFromContext(ctx)
 			expectedVulns = append(expectedVulns, model.Vulnerability{
-				Type:     model.VulnerabilityTypeWeakHash,
+				Type:     constants.VulnerabilityTypeWeakHash,
 				Hash:     0xf3fd573f80904b52,
 				Evidence: &model.UnredactedStringValue{Value: alg.String()},
 				Location: &model.Location{
@@ -169,12 +170,12 @@ func TestHash(t *testing.T) {
 		}
 	}(context.Background())
 
-	spans := mockTracer.FinishedSpans()
-	require.Len(t, spans, 1)
-	assert.Equal(t, 1.0, spans[0].Tag(constants.SpanTagEnabled))
-	assert.Equal(t, "test", spans[0].OperationName())
+	spanList := mockTracer.FinishedSpans()
+	require.Len(t, spanList, 1)
+	assert.Equal(t, 1.0, spanList[0].Tag(spans.SpanTagEnabled))
+	assert.Equal(t, "test", spanList[0].OperationName())
 	var event model.Event
-	require.NoError(t, json.Unmarshal([]byte(spans[0].Tag(constants.SpanTagJson).(string)), &event))
+	require.NoError(t, json.Unmarshal([]byte(spanList[0].Tag(spans.SpanTagJson).(string)), &event))
 	assert.Len(t, event.Vulnerabilities, len(cases))
 	assert.Equal(t,
 		expectedVulns,

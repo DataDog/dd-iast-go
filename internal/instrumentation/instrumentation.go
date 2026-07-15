@@ -5,7 +5,9 @@
 
 package instrumentation
 
-import "github.com/DataDog/dd-trace-go/v2/instrumentation"
+import (
+	"github.com/DataDog/dd-trace-go/v2/instrumentation"
+)
 
 const packageName = "DataDog/dd-iast-go"
 
@@ -18,3 +20,11 @@ var (
 	}
 	Instance = instrumentation.RegisterAndLoad(pkg, pkgInfo)
 )
+
+const (
+	TelemetryNamespaceIAST        = "iast"
+	TelemetryTagSourceType        = "source_type"
+	TelemetryTagVulnerabilityType = "vulnerability_type"
+)
+
+type TelemetryMetrics = instrumentation.TelemetryMetrics

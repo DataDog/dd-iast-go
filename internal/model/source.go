@@ -5,9 +5,11 @@
 
 package model
 
+import "github.com/DataDog/dd-iast-go/internal/model/constants"
+
 type Source struct {
 	// Origin of the source (where the source comes from).
-	Origin Origin
+	Origin constants.Origin
 	// Name of the source. For example, the name of the request parameter.
 	Name string `json:"name,omitempty"`
 	// Value of the source. For example, the value of the request parameter

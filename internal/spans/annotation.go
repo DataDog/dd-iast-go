@@ -9,11 +9,12 @@ import (
 	"log/slog"
 	"math/rand/v2"
 	"sync"
+	"sync/atomic"
 	"weak"
 
 	"github.com/DataDog/dd-iast-go/internal/config"
-	"github.com/DataDog/dd-iast-go/internal/constants"
 	"github.com/DataDog/dd-iast-go/internal/instrumentation"
+	"github.com/DataDog/dd-iast-go/internal/instrumentation/telemetry"
 	"github.com/DataDog/dd-iast-go/internal/model"
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
 	"github.com/puzpuzpuz/xsync/v4"
@@ -30,7 +31,11 @@ var (
 type Annotation struct {
 	sync.RWMutex
 	model.Event
+
 	Sampled bool
+
+	// RequestTainted is the number of tainted elemets at the end of the request.
+	RequestTainted atomic.Uint64
 }
 
 // AnnotationFor returns the [*Annotation] for the root of the given
@@ -61,16 +66,16 @@ func AnnotationFor(span *tracer.Span) *Annotation {
 			ann := new(Annotation)
 			ann.Sampled = samplingDecision()
 			if ann.Sampled {
-				root.SetTag(constants.SpanTagEnabled, 1)
+				root.SetTag(SpanTagEnabled, 1)
 			} else {
-				root.SetTag(constants.SpanTagEnabled, 0)
+				root.SetTag(SpanTagEnabled, 0)
 			}
-			return new(Annotation), false
+			return ann, false
 		},
 	)
 
 	if ann != nil && ann.Sampled {
-		span.SetTag(constants.SpanTagEnabled, 1)
+		span.SetTag(SpanTagEnabled, 1)
 	}
 
 	if ann == nil {
@@ -83,7 +88,19 @@ func AnnotationFor(span *tracer.Span) *Annotation {
 // Finished is called by [*tracer.Span.Finish] and removes the [*Annotation]
 // from storage, as the span is defunct.
 func Finished(span *tracer.Span) {
-	store.Delete(weak.Make(span))
+	ann, ok := store.LoadAndDelete(weak.Make(span))
+	if !ok {
+		return
+	}
+	ann.submitTelemetry()
+}
+
+func (a *Annotation) submitTelemetry() {
+	if config.TelemetryVerbosity == config.LogLevelOff {
+		return
+	}
+	client := instrumentation.Instance.TelemetryMetrics()
+	client.Count(instrumentation.TelemetryNamespaceIAST, "request.tainted", nil).Submit(float64(a.RequestTainted.Load()))
 }
 
 // trimStore removes keys from the map where the [weak.Pointer] has turned nil,
@@ -110,4 +127,50 @@ func samplingDecision() bool {
 	default:
 		return rand.IntN(100) < config.RequestSamplingPct
 	}
+}
+
+func init() {
+	// Note: this is here and not in the [github.com/DataDog/dd-iast-go/internal/instrumentation/telemetry] package in
+	// order to avoid creating a dependency from it to some of the tracer's internal, as it would make it much harder to
+	// avoid creating circular dependencies when instrumenting packages the tracer itself uses.
+	instrumentation.Instance.TelemetryMetrics().OnHeartbeat(func(c instrumentation.TelemetryMetrics) {
+		if config.TelemetryVerbosity == config.LogLevelOff {
+			return
+		}
+
+		for origin, count := range telemetry.InstrumentedSource {
+			c.Count(instrumentation.TelemetryNamespaceIAST, "instrumented.source", []string{instrumentation.TelemetryTagSourceType + ":" + origin.String()}).Submit(float64(count))
+		}
+		c.Count(instrumentation.TelemetryNamespaceIAST, "instrumented.propagation", nil).Submit(float64(telemetry.InstrumentedPropagation))
+		for vulnType, count := range telemetry.InstrumentedSink {
+			c.Count(instrumentation.TelemetryNamespaceIAST, "instrumented.sink", []string{instrumentation.TelemetryTagVulnerabilityType + ":" + vulnType.String()}).Submit(float64(count))
+		}
+
+		cnt := telemetry.ExecutedTainted.Swap(0)
+		if cnt != 0 {
+			c.Count(instrumentation.TelemetryNamespaceIAST, "executed.tainted", nil).Submit(float64(cnt))
+		}
+		for origin, count := range telemetry.ExecutedSource.Each {
+			cnt := count.Swap(0)
+			if cnt == 0 {
+				continue
+			}
+			c.Count(instrumentation.TelemetryNamespaceIAST, "executed.source", []string{instrumentation.TelemetryTagSourceType + ":" + origin.String()}).Submit(float64(cnt))
+		}
+		for vulnType, count := range telemetry.ExecutedSink.Each {
+			cnt := count.Swap(0)
+			if cnt == 0 {
+				continue
+			}
+			c.Count(instrumentation.TelemetryNamespaceIAST, "executed.sink", []string{instrumentation.TelemetryTagVulnerabilityType + ":" + vulnType.String()}).Submit(float64(cnt))
+		}
+
+		if config.TelemetryVerbosity != config.LogLevelDebug {
+			return
+		}
+		cnt = telemetry.ExecutedPropagation.Swap(0)
+		if cnt != 0 {
+			c.Count(instrumentation.TelemetryNamespaceIAST, "executed.propagation", nil).Submit(float64(cnt))
+		}
+	})
 }
