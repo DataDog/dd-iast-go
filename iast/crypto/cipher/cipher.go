@@ -3,24 +3,26 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2026-present Datadog, Inc.
 
-package hash
+// Package cipher detects cryptographically weak cipher algorithms.
+package cipher
 
 import (
 	"context"
-	"crypto"
 
 	"github.com/DataDog/dd-iast-go/internal/instrumentation/telemetry"
 	"github.com/DataDog/dd-iast-go/internal/model/constants"
 	"github.com/DataDog/dd-iast-go/internal/vulnerability"
 )
 
-// ReportWeakHash reports use of a cryptographically weak hash algorithm.
-func ReportWeakHash(ctx context.Context, hash crypto.Hash) {
+// ReportWeakCipher reports use of a cryptographically weak cipher algorithm.
+// If skipCallerFunction identifies the first candidate location frame, that
+// frame is skipped in favor of its caller.
+func ReportWeakCipher(ctx context.Context, name, skipCallerFunction string) {
 	vulnerability.Report(
 		ctx,
-		constants.VulnerabilityTypeWeakHash,
-		hash.String(),
-		&telemetry.ExecutedSink.WeakHash,
-		"",
+		constants.VulnerabilityTypeWeakCipher,
+		name,
+		&telemetry.ExecutedSink.WeakCipher,
+		skipCallerFunction,
 	)
 }

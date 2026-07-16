@@ -62,8 +62,8 @@ Trust boundary violation | High | :x:
 Untrusted deserialization | Medium | :x:
 Un-validated redirect | High | :x:
 Verb tampering | High | :x:
-Weak cipher | Medium | :x:
-Weak hash | Medium | :x:
+Weak cipher | Medium | :white_check_mark:
+Weak hash | Medium | :white_check_mark:
 Weak randomness | Low | :x:
 `X-Content-Type-Options` header missing | Low | :x:
 `X-XSS-Protection` header disabled | Low | :x:
