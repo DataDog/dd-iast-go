@@ -1,0 +1,199 @@
+# Unless explicitly stated otherwise all files in this repository are licensed
+# under the Apache License Version 2.0.
+# This product includes software developed at Datadog (https://www.datadoghq.com/).
+# Copyright 2023-present Datadog, Inc.
+---
+# $schema: https://datadoghq.dev/orchestrion/schema.json
+meta:
+  name: github.com/DataDog/dd-iast-go/iast/crypto/cipher
+  description: Weak cipher detection
+
+aspects:
+  # Both crypto/des constructors are declared in the same file. Anchor the
+  # package-scoped linkname declaration on NewCipher so it is emitted once.
+  - id: crypto/des (declaration and DES report)
+    join-point:
+      all-of:
+        - import-path: crypto/des
+        - function-body:
+            function:
+              - name: NewCipher
+    advice:
+      - inject-declarations:
+          links:
+            - github.com/DataDog/dd-iast-go/iast/crypto/cipher
+          imports:
+            context: context
+            telemetry: github.com/DataDog/dd-iast-go/internal/instrumentation/telemetry
+            model: github.com/DataDog/dd-iast-go/internal/model/constants
+          template: |-
+            //go:linkname __dd__iast_ReportWeakCipher__ github.com/DataDog/dd-iast-go/iast/crypto/cipher.ReportWeakCipher
+            func __dd__iast_ReportWeakCipher__(context.Context, string, string)
+
+            func init() {
+              telemetry.InstrumentedSink[model.VulnerabilityTypeWeakCipher] += 2
+            }
+      - prepend-statements:
+          imports:
+            iast: github.com/DataDog/dd-iast-go/iast/crypto/cipher
+          template: __dd__iast_ReportWeakCipher__(nil, "DES", "")
+
+  - id: crypto/des (TripleDES report)
+    join-point:
+      all-of:
+        - import-path: crypto/des
+        - function-body:
+            function:
+              - name: NewTripleDESCipher
+    advice:
+      - prepend-statements:
+          imports:
+            iast: github.com/DataDog/dd-iast-go/iast/crypto/cipher
+          template: __dd__iast_ReportWeakCipher__(nil, "TripleDES", "")
+
+  - id: crypto/rc4
+    join-point:
+      all-of:
+        - import-path: crypto/rc4
+        - function-body:
+            function:
+              - name: NewCipher
+    advice:
+      - inject-declarations:
+          links:
+            - github.com/DataDog/dd-iast-go/iast/crypto/cipher
+          imports:
+            context: context
+            telemetry: github.com/DataDog/dd-iast-go/internal/instrumentation/telemetry
+            model: github.com/DataDog/dd-iast-go/internal/model/constants
+          template: |-
+            //go:linkname __dd__iast_ReportWeakCipher__ github.com/DataDog/dd-iast-go/iast/crypto/cipher.ReportWeakCipher
+            func __dd__iast_ReportWeakCipher__(context.Context, string, string)
+
+            func init() {
+              telemetry.InstrumentedSink[model.VulnerabilityTypeWeakCipher] += 1
+            }
+      - prepend-statements:
+          imports:
+            iast: github.com/DataDog/dd-iast-go/iast/crypto/cipher
+          template: __dd__iast_ReportWeakCipher__(nil, "RC4", "")
+
+  # NewSaltedCipher delegates to NewCipher for an empty salt. In that case only
+  # NewCipher reports, and it skips the delegation frame when selecting the
+  # application location. This behavior is tied to x/crypto v0.54.0.
+  - id: golang.org/x/crypto/blowfish (declaration and Blowfish report)
+    join-point:
+      all-of:
+        - import-path: golang.org/x/crypto/blowfish
+        - function-body:
+            function:
+              - name: NewCipher
+    advice:
+      - inject-declarations:
+          links:
+            - github.com/DataDog/dd-iast-go/iast/crypto/cipher
+          imports:
+            context: context
+            telemetry: github.com/DataDog/dd-iast-go/internal/instrumentation/telemetry
+            model: github.com/DataDog/dd-iast-go/internal/model/constants
+          template: |-
+            //go:linkname __dd__iast_ReportWeakCipher__ github.com/DataDog/dd-iast-go/iast/crypto/cipher.ReportWeakCipher
+            func __dd__iast_ReportWeakCipher__(context.Context, string, string)
+
+            func init() {
+              telemetry.InstrumentedSink[model.VulnerabilityTypeWeakCipher] += 2
+            }
+      - prepend-statements:
+          imports:
+            iast: github.com/DataDog/dd-iast-go/iast/crypto/cipher
+          template: |-
+            __dd__iast_ReportWeakCipher__(nil, "Blowfish", "golang.org/x/crypto/blowfish.NewSaltedCipher")
+
+  - id: golang.org/x/crypto/blowfish (salted Blowfish report)
+    join-point:
+      all-of:
+        - import-path: golang.org/x/crypto/blowfish
+        - function-body:
+            function:
+              - name: NewSaltedCipher
+    advice:
+      - prepend-statements:
+          imports:
+            iast: github.com/DataDog/dd-iast-go/iast/crypto/cipher
+          template: |-
+            if len(salt) != 0 {
+              __dd__iast_ReportWeakCipher__(nil, "Blowfish", "")
+            }
+
+  - id: golang.org/x/crypto/pkcs12/internal/rc2
+    join-point:
+      all-of:
+        - import-path: golang.org/x/crypto/pkcs12/internal/rc2
+        - function-body:
+            function:
+              - name: New
+    advice:
+      - inject-declarations:
+          links:
+            - github.com/DataDog/dd-iast-go/iast/crypto/cipher
+          imports:
+            context: context
+            telemetry: github.com/DataDog/dd-iast-go/internal/instrumentation/telemetry
+            model: github.com/DataDog/dd-iast-go/internal/model/constants
+          template: |-
+            //go:linkname __dd__iast_ReportWeakCipher__ github.com/DataDog/dd-iast-go/iast/crypto/cipher.ReportWeakCipher
+            func __dd__iast_ReportWeakCipher__(context.Context, string, string)
+
+            func init() {
+              telemetry.InstrumentedSink[model.VulnerabilityTypeWeakCipher] += 1
+            }
+      - prepend-statements:
+          imports:
+            iast: github.com/DataDog/dd-iast-go/iast/crypto/cipher
+          template: __dd__iast_ReportWeakCipher__(nil, "RC2", "")
+
+  # The two concrete PBE implementations are declared in the same source file.
+  # Anchor the package-scoped declaration on the TripleDES implementation.
+  - id: golang.org/x/crypto/pkcs12 (declaration and TripleDES PBE report)
+    join-point:
+      all-of:
+        - import-path: golang.org/x/crypto/pkcs12
+        - function-body:
+            function:
+              - receiver: golang.org/x/crypto/pkcs12.shaWithTripleDESCBC
+              - name: create
+    advice:
+      - inject-declarations:
+          links:
+            - github.com/DataDog/dd-iast-go/iast/crypto/cipher
+          imports:
+            context: context
+            telemetry: github.com/DataDog/dd-iast-go/internal/instrumentation/telemetry
+            model: github.com/DataDog/dd-iast-go/internal/model/constants
+          template: |-
+            //go:linkname __dd__iast_ReportWeakCipher__ github.com/DataDog/dd-iast-go/iast/crypto/cipher.ReportWeakCipher
+            func __dd__iast_ReportWeakCipher__(context.Context, string, string)
+
+            func init() {
+              telemetry.InstrumentedSink[model.VulnerabilityTypeWeakCipher] += 2
+            }
+      - prepend-statements:
+          imports:
+            iast: github.com/DataDog/dd-iast-go/iast/crypto/cipher
+          template: |-
+            __dd__iast_ReportWeakCipher__(nil, "PBEWithSHAAnd3KeyTripleDESCBC", "")
+
+  - id: golang.org/x/crypto/pkcs12 (RC2 PBE report)
+    join-point:
+      all-of:
+        - import-path: golang.org/x/crypto/pkcs12
+        - function-body:
+            function:
+              - receiver: golang.org/x/crypto/pkcs12.shaWith40BitRC2CBC
+              - name: create
+    advice:
+      - prepend-statements:
+          imports:
+            iast: github.com/DataDog/dd-iast-go/iast/crypto/cipher
+          template: |-
+            __dd__iast_ReportWeakCipher__(nil, "PBEWithSHAAnd40BitRC2CBC", "")
