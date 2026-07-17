@@ -4,10 +4,8 @@ go 1.26.0
 
 tool github.com/DataDog/orchestrion
 
-replace github.com/DataDog/dd-trace-go/v2 => ../dd-trace-go
-
 require (
-	github.com/DataDog/dd-trace-go/v2 v2.9.1
+	github.com/DataDog/dd-trace-go/v2 v2.11.0-dev.0.20260716150025-e5eee9dcba15
 	github.com/DataDog/orchestrion v1.11.0
 	github.com/puzpuzpuz/xsync/v4 v4.5.0
 	github.com/stretchr/testify v1.11.1
@@ -15,19 +13,19 @@ require (
 )
 
 require (
-	github.com/DataDog/datadog-agent/comp/core/tagger/origindetection v0.81.0 // indirect
-	github.com/DataDog/datadog-agent/pkg/obfuscate v0.81.0 // indirect
-	github.com/DataDog/datadog-agent/pkg/opentelemetry-mapping-go/otlp/attributes v0.81.0 // indirect
-	github.com/DataDog/datadog-agent/pkg/proto v0.81.0 // indirect
-	github.com/DataDog/datadog-agent/pkg/remoteconfig/state v0.81.0 // indirect
-	github.com/DataDog/datadog-agent/pkg/trace v0.81.0 // indirect
-	github.com/DataDog/datadog-agent/pkg/trace/log v0.81.0 // indirect
-	github.com/DataDog/datadog-agent/pkg/trace/stats v0.81.0 // indirect
-	github.com/DataDog/datadog-agent/pkg/trace/traceutil v0.81.0 // indirect
+	github.com/DataDog/datadog-agent/comp/core/tagger/origindetection v0.81.1 // indirect
+	github.com/DataDog/datadog-agent/pkg/obfuscate v0.81.1 // indirect
+	github.com/DataDog/datadog-agent/pkg/opentelemetry-mapping-go/otlp/attributes v0.81.1 // indirect
+	github.com/DataDog/datadog-agent/pkg/proto v0.81.1 // indirect
+	github.com/DataDog/datadog-agent/pkg/remoteconfig/state v0.81.1 // indirect
+	github.com/DataDog/datadog-agent/pkg/trace v0.81.1 // indirect
+	github.com/DataDog/datadog-agent/pkg/trace/log v0.81.1 // indirect
+	github.com/DataDog/datadog-agent/pkg/trace/stats v0.81.1 // indirect
+	github.com/DataDog/datadog-agent/pkg/trace/traceutil v0.81.1 // indirect
 	github.com/DataDog/datadog-go/v5 v5.9.0 // indirect
 	github.com/DataDog/go-libddwaf/v5 v5.0.0 // indirect
 	github.com/DataDog/go-runtime-metrics-internal v0.0.4-0.20260317103029-7c129975f019 // indirect
-	github.com/DataDog/go-sqllexer v0.2.3 // indirect
+	github.com/DataDog/go-sqllexer v0.2.4 // indirect
 	github.com/DataDog/go-tuf v1.1.1-0.5.2 // indirect
 	github.com/DataDog/sketches-go v1.4.8 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
@@ -62,7 +60,7 @@ require (
 	github.com/lucasb-eyer/go-colorful v1.4.0 // indirect
 	github.com/lufia/plan9stats v0.0.0-20260627054121-477a66015f15 // indirect
 	github.com/mattn/go-colorable v0.1.15 // indirect
-	github.com/mattn/go-isatty v0.0.22 // indirect
+	github.com/mattn/go-isatty v0.0.23 // indirect
 	github.com/mattn/go-runewidth v0.0.24 // indirect
 	github.com/minio/highwayhash v1.0.4 // indirect
 	github.com/minio/simdjson-go v0.4.5 // indirect
@@ -86,7 +84,7 @@ require (
 	github.com/rs/zerolog v1.35.1 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/secure-systems-lab/go-securesystemslib v0.11.0 // indirect
-	github.com/sergi/go-diff v1.3.1 // indirect
+	github.com/sergi/go-diff v1.4.0 // indirect
 	github.com/shirou/gopsutil/v4 v4.26.6 // indirect
 	github.com/tinylib/msgp v1.6.4 // indirect
 	github.com/tklauser/go-sysconf v0.4.0 // indirect
@@ -113,12 +111,12 @@ require (
 	go.uber.org/zap v1.28.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/exp v0.0.0-20260611194520-c48552f49976 // indirect
-	golang.org/x/mod v0.37.0 // indirect
+	golang.org/x/mod v0.38.0 // indirect
 	golang.org/x/sync v0.22.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/term v0.45.0 // indirect
 	golang.org/x/time v0.15.0 // indirect
-	golang.org/x/tools v0.47.0 // indirect
+	golang.org/x/tools v0.48.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260706201446-f0a921348800 // indirect
 	google.golang.org/protobuf v1.36.12-0.20260116114154-8c4c4ae446ca // indirect
