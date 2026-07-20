@@ -10,7 +10,7 @@ on:
       system_tests_ref:
         description: The system-tests revision to use
         required: false
-        default: main
+        default: romain.marcadier/dd-iast-go
         type: string
   push:
     branches:
@@ -22,7 +22,7 @@ on:
       system_tests_ref:
         description: The system-tests ref, tag, or branch to use
         required: true
-        default: main
+        default: romain.marcadier/dd-iast-go
         type: string
   schedule:
     - cron: "00 04 * * *"
@@ -45,7 +45,8 @@ jobs:
         with:
           persist-credentials: false
           repository: DataDog/system-tests
-          ref: ${{ inputs.system_tests_ref }}
+          # TODO: Switch the fallback to main once the dd-iast-go support lands.
+          ref: ${{ inputs.system_tests_ref || 'romain.marcadier/dd-iast-go' }}
 
       - name: Pin exact system-tests commit
         id: pin

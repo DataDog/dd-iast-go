@@ -16,7 +16,9 @@ The workflow will:
 - run the `DEFAULT` and `IAST_DEDUPLICATION` scenarios;
 - run on pull requests from the main repository, selected pushes, a nightly
   schedule, manual dispatch, and reusable-workflow calls;
-- pin one exact `system-tests` revision per workflow run;
+- temporarily use `DataDog/system-tests` branch
+  `romain.marcadier/dd-iast-go`, which contains the required Go IAST suites and
+  local `dd-iast-go` override support, then pin its exact revision per run;
 - retain test logs and report JUnit results through the system-tests action;
 - expose one stable aggregate job for branch protection.
 
@@ -67,8 +69,8 @@ Create `.github/workflows/system-tests.yml`, adapted from
 ### Events and permissions
 
 - Support `workflow_call` with a required `branch_ref` input.
-- Support `workflow_dispatch` with a `system-tests` ref input defaulting to
-  `main`.
+- Support `workflow_dispatch` with a `system-tests` ref input defaulting
+  temporarily to `romain.marcadier/dd-iast-go`.
 - Run for `pull_request`, `merge_group`, nightly `schedule`, pushes to `main`,
   and manual/reusable invocations. `main` is the only integration branch
   present in this repository. Use GitHub's native `merge_group` event rather
@@ -88,8 +90,9 @@ Create `.github/workflows/system-tests.yml`, adapted from
 
 Add a `warm-repo-cache` job that:
 
-1. checks out `DataDog/system-tests` at the dispatched ref (or `main` when no
-   dispatch ref is supplied), without persisted credentials;
+1. checks out `DataDog/system-tests` at the requested ref, falling back to the
+   temporary `romain.marcadier/dd-iast-go` branch for triggers without inputs,
+   without persisted credentials;
 2. resolves and exports the exact checked-out commit SHA;
 3. caches the checkout's `.git` directory using that SHA.
 
@@ -201,6 +204,10 @@ Before committing the implementation:
    retention, and absence of unrelated CI or product changes.
 
 ## Follow-up criteria
+
+Switch the workflow-call default, dispatch default, and direct-trigger fallback
+from `romain.marcadier/dd-iast-go` to `main` once the required system-tests Go
+IAST suites and `dd-iast-go` override support land there.
 
 Revisit the scenario matrix when `system-tests/manifests/golang.yml` enables a
 new IAST test for `net-http-orchestrion`. Add a scenario only if it selects an
