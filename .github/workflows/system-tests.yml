@@ -111,8 +111,23 @@ jobs:
           fi
           printf 'github.com/DataDog/dd-trace-go/v2@%s\n' "$version" > binaries/golang-load-from-go-get
 
+      - name: Prepare GitHub token for private modules
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          umask 077
+          printf '%s' "$GH_TOKEN" > "$RUNNER_TEMP/github_token.txt"
+
       - name: Build and save weblog image
-        run: ./build.sh golang -i weblog -w net-http-orchestrion --save-to-binaries
+        run: |
+          ./build.sh golang -i weblog -w net-http-orchestrion \
+            --save-to-binaries \
+            --github-token-file "$RUNNER_TEMP/github_token.txt"
+
+      - name: Remove GitHub token
+        if: always()
+        run: rm -f "$RUNNER_TEMP/github_token.txt"
 
       - name: Upload weblog image
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

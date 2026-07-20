@@ -111,9 +111,14 @@ Add a `build-weblog-image` job that:
    checkout's `go.mod` and writes
    `binaries/golang-load-from-go-get` in the form
    `github.com/DataDog/dd-trace-go/v2@<exact-version>`;
-4. runs
+4. writes the job-scoped `GITHUB_TOKEN` to a mode-restricted temporary file
+   and passes it through system-tests' `--github-token-file` interface, which
+   exposes it to the Docker build only as a BuildKit secret for fetching the
+   private `dd-iast-go` module;
+5. runs
    `./build.sh golang -i weblog -w net-http-orchestrion --save-to-binaries`;
-5. uploads
+6. removes the temporary token file even if the build fails;
+7. uploads
    `binaries/golang-net-http-orchestrion-weblog.tar.zst` as a one-day artifact.
 
 The system-tests Go image build detects `/binaries/dd-iast-go` and adds a Go
@@ -122,7 +127,10 @@ module replacement for the local checkout. The explicit
 module with non-hermetic `dd-trace-go@latest`; instead, it resolves and replaces
 `dd-trace-go` and its used contrib modules at the exact version against which
 the checked-out `dd-iast-go` was developed. Orchestrion remains supplied by the
-normal system-tests weblog configuration.
+normal system-tests weblog configuration. The temporary system-tests branch
+mounts the optional `github_token` BuildKit secret and configures Git through
+process-scoped environment variables for the build instruction; it does not
+store or print the credential. Fork pull requests cannot enter this build job.
 
 ### Run the limited scenario matrix
 
@@ -195,12 +203,15 @@ Before committing the implementation:
    `dd-trace-go/v2` version in the checked-out `dd-iast-go/go.mod`, and verify
    build logs show that `install_ddtrace.sh` took its load-from-go-get path
    rather than the `@latest` production path.
-9. Confirm whether the `system-tests` OIDC policy accepts this repository, while
+9. Verify the workflow passes `GITHUB_TOKEN` only through a mode-restricted
+   temporary file and BuildKit secret, always removes the file, never logs the
+   token, and does not expose it to fork pull requests.
+10. Confirm whether the `system-tests` OIDC policy accepts this repository, while
    keeping result upload best-effort either way.
-10. If feasible in the local environment, build the weblog once against the
+11. If feasible in the local environment, build the weblog once against the
    local checkout and run both scenarios. Otherwise, document that end-to-end
    execution requires Docker and defer that evidence to the first workflow run.
-11. Review the final diff for least-privilege permissions, bounded artifact
+12. Review the final diff for least-privilege permissions, bounded artifact
    retention, and absence of unrelated CI or product changes.
 
 ## Follow-up criteria
