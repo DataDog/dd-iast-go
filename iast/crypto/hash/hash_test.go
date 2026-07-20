@@ -51,6 +51,7 @@ func TestMD5(t *testing.T) {
 	require.NoError(t, json.Unmarshal([]byte(spanList[0].Tag(spans.SpanTagJson).(string)), &event))
 	require.Equal(t, "vulnerability", spanList[0].OperationName())
 	require.Equal(t, "vulnerability", spanList[0].Tag(ext.SpanType))
+	expectedLine := 1336
 	assert.Equal(t,
 		&model.Event{
 			Vulnerabilities: []model.Vulnerability{
@@ -61,7 +62,7 @@ func TestMD5(t *testing.T) {
 					Location: &model.Location{
 						SpanID: spanList[0].Context().SpanID(),
 						Path:   "/path/to/file.go",
-						Line:   new(1336),
+						Line:   &expectedLine,
 						Method: "github.com/DataDog/dd-iast-go/iast/crypto/hash_test.indirectCall[...]",
 					},
 				},
@@ -88,6 +89,7 @@ func TestSHA1(t *testing.T) {
 	require.NoError(t, json.Unmarshal([]byte(spanList[0].Tag(spans.SpanTagJson).(string)), &event))
 	require.Equal(t, "vulnerability", spanList[0].OperationName())
 	require.Equal(t, "vulnerability", spanList[0].Tag(ext.SpanType))
+	expectedLine := 1336
 	assert.Equal(t,
 		&model.Event{
 			Vulnerabilities: []model.Vulnerability{
@@ -98,7 +100,7 @@ func TestSHA1(t *testing.T) {
 					Location: &model.Location{
 						SpanID: spanList[0].Context().SpanID(),
 						Path:   "/path/to/file.go",
-						Line:   new(1336),
+						Line:   &expectedLine,
 						Method: "github.com/DataDog/dd-iast-go/iast/crypto/hash_test.indirectCall[...]",
 					},
 				},
@@ -156,6 +158,7 @@ func TestHash(t *testing.T) {
 			assert.Equal(t, exp.Digest, act, "hash algorithm %s", alg)
 
 			span, _ := tracer.SpanFromContext(ctx)
+			expectedLine := 1336
 			expectedVulns = append(expectedVulns, model.Vulnerability{
 				Type:     constants.VulnerabilityTypeWeakHash,
 				Hash:     0xf3fd573f80904b52,
@@ -163,7 +166,7 @@ func TestHash(t *testing.T) {
 				Location: &model.Location{
 					SpanID: span.Context().SpanID(),
 					Path:   "/path/to/file.go",
-					Line:   new(1336),
+					Line:   &expectedLine,
 					Method: "github.com/DataDog/dd-iast-go/iast/crypto/hash_test.indirectCall[...]",
 				},
 			})

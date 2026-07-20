@@ -244,7 +244,8 @@ func assertWeakCipher(
 	require.NotNil(t, vuln.Location)
 	assert.Equal(t, span.Context().SpanID(), vuln.Location.SpanID)
 	assert.Equal(t, "/path/to/file.go", vuln.Location.Path)
-	assert.Equal(t, new(line), vuln.Location.Line)
+	expectedLine := line
+	assert.Equal(t, &expectedLine, vuln.Location.Line)
 	assert.Contains(t, vuln.Location.Method, method)
 	assert.Equal(t, executedBefore+1, telemetry.ExecutedSink.WeakCipher.Load())
 }
