@@ -13,9 +13,9 @@ type Location struct {
 	Path string `json:"path,omitempty"`
 	// Type is the name of the type containing the vulnerability.
 	Type string `json:"class,omitempty"`
-	// Line is the zero based line number in the source code file where the
-	// vulnerability is located (-1 may be used as missing line)
-	Line *int `json:"line,omitempty"`
+	// Line is the line number in the source code file where the vulnerability is
+	// located (0 or -1 may be used as missing line)
+	Line int `json:"line,omitempty"`
 	// Method is the name or descriptor of the method where this location points
 	// to.
 	Method string `json:"method,omitempty"`

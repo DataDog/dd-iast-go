@@ -49,7 +49,7 @@ func TestDES(t *testing.T) {
 	require.NoError(t, err)
 	assertBlockEncryption(t, block, "0123456789ABCDEF", "85E813540F0AB405")
 
-	assertWeakCipher(t, mockTracer, before, "DES", 1336, "indirectCipherCall")
+	assertWeakCipher(t, mockTracer, before, "DES", 1337, "indirectCipherCall")
 }
 
 func TestTripleDES(t *testing.T) {
@@ -65,7 +65,7 @@ func TestTripleDES(t *testing.T) {
 	require.NoError(t, err)
 	assertBlockRoundTrip(t, block, mustDecodeHex(t, "0123456789abcdef"))
 
-	assertWeakCipher(t, mockTracer, before, "TripleDES", 1336, "indirectCipherCall")
+	assertWeakCipher(t, mockTracer, before, "TripleDES", 1337, "indirectCipherCall")
 }
 
 func TestRC4(t *testing.T) {
@@ -82,7 +82,7 @@ func TestRC4(t *testing.T) {
 	stream.XORKeyStream(actual, []byte("Plaintext"))
 	assert.Equal(t, "bbf316e8d940af0ad3", hex.EncodeToString(actual))
 
-	assertWeakCipher(t, mockTracer, before, "RC4", 1336, "indirectCipherCall")
+	assertWeakCipher(t, mockTracer, before, "RC4", 1337, "indirectCipherCall")
 }
 
 func TestBlowfish(t *testing.T) {
@@ -97,7 +97,7 @@ func TestBlowfish(t *testing.T) {
 	require.NoError(t, err)
 	assertBlockEncryption(t, block, "0000000000000000", "4ef997456198dd78")
 
-	assertWeakCipher(t, mockTracer, before, "Blowfish", 1336, "indirectCipherCall")
+	assertWeakCipher(t, mockTracer, before, "Blowfish", 1337, "indirectCipherCall")
 }
 
 func TestSaltedBlowfish(t *testing.T) {
@@ -121,7 +121,7 @@ func TestSaltedBlowfish(t *testing.T) {
 			require.NoError(t, err)
 			assertBlockRoundTrip(t, block, []byte("12345678"))
 
-			assertWeakCipher(t, mockTracer, before, "Blowfish", 1447, "indirectSaltedCipherCall")
+			assertWeakCipher(t, mockTracer, before, "Blowfish", 1448, "indirectSaltedCipherCall")
 		})
 	}
 }
@@ -244,8 +244,7 @@ func assertWeakCipher(
 	require.NotNil(t, vuln.Location)
 	assert.Equal(t, span.Context().SpanID(), vuln.Location.SpanID)
 	assert.Equal(t, "/path/to/file.go", vuln.Location.Path)
-	expectedLine := line
-	assert.Equal(t, &expectedLine, vuln.Location.Line)
+	assert.Equal(t, line, vuln.Location.Line)
 	assert.Contains(t, vuln.Location.Method, method)
 	assert.Equal(t, executedBefore+1, telemetry.ExecutedSink.WeakCipher.Load())
 }
