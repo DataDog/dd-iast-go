@@ -41,7 +41,7 @@ type Annotation struct {
 // AnnotationFor returns the [*Annotation] for the root of the given
 // [*tracer.Span] (or the span itself if it does not have a valid, un-finished
 // root). If none exists yet, a new [*Annotation] is allocated.
-func AnnotationFor(span *tracer.Span) *Annotation {
+func AnnotationFor(span *tracer.Span) (*Annotation, *tracer.Span) {
 	root := span.Root()
 	if root == nil {
 		instrumentation.Instance.TelemetryLog().
@@ -75,14 +75,14 @@ func AnnotationFor(span *tracer.Span) *Annotation {
 	)
 
 	if ann != nil && ann.Sampled {
-		span.SetTag(SpanTagEnabled, 1)
+		root.SetTag(SpanTagEnabled, 1)
 	}
 
 	if ann == nil {
 		ann = new(Annotation)
 	}
 
-	return ann
+	return ann, root
 }
 
 // Finished is called by [*tracer.Span.Finish] and removes the [*Annotation]
