@@ -1,0 +1,22 @@
+# Temporary policy for DataDog/system-tests PR #7342.
+#
+# Grants the build_end_to_end job in the system-tests reusable workflow
+# read-only access to dd-iast-go. Restrict access to the exact PR, branch,
+# workflow and repository involved in the initial IAST integration.
+#
+# Remove this policy after dd-iast-go becomes public.
+
+issuer: https://token.actions.githubusercontent.com
+subject: repo:DataDog/system-tests:pull_request
+
+claim_pattern:
+  base_ref: main
+  event_name: pull_request
+  head_ref: romain\.marcadier/dd-iast-go
+  job_workflow_ref: DataDog/system-tests/\.github/workflows/system-tests\.yml@refs/pull/7342/merge
+  ref: refs/pull/7342/merge
+  repository: DataDog/system-tests
+  workflow_ref: DataDog/system-tests/\.github/workflows/ci\.yml@refs/pull/7342/merge
+
+permissions:
+  contents: read
