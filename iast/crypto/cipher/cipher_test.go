@@ -187,7 +187,7 @@ func TestPKCS12PBE(t *testing.T) {
 			}
 			require.Len(t, weakCiphers, len(tc.evidence))
 			for i, evidence := range tc.evidence {
-				assert.Equal(t, &model.UnredactedStringValue{Value: evidence}, weakCiphers[i].Evidence)
+				assert.Equal(t, model.NewEvidenceString(evidence), weakCiphers[i].Evidence)
 			}
 			assert.Equal(t, before+uint64(len(tc.evidence)), telemetry.ExecutedSink.WeakCipher.Load())
 		})
@@ -239,7 +239,7 @@ func assertWeakCipher(
 	require.Len(t, event.Vulnerabilities, 1)
 	vuln := event.Vulnerabilities[0]
 	assert.Equal(t, constants.VulnerabilityTypeWeakCipher, vuln.Type)
-	assert.Equal(t, &model.UnredactedStringValue{Value: evidence}, vuln.Evidence)
+	assert.Equal(t, model.NewEvidenceString(evidence), vuln.Evidence)
 	assert.NotZero(t, vuln.Hash)
 	require.NotNil(t, vuln.Location)
 	assert.Equal(t, span.Context().SpanID(), vuln.Location.SpanID)

@@ -10,6 +10,9 @@ import (
 	"fmt"
 )
 
+//go:generate go tool msgp -io=false -tests=false
+//msgp:shim Origin as:string using:(Origin).String/parseOrigin witherr:true
+
 type Origin uint8
 
 const (
@@ -33,63 +36,6 @@ const (
 	OriginGraphqlResolverArgument
 	OriginSqlRowValue
 )
-
-var (
-	_ json.Marshaler   = Origin(0)
-	_ json.Unmarshaler = (*Origin)(nil)
-)
-
-func (o Origin) MarshalJSON() ([]byte, error) {
-	return json.Marshal(o.String())
-}
-
-func (o *Origin) UnmarshalJSON(data []byte) error {
-	var s string
-	if err := json.Unmarshal(data, &s); err != nil {
-		return err
-	}
-	switch s {
-	case "http.request.parameter":
-		*o = OriginHttpRequestParameter
-	case "http.request.parameter.name":
-		*o = OriginHttpRequestParameterName
-	case "http.request.header":
-		*o = OriginHttpRequestHeader
-	case "http.request.header.name":
-		*o = OriginHttpRequestHeaderName
-	case "http.request.path":
-		*o = OriginHttpRequestPath
-	case "http.request.body":
-		*o = OriginHttpRequestBody
-	case "http.request.query":
-		*o = OriginHttpRequestQuery
-	case "http.request.path.parameter":
-		*o = OriginHttpRequestPathParameter
-	case "http.request.matrix.parameter":
-		*o = OriginHttpRequestMatrixParameter
-	case "http.request.cookie.name":
-		*o = OriginHttpRequestCookieName
-	case "http.request.cookie.value":
-		*o = OriginHttpRequestCookieValue
-	case "http.request.uri":
-		*o = OriginHttpRequestUri
-	case "grpc.request.body":
-		*o = OriginGrpcRequestBody
-	case "http.request.multipart.parameter":
-		*o = OriginHttpRequestMultipartParameter
-	case "kafka.message.key":
-		*o = OriginKafkaMessageKey
-	case "kafka.message.value":
-		*o = OriginKafkaMessageValue
-	case "graphql.resolver.argument":
-		*o = OriginGraphqlResolverArgument
-	case "sql.row.value":
-		*o = OriginSqlRowValue
-	default:
-		return fmt.Errorf("invalid origin: %s", s)
-	}
-	return nil
-}
 
 func (o Origin) String() string {
 	switch o {
@@ -130,6 +76,68 @@ func (o Origin) String() string {
 	case OriginSqlRowValue:
 		return "sql.row.value"
 	default:
-		panic(fmt.Errorf("invalid origin: %d", o))
+		return fmt.Sprintf("Origin(%d)", o)
 	}
+}
+
+func parseOrigin(s string) (Origin, error) {
+	switch s {
+	case "http.request.parameter":
+		return OriginHttpRequestParameter, nil
+	case "http.request.parameter.name":
+		return OriginHttpRequestParameterName, nil
+	case "http.request.header":
+		return OriginHttpRequestHeader, nil
+	case "http.request.header.name":
+		return OriginHttpRequestHeaderName, nil
+	case "http.request.path":
+		return OriginHttpRequestPath, nil
+	case "http.request.body":
+		return OriginHttpRequestBody, nil
+	case "http.request.query":
+		return OriginHttpRequestQuery, nil
+	case "http.request.path.parameter":
+		return OriginHttpRequestPathParameter, nil
+	case "http.request.matrix.parameter":
+		return OriginHttpRequestMatrixParameter, nil
+	case "http.request.cookie.name":
+		return OriginHttpRequestCookieName, nil
+	case "http.request.cookie.value":
+		return OriginHttpRequestCookieValue, nil
+	case "http.request.uri":
+		return OriginHttpRequestUri, nil
+	case "grpc.request.body":
+		return OriginGrpcRequestBody, nil
+	case "http.request.multipart.parameter":
+		return OriginHttpRequestMultipartParameter, nil
+	case "kafka.message.key":
+		return OriginKafkaMessageKey, nil
+	case "kafka.message.value":
+		return OriginKafkaMessageValue, nil
+	case "graphql.resolver.argument":
+		return OriginGraphqlResolverArgument, nil
+	case "sql.row.value":
+		return OriginSqlRowValue, nil
+	default:
+		return 0, fmt.Errorf("invalid origin: %s", s)
+	}
+}
+
+var (
+	_ json.Marshaler   = Origin(0)
+	_ json.Unmarshaler = (*Origin)(nil)
+)
+
+func (o Origin) MarshalJSON() ([]byte, error) {
+	return json.Marshal(o.String())
+}
+
+func (o *Origin) UnmarshalJSON(data []byte) error {
+	var s string
+	if err := json.Unmarshal(data, &s); err != nil {
+		return err
+	}
+	res, err := parseOrigin(s)
+	*o = res
+	return err
 }

@@ -30,6 +30,7 @@ var (
 
 type Annotation struct {
 	sync.RWMutex
+	// +checklocks:RWMutex
 	model.Event
 
 	Sampled bool
@@ -41,7 +42,7 @@ type Annotation struct {
 // AnnotationFor returns the [*Annotation] for the root of the given
 // [*tracer.Span] (or the span itself if it does not have a valid, un-finished
 // root). If none exists yet, a new [*Annotation] is allocated.
-func AnnotationFor(span *tracer.Span) (*Annotation, *tracer.Span) {
+func AnnotationFor(span *tracer.Span) *Annotation {
 	root := span.Root()
 	if root == nil {
 		instrumentation.Instance.TelemetryLog().
@@ -74,25 +75,11 @@ func AnnotationFor(span *tracer.Span) (*Annotation, *tracer.Span) {
 		},
 	)
 
-	if ann != nil && ann.Sampled {
-		root.SetTag(SpanTagEnabled, 1)
-	}
-
 	if ann == nil {
 		ann = new(Annotation)
 	}
 
-	return ann, root
-}
-
-// Finished is called by [*tracer.Span.Finish] and removes the [*Annotation]
-// from storage, as the span is defunct.
-func Finished(span *tracer.Span) {
-	ann, ok := store.LoadAndDelete(weak.Make(span))
-	if !ok {
-		return
-	}
-	ann.submitTelemetry()
+	return ann
 }
 
 func (a *Annotation) submitTelemetry() {

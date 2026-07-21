@@ -12,13 +12,15 @@ import (
 	"github.com/DataDog/dd-iast-go/internal/instrumentation"
 )
 
+//go:generate go tool msgp -io=false -tests=false
+
 type Event struct {
 	// Sources is the list of sources where the input data for the vulnerabilities
 	// originated (request parameters, headers ...).
-	Sources []Source `json:"sources,omitempty"`
+	Sources []Source `json:"sources,omitempty" msg:"sources,omitempty"`
 	// Vulnerabilities is the list of vulnerabilities found in the current
 	// execution context.
-	Vulnerabilities []Vulnerability `json:"vulnerabilities"`
+	Vulnerabilities []Vulnerability `json:"vulnerabilities" msg:"vulnerabilities"`
 }
 
 func NewEvent() *Event {
@@ -36,9 +38,7 @@ func (e *Event) AddVulnerability(vuln Vulnerability) bool {
 	}
 
 	if config.DeduplicationEnabled {
-		vuln.ComputeHash()
 		for i := range e.Vulnerabilities {
-			e.Vulnerabilities[i].ComputeHash() // In case [config.DeduplicationEnabled] changed...
 			if e.Vulnerabilities[i].Hash == vuln.Hash {
 				instrumentation.Instance.TelemetryLog().Debug("de-duplicated vulnerability: %#v", slog.Any("vulnerability", vuln))
 				return false

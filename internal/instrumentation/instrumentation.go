@@ -27,4 +27,12 @@ const (
 	TelemetryTagVulnerabilityType = "vulnerability_type"
 )
 
-type TelemetryMetrics = instrumentation.TelemetryMetrics
+type (
+	TelemetryMetrics = instrumentation.TelemetryMetrics
+	TelemetryOrigin  = instrumentation.TelemetryOrigin
+)
+
+const (
+	OriginDefault TelemetryOrigin = instrumentation.TelemetryOriginDefault
+	OriginEnvVar  TelemetryOrigin = instrumentation.TelemetryOriginEnvVar
+)

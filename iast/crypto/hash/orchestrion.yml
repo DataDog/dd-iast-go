@@ -9,13 +9,13 @@ meta:
   description: Weak hash detection
 
 aspects:
-  - id: golang.org/x/crypto/md4
+  - id: golang.org/x/crypto/md4.New
     join-point:
       all-of:
         - import-path: golang.org/x/crypto/md4
         - function-body:
             function:
-              - name: Sum
+              - name: New
     advice:
       - inject-declarations:
           links:
@@ -47,14 +47,13 @@ aspects:
   # only (via its receiver, which occurs exactly once), while the report call is
   # prepended to both Sum functions. The declaration is package-scoped, so it is
   # visible to the free-standing Sum even though it is anchored on the method.
-  - id: crypto/md5 (declaration)
+  - id: crypto/md5.New
     join-point:
       all-of:
         - import-path: crypto/md5
         - function-body:
             function:
-              - name: Sum
-              - receiver: '*crypto/md5.digest'
+              - name: New
     advice:
       - inject-declarations:
           links:
@@ -71,13 +70,19 @@ aspects:
             func init() {
               telemetry.InstrumentedSink[model.VulnerabilityTypeWeakHash] += 2 // Method + free-standing function
             }
-  - id: crypto/md5 (report)
+      - prepend-statements:
+          imports:
+            crypto: crypto
+            iast: github.com/DataDog/dd-iast-go/iast/crypto/hash
+          template: __dd__iast_ReportWeakHash__(nil, crypto.MD5)
+  - id: crypto/md5.Sum
     join-point:
       all-of:
         - import-path: crypto/md5
         - function-body:
             function:
               - name: Sum
+              - receiver: false
     advice:
       - prepend-statements:
           imports:
@@ -87,14 +92,13 @@ aspects:
 
   # See the crypto/md5 aspects above for why the declaration and report advice
   # are split into two join-points.
-  - id: crypto/sha1 (declaration)
+  - id: crypto/sha1.New
     join-point:
       all-of:
         - import-path: crypto/sha1
         - function-body:
             function:
-              - name: Sum
-              - receiver: '*crypto/sha1.digest'
+              - name: New
     advice:
       - inject-declarations:
           links:
@@ -111,13 +115,19 @@ aspects:
             func init() {
               telemetry.InstrumentedSink[model.VulnerabilityTypeWeakHash] += 2 // Method + free-standing function
             }
-  - id: crypto/sha1 (report)
+      - prepend-statements:
+          imports:
+            crypto: crypto
+            iast: github.com/DataDog/dd-iast-go/iast/crypto/hash
+          template: __dd__iast_ReportWeakHash__(nil, crypto.SHA1)
+  - id: crypto/sha1.Sum
     join-point:
       all-of:
         - import-path: crypto/sha1
         - function-body:
             function:
               - name: Sum
+              - receiver: false
     advice:
       - prepend-statements:
           imports:
