@@ -57,7 +57,7 @@ func TestMD5(t *testing.T) {
 			Vulnerabilities: []model.Vulnerability{
 				{
 					Type:     constants.VulnerabilityTypeWeakHash,
-					Hash:     0xf3fd573f80904b52,
+					Hash:     -498432046,
 					Evidence: &model.UnredactedStringValue{Value: "MD5"},
 					Location: &model.Location{
 						SpanID: spanList[0].Context().SpanID(),
@@ -95,7 +95,7 @@ func TestSHA1(t *testing.T) {
 			Vulnerabilities: []model.Vulnerability{
 				{
 					Type:     constants.VulnerabilityTypeWeakHash,
-					Hash:     0xf3fd573f80904b52,
+					Hash:     -498432046,
 					Evidence: &model.UnredactedStringValue{Value: "SHA-1"},
 					Location: &model.Location{
 						SpanID: spanList[0].Context().SpanID(),
@@ -161,7 +161,7 @@ func TestHash(t *testing.T) {
 			expectedLine := 1336
 			expectedVulns = append(expectedVulns, model.Vulnerability{
 				Type:     constants.VulnerabilityTypeWeakHash,
-				Hash:     0xf3fd573f80904b52,
+				Hash:     -498432046,
 				Evidence: &model.UnredactedStringValue{Value: alg.String()},
 				Location: &model.Location{
 					SpanID: span.Context().SpanID(),
