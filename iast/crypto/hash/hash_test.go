@@ -51,18 +51,17 @@ func TestMD5(t *testing.T) {
 	require.NoError(t, json.Unmarshal([]byte(spanList[0].Tag(spans.SpanTagJson).(string)), &event))
 	require.Equal(t, "vulnerability", spanList[0].OperationName())
 	require.Equal(t, "vulnerability", spanList[0].Tag(ext.SpanType))
-	expectedLine := 1336
 	assert.Equal(t,
 		&model.Event{
 			Vulnerabilities: []model.Vulnerability{
 				{
 					Type:     constants.VulnerabilityTypeWeakHash,
-					Hash:     -498432046,
+					Hash:     -1846120825,
 					Evidence: &model.UnredactedStringValue{Value: "MD5"},
 					Location: &model.Location{
 						SpanID: spanList[0].Context().SpanID(),
 						Path:   "/path/to/file.go",
-						Line:   &expectedLine,
+						Line:   1337,
 						Method: "github.com/DataDog/dd-iast-go/iast/crypto/hash_test.indirectCall[...]",
 					},
 				},
@@ -89,18 +88,17 @@ func TestSHA1(t *testing.T) {
 	require.NoError(t, json.Unmarshal([]byte(spanList[0].Tag(spans.SpanTagJson).(string)), &event))
 	require.Equal(t, "vulnerability", spanList[0].OperationName())
 	require.Equal(t, "vulnerability", spanList[0].Tag(ext.SpanType))
-	expectedLine := 1336
 	assert.Equal(t,
 		&model.Event{
 			Vulnerabilities: []model.Vulnerability{
 				{
 					Type:     constants.VulnerabilityTypeWeakHash,
-					Hash:     -498432046,
+					Hash:     -1846120825,
 					Evidence: &model.UnredactedStringValue{Value: "SHA-1"},
 					Location: &model.Location{
 						SpanID: spanList[0].Context().SpanID(),
 						Path:   "/path/to/file.go",
-						Line:   &expectedLine,
+						Line:   1337,
 						Method: "github.com/DataDog/dd-iast-go/iast/crypto/hash_test.indirectCall[...]",
 					},
 				},
@@ -158,15 +156,14 @@ func TestHash(t *testing.T) {
 			assert.Equal(t, exp.Digest, act, "hash algorithm %s", alg)
 
 			span, _ := tracer.SpanFromContext(ctx)
-			expectedLine := 1336
 			expectedVulns = append(expectedVulns, model.Vulnerability{
 				Type:     constants.VulnerabilityTypeWeakHash,
-				Hash:     -498432046,
+				Hash:     -1846120825,
 				Evidence: &model.UnredactedStringValue{Value: alg.String()},
 				Location: &model.Location{
 					SpanID: span.Context().SpanID(),
 					Path:   "/path/to/file.go",
-					Line:   &expectedLine,
+					Line:   1337,
 					Method: "github.com/DataDog/dd-iast-go/iast/crypto/hash_test.indirectCall[...]",
 				},
 			})
