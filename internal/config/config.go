@@ -38,7 +38,7 @@ var (
 	// MaxConcurrentRequests is the maximum number of concurrent requests that will be processed concurrently by IAST.
 	MaxConcurrentRequests int = int(uintFromEnvBounded[uint64](EnvVarMaxConcurrentRequests, 2, 0, math.MaxInt))
 	// VulnerabilitiesPerRequest determines the maximum number of vulnerabilities that will be reported per request.
-	VulnerabilitiesPerRequest int = int(uintFromEnv(EnvVarVulnerabilitiesPerRequest, 2))
+	VulnerabilitiesPerRequest int = int(uintFromEnvBounded[uint64](EnvVarVulnerabilitiesPerRequest, 2, 1, math.MaxInt))
 	// DeduplicationEnabled determines whether vulnerability deduplication is enabled or not.
 	DeduplicationEnabled bool = boolFromEnv(EnvVarDeduplicationEnabled, true)
 	// RedactionEnabled determines whether sensitive data redaction is enabled or not.
