@@ -94,17 +94,20 @@ jobs:
           ref: ${{ inputs.branch_ref || github.sha }}
           path: binaries/dd-iast-go
 
+      - name: Pin orchestrion dependency
+        shell: bash
+        run: |
+          version=$(go -C binaries/dd-iast-go list -m -f '{{ .Version }}' -- github.com/DataDog/orchestrion)
+          if [[ -z "$version" ]]; then
+            echo "Unable to find github.com/DataDog/orchestrion in dd-iast-go/go.mod" >&2
+            exit 1
+          fi
+          printf 'github.com/DataDog/orchestrion@%s\n' "$version" > binaries/orchestrion-load-from-go-get
+
       - name: Pin dd-trace-go dependency
         shell: bash
         run: |
-          version=$(
-            awk -v module="github.com/DataDog/dd-trace-go/v2" '
-              $1 == "require" && $2 == "(" { in_require = 1; next }
-              in_require && $1 == ")" { in_require = 0; next }
-              $1 == "require" && $2 == module { print $3; exit }
-              in_require && $1 == module { print $2; exit }
-            ' binaries/dd-iast-go/go.mod
-          )
+          version=$(go -C binaries/dd-iast-go list -m -f '{{ .Version }}' -- github.com/DataDog/dd-trace-go/v2)
           if [[ -z "$version" ]]; then
             echo "Unable to find github.com/DataDog/dd-trace-go/v2 in dd-iast-go/go.mod" >&2
             exit 1
