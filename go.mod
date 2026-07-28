@@ -1,6 +1,6 @@
 module github.com/DataDog/dd-iast-go
 
-go 1.26.3
+go 1.25.5
 
 tool (
 	github.com/DataDog/orchestrion
@@ -125,5 +125,5 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260715232425-e75dac1f907d // indirect
 	google.golang.org/protobuf v1.36.12-0.20260116114154-8c4c4ae446ca // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	gvisor.dev/gvisor v0.0.0-20260728023034-41cfc418a32b // indirect
+	gvisor.dev/gvisor v0.0.0-20260523100227-85b606a040c1 // indirect
 )
