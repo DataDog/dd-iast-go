@@ -11,6 +11,8 @@ const (
 	// - 0 when the request was dropped (i.e, because of sampling)
 	// - 1 when the request was analyzed
 	SpanTagEnabled = "_dd.iast.enabled"
+	// Meta-structure for IAST findings when available.
+	SpanTagMetaStruct = "iast"
 	// JSON-encoded metadata about IAST findings for the request.
 	SpanTagJson = "_dd.iast.json"
 )

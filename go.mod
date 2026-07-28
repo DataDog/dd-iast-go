@@ -1,27 +1,32 @@
 module github.com/DataDog/dd-iast-go
 
-go 1.25.0
+go 1.25.5
 
-tool github.com/DataDog/orchestrion
+tool (
+	github.com/DataDog/orchestrion
+	github.com/tinylib/msgp
+	gvisor.dev/gvisor/tools/checklocks/cmd/checklocks
+)
 
 require (
-	github.com/DataDog/dd-trace-go/v2 v2.11.0-dev.0.20260716150025-e5eee9dcba15
-	github.com/DataDog/orchestrion v1.11.0
+	github.com/DataDog/dd-trace-go/v2 v2.11.0-dev.0.20260724102042-cf24b817c453
+	github.com/DataDog/orchestrion v1.11.1-0.20260727153957-ca9d7e11be10
 	github.com/puzpuzpuz/xsync/v4 v4.5.0
 	github.com/stretchr/testify v1.11.1
+	github.com/tinylib/msgp v1.6.4
 	golang.org/x/crypto v0.54.0
 )
 
 require (
-	github.com/DataDog/datadog-agent/comp/core/tagger/origindetection v0.81.1 // indirect
-	github.com/DataDog/datadog-agent/pkg/obfuscate v0.81.1 // indirect
-	github.com/DataDog/datadog-agent/pkg/opentelemetry-mapping-go/otlp/attributes v0.81.1 // indirect
-	github.com/DataDog/datadog-agent/pkg/proto v0.81.1 // indirect
-	github.com/DataDog/datadog-agent/pkg/remoteconfig/state v0.81.1 // indirect
-	github.com/DataDog/datadog-agent/pkg/trace v0.81.1 // indirect
-	github.com/DataDog/datadog-agent/pkg/trace/log v0.81.1 // indirect
-	github.com/DataDog/datadog-agent/pkg/trace/stats v0.81.1 // indirect
-	github.com/DataDog/datadog-agent/pkg/trace/traceutil v0.81.1 // indirect
+	github.com/DataDog/datadog-agent/comp/core/tagger/origindetection v0.82.0-rc.2 // indirect
+	github.com/DataDog/datadog-agent/pkg/obfuscate v0.82.0-rc.2 // indirect
+	github.com/DataDog/datadog-agent/pkg/opentelemetry-mapping-go/otlp/attributes v0.82.0-rc.2 // indirect
+	github.com/DataDog/datadog-agent/pkg/proto v0.82.0-rc.2 // indirect
+	github.com/DataDog/datadog-agent/pkg/remoteconfig/state v0.82.0-rc.2 // indirect
+	github.com/DataDog/datadog-agent/pkg/trace v0.82.0-rc.2 // indirect
+	github.com/DataDog/datadog-agent/pkg/trace/log v0.82.0-rc.2 // indirect
+	github.com/DataDog/datadog-agent/pkg/trace/stats v0.82.0-rc.2 // indirect
+	github.com/DataDog/datadog-agent/pkg/trace/traceutil v0.82.0-rc.2 // indirect
 	github.com/DataDog/datadog-go/v5 v5.9.0 // indirect
 	github.com/DataDog/go-libddwaf/v5 v5.0.0 // indirect
 	github.com/DataDog/go-runtime-metrics-internal v0.0.4-0.20260317103029-7c129975f019 // indirect
@@ -73,7 +78,7 @@ require (
 	github.com/nats-io/nkeys v0.4.16 // indirect
 	github.com/nats-io/nuid v1.0.1 // indirect
 	github.com/outcaste-io/ristretto v0.2.3 // indirect
-	github.com/petermattis/goid v0.0.0-20260701081913-4f67fd55d3b4 // indirect
+	github.com/petermattis/goid v0.0.0-20260716134002-a9b348f0a2b9 // indirect
 	github.com/philhofer/fwd v1.2.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10 // indirect
@@ -86,7 +91,6 @@ require (
 	github.com/secure-systems-lab/go-securesystemslib v0.11.0 // indirect
 	github.com/sergi/go-diff v1.4.0 // indirect
 	github.com/shirou/gopsutil/v4 v4.26.6 // indirect
-	github.com/tinylib/msgp v1.6.4 // indirect
 	github.com/tklauser/go-sysconf v0.4.0 // indirect
 	github.com/tklauser/numcpus v0.12.0 // indirect
 	github.com/trailofbits/go-mutexasserts v0.0.0-20250514102930-c1f3d2e37561 // indirect
@@ -110,7 +114,7 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.28.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
-	golang.org/x/exp v0.0.0-20260611194520-c48552f49976 // indirect
+	golang.org/x/exp v0.0.0-20260718201538-764159d718ef // indirect
 	golang.org/x/mod v0.38.0 // indirect
 	golang.org/x/sync v0.22.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
@@ -118,7 +122,8 @@ require (
 	golang.org/x/time v0.15.0 // indirect
 	golang.org/x/tools v0.48.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260706201446-f0a921348800 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260715232425-e75dac1f907d // indirect
 	google.golang.org/protobuf v1.36.12-0.20260116114154-8c4c4ae446ca // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
+	gvisor.dev/gvisor v0.0.0-20260523100227-85b606a040c1 // indirect
 )

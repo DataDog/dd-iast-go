@@ -5,64 +5,86 @@
 
 package model
 
-import (
-	"encoding/json"
-	"fmt"
-)
+import "github.com/DataDog/dd-iast-go/internal/model/constants"
 
-type Evidence interface {
-	isEvidence() // marker method
+//go:generate go tool msgp -io=false -tests=false
+
+type Evidence struct {
+	Value     string        `json:"value,omitempty" msg:"value,omitempty"`
+	Pattern   string        `json:"pattern,omitempty" msg:"pattern,omitempty"`
+	Redacted  bool          `json:"redacted,omitempty" msg:"redacted,omitempty"`
+	Truncated TruncatedSide `json:"truncated,omitempty" msg:"truncated,omitzero"`
+
+	ValueParts []ValuePart `json:"valueParts,omitempty" msg:"valueParts,omitempty"`
 }
 
-var (
-	_ Evidence = EmptyEvidence{}
-	_ Evidence = (StringEvidence)(nil)
-	_ Evidence = (*TaintedEvidence)(nil)
-)
-
-// EmptyEvidence is empty evidence.
-type EmptyEvidence struct{}
-
-func (EmptyEvidence) isEvidence() {}
-
-// StringEvidence is the value that triggered a vulnerability. For example, the
-// crypto algorithm for weak hash.
-type StringEvidence = StringValue
-
-// TaintedEvidence is the value that triggered a vulnerability, including the
-// string value and tainted ranges.
-type TaintedEvidence struct {
-	ValueParts []ValuePart `json:"valueParts"`
+// NewEvidenceString creates a new evidence with string value.
+func NewEvidenceString(value string) *Evidence {
+	//TODO: Truncate if too long?
+	return &Evidence{
+		Value: value,
+	}
 }
 
-func (*TaintedEvidence) isEvidence() {}
-
-type ValuePart interface {
-	isValuePart() // marker method
+// NewEvidenceRedactedString creates a new evidence with redacted string.
+func NewEvidenceRedactedString(pattern string) *Evidence {
+	//TODO: Truncate if too long?
+	return &Evidence{
+		Pattern:  pattern,
+		Redacted: true,
+	}
 }
 
-var (
-	_ ValuePart = (TaintedValue)(nil)
-	_ ValuePart = (StringValue)(nil)
-)
-
-func unmarshalValuePart(raw json.RawMessage) (ValuePart, error) {
-	var partial map[string]json.RawMessage
-	if err := json.Unmarshal(raw, &partial); err != nil {
-		return nil, err
+// NewEvidenceTaintedValue creates a new evidence with tainted value parts.
+func NewEvidenceTaintedValue(parts []ValuePart) *Evidence {
+	return &Evidence{
+		ValueParts: parts,
 	}
+}
 
-	if src, ok := partial["source"]; ok {
-		var srcIndex int
-		if err := json.Unmarshal(src, &srcIndex); err != nil {
-			return nil, fmt.Errorf("cannot unmarshal ValuePart.source: %w", err)
-		}
-		return unmarshalTaintedValue(partial, srcIndex)
-	}
+// NewEvidenceEmpty creates a new empty evidence.
+func NewEvidenceEmpty() *Evidence {
+	return new(Evidence)
+}
 
-	value, err := unmarshalStringValue(partial)
-	if err != nil {
-		return nil, fmt.Errorf("cannot unmarshal ValuePart: %w", err)
+type ValuePart struct {
+	Value       string                        `json:"value,omitempty" msg:"value,omitempty"`
+	Pattern     string                        `json:"pattern,omitempty" msg:"pattern,omitempty"`
+	Redacted    bool                          `json:"redacted,omitempty" msg:"redacted,omitempty"`
+	Truncated   TruncatedSide                 `json:"truncated,omitempty" msg:"truncated,omitzero"`
+	SourceIndex *int                          `json:"source,omitempty" msg:"source,omitempty"`
+	SecureMarks []constants.VulnerabilityType `json:"secure_marks,omitempty" msg:"secure_marks,omitempty"`
+}
+
+func NewValuePartString(value string) ValuePart {
+	//TODO: Truncate if too long?
+	return ValuePart{
+		Value: value,
 	}
-	return value, nil
+}
+
+func NewValuePartRedactedString(pattern string) ValuePart {
+	//TODO: Truncate if too long?
+	return ValuePart{
+		Pattern:  pattern,
+		Redacted: true,
+	}
+}
+
+func NewValuePartTaintedString(value string, sourceIndex int, secureMarks []constants.VulnerabilityType) ValuePart {
+	//TODO: Truncate if too long?
+	return ValuePart{
+		Value:       value,
+		SourceIndex: &sourceIndex,
+		SecureMarks: secureMarks,
+	}
+}
+
+func NewValuePartTaintedRedactedString(pattern string, sourceIndex int, secureMarks []constants.VulnerabilityType) ValuePart {
+	return ValuePart{
+		Pattern:     pattern,
+		Redacted:    true,
+		SourceIndex: &sourceIndex,
+		SecureMarks: secureMarks,
+	}
 }

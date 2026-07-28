@@ -26,5 +26,5 @@ aspects:
       - prepend-statements:
           template: |-
             if {{ .Function.Receiver }} != nil {
-              defer __dd__iast_spans_Finished({{ .Function.Receiver }})
+              __dd__iast_spans_Finished({{ .Function.Receiver }})
             }

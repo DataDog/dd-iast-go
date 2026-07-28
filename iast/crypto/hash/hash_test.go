@@ -42,7 +42,7 @@ func TestMD5(t *testing.T) {
 
 	assert.Equal(t,
 		[md5.Size]byte{0x5d, 0x41, 0x40, 0x2a, 0xbc, 0x4b, 0x2a, 0x76, 0xb9, 0x71, 0x9d, 0x91, 0x10, 0x17, 0xc5, 0x92},
-		indirectCall(md5.Sum, []byte("hello")))
+		indirectCall1(md5.Sum, []byte("hello")))
 
 	spanList := mockTracer.FinishedSpans()
 	require.Len(t, spanList, 1)
@@ -54,17 +54,16 @@ func TestMD5(t *testing.T) {
 	assert.Equal(t,
 		&model.Event{
 			Vulnerabilities: []model.Vulnerability{
-				{
-					Type:     constants.VulnerabilityTypeWeakHash,
-					Hash:     -1846120825,
-					Evidence: &model.UnredactedStringValue{Value: "MD5"},
-					Location: &model.Location{
+				model.NewVulnerability(
+					constants.VulnerabilityTypeWeakHash,
+					model.NewEvidenceString("MD5"),
+					&model.Location{
 						SpanID: spanList[0].Context().SpanID(),
 						Path:   "/path/to/file.go",
 						Line:   1337,
-						Method: "github.com/DataDog/dd-iast-go/iast/crypto/hash_test.indirectCall[...]",
+						Method: "github.com/DataDog/dd-iast-go/iast/crypto/hash_test.indirectCall1[...]",
 					},
-				},
+				),
 			},
 		},
 		&event)
@@ -79,7 +78,7 @@ func TestSHA1(t *testing.T) {
 
 	assert.Equal(t,
 		[sha1.Size]byte{0xaa, 0xf4, 0xc6, 0x1d, 0xdc, 0xc5, 0xe8, 0xa2, 0xda, 0xbe, 0xde, 0xf, 0x3b, 0x48, 0x2c, 0xd9, 0xae, 0xa9, 0x43, 0x4d},
-		indirectCall(sha1.Sum, []byte("hello")))
+		indirectCall1(sha1.Sum, []byte("hello")))
 
 	spanList := mockTracer.FinishedSpans()
 	require.Len(t, spanList, 1)
@@ -91,17 +90,16 @@ func TestSHA1(t *testing.T) {
 	assert.Equal(t,
 		&model.Event{
 			Vulnerabilities: []model.Vulnerability{
-				{
-					Type:     constants.VulnerabilityTypeWeakHash,
-					Hash:     -1846120825,
-					Evidence: &model.UnredactedStringValue{Value: "SHA-1"},
-					Location: &model.Location{
+				model.NewVulnerability(
+					constants.VulnerabilityTypeWeakHash,
+					model.NewEvidenceString("SHA-1"),
+					&model.Location{
 						SpanID: spanList[0].Context().SpanID(),
 						Path:   "/path/to/file.go",
 						Line:   1337,
-						Method: "github.com/DataDog/dd-iast-go/iast/crypto/hash_test.indirectCall[...]",
+						Method: "github.com/DataDog/dd-iast-go/iast/crypto/hash_test.indirectCall1[...]",
 					},
-				},
+				),
 			},
 		},
 		&event)
@@ -148,25 +146,24 @@ func TestHash(t *testing.T) {
 	//dd:span span.name:test
 	func(ctx context.Context) {
 		for alg, exp := range cases {
-			h := alg.New()
+			h := indirectCall0(alg.New)
 			n, err := h.Write([]byte("hello"))
 			require.NoError(t, err)
 			require.Equal(t, 5, n)
-			act := indirectCall(h.Sum, nil)
+			act := h.Sum(nil)
 			assert.Equal(t, exp.Digest, act, "hash algorithm %s", alg)
 
 			span, _ := tracer.SpanFromContext(ctx)
-			expectedVulns = append(expectedVulns, model.Vulnerability{
-				Type:     constants.VulnerabilityTypeWeakHash,
-				Hash:     -1846120825,
-				Evidence: &model.UnredactedStringValue{Value: alg.String()},
-				Location: &model.Location{
+			expectedVulns = append(expectedVulns, model.NewVulnerability(
+				constants.VulnerabilityTypeWeakHash,
+				model.NewEvidenceString(alg.String()),
+				&model.Location{
 					SpanID: span.Context().SpanID(),
 					Path:   "/path/to/file.go",
 					Line:   1337,
-					Method: "github.com/DataDog/dd-iast-go/iast/crypto/hash_test.indirectCall[...]",
+					Method: "github.com/DataDog/dd-iast-go/iast/crypto/hash_test.indirectCall0[...]",
 				},
-			})
+			))
 		}
 	}(context.Background())
 
@@ -183,10 +180,18 @@ func TestHash(t *testing.T) {
 	)
 }
 
-// indirectCall calls the provided function and returns its result. This must
+// indirectCall1 calls the provided function and returns its result. This must
 // remain last in the file, as it includes a line directive to ensure the call
 // site is stable and independent from the actual filesystem location of the
 // source under test.
-func indirectCall[A any, T any](fn func(A) T, arg A) T {
+func indirectCall0[T any](fn func() T) T {
+	return /*line /path/to/file.go:1337*/ fn()
+}
+
+// indirectCall1 calls the provided function and returns its result. This must
+// remain last in the file, as it includes a line directive to ensure the call
+// site is stable and independent from the actual filesystem location of the
+// source under test.
+func indirectCall1[A any, T any](fn func(A) T, arg A) T {
 	return /*line /path/to/file.go:1337*/ fn(arg)
 }

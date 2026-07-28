@@ -21,6 +21,6 @@ func ReportWeakHash(ctx context.Context, hash crypto.Hash) {
 		constants.VulnerabilityTypeWeakHash,
 		hash.String(),
 		&telemetry.ExecutedSink.WeakHash,
-		"",
+		"crypto.Hash.New",
 	)
 }

@@ -7,17 +7,32 @@ package model
 
 import "github.com/DataDog/dd-iast-go/internal/model/constants"
 
+//go:generate go tool msgp -io=false -tests=false
+
 type Source struct {
-	// Origin of the source (where the source comes from).
-	Origin constants.Origin
-	// Name of the source. For example, the name of the request parameter.
-	Name string `json:"name,omitempty"`
-	// Value of the source. For example, the value of the request parameter
-	Value string `json:"value,omitempty"`
-	// Pattern characterizing the redacted value
-	Pattern string `json:"pattern,omitempty"`
-	// Redacted informs whether the value has been redacted or not
-	Redacted bool `json:"redacted,omitzero"`
-	// Truncated informs whether the value has been truncated (on the right)
-	Truncated Truncation `json:"truncated,omitzero"`
+	Origin    constants.Origin `json:"origin" msg:"origin"`
+	Name      string           `json:"name,omitempty" msg:"name,omitempty"`
+	Value     string           `json:"value,omitempty" msg:"value,omitempty"`
+	Pattern   string           `json:"pattern,omitempty" msg:"pattern,omitempty"`
+	Redacted  bool             `json:"redacted,omitzero" msg:"redacted,omitempty"`
+	Truncated TruncatedSide    `json:"truncated,omitzero" msg:"truncated,omitzero"`
+}
+
+func NewSourceString(origin constants.Origin, name string, value string) Source {
+	// TODO: Truncate if too long?
+	return Source{
+		Origin: origin,
+		Name:   name,
+		Value:  value,
+	}
+}
+
+func NewSourceRedactedString(origin constants.Origin, name string, pattern string) Source {
+	// TODO: Truncate if too long?
+	return Source{
+		Origin:   origin,
+		Name:     name,
+		Pattern:  pattern,
+		Redacted: true,
+	}
 }
