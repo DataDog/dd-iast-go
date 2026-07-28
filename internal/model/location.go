@@ -9,7 +9,7 @@ package model
 
 type Location struct {
 	// SpanID is the ID of the span where the vulnerability was detected.
-	SpanID uint64 `json:"spanId,string" msg:"spanId"`
+	SpanID uint64 `json:"spanId" msg:"spanId"`
 	// Path is the path to the file containing the vulnerable code.
 	Path string `json:"path,omitempty" msg:"path,omitempty"`
 	// Class is the name of the type that hosts the vulnerable method.
