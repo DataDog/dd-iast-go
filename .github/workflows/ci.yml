@@ -24,7 +24,12 @@ jobs:
         with:
           go-version: oldstable
       - name: 'Linter: gofmt'
-        run: gofmt -d -e **/*.go
+        run: |
+          unformatted="$(find . -type f -name '*.go' -exec gofmt -l {} +)"
+          if [[ -n "${unformatted}" ]]; then
+            printf 'The following files are not formatted:\n%s\n' "${unformatted}"
+            exit 1
+          fi
       - name: 'Linter: checklocks'
         run: go tool checklocks ./...
 
