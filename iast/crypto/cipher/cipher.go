@@ -15,14 +15,18 @@ import (
 )
 
 // ReportWeakCipher reports use of a cryptographically weak cipher algorithm.
-// If skipCallerFunction identifies the first candidate location frame, that
-// frame is skipped in favor of its caller.
-func ReportWeakCipher(ctx context.Context, name, skipCallerFunction string) {
+// If skipCallerNamespace, skipCallerClass, and skipCallerMethod identify the
+// first candidate location frame, that frame is skipped in favor of its caller.
+func ReportWeakCipher(ctx context.Context, name, skipCallerNamespace, skipCallerClass, skipCallerMethod string) {
 	vulnerability.Report(
 		ctx,
 		constants.VulnerabilityTypeWeakCipher,
 		name,
 		&telemetry.ExecutedSink.WeakCipher,
-		skipCallerFunction,
+		vulnerability.SkipFrame{
+			Namespace: skipCallerNamespace,
+			ClassName:     skipCallerClass,
+			Function:    skipCallerMethod,
+		},
 	)
 }

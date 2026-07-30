@@ -15,8 +15,8 @@ type Location struct {
 	// Class is the name of the type that hosts the vulnerable method.
 	Class string `json:"class,omitempty" msg:"class,omitempty"`
 	// Line is the line number in [Location.Path] where the vulnerability is. If
-	// not available or unknown, the value is 0 or -1.
-	Line int `json:"line,omitzero" msg:"line,omitempty"`
+	// not available or unknown, the value is 0.
+	Line uint32 `json:"line,omitzero" msg:"line,omitempty"`
 	// Method is the name of the function of method that is vulnerable.
 	Method string `json:"method,omitempty" msg:"method,omitempty"`
 	// StackID is the identifier of the stack trace in the `_dd.stack` tag in
