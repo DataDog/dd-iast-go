@@ -44,3 +44,42 @@ jobs:
           go-version: oldstable
       - name: Unit Tests
         run: go tool orchestrion go test -shuffle=on ./...
+
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      BENCH_OUTPUT_DIR: ${{ github.workspace }}/benchmark-results
+      BENCH_SAMPLES: 2
+      BENCH_TIME: 100ms
+      BENCH_CPU: 1
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Setup Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: oldstable
+      - name: Prepare artifact directory
+        run: mkdir -p "$BENCH_OUTPUT_DIR"
+      - name: Run benchmarks
+        run: go -C benchmarks/overhead run ./runner
+      - name: Add comparison to job summary
+        if: always()
+        shell: bash
+        run: |
+          if [[ -f "$BENCH_OUTPUT_DIR/comparison.txt" ]]; then
+            {
+              echo '## IAST overhead benchmark comparison'
+              echo '```text'
+              cat "$BENCH_OUTPUT_DIR/comparison.txt"
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Upload benchmark results
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: overhead-benchmark-results
+          path: benchmark-results
+          retention-days: 7
