@@ -32,7 +32,7 @@ const (
 
 var (
 	// Enabled determines whether IAST is enabled or not.
-	Enabled bool = boolFromEnv(EnvVarEnabled, false)
+	Enabled bool = boolFromEnv(EnvVarEnabled, true)
 	// RequestSamplingPct is the percentage of requests that will be sampled for IAST.
 	RequestSamplingPct int = int(uintFromEnvBounded[uint8](EnvVarRequestSampling, 30, 0, 100))
 	// MaxConcurrentRequests is the maximum number of concurrent requests that will be processed concurrently by IAST.

@@ -34,7 +34,7 @@ Integer values outside a documented range are clamped to that range.
 
 Environment variable | Type | Default | Description
 ---|---|---:|---
-`DD_IAST_ENABLED` | Boolean | `false` | Enables IAST.
+`DD_IAST_ENABLED` | Boolean | `true` | Enables IAST.
 `DD_IAST_REQUEST_SAMPLING` | Integer from `0` to `100` | `30` | Percentage of requests sampled for IAST analysis.
 `DD_IAST_MAX_CONCURRENT_REQUESTS` | Non-negative integer | `2` | Maximum number of requests that IAST processes concurrently.
 `DD_IAST_VULNERABILITIES_PER_REQUEST` | Integer greater than or equal to `1` | `2` | Maximum number of vulnerabilities reported for one request.
@@ -82,8 +82,8 @@ Trust boundary violation | High | :x:
 Untrusted deserialization | Medium | :x:
 Un-validated redirect | High | :x:
 Verb tampering | High | :x:
-Weak cipher | Medium | :white_check_mark:
-Weak hash | Medium | :white_check_mark:
+Weak cipher | Medium | :white_check_mark: `github.com/DataDog/dd-iast-go/iast/crypto/cipher`
+Weak hash | Medium | :white_check_mark: `github.com/DataDog/dd-iast-go/iast/crypto/hash`
 Weak randomness | Low | :x:
 `X-Content-Type-Options` header missing | Low | :x:
 `X-XSS-Protection` header disabled | Low | :x:
