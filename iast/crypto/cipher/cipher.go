@@ -25,8 +25,8 @@ func ReportWeakCipher(ctx context.Context, name, skipCallerNamespace, skipCaller
 		&telemetry.ExecutedSink.WeakCipher,
 		vulnerability.SkipFrame{
 			Namespace: skipCallerNamespace,
-			ClassName:     skipCallerClass,
-			Function:    skipCallerMethod,
+			ClassName: skipCallerClass,
+			Function:  skipCallerMethod,
 		},
 	)
 }
