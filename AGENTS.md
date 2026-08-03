@@ -56,6 +56,14 @@ delivered code; the plan should be deleted from `_docs/plans`. This way, the
 plan exists in the history of the pull request, but does not stay permanently
 in the codebase where it would be dead weight.
 
+## Pre-Commit Validation
+
+Before committing any change:
+
+- run `gofmt` on every modified Go file;
+- run all applicable linters and checkers and fix every reported issue; and
+- do not commit until all applicable validation completes cleanly.
+
 ## Testing
 
 Tests that require compile-time instrumentation must be run with [orchestrion],

@@ -20,6 +20,7 @@ import (
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/ext"
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/mocktracer"
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
+	"github.com/DataDog/dd-trace-go/v2/instrumentation"
 	"github.com/DataDog/orchestrion/runtime/built"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -30,6 +31,7 @@ import (
 func init() {
 	config.Enabled = true
 	config.RequestSamplingPct = 100
+	config.StackTraceEnabled = true
 }
 
 func TestMD5(t *testing.T) {
@@ -51,6 +53,7 @@ func TestMD5(t *testing.T) {
 	require.NoError(t, json.Unmarshal([]byte(spanList[0].Tag(spans.SpanTagJson).(string)), &event))
 	require.Equal(t, "vulnerability", spanList[0].OperationName())
 	require.Equal(t, "vulnerability", spanList[0].Tag(ext.SpanType))
+	require.Len(t, event.Vulnerabilities, 1)
 	assert.Equal(t,
 		&model.Event{
 			Vulnerabilities: []model.Vulnerability{
@@ -58,10 +61,11 @@ func TestMD5(t *testing.T) {
 					constants.VulnerabilityTypeWeakHash,
 					model.NewEvidenceString("MD5"),
 					&model.Location{
-						SpanID: spanList[0].Context().SpanID(),
-						Path:   "/path/to/file.go",
-						Line:   1337,
-						Method: "github.com/DataDog/dd-iast-go/iast/crypto/hash_test.indirectCall1[...]",
+						SpanID:  spanList[0].Context().SpanID(),
+						StackID: spanList[0].Tag("_dd.stack").(map[string][]*instrumentation.StackTrace)["vulnerability"][0].ID,
+						Path:    "/path/to/file.go",
+						Line:    1337,
+						Method:  "github.com/DataDog/dd-iast-go/iast/crypto/hash_test.indirectCall1[...]",
 					},
 				),
 			},
@@ -87,6 +91,9 @@ func TestSHA1(t *testing.T) {
 	require.NoError(t, json.Unmarshal([]byte(spanList[0].Tag(spans.SpanTagJson).(string)), &event))
 	require.Equal(t, "vulnerability", spanList[0].OperationName())
 	require.Equal(t, "vulnerability", spanList[0].Tag(ext.SpanType))
+
+	require.Len(t, event.Vulnerabilities, 1)
+
 	assert.Equal(t,
 		&model.Event{
 			Vulnerabilities: []model.Vulnerability{
@@ -94,10 +101,11 @@ func TestSHA1(t *testing.T) {
 					constants.VulnerabilityTypeWeakHash,
 					model.NewEvidenceString("SHA-1"),
 					&model.Location{
-						SpanID: spanList[0].Context().SpanID(),
-						Path:   "/path/to/file.go",
-						Line:   1337,
-						Method: "github.com/DataDog/dd-iast-go/iast/crypto/hash_test.indirectCall1[...]",
+						SpanID:  spanList[0].Context().SpanID(),
+						StackID: spanList[0].Tag("_dd.stack").(map[string][]*instrumentation.StackTrace)["vulnerability"][0].ID,
+						Path:    "/path/to/file.go",
+						Line:    1337,
+						Method:  "github.com/DataDog/dd-iast-go/iast/crypto/hash_test.indirectCall1[...]",
 					},
 				),
 			},
@@ -168,12 +176,20 @@ func TestHash(t *testing.T) {
 	}(context.Background())
 
 	spanList := mockTracer.FinishedSpans()
+
+	// Associate the relevant stack IDs
+	for i := range expectedVulns {
+		expectedId := spanList[0].Tag("_dd.stack").(map[string][]*instrumentation.StackTrace)["vulnerability"][i].ID
+		expectedVulns[i].Location.StackID = expectedId
+	}
+
 	require.Len(t, spanList, 1)
 	assert.Equal(t, 1.0, spanList[0].Tag(spans.SpanTagEnabled))
 	assert.Equal(t, "test", spanList[0].OperationName())
 	var event model.Event
 	require.NoError(t, json.Unmarshal([]byte(spanList[0].Tag(spans.SpanTagJson).(string)), &event))
 	assert.Len(t, event.Vulnerabilities, len(cases))
+
 	assert.Equal(t,
 		expectedVulns,
 		event.Vulnerabilities,

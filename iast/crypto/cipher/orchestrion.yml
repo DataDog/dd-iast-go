@@ -28,7 +28,7 @@ aspects:
             model: github.com/DataDog/dd-iast-go/internal/model/constants
           template: |-
             //go:linkname __dd__iast_ReportWeakCipher__ github.com/DataDog/dd-iast-go/iast/crypto/cipher.ReportWeakCipher
-            func __dd__iast_ReportWeakCipher__(context.Context, string, string)
+            func __dd__iast_ReportWeakCipher__(context.Context, string, string, string, string)
 
             func init() {
               telemetry.InstrumentedSink[model.VulnerabilityTypeWeakCipher] += 2
@@ -36,7 +36,7 @@ aspects:
       - prepend-statements:
           imports:
             iast: github.com/DataDog/dd-iast-go/iast/crypto/cipher
-          template: __dd__iast_ReportWeakCipher__(nil, "DES", "")
+          template: __dd__iast_ReportWeakCipher__(nil, "DES", "", "", "")
 
   - id: crypto/des (TripleDES report)
     join-point:
@@ -49,7 +49,7 @@ aspects:
       - prepend-statements:
           imports:
             iast: github.com/DataDog/dd-iast-go/iast/crypto/cipher
-          template: __dd__iast_ReportWeakCipher__(nil, "TripleDES", "")
+          template: __dd__iast_ReportWeakCipher__(nil, "TripleDES", "", "", "")
 
   - id: crypto/rc4
     join-point:
@@ -68,7 +68,7 @@ aspects:
             model: github.com/DataDog/dd-iast-go/internal/model/constants
           template: |-
             //go:linkname __dd__iast_ReportWeakCipher__ github.com/DataDog/dd-iast-go/iast/crypto/cipher.ReportWeakCipher
-            func __dd__iast_ReportWeakCipher__(context.Context, string, string)
+            func __dd__iast_ReportWeakCipher__(context.Context, string, string, string, string)
 
             func init() {
               telemetry.InstrumentedSink[model.VulnerabilityTypeWeakCipher] += 1
@@ -76,7 +76,7 @@ aspects:
       - prepend-statements:
           imports:
             iast: github.com/DataDog/dd-iast-go/iast/crypto/cipher
-          template: __dd__iast_ReportWeakCipher__(nil, "RC4", "")
+          template: __dd__iast_ReportWeakCipher__(nil, "RC4", "", "", "")
 
   # NewSaltedCipher delegates to NewCipher for an empty salt. In that case only
   # NewCipher reports, and it skips the delegation frame when selecting the
@@ -98,7 +98,7 @@ aspects:
             model: github.com/DataDog/dd-iast-go/internal/model/constants
           template: |-
             //go:linkname __dd__iast_ReportWeakCipher__ github.com/DataDog/dd-iast-go/iast/crypto/cipher.ReportWeakCipher
-            func __dd__iast_ReportWeakCipher__(context.Context, string, string)
+            func __dd__iast_ReportWeakCipher__(context.Context, string, string, string, string)
 
             func init() {
               telemetry.InstrumentedSink[model.VulnerabilityTypeWeakCipher] += 2
@@ -107,7 +107,7 @@ aspects:
           imports:
             iast: github.com/DataDog/dd-iast-go/iast/crypto/cipher
           template: |-
-            __dd__iast_ReportWeakCipher__(nil, "Blowfish", "golang.org/x/crypto/blowfish.NewSaltedCipher")
+            __dd__iast_ReportWeakCipher__(nil, "Blowfish", "golang.org/x/crypto/blowfish", "", "NewSaltedCipher")
 
   - id: golang.org/x/crypto/blowfish (salted Blowfish report)
     join-point:
@@ -122,7 +122,7 @@ aspects:
             iast: github.com/DataDog/dd-iast-go/iast/crypto/cipher
           template: |-
             if len(salt) != 0 {
-              __dd__iast_ReportWeakCipher__(nil, "Blowfish", "")
+              __dd__iast_ReportWeakCipher__(nil, "Blowfish", "", "", "")
             }
 
   - id: golang.org/x/crypto/pkcs12/internal/rc2
@@ -142,7 +142,7 @@ aspects:
             model: github.com/DataDog/dd-iast-go/internal/model/constants
           template: |-
             //go:linkname __dd__iast_ReportWeakCipher__ github.com/DataDog/dd-iast-go/iast/crypto/cipher.ReportWeakCipher
-            func __dd__iast_ReportWeakCipher__(context.Context, string, string)
+            func __dd__iast_ReportWeakCipher__(context.Context, string, string, string, string)
 
             func init() {
               telemetry.InstrumentedSink[model.VulnerabilityTypeWeakCipher] += 1
@@ -150,7 +150,7 @@ aspects:
       - prepend-statements:
           imports:
             iast: github.com/DataDog/dd-iast-go/iast/crypto/cipher
-          template: __dd__iast_ReportWeakCipher__(nil, "RC2", "")
+          template: __dd__iast_ReportWeakCipher__(nil, "RC2", "", "", "")
 
   # The two concrete PBE implementations are declared in the same source file.
   # Anchor the package-scoped declaration on the TripleDES implementation.
@@ -172,7 +172,7 @@ aspects:
             model: github.com/DataDog/dd-iast-go/internal/model/constants
           template: |-
             //go:linkname __dd__iast_ReportWeakCipher__ github.com/DataDog/dd-iast-go/iast/crypto/cipher.ReportWeakCipher
-            func __dd__iast_ReportWeakCipher__(context.Context, string, string)
+            func __dd__iast_ReportWeakCipher__(context.Context, string, string, string, string)
 
             func init() {
               telemetry.InstrumentedSink[model.VulnerabilityTypeWeakCipher] += 2
@@ -181,7 +181,7 @@ aspects:
           imports:
             iast: github.com/DataDog/dd-iast-go/iast/crypto/cipher
           template: |-
-            __dd__iast_ReportWeakCipher__(nil, "PBEWithSHAAnd3KeyTripleDESCBC", "")
+            __dd__iast_ReportWeakCipher__(nil, "PBEWithSHAAnd3KeyTripleDESCBC", "", "", "")
 
   - id: golang.org/x/crypto/pkcs12 (RC2 PBE report)
     join-point:
@@ -196,4 +196,4 @@ aspects:
           imports:
             iast: github.com/DataDog/dd-iast-go/iast/crypto/cipher
           template: |-
-            __dd__iast_ReportWeakCipher__(nil, "PBEWithSHAAnd40BitRC2CBC", "")
+            __dd__iast_ReportWeakCipher__(nil, "PBEWithSHAAnd40BitRC2CBC", "", "", "")

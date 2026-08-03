@@ -9,8 +9,9 @@ tool (
 )
 
 require (
-	github.com/DataDog/dd-trace-go/v2 v2.11.0-dev.0.20260724102042-cf24b817c453
+	github.com/DataDog/dd-trace-go/v2 v2.11.0-dev.0.20260803081144-d0b57be238df
 	github.com/DataDog/orchestrion v1.12.0
+	github.com/google/uuid v1.6.0
 	github.com/puzpuzpuz/xsync/v4 v4.5.0
 	github.com/stretchr/testify v1.11.1
 	github.com/tinylib/msgp v1.6.4
@@ -56,7 +57,6 @@ require (
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/goccy/go-yaml v1.19.2 // indirect
 	github.com/google/go-tpm v0.9.8 // indirect
-	github.com/google/uuid v1.6.0 // indirect
 	github.com/hashicorp/go-version v1.9.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/compress v1.19.1 // indirect

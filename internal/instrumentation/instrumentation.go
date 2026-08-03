@@ -36,3 +36,14 @@ const (
 	OriginDefault TelemetryOrigin = instrumentation.TelemetryOriginDefault
 	OriginEnvVar  TelemetryOrigin = instrumentation.TelemetryOriginEnvVar
 )
+
+type StackFrame = instrumentation.StackFrame
+
+const (
+	StackTraceCategoryVulnerability = instrumentation.StackTraceCategoryVulnerability
+)
+
+var (
+	StackTraceWithID   = instrumentation.WithStackTraceID
+	StackTraceWithSkip = instrumentation.WithStackTraceSkip
+)

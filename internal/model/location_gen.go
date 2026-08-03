@@ -54,7 +54,7 @@ func (z *Location) MarshalMsg(b []byte) (o []byte, err error) {
 		if (zb0001Mask & 0x8) == 0 { // if not omitted
 			// string "line"
 			o = append(o, 0xa4, 0x6c, 0x69, 0x6e, 0x65)
-			o = msgp.AppendInt(o, z.Line)
+			o = msgp.AppendUint32(o, z.Line)
 		}
 		if (zb0001Mask & 0x10) == 0 { // if not omitted
 			// string "method"
@@ -107,7 +107,7 @@ func (z *Location) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				return
 			}
 		case "line":
-			z.Line, bts, err = msgp.ReadIntBytes(bts)
+			z.Line, bts, err = msgp.ReadUint32Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "Line")
 				return
@@ -138,6 +138,6 @@ func (z *Location) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *Location) Msgsize() (s int) {
-	s = 1 + 7 + msgp.Uint64Size + 5 + msgp.StringPrefixSize + len(z.Path) + 6 + msgp.StringPrefixSize + len(z.Class) + 5 + msgp.IntSize + 7 + msgp.StringPrefixSize + len(z.Method) + 8 + msgp.StringPrefixSize + len(z.StackID)
+	s = 1 + 7 + msgp.Uint64Size + 5 + msgp.StringPrefixSize + len(z.Path) + 6 + msgp.StringPrefixSize + len(z.Class) + 5 + msgp.Uint32Size + 7 + msgp.StringPrefixSize + len(z.Method) + 8 + msgp.StringPrefixSize + len(z.StackID)
 	return
 }

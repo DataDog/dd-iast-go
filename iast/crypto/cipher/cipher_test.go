@@ -222,7 +222,7 @@ func assertWeakCipher(
 	mockTracer mocktracer.Tracer,
 	executedBefore uint64,
 	evidence string,
-	line int,
+	line uint32,
 	method string,
 ) {
 	t.Helper()
