@@ -257,8 +257,8 @@ Expected commands (exact flags may be refined during implementation):
 go tool orchestrion go test ./...
 go test -race -run='^$' -bench='Parallel' -benchtime=100ms ./benchmarks/overhead
 go tool orchestrion go test -race -run='^$' -bench='Parallel' -benchtime=100ms ./benchmarks/overhead
-BENCH_SAMPLES=2 BENCH_TIME=100ms go -C benchmarks/overhead run ./runner
-git diff --check
+go -C benchmarks/overhead run ./runner -count=2 -benchtime=100ms
+jj diff
 ```
 
 ## Documentation and Interpretation
