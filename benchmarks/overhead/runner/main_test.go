@@ -55,8 +55,11 @@ func TestParseFlags(t *testing.T) {
 		{name: "empty benchmark", arguments: []string{"-bench="}, wantError: "-bench must not be empty"},
 		{name: "invalid benchmark", arguments: []string{"-bench=["}, wantError: "invalid -bench expression"},
 		{name: "invalid benchmark element", arguments: []string{"-bench=A/*"}, wantError: "invalid -bench expression"},
+		{name: "invalid benchmark alternative", arguments: []string{"-bench=[]|[a]"}, wantError: `invalid -bench expression "[]"`},
 		{name: "benchmark character class slash", arguments: []string{"-bench=[/]"}, want: options{count: 10, benchtime: "500ms", cpu: 1, benchmark: "[/]"}},
 		{name: "benchmark parenthesized slash", arguments: []string{"-bench=(A/B)"}, want: options{count: 10, benchtime: "500ms", cpu: 1, benchmark: "(A/B)"}},
+		{name: "benchmark character class pipe", arguments: []string{"-bench=[|]"}, want: options{count: 10, benchtime: "500ms", cpu: 1, benchmark: "[|]"}},
+		{name: "benchmark parenthesized pipe", arguments: []string{"-bench=(A|B)"}, want: options{count: 10, benchtime: "500ms", cpu: 1, benchmark: "(A|B)"}},
 		{name: "unknown flag", arguments: []string{"-unknown"}, wantError: "flag provided but not defined"},
 	}
 

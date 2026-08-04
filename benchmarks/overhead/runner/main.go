@@ -249,9 +249,9 @@ func positiveInteger(name, value string) (int, error) {
 	return parsed, nil
 }
 
-// splitRegexp separates the slash-delimited expressions interpreted
-// independently by go test. Slashes in character classes and parentheses do
-// not delimit benchmark name components.
+// splitRegexp separates the slash-delimited expressions and top-level
+// alternatives interpreted independently by go test. Delimiters in character
+// classes and parentheses do not separate benchmark name components.
 func splitRegexp(expression string) []string {
 	var parts []string
 	start := 0
@@ -275,7 +275,7 @@ func splitRegexp(expression string) []string {
 			}
 		case '\\':
 			i++
-		case '/':
+		case '/', '|':
 			if characterClassDepth == 0 && parenthesisDepth == 0 {
 				parts = append(parts, expression[start:i])
 				start = i + 1
