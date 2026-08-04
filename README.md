@@ -48,6 +48,12 @@ Environment variable | Type | Default | Description
 `DD_IAST_DB_ROWS_TO_TAIN` | Non-negative integer | `1` | Number of database rows tainted for each request.
 `DD_IAST_STACK_TRACE_ENABLED` | Boolean | `true` | Includes stack traces in vulnerability reports.
 
+> [!NOTE]
+> Boolean values are parsed using [`strconv.ParseBool`](https://pkg.go.dev/strconv#ParseBool),
+> which accepts the following values:
+> - Truthy: `1`, `t`, `T`, `TRUE`, `true`, `True`
+> - Falsy: `0`, `f`, `F`, `FALSE`, `false`, `False`
+
 ## Vulnerability Types
 
 Name | Severity | Implemented
