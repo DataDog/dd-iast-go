@@ -5,7 +5,9 @@
 
 package model
 
-import "github.com/DataDog/dd-iast-go/internal/model/constants"
+import (
+	"github.com/DataDog/dd-iast-go/internal/model/constants"
+)
 
 //go:generate go tool msgp -io=false -tests=false
 
@@ -20,18 +22,20 @@ type Evidence struct {
 
 // NewEvidenceString creates a new evidence with string value.
 func NewEvidenceString(value string) *Evidence {
-	//TODO: Truncate if too long?
+	value, truncated := truncateStringIfNeeded(value)
 	return &Evidence{
-		Value: value,
+		Value:     value,
+		Truncated: truncated,
 	}
 }
 
 // NewEvidenceRedactedString creates a new evidence with redacted string.
 func NewEvidenceRedactedString(pattern string) *Evidence {
-	//TODO: Truncate if too long?
+	pattern, truncated := truncateStringIfNeeded(pattern)
 	return &Evidence{
-		Pattern:  pattern,
-		Redacted: true,
+		Pattern:   pattern,
+		Redacted:  true,
+		Truncated: truncated,
 	}
 }
 
@@ -57,33 +61,38 @@ type ValuePart struct {
 }
 
 func NewValuePartString(value string) ValuePart {
-	//TODO: Truncate if too long?
+	value, truncated := truncateStringIfNeeded(value)
 	return ValuePart{
-		Value: value,
+		Value:     value,
+		Truncated: truncated,
 	}
 }
 
 func NewValuePartRedactedString(pattern string) ValuePart {
-	//TODO: Truncate if too long?
+	pattern, truncated := truncateStringIfNeeded(pattern)
 	return ValuePart{
-		Pattern:  pattern,
-		Redacted: true,
+		Pattern:   pattern,
+		Redacted:  true,
+		Truncated: truncated,
 	}
 }
 
 func NewValuePartTaintedString(value string, sourceIndex int, secureMarks []constants.VulnerabilityType) ValuePart {
-	//TODO: Truncate if too long?
+	value, truncated := truncateStringIfNeeded(value)
 	return ValuePart{
 		Value:       value,
+		Truncated:   truncated,
 		SourceIndex: &sourceIndex,
 		SecureMarks: secureMarks,
 	}
 }
 
 func NewValuePartTaintedRedactedString(pattern string, sourceIndex int, secureMarks []constants.VulnerabilityType) ValuePart {
+	pattern, truncated := truncateStringIfNeeded(pattern)
 	return ValuePart{
 		Pattern:     pattern,
 		Redacted:    true,
+		Truncated:   truncated,
 		SourceIndex: &sourceIndex,
 		SecureMarks: secureMarks,
 	}
