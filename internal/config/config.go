@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"regexp"
 	"strconv"
 
 	"github.com/DataDog/dd-iast-go/internal/instrumentation"
@@ -31,6 +32,11 @@ const (
 )
 
 var (
+	defaultRedactionNamePattern  = regexp.MustCompile(`(?:p(?:ass)?w(?:or)?d|pass(?:_?phrase)?|secret|(?:api_?|private_?|public_?|access_?|secret_?)key(?:_?id)?|token|consumer_?(?:id|key|secret)|sign(?:ed|ature)?|auth(?:entication|orization)?)`)
+	defaultRedactionValuePattern = regexp.MustCompile(`(?:bearer\s+[a-z0-9\._\-]+|glpat-[\w\-]{20}|gh[opsu]_[0-9a-zA-Z]{36}|ey[I-L][\w=\-]+\.ey[I-L][\w=\-]+(?:\.[\w.+/=\-]+)?|(?:[\-]{5}BEGIN[a-z\s]+PRIVATE\sKEY[\-]{5}[^\-]+[\-]{5}END[a-z\s]+PRIVATE\sKEY[\-]{5}|ssh-rsa\s*[a-z0-9/\.+]{100,}))`)
+)
+
+var (
 	// Enabled determines whether IAST is enabled or not.
 	Enabled bool = boolFromEnv(EnvVarEnabled, true)
 	// RequestSamplingPct is the percentage of requests that will be sampled for IAST.
@@ -44,9 +50,9 @@ var (
 	// RedactionEnabled determines whether sensitive data redaction is enabled or not.
 	RedactionEnabled bool = boolFromEnv(EnvVarRedactionEnabled, true)
 	// RedactionNamePattern is the pattern to use for determining which source names should be redacted.
-	RedactionNamePattern string = stringFromEnv(EnvVarRedactionNamePattern, "") //TODO: default value
+	RedactionNamePattern *regexp.Regexp = parseFromEnv(EnvVarRedactionNamePattern, defaultRedactionNamePattern, parseRegexp)
 	// RedactionValuePattern is the pattern to use for determining which source values should be redacted.
-	RedactionValuePattern string = stringFromEnv(EnvVarRedactionValuePattern, "") //TODO: default value
+	RedactionValuePattern *regexp.Regexp = parseFromEnv(EnvVarRedactionValuePattern, defaultRedactionValuePattern, parseRegexp)
 	// TruncationMaxValue is the maximum number of characters that will allowed for a source value before it is truncated.
 	TruncationMaxValue uint64 = uintFromEnv(EnvVarTruncationMaxValue, 250)
 	// MaxRangeCount is the maximum number of ranges a tainted object can hold.
@@ -82,6 +88,10 @@ func parseLogLevel(val string) (LogLevel, error) {
 	default:
 		return 0, fmt.Errorf("invalid log level (expected one of OFF, MANDATORY, INFORMATION, or DEBUG): %s", val)
 	}
+}
+
+func parseRegexp(val string) (*regexp.Regexp, error) {
+	return regexp.Compile(val)
 }
 
 func boolFromEnv(envVar string, defaultValue bool) bool {
