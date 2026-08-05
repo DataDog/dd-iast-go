@@ -24,7 +24,7 @@ jobs:
       - name: Validate third-party licenses
         uses: DataDog/dd-license-attribution@bf7bf0500bf3f91aa4d885d8b74a844c1ee1fb11 # main
         with:
-          go-version: '1.25.5'
+          go-version: 'stable'
           github-sbom-strategy: false
           npm-strategy: false
           pypi-strategy: false
