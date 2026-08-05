@@ -25,6 +25,7 @@ jobs:
         uses: DataDog/dd-license-attribution@d0f1a8b5599398ebb01c42774e588930a6441b1e # romain.marcadier/no-pip-cacher
         with:
           ecosystem: go
+          package: github.com/DataDog/dd-iast-go
           go-version: 'stable'
           github-sbom-strategy: false
           npm-strategy: false
