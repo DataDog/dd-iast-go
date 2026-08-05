@@ -40,8 +40,8 @@ Environment variable | Type | Default | Description
 `DD_IAST_VULNERABILITIES_PER_REQUEST` | Integer greater than or equal to `1` | `2` | Maximum number of vulnerabilities reported for one request.
 `DD_IAST_DEDUPLICATION_ENABLED` | Boolean | `true` | Enables vulnerability deduplication.
 `DD_IAST_REDACTION_ENABLED` | Boolean | `true` | Enables sensitive data redaction.
-`DD_IAST_REDACTION_NAME_PATTERN` | String | Empty | Pattern used to identify source names that must be redacted.
-`DD_IAST_REDACTION_VALUE_PATTERN` | String | Empty | Pattern used to identify source values that must be redacted.
+`DD_IAST_REDACTION_NAME_PATTERN` | `regexp` regular expression | Sensible built-in pattern | Pattern used to identify source names that must be redacted.
+`DD_IAST_REDACTION_VALUE_PATTERN` | `regexp` regular expression | Sensible built-in pattern | Pattern used to identify source values that must be redacted.
 `DD_IAST_TRUNCATION_MAX_VALUE` | Non-negative integer | `250` | Maximum number of Unicode characters retained before truncating source values, vulnerability evidence, redacted patterns, and individual evidence value parts.
 `DD_IAST_MAX_RANGE_COUNT` | Non-negative integer | `10` | Maximum number of taint ranges retained for one value.
 `DD_IAST_TELEMETRY_VERBOSITY` | `OFF`, `MANDATORY`, `INFORMATION`, or `DEBUG` | `INFORMATION` | Sets IAST telemetry verbosity.
