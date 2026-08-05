@@ -5,7 +5,9 @@
 
 package model
 
-import "github.com/DataDog/dd-iast-go/internal/model/constants"
+import (
+	"github.com/DataDog/dd-iast-go/internal/model/constants"
+)
 
 //go:generate go tool msgp -io=false -tests=false
 
@@ -19,20 +21,22 @@ type Source struct {
 }
 
 func NewSourceString(origin constants.Origin, name string, value string) Source {
-	// TODO: Truncate if too long?
+	value, truncated := truncateStringIfNeeded(value)
 	return Source{
-		Origin: origin,
-		Name:   name,
-		Value:  value,
+		Origin:    origin,
+		Name:      name,
+		Value:     value,
+		Truncated: truncated,
 	}
 }
 
 func NewSourceRedactedString(origin constants.Origin, name string, pattern string) Source {
-	// TODO: Truncate if too long?
+	pattern, truncated := truncateStringIfNeeded(pattern)
 	return Source{
-		Origin:   origin,
-		Name:     name,
-		Pattern:  pattern,
-		Redacted: true,
+		Origin:    origin,
+		Name:      name,
+		Pattern:   pattern,
+		Redacted:  true,
+		Truncated: truncated,
 	}
 }

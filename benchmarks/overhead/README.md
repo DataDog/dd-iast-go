@@ -21,23 +21,27 @@ IAST tree also includes all relevant `dd-iast-go` integrations. It validates
 both variants,
 executes independent processes in alternating control/IAST order, and writes
 `control.txt`, `iast.txt`,
-`comparison.txt`, and `metadata.txt` to a temporary directory. Set
-`BENCH_OUTPUT_DIR` to retain them at a known path.
+`comparison.txt`, and `metadata.txt` to a temporary directory. Use `-outputdir`
+to retain them at a known path.
 
-Useful controls:
+Useful controls use the same names as `go test` where the concepts overlap:
 
-| Variable | Default | Purpose |
+| Flag | Default | Purpose |
 |---|---:|---|
-| `BENCH_SAMPLES` | `10` | Independent process samples per variant |
-| `BENCH_TIME` | `500ms` | Go benchmark time per workload |
-| `BENCH_CPU` | `1` | Fixed `GOMAXPROCS` and `-test.cpu` value |
-| `BENCH_REGEX` | `.` | Benchmark selection expression |
-| `BENCH_OUTPUT_DIR` | temporary | Artifact directory |
+| `-count` | `10` | Independent process samples per variant |
+| `-benchtime` | `500ms` | Go benchmark duration or iteration count per workload |
+| `-cpu` | `1` | One fixed positive `GOMAXPROCS` and `-test.cpu` value |
+| `-bench` | `.` | Benchmark selection expression |
+| `-outputdir` | temporary | Artifact directory |
+
+Unlike `go test -count`, every runner sample starts a fresh process so global
+IAST state cannot survive between repetitions. The runner's `-cpu` flag accepts
+one positive integer, not a comma-separated list.
 
 For a quick smoke run:
 
 ```console
-BENCH_SAMPLES=2 BENCH_TIME=100ms go -C benchmarks/overhead run ./runner
+go -C benchmarks/overhead run ./runner -count=2 -benchtime=100ms
 ```
 
 ## Workloads

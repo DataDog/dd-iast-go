@@ -9,44 +9,81 @@ package main
 import (
 	"bufio"
 	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 )
 
-const benchmarkPackage = "."
+const (
+	benchmarkPackage = "."
+
+	controlResultsFile = "control.txt"
+	iastResultsFile    = "iast.txt"
+	comparisonFile     = "comparison.txt"
+	metadataFile       = "metadata.txt"
+)
+
+type options struct {
+	outputDir string
+	count     int
+	benchtime string
+	cpu       int
+	benchmark string
+}
+
+type flagValues struct {
+	outputDir string
+	count     string
+	benchtime string
+	cpu       string
+	benchmark string
+}
 
 type configuration struct {
 	repository string
 	module     string
-	output     string
-	samples    int
+	output     *os.Root
+	count      int
 	benchtime  string
 	cpu        int
 	benchmark  string
 }
 
 func main() {
-	if err := run(); err != nil {
+	if err := run(os.Args[1:]); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			printUsage(os.Stdout)
+			return
+		}
 		fmt.Fprintln(os.Stderr, "overhead benchmark:", err)
 		os.Exit(1)
 	}
 }
 
-func run() error {
-	cfg, err := loadConfiguration()
+func run(arguments []string) (err error) {
+	opts, err := parseFlags(arguments)
 	if err != nil {
 		return err
 	}
-	if err := os.MkdirAll(cfg.output, 0o755); err != nil {
-		return fmt.Errorf("create output directory: %w", err)
+	cfg, err := newConfiguration(opts)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		err = errors.Join(err, cfg.output.Close())
+	}()
+	if err := initializeArtifacts(cfg.output, controlResultsFile, iastResultsFile, comparisonFile, metadataFile); err != nil {
+		return err
 	}
 
 	buildRoot, err := os.MkdirTemp("", "dd-iast-overhead-build-*")
@@ -98,20 +135,13 @@ func run() error {
 		return fmt.Errorf("validate IAST variant: %w", err)
 	}
 
-	controlResults := filepath.Join(cfg.output, "control.txt")
-	iastResults := filepath.Join(cfg.output, "iast.txt")
-	for _, path := range []string{controlResults, iastResults, filepath.Join(cfg.output, "comparison.txt")} {
-		if err := os.WriteFile(path, nil, 0o644); err != nil {
-			return fmt.Errorf("initialize %s: %w", path, err)
-		}
-	}
-	if err := writeMetadata(cfg, filepath.Join(cfg.output, "metadata.txt")); err != nil {
+	if err := writeMetadata(cfg, metadataFile); err != nil {
 		return err
 	}
 
-	for sample := 1; sample <= cfg.samples; sample++ {
-		fmt.Printf("Running sample %d/%d...\n", sample, cfg.samples)
-		variants := [][3]string{{controlSource, controlBinary, controlResults}, {iastSource, iastBinary, iastResults}}
+	for sample := 1; sample <= cfg.count; sample++ {
+		fmt.Printf("Running sample %d/%d...\n", sample, cfg.count)
+		variants := [][3]string{{controlSource, controlBinary, controlResultsFile}, {iastSource, iastBinary, iastResultsFile}}
 		if sample%2 == 0 {
 			variants[0], variants[1] = variants[1], variants[0]
 		}
@@ -122,27 +152,152 @@ func run() error {
 		}
 	}
 
-	if err := compareResultSets(controlResults, iastResults); err != nil {
+	if err := compareResultSets(cfg.output.FS(), controlResultsFile, iastResultsFile); err != nil {
 		return err
 	}
 	if err := execute(cfg.module, nil, "go", "mod", "download", "golang.org/x/perf"); err != nil {
 		return fmt.Errorf("download benchstat: %w", err)
 	}
-	comparison := filepath.Join(cfg.output, "comparison.txt")
-	file, err := os.OpenFile(comparison, os.O_WRONLY|os.O_TRUNC, 0o644)
+	comparison, err := cfg.output.OpenFile(comparisonFile, os.O_WRONLY|os.O_TRUNC, 0o644)
 	if err != nil {
 		return fmt.Errorf("open comparison: %w", err)
 	}
-	defer file.Close()
-	if err := executeWithWriters(cfg.module, nil, io.MultiWriter(os.Stdout, file), os.Stderr,
-		"go", "tool", "benchstat", controlResults, iastResults); err != nil {
+	comparisonErr := executeWithWriters(cfg.module, nil, io.MultiWriter(os.Stdout, comparison), os.Stderr,
+		"go", "tool", "benchstat",
+		filepath.Join(cfg.output.Name(), controlResultsFile),
+		filepath.Join(cfg.output.Name(), iastResultsFile))
+	closeErr := comparison.Close()
+	if err := errors.Join(comparisonErr, closeErr); err != nil {
 		return fmt.Errorf("compare results: %w", err)
 	}
-	fmt.Println("Benchmark artifacts:", cfg.output)
+	fmt.Println("Benchmark artifacts:", cfg.output.Name())
 	return nil
 }
 
-func loadConfiguration() (configuration, error) {
+func parseFlags(arguments []string) (options, error) {
+	values := defaultFlagValues()
+	flags := newFlagSet(&values)
+	if err := flags.Parse(arguments); err != nil {
+		return options{}, fmt.Errorf("%w (run with -help for usage)", err)
+	}
+	if flags.NArg() != 0 {
+		return options{}, fmt.Errorf("unexpected positional arguments: %s", strings.Join(flags.Args(), " "))
+	}
+
+	count, err := positiveInteger("-count", values.count)
+	if err != nil {
+		return options{}, err
+	}
+	cpu, err := positiveInteger("-cpu", values.cpu)
+	if err != nil {
+		return options{}, err
+	}
+	if values.benchmark == "" {
+		return options{}, errors.New("-bench must not be empty")
+	}
+	for _, expression := range splitRegexp(values.benchmark) {
+		if _, err := regexp.Compile(expression); err != nil {
+			return options{}, fmt.Errorf("invalid -bench expression %q: %w", expression, err)
+		}
+	}
+	if err := validateBenchtime(values.benchtime); err != nil {
+		return options{}, err
+	}
+
+	return options{
+		outputDir: values.outputDir,
+		count:     count,
+		benchtime: values.benchtime,
+		cpu:       cpu,
+		benchmark: values.benchmark,
+	}, nil
+}
+
+func defaultFlagValues() flagValues {
+	return flagValues{
+		count:     "10",
+		benchtime: "500ms",
+		cpu:       "1",
+		benchmark: ".",
+	}
+}
+
+func newFlagSet(values *flagValues) *flag.FlagSet {
+	flags := flag.NewFlagSet("runner", flag.ContinueOnError)
+	flags.SetOutput(io.Discard)
+	flags.StringVar(&values.benchmark, "bench", values.benchmark, "run only benchmarks matching `regexp`")
+	flags.StringVar(&values.benchtime, "benchtime", values.benchtime, "run each benchmark for duration `d` or N iterations with Nx")
+	flags.StringVar(&values.count, "count", values.count, "run `n` independent process samples per variant")
+	flags.StringVar(&values.cpu, "cpu", values.cpu, "use one positive GOMAXPROCS `value`")
+	flags.StringVar(&values.outputDir, "outputdir", values.outputDir, "write artifacts to `directory` (default: temporary directory)")
+	return flags
+}
+
+func printUsage(output io.Writer) {
+	values := defaultFlagValues()
+	flags := newFlagSet(&values)
+	flags.SetOutput(output)
+	fmt.Fprintln(output, "Usage: runner [flags]")
+	flags.PrintDefaults()
+}
+
+func positiveInteger(name, value string) (int, error) {
+	parsed, err := strconv.Atoi(value)
+	if err != nil || parsed < 1 {
+		return 0, fmt.Errorf("%s must be a single positive integer: %q", name, value)
+	}
+	return parsed, nil
+}
+
+// splitRegexp separates the slash-delimited expressions and top-level
+// alternatives interpreted independently by go test. Delimiters in character
+// classes and parentheses do not separate benchmark name components.
+func splitRegexp(expression string) []string {
+	var parts []string
+	start := 0
+	characterClassDepth := 0
+	parenthesisDepth := 0
+	for i := 0; i < len(expression); i++ {
+		switch expression[i] {
+		case '[':
+			characterClassDepth++
+		case ']':
+			if characterClassDepth > 0 {
+				characterClassDepth--
+			}
+		case '(':
+			if characterClassDepth == 0 {
+				parenthesisDepth++
+			}
+		case ')':
+			if characterClassDepth == 0 {
+				parenthesisDepth--
+			}
+		case '\\':
+			i++
+		case '/', '|':
+			if characterClassDepth == 0 && parenthesisDepth == 0 {
+				parts = append(parts, expression[start:i])
+				start = i + 1
+			}
+		}
+	}
+	return append(parts, expression[start:])
+}
+
+func validateBenchtime(value string) error {
+	if strings.HasSuffix(value, "x") {
+		iterations, err := strconv.ParseInt(strings.TrimSuffix(value, "x"), 10, 0)
+		if err == nil && iterations > 0 {
+			return nil
+		}
+	} else if duration, err := time.ParseDuration(value); err == nil && duration > 0 {
+		return nil
+	}
+	return fmt.Errorf("-benchtime must be a positive duration or iteration count such as 100x: %q", value)
+}
+
+func newConfiguration(opts options) (configuration, error) {
 	module, err := findModule()
 	if err != nil {
 		return configuration{}, err
@@ -151,34 +306,56 @@ func loadConfiguration() (configuration, error) {
 	if _, err := os.Stat(filepath.Join(repository, "go.mod")); err != nil {
 		return configuration{}, fmt.Errorf("find dd-iast-go source tree: %w", err)
 	}
-	output := os.Getenv("BENCH_OUTPUT_DIR")
-	if output == "" {
-		output, err = os.MkdirTemp("", "dd-iast-overhead-results-*")
-		if err != nil {
-			return configuration{}, fmt.Errorf("create results directory: %w", err)
-		}
-	}
-	output, err = filepath.Abs(output)
-	if err != nil {
-		return configuration{}, fmt.Errorf("resolve output directory: %w", err)
-	}
-	samples, err := positiveInteger("BENCH_SAMPLES", 10)
+
+	output, err := openOutputRoot(opts.outputDir)
 	if err != nil {
 		return configuration{}, err
 	}
-	cpu, err := positiveInteger("BENCH_CPU", 1)
+	moduleInfo, err := os.Stat(module)
 	if err != nil {
-		return configuration{}, err
+		output.Close()
+		return configuration{}, fmt.Errorf("inspect benchmark module: %w", err)
 	}
+	outputInfo, err := output.Stat(".")
+	if err != nil {
+		output.Close()
+		return configuration{}, fmt.Errorf("inspect output directory: %w", err)
+	}
+	if os.SameFile(moduleInfo, outputInfo) {
+		output.Close()
+		return configuration{}, errors.New("-outputdir must not be the benchmark module directory")
+	}
+
 	return configuration{
 		repository: repository,
 		module:     module,
 		output:     output,
-		samples:    samples,
-		benchtime:  environmentOr("BENCH_TIME", "500ms"),
-		cpu:        cpu,
-		benchmark:  environmentOr("BENCH_REGEX", "."),
+		count:      opts.count,
+		benchtime:  opts.benchtime,
+		cpu:        opts.cpu,
+		benchmark:  opts.benchmark,
 	}, nil
+}
+
+func openOutputRoot(directory string) (*os.Root, error) {
+	var err error
+	if directory == "" {
+		directory, err = os.MkdirTemp("", "dd-iast-overhead-results-*")
+		if err != nil {
+			return nil, fmt.Errorf("create results directory: %w", err)
+		}
+	} else if err := os.MkdirAll(directory, 0o755); err != nil {
+		return nil, fmt.Errorf("create output directory: %w", err)
+	}
+	directory, err = filepath.Abs(directory)
+	if err != nil {
+		return nil, fmt.Errorf("resolve output directory: %w", err)
+	}
+	output, err := os.OpenRoot(directory)
+	if err != nil {
+		return nil, fmt.Errorf("open output directory: %w", err)
+	}
+	return output, nil
 }
 
 func findModule() (string, error) {
@@ -198,32 +375,35 @@ func findModule() (string, error) {
 	}
 }
 
-func positiveInteger(name string, fallback int) (int, error) {
-	value := environmentOr(name, strconv.Itoa(fallback))
-	parsed, err := strconv.Atoi(value)
-	if err != nil || parsed < 1 {
-		return 0, fmt.Errorf("%s must be a positive integer", name)
+func initializeArtifacts(output *os.Root, names ...string) error {
+	for _, name := range names {
+		if err := output.WriteFile(name, nil, 0o644); err != nil {
+			return fmt.Errorf("initialize %s: %w", name, err)
+		}
 	}
-	return parsed, nil
+	return nil
 }
 
-func environmentOr(name, fallback string) string {
-	if value := os.Getenv(name); value != "" {
-		return value
+func copyModule(source, destination string, output *os.Root) error {
+	outputInfo, err := output.Stat(".")
+	if err != nil {
+		return fmt.Errorf("inspect output directory: %w", err)
 	}
-	return fallback
-}
-
-func copyModule(source, destination, output string) error {
 	return filepath.WalkDir(source, func(path string, entry fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
 		}
+		if entry.IsDir() {
+			info, err := entry.Info()
+			if err != nil {
+				return err
+			}
+			if os.SameFile(info, outputInfo) || entry.Name() == ".git" {
+				return filepath.SkipDir
+			}
+		}
 		if path == source {
 			return os.MkdirAll(destination, 0o755)
-		}
-		if entry.IsDir() && (entry.Name() == ".git" || path == output) {
-			return filepath.SkipDir
 		}
 		relative, err := filepath.Rel(source, path)
 		if err != nil {
@@ -295,27 +475,27 @@ func buildVariant(name, source, binary string) error {
 }
 
 func runSample(cfg configuration, directory, binary, destination string) error {
-	file, err := os.OpenFile(destination, os.O_APPEND|os.O_WRONLY, 0o644)
+	file, err := cfg.output.OpenFile(destination, os.O_APPEND|os.O_WRONLY, 0o644)
 	if err != nil {
 		return err
 	}
-	defer file.Close()
 	environment := []string{
 		"GOMAXPROCS=" + strconv.Itoa(cfg.cpu),
 		"DD_IAST_ENABLED=true",
 		"DD_IAST_REQUEST_SAMPLING=100",
 		"DD_IAST_DEDUPLICATION_ENABLED=false",
 	}
-	return executeWithWriters(directory, environment, file, os.Stderr, binary,
+	runErr := executeWithWriters(directory, environment, file, os.Stderr, binary,
 		"-test.run=^$",
 		"-test.bench="+cfg.benchmark,
 		"-test.benchmem",
 		"-test.benchtime="+cfg.benchtime,
 		"-test.cpu="+strconv.Itoa(cfg.cpu),
 	)
+	return errors.Join(runErr, file.Close())
 }
 
-func writeMetadata(cfg configuration, path string) error {
+func writeMetadata(cfg configuration, name string) error {
 	revision, err := commandOutput(cfg.repository, "git", "rev-parse", "HEAD")
 	if err != nil {
 		return err
@@ -324,9 +504,9 @@ func writeMetadata(cfg configuration, path string) error {
 	if err != nil {
 		return err
 	}
-	metadata := fmt.Sprintf("revision=%s\ngo_version=%s\ngoos=%s\ngoarch=%s\ncpu_count=%d\nsamples=%d\nbenchtime=%s\ncpu=%d\nbenchmark=%s\n",
-		revision, goVersion, runtime.GOOS, runtime.GOARCH, runtime.NumCPU(), cfg.samples, cfg.benchtime, cfg.cpu, cfg.benchmark)
-	if err := os.WriteFile(path, []byte(metadata), 0o644); err != nil {
+	metadata := fmt.Sprintf("revision=%s\ngo_version=%s\ngoos=%s\ngoarch=%s\ncpu_count=%d\ncount=%d\nbenchtime=%s\ncpu=%d\nbench=%s\n",
+		revision, goVersion, runtime.GOOS, runtime.GOARCH, runtime.NumCPU(), cfg.count, cfg.benchtime, cfg.cpu, cfg.benchmark)
+	if err := cfg.output.WriteFile(name, []byte(metadata), 0o644); err != nil {
 		return fmt.Errorf("write metadata: %w", err)
 	}
 	return nil
@@ -342,14 +522,17 @@ func commandOutput(directory, command string, arguments ...string) (string, erro
 	return strings.TrimSpace(string(output)), nil
 }
 
-func compareResultSets(control, iast string) error {
-	controlNames, err := benchmarkNames(control)
+func compareResultSets(fsys fs.FS, control, iast string) error {
+	controlNames, err := benchmarkNames(fsys, control)
 	if err != nil {
 		return err
 	}
-	iastNames, err := benchmarkNames(iast)
+	iastNames, err := benchmarkNames(fsys, iast)
 	if err != nil {
 		return err
+	}
+	if len(controlNames) == 0 {
+		return errors.New("benchmark expression matched no benchmarks")
 	}
 	if strings.Join(controlNames, "\n") != strings.Join(iastNames, "\n") {
 		return fmt.Errorf("control and IAST benchmark result sets differ:\ncontrol: %v\nIAST: %v", controlNames, iastNames)
@@ -357,8 +540,8 @@ func compareResultSets(control, iast string) error {
 	return nil
 }
 
-func benchmarkNames(path string) ([]string, error) {
-	file, err := os.Open(path)
+func benchmarkNames(fsys fs.FS, path string) ([]string, error) {
+	file, err := fsys.Open(path)
 	if err != nil {
 		return nil, err
 	}

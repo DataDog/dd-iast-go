@@ -8,6 +8,9 @@ package model
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
+
+	"github.com/DataDog/dd-iast-go/internal/config"
 )
 
 //go:generate go tool msgp -io=false -tests=false
@@ -19,6 +22,24 @@ const (
 	TruncatedSideNone TruncatedSide = iota
 	TruncatedSideRight
 )
+
+// truncateStringIfNeeded truncates a string if it is longer than [config.TruncationMaxValue], and
+// returns a [strings.Clone] in such cases, in order to avoid retaining the original long string. If
+// the string contains at most [config.TruncationMaxValue] characters, it is returned as-is.
+func truncateStringIfNeeded(s string) (string, TruncatedSide) {
+	if uint64(len(s)) <= config.TruncationMaxValue {
+		return s, TruncatedSideNone
+	}
+
+	var characters uint64
+	for index := range s {
+		if characters == config.TruncationMaxValue {
+			return strings.Clone(s[:index]), TruncatedSideRight
+		}
+		characters++
+	}
+	return s, TruncatedSideNone
+}
 
 func (t TruncatedSide) String() string {
 	switch t {

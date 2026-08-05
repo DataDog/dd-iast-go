@@ -6,12 +6,129 @@
 package main
 
 import (
+	"errors"
+	"flag"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
+	"testing/fstest"
 )
+
+func TestParseFlags(t *testing.T) {
+	tests := []struct {
+		name      string
+		arguments []string
+		want      options
+		wantError string
+	}{
+		{
+			name: "defaults",
+			want: options{count: 10, benchtime: "500ms", cpu: 1, benchmark: "."},
+		},
+		{
+			name: "overrides",
+			arguments: []string{
+				"-outputdir=results",
+				"-count=3",
+				"-benchtime=2s",
+				"-cpu=4",
+				"-bench=Hash/.+",
+			},
+			want: options{outputDir: "results", count: 3, benchtime: "2s", cpu: 4, benchmark: "Hash/.+"},
+		},
+		{
+			name:      "iteration benchtime",
+			arguments: []string{"-benchtime=100x"},
+			want:      options{count: 10, benchtime: "100x", cpu: 1, benchmark: "."},
+		},
+		{name: "positional argument", arguments: []string{"extra"}, wantError: "unexpected positional arguments"},
+		{name: "zero count", arguments: []string{"-count=0"}, wantError: "-count must be a single positive integer"},
+		{name: "invalid count", arguments: []string{"-count=many"}, wantError: "-count must be a single positive integer"},
+		{name: "zero CPU", arguments: []string{"-cpu=0"}, wantError: "-cpu must be a single positive integer"},
+		{name: "CPU list", arguments: []string{"-cpu=1,2"}, wantError: `-cpu must be a single positive integer: "1,2"`},
+		{name: "empty benchtime", arguments: []string{"-benchtime="}, wantError: "-benchtime must be a positive duration"},
+		{name: "zero duration", arguments: []string{"-benchtime=0s"}, wantError: "-benchtime must be a positive duration"},
+		{name: "zero iterations", arguments: []string{"-benchtime=0x"}, wantError: "-benchtime must be a positive duration"},
+		{name: "invalid benchtime", arguments: []string{"-benchtime=soon"}, wantError: "-benchtime must be a positive duration"},
+		{name: "empty benchmark", arguments: []string{"-bench="}, wantError: "-bench must not be empty"},
+		{name: "invalid benchmark", arguments: []string{"-bench=["}, wantError: "invalid -bench expression"},
+		{name: "invalid benchmark element", arguments: []string{"-bench=A/*"}, wantError: "invalid -bench expression"},
+		{name: "invalid benchmark alternative", arguments: []string{"-bench=[]|[a]"}, wantError: `invalid -bench expression "[]"`},
+		{name: "benchmark character class slash", arguments: []string{"-bench=[/]"}, want: options{count: 10, benchtime: "500ms", cpu: 1, benchmark: "[/]"}},
+		{name: "benchmark parenthesized slash", arguments: []string{"-bench=(A/B)"}, want: options{count: 10, benchtime: "500ms", cpu: 1, benchmark: "(A/B)"}},
+		{name: "benchmark character class pipe", arguments: []string{"-bench=[|]"}, want: options{count: 10, benchtime: "500ms", cpu: 1, benchmark: "[|]"}},
+		{name: "benchmark parenthesized pipe", arguments: []string{"-bench=(A|B)"}, want: options{count: 10, benchtime: "500ms", cpu: 1, benchmark: "(A|B)"}},
+		{name: "unknown flag", arguments: []string{"-unknown"}, wantError: "flag provided but not defined"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			got, err := parseFlags(test.arguments)
+			if test.wantError != "" {
+				if err == nil || !strings.Contains(err.Error(), test.wantError) {
+					t.Fatalf("parseFlags() error = %v, want an error containing %q", err, test.wantError)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(got, test.want) {
+				t.Fatalf("parseFlags() = %#v, want %#v", got, test.want)
+			}
+		})
+	}
+}
+
+func TestHelp(t *testing.T) {
+	if _, err := parseFlags([]string{"-help"}); !errors.Is(err, flag.ErrHelp) {
+		t.Fatalf("parseFlags(-help) error = %v, want flag.ErrHelp", err)
+	}
+	var usage strings.Builder
+	printUsage(&usage)
+	if strings.Contains(usage.String(), "`") {
+		t.Fatalf("usage contains a stray backtick:\n%s", usage.String())
+	}
+	for _, name := range []string{"-bench", "-benchtime", "-count", "-cpu", "-outputdir"} {
+		if !strings.Contains(usage.String(), name) {
+			t.Errorf("usage does not contain %q:\n%s", name, usage.String())
+		}
+	}
+}
+
+func TestOpenOutputRootUsesAbsolutePath(t *testing.T) {
+	outputDir := filepath.Join(t.TempDir(), "results")
+	output, err := openOutputRoot(outputDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !filepath.IsAbs(output.Name()) {
+		t.Errorf("output root name = %q, want an absolute path", output.Name())
+	}
+	if err := output.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := output.Stat("."); err == nil {
+		t.Fatal("closed output root remains usable")
+	}
+}
+
+func TestInitializeArtifactsRejectsTraversal(t *testing.T) {
+	output, err := os.OpenRoot(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer output.Close()
+
+	if err := initializeArtifacts(output, "valid.txt"); err != nil {
+		t.Fatal(err)
+	}
+	if err := initializeArtifacts(output, "../escape.txt"); err == nil {
+		t.Fatal("initializeArtifacts accepted a path outside the output root")
+	}
+}
 
 func TestRetainTracerIntegration(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "orchestrion.tool.go")
@@ -47,17 +164,46 @@ import (
 }
 
 func TestBenchmarkNames(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "results.txt")
-	input := "goos: linux\nBenchmarkHealth-4  100  10 ns/op\nBenchmarkHash-4  100  20 ns/op\nBenchmarkHealth-4  100  11 ns/op\nPASS\n"
-	if err := os.WriteFile(path, []byte(input), 0o644); err != nil {
-		t.Fatal(err)
+	results := fstest.MapFS{
+		"results.txt": {Data: []byte("goos: linux\nBenchmarkHealth-4  100  10 ns/op\nBenchmarkHash-4  100  20 ns/op\nBenchmarkHealth-4  100  11 ns/op\nPASS\n")},
 	}
-	names, err := benchmarkNames(path)
+	names, err := benchmarkNames(results, "results.txt")
 	if err != nil {
 		t.Fatal(err)
 	}
 	want := []string{"BenchmarkHash-4", "BenchmarkHealth-4", "BenchmarkHealth-4"}
 	if !reflect.DeepEqual(names, want) {
 		t.Fatalf("benchmarkNames() = %v, want %v", names, want)
+	}
+}
+
+func TestCompareResultSets(t *testing.T) {
+	tests := []struct {
+		name      string
+		control   string
+		iast      string
+		wantError string
+	}{
+		{name: "matching", control: "BenchmarkHealth-1 1 10 ns/op\n", iast: "BenchmarkHealth-1 1 12 ns/op\n"},
+		{name: "mismatched", control: "BenchmarkHealth-1 1 10 ns/op\n", iast: "BenchmarkHash-1 1 12 ns/op\n", wantError: "result sets differ"},
+		{name: "empty", control: "PASS\n", iast: "PASS\n", wantError: "matched no benchmarks"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			results := fstest.MapFS{
+				"control.txt": {Data: []byte(test.control)},
+				"iast.txt":    {Data: []byte(test.iast)},
+			}
+			err := compareResultSets(results, "control.txt", "iast.txt")
+			if test.wantError == "" {
+				if err != nil {
+					t.Fatal(err)
+				}
+				return
+			}
+			if err == nil || !strings.Contains(err.Error(), test.wantError) {
+				t.Fatalf("compareResultSets() error = %v, want an error containing %q", err, test.wantError)
+			}
+		})
 	}
 }
