@@ -95,6 +95,9 @@ func (a *Annotation) submitTelemetry() {
 // there are available slots in the map after the trim (i.e, the map is below
 // [config.MaxConcurrentRequests]).
 func trimStore() bool {
+	if config.MaxConcurrentRequests == 0 {
+		return false
+	}
 	if store.Size() < triggerTrimThreshold {
 		return true
 	}

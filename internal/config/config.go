@@ -53,7 +53,7 @@ var (
 	RedactionNamePattern *regexp.Regexp = parseFromEnv(EnvVarRedactionNamePattern, defaultRedactionNamePattern, parseRegexp)
 	// RedactionValuePattern is the pattern to use for determining which source values should be redacted.
 	RedactionValuePattern *regexp.Regexp = parseFromEnv(EnvVarRedactionValuePattern, defaultRedactionValuePattern, parseRegexp)
-	// TruncationMaxValue is the maximum number of characters that will allowed for a source value before it is truncated.
+	// TruncationMaxValue is the maximum number of Unicode characters retained in report values before truncation.
 	TruncationMaxValue uint64 = uintFromEnv(EnvVarTruncationMaxValue, 250)
 	// MaxRangeCount is the maximum number of ranges a tainted object can hold.
 	MaxRangeCount uint64 = uintFromEnv(EnvVarMaxRangeCount, 10)

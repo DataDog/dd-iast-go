@@ -42,7 +42,7 @@ Environment variable | Type | Default | Description
 `DD_IAST_REDACTION_ENABLED` | Boolean | `true` | Enables sensitive data redaction.
 `DD_IAST_REDACTION_NAME_PATTERN` | String | Empty | Pattern used to identify source names that must be redacted.
 `DD_IAST_REDACTION_VALUE_PATTERN` | String | Empty | Pattern used to identify source values that must be redacted.
-`DD_IAST_TRUNCATION_MAX_VALUE` | Non-negative integer | `250` | Maximum source value length before truncation.
+`DD_IAST_TRUNCATION_MAX_VALUE` | Non-negative integer | `250` | Maximum number of Unicode characters retained before truncating source values, vulnerability evidence, redacted patterns, and individual evidence value parts.
 `DD_IAST_MAX_RANGE_COUNT` | Non-negative integer | `10` | Maximum number of taint ranges retained for one value.
 `DD_IAST_TELEMETRY_VERBOSITY` | `OFF`, `MANDATORY`, `INFORMATION`, or `DEBUG` | `INFORMATION` | Sets IAST telemetry verbosity.
 `DD_IAST_DB_ROWS_TO_TAIN` | Non-negative integer | `1` | Number of database rows tainted for each request.
