@@ -14,6 +14,21 @@ permissions:
   contents: read
 
 jobs:
+  validate-licenses:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - name: Validate third-party licenses
+        uses: DataDog/dd-license-attribution@bf7bf0500bf3f91aa4d885d8b74a844c1ee1fb11 # main
+        with:
+          go-version: '1.25.5'
+          github-sbom-strategy: false
+          npm-strategy: false
+          pypi-strategy: false
+
   lint:
     runs-on: ubuntu-latest
     steps:
