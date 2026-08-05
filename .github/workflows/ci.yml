@@ -26,6 +26,7 @@ jobs:
         with:
           ecosystem: go
           package: github.com/DataDog/dd-iast-go
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           go-version: 'stable'
           github-sbom-strategy: false
           npm-strategy: false
