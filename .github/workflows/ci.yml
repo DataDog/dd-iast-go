@@ -23,7 +23,7 @@ jobs:
           persist-credentials: false
       - name: Validate third-party licenses
         id: dd-license-attribution
-        uses: DataDog/dd-license-attribution@d0f1a8b5599398ebb01c42774e588930a6441b1e # romain.marcadier/no-pip-cacher
+        uses: DataDog/dd-license-attribution@9173cdf40c468af6ddc37b8f6da563d59e4065ad # main
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           go-version: 'stable'
