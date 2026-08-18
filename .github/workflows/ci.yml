@@ -68,9 +68,63 @@ jobs:
         with:
           go-version: oldstable
       - name: Unit Tests
-        run: go tool orchestrion go test -shuffle=on ./...
+        run: |
+          go tool orchestrion go test \
+            -shuffle=on \
+            -covermode=atomic \
+            -coverpkg=./... \
+            -coverprofile=coverage.txt \
+            ./...
       - name: Overhead benchmark unit tests
         run: go -C benchmarks/overhead test -shuffle=on ./...
+      - name: Upload coverage artifact
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: coverage-profile
+          path: coverage.txt
+          retention-days: 1
+          if-no-files-found: ignore
+
+  upload-coverage:
+    needs: test
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          sparse-checkout: code-coverage.datadog.yml
+          sparse-checkout-cone-mode: false
+      - name: Download coverage artifact
+        id: download-coverage
+        continue-on-error: true
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: coverage-profile
+      - name: Get Datadog credentials
+        id: dd-sts
+        if: steps.download-coverage.outcome == 'success'
+        continue-on-error: true
+        uses: DataDog/dd-sts-action@639d841c72f15e4e77747bd726ef8105ce971da2 # v1.0.5
+        with:
+          policy: dd-iast-go
+      - name: Upload coverage to Datadog
+        if: >-
+          steps.download-coverage.outcome == 'success' &&
+          steps.dd-sts.outcome == 'success'
+        continue-on-error: true
+        uses: DataDog/coverage-upload-github-action@d9548b1c3c4ab639d5d3ab29a1508af188975f77 # v1.0.5
+        with:
+          api_key: ${{ steps.dd-sts.outputs.api_key }}
+          files: coverage.txt
+          format: go-coverprofile
 
   benchmark:
     runs-on: ubuntu-latest
