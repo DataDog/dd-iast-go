@@ -176,7 +176,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Green CI
     needs: [validate-licenses, lint, test, upload-coverage, benchmark]
-    if: ${{ !cancelled() }}
+    if: always()
     steps:
       - name: Success
         if: |-
