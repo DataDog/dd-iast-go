@@ -16,6 +16,7 @@ permissions:
 jobs:
   validate-licenses:
     runs-on: ubuntu-latest
+    name: Validate LICENSE-3rdparty.csv
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -39,6 +40,7 @@ jobs:
 
   lint:
     runs-on: ubuntu-latest
+    name: Linter & Formatting
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -60,6 +62,7 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
+    name: Unit Tests
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -78,7 +81,7 @@ jobs:
       - name: Overhead benchmark unit tests
         run: go -C benchmarks/overhead test -shuffle=on ./...
       - name: Upload coverage artifact
-        if: always()
+        if: ${{ !cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: coverage-profile
@@ -88,7 +91,8 @@ jobs:
 
   upload-coverage:
     needs: test
-    if: always()
+    name: Code Coverage Report
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -128,6 +132,7 @@ jobs:
 
   benchmark:
     runs-on: ubuntu-latest
+    name: Benchmarks
     timeout-minutes: 20
     env:
       BENCHMARK_OUTPUT_DIR: ${{ github.workspace }}/benchmark-results
@@ -148,7 +153,7 @@ jobs:
             -benchtime=100ms \
             -cpu=1
       - name: Add comparison to job summary
-        if: always()
+        if: ${{ !cancelled() }}
         shell: bash
         run: |
           if [[ -s "$BENCHMARK_OUTPUT_DIR/comparison.txt" ]]; then
@@ -160,9 +165,30 @@ jobs:
             } >> "$GITHUB_STEP_SUMMARY"
           fi
       - name: Upload benchmark results
-        if: always()
+        if: ${{ !cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: overhead-benchmark-results
           path: ${{ env.BENCHMARK_OUTPUT_DIR }}
           retention-days: 7
+
+  green-ci:
+    runs-on: ubuntu-latest
+    name: Green CI
+    needs: [validate-licenses, lint, upload-coverage, benchmark]
+    if: ${{ !cancelled() }}
+    steps:
+      - name: Success
+        if: |-
+          needs.validate-licenses.result  == 'success'
+          && needs.lint.result            == 'success'
+          && needs.upload-coverage.result == 'success'
+          && needs.benchmark.result       == 'success'
+        run: echo "Success!"
+      - name: Failure
+        if: |-
+          needs.validate-licenses.result  != 'success'
+          && needs.lint.result            != 'success'
+          && needs.upload-coverage.result != 'success'
+          && needs.benchmark.result       != 'success'
+        run: echo "Failure!" && exit 1
