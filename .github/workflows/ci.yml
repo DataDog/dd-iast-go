@@ -175,13 +175,14 @@ jobs:
   green-ci:
     runs-on: ubuntu-latest
     name: Green CI
-    needs: [validate-licenses, lint, upload-coverage, benchmark]
+    needs: [validate-licenses, lint, test, upload-coverage, benchmark]
     if: ${{ !cancelled() }}
     steps:
       - name: Success
         if: |-
           needs.validate-licenses.result  == 'success'
           && needs.lint.result            == 'success'
+          && needs.test.result            == 'success'
           && needs.upload-coverage.result == 'success'
           && needs.benchmark.result       == 'success'
         run: echo "Success!"
@@ -189,6 +190,7 @@ jobs:
         if: |-
           needs.validate-licenses.result  != 'success'
           && needs.lint.result            != 'success'
+          && needs.test.result            != 'success'
           && needs.upload-coverage.result != 'success'
           && needs.benchmark.result       != 'success'
         run: echo "Failure!" && exit 1
