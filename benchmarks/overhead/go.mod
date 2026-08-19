@@ -1,6 +1,6 @@
 module github.com/DataDog/dd-iast-go/benchmarks/overhead
 
-go 1.25.5
+go 1.25.7
 
 replace github.com/DataDog/dd-iast-go => ../..
 
