@@ -1,5 +1,10 @@
 # Datadog IAST for Go
 
+> [!NOTE]
+> This project is under active development. The feature coverage is expected
+> to significantly evolve, and performance characteristics of the engine are not
+> stable yet.
+
 This package provides Datadog-backed instrumentation for Interactive Application
 Security Testing of Go applications. It uses `github.com/DataDog/dd-trace-go/v2`
 and requires consumer applications to be compiled using
