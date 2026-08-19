@@ -189,8 +189,8 @@ jobs:
       - name: Failure
         if: |-
           needs.validate-licenses.result  != 'success'
-          && needs.lint.result            != 'success'
-          && needs.test.result            != 'success'
-          && needs.upload-coverage.result != 'success'
-          && needs.benchmark.result       != 'success'
+          || needs.lint.result            != 'success'
+          || needs.test.result            != 'success'
+          || needs.upload-coverage.result != 'success'
+          || needs.benchmark.result       != 'success'
         run: echo "Failure!" && exit 1
