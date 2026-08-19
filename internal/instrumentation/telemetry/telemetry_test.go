@@ -36,7 +36,9 @@ func TestExecutedSource(t *testing.T) {
 
 	for origin, ctr := range subject.Each {
 		assert.Equal(t, ctr.Load(), expected[origin])
+		delete(expected, origin)
 	}
+	assert.Empty(t, expected, "some origins were not visited by Each: %v", expected)
 }
 
 func TestExecutedSink(t *testing.T) {
@@ -59,5 +61,7 @@ func TestExecutedSink(t *testing.T) {
 
 	for vulnType, ctr := range subject.Each {
 		assert.Equal(t, ctr.Load(), expected[vulnType])
+		delete(expected, vulnType)
 	}
+	assert.Empty(t, expected, "some vulnerability types were not visited by Each: %v", expected)
 }
