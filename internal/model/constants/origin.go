@@ -35,7 +35,67 @@ const (
 	OriginKafkaMessageValue
 	OriginGraphqlResolverArgument
 	OriginSqlRowValue
+
+	// OriginCount is the total number of [Origin] values that exist. This is used
+	// for testing.
+	OriginCount uint = iota - 1
 )
+
+// AllOrigins returns the list of all existing [Origin] values by their constant
+// name without the "Origin" prefix. This is used for testing.
+func AllOrigins() map[string]Origin {
+	origins := make(map[string]Origin, OriginCount)
+	for i := range OriginCount {
+		o := Origin(i + 1)
+		origins[o.name()] = o
+	}
+	return origins
+}
+
+// name returns the name of the [Origin] constant without the "Origin" prefix.
+// This is used for testing.
+func (o Origin) name() string {
+	switch o {
+	case OriginHttpRequestParameter:
+		return "HttpRequestParameter"
+	case OriginHttpRequestParameterName:
+		return "HttpRequestParameterName"
+	case OriginHttpRequestHeader:
+		return "HttpRequestHeader"
+	case OriginHttpRequestHeaderName:
+		return "HttpRequestHeaderName"
+	case OriginHttpRequestPath:
+		return "HttpRequestPath"
+	case OriginHttpRequestBody:
+		return "HttpRequestBody"
+	case OriginHttpRequestQuery:
+		return "HttpRequestQuery"
+	case OriginHttpRequestPathParameter:
+		return "HttpRequestPathParameter"
+	case OriginHttpRequestMatrixParameter:
+		return "HttpRequestMatrixParameter"
+	case OriginHttpRequestCookieName:
+		return "HttpRequestCookieName"
+	case OriginHttpRequestCookieValue:
+		return "HttpRequestCookieValue"
+	case OriginHttpRequestUri:
+		return "HttpRequestUri"
+	case OriginGrpcRequestBody:
+		return "GrpcRequestBody"
+	case OriginHttpRequestMultipartParameter:
+		return "HttpRequestMultipartParameter"
+	case OriginKafkaMessageKey:
+		return "KafkaMessageKey"
+	case OriginKafkaMessageValue:
+		return "KafkaMessageValue"
+	case OriginGraphqlResolverArgument:
+		return "GraphqlResolverArgument"
+	case OriginSqlRowValue:
+		return "SqlRowValue"
+	default:
+		panic(fmt.Errorf("invalid Origin value: 0x%02X", o))
+	}
+}
 
 func (o Origin) String() string {
 	switch o {
