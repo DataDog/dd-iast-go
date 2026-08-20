@@ -34,6 +34,21 @@ without Orchestrion, so the authoritative final coverage run must use
 
 ## Selected test surface
 
+### Test-package and Orchestrion compatibility
+
+Start tests in the package that gives them the narrowest necessary access.
+Configuration, model constants, and event admission tests initially use their
+production package because they exercise unexported behavior; telemetry tests
+remain in the existing external `telemetry_test` package.
+
+Validate the package layout early with the exact Orchestrion coverage command.
+If Orchestrion cannot link a coverage-instrumented package because an in-package
+test creates a for-test package variant, move the affected tests to the
+corresponding `*_test` package. If those tests still need unexported logic, move
+that logic to a narrowly scoped new `internal/` package and test it there rather
+than exporting production symbols only for tests. Keep any such extraction
+behavior-preserving and include it in the specialist review.
+
 ### 1. Configuration parsing
 
 Add package-internal table-driven tests in `internal/config` for:
@@ -59,10 +74,13 @@ all documented environment variables to the public configuration globals.
 This avoids pretending that direct helper tests cover init-time configuration.
 The child process exists for behavioral isolation; its execution is not
 expected to contribute to the parent coverage profile, while package init also
-runs in the covered parent binary. The existing `DD_IAST_DB_ROWS_TO_TAIN`
-spelling will be treated as the current
-published contract, not silently corrected or broadened in this test-only
-change. The unused `stringFromEnv` helper will not receive a line-driving test.
+runs in the covered parent binary. The branch fixes the environment variable
+typo: the supported spelling is now `DD_IAST_DB_ROWS_TO_TAINT`. The
+initialization test will assert this literal
+value and verify that the former `DD_IAST_DB_ROWS_TO_TAIN` spelling is not
+accepted as an alias. Validation will also confirm that the repository-root
+configuration documentation uses the corrected spelling. The unused
+`stringFromEnv` helper will not receive a line-driving test.
 
 Tests will use `t.Setenv` or an explicitly filtered subprocess environment,
 restore process environment through test cleanup, and will not run in parallel
@@ -140,7 +158,9 @@ package-global configuration with test cleanup. They will not run in parallel.
   round-trip contracts instead.
 - Do not test private logging implementation details or couple tests to
   `dd-trace-go` internals.
-- Do not broaden this change into production refactoring.
+- Do not broaden this change into production refactoring, except for a minimal
+  behavior-preserving move to a new `internal/` package if Orchestrion requires
+  external `*_test` packages.
 - Do not add timing-sensitive, randomized, or snapshot-only tests.
 
 ## Validation
