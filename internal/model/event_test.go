@@ -8,12 +8,12 @@ package model_test
 import (
 	"bytes"
 	"fmt"
-	"reflect"
 	"testing"
 
 	"github.com/DataDog/dd-iast-go/internal/config"
 	"github.com/DataDog/dd-iast-go/internal/model"
 	"github.com/DataDog/dd-iast-go/internal/model/constants"
+	"github.com/stretchr/testify/require"
 	"github.com/tinylib/msgp/msgp"
 )
 
@@ -53,25 +53,14 @@ func TestEventMarshalMsg(t *testing.T) {
 
 	prefix := []byte{0xde, 0xad, 0xbe, 0xef}
 	encoded, err := event.MarshalMsg(append([]byte(nil), prefix...))
-	if err != nil {
-		t.Fatalf("MarshalMsg(): %v", err)
-	}
-	if len(encoded) < len(prefix) {
-		t.Fatalf("MarshalMsg() returned %d bytes, shorter than the %d-byte prefix", len(encoded), len(prefix))
-	}
-	if got := encoded[:len(prefix)]; !bytes.Equal(got, prefix) {
-		t.Errorf("MarshalMsg() prefix = %x, want %x", got, prefix)
-	}
+	require.NoError(t, err)
+	require.Equal(t, prefix, encoded[:len(prefix)])
 
 	var decoded bytes.Buffer
 	remainder, err := msgp.UnmarshalAsJSON(&decoded, encoded[len(prefix):])
-	if err != nil {
-		t.Fatalf("UnmarshalAsJSON(): %v", err)
-	}
-	if len(remainder) != 0 {
-		t.Errorf("UnmarshalAsJSON() remainder = %x, want empty", remainder)
-	}
-	assertJSONEqual(t, fmt.Sprintf(`{
+	require.NoError(t, err)
+	require.Empty(t, remainder)
+	require.JSONEq(t, fmt.Sprintf(`{
 		"sources": [
 			{"origin":"http.request.parameter","name":"query","value":"shady"},
 			{"origin":"http.request.header","name":"Authorization","pattern":"<redacted-pattern>","redacted":true}
@@ -103,22 +92,14 @@ func TestEventMarshalMsgOmitsEmptyFields(t *testing.T) {
 	)}}
 
 	encoded, err := event.MarshalMsg(nil)
-	if err != nil {
-		t.Fatalf("MarshalMsg(): %v", err)
-	}
-	if event.Vulnerabilities[0].Hash == 0 {
-		t.Error("vulnerability hash = 0, want non-zero")
-	}
+	require.NoError(t, err)
+	require.NotZero(t, event.Vulnerabilities[0].Hash)
 
 	var decoded bytes.Buffer
 	remainder, err := msgp.UnmarshalAsJSON(&decoded, encoded)
-	if err != nil {
-		t.Fatalf("UnmarshalAsJSON(): %v", err)
-	}
-	if len(remainder) != 0 {
-		t.Errorf("UnmarshalAsJSON() remainder = %x, want empty", remainder)
-	}
-	assertJSONEqual(t, `{
+	require.NoError(t, err)
+	require.Empty(t, remainder)
+	require.JSONEq(t, `{
 		"vulnerabilities":[{
 			"type":"WEAK_HASH",
 			"hash":`+string(mustJSONMarshal(t, event.Vulnerabilities[0].Hash))+`,
@@ -146,18 +127,9 @@ func TestAddVulnerabilityDeduplicationEnabledRejectsDuplicateHash(t *testing.T) 
 	first := model.Vulnerability{Type: constants.VulnerabilityTypeXss, Hash: 7}
 	second := model.Vulnerability{Type: constants.VulnerabilityTypeSsrf, Hash: 7}
 
-	if !event.AddVulnerability(first) {
-		t.Error("first vulnerability was rejected")
-	}
-	if event.AddVulnerability(second) {
-		t.Error("duplicate vulnerability was admitted")
-	}
-	if got := len(event.Vulnerabilities); got != 1 {
-		t.Fatalf("vulnerability count = %d, want 1", got)
-	}
-	if got := event.Vulnerabilities[0]; !reflect.DeepEqual(got, first) {
-		t.Errorf("stored vulnerability = %#v, want %#v", got, first)
-	}
+	require.True(t, event.AddVulnerability(first), "the first vulnerability must be admitted")
+	require.False(t, event.AddVulnerability(second), "a vulnerability with a duplicate hash must be rejected when deduplication is enabled")
+	require.Equal(t, []model.Vulnerability{first}, event.Vulnerabilities)
 }
 
 func TestAddVulnerabilityDeduplicationDisabledAdmitsDuplicateHash(t *testing.T) {
@@ -167,16 +139,9 @@ func TestAddVulnerabilityDeduplicationDisabledAdmitsDuplicateHash(t *testing.T) 
 	first := model.Vulnerability{Type: constants.VulnerabilityTypeXss, Hash: 7}
 	second := model.Vulnerability{Type: constants.VulnerabilityTypeSsrf, Hash: 7}
 
-	if !event.AddVulnerability(first) {
-		t.Error("first vulnerability was rejected")
-	}
-	if !event.AddVulnerability(second) {
-		t.Error("duplicate vulnerability was rejected with deduplication disabled")
-	}
-	want := []model.Vulnerability{first, second}
-	if !reflect.DeepEqual(event.Vulnerabilities, want) {
-		t.Errorf("stored vulnerabilities = %#v, want %#v", event.Vulnerabilities, want)
-	}
+	require.True(t, event.AddVulnerability(first), "the first vulnerability must be admitted")
+	require.True(t, event.AddVulnerability(second), "a vulnerability with a duplicate hash must be admitted when deduplication is disabled")
+	require.Equal(t, []model.Vulnerability{first, second}, event.Vulnerabilities)
 }
 
 func TestAddVulnerabilityRejectsAtLimitWithoutMutatingEvent(t *testing.T) {
@@ -184,20 +149,12 @@ func TestAddVulnerabilityRejectsAtLimitWithoutMutatingEvent(t *testing.T) {
 
 	event := model.NewEvent()
 	first := model.Vulnerability{Type: constants.VulnerabilityTypeXss, Hash: 1}
-	if !event.AddVulnerability(first) {
-		t.Fatal("first vulnerability was rejected")
-	}
+	require.True(t, event.AddVulnerability(first))
 
 	capacityBefore := cap(event.Vulnerabilities)
 	valuesBefore := append([]model.Vulnerability(nil), event.Vulnerabilities...)
 	second := model.Vulnerability{Type: constants.VulnerabilityTypeSsrf, Hash: 2}
-	if event.AddVulnerability(second) {
-		t.Error("vulnerability beyond the configured limit was admitted")
-	}
-	if got := cap(event.Vulnerabilities); got != capacityBefore {
-		t.Errorf("capacity after rejection = %d, want %d", got, capacityBefore)
-	}
-	if !reflect.DeepEqual(event.Vulnerabilities, valuesBefore) {
-		t.Errorf("stored vulnerabilities after rejection = %#v, want %#v", event.Vulnerabilities, valuesBefore)
-	}
+	require.False(t, event.AddVulnerability(second), "adding beyond the configured limit must be rejected")
+	require.Equal(t, capacityBefore, cap(event.Vulnerabilities), "rejecting an admission must not grow the backing array")
+	require.Equal(t, valuesBefore, event.Vulnerabilities, "rejecting an admission must not modify stored vulnerabilities")
 }

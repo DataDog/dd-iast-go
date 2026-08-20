@@ -8,12 +8,13 @@ package loader_test
 import (
 	"fmt"
 	"os"
-	"reflect"
 	"strconv"
 	"testing"
 
 	"github.com/DataDog/dd-iast-go/internal/config/loader"
 	"github.com/DataDog/dd-iast-go/internal/config/parser"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type registration struct {
@@ -62,15 +63,9 @@ func unsetEnv(t *testing.T, name string) {
 
 func assertObservation(t *testing.T, got *recorder, wantWarnings []string, wantRegistration registration) {
 	t.Helper()
-	if !reflect.DeepEqual(got.warnings, wantWarnings) {
-		t.Errorf("warnings = %#v, want %#v", got.warnings, wantWarnings)
-	}
-	if len(got.registrations) != 1 {
-		t.Fatalf("registration count = %d, want 1", len(got.registrations))
-	}
-	if !reflect.DeepEqual(got.registrations[0], wantRegistration) {
-		t.Errorf("registration = %#v, want %#v", got.registrations[0], wantRegistration)
-	}
+	assert.Equal(t, wantWarnings, got.warnings)
+	require.Len(t, got.registrations, 1)
+	assert.Equal(t, wantRegistration, got.registrations[0])
 }
 
 func TestBoolFromEnv(t *testing.T) {

@@ -7,12 +7,12 @@ package model_test
 
 import (
 	"bytes"
-	"reflect"
 	"testing"
 
 	"github.com/DataDog/dd-iast-go/internal/config"
 	"github.com/DataDog/dd-iast-go/internal/model"
 	"github.com/DataDog/dd-iast-go/internal/model/constants"
+	"github.com/stretchr/testify/require"
 	"github.com/tinylib/msgp/msgp"
 )
 
@@ -75,9 +75,7 @@ func TestConstructorsTruncateStrings(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			if !reflect.DeepEqual(test.got, test.want) {
-				t.Errorf("constructor result = %#v, want %#v", test.got, test.want)
-			}
+			require.Equal(t, test.want, test.got)
 		})
 	}
 }
@@ -109,18 +107,13 @@ func TestTruncatedStringsMarshalMsg(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			encoded, err := test.value.MarshalMsg(nil)
-			if err != nil {
-				t.Fatalf("MarshalMsg(): %v", err)
-			}
+			require.NoError(t, err)
+
 			var decoded bytes.Buffer
 			remainder, err := msgp.UnmarshalAsJSON(&decoded, encoded)
-			if err != nil {
-				t.Fatalf("UnmarshalAsJSON(): %v", err)
-			}
-			if len(remainder) != 0 {
-				t.Errorf("UnmarshalAsJSON() remainder = %x, want empty", remainder)
-			}
-			assertJSONEqual(t, test.want, decoded.String())
+			require.NoError(t, err)
+			require.Empty(t, remainder)
+			require.JSONEq(t, test.want, decoded.String())
 		})
 	}
 }

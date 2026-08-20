@@ -13,6 +13,8 @@ import (
 	"testing"
 
 	"github.com/DataDog/dd-iast-go/internal/config/parser"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func stringPointer(value string) *string { return &value }
@@ -25,18 +27,12 @@ func setOrUnsetEnv(t *testing.T, envVar string, value *string) {
 	}
 
 	previous, wasSet := os.LookupEnv(envVar)
-	if err := os.Unsetenv(envVar); err != nil {
-		t.Fatalf("Unsetenv(%q): %v", envVar, err)
-	}
+	require.NoError(t, os.Unsetenv(envVar))
 	t.Cleanup(func() {
-		var err error
 		if wasSet {
-			err = os.Setenv(envVar, previous)
+			assert.NoError(t, os.Setenv(envVar, previous))
 		} else {
-			err = os.Unsetenv(envVar)
-		}
-		if err != nil {
-			t.Errorf("restore environment variable %q: %v", envVar, err)
+			assert.NoError(t, os.Unsetenv(envVar))
 		}
 	})
 }
@@ -61,20 +57,12 @@ func TestParseLogLevel(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			got, err := parser.ParseLogLevel(test.input)
 			if test.wantErr {
-				if err == nil {
-					t.Errorf("ParseLogLevel(%q) succeeded, want an error", test.input)
-				}
-				if got != 0 {
-					t.Errorf("ParseLogLevel(%q) = %d after error, want 0", test.input, got)
-				}
+				require.Error(t, err)
+				assert.Zero(t, got)
 				return
 			}
-			if err != nil {
-				t.Fatalf("ParseLogLevel(%q): %v", test.input, err)
-			}
-			if got != test.want {
-				t.Errorf("ParseLogLevel(%q) = %d, want %d", test.input, got, test.want)
-			}
+			require.NoError(t, err)
+			assert.Equal(t, test.want, got)
 		})
 	}
 }
@@ -82,35 +70,22 @@ func TestParseLogLevel(t *testing.T) {
 func TestParseRegexp(t *testing.T) {
 	t.Run("valid pattern", func(t *testing.T) {
 		parsed, err := parser.ParseRegexp(`^abc\d+$`)
-		if err != nil {
-			t.Fatalf("ParseRegexp(): %v", err)
-		}
-		if !parsed.MatchString("abc123") {
-			t.Error("parsed regexp does not match abc123")
-		}
-		if parsed.MatchString("xyz123") {
-			t.Error("parsed regexp unexpectedly matches xyz123")
-		}
+		require.NoError(t, err)
+		assert.True(t, parsed.MatchString("abc123"))
+		assert.False(t, parsed.MatchString("xyz123"))
 	})
 
 	t.Run("invalid pattern", func(t *testing.T) {
 		parsed, err := parser.ParseRegexp(`(unterminated`)
-		if err == nil {
-			t.Error("ParseRegexp() succeeded, want an error")
-		}
-		if parsed != nil {
-			t.Errorf("ParseRegexp() = %v after error, want nil", parsed)
-		}
+		require.Error(t, err)
+		assert.Nil(t, parsed)
 	})
 
 	t.Run("empty pattern", func(t *testing.T) {
 		parsed, err := parser.ParseRegexp("")
-		if err != nil {
-			t.Fatalf("ParseRegexp(): %v", err)
-		}
-		if !parsed.MatchString("") || !parsed.MatchString("any string") {
-			t.Error("empty regexp does not match every string")
-		}
+		require.NoError(t, err)
+		assert.True(t, parsed.MatchString(""))
+		assert.True(t, parsed.MatchString("any string"))
 	})
 }
 
@@ -137,17 +112,15 @@ func TestBoolFromEnv(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			setOrUnsetEnv(t, envVar, test.value)
 			got, origin, raw, err := parser.BoolFromEnv(envVar, test.defaultValue)
-			if (err != nil) != test.wantErr {
-				t.Errorf("BoolFromEnv() error = %v, wantErr %t", err, test.wantErr)
+			if test.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
-			if got != test.want {
-				t.Errorf("BoolFromEnv() = %t, want %t", got, test.want)
-			}
-			if origin != test.wantOrigin {
-				t.Errorf("BoolFromEnv() origin = %d, want %d", origin, test.wantOrigin)
-			}
-			if test.value != nil && raw != *test.value {
-				t.Errorf("BoolFromEnv() raw value = %q, want %q", raw, *test.value)
+			assert.Equal(t, test.want, got)
+			assert.Equal(t, test.wantOrigin, origin)
+			if test.value != nil {
+				assert.Equal(t, *test.value, raw)
 			}
 		})
 	}
@@ -176,17 +149,15 @@ func TestUintFromEnv(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			setOrUnsetEnv(t, envVar, test.value)
 			got, origin, raw, err := parser.UintFromEnv(envVar, test.defaultValue)
-			if (err != nil) != test.wantErr {
-				t.Errorf("UintFromEnv() error = %v, wantErr %t", err, test.wantErr)
+			if test.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
-			if got != test.want {
-				t.Errorf("UintFromEnv() = %d, want %d", got, test.want)
-			}
-			if origin != test.wantOrigin {
-				t.Errorf("UintFromEnv() origin = %d, want %d", origin, test.wantOrigin)
-			}
-			if test.value != nil && raw != *test.value {
-				t.Errorf("UintFromEnv() raw value = %q, want %q", raw, *test.value)
+			assert.Equal(t, test.want, got)
+			assert.Equal(t, test.wantOrigin, origin)
+			if test.value != nil {
+				assert.Equal(t, *test.value, raw)
 			}
 		})
 	}
@@ -209,12 +180,8 @@ func TestClampUnsigned(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			got, bound := parser.ClampUnsigned(test.value, test.min, test.max)
-			if got != test.want {
-				t.Errorf("ClampUnsigned() = %d, want %d", got, test.want)
-			}
-			if bound != test.wantBound {
-				t.Errorf("ClampUnsigned() bound = %d, want %d", bound, test.wantBound)
-			}
+			assert.Equal(t, test.want, got)
+			assert.Equal(t, test.wantBound, bound)
 		})
 	}
 }
@@ -237,17 +204,15 @@ func TestFromEnv(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			setOrUnsetEnv(t, envVar, test.value)
 			got, origin, raw, err := parser.FromEnv(envVar, test.defaultValue, strconv.Atoi)
-			if (err != nil) != test.wantErr {
-				t.Errorf("FromEnv() error = %v, wantErr %t", err, test.wantErr)
+			if test.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
-			if got != test.want {
-				t.Errorf("FromEnv() = %d, want %d", got, test.want)
-			}
-			if origin != test.wantOrigin {
-				t.Errorf("FromEnv() origin = %d, want %d", origin, test.wantOrigin)
-			}
-			if test.value != nil && raw != *test.value {
-				t.Errorf("FromEnv() raw value = %q, want %q", raw, *test.value)
+			assert.Equal(t, test.want, got)
+			assert.Equal(t, test.wantOrigin, origin)
+			if test.value != nil {
+				assert.Equal(t, *test.value, raw)
 			}
 		})
 	}
@@ -258,13 +223,8 @@ func TestFromEnvEmptyRegexpMatchesEverything(t *testing.T) {
 	setOrUnsetEnv(t, envVar, stringPointer(""))
 
 	got, origin, _, err := parser.FromEnv(envVar, regexp.MustCompile("default-only-pattern"), parser.ParseRegexp)
-	if err != nil {
-		t.Fatalf("FromEnv(): %v", err)
-	}
-	if origin != parser.OriginEnvVar {
-		t.Errorf("FromEnv() origin = %d, want %d", origin, parser.OriginEnvVar)
-	}
-	if !got.MatchString("") || !got.MatchString("any string") {
-		t.Error("empty regexp does not match every string")
-	}
+	require.NoError(t, err)
+	assert.Equal(t, parser.OriginEnvVar, origin)
+	assert.True(t, got.MatchString(""))
+	assert.True(t, got.MatchString("any string"))
 }
