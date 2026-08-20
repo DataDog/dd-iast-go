@@ -35,46 +35,62 @@ var (
 	defaultRedactionValuePattern = regexp.MustCompile(`(?:bearer\s+[a-z0-9\._\-]+|glpat-[\w\-]{20}|gh[opsu]_[0-9a-zA-Z]{36}|ey[I-L][\w=\-]+\.ey[I-L][\w=\-]+(?:\.[\w.+/=\-]+)?|(?:[\-]{5}BEGIN[a-z\s]+PRIVATE\sKEY[\-]{5}[^\-]+[\-]{5}END[a-z\s]+PRIVATE\sKEY[\-]{5}|ssh-rsa\s*[a-z0-9/\.+]{100,}))`)
 )
 
-var configObserver = loader.Observer{
-	Warn: func(format string, args ...any) {
-		instrumentation.Instance.Logger().Warn(format, args...)
-	},
-	RegisterDefault: func(name string, value any) {
-		instrumentation.Instance.TelemetryRegisterAppConfig(name, value, instrumentation.OriginDefault)
-	},
-	RegisterEnvironment: func(name string, value any) {
-		instrumentation.Instance.TelemetryRegisterAppConfig(name, value, instrumentation.OriginEnvVar)
-	},
-}
-
 var (
 	// Enabled determines whether IAST is enabled or not.
-	Enabled bool = loader.BoolFromEnv(configObserver, EnvVarEnabled, true)
+	Enabled bool
 	// RequestSamplingPct is the percentage of requests that will be sampled for IAST.
-	RequestSamplingPct int = int(loader.UintFromEnvBounded(configObserver, EnvVarRequestSampling, 30, uint8(0), uint8(100)))
+	RequestSamplingPct int
 	// MaxConcurrentRequests is the maximum number of concurrent requests that will be processed concurrently by IAST.
-	MaxConcurrentRequests int = int(loader.UintFromEnvBounded(configObserver, EnvVarMaxConcurrentRequests, 2, uint64(0), uint64(math.MaxInt)))
+	MaxConcurrentRequests int
 	// VulnerabilitiesPerRequest determines the maximum number of vulnerabilities that will be reported per request.
-	VulnerabilitiesPerRequest int = int(loader.UintFromEnvBounded(configObserver, EnvVarVulnerabilitiesPerRequest, 2, uint64(1), uint64(math.MaxInt)))
+	VulnerabilitiesPerRequest int
 	// DeduplicationEnabled determines whether vulnerability deduplication is enabled or not.
-	DeduplicationEnabled bool = loader.BoolFromEnv(configObserver, EnvVarDeduplicationEnabled, true)
+	DeduplicationEnabled bool
 	// RedactionEnabled determines whether sensitive data redaction is enabled or not.
-	RedactionEnabled bool = loader.BoolFromEnv(configObserver, EnvVarRedactionEnabled, true)
+	RedactionEnabled bool
 	// RedactionNamePattern is the pattern to use for determining which source names should be redacted.
-	RedactionNamePattern *regexp.Regexp = loader.FromEnv(configObserver, EnvVarRedactionNamePattern, defaultRedactionNamePattern, parser.ParseRegexp)
+	RedactionNamePattern *regexp.Regexp
 	// RedactionValuePattern is the pattern to use for determining which source values should be redacted.
-	RedactionValuePattern *regexp.Regexp = loader.FromEnv(configObserver, EnvVarRedactionValuePattern, defaultRedactionValuePattern, parser.ParseRegexp)
+	RedactionValuePattern *regexp.Regexp
 	// TruncationMaxValue is the maximum number of Unicode characters retained in report values before truncation.
-	TruncationMaxValue uint64 = loader.UintFromEnv(configObserver, EnvVarTruncationMaxValue, 250)
+	TruncationMaxValue uint64
 	// MaxRangeCount is the maximum number of ranges a tainted object can hold.
-	MaxRangeCount uint64 = loader.UintFromEnv(configObserver, EnvVarMaxRangeCount, 10)
+	MaxRangeCount uint64
 	// TelemetryVerbosity determines the verbosity of the telemetry.
-	TelemetryVerbosity LogLevel = loader.FromEnv(configObserver, EnvVarTelemetryVerbosity, LogLevelInformation, parser.ParseLogLevel)
+	TelemetryVerbosity LogLevel
 	// DbRowsToTaint determines the number of database rows that will be tainted for each request.
-	DbRowsToTaint uint64 = loader.UintFromEnv(configObserver, EnvVarDbRowsToTaint, 1)
+	DbRowsToTaint uint64
 	// StackTraceEnabled determines whether stack traces will be included in vulnerability reports.
-	StackTraceEnabled bool = loader.BoolFromEnv(configObserver, EnvVarStackTraceEnabled, true)
+	StackTraceEnabled bool
 )
+
+func load() {
+	observer := loader.Observer{
+		Warn: func(format string, args ...any) {
+			instrumentation.Instance.Logger().Warn(format, args...)
+		},
+		RegisterDefault: func(name string, value any) {
+			instrumentation.Instance.TelemetryRegisterAppConfig(name, value, instrumentation.OriginDefault)
+		},
+		RegisterEnvironment: func(name string, value any) {
+			instrumentation.Instance.TelemetryRegisterAppConfig(name, value, instrumentation.OriginEnvVar)
+		},
+	}
+
+	Enabled = loader.BoolFromEnv(observer, EnvVarEnabled, true)
+	RequestSamplingPct = int(loader.UintFromEnvBounded(observer, EnvVarRequestSampling, 30, uint8(0), uint8(100)))
+	MaxConcurrentRequests = int(loader.UintFromEnvBounded(observer, EnvVarMaxConcurrentRequests, 2, uint64(0), uint64(math.MaxInt)))
+	VulnerabilitiesPerRequest = int(loader.UintFromEnvBounded(observer, EnvVarVulnerabilitiesPerRequest, 2, uint64(1), uint64(math.MaxInt)))
+	DeduplicationEnabled = loader.BoolFromEnv(observer, EnvVarDeduplicationEnabled, true)
+	RedactionEnabled = loader.BoolFromEnv(observer, EnvVarRedactionEnabled, true)
+	RedactionNamePattern = loader.FromEnv(observer, EnvVarRedactionNamePattern, defaultRedactionNamePattern, parser.ParseRegexp)
+	RedactionValuePattern = loader.FromEnv(observer, EnvVarRedactionValuePattern, defaultRedactionValuePattern, parser.ParseRegexp)
+	TruncationMaxValue = loader.UintFromEnv(observer, EnvVarTruncationMaxValue, 250)
+	MaxRangeCount = loader.UintFromEnv(observer, EnvVarMaxRangeCount, 10)
+	TelemetryVerbosity = loader.FromEnv(observer, EnvVarTelemetryVerbosity, LogLevelInformation, parser.ParseLogLevel)
+	DbRowsToTaint = loader.UintFromEnv(observer, EnvVarDbRowsToTaint, 1)
+	StackTraceEnabled = loader.BoolFromEnv(observer, EnvVarStackTraceEnabled, true)
+}
 
 type LogLevel = parser.LogLevel
 

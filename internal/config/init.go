@@ -8,6 +8,7 @@ package config
 import "github.com/DataDog/dd-iast-go/internal/instrumentation"
 
 func init() {
+	load()
 	if Enabled {
 		instrumentation.Instance.TelemetryProductStarted(instrumentation.TelemetryNamespaceIAST)
 	}
