@@ -27,7 +27,7 @@ const (
 	EnvVarTruncationMaxValue        = "DD_IAST_TRUNCATION_MAX_VALUE"
 	EnvVarMaxRangeCount             = "DD_IAST_MAX_RANGE_COUNT"
 	EnvVarTelemetryVerbosity        = "DD_IAST_TELEMETRY_VERBOSITY"
-	EnvVarDbRowsToTaint             = "DD_IAST_DB_ROWS_TO_TAIN"
+	EnvVarDbRowsToTaint             = "DD_IAST_DB_ROWS_TO_TAINT"
 	EnvVarStackTraceEnabled         = "DD_IAST_STACK_TRACE_ENABLED"
 )
 
