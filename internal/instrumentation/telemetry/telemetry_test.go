@@ -8,6 +8,7 @@ import (
 
 	"github.com/DataDog/dd-iast-go/internal/instrumentation/telemetry"
 	"github.com/DataDog/dd-iast-go/internal/model/constants"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -24,9 +25,14 @@ func TestExecutedSource(t *testing.T) {
 	rv := reflect.ValueOf(&telemetry.ExecutedSource).Elem()
 	for name, origin := range origins {
 		field := rv.FieldByName(name)
-		require.True(t, field.IsValid(), "missing field: %T.%s", &telemetry.ExecutedSource, name)
-		ctr, ok := field.Addr().Interface().(*atomic.Uint64)
-		require.True(t, ok, "field %T.%s is not an atomic counter", &telemetry.ExecutedSource, name)
+		if !assert.True(t, field.IsValid(), "missing field: %T.%s", &telemetry.ExecutedSource, name) {
+			continue
+		}
+		actual := field.Addr().Interface()
+		ctr, ok := actual.(*atomic.Uint64)
+		if !assert.True(t, ok, "field %T.%s is %T, not %T", &telemetry.ExecutedSource, name, actual, ctr) {
+			continue
+		}
 
 		t.Cleanup(func() { ctr.Store(0) })
 		val := uint64(origin)*37 + 1
@@ -35,10 +41,10 @@ func TestExecutedSource(t *testing.T) {
 	}
 
 	for origin, ctr := range telemetry.ExecutedSource.Each {
-		require.Equal(t, expected[origin], ctr.Load())
+		assert.Equal(t, expected[origin], ctr.Load())
 		delete(expected, origin)
 	}
-	require.Empty(t, expected, "some origins were not visited by Each: %v", expected)
+	assert.Empty(t, expected, "some origins were not visited by Each: %v", expected)
 }
 
 func TestExecutedSink(t *testing.T) {
@@ -49,9 +55,14 @@ func TestExecutedSink(t *testing.T) {
 	rv := reflect.ValueOf(&telemetry.ExecutedSink).Elem()
 	for name, vulnType := range vulnTypes {
 		field := rv.FieldByName(name)
-		require.True(t, field.IsValid(), "missing field: %T.%s", &telemetry.ExecutedSink, name)
-		ctr, ok := field.Addr().Interface().(*atomic.Uint64)
-		require.True(t, ok, "field %T.%s is not an atomic counter", &telemetry.ExecutedSink, name)
+		if !assert.True(t, field.IsValid(), "missing field: %T.%s", &telemetry.ExecutedSink, name) {
+			continue
+		}
+		actual := field.Addr().Interface()
+		ctr, ok := actual.(*atomic.Uint64)
+		if !assert.True(t, ok, "field %T.%s is %T, not %T", &telemetry.ExecutedSink, name, actual, ctr) {
+			continue
+		}
 
 		t.Cleanup(func() { ctr.Store(0) })
 		val := uint64(vulnType)*41 + 1
@@ -60,10 +71,10 @@ func TestExecutedSink(t *testing.T) {
 	}
 
 	for vulnType, ctr := range telemetry.ExecutedSink.Each {
-		require.Equal(t, expected[vulnType], ctr.Load())
+		assert.Equal(t, expected[vulnType], ctr.Load())
 		delete(expected, vulnType)
 	}
-	require.Empty(t, expected, "some vulnerability types were not visited by Each: %v", expected)
+	assert.Empty(t, expected, "some vulnerability types were not visited by Each: %v", expected)
 }
 
 // captureSourceOrder records the exact sequence of origins visited by a

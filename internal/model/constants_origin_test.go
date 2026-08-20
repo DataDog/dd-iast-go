@@ -3,7 +3,7 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2026-present Datadog, Inc.
 
-package constants_test
+package model
 
 import (
 	"encoding/json"
@@ -13,8 +13,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// originProtocol is the exhaustive, intentionally-duplicated protocol mapping
-// for [constants.Origin]. Every entry pins the constant's name (without the
+// originProtocol lives in model because colocating tests with constants
+// prevents Orchestrion from resolving covered synthetic dependencies. It is
+// the exhaustive, intentionally-duplicated protocol mapping for
+// [constants.Origin]. Every entry pins the constant's name (without the
 // "Origin" prefix), its wire representation, and its numeric value. Adding a
 // new enum value without adding an explicit entry here must fail the
 // cardinality checks below.
