@@ -129,6 +129,7 @@ jobs:
           api_key: ${{ steps.dd-sts.outputs.api_key }}
           files: coverage.txt
           format: go-coverprofile
+          flags: type:unit-tests
 
   benchmark:
     runs-on: ubuntu-latest

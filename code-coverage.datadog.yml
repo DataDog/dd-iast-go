@@ -1,2 +1,15 @@
 schema-version: v1
 carryforward: false
+
+# Ignore test & generated files, as well as benchmarks
+ignore:
+  - "**/*_gen.go"
+  - "benchmarks/"
+
+gates:
+  - type: patch_coverage_percentage
+    config:
+      threshold: 85
+  - type: total_coverage_percentage
+    config:
+      threshold: 85
