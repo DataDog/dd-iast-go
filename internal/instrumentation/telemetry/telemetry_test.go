@@ -8,80 +8,88 @@ import (
 
 	"github.com/DataDog/dd-iast-go/internal/instrumentation/telemetry"
 	"github.com/DataDog/dd-iast-go/internal/model/constants"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestMaxCardinalities(t *testing.T) {
-	require.LessOrEqual(t, len(constants.AllOrigins()), 32, "there should always be less than 32 origins")
-	require.LessOrEqual(t, len(constants.AllVulnerabilityTypes()), 64, "there should always be less than 64 vulnerability types")
+	if got := len(constants.AllOrigins()); got > 32 {
+		t.Errorf("origin count = %d, want at most 32", got)
+	}
+	if got := len(constants.AllVulnerabilityTypes()); got > 64 {
+		t.Errorf("vulnerability type count = %d, want at most 64", got)
+	}
 }
 
 func TestExecutedSource(t *testing.T) {
 	origins := constants.AllOrigins()
-
 	expected := make(map[constants.Origin]uint64, len(origins))
 
 	rv := reflect.ValueOf(&telemetry.ExecutedSource).Elem()
 	for name, origin := range origins {
 		field := rv.FieldByName(name)
-		if !assert.True(t, field.IsValid(), "missing field: %T.%s", &telemetry.ExecutedSource, name) {
+		if !field.IsValid() {
+			t.Errorf("missing field: %T.%s", &telemetry.ExecutedSource, name)
 			continue
 		}
 		actual := field.Addr().Interface()
-		ctr, ok := actual.(*atomic.Uint64)
-		if !assert.True(t, ok, "field %T.%s is %T, not %T", &telemetry.ExecutedSource, name, actual, ctr) {
+		counter, ok := actual.(*atomic.Uint64)
+		if !ok {
+			t.Errorf("field %T.%s is %T, not %T", &telemetry.ExecutedSource, name, actual, counter)
 			continue
 		}
 
-		t.Cleanup(func() { ctr.Store(0) })
-		val := uint64(origin)*37 + 1
-		ctr.Store(val)
-		expected[origin] = val
+		t.Cleanup(func() { counter.Store(0) })
+		value := uint64(origin)*37 + 1
+		counter.Store(value)
+		expected[origin] = value
 	}
 
-	for origin, ctr := range telemetry.ExecutedSource.Each {
-		assert.Equal(t, expected[origin], ctr.Load())
+	for origin, counter := range telemetry.ExecutedSource.Each {
+		if got, want := counter.Load(), expected[origin]; got != want {
+			t.Errorf("counter for %s = %d, want %d", origin, got, want)
+		}
 		delete(expected, origin)
 	}
-	assert.Empty(t, expected, "some origins were not visited by Each: %v", expected)
+	if len(expected) != 0 {
+		t.Errorf("origins not visited by Each: %v", expected)
+	}
 }
 
 func TestExecutedSink(t *testing.T) {
-	vulnTypes := constants.AllVulnerabilityTypes()
-
-	expected := make(map[constants.VulnerabilityType]uint64, len(vulnTypes))
+	vulnerabilityTypes := constants.AllVulnerabilityTypes()
+	expected := make(map[constants.VulnerabilityType]uint64, len(vulnerabilityTypes))
 
 	rv := reflect.ValueOf(&telemetry.ExecutedSink).Elem()
-	for name, vulnType := range vulnTypes {
+	for name, vulnerabilityType := range vulnerabilityTypes {
 		field := rv.FieldByName(name)
-		if !assert.True(t, field.IsValid(), "missing field: %T.%s", &telemetry.ExecutedSink, name) {
+		if !field.IsValid() {
+			t.Errorf("missing field: %T.%s", &telemetry.ExecutedSink, name)
 			continue
 		}
 		actual := field.Addr().Interface()
-		ctr, ok := actual.(*atomic.Uint64)
-		if !assert.True(t, ok, "field %T.%s is %T, not %T", &telemetry.ExecutedSink, name, actual, ctr) {
+		counter, ok := actual.(*atomic.Uint64)
+		if !ok {
+			t.Errorf("field %T.%s is %T, not %T", &telemetry.ExecutedSink, name, actual, counter)
 			continue
 		}
 
-		t.Cleanup(func() { ctr.Store(0) })
-		val := uint64(vulnType)*41 + 1
-		ctr.Store(val)
-		expected[vulnType] = val
+		t.Cleanup(func() { counter.Store(0) })
+		value := uint64(vulnerabilityType)*41 + 1
+		counter.Store(value)
+		expected[vulnerabilityType] = value
 	}
 
-	for vulnType, ctr := range telemetry.ExecutedSink.Each {
-		assert.Equal(t, expected[vulnType], ctr.Load())
-		delete(expected, vulnType)
+	for vulnerabilityType, counter := range telemetry.ExecutedSink.Each {
+		if got, want := counter.Load(), expected[vulnerabilityType]; got != want {
+			t.Errorf("counter for %s = %d, want %d", vulnerabilityType, got, want)
+		}
+		delete(expected, vulnerabilityType)
 	}
-	assert.Empty(t, expected, "some vulnerability types were not visited by Each: %v", expected)
+	if len(expected) != 0 {
+		t.Errorf("vulnerability types not visited by Each: %v", expected)
+	}
 }
 
-// captureSourceOrder records the exact sequence of origins visited by a
-// complete, uninterrupted range over telemetry.ExecutedSource.Each. It does
-// not mutate any counter.
-func captureSourceOrder(t *testing.T) []constants.Origin {
-	t.Helper()
+func captureSourceOrder() []constants.Origin {
 	var order []constants.Origin
 	for origin := range telemetry.ExecutedSource.Each {
 		order = append(order, origin)
@@ -89,59 +97,61 @@ func captureSourceOrder(t *testing.T) []constants.Origin {
 	return order
 }
 
-// captureSinkOrder records the exact sequence of vulnerability types visited
-// by a complete, uninterrupted range over telemetry.ExecutedSink.Each. It does
-// not mutate any counter.
-func captureSinkOrder(t *testing.T) []constants.VulnerabilityType {
-	t.Helper()
+func captureSinkOrder() []constants.VulnerabilityType {
 	var order []constants.VulnerabilityType
-	for vulnType := range telemetry.ExecutedSink.Each {
-		order = append(order, vulnType)
+	for vulnerabilityType := range telemetry.ExecutedSink.Each {
+		order = append(order, vulnerabilityType)
 	}
 	return order
 }
 
 func TestExecutedSourceEachVisitsExactlyAllOrigins(t *testing.T) {
-	order := captureSourceOrder(t)
-
+	order := captureSourceOrder()
 	all := constants.AllOrigins()
-	require.Len(t, order, len(all), "the complete iteration order must have exactly one entry per origin")
+	if got, want := len(order), len(all); got != want {
+		t.Errorf("iteration count = %d, want %d", got, want)
+	}
 
 	seen := make(map[constants.Origin]bool, len(order))
 	for _, origin := range order {
-		require.False(t, seen[origin], "origin %s was visited more than once", origin)
+		if seen[origin] {
+			t.Errorf("origin %s was visited more than once", origin)
+		}
 		seen[origin] = true
 	}
 	for name, origin := range all {
-		require.True(t, seen[origin], "origin %s (%s) was never visited", name, origin)
+		if !seen[origin] {
+			t.Errorf("origin %s (%s) was not visited", name, origin)
+		}
 	}
 }
 
 func TestExecutedSinkEachVisitsExactlyAllVulnerabilityTypes(t *testing.T) {
-	order := captureSinkOrder(t)
-
+	order := captureSinkOrder()
 	all := constants.AllVulnerabilityTypes()
-	require.Len(t, order, len(all), "the complete iteration order must have exactly one entry per vulnerability type")
+	if got, want := len(order), len(all); got != want {
+		t.Errorf("iteration count = %d, want %d", got, want)
+	}
 
 	seen := make(map[constants.VulnerabilityType]bool, len(order))
-	for _, vulnType := range order {
-		require.False(t, seen[vulnType], "vulnerability type %s was visited more than once", vulnType)
-		seen[vulnType] = true
+	for _, vulnerabilityType := range order {
+		if seen[vulnerabilityType] {
+			t.Errorf("vulnerability type %s was visited more than once", vulnerabilityType)
+		}
+		seen[vulnerabilityType] = true
 	}
-	for name, vulnType := range all {
-		require.True(t, seen[vulnType], "vulnerability type %s (%s) was never visited", name, vulnType)
+	for name, vulnerabilityType := range all {
+		if !seen[vulnerabilityType] {
+			t.Errorf("vulnerability type %s (%s) was not visited", name, vulnerabilityType)
+		}
 	}
 }
 
-// TestExecutedSourceEachRangeBreaksAtEveryPoint exercises an actual
-// `for ... range telemetry.ExecutedSource.Each` loop and breaks at every
-// possible position in the captured order. If any `yield` call inside `Each`
-// were missing its `return` after being told to stop, the range runtime would
-// invoke the already-stopped iterator function again and panic; this test
-// would fail (via panic) rather than silently pass.
 func TestExecutedSourceEachRangeBreaksAtEveryPoint(t *testing.T) {
-	order := captureSourceOrder(t)
-	require.NotEmpty(t, order)
+	order := captureSourceOrder()
+	if len(order) == 0 {
+		t.Fatal("ExecutedSource.Each produced no values")
+	}
 
 	for i := range order {
 		t.Run(fmt.Sprintf("break_at_%d_%s", i, order[i]), func(t *testing.T) {
@@ -152,37 +162,40 @@ func TestExecutedSourceEachRangeBreaksAtEveryPoint(t *testing.T) {
 					break
 				}
 			}
-			require.Equal(t, order[:i+1], visited)
+			if want := order[:i+1]; !reflect.DeepEqual(visited, want) {
+				t.Errorf("visited = %v, want %v", visited, want)
+			}
 		})
 	}
 }
 
-// TestExecutedSinkEachRangeBreaksAtEveryPoint is the VulnerabilityType
-// equivalent of TestExecutedSourceEachRangeBreaksAtEveryPoint.
 func TestExecutedSinkEachRangeBreaksAtEveryPoint(t *testing.T) {
-	order := captureSinkOrder(t)
-	require.NotEmpty(t, order)
+	order := captureSinkOrder()
+	if len(order) == 0 {
+		t.Fatal("ExecutedSink.Each produced no values")
+	}
 
 	for i := range order {
 		t.Run(fmt.Sprintf("break_at_%d_%s", i, order[i]), func(t *testing.T) {
 			var visited []constants.VulnerabilityType
-			for vulnType := range telemetry.ExecutedSink.Each {
-				visited = append(visited, vulnType)
-				if vulnType == order[i] {
+			for vulnerabilityType := range telemetry.ExecutedSink.Each {
+				visited = append(visited, vulnerabilityType)
+				if vulnerabilityType == order[i] {
 					break
 				}
 			}
-			require.Equal(t, order[:i+1], visited)
+			if want := order[:i+1]; !reflect.DeepEqual(visited, want) {
+				t.Errorf("visited = %v, want %v", visited, want)
+			}
 		})
 	}
 }
 
-// TestExecutedSourceEachCallbackStopsOnFalse verifies that a caller invoking
-// Each directly (not through range syntax) and returning false from the
-// callback stops further callbacks from being made.
 func TestExecutedSourceEachCallbackStopsOnFalse(t *testing.T) {
-	order := captureSourceOrder(t)
-	require.NotEmpty(t, order)
+	order := captureSourceOrder()
+	if len(order) == 0 {
+		t.Fatal("ExecutedSource.Each produced no values")
+	}
 	stopAfter := len(order)/2 + 1
 
 	var visited []constants.Origin
@@ -190,22 +203,24 @@ func TestExecutedSourceEachCallbackStopsOnFalse(t *testing.T) {
 		visited = append(visited, origin)
 		return len(visited) < stopAfter
 	})
-
-	require.Equal(t, order[:stopAfter], visited)
+	if want := order[:stopAfter]; !reflect.DeepEqual(visited, want) {
+		t.Errorf("visited = %v, want %v", visited, want)
+	}
 }
 
-// TestExecutedSinkEachCallbackStopsOnFalse is the VulnerabilityType
-// equivalent of TestExecutedSourceEachCallbackStopsOnFalse.
 func TestExecutedSinkEachCallbackStopsOnFalse(t *testing.T) {
-	order := captureSinkOrder(t)
-	require.NotEmpty(t, order)
+	order := captureSinkOrder()
+	if len(order) == 0 {
+		t.Fatal("ExecutedSink.Each produced no values")
+	}
 	stopAfter := len(order)/2 + 1
 
 	var visited []constants.VulnerabilityType
-	telemetry.ExecutedSink.Each(func(vulnType constants.VulnerabilityType, _ *atomic.Uint64) bool {
-		visited = append(visited, vulnType)
+	telemetry.ExecutedSink.Each(func(vulnerabilityType constants.VulnerabilityType, _ *atomic.Uint64) bool {
+		visited = append(visited, vulnerabilityType)
 		return len(visited) < stopAfter
 	})
-
-	require.Equal(t, order[:stopAfter], visited)
+	if want := order[:stopAfter]; !reflect.DeepEqual(visited, want) {
+		t.Errorf("visited = %v, want %v", visited, want)
+	}
 }
