@@ -66,6 +66,8 @@ Before committing any change:
 
 ## Testing
 
+### Orchestrion gating of instrumentation packages
+
 Tests that require compile-time instrumentation must be run with [orchestrion],
 so the correct way to execute them is to use the following command pattern:
 
@@ -93,3 +95,19 @@ This does not apply to mere unit tests which do not require any compile-time
 instrumentation to be injected.
 
 [orchestrion]: https://github.com/DataDog/orchestrion
+
+### Testing of injectable packages
+
+Many packages in this module will be injected by orchestrion as new dependencies
+of instrumented packages. This can cause issues when testing those packages with
+coverage instrumentation, as a coverage-instrumented for-test variant of the
+package may be built in addition to a regular coverage-instrumented variant, and
+the right one must be selected for linking.
+
+In some situations, orchestrion cannot technically create the correct package
+version to inject if the tests are in the same package as the tested code, and
+the build fails with a message indicating tests should be moved to a dedicated
+`*_test` package. When doing so, un-exported members that were being tested
+should usually be moved to a new `internal/` package instead of being exported
+in-place (as this would increase the locally available API surface purely for
+testing purposes).
