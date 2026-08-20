@@ -104,10 +104,6 @@ and export it from that internal package. Import the internal package from both
 the production package and its external tests. Do not expand the original
 package API only for tests.
 
-Keep external test dependencies minimal. Dependencies can match Orchestrion
-aspects and create a path back to the package under test. Prefer the standard
-library when possible, and validate the result with the CI coverage command:
-
 ```console
 go tool orchestrion go test \
   -shuffle=on \
