@@ -17,21 +17,16 @@ import (
 	"github.com/DataDog/dd-iast-go/internal/model/constants"
 )
 
-const (
-	maxCardinalitySources = 32
-	maxCardinalitySinks   = 64
-)
-
 // Build-time metrics. These are modified only by `init` functions inserted at
 // build time by the instrumentation; which is why they don't need to be atomic
 // or synchronized.
 var (
 	// InstrumentedSource is the number of sources instrumented during build.
-	InstrumentedSource = make(map[constants.Origin]uint, maxCardinalitySources)
+	InstrumentedSource = make(map[constants.Origin]uint, constants.OriginCount)
 	// InstrumentedPropagation is the number of propagation points instrumented during the build.
 	InstrumentedPropagation = uint(0)
 	// InstrumentedSink is the number of sinks instrumented during the build.
-	InstrumentedSink = make(map[constants.VulnerabilityType]uint, maxCardinalitySinks)
+	InstrumentedSink = make(map[constants.VulnerabilityType]uint, constants.VulnerabilityTypeCount)
 )
 
 // Run-time metrics. These are modified by the running application and have to

@@ -36,16 +36,16 @@ const (
 	OriginGraphqlResolverArgument
 	OriginSqlRowValue
 
-	// originCount is the total number of [Origin] values that exist. This is used
+	// OriginCount is the total number of [Origin] values that exist. This is used
 	// for testing.
-	originCount uint = iota - 1
+	OriginCount uint = iota - 1
 )
 
 // AllOrigins returns the list of all existing [Origin] values by their constant
 // name without the "Origin" prefix. This is used for testing.
 func AllOrigins() map[string]Origin {
-	origins := make(map[string]Origin, originCount)
-	for i := range originCount {
+	origins := make(map[string]Origin, OriginCount)
+	for i := range OriginCount {
 		o := Origin(i + 1)
 		origins[o.name()] = o
 	}
