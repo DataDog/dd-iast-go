@@ -62,7 +62,9 @@ func AnnotationFor(span *tracer.Span) *Annotation {
 			if !hasSpace {
 				instrumentation.Instance.TelemetryLog().
 					Warn("iast/annotation: max concurrent requests reached, not storing annotation for span", slog.Any("span", spanID))
-				return nil, false
+				// Cancel the computation. Returning false would store a nil value,
+				// which Finished would later dereference.
+				return nil, true
 			}
 			ann := new(Annotation)
 			ann.Sampled = samplingDecision()
