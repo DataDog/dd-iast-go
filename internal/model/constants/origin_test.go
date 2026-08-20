@@ -3,23 +3,21 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2026-present Datadog, Inc.
 
-package model
+package constants_test
 
 import (
+	"bytes"
 	"encoding/json"
+	"strconv"
 	"testing"
 
 	"github.com/DataDog/dd-iast-go/internal/model/constants"
-	"github.com/stretchr/testify/require"
 )
 
-// originProtocol lives in model because colocating tests with constants
-// prevents Orchestrion from resolving covered synthetic dependencies. It is
-// the exhaustive, intentionally-duplicated protocol mapping for
-// [constants.Origin]. Every entry pins the constant's name (without the
-// "Origin" prefix), its wire representation, and its numeric value. Adding a
-// new enum value without adding an explicit entry here must fail the
-// cardinality checks below.
+// originProtocol is the exhaustive, intentionally duplicated protocol mapping
+// for [constants.Origin]. Every entry pins the constant name without the
+// "Origin" prefix and its wire representation. Adding an enum value without an
+// explicit entry here must fail the cardinality checks below.
 var originProtocol = []struct {
 	name  string
 	value constants.Origin
@@ -46,21 +44,36 @@ var originProtocol = []struct {
 }
 
 func TestOriginProtocolCardinality(t *testing.T) {
-	require.Equal(t, uint(18), constants.OriginCount, "the protocol origin count must stay at the agreed literal")
-	require.Len(t, originProtocol, 18, "the exhaustive protocol table must cover every origin exactly once")
-	require.Equal(t, int(constants.OriginCount), len(originProtocol))
+	if got, want := constants.OriginCount, uint(18); got != want {
+		t.Errorf("OriginCount = %d, want %d", got, want)
+	}
+	if got, want := len(originProtocol), 18; got != want {
+		t.Errorf("len(originProtocol) = %d, want %d", got, want)
+	}
+	if got, want := uint(len(originProtocol)), constants.OriginCount; got != want {
+		t.Errorf("protocol table length = %d, OriginCount = %d", got, want)
+	}
 }
 
 func TestAllOrigins(t *testing.T) {
 	all := constants.AllOrigins()
-	require.Len(t, all, len(originProtocol))
+	if got, want := len(all), len(originProtocol); got != want {
+		t.Errorf("len(AllOrigins()) = %d, want %d", got, want)
+	}
 
 	seen := make(map[constants.Origin]bool, len(originProtocol))
 	for _, row := range originProtocol {
 		got, ok := all[row.name]
-		require.True(t, ok, "AllOrigins is missing entry %q", row.name)
-		require.Equal(t, row.value, got, "AllOrigins()[%q] has an unexpected value", row.name)
-		require.False(t, seen[row.value], "value %d appears more than once in the protocol table", row.value)
+		if !ok {
+			t.Errorf("AllOrigins() is missing entry %q", row.name)
+			continue
+		}
+		if got != row.value {
+			t.Errorf("AllOrigins()[%q] = %d, want %d", row.name, got, row.value)
+		}
+		if seen[row.value] {
+			t.Errorf("origin value %d appears more than once", row.value)
+		}
 		seen[row.value] = true
 	}
 }
@@ -68,7 +81,9 @@ func TestAllOrigins(t *testing.T) {
 func TestOriginString(t *testing.T) {
 	for _, row := range originProtocol {
 		t.Run(row.name, func(t *testing.T) {
-			require.Equal(t, row.wire, row.value.String())
+			if got := row.value.String(); got != row.wire {
+				t.Errorf("String() = %q, want %q", got, row.wire)
+			}
 		})
 	}
 }
@@ -77,12 +92,20 @@ func TestOriginJSONRoundTrip(t *testing.T) {
 	for _, row := range originProtocol {
 		t.Run(row.name, func(t *testing.T) {
 			data, err := json.Marshal(row.value)
-			require.NoError(t, err)
-			require.JSONEq(t, `"`+row.wire+`"`, string(data))
+			if err != nil {
+				t.Fatalf("MarshalJSON() error: %v", err)
+			}
+			if got, want := string(data), strconv.Quote(row.wire); got != want {
+				t.Errorf("MarshalJSON() = %s, want %s", got, want)
+			}
 
 			var decoded constants.Origin
-			require.NoError(t, json.Unmarshal(data, &decoded))
-			require.Equal(t, row.value, decoded)
+			if err := json.Unmarshal(data, &decoded); err != nil {
+				t.Fatalf("UnmarshalJSON() error: %v", err)
+			}
+			if decoded != row.value {
+				t.Errorf("JSON round trip = %d, want %d", decoded, row.value)
+			}
 		})
 	}
 }
@@ -94,18 +117,33 @@ func TestOriginMessagePackRoundTrip(t *testing.T) {
 	for _, row := range originProtocol {
 		t.Run(row.name, func(t *testing.T) {
 			encoded, err := row.value.MarshalMsg(append([]byte(nil), prefix...))
-			require.NoError(t, err)
-			require.Equal(t, prefix, encoded[:len(prefix)])
+			if err != nil {
+				t.Fatalf("MarshalMsg() error: %v", err)
+			}
+			if len(encoded) < len(prefix) {
+				t.Fatalf("MarshalMsg() returned %d bytes, shorter than the %d-byte prefix", len(encoded), len(prefix))
+			}
+			if got := encoded[:len(prefix)]; !bytes.Equal(got, prefix) {
+				t.Errorf("MarshalMsg() prefix = %x, want %x", got, prefix)
+			}
 
 			payload := encoded[len(prefix):]
-			require.LessOrEqual(t, len(payload), row.value.Msgsize(), "Msgsize must be an upper bound on the encoded size")
+			if got, max := len(payload), row.value.Msgsize(); got > max {
+				t.Errorf("MarshalMsg() length = %d, exceeds Msgsize() = %d", got, max)
+			}
 
 			withSuffix := append(append([]byte(nil), payload...), suffix...)
 			var decoded constants.Origin
 			remainder, err := decoded.UnmarshalMsg(withSuffix)
-			require.NoError(t, err)
-			require.Equal(t, row.value, decoded)
-			require.Equal(t, suffix, remainder)
+			if err != nil {
+				t.Fatalf("UnmarshalMsg() error: %v", err)
+			}
+			if decoded != row.value {
+				t.Errorf("MessagePack round trip = %d, want %d", decoded, row.value)
+			}
+			if !bytes.Equal(remainder, suffix) {
+				t.Errorf("UnmarshalMsg() remainder = %x, want %x", remainder, suffix)
+			}
 		})
 	}
 }
@@ -122,11 +160,12 @@ func TestOriginRejectsInvalidJSON(t *testing.T) {
 		{"malformed syntax", `"unterminated`},
 		{"empty document", ``},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			var o constants.Origin
-			err := o.UnmarshalJSON([]byte(tt.data))
-			require.Error(t, err)
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			var origin constants.Origin
+			if err := origin.UnmarshalJSON([]byte(test.data)); err == nil {
+				t.Errorf("UnmarshalJSON(%q) succeeded, want an error", test.data)
+			}
 		})
 	}
 }
@@ -140,47 +179,53 @@ func TestOriginRejectsInvalidMessagePack(t *testing.T) {
 		{"wrong type (int instead of string)", []byte{0x01}},
 		{"truncated string header", []byte{0xdb, 0x00}},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			var o constants.Origin
-			_, err := o.UnmarshalMsg(tt.data)
-			require.Error(t, err)
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			var origin constants.Origin
+			if _, err := origin.UnmarshalMsg(test.data); err == nil {
+				t.Errorf("UnmarshalMsg(%x) succeeded, want an error", test.data)
+			}
 		})
 	}
 }
 
 func TestOriginInvalidValueFallbackFormatting(t *testing.T) {
 	invalid := constants.Origin(255)
-	require.Equal(t, "Origin(255)", invalid.String())
+	if got, want := invalid.String(), "Origin(255)"; got != want {
+		t.Errorf("String() = %q, want %q", got, want)
+	}
 
 	data, err := invalid.MarshalJSON()
-	require.NoError(t, err, "MarshalJSON never fails because String always returns a fallback")
-	require.JSONEq(t, `"Origin(255)"`, string(data))
+	if err != nil {
+		t.Fatalf("MarshalJSON() error: %v", err)
+	}
+	if got, want := string(data), `"Origin(255)"`; got != want {
+		t.Errorf("MarshalJSON() = %s, want %s", got, want)
+	}
 
 	var decoded constants.Origin
-	require.Error(t, decoded.UnmarshalJSON(data), "the fallback string must not parse back into a valid constants.Origin")
+	if err := decoded.UnmarshalJSON(data); err == nil {
+		t.Error("fallback JSON string parsed as a valid Origin")
+	}
 
 	encoded, err := invalid.MarshalMsg(nil)
-	require.NoError(t, err)
+	if err != nil {
+		t.Fatalf("MarshalMsg() error: %v", err)
+	}
 	var decodedMsg constants.Origin
-	_, err = decodedMsg.UnmarshalMsg(encoded)
-	require.Error(t, err, "the fallback string must not round-trip through MessagePack either")
+	if _, err := decodedMsg.UnmarshalMsg(encoded); err == nil {
+		t.Error("fallback MessagePack string parsed as a valid Origin")
+	}
 }
 
 func TestOriginUint8SweepNeverPanics(t *testing.T) {
-	for i := 0; i <= 255; i++ {
-		o := constants.Origin(i)
-		require.NotPanics(t, func() {
-			_ = o.String()
-		}, "String must not panic for value %d", i)
-		require.NotPanics(t, func() {
-			_, _ = o.MarshalJSON()
-		}, "MarshalJSON must not panic for value %d", i)
-		require.NotPanics(t, func() {
-			_, _ = o.MarshalMsg(nil)
-		}, "MarshalMsg must not panic for value %d", i)
-		require.NotPanics(t, func() {
-			_ = o.Msgsize()
-		}, "Msgsize must not panic for value %d", i)
+	for i := range 256 {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			origin := constants.Origin(i)
+			assertNotPanics(t, "String", func() { _ = origin.String() })
+			assertNotPanics(t, "MarshalJSON", func() { _, _ = origin.MarshalJSON() })
+			assertNotPanics(t, "MarshalMsg", func() { _, _ = origin.MarshalMsg(nil) })
+			assertNotPanics(t, "Msgsize", func() { _ = origin.Msgsize() })
+		})
 	}
 }

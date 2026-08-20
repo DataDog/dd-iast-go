@@ -86,6 +86,36 @@ func TestName(t *testing.T) {
 
 This skip is not needed for unit tests that do not require instrumentation.
 
+### External test packages for injectable code
+
+Orchestrion can fail to link a coverage-instrumented for-test package variant
+when tests use the same Go package as injectable production code. If the error
+asks for a dedicated `*_test` package, use Go's external test package pattern:
+
+- keep the `*_test.go` files in the same directory as the tested package;
+- change their package clause from `package example` to
+  `package example_test`; and
+- do not create a separate directory named `example_test` or move the tests to
+  an unrelated package.
+
+An external test package can access only exported symbols. If a test needs
+unexported logic, move that logic to an appropriate package under `internal/`
+and export it from that internal package. Import the internal package from both
+the production package and its external tests. Do not expand the original
+package API only for tests.
+
+Keep external test dependencies minimal. Dependencies can match Orchestrion
+aspects and create a path back to the package under test. Prefer the standard
+library when possible, and validate the result with the CI coverage command:
+
+```console
+go tool orchestrion go test \
+  -shuffle=on \
+  -covermode=atomic \
+  -coverpkg=./... \
+  ./...
+```
+
 Before you submit a pull request, run the same static checks as CI:
 
 ```console

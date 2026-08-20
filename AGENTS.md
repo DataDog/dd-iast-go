@@ -104,10 +104,22 @@ coverage instrumentation, as a coverage-instrumented for-test variant of the
 package may be built in addition to a regular coverage-instrumented variant, and
 the right one must be selected for linking.
 
-In some situations, orchestrion cannot technically create the correct package
-version to inject if the tests are in the same package as the tested code, and
-the build fails with a message indicating tests should be moved to a dedicated
-`*_test` package. When doing so, un-exported members that were being tested
-should usually be moved to a new `internal/` package instead of being exported
-in-place (as this would increase the locally available API surface purely for
-testing purposes).
+In some situations, orchestrion cannot create the correct package version to
+inject when tests use the same Go package as the tested code. The build then
+asks for a dedicated `*_test` package. This means Go's external test package
+pattern: keep the `*_test.go` files in the tested package's directory, but
+change their package clause from `package example` to `package example_test`.
+It NEVER means creating a separate directory or moving the tests to an
+unrelated package.
+
+An external test package can access only exported symbols. If a test must cover
+unexported logic, move that logic to an appropriate package under `internal/`
+and export it from that internal package. The production package and its
+external test package can then both import it. Do not export symbols from the
+original package only to make them available to tests.
+
+Keep dependencies of external test packages minimal. A test dependency can
+itself match an Orchestrion aspect and introduce a dependency path back to the
+package under test. Prefer the standard library when it provides the required
+test support, and always validate the package layout with the same Orchestrion
+coverage command used by CI.
