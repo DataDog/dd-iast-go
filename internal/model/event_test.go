@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/DataDog/dd-iast-go/internal/config"
 	"github.com/DataDog/dd-iast-go/internal/model/constants"
 	"github.com/stretchr/testify/require"
 	"github.com/tinylib/msgp/msgp"
@@ -128,4 +129,67 @@ func mustJSONMarshal(t *testing.T, value any) []byte {
 	data, err := json.Marshal(value)
 	require.NoError(t, err)
 	return data
+}
+
+// withConfig temporarily overrides the given config globals for the duration
+// of the test and restores their original values on cleanup. This keeps
+// package-global configuration state from leaking between tests.
+func withConfig(t *testing.T, vulnerabilitiesPerRequest int, deduplicationEnabled bool) {
+	t.Helper()
+
+	prevLimit := config.VulnerabilitiesPerRequest
+	prevDedup := config.DeduplicationEnabled
+	t.Cleanup(func() {
+		config.VulnerabilitiesPerRequest = prevLimit
+		config.DeduplicationEnabled = prevDedup
+	})
+
+	config.VulnerabilitiesPerRequest = vulnerabilitiesPerRequest
+	config.DeduplicationEnabled = deduplicationEnabled
+}
+
+func TestAddVulnerabilityDeduplicationEnabledRejectsDuplicateHash(t *testing.T) {
+	withConfig(t, 10, true)
+
+	event := NewEvent()
+	first := Vulnerability{Type: constants.VulnerabilityTypeXss, Hash: 7}
+	second := Vulnerability{Type: constants.VulnerabilityTypeSsrf, Hash: 7}
+
+	require.True(t, event.AddVulnerability(first), "the first vulnerability must be admitted")
+	require.False(t, event.AddVulnerability(second), "a vulnerability with a duplicate hash must be rejected when deduplication is enabled")
+
+	require.Len(t, event.Vulnerabilities, 1, "the duplicate must not be appended")
+	require.Equal(t, first, event.Vulnerabilities[0], "the first duplicate must remain stored unchanged")
+}
+
+func TestAddVulnerabilityDeduplicationDisabledAdmitsDuplicateHash(t *testing.T) {
+	withConfig(t, 10, false)
+
+	event := NewEvent()
+	first := Vulnerability{Type: constants.VulnerabilityTypeXss, Hash: 7}
+	second := Vulnerability{Type: constants.VulnerabilityTypeSsrf, Hash: 7}
+
+	require.True(t, event.AddVulnerability(first), "the first vulnerability must be admitted")
+	require.True(t, event.AddVulnerability(second), "a vulnerability with a duplicate hash must be admitted when deduplication is disabled")
+
+	require.Len(t, event.Vulnerabilities, 2)
+	require.Equal(t, []Vulnerability{first, second}, event.Vulnerabilities)
+}
+
+func TestAddVulnerabilityRejectsAtLimitWithoutMutatingEvent(t *testing.T) {
+	withConfig(t, 1, true)
+
+	event := NewEvent()
+	first := Vulnerability{Type: constants.VulnerabilityTypeXss, Hash: 1}
+	require.True(t, event.AddVulnerability(first))
+
+	capBefore := cap(event.Vulnerabilities)
+	snapshotBefore := append([]Vulnerability(nil), event.Vulnerabilities...)
+
+	second := Vulnerability{Type: constants.VulnerabilityTypeSsrf, Hash: 2}
+	require.False(t, event.AddVulnerability(second), "adding beyond the configured limit must be rejected")
+
+	require.Len(t, event.Vulnerabilities, 1, "the event must not grow beyond the configured limit")
+	require.Equal(t, capBefore, cap(event.Vulnerabilities), "rejecting an admission must not grow the backing array")
+	require.Equal(t, snapshotBefore, event.Vulnerabilities, "rejecting an admission must not modify the stored vulnerabilities")
 }

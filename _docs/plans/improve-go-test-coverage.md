@@ -74,13 +74,11 @@ all documented environment variables to the public configuration globals.
 This avoids pretending that direct helper tests cover init-time configuration.
 The child process exists for behavioral isolation; its execution is not
 expected to contribute to the parent coverage profile, while package init also
-runs in the covered parent binary. The branch fixes the environment variable
-typo: the supported spelling is now `DD_IAST_DB_ROWS_TO_TAINT`. The
-initialization test will assert this literal
-value and verify that the former `DD_IAST_DB_ROWS_TO_TAIN` spelling is not
-accepted as an alias. Validation will also confirm that the repository-root
-configuration documentation uses the corrected spelling. The unused
-`stringFromEnv` helper will not receive a line-driving test.
+runs in the covered parent binary. The branch fixes the environment variable typo: the supported spelling is now
+`DD_IAST_DB_ROWS_TO_TAINT`. The initialization test will assert this literal
+value. Validation will also confirm that the repository-root configuration
+documentation uses the corrected spelling. The unused `stringFromEnv` helper
+will not receive a line-driving test.
 
 Tests will use `t.Setenv` or an explicitly filtered subprocess environment,
 restore process environment through test cleanup, and will not run in parallel
@@ -88,11 +86,13 @@ because environment state and instrumentation registration are process-global.
 
 ### 2. Model enum serialization contracts
 
-Add exhaustive in-package (`package constants`) table-driven tests in
-`internal/model/constants` for every `Origin` and `VulnerabilityType` value so
-that package-private parsers and test helpers can be checked directly. Each
-table will define the constant
-name and its wire representation, then verify:
+The exact Orchestrion coverage command confirms that tests colocated with
+`internal/model/constants`, including an external `constants_test` package,
+create an unsafe covered for-test package variant. Place the exhaustive tests
+in the sibling `internal/model/constantstest` directory with package name
+`constants_test`. Exercise package-private parsing and naming indirectly through
+the exported serialization and exhaustive-list contracts. Each table will
+define the constant name and its wire representation, then verify:
 
 - the literal protocol cardinalities (18 origins and 36 vulnerability types),
   table length, and bidirectional contents of `AllOrigins` or
@@ -140,16 +140,21 @@ maps.
 Add focused in-package (`package model`) tests in
 `internal/model/event_test.go` for:
 
-- `NewEvent` allocation using the configured request limit;
 - vulnerability de-duplication when enabled;
 - duplicate admission when de-duplication is disabled;
-- rejection at the per-request limit without modifying the event, growing its
-  capacity, or bypassing the limit to perform de-duplication.
+- rejection at the per-request limit without modifying the event or growing
+  its capacity.
 
-The tests will assert that the first duplicate remains stored and that the
-limit check takes precedence over de-duplication. These tests protect the
-bounded-storage behavior required by the repository and restore
-package-global configuration with test cleanup. They will not run in parallel.
+The tests will assert that the first duplicate remains stored. They will not
+claim to distinguish whether the limit or de-duplication check runs first,
+because both paths have the same observable API result. They also will not
+assert `NewEvent`'s exact preallocated capacity: QA review identified that the
+current `math.MaxInt` configuration bound can request an unsafe allocation, and
+a capacity assertion would freeze that coupling. Defining a safe production
+maximum changes configuration behavior and remains separate from this test-only
+coverage change. These tests protect observable bounded-admission behavior and
+restore package-global configuration with test cleanup. They will not run in
+parallel.
 
 ## Explicitly excluded
 
