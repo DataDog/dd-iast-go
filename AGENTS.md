@@ -64,32 +64,7 @@ Before committing any change:
 - run all applicable linters and checkers and fix every reported issue; and
 - do not commit until all applicable validation completes cleanly.
 
-## Testing
+## More information
 
-Tests that require compile-time instrumentation must be run with [orchestrion],
-so the correct way to execute them is to use the following command pattern:
-
-```console
-$ go tool orchestrion go test <go test args ...>
-```
-
-In order to be friendlier to users, such tests must begin with a conditional
-skip instructing the user on how to properly run the suite if [orchestrion] was
-not properly used:
-
-```go
-import "github.com/DataDog/orchestrion/runtime/built"
-
-func TestName(t *testing.T) {
-  if !built.WithOrchestrion {
-    t.Skip("orchestrion is not enabled, use `go tool orchestrion go test` to run this test suite")
-  }
-
-  // ...
-}
-```
-
-This does not apply to mere unit tests which do not require any compile-time
-instrumentation to be injected.
-
-[orchestrion]: https://github.com/DataDog/orchestrion
+Read [CONTRIBUTING.md](./CONTRIBUTING.md) for additional information that must
+be considered when working on this repository.

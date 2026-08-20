@@ -3,13 +3,18 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2026-present Datadog, Inc.
 
-package config
+package model_test
 
-import "github.com/DataDog/dd-iast-go/internal/instrumentation"
+import (
+	"encoding/json"
+	"testing"
+)
 
-func init() {
-	load()
-	if Enabled {
-		instrumentation.Instance.TelemetryProductStarted(instrumentation.TelemetryNamespaceIAST)
+func mustJSONMarshal(t *testing.T, value any) []byte {
+	t.Helper()
+	data, err := json.Marshal(value)
+	if err != nil {
+		t.Fatalf("json.Marshal(): %v", err)
 	}
+	return data
 }

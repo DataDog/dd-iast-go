@@ -6,12 +6,11 @@
 package config
 
 import (
-	"fmt"
 	"math"
-	"os"
 	"regexp"
-	"strconv"
 
+	"github.com/DataDog/dd-iast-go/internal/config/loader"
+	"github.com/DataDog/dd-iast-go/internal/config/parser"
 	"github.com/DataDog/dd-iast-go/internal/instrumentation"
 )
 
@@ -27,7 +26,7 @@ const (
 	EnvVarTruncationMaxValue        = "DD_IAST_TRUNCATION_MAX_VALUE"
 	EnvVarMaxRangeCount             = "DD_IAST_MAX_RANGE_COUNT"
 	EnvVarTelemetryVerbosity        = "DD_IAST_TELEMETRY_VERBOSITY"
-	EnvVarDbRowsToTaint             = "DD_IAST_DB_ROWS_TO_TAIN"
+	EnvVarDbRowsToTaint             = "DD_IAST_DB_ROWS_TO_TAINT"
 	EnvVarStackTraceEnabled         = "DD_IAST_STACK_TRACE_ENABLED"
 )
 
@@ -38,139 +37,66 @@ var (
 
 var (
 	// Enabled determines whether IAST is enabled or not.
-	Enabled bool = boolFromEnv(EnvVarEnabled, true)
+	Enabled bool
 	// RequestSamplingPct is the percentage of requests that will be sampled for IAST.
-	RequestSamplingPct int = int(uintFromEnvBounded[uint8](EnvVarRequestSampling, 30, 0, 100))
+	RequestSamplingPct int
 	// MaxConcurrentRequests is the maximum number of concurrent requests that will be processed concurrently by IAST.
-	MaxConcurrentRequests int = int(uintFromEnvBounded[uint64](EnvVarMaxConcurrentRequests, 2, 0, math.MaxInt))
+	MaxConcurrentRequests int
 	// VulnerabilitiesPerRequest determines the maximum number of vulnerabilities that will be reported per request.
-	VulnerabilitiesPerRequest int = int(uintFromEnvBounded[uint64](EnvVarVulnerabilitiesPerRequest, 2, 1, math.MaxInt))
+	VulnerabilitiesPerRequest int
 	// DeduplicationEnabled determines whether vulnerability deduplication is enabled or not.
-	DeduplicationEnabled bool = boolFromEnv(EnvVarDeduplicationEnabled, true)
+	DeduplicationEnabled bool
 	// RedactionEnabled determines whether sensitive data redaction is enabled or not.
-	RedactionEnabled bool = boolFromEnv(EnvVarRedactionEnabled, true)
+	RedactionEnabled bool
 	// RedactionNamePattern is the pattern to use for determining which source names should be redacted.
-	RedactionNamePattern *regexp.Regexp = parseFromEnv(EnvVarRedactionNamePattern, defaultRedactionNamePattern, parseRegexp)
+	RedactionNamePattern *regexp.Regexp
 	// RedactionValuePattern is the pattern to use for determining which source values should be redacted.
-	RedactionValuePattern *regexp.Regexp = parseFromEnv(EnvVarRedactionValuePattern, defaultRedactionValuePattern, parseRegexp)
+	RedactionValuePattern *regexp.Regexp
 	// TruncationMaxValue is the maximum number of Unicode characters retained in report values before truncation.
-	TruncationMaxValue uint64 = uintFromEnv(EnvVarTruncationMaxValue, 250)
+	TruncationMaxValue uint64
 	// MaxRangeCount is the maximum number of ranges a tainted object can hold.
-	MaxRangeCount uint64 = uintFromEnv(EnvVarMaxRangeCount, 10)
+	MaxRangeCount uint64
 	// TelemetryVerbosity determines the verbosity of the telemetry.
-	TelemetryVerbosity LogLevel = parseFromEnv(EnvVarTelemetryVerbosity, LogLevelInformation, parseLogLevel)
+	TelemetryVerbosity LogLevel
 	// DbRowsToTaint determines the number of database rows that will be tainted for each request.
-	DbRowsToTaint uint64 = uintFromEnv(EnvVarDbRowsToTaint, 1)
+	DbRowsToTaint uint64
 	// StackTraceEnabled determines whether stack traces will be included in vulnerability reports.
-	StackTraceEnabled bool = boolFromEnv(EnvVarStackTraceEnabled, true)
+	StackTraceEnabled bool
 )
 
-type LogLevel uint8
+func load() {
+	observer := loader.Observer{
+		Warn: func(format string, args ...any) {
+			instrumentation.Instance.Logger().Warn(format, args...)
+		},
+		RegisterDefault: func(name string, value any) {
+			instrumentation.Instance.TelemetryRegisterAppConfig(name, value, instrumentation.OriginDefault)
+		},
+		RegisterEnvironment: func(name string, value any) {
+			instrumentation.Instance.TelemetryRegisterAppConfig(name, value, instrumentation.OriginEnvVar)
+		},
+	}
+
+	Enabled = loader.BoolFromEnv(observer, EnvVarEnabled, true)
+	RequestSamplingPct = int(loader.UintFromEnvBounded(observer, EnvVarRequestSampling, 30, uint8(0), uint8(100)))
+	MaxConcurrentRequests = int(loader.UintFromEnvBounded(observer, EnvVarMaxConcurrentRequests, 2, uint64(0), uint64(math.MaxInt)))
+	VulnerabilitiesPerRequest = int(loader.UintFromEnvBounded(observer, EnvVarVulnerabilitiesPerRequest, 2, uint64(1), uint64(math.MaxInt)))
+	DeduplicationEnabled = loader.BoolFromEnv(observer, EnvVarDeduplicationEnabled, true)
+	RedactionEnabled = loader.BoolFromEnv(observer, EnvVarRedactionEnabled, true)
+	RedactionNamePattern = loader.FromEnv(observer, EnvVarRedactionNamePattern, defaultRedactionNamePattern, parser.ParseRegexp)
+	RedactionValuePattern = loader.FromEnv(observer, EnvVarRedactionValuePattern, defaultRedactionValuePattern, parser.ParseRegexp)
+	TruncationMaxValue = loader.UintFromEnv(observer, EnvVarTruncationMaxValue, 250)
+	MaxRangeCount = loader.UintFromEnv(observer, EnvVarMaxRangeCount, 10)
+	TelemetryVerbosity = loader.FromEnv(observer, EnvVarTelemetryVerbosity, LogLevelInformation, parser.ParseLogLevel)
+	DbRowsToTaint = loader.UintFromEnv(observer, EnvVarDbRowsToTaint, 1)
+	StackTraceEnabled = loader.BoolFromEnv(observer, EnvVarStackTraceEnabled, true)
+}
+
+type LogLevel = parser.LogLevel
 
 const (
-	_ LogLevel = iota
-	LogLevelOff
-	LogLevelMandatory
-	LogLevelInformation
-	LogLevelDebug
+	LogLevelOff         = parser.LogLevelOff
+	LogLevelMandatory   = parser.LogLevelMandatory
+	LogLevelInformation = parser.LogLevelInformation
+	LogLevelDebug       = parser.LogLevelDebug
 )
-
-func parseLogLevel(val string) (LogLevel, error) {
-	switch val {
-	case "OFF":
-		return LogLevelOff, nil
-	case "MANDATORY":
-		return LogLevelMandatory, nil
-	case "INFORMATION":
-		return LogLevelInformation, nil
-	case "DEBUG":
-		return LogLevelDebug, nil
-	default:
-		return 0, fmt.Errorf("invalid log level (expected one of OFF, MANDATORY, INFORMATION, or DEBUG): %s", val)
-	}
-}
-
-func parseRegexp(val string) (*regexp.Regexp, error) {
-	return regexp.Compile(val)
-}
-
-func boolFromEnv(envVar string, defaultValue bool) bool {
-	val, ok := os.LookupEnv(envVar)
-	if !ok {
-		instrumentation.Instance.TelemetryRegisterAppConfig(envVar, defaultValue, instrumentation.OriginDefault)
-		return defaultValue
-	}
-	res, err := strconv.ParseBool(val)
-	if err != nil {
-		instrumentation.Instance.Logger().Warn("invalid value for %s (expected boolean): %s", envVar, val)
-		instrumentation.Instance.TelemetryRegisterAppConfig(envVar, defaultValue, instrumentation.OriginDefault)
-		return defaultValue
-	}
-	instrumentation.Instance.TelemetryRegisterAppConfig(envVar, res, instrumentation.OriginEnvVar)
-	return res
-}
-
-type unsigned interface {
-	uint | uint8 | uint16 | uint32 | uint64
-}
-
-func uintFromEnvBounded[T unsigned](envVar string, defaultValue uint64, min T, max T) T {
-	val, origin := uintFromEnvNoTelemetry(envVar, defaultValue)
-	if val < uint64(min) {
-		instrumentation.Instance.Logger().Warn("invalid value for %s (expected integer between %d and %d): %d", envVar, min, max, val)
-		instrumentation.Instance.TelemetryRegisterAppConfig(envVar, min, origin)
-		return min
-	}
-	if val > uint64(max) {
-		instrumentation.Instance.Logger().Warn("invalid value for %s (expected integer between %d and %d): %d", envVar, min, max, val)
-		instrumentation.Instance.TelemetryRegisterAppConfig(envVar, max, origin)
-		return max
-	}
-	instrumentation.Instance.TelemetryRegisterAppConfig(envVar, T(val), origin)
-	return T(val)
-}
-
-func uintFromEnv(envVar string, defaultValue uint64) uint64 {
-	val, origin := uintFromEnvNoTelemetry(envVar, defaultValue)
-	instrumentation.Instance.TelemetryRegisterAppConfig(envVar, val, origin)
-	return val
-}
-
-func uintFromEnvNoTelemetry(envVar string, defaultValue uint64) (uint64, instrumentation.TelemetryOrigin) {
-	val, ok := os.LookupEnv(envVar)
-	if !ok {
-		return defaultValue, instrumentation.OriginDefault
-	}
-	res, err := strconv.ParseUint(val, 10, 64)
-	if err != nil {
-		instrumentation.Instance.Logger().Warn("invalid value for %s (expected integer): %s", envVar, val)
-		return defaultValue, instrumentation.OriginDefault
-	}
-	return res, instrumentation.OriginEnvVar
-}
-
-func stringFromEnv(envVar string, defaultValue string) string {
-	val, ok := os.LookupEnv(envVar)
-	if !ok {
-		instrumentation.Instance.TelemetryRegisterAppConfig(envVar, defaultValue, instrumentation.OriginDefault)
-		return defaultValue
-	}
-	instrumentation.Instance.TelemetryRegisterAppConfig(envVar, val, instrumentation.OriginEnvVar)
-	return val
-}
-
-func parseFromEnv[T any](envVar string, defaultValue T, parse func(string) (T, error)) T {
-	val, ok := os.LookupEnv(envVar)
-	if !ok {
-		instrumentation.Instance.TelemetryRegisterAppConfig(envVar, defaultValue, instrumentation.OriginDefault)
-		return defaultValue
-	}
-	res, err := parse(val)
-	if err != nil {
-		instrumentation.Instance.Logger().Warn("invalid value for %s: %s", envVar, val)
-		instrumentation.Instance.TelemetryRegisterAppConfig(envVar, defaultValue, instrumentation.OriginDefault)
-		return defaultValue
-	}
-	instrumentation.Instance.TelemetryRegisterAppConfig(envVar, res, instrumentation.OriginEnvVar)
-	return res
-}

@@ -8,9 +8,9 @@ package model
 import (
 	"encoding/json"
 	"fmt"
-	"strings"
 
 	"github.com/DataDog/dd-iast-go/internal/config"
+	"github.com/DataDog/dd-iast-go/internal/model/truncation"
 )
 
 //go:generate go tool msgp -io=false -tests=false
@@ -23,22 +23,15 @@ const (
 	TruncatedSideRight
 )
 
-// truncateStringIfNeeded truncates a string if it is longer than [config.TruncationMaxValue], and
-// returns a [strings.Clone] in such cases, in order to avoid retaining the original long string. If
-// the string contains at most [config.TruncationMaxValue] characters, it is returned as-is.
-func truncateStringIfNeeded(s string) (string, TruncatedSide) {
-	if uint64(len(s)) <= config.TruncationMaxValue {
-		return s, TruncatedSideNone
+// truncateStringIfNeeded truncates a string if it is longer than
+// [config.TruncationMaxValue]. It clones a truncated prefix to avoid retaining
+// the original long string. Values within the limit are returned as-is.
+func truncateStringIfNeeded(value string) (string, TruncatedSide) {
+	result, truncated := truncation.String(value, config.TruncationMaxValue)
+	if truncated {
+		return result, TruncatedSideRight
 	}
-
-	var characters uint64
-	for index := range s {
-		if characters == config.TruncationMaxValue {
-			return strings.Clone(s[:index]), TruncatedSideRight
-		}
-		characters++
-	}
-	return s, TruncatedSideNone
+	return result, TruncatedSideNone
 }
 
 func (t TruncatedSide) String() string {

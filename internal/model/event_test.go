@@ -3,38 +3,31 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2026-present Datadog, Inc.
 
-package model
+package model_test
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"testing"
 
+	"github.com/DataDog/dd-iast-go/internal/config"
+	"github.com/DataDog/dd-iast-go/internal/model"
 	"github.com/DataDog/dd-iast-go/internal/model/constants"
 	"github.com/stretchr/testify/require"
 	"github.com/tinylib/msgp/msgp"
 )
 
 func TestEventMarshalMsg(t *testing.T) {
-	event := Event{
-		Sources: []Source{
-			NewSourceString(
-				constants.OriginHttpRequestParameter,
-				"query",
-				"shady",
-			),
-			NewSourceRedactedString(
-				constants.OriginHttpRequestHeader,
-				"Authorization",
-				"<redacted-pattern>",
-			),
+	event := model.Event{
+		Sources: []model.Source{
+			model.NewSourceString(constants.OriginHttpRequestParameter, "query", "shady"),
+			model.NewSourceRedactedString(constants.OriginHttpRequestHeader, "Authorization", "<redacted-pattern>"),
 		},
-		Vulnerabilities: []Vulnerability{
-			NewVulnerability(
+		Vulnerabilities: []model.Vulnerability{
+			model.NewVulnerability(
 				constants.VulnerabilityTypeWeakHash,
-				NewEvidenceEmpty(),
-				&Location{
+				model.NewEvidenceEmpty(),
+				&model.Location{
 					SpanID:  123,
 					Path:    "hash.go",
 					Class:   "Hasher",
@@ -43,26 +36,18 @@ func TestEventMarshalMsg(t *testing.T) {
 					StackID: "stack-1",
 				},
 			),
-			NewVulnerability(
-				constants.VulnerabilityTypeWeakCipher,
-				NewEvidenceString("DES"),
-				nil,
-			),
-			NewVulnerability(
+			model.NewVulnerability(constants.VulnerabilityTypeWeakCipher, model.NewEvidenceString("DES"), nil),
+			model.NewVulnerability(
 				constants.VulnerabilityTypeSqlInjection,
-				NewEvidenceTaintedValue([]ValuePart{
-					NewValuePartString("SELECT "),
-					NewValuePartRedactedString("***"),
-					NewValuePartTaintedString("shady", 0, []constants.VulnerabilityType{constants.VulnerabilityTypeXss}),
-					NewValuePartTaintedRedactedString("<redacted-pattern>", 1, []constants.VulnerabilityType{constants.VulnerabilityTypeSqlInjection}),
+				model.NewEvidenceTaintedValue([]model.ValuePart{
+					model.NewValuePartString("SELECT "),
+					model.NewValuePartRedactedString("***"),
+					model.NewValuePartTaintedString("shady", 0, []constants.VulnerabilityType{constants.VulnerabilityTypeXss}),
+					model.NewValuePartTaintedRedactedString("<redacted-pattern>", 1, []constants.VulnerabilityType{constants.VulnerabilityTypeSqlInjection}),
 				}),
 				nil,
 			),
-			NewVulnerability(
-				constants.VulnerabilityTypeHardcodedSecret,
-				NewEvidenceRedactedString("pattern"),
-				nil,
-			),
+			model.NewVulnerability(constants.VulnerabilityTypeHardcodedSecret, model.NewEvidenceRedactedString("pattern"), nil),
 		},
 	}
 
@@ -100,9 +85,9 @@ func TestEventMarshalMsg(t *testing.T) {
 }
 
 func TestEventMarshalMsgOmitsEmptyFields(t *testing.T) {
-	event := Event{Vulnerabilities: []Vulnerability{NewVulnerability(
+	event := model.Event{Vulnerabilities: []model.Vulnerability{model.NewVulnerability(
 		constants.VulnerabilityTypeWeakHash,
-		NewEvidenceString("SHA-1"),
+		model.NewEvidenceString("SHA-1"),
 		nil,
 	)}}
 
@@ -123,9 +108,53 @@ func TestEventMarshalMsgOmitsEmptyFields(t *testing.T) {
 	}`, decoded.String())
 }
 
-func mustJSONMarshal(t *testing.T, value any) []byte {
+func withConfig(t *testing.T, vulnerabilitiesPerRequest int, deduplicationEnabled bool) {
 	t.Helper()
-	data, err := json.Marshal(value)
-	require.NoError(t, err)
-	return data
+	previousLimit := config.VulnerabilitiesPerRequest
+	previousDeduplication := config.DeduplicationEnabled
+	config.VulnerabilitiesPerRequest = vulnerabilitiesPerRequest
+	config.DeduplicationEnabled = deduplicationEnabled
+	t.Cleanup(func() {
+		config.VulnerabilitiesPerRequest = previousLimit
+		config.DeduplicationEnabled = previousDeduplication
+	})
+}
+
+func TestAddVulnerabilityDeduplicationEnabledRejectsDuplicateHash(t *testing.T) {
+	withConfig(t, 10, true)
+
+	event := model.NewEvent()
+	first := model.Vulnerability{Type: constants.VulnerabilityTypeXss, Hash: 7}
+	second := model.Vulnerability{Type: constants.VulnerabilityTypeSsrf, Hash: 7}
+
+	require.True(t, event.AddVulnerability(first), "the first vulnerability must be admitted")
+	require.False(t, event.AddVulnerability(second), "a vulnerability with a duplicate hash must be rejected when deduplication is enabled")
+	require.Equal(t, []model.Vulnerability{first}, event.Vulnerabilities)
+}
+
+func TestAddVulnerabilityDeduplicationDisabledAdmitsDuplicateHash(t *testing.T) {
+	withConfig(t, 10, false)
+
+	event := model.NewEvent()
+	first := model.Vulnerability{Type: constants.VulnerabilityTypeXss, Hash: 7}
+	second := model.Vulnerability{Type: constants.VulnerabilityTypeSsrf, Hash: 7}
+
+	require.True(t, event.AddVulnerability(first), "the first vulnerability must be admitted")
+	require.True(t, event.AddVulnerability(second), "a vulnerability with a duplicate hash must be admitted when deduplication is disabled")
+	require.Equal(t, []model.Vulnerability{first, second}, event.Vulnerabilities)
+}
+
+func TestAddVulnerabilityRejectsAtLimitWithoutMutatingEvent(t *testing.T) {
+	withConfig(t, 1, true)
+
+	event := model.NewEvent()
+	first := model.Vulnerability{Type: constants.VulnerabilityTypeXss, Hash: 1}
+	require.True(t, event.AddVulnerability(first))
+
+	capacityBefore := cap(event.Vulnerabilities)
+	valuesBefore := append([]model.Vulnerability(nil), event.Vulnerabilities...)
+	second := model.Vulnerability{Type: constants.VulnerabilityTypeSsrf, Hash: 2}
+	require.False(t, event.AddVulnerability(second), "adding beyond the configured limit must be rejected")
+	require.Equal(t, capacityBefore, cap(event.Vulnerabilities), "rejecting an admission must not grow the backing array")
+	require.Equal(t, valuesBefore, event.Vulnerabilities, "rejecting an admission must not modify stored vulnerabilities")
 }
