@@ -1,6 +1,6 @@
 module github.com/DataDog/dd-iast-go
 
-go 1.25.13
+go 1.26.6
 
 tool (
 	github.com/DataDog/orchestrion

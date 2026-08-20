@@ -89,7 +89,7 @@ func TestConstructorsTruncateStrings(t *testing.T) {
 		require.Equal(t, ValuePart{
 			Value:       truncatedValue,
 			Truncated:   TruncatedSideRight,
-			SourceIndex: pointerTo(sourceIndex),
+			SourceIndex: new(sourceIndex),
 			SecureMarks: secureMarks,
 		}, NewValuePartTaintedString(longValue, sourceIndex, secureMarks))
 	})
@@ -99,7 +99,7 @@ func TestConstructorsTruncateStrings(t *testing.T) {
 			Pattern:     truncatedValue,
 			Redacted:    true,
 			Truncated:   TruncatedSideRight,
-			SourceIndex: pointerTo(sourceIndex),
+			SourceIndex: new(sourceIndex),
 			SecureMarks: secureMarks,
 		}, NewValuePartTaintedRedactedString(longValue, sourceIndex, secureMarks))
 	})
@@ -134,7 +134,7 @@ func TestTruncatedStringsMarshalMsg(t *testing.T) {
 	}{
 		{
 			name:     "source",
-			value:    pointerTo(NewSourceString(constants.OriginHttpRequestParameter, "query", "abcd")),
+			value:    new(NewSourceString(constants.OriginHttpRequestParameter, "query", "abcd")),
 			expected: `{"origin":"http.request.parameter","name":"query","value":"abc","truncated":"right"}`,
 		},
 		{
@@ -144,7 +144,7 @@ func TestTruncatedStringsMarshalMsg(t *testing.T) {
 		},
 		{
 			name:     "value part",
-			value:    pointerTo(NewValuePartTaintedRedactedString("abcd", 7, []constants.VulnerabilityType{constants.VulnerabilityTypeXss})),
+			value:    new(NewValuePartTaintedRedactedString("abcd", 7, []constants.VulnerabilityType{constants.VulnerabilityTypeXss})),
 			expected: `{"pattern":"abc","redacted":true,"truncated":"right","source":7,"secure_marks":["XSS"]}`,
 		},
 	} {
@@ -168,8 +168,4 @@ func setTruncationMaxValue(t *testing.T, maxValue uint64) {
 	previousMaxValue := config.TruncationMaxValue
 	config.TruncationMaxValue = maxValue
 	t.Cleanup(func() { config.TruncationMaxValue = previousMaxValue })
-}
-
-func pointerTo[T any](value T) *T {
-	return &value
 }
