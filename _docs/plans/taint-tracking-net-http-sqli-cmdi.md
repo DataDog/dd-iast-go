@@ -4,7 +4,7 @@
 
 - **State:** proposed for review
 - **Scope:** Interactive Application Security Testing (IAST) taint engine, Go standard-library HTTP sources, string and byte-slice propagation, `database/sql` SQL-injection sinks, and `os/exec` command-injection sinks
-- **Target toolchain:** Go 1.26.6 and Orchestrion 1.12.2 initially
+- **Initial supported compiler:** exact Go 1.26.6 via `GOTOOLCHAIN=go1.26.6`, with Orchestrion 1.12.2. The `go.mod` `go` directive alone does not identify the standard-library sources being woven.
 - **Removal:** delete this file after the implementation is complete and accepted; keep it only in change history
 
 ## 1. Objective
@@ -25,7 +25,7 @@ The Go implementation must use Go-specific mechanisms. In particular, Java objec
 
 ### 2.1 In scope
 
-1. A bounded taint engine for `string` and `[]byte` values.
+1. A bounded taint engine for built-in and defined string/byte-slice types, including `type UserString string` and `type UserBytes []byte`.
 2. Byte-offset range algebra with source provenance and secure marks.
 3. One IAST request lifetime for each incoming `net/http` request.
 4. These initial HTTP origins:
@@ -37,9 +37,10 @@ The Go implementation must use Go-specific mechanisms. In particular, Java objec
    - query and form parameter names and values;
    - path parameter values exposed by `(*http.Request).PathValue`;
    - multipart parameter names and values;
+   - request-body reader provenance through common wrappers;
    - raw request body values returned through an owned-result API such as `io.ReadAll`.
 
-   Direct taint of caller-owned `Request.Body.Read` buffers is not in the first release because Go does not expose the allocation base or retained size of an arbitrary interior slice.
+   The first release binds the request body as an untrusted reader and propagates that binding through an explicit wrapper matrix such as `io.LimitReader`. Direct taint of arbitrary caller-owned `Request.Body.Read` buffers remains deferred because Go does not expose the allocation base or retained size of an interior destination slice.
 5. Propagation through:
    - string concatenation;
    - string and byte-slice slicing;
@@ -49,18 +50,20 @@ The Go implementation must use Go-specific mechanisms. In particular, Java objec
 6. SQL-injection checks for query text executed through `database/sql`, including prepared-statement execution.
 7. Command-injection checks when an `os/exec.Cmd` attempts to start a process.
 8. Tainted evidence formatting, redaction, source indexing, process-level de-duplication, telemetry, unit tests, instrumented tests, race tests, and overhead benchmarks.
+9. An immediate `encoding/json` propagation phase for `Unmarshal` and `Decoder.Decode`.
 
 ### 2.2 Not in the initial release
 
 - HTTP framework-specific sources outside standard `net/http`.
-- Tainting values decoded through `encoding/json`, `encoding/xml`, reflection, or third-party binders. Owned raw-body results can be tainted, but structured decoding needs separate propagation work.
+- Tainting values decoded through `encoding/xml`, general reflection outside the `encoding/json` integration, or third-party binders.
 - Direct taint of arbitrary caller-owned `io.Reader.Read` destination buffers.
 - Raw body results larger than the finalized managed-root byte ceiling. The first release returns them unchanged and records a dropped body source.
 - Database row sources. `OriginSqlRowValue` and `DD_IAST_DB_ROWS_TO_TAINT` already exist, but row taint is a later source integration.
+- Stored taint that outlives its originating request owner. Active foreign-owner taint reports in the first release; values cached beyond request completion need a separate bounded persistent-taint design.
 - Sanitizer instrumentation. The range and reporting model supports secure marks now; specific sanitizer functions are later work.
 - Other sink families such as server-side request forgery (SSRF), path traversal, cross-site scripting (XSS), Lightweight Directory Access Protocol (LDAP) injection, and NoSQL injection.
 - Implicit goroutine-local request state. A goroutine must receive the request context or operate on an already-tainted value.
-- Runtime hooks in `runtime.concatstrings` or other Go runtime internals.
+- General runtime instrumentation beyond the specific Phase 0 concatenation/conversion proof-of-concept. Runtime hooks are a candidate short-term mechanism, not an assumed production design.
 
 ## 3. Reference semantics
 
@@ -136,43 +139,46 @@ The missing parts are:
 - payload-size protection;
 - end-to-end tests and overhead benchmarks.
 
-## 5. Safety result: an address is not an identity
+## 5. Value identity and backing-memory lifetime
 
-The initial hypothesis is directionally correct: the fast identity key should use the address of the data backing a string or byte slice. The address cannot be used alone.
+The proposed lookup key starts from `unsafe.StringData` or `unsafe.SliceData`: the address of the first byte, plus the visible byte length and value kind. This is fast and makes aliases observable, but a plain address is not a durable object identity. Go exposes real virtual addresses, not logical generational handles. Stack slots and collected heap allocations can reuse the same numeric address, and equal values can share static backing storage. The design must therefore pair address lookup with explicit lifetime and provenance rules.
 
-### 5.1 Verified hazards
+### 5.1 Runtime facts and required reconfirmation
 
-On Go 1.26.6:
+Go 1.26.6 source inspection and isolated probes established these facts:
 
 - string data can be in read-only static memory, global small-value tables, a goroutine stack, or the heap;
 - `net/textproto` interns common header names, and application literals can share their backing address;
 - `strconv` can return small values from shared static storage;
-- stack data moves and stack addresses are reused;
-- allocator addresses are reused quickly after collection;
-- `unsafe.StringData("")` can be `nil`;
-- `unsafe.SliceData` for a zero-capacity slice returns an unspecified address;
-- `weak.Make(unsafe.StringData(value))` can terminate the process with a runtime `throw` for non-heap pointers;
-- `runtime.AddCleanup` on such a pointer can panic;
-- both weak handles and cleanup registration can force values to escape;
-- a `uintptr` does not keep an allocation alive and does not prevent address reuse;
-- a short substring can be an interior pointer into a much larger allocation, so charging only `len(substring)` does not bound retained memory.
+- `unsafe.StringData("")` can be `nil`, and `unsafe.SliceData` for a zero-capacity slice returns an unspecified address; empty values contain no attacker-controlled bytes, so the engine can safely treat them as untainted;
+- Go pointers are real virtual addresses; there is no generational logical-address layer for ordinary objects;
+- forced-GC allocation probes reused heap addresses, and repeated non-escaping operations reused stack addresses;
+- `weak.Make` uses heap weak handles, but `weak.Make(unsafe.StringData(literal))` reached the runtime's unrecoverable `getWeakHandle on invalid pointer` throw;
+- `runtime.AddCleanup` on non-heap data reached `runtime.AddCleanup: ptr not in allocated block`;
+- `weak.Make` and `AddCleanup` can make a parameter escape, but escape analysis does not relocate a string literal, an existing static backing, or every interior pointer into a new independent allocation. Escape is a performance effect, not a general validity proof;
+- `uintptr` neither keeps an allocation alive nor prevents address reuse;
+- an interior substring pointer keeps the complete parent allocation alive, so charging only `len(substring)` does not bound retained memory.
 
-Verify these claims against the installed Go sources before each supported toolchain update. The relevant Go 1.26.6 files are `src/unsafe/unsafe.go`, `src/weak/pointer.go`, `src/runtime/mheap.go`, `src/runtime/mcleanup.go`, `src/runtime/string.go`, and `src/net/textproto/reader.go`.
+The Go 1.26.6 evidence is in `src/unsafe/unsafe.go`, `src/weak/pointer.go`, `src/runtime/mheap.go`, `src/runtime/mcleanup.go`, `src/runtime/string.go`, `src/cmd/compile/internal/walk/expr.go`, and `src/net/textproto/reader.go`. Phase 0 reruns the weak-pointer, cleanup, heap-reuse, stack-reuse, and interior-retention probes in isolated subprocesses for every supported toolchain. This guards against runtime changes and makes the claims reproducible.
 
-Therefore the implementation must never call `weak.Make` or `runtime.AddCleanup` on string or slice data pointers. A process-global `uintptr`-only map is rejected. A strong anchor to an arbitrary application value is also rejected because the value can use shared static storage or retain an unknown larger allocation.
+The first design must not call `weak.Make` or `runtime.AddCleanup` on arbitrary string or slice data pointers. A later design can use weak pointers for known heap objects such as `*url.URL` or wrapper reader objects. A process-global `uintptr`-only value map is also rejected. A strong anchor to an arbitrary application value is insufficient because it can refer to static storage or retain an unknown larger allocation.
 
-### 5.2 Chosen identity: managed backing allocations
+### 5.2 Managed backing allocations
 
-Only a **managed tainted value** can enter the identity index. The public source operation returns a replacement value:
+A **managed root** is the complete backing allocation that the engine keeps alive and charges to a hard byte budget. A **value entry** is one visible string or byte-slice window into that root, with its own address, length, ranges, and source provenance. The value entry stores a root identifier, not another strong substring or parent-string reference; the one root anchor keeps the complete backing alive. Several substrings can share one root without charging or retaining the parent several times.
+
+Only a managed tainted value can enter the initial identity index. The public source operation returns a replacement value:
 
 ```text
-managed = TaintString(owner, source, original) // returns a string
-managed = TaintBytes(owner, source, original)  // returns a []byte
+managed = TaintString[T ~string](owner, source, original) T
+managed = TaintBytes[T ~[]byte](owner, source, original) T
 ```
 
 The source hook must install the returned value in the application-visible field, map, slice, or function result. `TaintString` clones the source into unique backing storage before it records taint. `TaintBytes` also returns owned backing storage; it is valid only where replacing the result preserves the API contract. This copy-on-taint rule prevents an interned header name or small formatted value from tainting an unrelated equal literal.
 
-A stored value still uses its data address and byte length for fast lookup, but its entry refers to a request-owned **root anchor**. The engine creates or adopts a root anchor only when it knows the complete allocation and can charge it once. A slice or substring propagation entry refers to its parent's root anchor and does not create or charge a second anchor. If an operation returns a value outside every input root, the propagation hook clones the result before returning it unless an operation-specific audit proves that the result starts at a complete new allocation. Audited allocating operations such as multi-input string concatenation, `strings.Join`, and reallocating `append` can adopt the result directly and charge its conservative allocation size. Fast paths that return an input reuse that input's root. Operations that can return static storage, such as small-value formatting, must clone. An in-place `append` keeps the existing root. Cloning an `append` result is prohibited because it changes capacity and aliasing.
+Use constrained generic helpers at application call sites so defined types such as `type UserString string` and `type UserBytes []byte` retain their nominal type. Standard-library linkname bridges remain concrete because their target signatures use built-in types. Identity storage normalizes them to the structural `string` or `bytes` kind, but every injected expression must return the original defined type. Aliases such as `type UserString = string` need no special treatment.
+
+A stored value still uses its data address and byte length for fast lookup, but its entry refers to a request-owned **root anchor**. The engine creates or adopts a root anchor only when it knows the complete allocation and can charge it once. A slice or substring propagation entry refers to its parent's root anchor and does not create or charge a second anchor. If an operation returns a value outside every input root, the propagation hook clones the result before returning it unless an operation-specific audit proves that the result starts at a complete new allocation. Audited allocating operations such as allocating `strings.Join` and reallocating `append` can adopt the result directly and charge its conservative allocation size. Concatenation needs extra care: the compiler can provide a stack buffer, and the runtime can return one input unchanged. A runtime hook can adopt only when `buf == nil` and the result does not alias an input; otherwise it shares the input root or returns a managed clone. A source-expression hook must clone on the tainted path unless its proof-of-concept establishes equivalent residency information. Fast paths that return an input reuse that input's root. Operations that can return static storage, such as small-value formatting, must clone. An in-place `append` keeps the existing root. Cloning an `append` result is prohibited because it changes capacity and aliasing.
 
 This produces two key forms:
 
@@ -181,9 +187,22 @@ root:    (root address, root size, owner) -> strong managed anchor
 value:   (value address, value length, kind, owner) -> root anchor + ranges
 ```
 
-The implementation must not adopt an arbitrary interior pointer as a new root. If it cannot prove or create a complete managed root without changing API semantics, it drops taint.
+| Scenario | Root action | Result |
+|---|---|---|
+| HTTP or other source value | Clone and create a root. | Return the managed replacement and record ranges. |
+| Substring or subslice of a managed value | Share the parent's root. | Add a value entry without another root charge. |
+| Operation returns an input unchanged | Share that input root. | Reuse its provenance. |
+| Audited operation returns a complete heap allocation | Adopt and charge the result. | Preserve allocation count and aliases. |
+| Result can be static or stack-backed | Clone before storing. | Return a heap-managed replacement on the tainted path. |
+| In-place `append` | Keep the existing root and update generation. | Preserve capacity and aliases. |
+| Reallocating `append` | Adopt the complete new slice allocation. | Preserve capacity and aliases. |
+| Complete allocation cannot be identified and cloning changes semantics | Do not store the result. | Return the original result and increment a drop counter. |
+| Any capacity or byte limit is full | Do not create the root or entry. | Keep existing entries and increment the relevant drop counter. |
+| Owner finishes | Release all owned roots synchronously. | Invalidate its value entries. |
 
-Empty and one-byte values are not tracked in the first version. Cloning can make them unique, but excluding them keeps static-small-value behavior out of the initial unsafe-adjacent implementation.
+The implementation must not adopt an arbitrary interior pointer as a new root. In practice, a drop occurs when the engine cannot clone without changing observable aliasing or capacity—for example, an arbitrary caller-owned interior `[]byte` destination—or when any root/value/range/byte limit is full. It does not drop ordinary source strings, substrings of managed roots, audited allocating operations, or owned results within their limits.
+
+The first version does not track empty or one-byte values. Empty values carry no attacker-controlled bytes. Cloning can make one-byte values unique, but excluding them keeps static-small-value behavior out of the first unsafe-adjacent implementation.
 
 Managed retention is acceptable only with all of these hard limits:
 
@@ -218,7 +237,7 @@ flowchart LR
     OWNER --> SOURCES[request source table]
     OWNER --> INDEX[bounded global identity index]
     APP[application operations] --> PROP[propagation hooks]
-    PROP --> INDEX
+    PROP <--> INDEX
     SQL[database/sql sink] --> LOOKUP[owner-filtered lookup]
     EXEC[os/exec sink] --> LOOKUP
     LOOKUP --> EVIDENCE[evidence + redaction]
@@ -241,9 +260,10 @@ The exact exported API is subject to implementation review, but package responsi
 | `internal/taint/evidence/` | Convert sink ranges to `model.ValuePart` and request sources to `model.Source`. |
 | `internal/taint/redaction/` | Source redaction plus SQL and command evidence tokenization. |
 | `internal/dedup/` | Fixed-capacity, time-bounded process-level vulnerability de-duplication. |
-| `iast/sources/http/` | Standard `net/http` source hooks and its `orchestrion.yml`. |
-| `iast/injection/sql/` | `database/sql` sink hooks and reporting wrapper. |
-| `iast/injection/command/` | `os/exec` sink hooks and reporting wrapper. |
+| `iast/net/http/sources/` | Standard `net/http` source and reader-provenance hooks. |
+| `iast/database/sql/sinks/` | `database/sql` SQL-injection sink hooks and reporting wrapper. Reserve `iast/database/sql/sources/` for later database-row sources. |
+| `iast/os/exec/` | `os/exec` command-injection sink hooks and reporting wrapper. |
+| `iast/encoding/json/` | `encoding/json` byte/reader-to-decoded-string propagation hooks. |
 
 `orchestrion.tool.go` must import every new package that contains an `orchestrion.yml` file. `README.md` must list the SQL-injection and command-injection packages and the supported source/propagation limitations.
 
@@ -257,13 +277,19 @@ The value index maps one managed value key to a bounded set of owner-specific en
 (ptr, len, kind) -> [(owner A, root A, ranges), (owner B, root B, ranges), ...]
 ```
 
-The owner set supports explicit shared managed backing. Lookup without a context returns owner-separated taint. A propagation operation creates a result entry independently for each contributing owner. A sink with a request context accepts only its owner. A sink without a context accepts a match only when the **matched value entries** resolve to one active owner that is bound to a trace span.
+The owner set supports explicit shared managed backing. Lookup returns owner-separated taint. A propagation operation creates a result entry independently for each contributing owner.
+
+Sink attachment and provenance ownership are separate concerns. A sink reports every unsafe matching entry from any active owner, not only entries owned by the sink request. It materializes those sources into the sink event and attaches the vulnerability to the span active at the sink. If no span is in the supplied context, it uses the current tracer span when available; otherwise it can use a matched owner's bound span or the existing orphan-vulnerability span. Ambiguous ownership must not suppress a real vulnerability.
+
+Foreign-owner lookup returns a bounded immutable snapshot, not live request-local source IDs. Load the source object through an atomic pointer, copy its ranges/source metadata, and verify owner generation/state before accepting the snapshot. `Finish` can clear its slot afterward without invalidating the reporter's local strong reference. If the snapshot cannot be completed consistently, drop only that foreign contribution and count a foreign-owner race drop; never emit a tainted `ValuePart` without a materialized source.
+
+The initial owner cleanup still removes value entries when their source request ends. Persistent values that survive into a later request therefore need a separate, bounded stored-taint lifetime design. Flag cross-request/stored injection as a required follow-up; do not keep request anchors indefinitely merely to support it.
 
 A separate, bounded object-binding table associates a request's `*url.URL` and supported body reader objects with the owner. These are ordinary heap objects, so owner-held strong references or weak pointers are safe choices after Phase 0 measures them. Object bindings use their own count limit and are removed with the owner.
 
 Each owner records bounded slot handles. `Finish` first atomically changes the owner to a terminal state, which rejects all later writes. It then clears anchor and entry slots synchronously and changes each empty index bucket to a reusable tombstone. Inserts reuse tombstones, so stale keys cannot permanently saturate the fixed table. Cleanup must not be a droppable `TryLock` write. Prefer generation-tagged preallocated slots whose anchor pointer can be atomically replaced with `nil`; stale index references contain no strong anchor and fail owner-generation validation. If the implementation uses locks instead, Phase 0 must prove a bounded cleanup path and an opportunistic dead-owner scavenger. A failed fast-path cleanup is never allowed to retain an anchor indefinitely.
 
-Use fixed-capacity, sharded open-addressing tables. Read and ordinary write critical sections have bounded work. Ordinary propagation can use `TryRLock`/`TryLock`; contention is a taint miss or dropped write. Cleanup has the stronger rule above. The production path must not resize a map, allocate a collision chain, retry indefinitely, or create an entry after its owner starts closing.
+Use fixed-capacity, sharded open-addressing tables instead of the repository's existing `xsync.Map`. Keep the maximum load factor below a Phase 0 measured limit (start with 50%, so 16,384 process-wide value entries use at least 32,768 slots); the entry limit is not the slot count. `xsync.Map` is suitable for the bounded span annotation count, but it can grow and does not expose the fixed slot/byte accounting and synchronous owner cleanup required for taint values. "Fixed-capacity" means the implementation allocates a hard maximum number of slots once, probes at most a fixed number of slots, reuses tombstones, and drops a new entry when no slot is available. It does not use a built-in map that can grow or an overflow linked list whose collision nodes can allocate without a bound. This gives a calculable memory ceiling and bounded adversarial-collision work. Read and ordinary write critical sections have bounded work. Ordinary propagation can use `TryRLock`/`TryLock`; contention is a taint miss or dropped write. Cleanup has the stronger rule above. The production path must not retry indefinitely or create an entry after its owner starts closing.
 
 ### 6.3 Entry and range shape
 
@@ -296,7 +322,7 @@ Invariants:
 5. Range count never exceeds the effective configured limit or the hard limit.
 6. Source identifiers are valid for the entry owner.
 7. Marks are intersected when a coarse operation combines bytes with different protection. This is a Go safety decision: a union could invent protection and hide a vulnerability. Reference tracers do not expose one consistent coarse-mark rule.
-8. `Marks` uses the numeric `constants.VulnerabilityType` value as its bit position; it does not define a separate SQL/CMD ordering. A compile-time assertion fails if `constants.VulnerabilityTypeCount` exceeds the mark bit width.
+8. `Marks` uses the 1-based numeric `constants.VulnerabilityType` value as its bit position; bit 0 is unused and no separate SQL/CMD ordering exists. A compile-time assertion requires `constants.VulnerabilityTypeCount < 64`.
 9. Any invariant failure drops the result. It must not panic in production.
 
 ### 6.4 Byte slices and mutation
@@ -318,7 +344,7 @@ Do not read or hash byte contents to detect mutation. Such reads add cost, can p
 
 ## 7. Request and span lifecycle
 
-A standard HTTP request can enter user middleware before a Datadog span is present. Sampling and capacity ownership cannot depend only on `tracer.SpanFromContext` at `net/http.serverHandler.ServeHTTP` entry.
+A standard HTTP request can enter user middleware before a Datadog span is present. Inspection of the current `../dd-trace-go` Orchestrion definitions found no generic `net/http` handler-body aspect that guarantees creation of the server span before IAST's `serverHandler.ServeHTTP` source hook; tracing commonly starts in middleware. Phase 0 must still test the combined woven output and advice order. Until that test proves a stronger guarantee, sampling and capacity ownership cannot depend only on `tracer.SpanFromContext` at request entry.
 
 ```mermaid
 sequenceDiagram
@@ -353,11 +379,11 @@ Required behavior:
 4. The outermost instrumented handler creates and closes an owner whenever its request context has no active owner. This covers direct calls, HTTP/2 over cleartext (h2c), and custom HTTP dispatch paths that bypass `net/http.serverHandler.ServeHTTP`. An in-process re-dispatch that creates a fresh request with a fresh context intentionally creates a separate owner and consumes a separate permit; document and test this boundary.
 5. Refactor sampling and capacity before source work. The `serverHandler.ServeHTTP` hook, or outermost-handler fallback, eagerly creates the analysis before user code runs. One analysis object owns the permit and decision. `AnnotationFor` becomes lookup-or-adopt: it uses the owner analysis when one is in scope and creates a fallback only for a span with no HTTP owner. `tracer.StartSpanFromContext` binds the existing owner analysis before a sink can create a competing annotation. If an annotation already exists, owner binding adopts that same analysis and never changes its decision or `_dd.iast.enabled` value. Add deterministic repeated tests for a weak-hash finding before normal handler binding.
 6. The bound root span receives `_dd.iast.enabled=1` for an acquired sampled owner and `0` for a sampled-out or capacity-dropped owner when a span becomes available. This follows current Go documentation and .NET behavior; Java and JavaScript do not emit `0` symmetrically.
-7. A tainted sink with no context can use an owner only when the matched taint entries resolve to exactly one active owner and that owner is bound to a span. The number of unrelated active owners is not the ambiguity test. Ambiguous or unbound matches are dropped. It must not create an orphan vulnerability from address evidence alone.
+7. A sink inspects every matched active-owner entry. It reports foreign-owner provenance on the span active at the sink instead of suppressing it. Without a supplied span, it checks the current tracer span, then a matched bound span, and finally uses the existing orphan-vulnerability span. Ownership ambiguity can reduce source precision under hard limits, but it must not suppress the vulnerability. If no tracing middleware ever creates a request span, source tracking still runs; the first finding uses the orphan-vulnerability span, and a request with no finding releases its owner without creating a span.
 8. Evidence and source models are fully copied into `model.Event` before the owner finishes. The event must never read the taint store during span serialization.
 9. Owner completion is idempotent. Panic unwinding through a handler still runs cleanup.
 
-An instrumented test must verify the handler-signature aspect and its ordering relative to tracing middleware before the remaining HTTP source work starts. Give owner creation/binding advice an explicit Orchestrion `namespace` and `order`; unnamespaced prepend advice runs last. The current dd-trace-go configuration has no competing generic handler-body aspect, but this test protects future changes.
+An instrumented test must verify runtime statement order relative to tracing middleware before the remaining HTTP source work starts. Orchestrion sorts advice by `(namespace, order, definition index)`, then each `prepend-statements` advice inserts at the top; advice applied later therefore executes earlier. The default namespace sorts last, so unnamespaced prepend advice executes first. Choose an explicit namespace/order only after deriving the desired runtime order from this reversal, and assert the observed sequence. The current dd-trace-go configuration has no competing generic handler-body aspect, but this test protects future changes.
 
 ## 8. Range operations
 
@@ -393,59 +419,65 @@ When an operation produces more than the limit, keep the earliest ranges in outp
 
 Offsets are bytes because Go string and slice operations use byte indices. Tests must include UTF-8, invalid UTF-8, and slices that start or end inside a multi-byte encoding. Range code must not use rune counts for identity or propagation. Existing model truncation continues to count Unicode characters at the reporting boundary.
 
-## 9. Orchestrion capability and prerequisite work
+## 9. Orchestrion and compiler propagation options
 
-The schema at `https://datadoghq.dev/orchestrion/schema.json` and Orchestrion 1.12.2 support named function calls, method calls, function bodies, declarations, values, structs, and expression wrapping. They do not provide join points for:
+The schema at `https://datadoghq.dev/orchestrion/schema.json` and Orchestrion 1.12.2 support function/method calls, function bodies, declarations, values, structs, package filters, and expression wrapping.
 
-- `BinaryExpr` string `+`;
-- `SliceExpr`;
-- built-in conversions such as `string(b)` and `[]byte(s)`;
-- built-ins such as `append` and `copy` with reliable shadowing-safe matching;
-- indirect calls through a function variable.
+### 9.1 Current AST coverage and small Orchestrion extensions
 
-Address-based storage does not repair these missing propagation points.
+`append(...)`, `copy(...)`, and built-in conversions already have the `CallExpr` AST shape that `function-call` can inspect. An unqualified `function-call: append` is unsafe today because Orchestrion checks only the identifier name and empty import path; a local function or function variable named `append` has the same shape. Add a `builtin-call` matcher that resolves `go/types.Info.Uses[ident]` and requires a `*types.Builtin` from `types.Universe`. This is a small type-resolution extension, not a new advice mechanism.
 
-### 9.1 Required Orchestrion extension
+Bare string concatenation uses `BinaryExpr`, and slicing uses `SliceExpr`; Orchestrion 1.12.2 has no join point for either. Add typed matchers for:
 
-Open a separate Orchestrion change that adds typed join points for:
-
-1. a maximal typed string-concatenation chain, not each nested binary node;
+1. a maximal string-concatenation chain;
 2. string and byte-slice slicing, including full slice expressions;
-3. conversions between string-like and byte-slice-like types;
-4. built-in `append` and `copy`;
-5. byte index and slice assignment, if it can be implemented without rewriting unrelated assignments.
+3. string/byte-slice built-in conversions;
+4. byte index and slice assignment if it can avoid unrelated writes.
 
-The matcher must use `go/types`, not syntax text, so it handles aliases and defined types without matching numeric addition or a shadowed function named `append`. Template proxies must expose operands and bounds. Existing `wrap-expression` advice can then call typed propagation helpers.
+The Go compiler already flattens `a+b+c` before lowering it to `runtime.concatstringN`/`concatstrings`. A source rewrite must also capture the maximal chain; rewriting nested binary nodes separately would add intermediate concatenations and allocations. The matcher and helper must:
 
-Semantic requirements for each rewrite:
-
-- capture the maximal `a + b + c` chain and compile one helper wrapper, so Go can retain one concatenation allocation instead of allocating each nested prefix;
-- use generated fixed-arity helpers for common chain sizes (at least 2 through 8); put any variadic fallback behind the active-owner branch so disabled/no-owner paths do not build an escaping operand slice;
-- verify the helper shape with `go build -gcflags=-m` and allocation benchmarks in Phase 0 before finalizing the upstream schema;
-- evaluate every operand exactly once;
-- preserve left-to-right evaluation;
-- preserve return type, including defined string and slice types;
+- use `go/types` so only string-like operands match;
+- evaluate operands once and in source order;
 - preserve panic and bounds-check behavior;
-- do not recover a host panic;
-- exclude all `dd-iast-go` taint implementation packages from their own aspects;
-- add compile fixtures for generic types, defined types, omitted slice bounds, full slices, variadic append, and shadowed built-ins;
-- benchmark disabled, unsampled, untainted, and tainted paths.
+- preserve defined result types such as `type UserString string` and `type UserBytes []byte`;
+- prove with `go build -gcflags=-m` that disabled and untainted operands do not newly escape;
+- use constrained generic or generated fixtures for `~string` and `~[]byte` because Orchestrion has no existing generic-constraint precedent;
+- cover omitted/full slice bounds, variadic append, copy, local homonyms, aliases, and defined types.
 
-Do not instrument Go runtime concatenation helpers. A hook there affects every string concatenation, runs during runtime-sensitive paths, creates linking and initialization risks, and cannot meet the host-safety requirement.
+String and byte-slice slicing lowers to pointer arithmetic and bounds checks, not to a runtime helper. Only failure paths call runtime panic functions. A typed `SliceExpr` join point is therefore required; there is no runtime-hook fallback for slicing.
 
-The dd-iast-go implementation can develop named-function propagation in parallel, but the initial feature is not complete until concatenation, slicing, and string/byte conversion aspects are available. `append`, `copy`, and arbitrary byte mutation can follow behind an explicit coverage flag if their rewrite cost is too high.
+### 9.2 Runtime concatenation and conversion proof-of-concept
 
-### 9.2 Aspect patterns
+Runtime hooks remain a candidate short-term path for concatenation and conversions. Go 1.26.6 lowers string chains to `runtime.concatstring2` through `concatstring5` or `runtime.concatstrings`; the fixed-arity helpers delegate to `concatstrings`. It lowers conversions through helpers such as `slicebytetostring` and `stringtoslicebyte`.
 
-Use two distinct patterns.
+Orchestrion can inject a `go:linkname` declaration and callback into the runtime function body before compilation. A probe confirmed that this direction links and runs. Pulling an unexported runtime helper from ordinary application code is different and is rejected by the linker's `checkLinkname` rules. The plan must not describe a generic package-link cycle as the blocker.
 
-**HTTP sources and sinks inside standard-library implementations:** a standard-library package cannot import `dd-iast-go` normally. Match the exact function body, inject one `//go:linkname` declaration per affected source file, add the target package to `links`, and call a nil-safe helper. Avoid duplicate declarations when several functions share one file.
+Phase 0 compares runtime hooks with source-expression hooks. A runtime hook is acceptable only if it proves all of these properties:
 
-**Named propagation operations such as `strings.Join`:** instrument function and method **call sites**, not the standard-library function definition. A call-site `wrap-expression` can be excluded from `dd-iast-go` and `dd-trace-go` packages and avoids recursive hooks when the taint engine itself uses `strings`, formatting, logging, or redaction. The wrapper captures receiver and arguments once, evaluates the original call once, then propagates to a managed result. Indirect calls remain a documented gap.
+- its first instruction is a zero-initialized, allocation-free active-taint check;
+- it is safe before the target package's `init` runs because `go:linkname` creates no import-order dependency;
+- the callback package explicitly imports no instrumented standard package, and its dependency closure contains no non-allowlisted instrumented package; runtime and its unavoidable closure use the audited exception in section 9.3;
+- it cannot recurse through taint, telemetry, logging, redaction, or formatting work; an import/disassembly audit and an instrumented recursion test enforce this;
+- it handles stack-backed concat/conversion results by returning a managed clone on the tainted path, and reuses an input root when the runtime returns one operand unchanged;
+- the cost of checking every process concatenation meets the disabled, unsampled, untainted, and sampled benchmark gates;
+- compile fixtures lock the unexported runtime signatures for each supported Go version.
 
-Both patterns use a cheap active-owner gate and increment build-time telemetry only for matched aspects. Add an import audit and an instrumented recursion test, but do not claim package filters can exclude callers from a function-body aspect.
+Runtime hooks cannot filter callers and do affect standard-library, tracer, and IAST concatenations. This is a measured trade-off, not an automatic rejection. If the proof-of-concept fails any safety or overhead gate, use the typed source-expression join points for concatenation/conversions. Slicing still requires the source-expression route in either case.
 
-Every unexported standard-library function boundary is version-sensitive. An instrumented compile test must fail if an expected source or sink aspect no longer matches after a Go update.
+### 9.3 Function definitions versus call sites
+
+For named operations such as `strings.Join`, compare two valid patterns in Phase 0:
+
+- **Function-body hook:** one woven definition covers direct and indirect callers, but every caller pays the gate, package filters cannot exclude callers, and linkname/init/reentrancy rules apply.
+- **Call-site wrapper:** package filters can exclude IAST code, the wrapper sees static types and operands, and only woven call sites pay; indirect calls are missed.
+
+Choose per operation from coverage and benchmark evidence. Do not assume all named propagation must use one pattern.
+
+For standard-library function-body hooks, inject one `//go:linkname` declaration per affected source file, add the callback package to `links`, and keep callbacks safe before initialization. Run `go list -deps` in CI for every standard-library callback package and fail if it contains the instrumented package. Runtime is an implicit dependency of every Go package, so runtime callbacks use an explicit dependency allowlist plus disassembly, zero-init, and reentrancy audits instead of the impossible `runtime`-absence check. Anchor declarations once per file to avoid redeclaration.
+
+Every call-site aspect explicitly excludes `github.com/DataDog/dd-iast-go/**`. Also exclude `github.com/DataDog/dd-trace-go/**`; Orchestrion currently does this automatically through its `WeaveTracerInternal` special case when an aspect does not set `tracer-internal: true`, but a regression test must protect that load-bearing behavior.
+
+Every unexported standard-library or runtime boundary is version-sensitive. Instrumented compile tests must fail if an expected aspect no longer matches after a Go update.
 
 ## 10. HTTP sources
 
@@ -486,15 +518,30 @@ Use deferred function-body hooks after successful standard-library parsing:
 
 Hooks must be idempotent. Repeated calls must not create duplicate sources or replace earlier provenance for the same bytes.
 
-### 10.3 Body bytes
+### 10.3 Body readers and owned bytes
 
-Do not eagerly consume the body and do not replace its concrete type in the first version. Bind the body object to the owner, then instrument APIs that return an owned result, starting with `io.ReadAll`. If the input reader is an owner-bound request body, clone the returned `[]byte` to a complete managed root, taint it as `http.request.body`, and replace the function result.
+Do not eagerly consume the body and do not replace its concrete type in the first version. Bind the body object to the owner as an untrusted reader. Propagate the binding through a bounded standard-wrapper matrix:
 
-This preserves read counts, errors, close behavior, optional interfaces, and caller-buffer ownership. `io.ReadAll` uses the call-site aspect pattern from section 9.2 with `dd-iast-go` and `dd-trace-go` exclusions. It covers the common raw-body path but not direct `Request.Body.Read(p)` calls. Document that limitation.
+| Constructor/wrapper | Rule |
+|---|---|
+| `io.LimitReader` / `*io.LimitedReader` | Bind the wrapper to every owner of its input reader. |
+| `io.TeeReader` | Propagate input-reader provenance to the returned reader; do not taint the side writer. |
+| `io.MultiReader` | Bind the result to the union of input-reader owners within owner/range limits. |
+| `bufio.NewReader` / `NewReaderSize` | Bind the returned reader to its input-reader owners. |
+| `http.MaxBytesReader` | Bind the returned read-closer to the input body's owners. |
+| Unknown wrapper | No implicit reflection or recursive field scan; require an explicit integration. |
 
-Apply the managed-root ceiling to the complete returned body. In the initial release, a body result larger than the final Phase 0 root limit is returned unchanged and untainted, and a dropped-body-source counter is recorded. Do not claim prefix taint because a prefix clone would not back the application result. Document the exact byte threshold and test one byte below, at, and above it. Add separate later design work for direct reads only if it can prove the complete destination allocation and invalidate all overlapping mutations.
+Instrument owned-result APIs starting with `io.ReadAll` and `(*bytes.Buffer).ReadFrom`. If the input reader is owner-bound, return a managed result with `http.request.body` provenance. This preserves read counts, errors, close behavior, optional interfaces, and caller-buffer ownership. Direct `Request.Body.Read(p)` remains a documented gap.
 
-Tests still cover HTTP/1, HTTP/2, h2c, `http.NoBody`, middleware replacing `Request.Body`, EOF-with-data, read errors, and no extra reads. Body support does not imply propagation through JSON or XML decoding.
+Apply the managed-root ceiling to the complete returned body. A result larger than the final Phase 0 root limit is returned unchanged and untainted, and a dropped-body-source counter is recorded. Do not claim prefix taint because a prefix clone would not back the application result. Test one byte below, at, and above the limit.
+
+Tests cover HTTP/1, HTTP/2, h2c, `http.NoBody`, middleware replacing `Request.Body`, nested supported wrappers, EOF-with-data, read errors, and no extra reads.
+
+### 10.4 Required `encoding/json` fast follow-up
+
+Add `encoding/json` immediately after the first HTTP-body vertical slice. Cover both `json.Unmarshal(data, dst)` when `data` is tainted and `(*json.Decoder).Decode(dst)` when the decoder's reader is owner-bound. Phase 0 must choose between hooks at JSON string-unquoting/materialization boundaries and a bounded token-offset mapper; do not add a second general reflection walk after decoding unless benchmarks show it is necessary. Preserve exact source offsets for decoded strings where possible and use a documented coarse range otherwise.
+
+This work is a separate phase because it crosses reflection and destination mutation, but it is required before the HTTP source feature is considered practically complete. `encoding/xml` remains later work.
 
 ## 11. Propagation inventory
 
@@ -502,25 +549,27 @@ The first implementation must publish an explicit matrix in tests and README. Do
 
 | Operation | Initial precision | Instrumentation |
 |---|---|---|
-| `a + b` for string-like values | exact | required Orchestrion typed binary-expression join point |
-| `s[low:high]`, `b[low:high:max]` | exact | required typed slice-expression join point |
-| `string(b)`, `[]byte(s)` | exact range copy to new backing | required typed conversion join point |
-| `strings.Clone` | exact | call-site wrapper |
-| `strings.Join` | exact | call-site wrapper |
-| `strings.Repeat` | exact until range limit | call-site wrapper |
-| `strings.Cut`, `Split*`, `Fields*` | exact; compute output offsets relative to the managed input root | call-site wrapper |
-| `strings.Trim*` | exact; compute output offset relative to the managed input root | call-site wrapper |
-| `strings.Replace*`, `Replacer.Replace` | exact while the number of mapped copied/replacement segments fits the range/work limit; otherwise coarse | call-site wrapper |
-| `strings.ToLower`, `ToUpper`, `Map`, `ToValidUTF8` | exact only when byte positions remain valid; otherwise coarse | call-site wrapper |
-| `fmt.Sprint`, `Sprintf`, `Sprintln` | coarse from first tainted contributing argument | call-site wrapper |
-| `net/url.QueryEscape`, `PathEscape`, `QueryUnescape`, `PathUnescape` | coarse initially | call-site wrapper |
-| `strconv.Quote`, `QuoteToASCII`, `QuoteToGraphic`, `Unquote` | coarse initially | call-site wrapper |
+| maximal `a + b + ...` for string-like values | exact | Phase 0 choice: `runtime.concatstrings` result hook or typed maximal-chain join point |
+| `s[low:high]`, `b[low:high:max]` | exact | typed `SliceExpr` join point; no runtime helper exists |
+| `string(b)`, `[]byte(s)` | exact range copy to managed backing | Phase 0 choice: runtime conversion helper or typed conversion join point |
+| `strings.Clone` | exact | selected function-body or call-site pattern |
+| `strings.Join` | exact | selected function-body or call-site pattern |
+| `strings.Repeat` | exact until range limit | selected function-body or call-site pattern |
+| `strings.Cut`, `Split*`, `Fields*` | exact; compute output offsets relative to the managed input root | selected function-body or call-site pattern |
+| `strings.Trim*` | exact; compute output offset relative to the managed input root | selected function-body or call-site pattern |
+| `strings.Replace*`, `Replacer.Replace` | exact while the number of mapped copied/replacement segments fits the range/work limit; otherwise coarse | selected function-body or call-site pattern |
+| `strings.ToLower`, `ToUpper`, `Map`, `ToValidUTF8` | exact only when byte positions remain valid; otherwise coarse | selected function-body or call-site pattern |
+| `fmt.Sprint`, `Sprintf`, `Sprintln` | coarse from first tainted contributing argument | selected function-body or call-site pattern |
+| `net/url.QueryEscape`, `PathEscape`, `QueryUnescape`, `PathUnescape` | coarse initially | selected function-body or call-site pattern |
+| `strconv.Quote`, `QuoteToASCII`, `QuoteToGraphic`, `Unquote` | coarse initially | selected function-body or call-site pattern |
 | `strings.Builder` writes and `String` | exact through bounded builder state; clone a tainted `String` result to a managed root | call-site method wrappers |
 | `bytes.Buffer` writes and `String`/`Bytes` | exact only after the full buffer root and capacity can be charged without changing alias semantics | call-site method wrappers |
-| `append` | exact for retained source ranges; re-key if backing changes | required typed built-in join point |
-| `copy` | exact overwrite and O(1) root-generation invalidation | required typed built-in join point |
-| `io.ReadAll` on an owner-bound request body | exact whole-result body source within the managed-root limit | call-site wrapper with `dd-iast-go`/`dd-trace-go` exclusions |
-| indirect function calls | not covered | documented limitation |
+| built-in `append` | exact for retained source ranges; re-key if backing changes | `CallExpr` plus new `go/types`-validated `builtin-call` matcher |
+| built-in `copy` | exact overwrite and O(1) root-generation invalidation | `CallExpr` plus new `go/types`-validated `builtin-call` matcher |
+| `io.LimitReader`, `io.TeeReader`, `io.MultiReader`, `bufio.NewReader*` | reader-owner propagation | constructor call or function-body hook selected in Phase 0 |
+| `io.ReadAll` / `(*bytes.Buffer).ReadFrom` on an owner-bound reader | exact whole-result body source within the managed-root limit | selected function-body or call-site pattern |
+| indirect function calls | coverage depends on selecting a function-body hook | document per operation |
+| value retained after its request owner finishes | not covered initially; root is released | stored/cross-request follow-up with a separate hard lifetime bound |
 | arbitrary `b[i] = x` | invalidates precision unless assignment join point lands | documented limitation plus telemetry when detectable |
 
 Each propagation entry point starts with a single cheap active-owner check. Untainted lookup must not allocate. A tainted result write can allocate only within pre-allocated or strictly bounded storage.
@@ -531,23 +580,23 @@ Do not instrument `fmt.Fprintf` as string propagation until writer identity and 
 
 ### 12.1 Boundaries
 
-Report at execution, matching .NET and JavaScript. Java also reports when `Connection.prepareStatement` or `prepareCall` receives a query. Go deliberately does not report on preparation because `database/sql` later executes the same fixed statement and a prepare-time report would create another location/hash for one query. Document this Java divergence.
+Treat both preparation and execution as sink boundaries. Preparation is the first point where tainted query structure enters a driver, and its location helps the user find query construction. Execution is also useful: it identifies the operation that reached the database, can occur on another request/span, and matches .NET/JavaScript execution reporting. Java reports both. The two locations intentionally have different hashes; process de-duplication suppresses repeated hits at each location, not the first prepare/execute pair.
 
-Use stable exported execution methods above `database/sql` retry loops:
+Use stable exported methods above `database/sql` retry loops:
 
-- `(*DB).ExecContext` and `(*DB).QueryContext` (the non-context and `QueryRow` variants delegate to them);
-- `(*Tx).ExecContext` and `(*Tx).QueryContext`;
-- `(*Conn).ExecContext` and `(*Conn).QueryContext`;
-- `(*Stmt).ExecContext` and `(*Stmt).QueryContext`, using the statement's stored query text from inside the package.
+- `(*DB).PrepareContext`, `ExecContext`, and `QueryContext`;
+- `(*Tx).PrepareContext`, `ExecContext`, and `QueryContext`;
+- `(*Conn).PrepareContext`, `ExecContext`, and `QueryContext`;
+- `(*Stmt).ExecContext` and `QueryContext`, using the statement's stored query text from inside the package.
 
-Implement all eight boundaries as `function-body` aspects in Go 1.26.6 `src/database/sql/sql.go`, with `go:linkname` helpers. Function-body instrumentation gives the Stmt hooks access to the private `query` field; DB, Tx, and Conn use their query parameter. It also runs once above the retry loop. Anchor each injected linkname declaration on exactly one matched function per source file to avoid redeclaration, following `iast/crypto/hash/orchestrion.yml`.
+Non-context, `QueryRow`, and related wrappers delegate to these methods. `(*Tx).Stmt` and `StmtContext` only re-associate a statement with a transaction; later execution still reaches the instrumented Stmt methods, so they are not separate sink boundaries. Implement the boundaries as `function-body` aspects in Go 1.26.6 `src/database/sql/sql.go`, with `go:linkname` helpers. Function-body instrumentation gives Stmt hooks access to the private `query` field and runs direct DB/Tx/Conn checks above retry loops. Anchor each injected linkname declaration on exactly one matched function per source file to avoid redeclaration, following `iast/crypto/hash/orchestrion.yml`.
 
-This has more aspects than `execDC`/`queryDC`, but it avoids reporting once per `driver.ErrBadConn` retry and covers prepared-statement execution at the execution location. Exact-once tests must cover all receiver types, context and non-context wrappers, `QueryRow`, retries, and statements. If Go changes a delegation path, the build-time telemetry count and integration matrix must fail.
+Tests cover every receiver, context and non-context wrapper, `QueryRow`, retries, prepare-only, prepare-then-execute, and repeated statement execution. They assert one report per distinct application location after configured de-duplication and quotas. If Go changes a delegation path, the build-time telemetry count and integration matrix fail.
 
 ### 12.2 Detection
 
-1. Look up the query string.
-2. Select the request owner from the passed context. If the non-context exported API supplied a background context, accept only one unambiguous active owner with a bound span.
+1. Look up the query string across all active owner entries.
+2. Collect every unsafe provenance set, including values tainted by another active request. Attach the report to the span active at the sink; fall back to a matched bound span or the existing orphan-vulnerability span when no sink span exists.
 3. Remove ranges marked secure for `SQL_INJECTION`.
 4. If no unsafe range remains, increment `suppressed.vulnerabilities` and return.
 5. Build evidence from the query and unsafe ranges.
@@ -559,21 +608,21 @@ Parameterized query arguments are not part of the SQL query evidence and must no
 
 `exec.Command` and `exec.CommandContext` only build a `Cmd`. Reporting there creates false positives for commands that never run.
 
-For Go 1.26.6, instrument the `os.StartProcess` call in `src/os/exec/exec.go` inside `(*exec.Cmd).Start`, after `Cmd.Start` has completed validation and path resolution. `Run`, `Output`, and `CombinedOutput` all converge on `Start`. Restrict the join point with `import-path: os/exec` so a template that references `Cmd` locals cannot match unrelated direct uses of `os.StartProcess`.
+For Go 1.26.6, instrument the `os.StartProcess` call in `src/os/exec/exec.go` inside `(*exec.Cmd).Start`, after `Cmd.Start` has completed validation and path resolution. `Run`, `Output`, and `CombinedOutput` all converge on `Start`. Combine `function-call: os.StartProcess` with `import-path: os/exec`. In Orchestrion, `function-call` identifies the callee, while `import-path` identifies the package whose source is currently being compiled. The combination therefore matches only the lexical call inside `os/exec`, where `Cmd` locals such as `c` and `lp` exist; it does not match an application's direct `os.StartProcess` call.
 
 Detection:
 
 1. Capture the actual `argv` expression passed to `os.StartProcess` exactly once. It is non-empty even for a hand-built `Cmd` whose `Args` is empty. Preserve `argv[0]` as the command supplied by the application; use the resolved path only as supporting context if needed.
-2. Look up every argument separately.
-3. Select the owner from `Cmd` context when available. For `exec.Command`, accept only one unambiguous active owner with a bound span.
+2. Look up every argument across all active owner entries.
+3. Collect every unsafe provenance set, including values tainted by another active request. Attach to the `Cmd` context span when present, then the current tracer span, a matched bound span, or the existing orphan-vulnerability span.
 4. Remove ranges marked secure for `COMMAND_INJECTION`.
 5. If no unsafe range remains, increment suppression telemetry and return.
 6. Build one evidence string by joining command and arguments with one untainted ASCII space. Shift each argument range to its evidence offset.
-7. Report once for each real process-start attempt, including an attempt where the operating system returns an error. Location selection skips contiguous `dd-iast-go`, `dd-trace-go`, `os/exec`, and `os` frames with a bounded predicate so `Start`, `Run`, `Output`, and `CombinedOutput` identify the application caller.
+7. Report once when execution reaches the `os.StartProcess` call, including operating-system errors and commands blocked by dd-trace-go ASM before a process is created. This is an intentional attempted-sink report; test and document the blocked-command case. Location selection skips contiguous `dd-iast-go`, `dd-trace-go`, `os/exec`, and `os` frames with a bounded predicate so `Start`, `Run`, `Output`, and `CombinedOutput` identify the application caller.
 
 Phase 0 must verify the exact process-creation call in the installed target source before writing the aspect. If a later Go release no longer contains a direct `os.StartProcess` call, its expected-aspect test fails and that release remains unsupported until a new post-validation boundary is reviewed; do not fall back to reporting at `Cmd.Start` entry.
 
-The injected wrapper must bind every original `os.StartProcess` argument once, report from the bound `argv`, invoke the original call once, and preserve its result and error without recovery or translation. Anchor its linkname declaration once in the file.
+The injected wrapper must bind every original `os.StartProcess` argument once, report from the bound `argv`, invoke the original call once, and preserve its result and error without recovery or translation. The pinned dd-trace-go also instruments the `os.StartProcess` function body for ASM; the two aspects target different AST nodes. Combined tests must verify ordering, blocking behavior, and that IAST's stack filter omits both integrations. Anchor its linkname declaration once in the file.
 
 ## 14. Evidence, sources, redaction, and report assembly
 
@@ -585,11 +634,11 @@ A request owner maintains a bounded source table and a de-duplication index. Sou
 (origin, name, full unredacted value)
 ```
 
-The source record refers to its bounded managed root while the owner is active, so it can compare the full immutable value without a second unbounded copy. The per-root size ceiling bounds this comparison. Apply truncation only when materializing `model.Source`. Source IDs used by ranges are request-local and stable until owner completion.
+The source record refers to its bounded managed root while the owner is active, so it can compare the full immutable value without a second unbounded copy. The per-root size ceiling bounds this comparison. Apply truncation only when materializing `model.Source`. Source IDs used by ranges are request-local and stable until owner completion; foreign evidence uses the immutable snapshot path in section 6.2, never a live foreign ID.
 
 At report assembly, apply configured name and value patterns. A redacted model uses `pattern` plus `redacted:true` and omits `value`, as the existing `model.Source` supports.
 
-Only sources referenced by accepted vulnerability evidence need to be materialized into `Event.Sources`. Maintain an owner-source-ID to event-source-index mapping so several vulnerabilities reuse one event source.
+Only sources referenced by accepted vulnerability evidence need to be materialized into `Event.Sources`. Maintain an owner-source-ID to event-source-index mapping for the sink owner. Foreign-owner contributions arrive as immutable source snapshots and are de-duplicated by full source equality into the sink event. A request-local source ID from another owner is never stored directly in the sink event.
 
 ### 14.2 Evidence parts
 
@@ -609,7 +658,7 @@ Required properties:
 
 Apply redaction at report assembly, not in the taint hot path.
 
-- Source redaction uses `DD_IAST_REDACTION_NAME_PATTERN` and `DD_IAST_REDACTION_VALUE_PATTERN`.
+- Source redaction uses canonical `DD_IAST_REDACTION_NAME_PATTERN` and `DD_IAST_REDACTION_VALUE_PATTERN`. If a canonical variable is unset, accept `DD_IAST_REDACTION_KEYS_REGEXP` or `DD_IAST_REDACTION_VALUES_REGEXP` respectively as compatibility fallbacks. Canonical values win. Register telemetry under the canonical key and `OriginEnvVar`; this intentionally does not distinguish an alias source in telemetry. Do not add a .NET cross-reference to README.
 - SQL evidence uses a bounded tokenizer. Evaluate the already-present indirect `github.com/DataDog/go-sqllexer` dependency and a bounded regular-expression tokenizer against the shared reference redaction corpus before choosing it. Java and .NET use regular-expression tokenizers, so a lexer is a Go-specific implementation choice and must match their observable redaction boundaries.
 - Command evidence preserves the executable position and redacts argument values, option values, and tainted parts whose source name or value matches the configured sensitive-data pattern, according to the shared corpus semantics.
 - If redaction fails or reaches a complexity limit, redact the affected evidence conservatively. Do not fall back to emitting a raw secret.
@@ -657,15 +706,23 @@ Reuse existing metrics:
 - `executed.tainted`;
 - `request.tainted`.
 
-Add bounded-loss visibility:
+Add bounded-loss visibility with one centralized behavior table:
 
-- values dropped because entry capacity is full;
-- values dropped because retained-byte capacity is full;
-- sources dropped;
-- ranges dropped;
-- writes dropped due to shard contention;
-- coarse propagations;
-- suppressed vulnerabilities.
+| Condition | Action | Required visibility |
+|---|---|---|
+| Root/value/slot capacity full | Return the application value unchanged; do not evict a live entry. | Capacity-drop counter or rate-limited debug log. |
+| Charged-byte or per-root size full | Do not anchor the new value. | Byte-drop counter, with a body-specific dimension when relevant. |
+| Source capacity full | Keep existing sources and drop the new source/ranges. | Source-drop count by origin when the telemetry specification permits it. |
+| Range limit reached | Keep the earliest ranges and drop the tail. | Dropped-range count. |
+| Shard contention | Drop the ordinary taint write/read; never drop cleanup. | Contention-drop count. |
+| Unknown allocation or semantics-changing clone | Return the original value untainted. | Unsupported-allocation drop count or debug log. |
+| Owner already finished | Reject the late write. | Late-write drop count. |
+| Coarse propagation | Store the documented coarse range. | Coarsening count. |
+| All sink ranges securely marked | Do not report. | Suppressed-vulnerability count. |
+| Global de-dup lock contended | Skip de-duplication, not reporting. | De-dup-skip count or debug log. |
+| Foreign-owner snapshot changes during copy | Drop only that foreign contribution; continue with other unsafe ranges. | Foreign-owner race-drop count. |
+
+Only emit metric names accepted by the common IAST telemetry specification; use rate-limited debug telemetry for other dimensions until the specification includes them.
 
 Use existing telemetry naming conventions after confirming which of these names are accepted by the common IAST telemetry specification. Do not emit unsupported metric names only because they are useful locally; unsupported details can first use debug telemetry logs with rate limiting.
 
@@ -676,20 +733,60 @@ Every source, propagation, and sink hook has this order:
 3. telemetry increment required at this verbosity;
 4. expensive range, redaction, stack, or report work.
 
-## 16. Implementation phases
+## 16. Implementation phases and dependencies
 
 Each phase is independently reviewable. Do not combine the unsafe-adjacent store, source instrumentation, and sink reporting in one change.
 
+```mermaid
+flowchart TD
+    P0[Phase 0: runtime and design proofs]
+    P1[Phase 1: ranges and source model]
+    P2[Phase 2: bounded store]
+    P3[Phase 3: public API and request/span lifecycle]
+    P4[Phase 4: net/http sources and readers]
+    P5[Phase 5: named propagation]
+    P6[Phase 6: runtime/operator propagation]
+    P7A[Phase 7a: reporting and sink hooks]
+    P7B[Phase 7b: end-to-end sink payloads]
+    P8[Phase 8: encoding/json propagation]
+    P9[Phase 9: system validation and docs]
+
+    P0 --> P1
+    P0 --> P2
+    P1 --> P2
+    P2 --> P3
+    P0 --> P6
+    P3 --> P6
+    P3 --> P4
+    P3 --> P5
+    P3 --> P7A
+    P4 --> P7B
+    P5 --> P7B
+    P6 --> P7B
+    P7A --> P7B
+    P4 --> P8
+    P5 --> P8
+    P7B --> P9
+    P8 --> P9
+```
+
+Phase 0 contains independent runtime-hook, weak-pointer, address-reuse, HTTP-span-order, and store-capacity experiments and can parallelize those probes. Phase 1 can start when Phase 0 fixes the range/source shapes. The upstream Orchestrion matcher/schema work in Phase 6 can run in parallel with Phases 1–5 after the Phase 0 hook comparison. The dd-iast-go propagation aspects and Phase 6 exit tests also depend on Phase 3, as the graph shows. After Phase 3, HTTP sources, named propagation, report/sink construction, and the remaining Phase 6 work can run in parallel. Phase 7b is the integration gate that joins those tracks. `encoding/json` starts after body-reader and named-propagation foundations and must finish before final system validation.
+
 ### Phase 0 — prove hard assumptions
 
-1. Add scratch or test-only probes for stack/static/heap strings, interned header names and small formatted values, allocator address reuse, string and byte-slice escape behavior, managed cloning, root sharing for substrings, anchor release, and fixed-arity maximal-concat helper shapes. Use escape-analysis output and allocation benchmarks before proposing the Orchestrion concat schema.
-2. Prototype the fixed-capacity managed-root store and measure entry size, actual retained heap for large-parent substrings, lock contention, terminal-owner cleanup, late-write rejection, and disabled/unsampled cost.
-3. Prove HTTP owner creation, nested handler behavior, tracing-middleware span binding, and cleanup ordering with Orchestrion.
-4. Prove HTTP/1, HTTP/2, and h2c owner binding plus owned `io.ReadAll` body attribution without changing application-observable behavior.
-5. Validate SQL and command redaction output against reference fixtures.
-6. Fix final hard capacities from measured results and record the calculation in code comments and benchmarks.
+Run independent probes in parallel:
 
-**Exit:** source and propagation fuzz/property suites complete with zero panics or runtime throws for their configured corpus; no taint hit from an interned source against an unrelated equal literal; large-parent substring retention stays within the charged root budget; one owner, one sampling decision, and one permit per request; owned-body support and its size boundary work; the disabled/no-owner, unsampled, sampled-source, untainted named-operation, and hand-written fixed-arity concat prototype gates in section 18.4 pass. The full expression-aspect gate remains a Phase 6 exit.
+1. Reproduce heap/stack address reuse across size classes and verify that Go exposes real virtual addresses.
+2. Run `weak.Make` and `runtime.AddCleanup` in separate subprocesses for literal, stack, heap-cloned, empty, one-byte, and interior pointers; record escape-analysis output and exact throw/panic behavior.
+3. Compare an injected `runtime.concatstrings`/conversion callback with maximal source-expression wrappers. Measure all-call overhead, stack-result cloning, alias fast paths, callback recursion, early-init safety, whole-toolchain rebuild cost, and zero-initialized operation before callback-package `init`.
+4. Confirm with compiler source and disassembly that slicing has no runtime helper. Prototype the typed `SliceExpr` and `builtin-call` matcher shapes, including local `append`/`copy` homonyms and defined types.
+5. Prototype the fixed-capacity managed-root store and measure entry size, actual retained heap for large-parent substrings, collision/drop behavior, terminal-owner cleanup, and late-write rejection.
+6. Inspect combined dd-trace-go/dd-iast-go woven output and prove HTTP owner creation, tracing-span binding, nested handler behavior, and cleanup ordering. Do not assume the span exists first.
+7. Prove reader provenance through supported wrappers plus HTTP/1, HTTP/2, h2c, `io.ReadAll`, and `bytes.Buffer.ReadFrom` without changing observable behavior.
+8. Validate prepare- and execution-time SQL reports, command reports, redaction output, and payload shape against reference fixtures.
+9. Fix final hard capacities and performance gates from measured results.
+
+**Exit:** every probe records reproducible commands/results; weak-pointer and address claims are confirmed for the target toolchain; the runtime-versus-expression decision is explicit per operation; callback packages are safe before `init` and exclude instrumented dependencies; no interned literal taints an unrelated equal value; retained heap stays within charged-root limits; one HTTP request has one owner/decision/permit; reader wrappers work; and the applicable section 18.4 gates pass.
 
 ### Phase 1 — range algebra and request source model
 
@@ -717,25 +814,42 @@ Add request entry, handler binding, clone-and-replace eager field/header sources
 
 ### Phase 5 — named propagation operations
 
-Implement and instrument the approved `strings`, `bytes`, `fmt`, `strconv`, `net/url`, builder, and buffer matrix. Add exact/coarse semantics as explicit tests.
+Implement the approved `strings`, `bytes`, `fmt`, `strconv`, `net/url`, builder, and buffer matrix with the function-body or call-site pattern selected in Phase 0. Add exact/coarse semantics as explicit tests.
 
-**Exit:** untainted call-site hooks allocate zero objects where the wrapped operation itself allocates none; telemetry tests assert the expected coarse and dropped-range counter values; package filters exclude `dd-iast-go` and `dd-trace-go`; recursion tests and import audits pass.
+**Exit:** untainted hooks allocate zero objects where the wrapped operation itself allocates none; telemetry tests assert coarse and dropped-range counts; call-site filters exclude `dd-iast-go` and `dd-trace-go`; function-body callbacks pass init/reentrancy/import audits; indirect-call coverage matches the selected pattern.
 
-### Phase 6 — Orchestrion expression support
+### Phase 6 — runtime and expression propagation
 
-Land and release typed expression join points in Orchestrion, update the dependency, then add concat, slice, conversion, append, copy, and mutation aspects in `taint/orchestrion.yml`.
+Implement the Phase 0 decision:
 
-**Exit:** semantic/generic/defined-type fixtures pass; a maximal concat chain still allocates once; disabled and unsampled operator benchmarks meet section 18.4; concat, slice, and conversion are no longer documented blind spots.
+- land the minimal Orchestrion `builtin-call` and typed `SliceExpr` support;
+- add maximal-chain/conversion expression matchers where runtime hooks did not pass;
+- add runtime concat/conversion hooks only where their safety and overhead gates passed;
+- update the Orchestrion dependency and `taint/orchestrion.yml`.
 
-The team must complete this phase before it finalizes the initial feature. Work can proceed in parallel with Phases 1–5. If the upstream Orchestrion change is rejected, stop the general-availability release and return to user review; do not silently ship generic propagation claims with operator blind spots.
+**Exit:** generic/alias/defined-type fixtures pass; built-ins do not match local homonyms; slicing is exact; a maximal concat chain keeps its baseline allocation count on disabled/untainted paths; runtime callbacks, if used, are early-init and recursion safe; all operator benchmarks pass.
 
-### Phase 7 — report assembly and sinks
+The upstream Orchestrion matcher/schema work can run in parallel with Phases 1–5 after Phase 0. The dd-iast-go aspects and Phase 6 exit tests require Phase 3. If neither runtime nor expression instrumentation meets the required concat/conversion gate, stop general availability and return to user review.
 
-Implement source materialization, evidence parts, redaction, process de-duplication, payload-size limits, tainted reporting, SQL sink aspects, and command sink aspects.
+### Phase 7a — report assembly and sink hooks
 
-**Exit:** end-to-end HTTP-to-SQL and HTTP-to-command traces match golden payloads; parameterized SQL does not report; command construction without execution does not report; each execution attempt reports at most once.
+Implement source materialization, evidence parts, redaction and environment fallbacks, process de-duplication, payload-size limits, tainted reporting, SQL prepare/execute aspects, command aspects, and bounded cross-owner source materialization. This can run in parallel after Phase 3.
 
-### Phase 8 — system validation and documentation
+**Exit:** report-model unit/golden tests and isolated sink-aspect tests pass; every linkname callback passes init, import-graph, and reentrancy gates.
+
+### Phase 7b — end-to-end sink validation
+
+Join HTTP sources, propagation, runtime/operator work, and sink/report work.
+
+**Exit:** HTTP-to-SQL prepare and execution traces and HTTP-to-command traces match golden payloads; parameterized arguments do not report; command construction without execution does not report; retries and repeated locations de-duplicate as specified; active foreign-owner provenance is represented on the sink event, and a concurrent foreign-owner finish either preserves a complete snapshot or drops only that contribution without an invalid source index.
+
+### Phase 8 — `encoding/json` fast follow-up
+
+Implement `json.Unmarshal` and `json.Decoder.Decode` propagation from tainted bytes or owner-bound readers to decoded strings. Keep `encoding/xml` and generic reflection out of this phase. Add `iast/encoding/json` to `orchestrion.tool.go`, the README coverage documentation, and build-time propagation telemetry.
+
+**Exit:** nested structs, maps, arrays, escaped strings, invalid input, partial decoder reads, reused decoders, coarse fallback, range limits, and overhead tests pass.
+
+### Phase 9 — system validation and documentation
 
 Run all checks, add overhead workloads, document exact coverage and limitations, update the vulnerability table, and run system tests against an agent/backend fixture.
 
@@ -758,14 +872,18 @@ internal/taint/
   evidence/
   redaction/
 internal/dedup/
-iast/sources/http/
+iast/net/http/sources/
   http.go
   orchestrion.yml
-iast/injection/sql/
+iast/database/sql/sinks/
   sql.go
   orchestrion.yml
-iast/injection/command/
+# Reserve iast/database/sql/sources/ for later row taint.
+iast/os/exec/
   command.go
+  orchestrion.yml
+iast/encoding/json/
+  json.go
   orchestrion.yml
 internal/spans/annotation.go
 internal/spans/orchestrion.go
@@ -774,6 +892,7 @@ internal/model/event.go
 internal/model/evidence.go
 internal/instrumentation/telemetry/telemetry.go
 internal/config/config.go
+internal/config/loader/loader.go
 orchestrion.tool.go
 README.md
 LICENSE-3rdparty.csv # if go-sqllexer becomes direct
@@ -807,12 +926,14 @@ Fuzz range operations and evidence assembly. Every fuzz assertion must check bou
 Tests that need injected code use external test packages and skip without `built.WithOrchestrion`.
 
 - HTTP source flow for each origin, including 1,000 repeated lazy-source calls with constant root/entry counts and body-size boundary cases;
-- tracing middleware before and after custom middleware;
+- tracing middleware before and after custom middleware, plus no tracing middleware: findings use an orphan-vulnerability span and no-finding requests clean up without creating one;
 - direct handler calls, nested handlers, h2c, and a weak finding before owner/span binding;
 - HTTP/1, HTTP/2, and h2c owned `io.ReadAll` body results; direct `Body.Read` is a negative coverage test;
 - common propagation chains and each documented blind spot;
-- custom `database/sql/driver` covering DB, Tx, Conn, Stmt, query, exec, context and non-context APIs, plus repeated `driver.ErrBadConn`; preparation alone is a negative sink test;
-- `os/exec` construction-only, failed validation, failed start, `Start`, `Run`, `Output`, and `CombinedOutput`;
+- a real SQLite driver for realistic prepare/query/exec/Stmt end-to-end behavior, preferably a pure-Go driver or an existing repository dependency; keep it behind an appropriate test/build boundary and update `LICENSE-3rdparty.csv` if added;
+- a minimal custom `database/sql/driver` only for deterministic `driver.ErrBadConn`, retry counts, injected failures, and edge paths that SQLite cannot force;
+- prepare-only, prepare-then-execute, repeated Stmt execution, and direct execution reports at their expected distinct locations;
+- `os/exec` construction-only, failed validation, failed start, ASM-blocked start, `Start`, `Run`, `Output`, and `CombinedOutput`;
 - exact build-time and runtime telemetry counts;
 - one vulnerability report and a stack location at the application call site for every SQL/command wrapper path; equivalent application statements produce stable hashes with stack reporting enabled and disabled;
 - meta-structure and JSON fallback golden payloads.
@@ -821,7 +942,7 @@ Tests that need injected code use external test packages and skip without `built
 
 - concurrent propagation and sink lookup for one owner;
 - several owners tainting the same backing value;
-- finish racing with propagation and sink lookup;
+- finish racing with propagation and sink lookup, including a foreign owner finishing during evidence snapshot;
 - propagation continuing after finish, with all late writes rejected;
 - forced cleanup contention, with no surviving anchors;
 - ordinary shard contention drops without deadlock;
@@ -864,13 +985,22 @@ Before each implementation commit:
 
 ```console
 gofmt -w <modified-go-files>
-go tool orchestrion go test -shuffle=on ./...
-go -C benchmarks/overhead test -shuffle=on ./...
-go tool checklocks ./...
-go -C benchmarks/overhead vet ./...
+GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -shuffle=on ./...
+GOTOOLCHAIN=go1.26.6 go -C benchmarks/overhead test -shuffle=on ./...
+GOTOOLCHAIN=go1.26.6 go tool checklocks ./...
+GOTOOLCHAIN=go1.26.6 go -C benchmarks/overhead vet ./...
 ```
 
 Also run focused race tests and the overhead runner for phases that affect hot paths.
+
+### 18.6 Coverage and mutation-testing policy
+
+- Enforce at least 80% statement coverage across `taint`, `internal/taint/ranges`, `internal/taint/store`, `internal/taint/request`, `internal/taint/evidence`, `internal/taint/redaction`, and `internal/dedup`.
+- Target at least 90% for pure range, evidence, redaction, and de-duplication logic.
+- Measure instrumented packages in the Orchestrion CI lane rather than excluding skipped tests from the coverage report.
+- Investigate `go-mutesting`, `mutilate`, or an equivalent Go mutation tool on the pure packages during Phases 1 and 7a. Record surviving mutants. Make mutation results informative for the first release; convert them to a blocking quality gate only if the tool is stable and runtime is tractable.
+- Do not require mutation testing for the concurrent store initially. Race tests, deterministic fault injection, property tests, and model/state-machine tests are more reliable there.
+- Run time-bounded fuzzing with a checked-in seed corpus for range and evidence operations.
 
 ## 19. Acceptance criteria
 
@@ -884,31 +1014,34 @@ The initial feature is complete only when all statements are true.
 6. One HTTP request has one owner, one sampling decision, and at most one capacity permit.
 7. Eager source hooks do not parse forms or consume bodies.
 8. Owned raw-body results preserve data and errors without changing the request body's concrete type; direct `Body.Read` is documented as unsupported initially.
-9. For tracked values of at least two bytes, concat, slice, and string/byte conversions propagate exact source ranges.
+9. For tracked values of at least two bytes, concat, slice, and string/byte conversions propagate exact source ranges through the approved runtime or expression mechanism, including defined types. The engine adopts a root only when the complete producing allocation is proven heap-resident; stack/static results are cloned on tainted paths.
 10. The published propagation matrix has a test for every supported operation and every stated limitation.
 11. SQL query parameters passed separately from query text do not report SQL injection.
-12. Preparing a tainted statement alone does not report; executing a tainted DB, Tx, Conn, or Stmt query reports once at a stable application location, including retry paths.
+12. Preparing and executing tainted DB, Tx, Conn, or Stmt query text report at their distinct stable application locations; retries and repeated calls de-duplicate per location.
 13. Constructing an `exec.Cmd` does not report; attempting to start one with unsafe tainted command data does.
 14. A secure mark suppresses only its matching vulnerability type.
 15. Tainted evidence refers to valid, de-duplicated source indices and has no raw sensitive data when redaction is enabled.
-16. Process-level and request-level de-duplication stay bounded and preserve configured disable behavior.
-17. Accepted vulnerabilities retain the trace and include valid span/location/stack correlation according to configuration.
-18. Oversized events use the backend-approved UTF-8 byte limit and exact truncated payload form.
-19. Source, propagation, sink, taint, suppression, and drop telemetry are correct for the configured verbosity.
-20. Instrumented tests, race tests, static checks, and benchmark gates pass.
+16. Unsafe provenance from another active owner still reports on the sink span; stored cross-request provenance is explicitly documented as later bounded-lifetime work.
+17. Process-level and request-level de-duplication stay bounded and preserve configured disable behavior.
+18. Accepted vulnerabilities retain the trace and include valid span/location/stack correlation according to configuration.
+19. Oversized events use the backend-approved UTF-8 byte limit and exact truncated payload form.
+20. `encoding/json` propagates taint from raw bytes and owner-bound decoders to decoded string values.
+21. Source, propagation, sink, taint, suppression, and drop telemetry are correct for the configured verbosity.
+22. The selected packages meet the 80% coverage floor; pure logic targets 90% or records a justified gap.
+23. Instrumented tests, race tests, static checks, mutation-feasibility run, and benchmark gates pass.
 
 ## 20. Risks and decisions that need explicit review
 
 | Topic | Recommendation | Reason |
 |---|---|---|
-| Data-pointer weak handles | Prohibit them. | They can terminate the process and do not support arbitrary string/slice data. |
+| Data-pointer weak handles | Prohibit them for arbitrary string/slice data in the first design and rerun isolated probes per toolchain. | Escape analysis does not make static/interior data universally valid; Go 1.26.6 probes reached runtime throw/panic paths. Known heap object bindings can still use weak pointers. |
 | Managed root anchors | Clone-and-replace sources and charge one complete managed root. Never anchor an arbitrary interior value. | This prevents interned-value false positives, address reuse, and unaccounted retention of a larger parent. |
 | Exact key versus interval index | Use exact value keys plus explicit slice propagation that shares a managed root. | It keeps lookup bounded and charges interior values to their known parent. |
 | `[]byte` support | Support owned managed results first; gate broad byte aspects on escape benchmarks. | Retaining an arbitrary caller buffer can change allocation behavior and pin an unknown parent. |
-| Operator propagation | Require an Orchestrion extension before feature completion. | Current schema cannot match the main Go concatenation/slicing/conversion operations. |
-| HTTP sampling before span creation | Let the IAST owner decide and bind it to the later root span. | A server dispatch hook can run before tracing middleware creates the span. |
-| Body instrumentation | Bind the body object and taint owned `io.ReadAll` results; defer direct caller buffers. | Wrappers can break type assertions, and an arbitrary read buffer has unknown allocation bounds. |
-| SQL prepared statements | Report when Stmt executes, not when it is only prepared. | This matches .NET/JavaScript and gives the execution span/location; Java additionally reports at preparation. |
+| Operator propagation | Compare runtime concat/conversion hooks with typed expression hooks; always add typed slicing and built-in identity support. | Runtime helpers exist for concat/conversions but not slicing; `append`/`copy` need only a `go/types` builtin discriminator. |
+| HTTP sampling before span creation | Let the IAST owner decide and bind it to the later root span unless combined-aspect tests prove tracing always runs first. | Current dd-trace-go aspects do not guarantee a span before the standard server dispatch hook. |
+| Body instrumentation | Track untrusted-reader provenance through an explicit wrapper matrix and taint owned read results; defer arbitrary caller buffers. | This covers `LimitReader`-style flows without changing body concrete types or pinning unknown allocations. |
+| SQL prepared statements | Report at both preparation and execution. | Preparation shows where tainted structure entered the driver; execution shows the database operation and aligns with all reference tracers. |
 | Command sink | Report at the `os.StartProcess` call inside `Cmd.Start`. | Construction is not execution, and `Cmd.Start` validation has completed before this call. |
 | Coarse provenance | First source in deterministic order; marks intersected. | This loses precision without inventing sanitization. |
 | Global vulnerability de-duplication | Fixed 1,000 entries, one-hour reset, clear-all when full. | Matches Java/.NET and remains bounded; JavaScript uses LRU eviction. |
@@ -916,7 +1049,8 @@ The initial feature is complete only when all statements are true.
 | Stack IDs | Preserve Go's per-vulnerability UUID. | It remains a string correlation key; reference tracers do not share one generation scheme. |
 | URI source value | Use the Go request-target and document it. | A synthetic absolute URL would not be the application-visible `RequestURI`; backend acceptance is required. |
 | Payload-size fallback | Prefer Java's 25,000 UTF-8 bytes and `MAX_SIZE_EXCEEDED`, pending backend confirmation. | .NET and JavaScript differ, so no three-tracer standard exists. |
-| Redaction environment names | Keep `DD_IAST_REDACTION_NAME_PATTERN` and `DD_IAST_REDACTION_VALUE_PATTERN`. | Go matches Java; .NET uses different `*_REGEXP` names, which README must note. |
+| Redaction environment names | Keep `_NAME_PATTERN`/`_VALUE_PATTERN` canonical and accept `_KEYS_REGEXP`/`_VALUES_REGEXP` only as fallback aliases. | This accepts older cross-tracer configuration without documenting another tracer in README. |
+| Cross-owner taint | Report provenance from any active owner on the sink span; design stored cross-request lifetime later. | Owner purity must not suppress a real vulnerability, but retaining anchors after request end needs a separate hard bound. |
 | Route/type adaptive quota | Defer until the first end-to-end feature is stable, then add a bounded 4,096-route design. | It controls repeated hot-route reports but is separate from taint correctness and wire shape. |
 
 ## 21. Review checkpoints
@@ -924,8 +1058,9 @@ The initial feature is complete only when all statements are true.
 User review is required at these points:
 
 1. this plan and its scope;
-2. Phase 0 results, final hard capacities, and body strategy;
-3. the proposed Orchestrion expression schema before upstream implementation;
-4. the public `taint` API and package layout;
-5. golden SQL/CMD payloads and redaction behavior;
-6. benchmark results before propagation aspects are enabled by default.
+2. Phase 0 results: runtime-versus-expression choices, weak/address probes, final capacities, HTTP span order, and reader strategy;
+3. the proposed Orchestrion built-in/slice/expression schema before upstream implementation;
+4. the generic public `taint` API and package layout;
+5. golden SQL prepare/execution and command payloads, cross-owner evidence, and redaction behavior;
+6. the `encoding/json` hook design;
+7. benchmark results before propagation aspects are enabled by default.
