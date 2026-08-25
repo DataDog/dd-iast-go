@@ -30,10 +30,19 @@ aspects:
               {{ $req }}.Context(), {{ $req }}.Method, {{ $req }}.RequestURI,
               map[string][]string({{ $req }}.Header),
             )
+            defer iasthttpbridge.Finish(__dd_iast_ctx, __dd_iast_created)
             if __dd_iast_created {
               {{ $req }} = {{ $req }}.WithContext(__dd_iast_ctx)
+              var __dd_iast_path, __dd_iast_raw_query *string
+              if {{ $req }}.URL != nil {
+                __dd_iast_path = &{{ $req }}.URL.Path
+                __dd_iast_raw_query = &{{ $req }}.URL.RawQuery
+              }
+              {{ $req }}.Header = iasthttpbridge.Eager(
+                __dd_iast_ctx, &{{ $req }}.RequestURI, __dd_iast_path, __dd_iast_raw_query,
+                map[string][]string({{ $req }}.Header), {{ $req }}.URL, {{ $req }}.Body,
+              )
             }
-            defer iasthttpbridge.Finish(__dd_iast_ctx, __dd_iast_created)
 
   # Bind as soon as tracing creates a span from a request context. Wrapping the
   # complete multi-result expression preserves every argument, including a
@@ -87,9 +96,18 @@ aspects:
             {{- $req := .Function.ArgumentOfType "*net/http.Request" -}}
             if {{ $req }} != nil {
               __dd_iast_ctx, __dd_iast_created := iastrequest.BeginContext({{ $req }}.Context())
+              defer iastrequest.FinishContext(__dd_iast_ctx, __dd_iast_created)
               if __dd_iast_created {
                 {{ $req }} = {{ $req }}.WithContext(__dd_iast_ctx)
+                var __dd_iast_path, __dd_iast_raw_query *string
+                if {{ $req }}.URL != nil {
+                  __dd_iast_path = &{{ $req }}.URL.Path
+                  __dd_iast_raw_query = &{{ $req }}.URL.RawQuery
+                }
+                {{ $req }}.Header = iastrequest.EagerHTTP(
+                  __dd_iast_ctx, &{{ $req }}.RequestURI, __dd_iast_path, __dd_iast_raw_query,
+                  map[string][]string({{ $req }}.Header), {{ $req }}.URL, {{ $req }}.Body,
+                )
               }
               iastspans.BindScopeContext(__dd_iast_ctx)
-              defer iastrequest.FinishContext(__dd_iast_ctx, __dd_iast_created)
             }

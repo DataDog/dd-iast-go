@@ -15,6 +15,7 @@ import (
 type callbacks struct {
 	begin  func(context.Context) (context.Context, bool)
 	finish func(context.Context, bool)
+	eager  func(context.Context, *string, *string, *string, map[string][]string, any, any) map[string][]string
 }
 
 var registered atomic.Pointer[callbacks]
@@ -24,11 +25,12 @@ var registered atomic.Pointer[callbacks]
 func Register(
 	begin func(context.Context) (context.Context, bool),
 	finish func(context.Context, bool),
+	eager func(context.Context, *string, *string, *string, map[string][]string, any, any) map[string][]string,
 ) {
-	if begin == nil || finish == nil {
+	if begin == nil || finish == nil || eager == nil {
 		return
 	}
-	registered.Store(&callbacks{begin: begin, finish: finish})
+	registered.Store(&callbacks{begin: begin, finish: finish, eager: eager})
 }
 
 // Begin starts a server request scope unless this is a connection-level h2c
@@ -42,6 +44,21 @@ func Begin(ctx context.Context, method, requestURI string, headers map[string][]
 		return ctx, false
 	}
 	return callback.begin(ctx)
+}
+
+// Eager registers request fields and object relationships without parsing or
+// reading the request. A missing callback returns headers unchanged.
+func Eager(
+	ctx context.Context,
+	requestURI, path, rawQuery *string,
+	headers map[string][]string,
+	urlObject, bodyObject any,
+) map[string][]string {
+	callback := registered.Load()
+	if callback == nil {
+		return headers
+	}
+	return callback.eager(ctx, requestURI, path, rawQuery, headers, urlObject, bodyObject)
 }
 
 // Finish releases a scope created by Begin. A missing callback is a no-op.

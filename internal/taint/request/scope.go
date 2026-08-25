@@ -122,7 +122,7 @@ func FinishContext(ctx context.Context, created bool) {
 }
 
 func init() {
-	httpbridge.Register(BeginServerContext, FinishContext)
+	httpbridge.Register(BeginServerContext, FinishContext, EagerHTTP)
 }
 
 func sampleDecision(percent int) Decision {

@@ -21,6 +21,9 @@ func TestBeginSkipsH2CConnectionRequests(t *testing.T) {
 			return ctx, true
 		},
 		func(context.Context, bool) {},
+		func(_ context.Context, _, _, _ *string, headers map[string][]string, _, _ any) map[string][]string {
+			return headers
+		},
 	)
 	ctx := context.Background()
 
@@ -42,9 +45,12 @@ func TestBeginSkipsH2CConnectionRequests(t *testing.T) {
 
 func TestRegisterRejectsIncompletePair(t *testing.T) {
 	require.NotPanics(t, func() {
-		httpbridge.Register(nil, func(context.Context, bool) {})
+		eager := func(_ context.Context, _, _, _ *string, headers map[string][]string, _, _ any) map[string][]string {
+			return headers
+		}
+		httpbridge.Register(nil, func(context.Context, bool) {}, eager)
 		httpbridge.Register(func(ctx context.Context) (context.Context, bool) {
 			return ctx, true
-		}, nil)
+		}, nil, eager)
 	})
 }

@@ -106,6 +106,17 @@ func (a Analysis) Active() bool {
 	return a.manager != nil && a.slot != nil && a.slot.generation.Load() == a.gen && a.slot.active.Load()
 }
 
+func (a Analysis) storeOwner() *store.Owner {
+	if !a.Active() {
+		return nil
+	}
+	owner := a.slot.owner.Load()
+	if owner == nil || !a.Active() {
+		return nil
+	}
+	return owner
+}
+
 // TaintString transactionally publishes a managed string source. The source
 // table is changed only after store publication succeeds.
 func (a Analysis) TaintString(origin constants.Origin, name, value string) (string, bool) {

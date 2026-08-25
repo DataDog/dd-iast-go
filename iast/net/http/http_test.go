@@ -15,6 +15,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -22,6 +23,7 @@ import (
 	"github.com/DataDog/dd-iast-go/internal/model/constants"
 	"github.com/DataDog/dd-iast-go/internal/spans"
 	"github.com/DataDog/dd-iast-go/internal/taint/request"
+	"github.com/DataDog/dd-iast-go/internal/taint/store"
 	"github.com/DataDog/dd-iast-go/internal/vulnerability"
 	"github.com/DataDog/dd-iast-go/taint"
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/mocktracer"
@@ -35,12 +37,19 @@ import (
 var upgradeObserved chan observation
 
 type observation struct {
-	HasScope          bool             `json:"has_scope"`
-	SourceCountBefore int              `json:"source_count_before"`
-	Active            bool             `json:"active"`
-	Entry             request.Entry    `json:"entry"`
-	Decision          request.Decision `json:"decision"`
-	Tainted           bool             `json:"tainted"`
+	HasScope             bool             `json:"has_scope"`
+	SourceCountAtHandler int              `json:"source_count_at_handler"`
+	Active               bool             `json:"active"`
+	Entry                request.Entry    `json:"entry"`
+	Decision             request.Decision `json:"decision"`
+	Tainted              bool             `json:"tainted"`
+	RequestURITainted    bool             `json:"request_uri_tainted"`
+	PathTainted          bool             `json:"path_tainted"`
+	QueryTainted         bool             `json:"query_tainted"`
+	HeaderNameTainted    bool             `json:"header_name_tainted"`
+	HeaderTainted        bool             `json:"header_tainted"`
+	LiteralTainted       bool             `json:"literal_tainted"`
+	BodyBound            bool             `json:"body_bound"`
 }
 
 func tracedEndpoint(w http.ResponseWriter, req *http.Request) {
@@ -57,9 +66,25 @@ func boundEndpoint(w http.ResponseWriter, req *http.Request) {
 		got.Entry = scope.Entry()
 		got.Decision = scope.Decision()
 		if analysis, ok := scope.Analysis(); ok {
-			got.SourceCountBefore = analysis.SourceCount()
+			got.SourceCountAtHandler = analysis.SourceCount()
 		}
 	}
+	got.RequestURITainted = taint.IsTaintedString(req.RequestURI)
+	if req.URL != nil {
+		got.PathTainted = taint.IsTaintedString(req.URL.Path)
+		got.QueryTainted = taint.IsTaintedString(req.URL.RawQuery)
+	}
+	for name, values := range req.Header {
+		if name == "Content-Type" {
+			got.HeaderNameTainted = taint.IsTaintedString(name)
+			if len(values) != 0 {
+				got.HeaderTainted = taint.IsTaintedString(values[0])
+			}
+		}
+	}
+	got.LiteralTainted = taint.IsTaintedString("Content-Type")
+	var bodyOwners [1]store.OwnerRef
+	got.BodyBound = request.LookupObject(req.Body, store.BindingReader, bodyOwners[:]) == 1
 	managed := taint.TaintString(req.Context(), taint.Source{
 		Origin: taint.OriginHttpRequestParameter,
 		Name:   "q",
@@ -110,7 +135,7 @@ func upgradeEndpoint(w http.ResponseWriter, req *http.Request) {
 		got.Entry = scope.Entry()
 		got.Decision = scope.Decision()
 		if analysis, ok := scope.Analysis(); ok {
-			got.SourceCountBefore = analysis.SourceCount()
+			got.SourceCountAtHandler = analysis.SourceCount()
 		}
 	}
 	managed := taint.TaintString(req.Context(), taint.Source{Origin: taint.OriginHttpRequestParameter}, "upgrade")
@@ -144,7 +169,10 @@ func testConfig(t *testing.T, sampling, maxConcurrent int) {
 
 func getObservation(t *testing.T, client *http.Client, url string) observation {
 	t.Helper()
-	response, err := client.Get(url)
+	req, err := http.NewRequest(http.MethodPost, url+"/source?q=attacker", strings.NewReader("body"))
+	require.NoError(t, err)
+	req.Header.Set("Content-Type", "application/phase4")
+	response, err := client.Do(req)
 	require.NoError(t, err)
 	defer response.Body.Close()
 	var got observation
@@ -159,7 +187,7 @@ func requireActiveRequest(t *testing.T, got observation, entry request.Entry) {
 	require.True(t, got.Active)
 	require.Equal(t, entry, got.Entry)
 	require.Equal(t, request.DecisionActive, got.Decision)
-	require.Zero(t, got.SourceCountBefore)
+	require.Greater(t, got.SourceCountAtHandler, 0)
 	require.True(t, got.Tainted)
 }
 
@@ -431,6 +459,16 @@ func TestServerProtocolsReleasePerRequest(t *testing.T) {
 			second := getObservation(t, client, url)
 			requireActiveRequest(t, first, test.entry)
 			requireActiveRequest(t, second, test.entry)
+			require.Equal(t, first.SourceCountAtHandler, second.SourceCountAtHandler)
+			for _, got := range []observation{first, second} {
+				require.True(t, got.RequestURITainted)
+				require.True(t, got.PathTainted)
+				require.True(t, got.QueryTainted)
+				require.True(t, got.HeaderNameTainted)
+				require.True(t, got.HeaderTainted)
+				require.False(t, got.LiteralTainted)
+				require.True(t, got.BodyBound)
+			}
 			finished := mockTracer.FinishedSpans()
 			require.Len(t, finished, 2)
 			for _, span := range finished {

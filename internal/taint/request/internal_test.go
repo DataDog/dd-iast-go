@@ -6,14 +6,82 @@
 package request
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"unsafe"
 
+	"github.com/DataDog/dd-iast-go/internal/config"
 	"github.com/DataDog/dd-iast-go/internal/model/constants"
 	"github.com/DataDog/dd-iast-go/internal/taint/store"
 	"github.com/stretchr/testify/require"
 )
+
+func TestEagerHTTPManagesFieldsHeadersAndBindings(t *testing.T) {
+	previousEnabled := config.Enabled
+	previousSampling := config.RequestSamplingPct
+	previousMax := config.MaxConcurrentRequests
+	config.Enabled = true
+	config.RequestSamplingPct = 100
+	config.MaxConcurrentRequests = 64
+	t.Cleanup(func() {
+		config.Enabled = previousEnabled
+		config.RequestSamplingPct = previousSampling
+		config.MaxConcurrentRequests = previousMax
+	})
+	ctx, scope, created := Begin(context.Background())
+	require.True(t, created)
+	analysis, ok := scope.Analysis()
+	require.True(t, ok)
+	uri, path, query := "/source?q=value", "/source", "q=value"
+	originalURI := unsafe.StringData(uri)
+	originalPath := unsafe.StringData(path)
+	originalQuery := unsafe.StringData(query)
+	headers := map[string][]string{
+		"Content-Type": {"application/test"},
+		"X-Input":      {"attacker"},
+	}
+	type object struct{ value int }
+	urlObject := &object{value: 1}
+	bodyObject := &object{value: 2}
+	managedHeaders := EagerHTTP(ctx, &uri, &path, &query, headers, urlObject, bodyObject)
+	require.False(t, unsafe.StringData(uri) == originalURI)
+	require.False(t, unsafe.StringData(path) == originalPath)
+	require.False(t, unsafe.StringData(query) == originalQuery)
+	require.Equal(t, 7, analysis.SourceCount())
+
+	var contentTypeKey string
+	for key := range managedHeaders {
+		if key == "Content-Type" {
+			contentTypeKey = key
+		}
+	}
+	require.NotEmpty(t, contentTypeKey)
+	key, valid := store.StringKey(contentTypeKey)
+	require.True(t, valid)
+	var snapshot store.Snapshot
+	require.True(t, analysis.manager.store.Lookup(key, &snapshot))
+	require.Equal(t, 1, snapshot.Len())
+	literalKey, _ := store.StringKey("Content-Type")
+	analysis.manager.store.Lookup(literalKey, &snapshot)
+	require.Zero(t, snapshot.Len())
+
+	var refs [2]store.OwnerRef
+	require.Equal(t, 1, store.LookupObjectValue(analysis.manager.store, urlObject, store.BindingURL, refs[:]))
+	require.Equal(t, 1, store.LookupObjectValue(analysis.manager.store, bodyObject, store.BindingReader, refs[:]))
+	scope.Finish()
+	require.Zero(t, store.LookupObjectValue(analysis.manager.store, urlObject, store.BindingURL, refs[:]))
+}
+
+func TestEagerHeadersDoNotAllocateWhenAnalysisIsInactive(t *testing.T) {
+	headers := map[string][]string{"X-Test": {"value"}}
+	allocations := testing.AllocsPerRun(100, func() {
+		if got := (Analysis{}).taintHeaders(headers); len(got) != 1 {
+			panic("headers changed")
+		}
+	})
+	require.Zero(t, allocations)
+}
 
 func TestWholeFeaturePhase2MemoryBound(t *testing.T) {
 	fixed := unsafe.Sizeof(store.Store{}) + unsafe.Sizeof(Manager{})

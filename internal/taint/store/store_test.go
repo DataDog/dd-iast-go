@@ -175,6 +175,35 @@ func TestTypedObjectBinding(t *testing.T) {
 	require.Zero(t, LookupObject(store, objectValue, refs[:]))
 }
 
+func TestDynamicObjectBinding(t *testing.T) {
+	type reader struct{ value int }
+	store := New()
+	owner := store.Acquire()
+	object := &reader{value: 42}
+	require.True(t, BindObjectValue(owner, any(object), BindingReader))
+	var refs [2]OwnerRef
+	require.Equal(t, 1, LookupObjectValue(store, any(object), BindingReader, refs[:]))
+	require.Zero(t, LookupObjectValue(store, any(object), BindingURL, refs[:]))
+
+	type zero struct{}
+	require.False(t, BindObject(owner, &zero{}, BindingReader))
+	require.False(t, BindObjectValue(owner, any(&zero{}), BindingReader))
+
+	var typedNil *reader
+	require.False(t, BindObjectValue(owner, any(typedNil), BindingReader))
+	require.False(t, BindObjectValue(owner, reader{}, BindingReader))
+	require.Zero(t, LookupObjectValue(store, any(typedNil), BindingReader, refs[:]))
+	require.Zero(t, LookupObjectValue(store, reader{}, BindingReader, refs[:]))
+
+	allocations := testing.AllocsPerRun(100, func() {
+		if LookupObjectValue(store, any(object), BindingReader, refs[:]) != 1 {
+			panic("dynamic binding disappeared")
+		}
+	})
+	require.Zero(t, allocations)
+	owner.Finish()
+}
+
 func rangeSlice(set *ranges.Set) []ranges.Range {
 	result := make([]ranges.Range, set.Len())
 	set.CopyTo(result)

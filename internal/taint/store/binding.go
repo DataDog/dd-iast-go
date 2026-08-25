@@ -6,6 +6,7 @@
 package store
 
 import (
+	"reflect"
 	"sync"
 	"unsafe"
 )
@@ -63,7 +64,7 @@ func (r OwnerRef) Handle() (Owner, bool) {
 // BindObject strongly binds a typed heap object to owner. It never derives a
 // pointer from an interface data word.
 func BindObject[T any](owner *Owner, object *T, kind BindingKind) bool {
-	if owner == nil || object == nil || kind == BindingInvalid || !owner.beginWrite() {
+	if owner == nil || object == nil || unsafe.Sizeof(*object) == 0 || kind == BindingInvalid || !owner.beginWrite() {
 		return false
 	}
 	defer owner.endWrite()
@@ -73,31 +74,26 @@ func BindObject[T any](owner *Owner, object *T, kind BindingKind) bool {
 		return false
 	}
 	defer table.mu.Unlock() // +checklocksforce: TryLock.
-	pointer := uintptr(unsafe.Pointer(object))
-	start := bindingHash(pointer) & (bindingIndexSlots - 1)
-	for probe := 0; probe < bindingIndexSlots; probe++ {
-		slot := (start + probe) & (bindingIndexSlots - 1)
-		encoded := table.index[slot]
-		if encoded == 0 {
-			if table.count >= MaxBindings {
-				owner.owner.drops.full.Add(1)
-				return false
-			}
-			entry := table.count
-			table.entries[entry] = binding{object: object, pointer: pointer, kind: kind}
-			table.index[slot] = entry + 1
-			table.count++
-			return true
-		}
-		entry := &table.entries[encoded-1]
-		if entry.pointer == pointer {
-			entry.object = object
-			entry.kind = kind
-			return true
-		}
+	return table.bind(owner, object, uintptr(unsafe.Pointer(object)), kind)
+}
+
+// BindObjectValue strongly binds a non-nil dynamic pointer to owner. The
+// original interface is retained as the typed anchor; its data word is never
+// inspected directly and the numeric pointer is only a comparison key. One
+// address can have one binding kind; rebinding replaces its prior kind.
+func BindObjectValue(owner *Owner, object any, kind BindingKind) bool {
+	pointer, ok := dynamicPointer(object)
+	if !ok || owner == nil || kind == BindingInvalid || !owner.beginWrite() {
+		return false
 	}
-	owner.owner.drops.full.Add(1)
-	return false
+	defer owner.endWrite()
+	table := &owner.owner.bindings
+	if !table.mu.TryLock() {
+		owner.owner.drops.contention.Add(1)
+		return false
+	}
+	defer table.mu.Unlock() // +checklocksforce: TryLock.
+	return table.bind(owner, object, pointer, kind)
 }
 
 // LookupObject returns active owners bound to object. out bounds owner fanout;
@@ -106,7 +102,20 @@ func LookupObject[T any](store *Store, object *T, out []OwnerRef) int {
 	if store == nil || object == nil || len(out) == 0 {
 		return 0
 	}
-	pointer := uintptr(unsafe.Pointer(object))
+	return lookupObject(store, uintptr(unsafe.Pointer(object)), BindingInvalid, out)
+}
+
+// LookupObjectValue returns active owners bound to a non-nil dynamic pointer of
+// kind. Non-pointer and typed-nil interface values are safe misses.
+func LookupObjectValue(store *Store, object any, kind BindingKind, out []OwnerRef) int {
+	pointer, ok := dynamicPointer(object)
+	if !ok || kind == BindingInvalid || store == nil || len(out) == 0 {
+		return 0
+	}
+	return lookupObject(store, pointer, kind, out)
+}
+
+func lookupObject(store *Store, pointer uintptr, requiredKind BindingKind, out []OwnerRef) int {
 	count := 0
 	for i := range store.owners {
 		record := &store.owners[i]
@@ -125,6 +134,9 @@ func LookupObject[T any](store *Store, object *T, out []OwnerRef) int {
 			continue
 		}
 		kind, found := table.find(pointer)
+		if found && requiredKind != BindingInvalid && kind != requiredKind {
+			found = false
+		}
 		table.mu.RUnlock()           // +checklocksforce: TryRLock.
 		record.lifecycleMu.RUnlock() // +checklocksforce: TryRLock.
 		if !found {
@@ -138,6 +150,45 @@ func LookupObject[T any](store *Store, object *T, out []OwnerRef) int {
 		count++
 	}
 	return count
+}
+
+func (t *bindingTable) bind(owner *Owner, object any, pointer uintptr, kind BindingKind) bool {
+	start := bindingHash(pointer) & (bindingIndexSlots - 1)
+	for probe := 0; probe < bindingIndexSlots; probe++ {
+		slot := (start + probe) & (bindingIndexSlots - 1)
+		encoded := t.index[slot]
+		if encoded == 0 {
+			if t.count >= MaxBindings {
+				owner.owner.drops.full.Add(1)
+				return false
+			}
+			entry := t.count
+			t.entries[entry] = binding{object: object, pointer: pointer, kind: kind}
+			t.index[slot] = entry + 1
+			t.count++
+			return true
+		}
+		entry := &t.entries[encoded-1]
+		if entry.pointer == pointer {
+			entry.object = object
+			entry.kind = kind
+			return true
+		}
+	}
+	owner.owner.drops.full.Add(1)
+	return false
+}
+
+func dynamicPointer(object any) (uintptr, bool) {
+	if object == nil {
+		return 0, false
+	}
+	value := reflect.ValueOf(object)
+	if value.Kind() != reflect.Pointer || value.IsNil() || value.Type().Elem().Size() == 0 {
+		return 0, false
+	}
+	pointer := value.Pointer()
+	return pointer, pointer != 0
 }
 
 func (t *bindingTable) find(pointer uintptr) (BindingKind, bool) {
