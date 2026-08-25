@@ -14,8 +14,10 @@ issues:
 1. runtime hooks cannot implement concat or conversion propagation with
    Orchestrion 1.12.2, and the source-expression prototypes do not meet the
    original percentage-only performance gates;
-2. an exact `net/http.serverHandler` receiver match makes Orchestrion 1.12.2
-   recursively inspect the package that it is compiling and does not complete.
+2. the first exact `net/http.serverHandler` fixture did not complete because
+   its linked callback package imported `net/http`, creating a recursive
+   dependency while `net/http` was being compiled. A later isolated rerun proved
+   that Orchestrion 1.12.2's existing exact receiver matcher is sufficient.
 
 The user approved the revised choices in
 [Checkpoint decisions](#checkpoint-decisions). Production aspects remain gated
@@ -33,7 +35,7 @@ by their later phase-specific reviews and benchmarks.
 | Source-expression concat/conversion | Semantic pass, gate fail | Correct semantics and allocation count; original relative overhead gates fail. |
 | Slicing source expression | Semantic pass, gate fail | No runtime alternative exists. The absolute overhead is about 1 ns, but the relative overhead is about 100% for a 1 ns microbenchmark. |
 | HTTP lifecycle source inspection | Pass | All server paths converge as expected; no tracer aspect creates the server span first. |
-| Exact HTTP lifecycle aspect | Fail | Exact receiver matching does not complete. A broad fixture proved ordering but is not the production matcher. |
+| Exact HTTP lifecycle aspect | Pass after dependency correction | `receiver: net/http.serverHandler` matches exactly. The callback bridge must have no direct or transitive `net/http` dependency. |
 | Reader provenance | Partial pass | Constructor bindings and `io.ReadAll` are viable. `bytes.Buffer.ReadFrom` needs a post-call allocation/escape benchmark. |
 | SQL sink boundaries | Boundary confirmed | Proposed DB, Tx, Conn, and Stmt boundaries exist above retries. Report, redaction, and payload fixtures were not validated. |
 | Command sink boundary | Boundary confirmed | `os.StartProcess` remains the post-validation boundary in `Cmd.Start`. Report and payload fixtures were not validated. |
@@ -384,11 +386,14 @@ bind that same decision when `tracer.StartSpanFromContext` later runs.
 
 ### 5.2 Empirical ordering result
 
-The exact `receiver: net/http.serverHandler` function matcher does not complete
-when Orchestrion compiles `net/http`; its type resolver recursively invokes a
-`go list`/compile of the package under compilation. The production aspect needs
-a syntactic local-receiver matcher (or another non-recursive exact matcher)
-before Phase 4.
+The first exact `receiver: net/http.serverHandler` fixture did not complete
+when Orchestrion compiled `net/http`. A later isolation test showed that the
+matcher itself completes when its advice has no callback dependency. The actual
+cycle came from the linked Phase 0 callback package, which imported `net/http`
+to accept `*http.Request`. The production bridge instead accepts and returns
+`context.Context`; its package dependency closure excludes `net/http`. The exact
+matcher and the production bridge now pass woven HTTP/1, TLS HTTP/2, and h2c
+tests.
 
 A broader Phase 0 fixture matched `ServeHTTP` bodies in `net/http`, used a cheap
 context reuse check, and separately instrumented `StartSpanFromContext`. It
@@ -411,10 +416,14 @@ It also proved:
   the test; closing the idle connection before the snapshot made finish
   observable.
 
-The h2c observation does not prove that the owner lasts for the connection. The
-exact source boundary is per request, but Phase 4 must test owner permit release
-without depending on connection close. With only 64 permits, a connection-bound
-owner would be a release blocker.
+The original h2c observation did not prove that the owner lasts for one request.
+Phase 3 found that `x/net/http2/h2c` derives all stream contexts from either the
+synthetic `PRI *` request or the HTTP/1.1 `Upgrade: h2c` request. A
+minimal dependency bridge recognizes both connection-level forms before owner
+creation and lets the exact application-handler fallback create one scope per
+stream. Woven tests keep each h2c connection open, use a one-permit limit, and
+verify that later requests start with an empty source table. Native Go 1.26.6
+h2c still reaches `serverHandler.ServeHTTP` per stream.
 
 The probe exposed an advice-scoping requirement. `prepend-statements` places
 advice in a generated block. This is wrong:
@@ -512,9 +521,11 @@ The user approved these decisions:
    unsampled end-to-end request gate and soak limits remain unchanged. This
    policy does not pre-approve generated aspects.
 2. **HTTP lifecycle:** all standard HTTP/1, TLS HTTP/2, and h2c paths reach
-   `net/http.serverHandler.ServeHTTP` once per request. Add an exact syntactic
-   receiver matcher and use the outer-handler fallback only for direct/custom
-   dispatch. The Orchestrion schema still needs its separate user review.
+   `net/http.serverHandler.ServeHTTP` once per request. Use Orchestrion's
+   existing exact receiver matcher with a context-only callback bridge whose
+   dependency closure excludes `net/http`; use the outer-handler fallback only
+   for direct/custom dispatch. The operator-expression schemas still need their
+   separate user review.
 3. **Store capacity:** use a 24 MiB whole-feature ceiling and guarantee ten
    ranges for every admitted value. Use bounded best-effort overflow storage up
    to the hard configured limit of 64, then drop the range tail with telemetry.
@@ -545,7 +556,8 @@ Carried-forward obligations are:
    managed root and that retained heap stays below the 24 MiB ceiling.
 3. Orchestrion join-point schemas require the original plan's separate user
    checkpoint before upstream implementation.
-4. Phase 4 must prove per-request h2c owner release without connection-close
-   dependence.
+4. Phase 3 proved per-stream h2c owner release without connection-close
+   dependence and excluded both prior-knowledge and HTTP/1.1 upgrade connection
+   contexts.
 5. Phase 7a must complete report, redaction, payload, backend, and cross-tracer
    compatibility validation before sink/report production code is enabled.

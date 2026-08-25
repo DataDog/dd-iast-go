@@ -1,0 +1,95 @@
+# Unless explicitly stated otherwise all files in this repository are licensed
+# under the Apache License Version 2.0.
+# This product includes software developed at Datadog (https://www.datadoghq.com/).
+# Copyright 2026-present Datadog, Inc.
+---
+# $schema: https://datadoghq.dev/orchestrion/schema.json
+meta:
+  name: github.com/DataDog/dd-iast-go/iast/net/http
+  description: Request-scoped IAST ownership and span binding
+
+aspects:
+  # Go 1.26.6 routes HTTP/1, TLS HTTP/2, and h2c through this value-receiver
+  # method once per request. The request bridge has no net/http dependency, so
+  # importing it into net/http does not create a package cycle.
+  - id: net/http.serverHandler.ServeHTTP
+    join-point:
+      all-of:
+        - import-path: net/http
+        - function-body:
+            function:
+              - receiver: net/http.serverHandler
+              - name: ServeHTTP
+    advice:
+      - prepend-statements:
+          imports:
+            iasthttpbridge: github.com/DataDog/dd-iast-go/internal/taint/httpbridge
+          template: |-
+            {{- $req := .Function.Argument 1 -}}
+            __dd_iast_ctx, __dd_iast_created := iasthttpbridge.Begin(
+              {{ $req }}.Context(), {{ $req }}.Method, {{ $req }}.RequestURI,
+              map[string][]string({{ $req }}.Header),
+            )
+            if __dd_iast_created {
+              {{ $req }} = {{ $req }}.WithContext(__dd_iast_ctx)
+            }
+            defer iasthttpbridge.Finish(__dd_iast_ctx, __dd_iast_created)
+
+  # Bind as soon as tracing creates a span from a request context. Wrapping the
+  # complete multi-result expression preserves every argument, including a
+  # variadic option slice, and evaluates the original call exactly once.
+  - id: tracer.StartSpanFromContext
+    tracer-internal: true
+    join-point:
+      all-of:
+        - function-call: github.com/DataDog/dd-trace-go/v2/ddtrace/tracer.StartSpanFromContext
+        - not:
+            package-filter:
+              root: false
+              pattern: "github.com/DataDog/dd-iast-go/internal/**"
+        - not:
+            one-of:
+              - import-path: github.com/DataDog/dd-iast-go/iast/net/http
+              - import-path: github.com/DataDog/dd-trace-go/v2/ddtrace/tracer
+    advice:
+      - wrap-expression:
+          imports:
+            iasthttp: github.com/DataDog/dd-iast-go/iast/net/http
+          template: iasthttp.BindStartSpan({{ . }})
+
+  # Direct/custom dispatch can bypass serverHandler. Restrict fallback matching
+  # to the exact http.HandlerFunc shape to avoid treating unrelated helpers as
+  # request boundaries. The first handler creates the scope; nested handlers
+  # reuse it.
+  - id: application.http.Handler
+    join-point:
+      all-of:
+        - package-filter:
+            root: true
+            pattern: "**"
+        - not:
+            package-filter:
+              root: false
+              pattern: "github.com/DataDog/dd-iast-go/internal/**"
+        - function-body:
+            function:
+              - signature:
+                  args:
+                    - net/http.ResponseWriter
+                    - "*net/http.Request"
+                  returns: []
+    advice:
+      - prepend-statements:
+          imports:
+            iastrequest: github.com/DataDog/dd-iast-go/internal/taint/request
+            iastspans: github.com/DataDog/dd-iast-go/internal/spans
+          template: |-
+            {{- $req := .Function.ArgumentOfType "*net/http.Request" -}}
+            if {{ $req }} != nil {
+              __dd_iast_ctx, __dd_iast_created := iastrequest.BeginContext({{ $req }}.Context())
+              if __dd_iast_created {
+                {{ $req }} = {{ $req }}.WithContext(__dd_iast_ctx)
+              }
+              iastspans.BindScopeContext(__dd_iast_ctx)
+              defer iastrequest.FinishContext(__dd_iast_ctx, __dd_iast_created)
+            }

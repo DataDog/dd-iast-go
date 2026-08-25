@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/DataDog/dd-iast-go/internal/config"
+	"github.com/DataDog/dd-iast-go/internal/taint/httpbridge"
 	"github.com/DataDog/dd-iast-go/internal/taint/request"
 	"github.com/stretchr/testify/require"
 )
@@ -51,6 +52,55 @@ func TestBeginCapacityDropped(t *testing.T) {
 	require.Equal(t, request.DecisionCapacityDropped, scope.Decision())
 	require.False(t, scope.Active())
 	require.Zero(t, scope.EnabledTagValue())
+}
+
+func TestServerContextEntryAndNestedFinish(t *testing.T) {
+	restoreConfig(t)
+	config.Enabled = true
+	config.RequestSamplingPct = 100
+	config.MaxConcurrentRequests = 1
+	ctx, created := request.BeginServerContext(context.Background())
+	require.True(t, created)
+	scope := request.FromContext(ctx)
+	require.NotNil(t, scope)
+	require.Equal(t, request.EntryServer, scope.Entry())
+
+	nestedCtx, nestedCreated := request.BeginContext(ctx)
+	require.False(t, nestedCreated)
+	require.Equal(t, ctx, nestedCtx)
+	request.FinishContext(nestedCtx, nestedCreated)
+	require.True(t, scope.Active())
+	request.FinishContext(ctx, created)
+	require.False(t, scope.Active())
+}
+
+func TestServerContextSkipsH2CPreface(t *testing.T) {
+	restoreConfig(t)
+	config.Enabled = true
+	config.RequestSamplingPct = 100
+	config.MaxConcurrentRequests = 1
+	original := context.Background()
+	ctx, created := httpbridge.Begin(original, "PRI", "*", nil)
+	require.False(t, created)
+	require.Equal(t, original, ctx)
+	require.Nil(t, request.FromContext(ctx))
+}
+
+func TestServerContextSkipsH2CUpgrade(t *testing.T) {
+	restoreConfig(t)
+	config.Enabled = true
+	config.RequestSamplingPct = 100
+	config.MaxConcurrentRequests = 1
+	headers := map[string][]string{
+		"Upgrade":        {"H2C"},
+		"Connection":     {"keep-alive, Upgrade, HTTP2-Settings"},
+		"Http2-Settings": {"AAMAAABkAAQAAP__"},
+	}
+	original := context.Background()
+	ctx, created := httpbridge.Begin(original, "GET", "/", headers)
+	require.False(t, created)
+	require.Equal(t, original, ctx)
+	require.Nil(t, request.FromContext(ctx))
 }
 
 func TestBeginActiveAndFinish(t *testing.T) {

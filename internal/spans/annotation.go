@@ -14,6 +14,7 @@ import (
 	"weak"
 
 	"github.com/DataDog/dd-iast-go/internal/config"
+	"github.com/DataDog/dd-iast-go/internal/config/loader"
 	"github.com/DataDog/dd-iast-go/internal/instrumentation"
 	"github.com/DataDog/dd-iast-go/internal/instrumentation/telemetry"
 	"github.com/DataDog/dd-iast-go/internal/model"
@@ -86,6 +87,11 @@ func AnnotationFor(span *tracer.Span) *Annotation {
 	}
 	root.SetTag(SpanTagEnabled, ann.enabledTag())
 	return ann
+}
+
+// BindScopeContext binds a handler context and discards the annotation result.
+func BindScopeContext(ctx context.Context) {
+	BindScopeFromContext(ctx)
 }
 
 // BindScopeFromContext binds a scope and span carried by ctx, when both exist.
@@ -189,6 +195,21 @@ func (a *Annotation) enabledTag() int {
 }
 
 func init() {
+	enabled := config.Observe(loader.Observer{
+		Warn: func(format string, args ...any) {
+			instrumentation.Instance.Logger().Warn(format, args...)
+		},
+		RegisterDefault: func(name string, value any) {
+			instrumentation.Instance.TelemetryRegisterAppConfig(name, value, instrumentation.OriginDefault)
+		},
+		RegisterEnvironment: func(name string, value any) {
+			instrumentation.Instance.TelemetryRegisterAppConfig(name, value, instrumentation.OriginEnvVar)
+		},
+	})
+	if enabled {
+		instrumentation.Instance.TelemetryProductStarted(instrumentation.TelemetryNamespaceIAST)
+	}
+
 	// Note: this is here and not in the [github.com/DataDog/dd-iast-go/internal/instrumentation/telemetry] package in
 	// order to avoid creating a dependency from it to some of the tracer's internal, as it would make it much harder to
 	// avoid creating circular dependencies when instrumenting packages the tracer itself uses.

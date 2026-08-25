@@ -11,7 +11,6 @@ import (
 
 	"github.com/DataDog/dd-iast-go/internal/config/loader"
 	"github.com/DataDog/dd-iast-go/internal/config/parser"
-	"github.com/DataDog/dd-iast-go/internal/instrumentation"
 	"github.com/DataDog/dd-iast-go/internal/taint/ranges"
 )
 
@@ -65,19 +64,7 @@ var (
 	StackTraceEnabled bool
 )
 
-func load() {
-	observer := loader.Observer{
-		Warn: func(format string, args ...any) {
-			instrumentation.Instance.Logger().Warn(format, args...)
-		},
-		RegisterDefault: func(name string, value any) {
-			instrumentation.Instance.TelemetryRegisterAppConfig(name, value, instrumentation.OriginDefault)
-		},
-		RegisterEnvironment: func(name string, value any) {
-			instrumentation.Instance.TelemetryRegisterAppConfig(name, value, instrumentation.OriginEnvVar)
-		},
-	}
-
+func load(observer loader.Observer) {
 	Enabled = loader.BoolFromEnv(observer, EnvVarEnabled, true)
 	RequestSamplingPct = int(loader.UintFromEnvBounded(observer, EnvVarRequestSampling, 30, uint8(0), uint8(100)))
 	MaxConcurrentRequests = int(loader.UintFromEnvBounded(observer, EnvVarMaxConcurrentRequests, uint64(2), uint8(0), uint8(64)))

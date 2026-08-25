@@ -12,6 +12,7 @@ import (
 	"sync/atomic"
 
 	"github.com/DataDog/dd-iast-go/internal/config"
+	"github.com/DataDog/dd-iast-go/internal/taint/httpbridge"
 )
 
 // Decision is the immutable sampling/capacity outcome for a request scope. It
@@ -23,6 +24,14 @@ const (
 	DecisionSampledOut
 	DecisionCapacityDropped
 	DecisionActive
+)
+
+// Entry identifies the boundary that created a request scope.
+type Entry uint8
+
+const (
+	EntryFallback Entry = iota
+	EntryServer
 )
 
 type contextKey struct{}
@@ -44,11 +53,16 @@ type Scope struct {
 	analysis Analysis
 	// +checklocks:mu
 	decision Decision
+	entry    Entry
 }
 
 // Begin makes one sampling decision and, when sampled, acquires one bounded
 // analysis permit. An existing scope is reused and created is false.
 func Begin(ctx context.Context) (derived context.Context, scope *Scope, created bool) {
+	return begin(ctx, EntryFallback)
+}
+
+func begin(ctx context.Context, entry Entry) (derived context.Context, scope *Scope, created bool) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -59,7 +73,7 @@ func Begin(ctx context.Context) (derived context.Context, scope *Scope, created 
 		return ctx, nil, false
 	}
 	decision := sampleDecision(config.RequestSamplingPct)
-	scope = &Scope{decision: decision}
+	scope = &Scope{decision: decision, entry: entry}
 	if decision == DecisionActive {
 		if config.MaxConcurrentRequests <= 0 {
 			scope.decision = DecisionCapacityDropped
@@ -73,6 +87,42 @@ func Begin(ctx context.Context) (derived context.Context, scope *Scope, created 
 		}
 	}
 	return context.WithValue(ctx, contextKey{}, scope), scope, true
+}
+
+// Entry returns the boundary that created this scope.
+func (s *Scope) Entry() Entry {
+	if s == nil {
+		return EntryFallback
+	}
+	return s.entry
+}
+
+// BeginServerContext creates or reuses the standard net/http server scope.
+// h2c connection-level requests are filtered by httpbridge before this call.
+func BeginServerContext(ctx context.Context) (context.Context, bool) {
+	derived, _, created := begin(ctx, EntryServer)
+	return derived, created
+}
+
+// BeginContext creates or reuses a scope at an application handler boundary.
+func BeginContext(ctx context.Context) (context.Context, bool) {
+	derived, _, created := Begin(ctx)
+	return derived, created
+}
+
+// FinishContext releases the scope only when the matching entry bridge created
+// it. It is safe to defer and is idempotent through Scope.Finish.
+func FinishContext(ctx context.Context, created bool) {
+	if !created {
+		return
+	}
+	if scope := FromContext(ctx); scope != nil {
+		scope.Finish()
+	}
+}
+
+func init() {
+	httpbridge.Register(BeginServerContext, FinishContext)
 }
 
 func sampleDecision(percent int) Decision {
