@@ -4,7 +4,7 @@
 
 - **Toolchain:** `GOTOOLCHAIN=go1.26.6`
 - **Orchestrion:** 1.12.2
-- **State:** evidence complete; implementation is paused at the required user checkpoint
+- **State:** Phase 0 checkpoint approved; Phase 1 range/source implementation is authorized
 - **Related plan:** [taint-tracking-net-http-sqli-cmdi.md](./taint-tracking-net-http-sqli-cmdi.md)
 - **Removal:** delete this file with the related plan after implementation is accepted
 
@@ -17,8 +17,9 @@ issues:
 2. an exact `net/http.serverHandler` receiver match makes Orchestrion 1.12.2
    recursively inspect the package that it is compiling and does not complete.
 
-Implementation must not start until the user selects the revised choices in
-[Decisions required](#decisions-required).
+The user approved the revised choices in
+[Checkpoint decisions](#checkpoint-decisions). Production aspects remain gated
+by their later phase-specific reviews and benchmarks.
 
 ## Result summary
 
@@ -156,30 +157,63 @@ The added regression tests cover:
 | Sources per request | 256 |
 | Object bindings per request | 256 |
 | Inline ranges per prototype value | 4 |
-| Hard ranges per value/root | 64 |
-| Process-wide 64-range overflow blocks | 256 |
+| Ranges guaranteed per admitted production value | 10 |
+| Configured range default | 10 |
+| Hard configured ranges per value/root | 64 |
+| Prototype process-wide 64-range overflow blocks | 256 |
 
 The current lazy prototype uses approximately 6.9 MiB of fixed value, owner, and
-range storage and at most 8 MiB of charged root backing. Its measured subsystem
-total is near 14.9 MiB plus allocator metadata. This number does **not** include
-the source table, object-binding table, deduplication storage, or the final
-root-relative range layout.
+range storage and at most 8 MiB of charged root backing. Its calculated
+subsystem bound is near 14.9 MiB plus allocator metadata. This number does
+**not** include the source table, object-binding table, deduplication storage,
+or the final root-relative range layout.
 
-Only 256 values process-wide can hold more than four ranges in the prototype.
-When that pool is empty, the prototype keeps the first four accurate ranges and
-drops later ranges. It increments a drop counter; it does not fabricate
-provenance. Production must measure this precision cliff under concurrency and
-must not add an unbounded sweep or allocation to avoid it.
+The prototype's 256-block pool lets only 256 values hold more than four ranges.
+That prototype policy is rejected for production. Production must provide ten
+ranges for every value admitted under the 16,384-entry process cap. Values may
+use bounded best-effort overflow storage from range 11 through the hard
+configured maximum of 64. On exhaustion, keep the earliest ranges in output
+order, drop the tail, and increment telemetry.
 
-The proposed whole-feature hard ceiling is 24 MiB, including the measured
-14.9 MiB subsystem and 9.1 MiB of layout headroom. Phase 2 must calculate the
-complete total from actual type sizes before production aspects can be enabled.
+With the prototype's 24-byte range representation, six additional ranges for
+all 16,384 admitted values require about 2.25 MiB. Replacing the prototype pool
+with a ten-range guaranteed pool plus a small best-effort overflow pool would
+put the current subsystem estimate near 17.1 MiB. The final root-relative layout
+can change this figure.
+
+The approved whole-feature hard ceiling is 24 MiB. Phase 2 must calculate the
+complete total from actual type sizes and measure retained heap and allocator
+rounding before production aspects can be enabled.
 
 A saturated finish is sub-microsecond when no writer is active. The final
 benchmark must also report finish latency percentiles while writers hold the
 lifecycle read lock.
 
-### 2.3 Required production changes
+### 2.3 Cross-language capacity comparison
+
+Public tracer source was compared at these revisions:
+
+- Java `DataDog/dd-trace-java@703558ce`: 33% sampling, four concurrent
+  requests, two vulnerabilities per request, ten ranges per value, and a
+  16,384-bucket per-request map with a ten-object bucket limit. A later
+  collision replaces the bucket chain and loses older taint.
+- .NET `DataDog/dd-trace-dotnet@40c7ba16`: 30% sampling, two concurrent
+  requests, two vulnerabilities per request, ten ranges per value, and a
+  16,384-bucket map that changes to overwrite mode after 8,192 entries.
+- Python `DataDog/dd-trace-py@6ba985e2`: 30% sampling, two concurrent requests,
+  two vulnerabilities per request, and 30 ranges per value. Request maps are
+  native hash maps without an object-count cap found in public source; the
+  native active-context array has a hard limit of 1,024.
+- Public PHP and Ruby tracers do not implement IAST taint tracking.
+
+Go already defaults to 30% sampling, two concurrent requests, two
+vulnerabilities per request, ten ranges, 250-character evidence truncation, and
+one database row to taint. This matches .NET and is close to Java. Go needs a
+stronger explicit byte ceiling because it cannot safely use arbitrary weak
+references and must retain managed cloned roots. The 24 MiB ceiling is therefore
+a Go-specific hard bound, not a copied cross-language allocation target.
+
+### 2.4 Required production changes
 
 The prototype still contains placeholder byte mutation semantics. Production
 must:
@@ -191,6 +225,10 @@ must:
 - reserve all replacement slots/ranges before publishing a new root generation;
 - on reservation or contention failure, invalidate and drop the affected taint
   instead of publishing partial or fabricated provenance;
+- guarantee ten ranges for every admitted value and use bounded best-effort
+  storage for configured limits from 11 through 64;
+- clamp `DD_IAST_MAX_RANGE_COUNT` to `[1, 64]`; the current unbounded loader does
+  not yet enforce the approved hard ceiling;
 - keep process/request counters as bounded physical-slot counts until reclaim or
   finish;
 - use a fixed or caller-owned snapshot buffer; no lookup allocation;
@@ -461,114 +499,53 @@ there. The lexical call-site aspect remains the selected boundary.
   `MAX_SIZE_EXCEEDED`, but the backend contract could not be confirmed.
 - Internal Confluence and Drive searches were unavailable because MCP OAuth was
   not authorized in this session.
-- Cross-tracer source repositories were visible but not readable in this
-  sandbox.
+- Public Java, .NET, Python, PHP, and Ruby tracer source was compared after the
+  local sibling checkouts proved unreadable in this sandbox.
 
-## 7. Decisions required
+## 7. Checkpoint decisions
 
-Each item below is an explicit checkpoint question. No recommendation is an
-authorization to implement the related production aspect.
+The user approved these decisions:
 
-### 7.1 Operator performance gate
+1. **Operator performance:** source-generated operators below 80 ns may add at
+   most 4 ns on disabled and active-untainted paths; operations at or above
+   80 ns retain the 5% gate. Added allocations remain forbidden. The 2%
+   unsampled end-to-end request gate and soak limits remain unchanged. This
+   policy does not pre-approve generated aspects.
+2. **HTTP lifecycle:** all standard HTTP/1, TLS HTTP/2, and h2c paths reach
+   `net/http.serverHandler.ServeHTTP` once per request. Add an exact syntactic
+   receiver matcher and use the outer-handler fallback only for direct/custom
+   dispatch. The Orchestrion schema still needs its separate user review.
+3. **Store capacity:** use a 24 MiB whole-feature ceiling and guarantee ten
+   ranges for every admitted value. Use bounded best-effort overflow storage up
+   to the hard configured limit of 64, then drop the range tail with telemetry.
+4. **Phase 0 deferrals:** require `io.ReadAll` in the first body vertical slice;
+   keep `bytes.Buffer.ReadFrom` conditional on its dedicated benchmark; move the
+   many-substrings retained-heap proof to Phase 2; and move report, redaction,
+   payload, backend, and cross-tracer compatibility validation to Phase 7a.
 
-**Question:** which gate should replace the original percentage-only gate?
-
-- **Recommended:** provisionally require zero added allocations and no more than
-  4 ns absolute disabled and active-untainted overhead for source-generated
-  operators below 80 ns; retain 5% for operations at or above 80 ns. Four
-  nanoseconds covers the stable low-arity prototype deltas up to 3.5 ns, while
-  the report's suggested 2 ns would reject Concat 4 and Concat 6. Retain the 2%
-  unsampled end-to-end request gate and soak limits. This threshold does not
-  pre-approve the generated aspects.
-- Keep the original 5%/10% gates. This stops the required slicing and conversion
-  aspects and most low-arity concat aspects unless the generated transform is
-  materially faster than the fixture.
-- Weave slicing/conversion only in an explicit IAST build configuration. This
-  removes their runtime-disabled cost from builds without those aspects, but an
-  instrumented binary cannot enable the missing propagation at runtime.
-- Defer slicing and conversion from the first release. This reduces the promised
-  propagation matrix and needs a documented compatibility decision.
-
-Phase 6 must measure the generated forms with at least 20 samples and a 1-second
-benchmark time on an idle machine. It must report unrounded values, allocations,
-`benchstat` 95% confidence intervals, and a paired-bootstrap 95% upper bound for
-the absolute delta. Both the point estimate and upper bound must meet the
-selected gate. The contradictory Concat 16 samples mean the at-or-above-80-ns
-arm is currently unvalidated.
-
-### 7.2 HTTP matcher
-
-**Question:** which exact HTTP lifecycle matcher may proceed to schema review?
-
-- **Recommended:** design an Orchestrion syntactic receiver matcher that can
-  match `serverHandler.ServeHTTP` inside its own package without recursive type
-  resolution. Review its schema at the original plan's separate Orchestrion
-  checkpoint before upstream implementation.
-- Use the broad standard-library `ServeHTTP` matcher. This adds instrumentation
-  to unrelated standard-library handlers and needs separate overhead and h2c
-  lifetime approval.
-- Stop standard-library lifecycle ownership. This removes automatic direct
-  `net/http` coverage from the first release.
-
-### 7.3 Store capacity
-
-**Question:** which whole-feature memory and range-pressure policy should
-Phase 1 and Phase 2 target?
-
-- **Recommended:** approve a 24 MiB whole-feature ceiling and the provisional
-  counts in section 2.2. On overflow-pool exhaustion, keep the first four
-  accurate ranges, drop later ranges, and emit telemetry. This accepts bounded
-  false negatives under saturation without fabricated provenance.
-- Keep the 24 MiB ceiling but spend more of it on overflow blocks. Phase 1 must
-  propose the new fixed block count and reduce another table if needed.
-- Keep the 24 MiB ceiling but drop the complete value when no overflow block is
-  available. This avoids partial provenance but causes larger false-negative
-  gaps under saturation.
-- Require a lower user-supplied ceiling. Phase 1 must redesign slot, root, and
-  range counts before implementation.
-
-The 14.9 MiB value/owner/range/root figure is a calculated hard bound, not a
-retained-heap measurement. Phase 2 must measure retained heap and allocator
-rounding before the 24 MiB ceiling is final.
-
-### 7.4 Phase 0 exit and body boundary
-
-**Question:** which incomplete Phase 0 items may move to later checkpoints?
-
-- **Recommended:** require `io.ReadAll` in the first body vertical slice; make
-  `bytes.Buffer.ReadFrom` conditional on its dedicated benchmark; move the
-  many-substrings retained-heap proof to Phase 2; and move report, redaction,
-  payload, backend, and cross-tracer validation to Phase 7a.
-- Require every original Phase 0 item before Phase 1. This adds the buffer,
-  retained-heap, backend, tokenizer, payload, and cross-tracer probes now.
-- Require `bytes.Buffer.ReadFrom` now, but accept the Phase 2 and Phase 7a
-  evidence moves.
-- Accept the body API split, but require retained-heap and sink/report evidence
-  before Phase 1.
-
-### 7.5 Deferred backend contract
-
-If the recommended Phase 0 exit is approved, the payload sentinel and tokenizer
-remain unselected. Phase 7a must confirm payload shape, overflow semantics,
-tokenizer behavior, backend acceptance, and cross-tracer compatibility before
-sink/report production code is enabled.
+Phase 6 must measure generated operator forms with at least 20 samples and a
+1-second benchmark time on an idle machine. It must report unrounded values,
+allocations, `benchstat` 95% confidence intervals, and a paired-bootstrap 95%
+upper bound for the absolute delta. Both the point estimate and upper bound must
+meet the selected gate. The contradictory Concat 16 samples mean the
+at-or-above-80-ns arm remains unvalidated.
 
 ## 8. Phase exit assessment
 
-Phase 0 produced enough evidence to start pure range/source work only after the
-user answers section 7. It does **not** authorize operator aspects, HTTP source
-aspects, Orchestrion schema implementation, or sink/report implementation.
+Phase 0 is approved. Phase 1 pure range/source work may start. This approval
+does **not** authorize operator aspects, HTTP source aspects, Orchestrion schema
+implementation, or sink/report implementation.
 
 Carried-forward obligations are:
 
-1. Phase 1 can implement and review pure root-relative range algebra and the
-   bounded source table after the memory-ceiling decision.
-2. The lazy store can be rebuilt against that algebra and re-benchmarked before
+1. Phase 1 implements and reviews pure root-relative range algebra and the
+   bounded source table under the approved memory/range policy.
+2. The lazy store is rebuilt against that algebra and re-benchmarked before
    Phase 2 exits. Phase 2 must prove that many substrings charge and retain one
-   managed root.
+   managed root and that retained heap stays below the 24 MiB ceiling.
 3. Orchestrion join-point schemas require the original plan's separate user
    checkpoint before upstream implementation.
 4. Phase 4 must prove per-request h2c owner release without connection-close
    dependence.
 5. Phase 7a must complete report, redaction, payload, backend, and cross-tracer
-   validation that Phase 0 could not complete.
+   compatibility validation before sink/report production code is enabled.
