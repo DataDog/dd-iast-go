@@ -16,6 +16,7 @@ package request
 
 import (
 	"github.com/DataDog/dd-iast-go/internal/model/constants"
+	"github.com/DataDog/dd-iast-go/internal/taint/ranges"
 )
 
 // SourceID identifies a source within a single request's source [Table].
@@ -25,10 +26,9 @@ import (
 // [AddResult].Status field distinguishes a returned ID from a capacity failure
 // or rejected input.
 //
-// SourceID is defined here, rather than imported, because no shared identifier
-// package exists yet. Later adapters convert explicitly to any future
-// cross-package identifier.
-type SourceID uint16
+// SourceID is shared with range provenance so no conversion seam can associate
+// a range with the wrong request source.
+type SourceID = ranges.SourceID
 
 // Source is the full unredacted record of a single request source. Equality is
 // exact over (Origin, Name, Value).

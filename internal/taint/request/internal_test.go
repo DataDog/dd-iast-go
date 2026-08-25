@@ -8,15 +8,22 @@ package request
 import (
 	"fmt"
 	"testing"
+	"unsafe"
 
 	"github.com/DataDog/dd-iast-go/internal/model/constants"
+	"github.com/DataDog/dd-iast-go/internal/taint/store"
 	"github.com/stretchr/testify/require"
 )
 
+func TestWholeFeaturePhase2MemoryBound(t *testing.T) {
+	fixed := unsafe.Sizeof(store.Store{}) + unsafe.Sizeof(Manager{})
+	total := fixed + uintptr(store.ProcessRootBytes)
+	t.Logf("store=%d manager=%d fixed=%d total=%d", unsafe.Sizeof(store.Store{}), unsafe.Sizeof(Manager{}), fixed, total)
+	require.LessOrEqual(t, total, uintptr(24<<20))
+}
+
 // TestCollisionComparesFullValues forces two distinct sources that hash to the
-// same index slot (same origin and name, different value) and verifies that the
-// table still distinguishes them by full equality. It uses the unexported hash
-// seam so the production randomized hash is not weakened.
+// same index slot and verifies that full equality distinguishes them.
 func TestCollisionComparesFullValues(t *testing.T) {
 	tab := New()
 	origin := constants.OriginHttpRequestParameter
