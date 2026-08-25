@@ -7,11 +7,13 @@ package http_test
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -39,6 +41,7 @@ var upgradeObserved chan observation
 type observation struct {
 	HasScope             bool             `json:"has_scope"`
 	SourceCountAtHandler int              `json:"source_count_at_handler"`
+	SourceCountAfterLazy int              `json:"source_count_after_lazy"`
 	Active               bool             `json:"active"`
 	Entry                request.Entry    `json:"entry"`
 	Decision             request.Decision `json:"decision"`
@@ -50,9 +53,18 @@ type observation struct {
 	HeaderTainted        bool             `json:"header_tainted"`
 	LiteralTainted       bool             `json:"literal_tainted"`
 	BodyBound            bool             `json:"body_bound"`
+	QueryNameTainted     bool             `json:"query_name_tainted"`
+	QueryValueTainted    bool             `json:"query_value_tainted"`
+	FormNameTainted      bool             `json:"form_name_tainted"`
+	FormValueTainted     bool             `json:"form_value_tainted"`
+	PostFormTainted      bool             `json:"post_form_tainted"`
+	PathValueTainted     bool             `json:"path_value_tainted"`
+	CookieNameTainted    bool             `json:"cookie_name_tainted"`
+	CookieValueTainted   bool             `json:"cookie_value_tainted"`
 }
 
 func tracedEndpoint(w http.ResponseWriter, req *http.Request) {
+	req.SetPathValue("user", "alice")
 	span, spanCtx := tracer.StartSpanFromContext(req.Context(), "iast.http.request")
 	defer span.Finish()
 	boundEndpoint(w, req.WithContext(spanCtx))
@@ -85,6 +97,39 @@ func boundEndpoint(w http.ResponseWriter, req *http.Request) {
 	got.LiteralTainted = taint.IsTaintedString("Content-Type")
 	var bodyOwners [1]store.OwnerRef
 	got.BodyBound = request.LookupObject(req.Body, store.BindingReader, bodyOwners[:]) == 1
+	for range 100 {
+		query := req.URL.Query()
+		for name, values := range query {
+			if name == "query" {
+				got.QueryNameTainted = taintedFrom(name, taint.OriginHttpRequestParameterName)
+				if len(values) != 0 {
+					got.QueryValueTainted = taintedFrom(values[0], taint.OriginHttpRequestParameter)
+				}
+			}
+		}
+	}
+	for range 100 {
+		_ = req.ParseForm()
+		for name, values := range req.Form {
+			if name == "form" {
+				got.FormNameTainted = taintedFrom(name, taint.OriginHttpRequestParameterName)
+				if len(values) != 0 {
+					got.FormValueTainted = taintedFrom(values[0], taint.OriginHttpRequestParameter)
+				}
+			}
+		}
+		got.PostFormTainted = taintedFrom(req.PostFormValue("form"), taint.OriginHttpRequestParameter)
+		got.PathValueTainted = taintedFrom(req.PathValue("user"), taint.OriginHttpRequestPathParameter)
+		if cookie, err := req.Cookie("session"); err == nil {
+			got.CookieNameTainted = taintedFrom(cookie.Name, taint.OriginHttpRequestCookieName)
+			got.CookieValueTainted = taintedFrom(cookie.Value, taint.OriginHttpRequestCookieValue)
+		}
+		_ = req.Cookies()
+		_ = req.CookiesNamed("session")
+	}
+	if analysis, ok := scope.Analysis(); ok {
+		got.SourceCountAfterLazy = analysis.SourceCount()
+	}
 	managed := taint.TaintString(req.Context(), taint.Source{
 		Origin: taint.OriginHttpRequestParameter,
 		Name:   "q",
@@ -144,6 +189,55 @@ func upgradeEndpoint(w http.ResponseWriter, req *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+func taintedFrom(value string, origin taint.Origin) bool {
+	found := false
+	taint.VisitString(value, func(r taint.Range) bool {
+		found = found || r.Source.Origin == origin
+		return !found
+	})
+	return found
+}
+
+type multipartObservation struct {
+	NameTainted      bool `json:"name_tainted"`
+	ValueTainted     bool `json:"value_tainted"`
+	FormValueTainted bool `json:"form_value_tainted"`
+	FirstSourceCount int  `json:"first_source_count"`
+	SourceCount      int  `json:"source_count"`
+}
+
+func multipartEndpoint(w http.ResponseWriter, req *http.Request) {
+	got := multipartObservation{}
+	for iteration := range 100 {
+		_ = req.ParseMultipartForm(1 << 20)
+		if req.MultipartForm == nil {
+			continue
+		}
+		for name, values := range req.MultipartForm.Value {
+			if name == "upload-field" {
+				got.NameTainted = taintedFrom(name, taint.OriginHttpRequestMultipartParameter)
+				if len(values) != 0 {
+					got.ValueTainted = taintedFrom(values[0], taint.OriginHttpRequestMultipartParameter)
+				}
+			}
+		}
+		got.FormValueTainted = taintedFrom(req.FormValue("upload-field"), taint.OriginHttpRequestMultipartParameter)
+		if iteration == 0 {
+			if scope := request.FromContext(req.Context()); scope != nil {
+				if analysis, ok := scope.Analysis(); ok {
+					got.FirstSourceCount = analysis.SourceCount()
+				}
+			}
+		}
+	}
+	if scope := request.FromContext(req.Context()); scope != nil {
+		if analysis, ok := scope.Analysis(); ok {
+			got.SourceCount = analysis.SourceCount()
+		}
+	}
+	_ = json.NewEncoder(w).Encode(got)
+}
+
 func weakBeforeBindingEndpoint(w http.ResponseWriter, req *http.Request) {
 	span, spanCtx := tracer.StartSpanFromContext(req.Context(), "iast.weak-before-binding")
 	vulnerability.Report(spanCtx, constants.VulnerabilityTypeWeakHash, "MD5", nil, vulnerability.SkipFrame{})
@@ -169,9 +263,10 @@ func testConfig(t *testing.T, sampling, maxConcurrent int) {
 
 func getObservation(t *testing.T, client *http.Client, url string) observation {
 	t.Helper()
-	req, err := http.NewRequest(http.MethodPost, url+"/source?q=attacker", strings.NewReader("body"))
+	req, err := http.NewRequest(http.MethodPost, url+"/source?query=attacker", strings.NewReader("form=posted"))
 	require.NoError(t, err)
-	req.Header.Set("Content-Type", "application/phase4")
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Cookie", "session=cookie-value")
 	response, err := client.Do(req)
 	require.NoError(t, err)
 	defer response.Body.Close()
@@ -399,6 +494,33 @@ func getObservationFromUpgradeHandler(t *testing.T, client *http.Client, url str
 	}
 }
 
+func TestMultipartValueSourcesAreIdempotent(t *testing.T) {
+	if !built.WithOrchestrion {
+		t.Skip("orchestrion is not enabled, use `go tool orchestrion go test`")
+	}
+	testConfig(t, 100, 1)
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+	require.NoError(t, writer.WriteField("upload-field", "multipart-value"))
+	require.NoError(t, writer.Close())
+	server := httptest.NewServer(http.HandlerFunc(multipartEndpoint))
+	defer server.Close()
+	req, err := http.NewRequest(http.MethodPost, server.URL+"/multipart", &body)
+	require.NoError(t, err)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	response, err := server.Client().Do(req)
+	require.NoError(t, err)
+	defer response.Body.Close()
+	var got multipartObservation
+	require.NoError(t, json.NewDecoder(response.Body).Decode(&got))
+	require.True(t, got.NameTainted)
+	require.True(t, got.ValueTainted)
+	require.True(t, got.FormValueTainted)
+	// Eager URI/path/header sources plus one multipart name and value.
+	require.GreaterOrEqual(t, got.SourceCount, 5)
+	require.Equal(t, got.FirstSourceCount, got.SourceCount)
+}
+
 func TestServerProtocolsReleasePerRequest(t *testing.T) {
 	if !built.WithOrchestrion {
 		t.Skip("orchestrion is not enabled, use `go tool orchestrion go test`")
@@ -468,6 +590,15 @@ func TestServerProtocolsReleasePerRequest(t *testing.T) {
 				require.True(t, got.HeaderTainted)
 				require.False(t, got.LiteralTainted)
 				require.True(t, got.BodyBound)
+				require.True(t, got.QueryNameTainted)
+				require.True(t, got.QueryValueTainted)
+				require.True(t, got.FormNameTainted)
+				require.True(t, got.FormValueTainted)
+				require.True(t, got.PostFormTainted)
+				require.True(t, got.PathValueTainted)
+				require.True(t, got.CookieNameTainted)
+				require.True(t, got.CookieValueTainted)
+				require.Equal(t, got.SourceCountAtHandler+7, got.SourceCountAfterLazy)
 			}
 			finished := mockTracer.FinishedSpans()
 			require.Len(t, finished, 2)

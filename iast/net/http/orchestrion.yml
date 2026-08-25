@@ -111,3 +111,217 @@ aspects:
               }
               iastspans.BindScopeContext(__dd_iast_ctx)
             }
+
+  - id: net/http.Request.ParseForm
+    join-point:
+      all-of:
+        - import-path: net/http
+        - function-body:
+            function:
+              - receiver: "*net/http.Request"
+              - name: ParseForm
+    advice:
+      - prepend-statements:
+          imports:
+            iasthttpbridge: github.com/DataDog/dd-iast-go/internal/taint/httpbridge
+          template: |-
+            {{- $req := .Function.Receiver -}}
+            defer func() {
+              if {{ $req }} != nil {
+                {{ $req }}.Form, {{ $req }}.PostForm = iasthttpbridge.Form(
+                  {{ $req }}.Context(),
+                  map[string][]string({{ $req }}.Form),
+                  map[string][]string({{ $req }}.PostForm),
+                )
+              }
+            }()
+
+  - id: net/http.Request.ParseMultipartForm
+    join-point:
+      all-of:
+        - import-path: net/http
+        - function-body:
+            function:
+              - receiver: "*net/http.Request"
+              - name: ParseMultipartForm
+    advice:
+      - prepend-statements:
+          imports:
+            iasthttpbridge: github.com/DataDog/dd-iast-go/internal/taint/httpbridge
+          template: |-
+            {{- $req := .Function.Receiver -}}
+            defer func() {
+              if {{ $req }} != nil && {{ $req }}.MultipartForm != nil {
+                {{ $req }}.MultipartForm.Value = iasthttpbridge.Multipart(
+                  {{ $req }}.Context(),
+                  map[string][]string({{ $req }}.MultipartForm.Value),
+                  map[string][]string({{ $req }}.Form),
+                  map[string][]string({{ $req }}.PostForm),
+                )
+              }
+            }()
+
+  - id: net/http.Request.FormValue
+    join-point:
+      all-of:
+        - import-path: net/http
+        - function-body:
+            function:
+              - receiver: "*net/http.Request"
+              - name: FormValue
+    advice:
+      - prepend-statements:
+          imports:
+            iasthttpbridge: github.com/DataDog/dd-iast-go/internal/taint/httpbridge
+          template: |-
+            {{- $req := .Function.Receiver -}}
+            {{- $name := .Function.Argument 0 -}}
+            {{- $result := .Function.Result 0 -}}
+            defer func() {
+              if {{ $req }} != nil {
+                if {{ $req }}.MultipartForm != nil {
+                  if _, __dd_iast_multipart := {{ $req }}.MultipartForm.Value[{{ $name }}]; __dd_iast_multipart {
+                    {{ $result }} = iasthttpbridge.MultipartParameter(
+                      {{ $req }}.Context(), {{ $name }}, {{ $result }},
+                    )
+                    return
+                  }
+                }
+                {{ $result }} = iasthttpbridge.Parameter(
+                  {{ $req }}.Context(), {{ $name }}, {{ $result }},
+                )
+              }
+            }()
+
+  - id: net/http.Request.PostFormValue
+    join-point:
+      all-of:
+        - import-path: net/http
+        - function-body:
+            function:
+              - receiver: "*net/http.Request"
+              - name: PostFormValue
+    advice:
+      - prepend-statements:
+          imports:
+            iasthttpbridge: github.com/DataDog/dd-iast-go/internal/taint/httpbridge
+          template: |-
+            {{- $req := .Function.Receiver -}}
+            {{- $name := .Function.Argument 0 -}}
+            {{- $result := .Function.Result 0 -}}
+            defer func() {
+              if {{ $req }} != nil {
+                if {{ $req }}.MultipartForm != nil {
+                  if _, __dd_iast_multipart := {{ $req }}.MultipartForm.Value[{{ $name }}]; __dd_iast_multipart {
+                    {{ $result }} = iasthttpbridge.MultipartParameter(
+                      {{ $req }}.Context(), {{ $name }}, {{ $result }},
+                    )
+                    return
+                  }
+                }
+                {{ $result }} = iasthttpbridge.Parameter(
+                  {{ $req }}.Context(), {{ $name }}, {{ $result }},
+                )
+              }
+            }()
+
+  - id: net/http.Request.PathValue
+    join-point:
+      all-of:
+        - import-path: net/http
+        - function-body:
+            function:
+              - receiver: "*net/http.Request"
+              - name: PathValue
+    advice:
+      - prepend-statements:
+          imports:
+            iasthttpbridge: github.com/DataDog/dd-iast-go/internal/taint/httpbridge
+          template: |-
+            {{- $req := .Function.Receiver -}}
+            {{- $name := .Function.Argument 0 -}}
+            {{- $result := .Function.Result 0 -}}
+            defer func() {
+              if {{ $req }} != nil {
+                {{ $result }} = iasthttpbridge.PathParameter(
+                  {{ $req }}.Context(), {{ $name }}, {{ $result }},
+                )
+              }
+            }()
+
+  - id: net/http.Request.Cookie
+    join-point:
+      all-of:
+        - import-path: net/http
+        - function-body:
+            function:
+              - receiver: "*net/http.Request"
+              - name: Cookie
+    advice:
+      - prepend-statements:
+          imports:
+            iasthttpbridge: github.com/DataDog/dd-iast-go/internal/taint/httpbridge
+          template: |-
+            {{- $req := .Function.Receiver -}}
+            {{- $result := .Function.Result 0 -}}
+            defer func() {
+              if {{ $req }} != nil && {{ $result }} != nil {
+                iasthttpbridge.Cookie(
+                  {{ $req }}.Context(), &{{ $result }}.Name, &{{ $result }}.Value,
+                )
+              }
+            }()
+
+  - id: net/http.Request.Cookies
+    join-point:
+      all-of:
+        - import-path: net/http
+        - function-body:
+            function:
+              - receiver: "*net/http.Request"
+              - name: Cookies
+    advice:
+      - prepend-statements:
+          imports:
+            iasthttpbridge: github.com/DataDog/dd-iast-go/internal/taint/httpbridge
+          template: |-
+            {{- $req := .Function.Receiver -}}
+            {{- $result := .Function.Result 0 -}}
+            defer func() {
+              if {{ $req }} != nil {
+                for _, __dd_iast_cookie := range {{ $result }} {
+                  if __dd_iast_cookie != nil {
+                    iasthttpbridge.Cookie(
+                      {{ $req }}.Context(), &__dd_iast_cookie.Name, &__dd_iast_cookie.Value,
+                    )
+                  }
+                }
+              }
+            }()
+
+  - id: net/http.Request.CookiesNamed
+    join-point:
+      all-of:
+        - import-path: net/http
+        - function-body:
+            function:
+              - receiver: "*net/http.Request"
+              - name: CookiesNamed
+    advice:
+      - prepend-statements:
+          imports:
+            iasthttpbridge: github.com/DataDog/dd-iast-go/internal/taint/httpbridge
+          template: |-
+            {{- $req := .Function.Receiver -}}
+            {{- $result := .Function.Result 0 -}}
+            defer func() {
+              if {{ $req }} != nil {
+                for _, __dd_iast_cookie := range {{ $result }} {
+                  if __dd_iast_cookie != nil {
+                    iasthttpbridge.Cookie(
+                      {{ $req }}.Context(), &__dd_iast_cookie.Name, &__dd_iast_cookie.Value,
+                    )
+                  }
+                }
+              }
+            }()

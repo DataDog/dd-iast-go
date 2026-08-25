@@ -18,7 +18,19 @@ type callbacks struct {
 	eager  func(context.Context, *string, *string, *string, map[string][]string, any, any) map[string][]string
 }
 
-var registered atomic.Pointer[callbacks]
+type lazyCallbacks struct {
+	form               func(context.Context, map[string][]string, map[string][]string) (map[string][]string, map[string][]string)
+	parameter          func(context.Context, string, string) string
+	multipartParameter func(context.Context, string, string) string
+	path               func(context.Context, string, string) string
+	cookie             func(context.Context, *string, *string)
+	multipart          func(context.Context, map[string][]string, map[string][]string, map[string][]string) map[string][]string
+}
+
+var (
+	registered     atomic.Pointer[callbacks]
+	registeredLazy atomic.Pointer[lazyCallbacks]
+)
 
 // Register installs the process callbacks. It is intended for package
 // initialization; the latest complete callback pair wins.
@@ -31,6 +43,25 @@ func Register(
 		return
 	}
 	registered.Store(&callbacks{begin: begin, finish: finish, eager: eager})
+}
+
+// RegisterLazy installs lazy request-source callbacks during package
+// initialization.
+func RegisterLazy(
+	form func(context.Context, map[string][]string, map[string][]string) (map[string][]string, map[string][]string),
+	parameter func(context.Context, string, string) string,
+	multipartParameter func(context.Context, string, string) string,
+	path func(context.Context, string, string) string,
+	cookie func(context.Context, *string, *string),
+	multipart func(context.Context, map[string][]string, map[string][]string, map[string][]string) map[string][]string,
+) {
+	if form == nil || parameter == nil || multipartParameter == nil || path == nil || cookie == nil || multipart == nil {
+		return
+	}
+	registeredLazy.Store(&lazyCallbacks{
+		form: form, parameter: parameter, multipartParameter: multipartParameter,
+		path: path, cookie: cookie, multipart: multipart,
+	})
 }
 
 // Begin starts a server request scope unless this is a connection-level h2c
@@ -59,6 +90,60 @@ func Eager(
 		return headers
 	}
 	return callback.eager(ctx, requestURI, path, rawQuery, headers, urlObject, bodyObject)
+}
+
+// Form manages parsed request form maps.
+func Form(ctx context.Context, form, postForm map[string][]string) (map[string][]string, map[string][]string) {
+	callback := registeredLazy.Load()
+	if callback == nil {
+		return form, postForm
+	}
+	return callback.form(ctx, form, postForm)
+}
+
+// Parameter manages one lazily returned parameter value.
+func Parameter(ctx context.Context, name, value string) string {
+	callback := registeredLazy.Load()
+	if callback == nil {
+		return value
+	}
+	return callback.parameter(ctx, name, value)
+}
+
+// MultipartParameter manages one lazily returned multipart value.
+func MultipartParameter(ctx context.Context, name, value string) string {
+	callback := registeredLazy.Load()
+	if callback == nil {
+		return value
+	}
+	return callback.multipartParameter(ctx, name, value)
+}
+
+// PathParameter manages one lazily returned path parameter value.
+func PathParameter(ctx context.Context, name, value string) string {
+	callback := registeredLazy.Load()
+	if callback == nil {
+		return value
+	}
+	return callback.path(ctx, name, value)
+}
+
+// Cookie manages one cookie name and value in place.
+func Cookie(ctx context.Context, name, value *string) {
+	callback := registeredLazy.Load()
+	if callback != nil {
+		callback.cookie(ctx, name, value)
+	}
+}
+
+// Multipart manages parsed multipart value parts and their combined-form
+// suffixes. File parts are not source values.
+func Multipart(ctx context.Context, values, form, postForm map[string][]string) map[string][]string {
+	callback := registeredLazy.Load()
+	if callback == nil {
+		return values
+	}
+	return callback.multipart(ctx, values, form, postForm)
 }
 
 // Finish releases a scope created by Begin. A missing callback is a no-op.

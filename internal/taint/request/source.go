@@ -30,8 +30,19 @@ import (
 // a range with the wrong request source.
 type SourceID = ranges.SourceID
 
+// SourceKind records the managed storage form behind a source value.
+type SourceKind uint8
+
+const (
+	// SourceString means Source.Value is itself a managed string root.
+	SourceString SourceKind = iota
+	// SourceBytes means Source.Value is immutable metadata copied from mutable
+	// managed source bytes.
+	SourceBytes
+)
+
 // Source is the full unredacted record of a single request source. Equality is
-// exact over (Origin, Name, Value).
+// exact over (Origin, Name, Value). Kind is not part of source equality.
 //
 // Live analysis entries contain immutable store-managed strings whose retained
 // allocations are charged to the same root as the tainted source value. The
@@ -42,4 +53,5 @@ type Source struct {
 	Origin constants.Origin
 	Name   string
 	Value  string
+	Kind   SourceKind
 }

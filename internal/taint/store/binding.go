@@ -61,6 +61,15 @@ func (r OwnerRef) Handle() (Owner, bool) {
 	return Owner{store: r.store, owner: record, index: r.index, gen: r.generation}, true
 }
 
+// Identity returns the active store-owner slot identity captured by this ref.
+func (r OwnerRef) Identity() (index uint8, generation, ownerID uint64, ok bool) {
+	owner, ok := r.Handle()
+	if !ok {
+		return 0, 0, 0, false
+	}
+	return r.index, r.generation, owner.ID(), true
+}
+
 // BindObject strongly binds a typed heap object to owner. It never derives a
 // pointer from an interface data word.
 func BindObject[T any](owner *Owner, object *T, kind BindingKind) bool {

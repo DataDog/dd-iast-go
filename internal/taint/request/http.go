@@ -12,6 +12,33 @@ import (
 	"github.com/DataDog/dd-iast-go/internal/taint/store"
 )
 
+func analysisForOwner(ref store.OwnerRef) (Analysis, bool) {
+	manager := processManager.Load()
+	if manager == nil {
+		return Analysis{}, false
+	}
+	ownerIndex, ownerGen, ownerID, ok := ref.Identity()
+	if !ok || ownerIndex >= MaxAnalyses {
+		return Analysis{}, false
+	}
+	slot := manager.directory[ownerIndex].Load()
+	if slot == nil {
+		return Analysis{}, false
+	}
+	generation := slot.generation.Load()
+	if !slot.active.Load() || slot.ownerID.Load() != ownerID || slot.ownerGen.Load() != ownerGen {
+		return Analysis{}, false
+	}
+	analysis := Analysis{
+		manager: manager, slot: slot, index: slot.index,
+		ownerIndex: ownerIndex, gen: generation,
+	}
+	return analysis,
+		analysis.Active() &&
+			slot.generation.Load() == generation &&
+			manager.directory[ownerIndex].Load() == slot
+}
+
 // LookupObject returns active request owners bound to a dynamic pointer object.
 func LookupObject(object any, kind store.BindingKind, out []store.OwnerRef) int {
 	manager := processManager.Load()
@@ -64,7 +91,7 @@ type eagerHeader struct {
 	name        string
 	managedName string
 	values      []string
-	valueOffset uint8
+	valueOffset uint16
 }
 
 func (a Analysis) taintHeaders(headers map[string][]string) map[string][]string {
@@ -86,11 +113,14 @@ func (a Analysis) taintHeaders(headers map[string][]string) map[string][]string 
 	changed := false
 	// Header values have higher admission priority than header names.
 	for name, values := range headers {
+		if entryCount >= maxEagerHeaderNames || valueOffset+len(values) > maxEagerHeaderValues {
+			return headers
+		}
 		entry := &entries[entryCount]
 		entry.name = name
 		entry.managedName = name
 		entry.values = values
-		entry.valueOffset = uint8(valueOffset)
+		entry.valueOffset = uint16(valueOffset)
 		for i, value := range values {
 			managedValues[int(entry.valueOffset)+i] = value
 			if replacement, ok := a.TaintString(constants.OriginHttpRequestHeader, name, value); ok {

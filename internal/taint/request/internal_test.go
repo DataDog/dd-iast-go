@@ -68,9 +68,30 @@ func TestEagerHTTPManagesFieldsHeadersAndBindings(t *testing.T) {
 
 	var refs [2]store.OwnerRef
 	require.Equal(t, 1, store.LookupObjectValue(analysis.manager.store, urlObject, store.BindingURL, refs[:]))
+	resolved, ok := analysisForOwner(refs[0])
+	require.True(t, ok)
+	require.Equal(t, analysis.index, resolved.index)
+	require.Equal(t, analysis.ownerIndex, resolved.ownerIndex)
 	require.Equal(t, 1, store.LookupObjectValue(analysis.manager.store, bodyObject, store.BindingReader, refs[:]))
 	scope.Finish()
 	require.Zero(t, store.LookupObjectValue(analysis.manager.store, urlObject, store.BindingURL, refs[:]))
+}
+
+func TestManagedLazyMapIsIdempotentAndAllocationFree(t *testing.T) {
+	manager := NewManager(nil)
+	analysis, ok := manager.Acquire(1)
+	require.True(t, ok)
+	values := map[string][]string{"query": {"attacker"}}
+	managed := analysis.manageMap(values, constants.OriginHttpRequestParameterName, constants.OriginHttpRequestParameter)
+	require.Equal(t, 2, analysis.SourceCount())
+	charged := manager.Store().ProcessCharged()
+	allocations := testing.AllocsPerRun(100, func() {
+		managed = analysis.manageMap(managed, constants.OriginHttpRequestParameterName, constants.OriginHttpRequestParameter)
+	})
+	require.Zero(t, allocations)
+	require.Equal(t, 2, analysis.SourceCount())
+	require.Equal(t, charged, manager.Store().ProcessCharged())
+	analysis.Finish()
 }
 
 func TestEagerHeadersDoNotAllocateWhenAnalysisIsInactive(t *testing.T) {

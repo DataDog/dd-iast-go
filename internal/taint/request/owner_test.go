@@ -55,9 +55,12 @@ func TestAnalysisTransactionalSources(t *testing.T) {
 	require.Equal(t, managed, source.Value)
 	require.Equal(t, "X-Input", source.Name)
 
+	charged := manager.Store().ProcessCharged()
 	duplicate, ok := analysis.TaintString(constants.OriginHttpRequestHeader, "X-Input", original)
 	require.True(t, ok)
 	require.Equal(t, original, duplicate)
+	require.True(t, unsafe.StringData(managed) == unsafe.StringData(duplicate))
+	require.Equal(t, charged, manager.Store().ProcessCharged())
 	require.Equal(t, 1, analysis.SourceCount())
 
 	_, ok = analysis.TaintString(constants.OriginHttpRequestHeader, "one", "x")
@@ -79,6 +82,34 @@ func TestAnalysisTransactionalSources(t *testing.T) {
 
 	analysis.Finish()
 	require.Zero(t, manager.Store().ProcessCharged())
+}
+
+func TestManageStringReusesCanonicalClone(t *testing.T) {
+	manager := request.NewManager(nil)
+	analysis, ok := manager.Acquire(1)
+	require.True(t, ok)
+	first, ok := analysis.ManageString(constants.OriginHttpRequestParameter, "query", "attacker")
+	require.True(t, ok)
+	charged := manager.Store().ProcessCharged()
+	second, ok := analysis.ManageString(constants.OriginHttpRequestParameter, "query", "attacker")
+	require.True(t, ok)
+	require.True(t, unsafe.StringData(first) == unsafe.StringData(second))
+	require.Equal(t, charged, manager.Store().ProcessCharged())
+	require.Equal(t, 1, analysis.SourceCount())
+	analysis.Finish()
+}
+
+func TestManageStringRejectsByteMetadataDuplicate(t *testing.T) {
+	manager := request.NewManager(nil)
+	analysis, ok := manager.Acquire(1)
+	require.True(t, ok)
+	managedBytes, ok := analysis.TaintBytes(constants.OriginHttpRequestBody, "body", []byte("attacker"))
+	require.True(t, ok)
+	require.NotEmpty(t, managedBytes)
+	managedString, ok := analysis.ManageString(constants.OriginHttpRequestBody, "body", "attacker")
+	require.False(t, ok)
+	require.Equal(t, "attacker", managedString)
+	analysis.Finish()
 }
 
 func TestAnalysisSourceWritesRaceFinish(t *testing.T) {

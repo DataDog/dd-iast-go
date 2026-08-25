@@ -17,6 +17,7 @@ const MaxAnalyses = store.MaxOwners
 
 type analysisSlot struct {
 	generation atomic.Uint64
+	index      uint8
 	active     atomic.Bool
 	ownerID    atomic.Uint64
 	ownerGen   atomic.Uint64
@@ -78,6 +79,7 @@ func (m *Manager) Acquire(max int) (Analysis, bool) {
 		}
 	}
 	slot := &m.slots[index]
+	slot.index = uint8(index)
 	storeOwner := m.store.Acquire()
 	if storeOwner.Disabled() {
 		m.used.And(^(uint64(1) << index))
@@ -136,8 +138,45 @@ func (a Analysis) TaintString(origin constants.Origin, name, value string) (stri
 		return value, false
 	}
 	if result.Status == AddDuplicate {
+		source, ok := a.slot.table.Get(result.ID)
+		if ok && source.Kind == SourceString {
+			return source.Value, true
+		}
 		managed, _, ok := owner.TaintString(value, result.ID)
 		return managed, ok
+	}
+	managed, managedName, _, ok := owner.TaintSourceString(value, name, result.ID)
+	if !ok {
+		return value, false
+	}
+	a.slot.table.commit(token, Source{Origin: origin, Name: managedName, Value: managed})
+	return managed, true
+}
+
+// ManageString returns the canonical managed clone for a source tuple. Exact
+// duplicates reuse the table's existing clone without publishing another root.
+func (a Analysis) ManageString(origin constants.Origin, name, value string) (string, bool) {
+	if !a.Active() || !a.slot.sourceMu.TryLock() {
+		return value, false
+	}
+	defer a.slot.sourceMu.Unlock() // +checklocksforce: TryLock.
+	if !a.Active() {
+		return value, false
+	}
+	result, token := a.slot.table.prepareString(origin, name, value)
+	if result.Status == AddDuplicate {
+		source, ok := a.slot.table.Get(result.ID)
+		if !ok || source.Kind != SourceString {
+			return value, false
+		}
+		return source.Value, true
+	}
+	if result.Status != AddAdded {
+		return value, false
+	}
+	owner := a.slot.owner.Load()
+	if owner == nil || owner.Disabled() {
+		return value, false
 	}
 	managed, managedName, _, ok := owner.TaintSourceString(value, name, result.ID)
 	if !ok {
@@ -173,7 +212,7 @@ func (a Analysis) TaintBytes(origin constants.Origin, name string, value []byte)
 	if !ok {
 		return value, false
 	}
-	a.slot.table.commit(token, Source{Origin: origin, Name: managedName, Value: managedValue})
+	a.slot.table.commit(token, Source{Origin: origin, Name: managedName, Value: managedValue, Kind: SourceBytes})
 	return managed, true
 }
 
