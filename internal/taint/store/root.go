@@ -55,6 +55,47 @@ func (o *Owner) TaintString(value string, source ranges.SourceID) (string, RootR
 	return clone, RootRef{ID: rootID, Generation: generation}, true
 }
 
+// TaintSourceString publishes a new source value and returns managed metadata.
+// The source table must retain managedName for exactly the root lifetime; its
+// allocation is included in the root charge.
+func (o *Owner) TaintSourceString(value, name string, source ranges.SourceID) (managed, managedName string, ref RootRef, ok bool) {
+	if !o.beginWrite() {
+		return value, "", RootRef{}, false
+	}
+	defer o.endWrite()
+	if len(value) < 2 {
+		o.owner.drops.oneByte.Add(1)
+		return value, "", RootRef{}, false
+	}
+	if len(value) > MaxRootBytes || len(name) > MaxRootBytes {
+		o.owner.drops.bytes.Add(1)
+		return value, "", RootRef{}, false
+	}
+	charge := sizeClass(len(value)) + sizeClass(len(name))
+	rootID, reserved := o.reserveRootSlot(charge)
+	if !reserved {
+		return value, "", RootRef{}, false
+	}
+	managed = strings.Clone(value)
+	managedName = strings.Clone(name)
+	key, valid := StringKey(managed)
+	if !valid {
+		o.rollbackRoot(rootID, charge)
+		return value, "", RootRef{}, false
+	}
+	var set ranges.Set
+	if !ranges.AdoptCanonical(&set, ranges.ClampLimit(uint64(ranges.DefaultLimit)), []ranges.Range{{Length: uint32(len(managed)), SourceID: source}}, uint32(len(managed))).Valid {
+		o.rollbackRoot(rootID, charge)
+		return value, "", RootRef{}, false
+	}
+	generation, published := o.publishRoot(rootID, key.Pointer, uint32(len(managed)), charge, managed, nil, &set)
+	if !published || !o.putWindow(key, rootID, generation) {
+		o.rollbackRoot(rootID, charge)
+		return value, "", RootRef{}, false
+	}
+	return managed, managedName, RootRef{ID: rootID, Generation: generation}, true
+}
+
 // TaintBytes clones value into a managed complete backing allocation and taints
 // the bytes in its current length. Capacity is charged and bounded.
 func (o *Owner) TaintBytes(value []byte, source ranges.SourceID) ([]byte, RootRef, bool) {
@@ -93,6 +134,50 @@ func (o *Owner) TaintBytes(value []byte, source ranges.SourceID) ([]byte, RootRe
 		return value, RootRef{}, false
 	}
 	return clone, RootRef{ID: rootID, Generation: generation}, true
+}
+
+// TaintSourceBytes publishes a mutable source value and returns immutable,
+// managed source metadata. The source table must retain managedName and
+// managedValue for exactly the root lifetime; both allocations are included in
+// the root charge.
+func (o *Owner) TaintSourceBytes(value []byte, name string, source ranges.SourceID) (managed []byte, managedName, managedValue string, ref RootRef, ok bool) {
+	if !o.beginWrite() {
+		return value, "", "", RootRef{}, false
+	}
+	defer o.endWrite()
+	if len(value) < 2 {
+		o.owner.drops.oneByte.Add(1)
+		return value, "", "", RootRef{}, false
+	}
+	if len(value) > MaxRootBytes || cap(value) > MaxRootBytes || len(name) > MaxRootBytes {
+		o.owner.drops.bytes.Add(1)
+		return value, "", "", RootRef{}, false
+	}
+	charge := sizeClass(cap(value)) + sizeClass(len(name)) + sizeClass(len(value))
+	rootID, reserved := o.reserveRootSlot(charge)
+	if !reserved {
+		return value, "", "", RootRef{}, false
+	}
+	managed = make([]byte, len(value), cap(value))
+	copy(managed, value)
+	managedName = strings.Clone(name)
+	managedValue = string(value)
+	key, valid := BytesKey(managed)
+	if !valid {
+		o.rollbackRoot(rootID, charge)
+		return value, "", "", RootRef{}, false
+	}
+	var set ranges.Set
+	if !ranges.AdoptCanonical(&set, ranges.DefaultLimit, []ranges.Range{{Length: uint32(len(managed)), SourceID: source}}, uint32(cap(managed))).Valid {
+		o.rollbackRoot(rootID, charge)
+		return value, "", "", RootRef{}, false
+	}
+	generation, published := o.publishRoot(rootID, key.Pointer, uint32(cap(managed)), charge, "", managed, &set)
+	if !published || !o.putWindow(key, rootID, generation) {
+		o.rollbackRoot(rootID, charge)
+		return value, "", "", RootRef{}, false
+	}
+	return managed, managedName, managedValue, RootRef{ID: rootID, Generation: generation}, true
 }
 
 // AdoptString adopts an audited complete allocation without cloning it. The
@@ -149,7 +234,7 @@ func (o *Owner) Derive(key Key, root RootRef) bool {
 }
 
 func (o *Owner) reserveRootSlot(charge int64) (uint16, bool) {
-	if charge <= 0 || charge > MaxRootBytes {
+	if charge <= 0 || charge > MaxRootChargeBytes {
 		o.owner.drops.bytes.Add(1)
 		return 0, false
 	}
@@ -238,7 +323,12 @@ func (o *Owner) publishRangesLocked(root *rootRecord, set *ranges.Set, generatio
 }
 
 func (o *Owner) rollbackRoot(rootID uint16, charge int64) {
-	o.owner.rootsMu.Lock()
+	if !o.owner.rootsMu.TryLock() {
+		o.owner.drops.contention.Add(1)
+		// The bounded reservation and any published anchor remain owned until
+		// Finish reconciles the aggregate charge and clears every root.
+		return
+	}
 	root := &o.owner.roots[rootID]
 	if root.overflow != 0 {
 		o.store.freeOverflow(root.overflow)
@@ -257,7 +347,7 @@ func (o *Owner) rollbackRoot(rootID uint16, charge int64) {
 	o.owner.rootFree[o.owner.rootFreeN] = rootID
 	o.owner.rootFreeN++
 	o.owner.rootCount.Add(-1)
-	o.owner.rootsMu.Unlock()
+	o.owner.rootsMu.Unlock() // +checklocksforce: TryLock.
 	o.owner.charged.Add(-charge)
 	o.store.charged.Add(-charge)
 }

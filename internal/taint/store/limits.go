@@ -12,6 +12,7 @@ const (
 	RequestValueLimit   = 4_096
 	RequestRootBytes    = 2 << 20
 	MaxRootBytes        = 64 << 10
+	MaxRootChargeBytes  = 3 * MaxRootBytes
 	MaxRootsPerOwner    = 512
 	MaxValuesPerRoot    = 256
 	GuaranteedRanges    = 10

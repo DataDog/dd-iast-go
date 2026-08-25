@@ -8,6 +8,7 @@ package request_test
 import (
 	"sync"
 	"testing"
+	"unsafe"
 
 	"github.com/DataDog/dd-iast-go/internal/model/constants"
 	"github.com/DataDog/dd-iast-go/internal/taint/request"
@@ -23,9 +24,7 @@ func TestManagerPermitAndFinish(t *testing.T) {
 	_, ok = manager.Acquire(2)
 	require.False(t, ok)
 
-	result := first.AddSource(constants.OriginHttpRequestParameter, "q", "value")
-	require.Equal(t, request.AddAdded, result.Status)
-	_, _, ok = first.StoreOwner().TaintString("attacker", result.ID)
+	_, ok = first.TaintString(constants.OriginHttpRequestParameter, "q", "attacker")
 	require.True(t, ok)
 
 	first.Finish()
@@ -42,6 +41,46 @@ func TestManagerPermitAndFinish(t *testing.T) {
 	reused.Finish()
 }
 
+func TestAnalysisTransactionalSources(t *testing.T) {
+	manager := request.NewManager(nil)
+	analysis, ok := manager.Acquire(1)
+	require.True(t, ok)
+	original := "attacker"
+	managed, ok := analysis.TaintString(constants.OriginHttpRequestHeader, "X-Input", original)
+	require.True(t, ok)
+	require.False(t, unsafe.StringData(original) == unsafe.StringData(managed))
+	require.Equal(t, 1, analysis.SourceCount())
+	source, ok := analysis.Source(0)
+	require.True(t, ok)
+	require.Equal(t, managed, source.Value)
+	require.Equal(t, "X-Input", source.Name)
+
+	duplicate, ok := analysis.TaintString(constants.OriginHttpRequestHeader, "X-Input", original)
+	require.True(t, ok)
+	require.Equal(t, original, duplicate)
+	require.Equal(t, 1, analysis.SourceCount())
+
+	_, ok = analysis.TaintString(constants.OriginHttpRequestHeader, "one", "x")
+	require.False(t, ok)
+	require.Equal(t, 1, analysis.SourceCount(), "failed publication must not commit a source")
+	_, ok = analysis.TaintString(0, "invalid", "value")
+	require.False(t, ok)
+	require.Equal(t, 1, analysis.SourceCount())
+
+	bytesValue := make([]byte, 6, 12)
+	copy(bytesValue, "attack")
+	managedBytes, ok := analysis.TaintBytes(constants.OriginHttpRequestBody, "body", bytesValue)
+	require.True(t, ok)
+	require.Equal(t, 2, analysis.SourceCount())
+	byteSource, ok := analysis.Source(1)
+	require.True(t, ok)
+	managedBytes[0] = 'A'
+	require.Equal(t, "attack", byteSource.Value)
+
+	analysis.Finish()
+	require.Zero(t, manager.Store().ProcessCharged())
+}
+
 func TestAnalysisSourceWritesRaceFinish(t *testing.T) {
 	manager := request.NewManager(nil)
 	analysis, ok := manager.Acquire(1)
@@ -52,7 +91,7 @@ func TestAnalysisSourceWritesRaceFinish(t *testing.T) {
 		go func() {
 			defer wait.Done()
 			for i := 0; i < 100; i++ {
-				analysis.AddSource(constants.OriginHttpRequestParameter, "q", "value")
+				analysis.TaintString(constants.OriginHttpRequestParameter, "q", "value")
 			}
 		}()
 	}

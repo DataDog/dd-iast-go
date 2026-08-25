@@ -74,6 +74,55 @@ func TestCollisionComparesFullValues(t *testing.T) {
 
 // TestHashDoesNotAllocate guards the allocation-free probe path indirectly by
 // checking the hash helper itself.
+func TestOwnerDirectoryRejectsFinishedGeneration(t *testing.T) {
+	manager := NewManager(nil)
+	analysis, ok := manager.Acquire(1)
+	require.True(t, ok)
+	managed, ok := analysis.TaintString(constants.OriginHttpRequestParameter, "q", "first")
+	require.True(t, ok)
+	key, ok := store.StringKey(managed)
+	require.True(t, ok)
+	var snapshot store.Snapshot
+	require.True(t, manager.store.Lookup(key, &snapshot))
+	entry, ok := snapshot.At(0)
+	require.True(t, ok)
+	var source Source
+	require.True(t, manager.copySources(entry.OwnerIndex, entry.OwnerID, entry.OwnerGen, []SourceID{0}, []Source{source}))
+
+	analysis.Finish()
+	reused, ok := manager.Acquire(1)
+	require.True(t, ok)
+	_, ok = reused.TaintString(constants.OriginHttpRequestParameter, "q", "second")
+	require.True(t, ok)
+	var stale Source
+	require.False(t, manager.copySources(entry.OwnerIndex, entry.OwnerID, entry.OwnerGen, []SourceID{0}, []Source{stale}))
+	reused.Finish()
+}
+
+func TestPrepareBytesDoesNotAllocateOnDuplicate(t *testing.T) {
+	tab := New()
+	origin := constants.OriginHttpRequestBody
+	added := tab.Add(origin, "body", "attack")
+	require.Equal(t, AddAdded, added.Status)
+	value := []byte("attack")
+	allocs := testing.AllocsPerRun(100, func() {
+		result, _ := tab.prepareBytes(origin, "body", value)
+		if result.Status != AddDuplicate || result.ID != added.ID {
+			t.Fatalf("prepareBytes() = %+v, want duplicate %d", result, added.ID)
+		}
+	})
+	require.Zero(t, allocs)
+}
+
+func TestPreparedSourceDoesNotMutateUntilCommit(t *testing.T) {
+	tab := New()
+	result, token := tab.prepareString(constants.OriginHttpRequestParameter, "q", "value")
+	require.Equal(t, AddAdded, result.Status)
+	require.Zero(t, tab.Len())
+	tab.commit(token, Source{Origin: constants.OriginHttpRequestParameter, Name: "q", Value: "value"})
+	require.Equal(t, 1, tab.Len())
+}
+
 func TestHashDoesNotAllocate(t *testing.T) {
 	tab := New()
 	allocs := testing.AllocsPerRun(100, func() {

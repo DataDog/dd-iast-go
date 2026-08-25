@@ -6,6 +6,7 @@
 package request
 
 import (
+	"bytes"
 	"hash/maphash"
 
 	"github.com/DataDog/dd-iast-go/internal/model/constants"
@@ -57,6 +58,11 @@ type AddResult struct {
 	Status AddStatus
 }
 
+type addToken struct {
+	id   SourceID
+	slot uint16
+}
+
 // Table is a fixed-capacity, deduplicating table of request sources. It has no
 // global state and no dependency on the request owner, store, instrumentation,
 // redaction, or model serialization. The zero value is ready for use; [New]
@@ -90,40 +96,65 @@ func New() *Table {
 // rejected with AddFull and leaves the table unchanged. An invalid origin (or a
 // nil receiver) is rejected with AddRejected without panic.
 //
-// Equality is exact over (origin, name, full unredacted value). The table keeps
-// the full strings; it does not clone them in Phase 1.
+// Equality is exact over (origin, name, full unredacted value). Add retains the
+// supplied strings directly and is intended for isolated table use and tests;
+// live analyses use the transactional managed-source methods on Analysis.
 func (t *Table) Add(origin constants.Origin, name, value string) AddResult {
-	if t == nil {
-		return AddResult{Status: AddRejected}
+	result, token := t.prepareString(origin, name, value)
+	if result.Status == AddAdded {
+		t.commit(token, Source{Origin: origin, Name: name, Value: value})
 	}
-	if !validOrigin(origin) {
-		return AddResult{Status: AddRejected}
+	return result
+}
+
+// prepareString resolves a source without mutating the table. commit is
+// infallible while the caller retains exclusive access to the table.
+func (t *Table) prepareString(origin constants.Origin, name, value string) (AddResult, addToken) {
+	if t == nil || !validOrigin(origin) {
+		return AddResult{Status: AddRejected}, addToken{}
 	}
 	t.initSeed()
-	start := t.hash(origin, name, value)
+	return t.prepare(origin, name, value, nil, false)
+}
+
+// prepareBytes resolves a byte-valued source without converting value to a
+// string on duplicate, full, or rejected paths.
+func (t *Table) prepareBytes(origin constants.Origin, name string, value []byte) (AddResult, addToken) {
+	if t == nil || !validOrigin(origin) {
+		return AddResult{Status: AddRejected}, addToken{}
+	}
+	t.initSeed()
+	return t.prepare(origin, name, "", value, true)
+}
+
+func (t *Table) prepare(origin constants.Origin, name, value string, bytesValue []byte, isBytes bool) (AddResult, addToken) {
+	start := t.hashValue(origin, name, value, bytesValue, isBytes)
 	for probe := 0; probe < maxProbe; probe++ {
 		slot := (start + uint32(probe)) & indexMask
 		entry := t.index[slot]
 		if entry == 0 {
-			// Empty slot: no equal source exists on this probe chain. Linear
-			// probing keeps an equal source ahead of any empty slot, so reaching
-			// an empty slot proves the source is new.
 			if t.count >= MaxSources {
-				return AddResult{Status: AddFull}
+				return AddResult{Status: AddFull}, addToken{}
 			}
 			id := SourceID(t.count)
-			t.sources[id] = Source{Origin: origin, Name: name, Value: value}
-			t.count++
-			t.index[slot] = uint16(id) + 1
-			return AddResult{ID: id, Status: AddAdded}
+			return AddResult{ID: id, Status: AddAdded}, addToken{id: id, slot: uint16(slot)}
 		}
 		existing := t.sources[entry-1]
-		if existing.Origin == origin && existing.Name == name && existing.Value == value {
-			return AddResult{ID: SourceID(entry - 1), Status: AddDuplicate}
+		equalValue := existing.Value == value
+		if isBytes {
+			equalValue = bytes.Equal([]byte(existing.Value), bytesValue)
+		}
+		if existing.Origin == origin && existing.Name == name && equalValue {
+			return AddResult{ID: SourceID(entry - 1), Status: AddDuplicate}, addToken{}
 		}
 	}
-	// Probe bound exhausted (cannot happen at <=50% load); drop the source.
-	return AddResult{Status: AddFull}
+	return AddResult{Status: AddFull}, addToken{}
+}
+
+func (t *Table) commit(token addToken, source Source) {
+	t.sources[token.id] = source
+	t.count++
+	t.index[token.slot] = uint16(token.id) + 1
 }
 
 // Get returns the source recorded at id. ok is false if id was never assigned
@@ -171,12 +202,20 @@ func (t *Table) initSeed() {
 // in a same-package test file and the production hash is not weakened. Hash
 // collisions are resolved by full equality comparison in [Add].
 func (t *Table) hash(origin constants.Origin, name, value string) uint32 {
+	return t.hashValue(origin, name, value, nil, false)
+}
+
+func (t *Table) hashValue(origin constants.Origin, name, value string, bytesValue []byte, isBytes bool) uint32 {
 	var h maphash.Hash
 	h.SetSeed(t.seed)
 	h.WriteByte(byte(origin))
 	h.WriteString(name)
 	h.WriteByte(0)
-	h.WriteString(value)
+	if isBytes {
+		_, _ = h.Write(bytesValue)
+	} else {
+		h.WriteString(value)
+	}
 	return uint32(h.Sum64()) & indexMask
 }
 

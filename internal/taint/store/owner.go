@@ -66,6 +66,14 @@ func (o *Owner) Generation() uint64 {
 	return o.gen
 }
 
+// Index returns the fixed process owner-slot index.
+func (o *Owner) Index() (uint8, bool) {
+	if o.Disabled() || o.index >= MaxOwners {
+		return 0, false
+	}
+	return o.index, true
+}
+
 // Charged returns this owner's charged root bytes.
 func (o *Owner) Charged() int64 {
 	if o.Disabled() {

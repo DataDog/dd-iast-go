@@ -20,10 +20,11 @@ type lookupWindow struct {
 
 // Entry is an immutable owner-separated lookup result.
 type Entry struct {
-	OwnerID  uint64
-	OwnerGen uint64
-	Root     RootRef
-	Ranges   ranges.Set
+	OwnerID    uint64
+	OwnerGen   uint64
+	OwnerIndex uint8
+	Root       RootRef
+	Ranges     ranges.Set
 }
 
 // Snapshot is caller-owned fixed lookup storage.
@@ -56,6 +57,32 @@ func (s *Snapshot) reset() {
 		s.entries[i] = Entry{}
 	}
 	s.count = 0
+}
+
+// MayContain reports whether the fixed index contains a candidate for key. It
+// performs no owner or root validation; callers must use Lookup after a hit.
+// Contention is a safe miss.
+func (s *Store) MayContain(key Key) bool {
+	if s == nil || !validKey(key) {
+		return false
+	}
+	hash := keyHash(key)
+	shard := &s.shards[shardIndex(hash)]
+	if !shard.mu.TryRLock() {
+		return false
+	}
+	defer shard.mu.RUnlock() // +checklocksforce: TryRLock.
+	start := initialSlot(hash)
+	for probe := 0; probe < ProbeLimit; probe++ {
+		slot := &shard.slots[(start+uint8(probe))%SlotsPerShard]
+		if slot.pointer == 0 {
+			return false
+		}
+		if slot.pointer == key.Pointer && slot.length == key.Length && slot.kind == key.Kind {
+			return true
+		}
+	}
+	return false
 }
 
 // Lookup copies complete live owner contributions into out. It never returns
@@ -146,6 +173,7 @@ func (s *Store) Lookup(key Key, out *Snapshot) bool {
 		entry := &out.entries[out.count]
 		entry.OwnerID = ownerID
 		entry.OwnerGen = window.ownerGen
+		entry.OwnerIndex = window.ownerIdx
 		entry.Root = RootRef{ID: window.rootID, Generation: window.rootGen}
 		entry.Ranges = windowSet
 		out.count++

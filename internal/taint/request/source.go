@@ -33,11 +33,11 @@ type SourceID = ranges.SourceID
 // Source is the full unredacted record of a single request source. Equality is
 // exact over (Origin, Name, Value).
 //
-// Phase 1 does not clone or own the Name and Value strings. Callers must pass
-// immutable, caller-managed strings (for example, managed backing produced by
-// the future identity store) and must keep them live for the table's lifetime.
-// A future owner must provide managed immutable strings; truncation and
-// redaction are applied later, only when materializing a report model.
+// Live analysis entries contain immutable store-managed strings whose retained
+// allocations are charged to the same root as the tainted source value. The
+// table-level Add helper retains caller strings directly and is limited to
+// isolated table use and tests. Truncation and redaction are applied later,
+// only when materializing a report model.
 type Source struct {
 	Origin constants.Origin
 	Name   string

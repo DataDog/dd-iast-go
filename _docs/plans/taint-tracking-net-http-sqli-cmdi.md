@@ -2,7 +2,7 @@
 
 ## Status
 
-- **State:** Phases 0-2 complete; Phase 3 public API and request/span integration next
+- **State:** Phases 0-2 and the Phase 3 facade/scope foundations are complete; Phase 3 HTTP request-entry and handler lifecycle aspects are next
 - **Phase 0 results:** [taint-tracking-net-http-sqli-cmdi-phase-0.md](./taint-tracking-net-http-sqli-cmdi-phase-0.md)
 - **Scope:** Interactive Application Security Testing (IAST) taint engine, Go standard-library HTTP sources, string and byte-slice propagation, `database/sql` SQL-injection sinks, and `os/exec` command-injection sinks
 - **Initial supported compiler:** exact Go 1.26.6 via `GOTOOLCHAIN=go1.26.6`, with Orchestrion 1.12.2. The `go.mod` `go` directive alone does not identify the standard-library sources being woven.
@@ -1064,7 +1064,7 @@ User review is required at these points:
 1. this plan and its scope;
 2. Phase 0 results: runtime-versus-expression choices, weak/address probes, final capacities, HTTP span order, and reader strategy;
 3. the proposed Orchestrion built-in/slice/expression schema before upstream implementation;
-4. the generic public `taint` API and package layout;
+4. the generic public `taint` API and package layout (**approved**: keep the public facade minimal; expose aliased origin and vulnerability constants, source tainting, taint inspection, and synchronous range visitation; defer public propagation and sanitizer operations until their phase-specific semantic and performance gates);
 5. golden SQL prepare/execution and command payloads, cross-owner evidence, and redaction behavior;
 6. the `encoding/json` hook design;
 7. benchmark results before propagation aspects are enabled by default.

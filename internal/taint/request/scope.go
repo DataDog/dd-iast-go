@@ -9,6 +9,7 @@ import (
 	"context"
 	"math/rand/v2"
 	"sync"
+	"sync/atomic"
 
 	"github.com/DataDog/dd-iast-go/internal/config"
 )
@@ -26,7 +27,14 @@ const (
 
 type contextKey struct{}
 
-var defaultManager = sync.OnceValue(func() *Manager { return NewManager(nil) })
+var (
+	processManager atomic.Pointer[Manager]
+	defaultManager = sync.OnceValue(func() *Manager {
+		manager := NewManager(nil)
+		processManager.Store(manager)
+		return manager
+	})
+)
 
 // Scope carries one request analysis and decision. It is shared by nested
 // handlers. The Begin call that returns created=true MUST defer [Scope.Finish].
