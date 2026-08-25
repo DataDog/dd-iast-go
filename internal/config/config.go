@@ -80,7 +80,7 @@ func load() {
 
 	Enabled = loader.BoolFromEnv(observer, EnvVarEnabled, true)
 	RequestSamplingPct = int(loader.UintFromEnvBounded(observer, EnvVarRequestSampling, 30, uint8(0), uint8(100)))
-	MaxConcurrentRequests = int(loader.UintFromEnvBounded(observer, EnvVarMaxConcurrentRequests, 2, uint64(0), uint64(math.MaxInt)))
+	MaxConcurrentRequests = int(loader.UintFromEnvBounded(observer, EnvVarMaxConcurrentRequests, uint64(2), uint8(0), uint8(64)))
 	VulnerabilitiesPerRequest = int(loader.UintFromEnvBounded(observer, EnvVarVulnerabilitiesPerRequest, 2, uint64(1), uint64(math.MaxInt)))
 	DeduplicationEnabled = loader.BoolFromEnv(observer, EnvVarDeduplicationEnabled, true)
 	RedactionEnabled = loader.BoolFromEnv(observer, EnvVarRedactionEnabled, true)

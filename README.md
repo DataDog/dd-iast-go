@@ -41,7 +41,7 @@ Environment variable | Type | Default | Description
 ---|---|---:|---
 `DD_IAST_ENABLED` | Boolean | `true` | Enables IAST.
 `DD_IAST_REQUEST_SAMPLING` | Integer from `0` to `100` | `30` | Percentage of requests sampled for IAST analysis.
-`DD_IAST_MAX_CONCURRENT_REQUESTS` | Non-negative integer | `2` | Maximum number of requests that IAST processes concurrently.
+`DD_IAST_MAX_CONCURRENT_REQUESTS` | Integer from `0` to `64` | `2` | Maximum number of requests that IAST processes concurrently; `0` disables request analysis.
 `DD_IAST_VULNERABILITIES_PER_REQUEST` | Integer greater than or equal to `1` | `2` | Maximum number of vulnerabilities reported for one request.
 `DD_IAST_DEDUPLICATION_ENABLED` | Boolean | `true` | Enables vulnerability deduplication.
 `DD_IAST_REDACTION_ENABLED` | Boolean | `true` | Enables sensitive data redaction.

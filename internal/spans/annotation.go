@@ -6,6 +6,7 @@
 package spans
 
 import (
+	"context"
 	"log/slog"
 	"math/rand/v2"
 	"sync"
@@ -16,11 +17,15 @@ import (
 	"github.com/DataDog/dd-iast-go/internal/instrumentation"
 	"github.com/DataDog/dd-iast-go/internal/instrumentation/telemetry"
 	"github.com/DataDog/dd-iast-go/internal/model"
+	"github.com/DataDog/dd-iast-go/internal/taint/request"
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
 	"github.com/puzpuzpuz/xsync/v4"
 )
 
 var (
+	// nonSampledAnnotation is immutable by convention. Reporting returns before
+	// touching Event or RequestTainted when Sampled is false.
+	nonSampledAnnotation = new(Annotation)
 	// store is the association of tracer spans to annotation objects.
 	store = xsync.NewMap[weak.Pointer[tracer.Span], *Annotation](xsync.WithPresize(2 * config.MaxConcurrentRequests))
 	// triggerTrimThreshold is the threshold utilization at which we start
@@ -33,6 +38,7 @@ type Annotation struct {
 	// +checklocks:RWMutex
 	model.Event
 
+	// Sampled is immutable after annotation construction.
 	Sampled bool
 
 	// RequestTainted is the number of tainted elemets at the end of the request.
@@ -43,6 +49,9 @@ type Annotation struct {
 // [*tracer.Span] (or the span itself if it does not have a valid, un-finished
 // root). If none exists yet, a new [*Annotation] is allocated.
 func AnnotationFor(span *tracer.Span) *Annotation {
+	if span == nil {
+		return new(Annotation)
+	}
 	root := span.Root()
 	if root == nil {
 		instrumentation.Instance.TelemetryLog().
@@ -56,31 +65,83 @@ func AnnotationFor(span *tracer.Span) *Annotation {
 	hasSpace := trimStore()
 
 	ptr := weak.Make(root)
-	ann, _ := store.LoadOrCompute(
-		ptr,
-		func() (*Annotation, bool) {
-			if !hasSpace {
-				instrumentation.Instance.TelemetryLog().
-					Warn("iast/annotation: max concurrent requests reached, not storing annotation for span", slog.Any("span", spanID))
-				// Cancel the computation. Returning false would store a nil value,
-				// which Finished would later dereference.
-				return nil, true
-			}
-			ann := new(Annotation)
-			ann.Sampled = samplingDecision()
-			if ann.Sampled {
-				root.SetTag(SpanTagEnabled, 1)
-			} else {
-				root.SetTag(SpanTagEnabled, 0)
-			}
-			return ann, false
-		},
-	)
-
+	var fallback *Annotation
+	ann, _ := store.LoadOrCompute(ptr, func() (*Annotation, bool) {
+		if !hasSpace {
+			instrumentation.Instance.TelemetryLog().
+				Warn("iast/annotation: max concurrent requests reached, not storing annotation for span", slog.Any("span", spanID))
+			return nil, true
+		}
+		fallback = &Annotation{Sampled: samplingDecision()}
+		if !fallback.Sampled {
+			return nil, true
+		}
+		return fallback, false
+	})
 	if ann == nil {
-		ann = new(Annotation)
+		ann = fallback
+		if ann == nil {
+			ann = new(Annotation)
+		}
 	}
+	root.SetTag(SpanTagEnabled, ann.enabledTag())
+	return ann
+}
 
+// BindScopeFromContext binds a scope and span carried by ctx, when both exist.
+func BindScopeFromContext(ctx context.Context) *Annotation {
+	scope := request.FromContext(ctx)
+	if scope == nil {
+		return nil
+	}
+	span, ok := tracer.SpanFromContext(ctx)
+	if !ok {
+		return nil
+	}
+	return BindScope(span, scope)
+}
+
+// AnnotationForContext reuses the request's precomputed decision when present.
+// Taint-free orphan and non-request findings retain the legacy sampling path.
+func AnnotationForContext(ctx context.Context, span *tracer.Span) *Annotation {
+	if scope := request.FromContext(ctx); scope != nil {
+		if ann := BindScope(span, scope); ann != nil {
+			return ann
+		}
+		return nonSampledAnnotation
+	}
+	return AnnotationFor(span)
+}
+
+// BindScope binds the request's existing active decision to the root span.
+func BindScope(span *tracer.Span, scope *request.Scope) *Annotation {
+	if span == nil || scope == nil {
+		return nil
+	}
+	root := span.Root()
+	if root == nil {
+		root = span
+	}
+	ptr := weak.Make(root)
+	if existing, ok := store.Load(ptr); ok {
+		return existing
+	}
+	if !scope.Active() {
+		root.SetTag(SpanTagEnabled, 0)
+		return nil
+	}
+	hasSpace := trimStore()
+	ann, _ := store.LoadOrCompute(ptr, func() (*Annotation, bool) {
+		if !hasSpace {
+			return nil, true
+		}
+		return &Annotation{Sampled: true}, false
+	})
+	if ann == nil {
+		root.SetTag(SpanTagEnabled, 0)
+		return nil
+	}
+	root.SetTag(SpanTagEnabled, 1)
 	return ann
 }
 
@@ -109,7 +170,6 @@ func trimStore() bool {
 	return store.Size() < config.MaxConcurrentRequests
 }
 
-// samplingDecision returns true if the request should be sampled for IAST.
 func samplingDecision() bool {
 	switch config.RequestSamplingPct {
 	case 0:
@@ -119,6 +179,13 @@ func samplingDecision() bool {
 	default:
 		return rand.IntN(100) < config.RequestSamplingPct
 	}
+}
+
+func (a *Annotation) enabledTag() int {
+	if a != nil && a.Sampled {
+		return 1
+	}
+	return 0
 }
 
 func init() {
