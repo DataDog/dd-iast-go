@@ -12,6 +12,7 @@ import (
 	"github.com/DataDog/dd-iast-go/internal/config/loader"
 	"github.com/DataDog/dd-iast-go/internal/config/parser"
 	"github.com/DataDog/dd-iast-go/internal/instrumentation"
+	"github.com/DataDog/dd-iast-go/internal/taint/ranges"
 )
 
 const (
@@ -86,7 +87,7 @@ func load() {
 	RedactionNamePattern = loader.FromEnv(observer, EnvVarRedactionNamePattern, defaultRedactionNamePattern, parser.ParseRegexp)
 	RedactionValuePattern = loader.FromEnv(observer, EnvVarRedactionValuePattern, defaultRedactionValuePattern, parser.ParseRegexp)
 	TruncationMaxValue = loader.UintFromEnv(observer, EnvVarTruncationMaxValue, 250)
-	MaxRangeCount = loader.UintFromEnv(observer, EnvVarMaxRangeCount, 10)
+	MaxRangeCount = loader.UintFromEnvBounded(observer, EnvVarMaxRangeCount, uint64(ranges.DefaultLimit), uint64(1), uint64(ranges.HardLimit))
 	TelemetryVerbosity = loader.FromEnv(observer, EnvVarTelemetryVerbosity, LogLevelInformation, parser.ParseLogLevel)
 	DbRowsToTaint = loader.UintFromEnv(observer, EnvVarDbRowsToTaint, 1)
 	StackTraceEnabled = loader.BoolFromEnv(observer, EnvVarStackTraceEnabled, true)

@@ -2,7 +2,7 @@
 
 ## Status
 
-- **State:** Phase 0 checkpoint approved; Phase 1 range/source implementation authorized
+- **State:** Phase 0 approved; Phase 1 range/source implementation complete; Phase 2 next
 - **Phase 0 results:** [taint-tracking-net-http-sqli-cmdi-phase-0.md](./taint-tracking-net-http-sqli-cmdi-phase-0.md)
 - **Scope:** Interactive Application Security Testing (IAST) taint engine, Go standard-library HTTP sources, string and byte-slice propagation, `database/sql` SQL-injection sinks, and `os/exec` command-injection sinks
 - **Initial supported compiler:** exact Go 1.26.6 via `GOTOOLCHAIN=go1.26.6`, with Orchestrion 1.12.2. The `go.mod` `go` directive alone does not identify the standard-library sources being woven.
