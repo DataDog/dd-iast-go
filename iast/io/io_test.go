@@ -26,18 +26,19 @@ import (
 var errRead = errors.New("read failure")
 
 type errorReader struct {
-	data  []byte
-	reads int
+	data     []byte
+	terminal error
+	reads    int
 }
 
 func (r *errorReader) Read(dst []byte) (int, error) {
 	r.reads++
 	if r.data == nil {
-		return 0, errRead
+		return 0, r.terminal
 	}
 	n := copy(dst, r.data)
 	r.data = nil
-	return n, errRead
+	return n, r.terminal
 }
 
 func activeContext(t *testing.T) (context.Context, *request.Scope) {
@@ -78,7 +79,7 @@ func TestReadAllThroughSupportedWrappers(t *testing.T) {
 		t.Skip("orchestrion is not enabled, use `go tool orchestrion go test`")
 	}
 	ctx, _ := activeContext(t)
-	input := &errorReader{data: []byte("request-body")}
+	input := &errorReader{data: []byte("request-body"), terminal: errRead}
 	require.True(t, request.BindReader(ctx, input))
 	limited := io.LimitReader(input, 1024)
 	var side bytes.Buffer
@@ -94,6 +95,21 @@ func TestReadAllThroughSupportedWrappers(t *testing.T) {
 	source, found := bodySource(data)
 	require.True(t, found)
 	require.Equal(t, "request-body", source.Value)
+}
+
+func TestReadAllEOFWithData(t *testing.T) {
+	if !built.WithOrchestrion {
+		t.Skip("orchestrion is not enabled, use `go tool orchestrion go test`")
+	}
+	ctx, _ := activeContext(t)
+	input := &errorReader{data: []byte("request-body"), terminal: io.EOF}
+	require.True(t, request.BindReader(ctx, input))
+	data, err := io.ReadAll(input)
+	require.NoError(t, err)
+	require.Equal(t, []byte("request-body"), data)
+	require.Equal(t, 1, input.reads)
+	_, found := bodySource(data)
+	require.True(t, found)
 }
 
 func TestOversizedBufferedReaderDropsProvenance(t *testing.T) {

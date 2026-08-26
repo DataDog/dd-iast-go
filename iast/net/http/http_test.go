@@ -315,6 +315,16 @@ func getObservation(t *testing.T, client *http.Client, url string) observation {
 	return got
 }
 
+func getEmptyBodyObservation(t *testing.T, client *http.Client, url string) bodyObservation {
+	t.Helper()
+	response, err := client.Post(url+"/body", "application/octet-stream", strings.NewReader(""))
+	require.NoError(t, err)
+	defer func() { _ = response.Body.Close() }()
+	var got bodyObservation
+	require.NoError(t, json.NewDecoder(response.Body).Decode(&got))
+	return got
+}
+
 func getBodyObservation(t *testing.T, client *http.Client, url, path string) bodyObservation {
 	t.Helper()
 	response, err := client.Post(url+path, "application/octet-stream", strings.NewReader("request-body"))
@@ -642,6 +652,9 @@ func TestServerProtocolsReleasePerRequest(t *testing.T) {
 			directBody := getBodyObservation(t, client, url, "/direct-body")
 			require.Equal(t, "request-body", directBody.Value)
 			require.False(t, directBody.Tainted)
+			emptyBody := getEmptyBodyObservation(t, client, url)
+			require.Empty(t, emptyBody.Value)
+			require.False(t, emptyBody.Tainted)
 			for _, got := range []observation{first, second} {
 				require.True(t, got.RequestURITainted)
 				require.True(t, got.PathTainted)
