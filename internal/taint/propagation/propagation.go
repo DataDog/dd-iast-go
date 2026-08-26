@@ -309,11 +309,12 @@ func publishStringRepeat(clone string, inputLen uint32, count int, snapshot *sto
 	}
 }
 
-// CoarseString is the coarse string primitive. It inspects at most maxInputs
-// inputs and publishes one whole-output range per owner using ranges.Coarse
-// semantics: the source is the first contributing range in input order and
-// marks are intersected across every contributing range. It clones result once
-// to exact length on a tainted path and adopts that same clone for every owner.
+// CoarseString is the coarse string primitive. An output that aliases a
+// tainted input derives exact window ranges from that input. Other outputs
+// inspect at most maxInputs inputs and publish one whole-output range per owner
+// using ranges.Coarse semantics: the source is the first contributing range in
+// input order and marks are intersected across every contributing range. The
+// non-alias path clones result once and adopts that clone for every owner.
 func CoarseString(result string, inputs ...string) string {
 	if len(result) < 2 || len(result) > store.MaxRootBytes || len(inputs) == 0 {
 		return result
@@ -322,7 +323,31 @@ func CoarseString(result string, inputs ...string) string {
 	if s == nil {
 		return result
 	}
+	if coarseStringAlias(s, result, inputs) {
+		return result
+	}
 	return coarseStringHit(s, result, inputs)
+}
+
+//go:noinline
+func coarseStringAlias(s *store.Store, result string, inputs []string) bool {
+	inspected := min(len(inputs), maxInputs)
+	for index := 0; index < inspected; index++ {
+		input := inputs[index]
+		if !stringAlias(input, result) {
+			continue
+		}
+		key, ok := store.StringKey(input)
+		if !ok || !s.MayContain(key) {
+			continue
+		}
+		var snapshot store.Snapshot
+		if s.Lookup(key, &snapshot) && snapshot.Len() > 0 {
+			deriveStringWindow(result, &snapshot, s)
+			return true
+		}
+	}
+	return false
 }
 
 //go:noinline

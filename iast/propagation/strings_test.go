@@ -110,6 +110,51 @@ func TestAllocatingStringOperations(t *testing.T) {
 	require.True(t, taint.IsTaintedString(testapp.ReplaceAll(value, "cd", "XY")))
 }
 
+func TestCoarseStringOperations(t *testing.T) {
+	if !built.WithOrchestrion {
+		t.Skip("orchestrion is not enabled, use `go tool orchestrion go test`")
+	}
+	value := activeString(t, "Attack Value")
+	requireTaintedStrings(t,
+		testapp.ToLower(value),
+		testapp.ToUpper(value),
+		testapp.ToTitle(value),
+		testapp.Map(func(r rune) rune { return r + 1 }, value),
+		testapp.ToValidUTF8(value, "?"),
+		testapp.Sprint("prefix:", value),
+		testapp.Sprintf("value=%s", value),
+		testapp.Sprintln(value),
+		testapp.QueryEscape(value),
+		testapp.PathEscape(value),
+		testapp.Quote(value),
+		testapp.QuoteToASCII(value),
+		testapp.QuoteToGraphic(value),
+	)
+
+	queryEscaped := activeString(t, "Attack+Value")
+	query, err := testapp.QueryUnescape(queryEscaped)
+	require.NoError(t, err)
+	requireTaintedStrings(t, query)
+	pathEscaped := activeString(t, "Attack%20Value")
+	path, err := testapp.PathUnescape(pathEscaped)
+	require.NoError(t, err)
+	requireTaintedStrings(t, path)
+	quoted := activeString(t, `"Attack Value"`)
+	unquoted, err := testapp.Unquote(quoted)
+	require.NoError(t, err)
+	requireTaintedStrings(t, unquoted)
+}
+
+func TestCoarseOperationsPreserveErrors(t *testing.T) {
+	if !built.WithOrchestrion {
+		t.Skip("orchestrion is not enabled, use `go tool orchestrion go test`")
+	}
+	value := activeString(t, "%zz")
+	result, err := testapp.QueryUnescape(value)
+	require.Error(t, err)
+	require.Empty(t, result)
+}
+
 func TestIndirectStringCallIsUnsupported(t *testing.T) {
 	if !built.WithOrchestrion {
 		t.Skip("orchestrion is not enabled, use `go tool orchestrion go test`")

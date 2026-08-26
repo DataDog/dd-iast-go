@@ -264,3 +264,147 @@ aspects:
         - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
         - function-call: strings.TrimRightFunc
     advice: [{replace-function: github.com/DataDog/dd-iast-go/iast/propagation.StringsTrimRightFunc}]
+
+  - id: strings.ToLower
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - function-call: strings.ToLower
+    advice: [{replace-function: github.com/DataDog/dd-iast-go/iast/propagation.StringsToLower}]
+
+  - id: strings.ToUpper
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - function-call: strings.ToUpper
+    advice: [{replace-function: github.com/DataDog/dd-iast-go/iast/propagation.StringsToUpper}]
+
+  - id: strings.ToTitle
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - function-call: strings.ToTitle
+    advice: [{replace-function: github.com/DataDog/dd-iast-go/iast/propagation.StringsToTitle}]
+
+  - id: strings.Map
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - function-call: strings.Map
+    advice: [{replace-function: github.com/DataDog/dd-iast-go/iast/propagation.StringsMap}]
+
+  - id: strings.ToValidUTF8
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - function-call: strings.ToValidUTF8
+    advice: [{replace-function: github.com/DataDog/dd-iast-go/iast/propagation.StringsToValidUTF8}]
+
+  - id: fmt.Sprint
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - function-call: fmt.Sprint
+    advice: [{replace-function: github.com/DataDog/dd-iast-go/iast/propagation.FmtSprint}]
+
+  - id: fmt.Sprintf
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - function-call: fmt.Sprintf
+    advice: [{replace-function: github.com/DataDog/dd-iast-go/iast/propagation.FmtSprintf}]
+
+  - id: fmt.Sprintln
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - function-call: fmt.Sprintln
+    advice: [{replace-function: github.com/DataDog/dd-iast-go/iast/propagation.FmtSprintln}]
+
+  - id: net/url.QueryEscape
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - function-call: net/url.QueryEscape
+    advice: [{replace-function: github.com/DataDog/dd-iast-go/iast/propagation.URLQueryEscape}]
+
+  - id: net/url.PathEscape
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - function-call: net/url.PathEscape
+    advice: [{replace-function: github.com/DataDog/dd-iast-go/iast/propagation.URLPathEscape}]
+
+  - id: net/url.QueryUnescape
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - function-call: net/url.QueryUnescape
+    advice: [{replace-function: github.com/DataDog/dd-iast-go/iast/propagation.URLQueryUnescape}]
+
+  - id: net/url.PathUnescape
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - function-call: net/url.PathUnescape
+    advice: [{replace-function: github.com/DataDog/dd-iast-go/iast/propagation.URLPathUnescape}]
+
+  - id: strconv.Quote
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - function-call: strconv.Quote
+    advice: [{replace-function: github.com/DataDog/dd-iast-go/iast/propagation.StrconvQuote}]
+
+  - id: strconv.QuoteToASCII
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - function-call: strconv.QuoteToASCII
+    advice: [{replace-function: github.com/DataDog/dd-iast-go/iast/propagation.StrconvQuoteToASCII}]
+
+  - id: strconv.QuoteToGraphic
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - function-call: strconv.QuoteToGraphic
+    advice: [{replace-function: github.com/DataDog/dd-iast-go/iast/propagation.StrconvQuoteToGraphic}]
+
+  - id: strconv.Unquote
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - function-call: strconv.Unquote
+    advice: [{replace-function: github.com/DataDog/dd-iast-go/iast/propagation.StrconvUnquote}]

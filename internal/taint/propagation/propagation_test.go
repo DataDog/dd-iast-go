@@ -445,6 +445,37 @@ func TestOneByteWindowDerivesButOneByteRootIsRejected(t *testing.T) {
 	require.Nil(t, lookupRanges(s, "x"))
 }
 
+func TestCaseStringUsesExactASCIIAndCoarseUnicodeRanges(t *testing.T) {
+	s, _ := beginScope(t)
+	owner := acquireOwner(t, s)
+	ascii, _ := taintString(t, owner, "aBcD", []ranges.Range{{Start: 1, Length: 2, SourceID: 0}})
+	asciiResult := strings.ToUpper(ascii)
+	asciiOut := propagation.CaseString(ascii, asciiResult)
+	require.Equal(t, []ranges.Range{{Start: 1, Length: 2, SourceID: 0}}, lookupRanges(s, asciiOut))
+
+	unicodeInput, _ := taintString(t, owner, "aé", []ranges.Range{{Start: 1, Length: 2, SourceID: 1}})
+	unicodeResult := strings.ToUpper(unicodeInput)
+	unicodeOut := propagation.CaseString(unicodeInput, unicodeResult)
+	require.Equal(t, []ranges.Range{{Length: uint32(len(unicodeOut)), SourceID: 1}}, lookupRanges(s, unicodeOut))
+}
+
+func TestCoarseFormatSupportsDefinedStringsAndBytes(t *testing.T) {
+	s, _ := beginScope(t)
+	owner := acquireOwner(t, s)
+	managedString, _ := taintString(t, owner, "attack", []ranges.Range{{Length: 6, SourceID: 0}})
+	managedBytes := make([]byte, 5)
+	copy(managedBytes, "bytes")
+	var set ranges.Set
+	require.True(t, ranges.AdoptCanonical(&set, ranges.DefaultLimit, []ranges.Range{{Length: 5, SourceID: 1}}, uint32(cap(managedBytes))).Valid)
+	_, ok := owner.AdoptBytes(managedBytes, &set)
+	require.True(t, ok)
+	type namedString string
+	type namedBytes []byte
+	result := "attack [98 121 116 101 115]"
+	out := propagation.CoarseFormatString(result, []any{namedString(managedString), namedBytes(managedBytes)})
+	require.Equal(t, []ranges.Range{{Length: uint32(len(out)), SourceID: 0}}, lookupRanges(s, out))
+}
+
 func TestCoarseStringTwoOwnersKeepLocalSourceIDs(t *testing.T) {
 	enableIAST(t)
 	_, scopeA, createdA := request.Begin(context.Background())

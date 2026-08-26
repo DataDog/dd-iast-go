@@ -11,10 +11,12 @@ import (
 	"crypto/md5"
 	"crypto/sha1"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -44,6 +46,34 @@ func BenchmarkStringsTrimSpace(b *testing.B) {
 	b.ReportAllocs()
 	for b.Loop() {
 		resultString = strings.TrimSpace(value)
+	}
+}
+
+func BenchmarkStringsToLower(b *testing.B) {
+	b.ReportAllocs()
+	for b.Loop() {
+		resultString = strings.ToLower("Attack Value")
+	}
+}
+
+func BenchmarkFmtSprintf(b *testing.B) {
+	b.ReportAllocs()
+	for b.Loop() {
+		resultString = fmt.Sprintf("value=%s", "attack")
+	}
+}
+
+func BenchmarkURLQueryEscape(b *testing.B) {
+	b.ReportAllocs()
+	for b.Loop() {
+		resultString = url.QueryEscape("Attack Value")
+	}
+}
+
+func BenchmarkStrconvQuote(b *testing.B) {
+	b.ReportAllocs()
+	for b.Loop() {
+		resultString = strconv.Quote("Attack Value")
 	}
 }
 

@@ -7,7 +7,10 @@
 package testapp
 
 import (
+	"fmt"
 	"iter"
+	"net/url"
+	"strconv"
 	"strings"
 )
 
@@ -61,6 +64,23 @@ func TrimLeftFunc(value string, predicate func(rune) bool) string {
 func TrimRightFunc(value string, predicate func(rune) bool) string {
 	return strings.TrimRightFunc(value, predicate)
 }
+
+func ToLower(value string) string                      { return strings.ToLower(value) }
+func ToUpper(value string) string                      { return strings.ToUpper(value) }
+func ToTitle(value string) string                      { return strings.ToTitle(value) }
+func Map(mapping func(rune) rune, value string) string { return strings.Map(mapping, value) }
+func ToValidUTF8(value, replacement string) string     { return strings.ToValidUTF8(value, replacement) }
+func Sprint(arguments ...any) string                   { return fmt.Sprint(arguments...) }
+func Sprintf(format string, arguments ...any) string   { return fmt.Sprintf(format, arguments...) }
+func Sprintln(arguments ...any) string                 { return fmt.Sprintln(arguments...) }
+func QueryEscape(value string) string                  { return url.QueryEscape(value) }
+func PathEscape(value string) string                   { return url.PathEscape(value) }
+func QueryUnescape(value string) (string, error)       { return url.QueryUnescape(value) }
+func PathUnescape(value string) (string, error)        { return url.PathUnescape(value) }
+func Quote(value string) string                        { return strconv.Quote(value) }
+func QuoteToASCII(value string) string                 { return strconv.QuoteToASCII(value) }
+func QuoteToGraphic(value string) string               { return strconv.QuoteToGraphic(value) }
+func Unquote(value string) (string, error)             { return strconv.Unquote(value) }
 
 func IndirectClone(value string) string {
 	clone := strings.Clone
