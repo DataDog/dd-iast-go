@@ -839,7 +839,13 @@ limitations are documented in the README and the Phase 5 implementation plan.
 
 ### Phase 6 — runtime and expression propagation
 
-Implement the Phase 0 decision:
+**Deferred.** The detailed Orchestrion schema and implementation plan is in
+[taint-tracking-net-http-sqli-cmdi-phase-6.md](./taint-tracking-net-http-sqli-cmdi-phase-6.md).
+The user deferred the phase at its schema checkpoint. No operator aspect or
+Orchestrion dependency change is authorized. Independent Phase 7a reporting and
+sink work proceeds while this phase remains blocked.
+
+When resumed, implement the Phase 0 decision:
 
 - land the minimal Orchestrion `builtin-call` and typed `SliceExpr` support;
 - add maximal-chain/conversion expression matchers where runtime hooks did not pass;
