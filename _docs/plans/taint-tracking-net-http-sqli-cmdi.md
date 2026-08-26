@@ -2,7 +2,7 @@
 
 ## Status
 
-- **State:** Phases 0-3 complete; Phase 4 `net/http` source registration and body readers are next
+- **State:** Phases 0-4 complete; Phase 5 named propagation operations are next
 - **Phase 0 results:** [taint-tracking-net-http-sqli-cmdi-phase-0.md](./taint-tracking-net-http-sqli-cmdi-phase-0.md)
 - **Scope:** Interactive Application Security Testing (IAST) taint engine, Go standard-library HTTP sources, string and byte-slice propagation, `database/sql` SQL-injection sinks, and `os/exec` command-injection sinks
 - **Initial supported compiler:** exact Go 1.26.6 via `GOTOOLCHAIN=go1.26.6`, with Orchestrion 1.12.2. The `go.mod` `go` directive alone does not identify the standard-library sources being woven.
@@ -524,14 +524,14 @@ Hooks must be idempotent. Repeated calls must not create duplicate sources or re
 
 ### 10.3 Body readers and owned bytes
 
-Do not eagerly consume the body and do not replace its concrete type in the first version. Bind the body object to the owner as an untrusted reader. Propagate the binding through a bounded standard-wrapper matrix:
+Do not eagerly consume the body and do not replace its concrete type in the first version. Bind the body object to the owner as an untrusted reader. Propagate the binding through a bounded standard-wrapper matrix. The implemented first release admits at most eight reader bindings per owner, examines at most eight `io.MultiReader` inputs, and binds `bufio.Reader` results only when their buffer is at most 4 KiB:
 
 | Constructor/wrapper | Rule |
 |---|---|
 | `io.LimitReader` / `*io.LimitedReader` | Bind the wrapper to every owner of its input reader. |
 | `io.TeeReader` | Propagate input-reader provenance to the returned reader; do not taint the side writer. |
-| `io.MultiReader` | Bind the result to the union of input-reader owners within owner/range limits. |
-| `bufio.NewReader` / `NewReaderSize` | Bind the returned reader to its input-reader owners. |
+| `io.MultiReader` | Bind the result to the union of owner-bound inputs among the first eight readers, within owner/range limits. |
+| `bufio.NewReader` / `NewReaderSize` | Bind the returned reader to its input-reader owners when its buffer is at most 4 KiB. |
 | `http.MaxBytesReader` | Bind the returned read-closer to the input body's owners. |
 | Unknown wrapper | No implicit reflection or recursive field scan; require an explicit integration. |
 
@@ -812,9 +812,11 @@ Implement the public `taint` facade, context carrier, active-owner gate, owner-t
 
 ### Phase 4 — standard `net/http` sources
 
-Add request entry, handler binding, clone-and-replace eager field/header sources, clone-and-replace lazy URL/form/cookie/path/multipart sources, bounded URL/body object bindings, and owned `io.ReadAll` body byte sources. Add all packages to `orchestrion.tool.go` and build-time telemetry.
+**Complete.** Request entry, handler binding, eager field/header sources, lazy URL/form/cookie/path/multipart sources, bounded URL/body reader bindings, and owned `io.ReadAll` body byte sources are implemented. The body allocation is adopted without replacing the returned slice, and direct caller-owned `Body.Read` buffers remain intentionally untainted.
 
-**Exit:** instrumented `httptest` assertions pass for every listed origin; common interned header names do not taint equal application literals; source hooks do not parse or consume data earlier than the application; HTTP/1, HTTP/2, and h2c tests pass; direct body-read limits are documented.
+Instrumented tests cover every listed origin, repeated lazy calls with stable source/root counts, interned-literal isolation, malformed and mutable inputs, HTTP/1, TLS HTTP/2, h2c, middleware body replacement, the supported reader-wrapper matrix, `http.NoBody`, EOF-with-data, read errors, multi-owner publication, and the one-byte/64-KiB body boundaries. Ordinary, woven, race, vet, checklocks, and `GODEBUG=checkptr=2` suites pass. The 20-sample unsampled `HTTPRoundTrip` run measured 91.14 µs control versus 92.14 µs IAST (statistically unchanged), with +1.39% bytes and +1.42% allocations.
+
+**Exit:** satisfied. Source hooks do not parse or consume data earlier than the application, supported protocols preserve one scope per real request, and direct body-read limits are tested and documented.
 
 ### Phase 5 — named propagation operations
 
