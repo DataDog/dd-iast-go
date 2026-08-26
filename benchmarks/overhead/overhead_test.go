@@ -23,11 +23,49 @@ import (
 )
 
 var (
-	resultInt  atomic.Int64
-	md5Result  [md5.Size]byte
-	sha1Result [sha1.Size]byte
-	desResult  any
+	resultInt     atomic.Int64
+	resultString  string
+	resultStrings []string
+	md5Result     [md5.Size]byte
+	sha1Result    [sha1.Size]byte
+	desResult     any
 )
+
+func BenchmarkStringsClone(b *testing.B) {
+	const value = "representative-value"
+	b.ReportAllocs()
+	for b.Loop() {
+		resultString = strings.Clone(value)
+	}
+}
+
+func BenchmarkStringsTrimSpace(b *testing.B) {
+	const value = "representative-value"
+	b.ReportAllocs()
+	for b.Loop() {
+		resultString = strings.TrimSpace(value)
+	}
+}
+
+func BenchmarkStringsSplitSeq(b *testing.B) {
+	const value = "alpha,beta,gamma"
+	b.ReportAllocs()
+	for b.Loop() {
+		length := 0
+		for part := range strings.SplitSeq(value, ",") {
+			length += len(part)
+		}
+		resultInt.Store(int64(length))
+	}
+}
+
+func BenchmarkStringsSplit(b *testing.B) {
+	const value = "alpha,beta,gamma"
+	b.ReportAllocs()
+	for b.Loop() {
+		resultStrings = strings.Split(value, ",")
+	}
+}
 
 func BenchmarkHealth(b *testing.B) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {

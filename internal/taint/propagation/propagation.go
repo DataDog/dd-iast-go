@@ -104,6 +104,34 @@ func deriveBytesWindow(result []byte, snapshot *store.Snapshot, s *store.Store) 
 	}
 }
 
+// AdoptStringCopy publishes an audited fresh exact-length string result without
+// cloning it again. The caller must prove that result starts at its allocation
+// base and retains exactly len(result) bytes.
+func AdoptStringCopy(input, result string) string {
+	if len(result) != len(input) || len(result) < 2 || len(result) > store.MaxRootBytes {
+		return result
+	}
+	s := request.ActiveStore()
+	if s == nil {
+		return result
+	}
+	key, ok := store.StringKey(input)
+	if !ok || !s.MayContain(key) {
+		return result
+	}
+	adoptStringCopyHit(s, key, input, result)
+	return result
+}
+
+//go:noinline
+func adoptStringCopyHit(s *store.Store, key store.Key, input, result string) {
+	var snapshot store.Snapshot
+	if !s.Lookup(key, &snapshot) || snapshot.Len() == 0 {
+		return
+	}
+	publishStringCopy(result, uint32(len(input)), &snapshot, s)
+}
+
 // CopyString is the exact copy primitive for string operations. It derives when
 // result aliases a safe input window, and otherwise clones result once to exact
 // length on a tainted path and adopts that same clone independently for every
@@ -159,6 +187,27 @@ func publishStringCopy(clone string, inputLen uint32, snapshot *store.Snapshot, 
 			continue
 		}
 		owner.AdoptString(clone, &resultSet)
+	}
+}
+
+// StringWindow derives one non-empty output window of input.
+func StringWindow(input, output string) {
+	s := request.ActiveStore()
+	if s == nil || len(output) == 0 || !stringAlias(input, output) {
+		return
+	}
+	key, ok := store.StringKey(input)
+	if !ok || !s.MayContain(key) {
+		return
+	}
+	stringWindowHit(s, key, output)
+}
+
+//go:noinline
+func stringWindowHit(s *store.Store, key store.Key, output string) {
+	var snapshot store.Snapshot
+	if s.Lookup(key, &snapshot) && snapshot.Len() > 0 {
+		deriveStringWindow(output, &snapshot, s)
 	}
 }
 
@@ -387,6 +436,27 @@ func publishBytesCopy(result []byte, inputLen uint32, snapshot *store.Snapshot, 
 			continue
 		}
 		owner.AdoptBytes(result, &resultSet)
+	}
+}
+
+// ByteWindow derives one non-empty output window of input.
+func ByteWindow(input, output []byte) {
+	s := request.ActiveStore()
+	if s == nil || len(output) == 0 || !bytesAlias(input, output) {
+		return
+	}
+	key, ok := store.BytesKey(input)
+	if !ok || !s.MayContain(key) {
+		return
+	}
+	byteWindowHit(s, key, output)
+}
+
+//go:noinline
+func byteWindowHit(s *store.Store, key store.Key, output []byte) {
+	var snapshot store.Snapshot
+	if s.Lookup(key, &snapshot) && snapshot.Len() > 0 {
+		deriveBytesWindow(output, &snapshot, s)
 	}
 }
 

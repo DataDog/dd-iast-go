@@ -1,0 +1,230 @@
+# Unless explicitly stated otherwise all files in this repository are licensed
+# under the Apache License Version 2.0.
+# This product includes software developed at Datadog (https://www.datadoghq.com/).
+# Copyright 2026-present Datadog, Inc.
+---
+# $schema: https://datadoghq.dev/orchestrion/schema.json
+meta:
+  name: github.com/DataDog/dd-iast-go/iast/propagation
+  description: Named taint propagation call-site wrappers
+
+aspects:
+  - id: strings.Clone
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not:
+            one-of:
+              - import-path: github.com/DataDog/dd-iast-go/iast/propagation
+              - import-path: github.com/DataDog/dd-iast-go/taint
+        - function-call: strings.Clone
+    advice:
+      - replace-function: github.com/DataDog/dd-iast-go/iast/propagation.StringsClone
+
+  - id: strings.Cut
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - function-call: strings.Cut
+    advice: [{replace-function: github.com/DataDog/dd-iast-go/iast/propagation.StringsCut}]
+
+  - id: strings.Split
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - function-call: strings.Split
+    advice: [{replace-function: github.com/DataDog/dd-iast-go/iast/propagation.StringsSplit}]
+
+  - id: strings.SplitN
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - function-call: strings.SplitN
+    advice: [{replace-function: github.com/DataDog/dd-iast-go/iast/propagation.StringsSplitN}]
+
+  - id: strings.SplitAfter
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - function-call: strings.SplitAfter
+    advice: [{replace-function: github.com/DataDog/dd-iast-go/iast/propagation.StringsSplitAfter}]
+
+  - id: strings.SplitAfterN
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - function-call: strings.SplitAfterN
+    advice: [{replace-function: github.com/DataDog/dd-iast-go/iast/propagation.StringsSplitAfterN}]
+
+  - id: strings.Fields
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - function-call: strings.Fields
+    advice: [{replace-function: github.com/DataDog/dd-iast-go/iast/propagation.StringsFields}]
+
+  - id: strings.FieldsFunc
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - function-call: strings.FieldsFunc
+    advice: [{replace-function: github.com/DataDog/dd-iast-go/iast/propagation.StringsFieldsFunc}]
+
+  - id: strings.Trim
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - function-call: strings.Trim
+    advice: [{replace-function: github.com/DataDog/dd-iast-go/iast/propagation.StringsTrim}]
+
+  - id: strings.TrimSpace
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - function-call: strings.TrimSpace
+    advice: [{replace-function: github.com/DataDog/dd-iast-go/iast/propagation.StringsTrimSpace}]
+
+  - id: strings.TrimLeft
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - function-call: strings.TrimLeft
+    advice: [{replace-function: github.com/DataDog/dd-iast-go/iast/propagation.StringsTrimLeft}]
+
+  - id: strings.TrimRight
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - function-call: strings.TrimRight
+    advice: [{replace-function: github.com/DataDog/dd-iast-go/iast/propagation.StringsTrimRight}]
+
+  - id: strings.TrimPrefix
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - function-call: strings.TrimPrefix
+    advice: [{replace-function: github.com/DataDog/dd-iast-go/iast/propagation.StringsTrimPrefix}]
+
+  - id: strings.TrimSuffix
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - function-call: strings.TrimSuffix
+    advice: [{replace-function: github.com/DataDog/dd-iast-go/iast/propagation.StringsTrimSuffix}]
+
+  - id: strings.TrimFunc
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - function-call: strings.TrimFunc
+    advice: [{replace-function: github.com/DataDog/dd-iast-go/iast/propagation.StringsTrimFunc}]
+
+  - id: strings.TrimLeftFunc
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - function-call: strings.TrimLeftFunc
+    advice: [{replace-function: github.com/DataDog/dd-iast-go/iast/propagation.StringsTrimLeftFunc}]
+
+  - id: strings.CutPrefix
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - function-call: strings.CutPrefix
+    advice: [{replace-function: github.com/DataDog/dd-iast-go/iast/propagation.StringsCutPrefix}]
+
+  - id: strings.CutSuffix
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - function-call: strings.CutSuffix
+    advice: [{replace-function: github.com/DataDog/dd-iast-go/iast/propagation.StringsCutSuffix}]
+
+  - id: strings.SplitSeq
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - function-call: strings.SplitSeq
+    advice: [{replace-function: github.com/DataDog/dd-iast-go/iast/propagation.StringsSplitSeq}]
+
+  - id: strings.SplitAfterSeq
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - function-call: strings.SplitAfterSeq
+    advice: [{replace-function: github.com/DataDog/dd-iast-go/iast/propagation.StringsSplitAfterSeq}]
+
+  - id: strings.Lines
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - function-call: strings.Lines
+    advice: [{replace-function: github.com/DataDog/dd-iast-go/iast/propagation.StringsLines}]
+
+  - id: strings.FieldsSeq
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - function-call: strings.FieldsSeq
+    advice: [{replace-function: github.com/DataDog/dd-iast-go/iast/propagation.StringsFieldsSeq}]
+
+  - id: strings.FieldsFuncSeq
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - function-call: strings.FieldsFuncSeq
+    advice: [{replace-function: github.com/DataDog/dd-iast-go/iast/propagation.StringsFieldsFuncSeq}]
+
+  - id: strings.TrimRightFunc
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - function-call: strings.TrimRightFunc
+    advice: [{replace-function: github.com/DataDog/dd-iast-go/iast/propagation.StringsTrimRightFunc}]
