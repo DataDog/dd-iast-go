@@ -33,6 +33,7 @@ Useful controls use the same names as `go test` where the concepts overlap:
 | `-cpu` | `1` | One fixed positive `GOMAXPROCS` and `-test.cpu` value |
 | `-bench` | `.` | Benchmark selection expression |
 | `-outputdir` | temporary | Artifact directory |
+| `-sampling` | `100` | `DD_IAST_REQUEST_SAMPLING` value from 0 to 100 |
 
 Unlike `go test -count`, every runner sample starts a fresh process so global
 IAST state cannot survive between repetitions. The runner's `-cpu` flag accepts
@@ -42,6 +43,9 @@ For a quick smoke run:
 
 ```console
 go -C benchmarks/overhead run ./runner -count=2 -benchtime=100ms
+
+# Measure the sampled-out request path.
+go -C benchmarks/overhead run ./runner -sampling=0 -bench=BenchmarkHTTPRoundTrip
 ```
 
 ## Workloads

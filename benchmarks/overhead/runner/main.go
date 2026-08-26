@@ -39,6 +39,7 @@ type options struct {
 	benchtime string
 	cpu       int
 	benchmark string
+	sampling  int
 }
 
 type flagValues struct {
@@ -47,6 +48,7 @@ type flagValues struct {
 	benchtime string
 	cpu       string
 	benchmark string
+	sampling  string
 }
 
 type configuration struct {
@@ -57,6 +59,7 @@ type configuration struct {
 	benchtime  string
 	cpu        int
 	benchmark  string
+	sampling   int
 }
 
 func main() {
@@ -192,6 +195,10 @@ func parseFlags(arguments []string) (options, error) {
 	if err != nil {
 		return options{}, err
 	}
+	sampling, err := percentage("-sampling", values.sampling)
+	if err != nil {
+		return options{}, err
+	}
 	if values.benchmark == "" {
 		return options{}, errors.New("-bench must not be empty")
 	}
@@ -210,6 +217,7 @@ func parseFlags(arguments []string) (options, error) {
 		benchtime: values.benchtime,
 		cpu:       cpu,
 		benchmark: values.benchmark,
+		sampling:  sampling,
 	}, nil
 }
 
@@ -219,6 +227,7 @@ func defaultFlagValues() flagValues {
 		benchtime: "500ms",
 		cpu:       "1",
 		benchmark: ".",
+		sampling:  "100",
 	}
 }
 
@@ -230,6 +239,7 @@ func newFlagSet(values *flagValues) *flag.FlagSet {
 	flags.StringVar(&values.count, "count", values.count, "run `n` independent process samples per variant")
 	flags.StringVar(&values.cpu, "cpu", values.cpu, "use one positive GOMAXPROCS `value`")
 	flags.StringVar(&values.outputDir, "outputdir", values.outputDir, "write artifacts to `directory` (default: temporary directory)")
+	flags.StringVar(&values.sampling, "sampling", values.sampling, "set DD_IAST_REQUEST_SAMPLING from 0 to 100")
 	return flags
 }
 
@@ -239,6 +249,14 @@ func printUsage(output io.Writer) {
 	flags.SetOutput(output)
 	fmt.Fprintln(output, "Usage: runner [flags]")
 	flags.PrintDefaults()
+}
+
+func percentage(name, value string) (int, error) {
+	parsed, err := strconv.Atoi(value)
+	if err != nil || parsed < 0 || parsed > 100 {
+		return 0, fmt.Errorf("%s must be an integer from 0 to 100: %q", name, value)
+	}
+	return parsed, nil
 }
 
 func positiveInteger(name, value string) (int, error) {
@@ -334,6 +352,7 @@ func newConfiguration(opts options) (configuration, error) {
 		benchtime:  opts.benchtime,
 		cpu:        opts.cpu,
 		benchmark:  opts.benchmark,
+		sampling:   opts.sampling,
 	}, nil
 }
 
@@ -482,7 +501,7 @@ func runSample(cfg configuration, directory, binary, destination string) error {
 	environment := []string{
 		"GOMAXPROCS=" + strconv.Itoa(cfg.cpu),
 		"DD_IAST_ENABLED=true",
-		"DD_IAST_REQUEST_SAMPLING=100",
+		"DD_IAST_REQUEST_SAMPLING=" + strconv.Itoa(cfg.sampling),
 		"DD_IAST_DEDUPLICATION_ENABLED=false",
 	}
 	runErr := executeWithWriters(directory, environment, file, os.Stderr, binary,
@@ -504,8 +523,8 @@ func writeMetadata(cfg configuration, name string) error {
 	if err != nil {
 		return err
 	}
-	metadata := fmt.Sprintf("revision=%s\ngo_version=%s\ngoos=%s\ngoarch=%s\ncpu_count=%d\ncount=%d\nbenchtime=%s\ncpu=%d\nbench=%s\n",
-		revision, goVersion, runtime.GOOS, runtime.GOARCH, runtime.NumCPU(), cfg.count, cfg.benchtime, cfg.cpu, cfg.benchmark)
+	metadata := fmt.Sprintf("revision=%s\ngo_version=%s\ngoos=%s\ngoarch=%s\ncpu_count=%d\ncount=%d\nbenchtime=%s\ncpu=%d\nbench=%s\nsampling=%d\n",
+		revision, goVersion, runtime.GOOS, runtime.GOARCH, runtime.NumCPU(), cfg.count, cfg.benchtime, cfg.cpu, cfg.benchmark, cfg.sampling)
 	if err := cfg.output.WriteFile(name, []byte(metadata), 0o644); err != nil {
 		return fmt.Errorf("write metadata: %w", err)
 	}
