@@ -23,6 +23,11 @@ const (
 	ProbeLimit          = 64
 	compactionThreshold = 32
 	overflowRanges      = MaxRanges - GuaranteedRanges
+
+	// MaxWriters bounds the fixed per-owner writer-state table. It is independent
+	// of object bindings so a single bytes.Buffer can be a reader and a writer at
+	// once.
+	MaxWriters = 8
 )
 
 const tombstone = ^uintptr(0)

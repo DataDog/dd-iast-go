@@ -121,6 +121,7 @@ func TestCoarseStringOperations(t *testing.T) {
 		testapp.ToTitle(value),
 		testapp.Map(func(r rune) rune { return r + 1 }, value),
 		testapp.ToValidUTF8(value, "?"),
+		testapp.ReplacerReplace(value),
 		testapp.Sprint("prefix:", value),
 		testapp.Sprintf("value=%s", value),
 		testapp.Sprintln(value),
@@ -143,6 +144,15 @@ func TestCoarseStringOperations(t *testing.T) {
 	unquoted, err := testapp.Unquote(quoted)
 	require.NoError(t, err)
 	requireTaintedStrings(t, unquoted)
+}
+
+func TestReplacerReplacementProvenanceIsUnsupported(t *testing.T) {
+	if !built.WithOrchestrion {
+		t.Skip("orchestrion is not enabled, use `go tool orchestrion go test`")
+	}
+	replacement := activeString(t, "secret")
+	result := testapp.ReplacerReplacement("plain", replacement)
+	require.False(t, taint.IsTaintedString(result))
 }
 
 func TestCoarseOperationsPreserveErrors(t *testing.T) {

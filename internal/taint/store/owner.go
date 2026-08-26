@@ -32,6 +32,22 @@ func (s *Store) Acquire() *Owner {
 		if state != stateUnused && state != stateDead {
 			continue
 		}
+		if !record.writersMu.TryLock() {
+			continue
+		}
+		record.writerVersion.Add(1)
+		if record.writerCount > 0 {
+			delta := -int32(record.writerCount)
+			s.writerStates.Add(delta)
+		}
+		clear(record.writers[:])
+		for writerIndex := range record.writerPointers {
+			record.writerPointers[writerIndex].Store(0)
+		}
+		record.writerCount = 0
+		record.writerDirty.Store(false)
+		record.writerVersion.Add(1)
+		record.writersMu.Unlock() // +checklocksforce: TryLock.
 		generation := record.generation.Add(1)
 		record.id.Store(s.nextOwnerID.Add(1))
 		record.charged.Store(0)
@@ -146,6 +162,19 @@ func (o *Owner) Finish() {
 	}
 	record.lifecycleMu.Lock()
 	defer record.lifecycleMu.Unlock()
+
+	// Clear every writer anchor and release its capacity charge before the
+	// root-charge swap below. The swap then sees only root charges, so the
+	// process charge is never double-subtracted.
+	record.writersMu.Lock()
+	writerCharged := releaseWritersForFinishLocked(o.store, record)
+	record.writerCount = 0
+	record.writerDirty.Store(false)
+	record.writersMu.Unlock()
+	if writerCharged != 0 {
+		record.charged.Add(-writerCharged)
+		o.store.charged.Add(-writerCharged)
+	}
 
 	record.rootsMu.Lock()
 	o.store.overflowMu.Lock()

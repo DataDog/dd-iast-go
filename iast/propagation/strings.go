@@ -147,6 +147,13 @@ func StringsReplaceAll(value, old, replacement string) string {
 	return internal.ReplaceString(value, old, replacement, result, -1)
 }
 
+// ReplacerReplace wraps strings.Replacer.Replace. Replacement-term provenance
+// is not tracked in the first release.
+func ReplacerReplace(replacer *strings.Replacer, value string) string {
+	result := replacer.Replace(value)
+	return internal.CoarseString(result, value)
+}
+
 // StringsTrim wraps strings.Trim.
 func StringsTrim(value, cutset string) string {
 	result := strings.Trim(value, cutset)

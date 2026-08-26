@@ -7,7 +7,8 @@ package store
 
 import "sync/atomic"
 
-var forceCollision atomic.Bool // test seam
+var forceCollision atomic.Bool      // test seam
+var forceWriterLockFail atomic.Bool // test seam
 
 func keyHash(key Key) uint64 {
 	if forceCollision.Load() {

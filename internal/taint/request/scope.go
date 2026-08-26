@@ -15,6 +15,7 @@ import (
 	"github.com/DataDog/dd-iast-go/internal/taint/httpbridge"
 	"github.com/DataDog/dd-iast-go/internal/taint/iobridge"
 	"github.com/DataDog/dd-iast-go/internal/taint/urlbridge"
+	"github.com/DataDog/dd-iast-go/internal/taint/writerbridge"
 )
 
 // Decision is the immutable sampling/capacity outcome for a request scope. It
@@ -43,6 +44,7 @@ var (
 	defaultManager = sync.OnceValue(func() *Manager {
 		manager := NewManager(nil)
 		processManager.Store(manager)
+		writerbridge.BindActiveCounter(manager.store.WriterStateCounter())
 		return manager
 	})
 )

@@ -34,6 +34,26 @@ var (
 	desResult     any
 )
 
+func BenchmarkStringsBuilder(b *testing.B) {
+	b.ReportAllocs()
+	for b.Loop() {
+		var builder strings.Builder
+		builder.WriteString("alpha")
+		builder.WriteString("beta")
+		resultString = builder.String()
+	}
+}
+
+func BenchmarkBytesBuffer(b *testing.B) {
+	b.ReportAllocs()
+	for b.Loop() {
+		var buffer bytes.Buffer
+		buffer.WriteString("alpha")
+		buffer.WriteString("beta")
+		resultString = buffer.String()
+	}
+}
+
 func BenchmarkBytesClone(b *testing.B) {
 	value := []byte("representative-value")
 	b.ReportAllocs()

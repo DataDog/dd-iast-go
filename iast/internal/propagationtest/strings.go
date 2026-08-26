@@ -49,6 +49,12 @@ func Replace(value, old, replacement string, count int) string {
 func ReplaceAll(value, old, replacement string) string {
 	return strings.ReplaceAll(value, old, replacement)
 }
+func ReplacerReplace(value string) string {
+	return strings.NewReplacer("Attack", "Changed").Replace(value)
+}
+func ReplacerReplacement(value, replacement string) string {
+	return strings.NewReplacer("plain", replacement).Replace(value)
+}
 func Trim(value, cutset string) string       { return strings.Trim(value, cutset) }
 func TrimSpace(value string) string          { return strings.TrimSpace(value) }
 func TrimLeft(value, cutset string) string   { return strings.TrimLeft(value, cutset) }

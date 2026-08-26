@@ -86,20 +86,26 @@ type rootRecord struct {
 }
 
 type owner struct {
-	id          atomic.Uint64
-	generation  atomic.Uint64
-	state       atomic.Uint32
-	lifecycleMu sync.RWMutex
-	rootsMu     sync.RWMutex
-	roots       [MaxRootsPerOwner]rootRecord
-	rootNext    uint16
-	rootFree    [MaxRootsPerOwner]uint16
-	rootFreeN   uint16
-	charged     atomic.Int64
-	values      atomic.Int32
-	rootCount   atomic.Int32
-	bindings    bindingTable
-	drops       dropCounters
+	id             atomic.Uint64
+	generation     atomic.Uint64
+	state          atomic.Uint32
+	lifecycleMu    sync.RWMutex
+	rootsMu        sync.RWMutex
+	roots          [MaxRootsPerOwner]rootRecord
+	rootNext       uint16
+	rootFree       [MaxRootsPerOwner]uint16
+	rootFreeN      uint16
+	charged        atomic.Int64
+	values         atomic.Int32
+	rootCount      atomic.Int32
+	bindings       bindingTable
+	writersMu      sync.RWMutex
+	writers        [MaxWriters]writerRecord
+	writerPointers [MaxWriters]atomic.Uintptr
+	writerCount    uint8
+	writerDirty    atomic.Bool
+	writerVersion  atomic.Uint64
+	drops          dropCounters
 }
 
 type shard struct {
@@ -161,6 +167,7 @@ type Store struct {
 	acquireDrops  atomic.Uint64
 	charged       atomic.Int64
 	values        atomic.Int32
+	writerStates  atomic.Int32
 	overflow      [OverflowBlocks]overflowBlock
 	overflowFree  [OverflowBlocks]uint16
 	overflowN     uint16

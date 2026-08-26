@@ -660,3 +660,580 @@ aspects:
         - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
         - function-call: bytes.ToValidUTF8
     advice: [{replace-function: github.com/DataDog/dd-iast-go/iast/propagation.BytesToValidUTF8}]
+
+  - id: strings.Builder.Write.pointer
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - method-call:
+            receiver: strings.Builder
+            name: Write
+            match: pointer-only
+    advice:
+      - wrap-expression:
+          imports:
+            iastpropagation: github.com/DataDog/dd-iast-go/iast/propagation
+          template: iastpropagation.BuilderWrite({{ .AST.Fun.X }}, {{ index .AST.Args 0 }})
+
+  - id: strings.Builder.Write.value
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - method-call:
+            receiver: strings.Builder
+            name: Write
+            match: value-only
+    advice:
+      - wrap-expression:
+          imports:
+            iastpropagation: github.com/DataDog/dd-iast-go/iast/propagation
+          template: iastpropagation.BuilderWrite(&{{ .AST.Fun.X }}, {{ index .AST.Args 0 }})
+
+  - id: strings.Builder.WriteString.pointer
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - method-call:
+            receiver: strings.Builder
+            name: WriteString
+            match: pointer-only
+    advice:
+      - wrap-expression:
+          imports:
+            iastpropagation: github.com/DataDog/dd-iast-go/iast/propagation
+          template: iastpropagation.BuilderWriteString({{ .AST.Fun.X }}, {{ index .AST.Args 0 }})
+
+  - id: strings.Builder.WriteString.value
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - method-call:
+            receiver: strings.Builder
+            name: WriteString
+            match: value-only
+    advice:
+      - wrap-expression:
+          imports:
+            iastpropagation: github.com/DataDog/dd-iast-go/iast/propagation
+          template: iastpropagation.BuilderWriteString(&{{ .AST.Fun.X }}, {{ index .AST.Args 0 }})
+
+  - id: strings.Builder.WriteByte.pointer
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - method-call:
+            receiver: strings.Builder
+            name: WriteByte
+            match: pointer-only
+    advice:
+      - wrap-expression:
+          imports:
+            iastpropagation: github.com/DataDog/dd-iast-go/iast/propagation
+          template: iastpropagation.BuilderWriteByte({{ .AST.Fun.X }}, {{ index .AST.Args 0 }})
+
+  - id: strings.Builder.WriteByte.value
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - method-call:
+            receiver: strings.Builder
+            name: WriteByte
+            match: value-only
+    advice:
+      - wrap-expression:
+          imports:
+            iastpropagation: github.com/DataDog/dd-iast-go/iast/propagation
+          template: iastpropagation.BuilderWriteByte(&{{ .AST.Fun.X }}, {{ index .AST.Args 0 }})
+
+  - id: strings.Builder.WriteRune.pointer
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - method-call:
+            receiver: strings.Builder
+            name: WriteRune
+            match: pointer-only
+    advice:
+      - wrap-expression:
+          imports:
+            iastpropagation: github.com/DataDog/dd-iast-go/iast/propagation
+          template: iastpropagation.BuilderWriteRune({{ .AST.Fun.X }}, {{ index .AST.Args 0 }})
+
+  - id: strings.Builder.WriteRune.value
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - method-call:
+            receiver: strings.Builder
+            name: WriteRune
+            match: value-only
+    advice:
+      - wrap-expression:
+          imports:
+            iastpropagation: github.com/DataDog/dd-iast-go/iast/propagation
+          template: iastpropagation.BuilderWriteRune(&{{ .AST.Fun.X }}, {{ index .AST.Args 0 }})
+
+  - id: strings.Builder.Reset.pointer
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - method-call:
+            receiver: strings.Builder
+            name: Reset
+            match: pointer-only
+    advice:
+      - wrap-expression:
+          imports:
+            iastpropagation: github.com/DataDog/dd-iast-go/iast/propagation
+          template: iastpropagation.BuilderReset({{ .AST.Fun.X }})
+
+  - id: strings.Builder.Reset.value
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - method-call:
+            receiver: strings.Builder
+            name: Reset
+            match: value-only
+    advice:
+      - wrap-expression:
+          imports:
+            iastpropagation: github.com/DataDog/dd-iast-go/iast/propagation
+          template: iastpropagation.BuilderReset(&{{ .AST.Fun.X }})
+
+  - id: strings.Builder.String.pointer
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - method-call:
+            receiver: strings.Builder
+            name: String
+            match: pointer-only
+    advice:
+      - wrap-expression:
+          imports:
+            iastpropagation: github.com/DataDog/dd-iast-go/iast/propagation
+          template: iastpropagation.BuilderString({{ .AST.Fun.X }})
+
+  - id: strings.Builder.String.value
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - method-call:
+            receiver: strings.Builder
+            name: String
+            match: value-only
+    advice:
+      - wrap-expression:
+          imports:
+            iastpropagation: github.com/DataDog/dd-iast-go/iast/propagation
+          template: iastpropagation.BuilderString(&{{ .AST.Fun.X }})
+
+  - id: bytes.Buffer.Write.pointer
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - method-call:
+            receiver: bytes.Buffer
+            name: Write
+            match: pointer-only
+    advice:
+      - wrap-expression:
+          imports:
+            iastpropagation: github.com/DataDog/dd-iast-go/iast/propagation
+          template: iastpropagation.BufferWrite({{ .AST.Fun.X }}, {{ index .AST.Args 0 }})
+
+  - id: bytes.Buffer.Write.value
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - method-call:
+            receiver: bytes.Buffer
+            name: Write
+            match: value-only
+    advice:
+      - wrap-expression:
+          imports:
+            iastpropagation: github.com/DataDog/dd-iast-go/iast/propagation
+          template: iastpropagation.BufferWrite(&{{ .AST.Fun.X }}, {{ index .AST.Args 0 }})
+
+  - id: bytes.Buffer.WriteString.pointer
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - method-call:
+            receiver: bytes.Buffer
+            name: WriteString
+            match: pointer-only
+    advice:
+      - wrap-expression:
+          imports:
+            iastpropagation: github.com/DataDog/dd-iast-go/iast/propagation
+          template: iastpropagation.BufferWriteString({{ .AST.Fun.X }}, {{ index .AST.Args 0 }})
+
+  - id: bytes.Buffer.WriteString.value
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - method-call:
+            receiver: bytes.Buffer
+            name: WriteString
+            match: value-only
+    advice:
+      - wrap-expression:
+          imports:
+            iastpropagation: github.com/DataDog/dd-iast-go/iast/propagation
+          template: iastpropagation.BufferWriteString(&{{ .AST.Fun.X }}, {{ index .AST.Args 0 }})
+
+  - id: bytes.Buffer.WriteByte.pointer
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - method-call:
+            receiver: bytes.Buffer
+            name: WriteByte
+            match: pointer-only
+    advice:
+      - wrap-expression:
+          imports:
+            iastpropagation: github.com/DataDog/dd-iast-go/iast/propagation
+          template: iastpropagation.BufferWriteByte({{ .AST.Fun.X }}, {{ index .AST.Args 0 }})
+
+  - id: bytes.Buffer.WriteByte.value
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - method-call:
+            receiver: bytes.Buffer
+            name: WriteByte
+            match: value-only
+    advice:
+      - wrap-expression:
+          imports:
+            iastpropagation: github.com/DataDog/dd-iast-go/iast/propagation
+          template: iastpropagation.BufferWriteByte(&{{ .AST.Fun.X }}, {{ index .AST.Args 0 }})
+
+  - id: bytes.Buffer.WriteRune.pointer
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - method-call:
+            receiver: bytes.Buffer
+            name: WriteRune
+            match: pointer-only
+    advice:
+      - wrap-expression:
+          imports:
+            iastpropagation: github.com/DataDog/dd-iast-go/iast/propagation
+          template: iastpropagation.BufferWriteRune({{ .AST.Fun.X }}, {{ index .AST.Args 0 }})
+
+  - id: bytes.Buffer.WriteRune.value
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - method-call:
+            receiver: bytes.Buffer
+            name: WriteRune
+            match: value-only
+    advice:
+      - wrap-expression:
+          imports:
+            iastpropagation: github.com/DataDog/dd-iast-go/iast/propagation
+          template: iastpropagation.BufferWriteRune(&{{ .AST.Fun.X }}, {{ index .AST.Args 0 }})
+
+  - id: bytes.Buffer.Reset.pointer
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - method-call:
+            receiver: bytes.Buffer
+            name: Reset
+            match: pointer-only
+    advice:
+      - wrap-expression:
+          imports:
+            iastpropagation: github.com/DataDog/dd-iast-go/iast/propagation
+          template: iastpropagation.BufferReset({{ .AST.Fun.X }})
+
+  - id: bytes.Buffer.Reset.value
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - method-call:
+            receiver: bytes.Buffer
+            name: Reset
+            match: value-only
+    advice:
+      - wrap-expression:
+          imports:
+            iastpropagation: github.com/DataDog/dd-iast-go/iast/propagation
+          template: iastpropagation.BufferReset(&{{ .AST.Fun.X }})
+
+  - id: bytes.Buffer.Truncate.pointer
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - method-call:
+            receiver: bytes.Buffer
+            name: Truncate
+            match: pointer-only
+    advice:
+      - wrap-expression:
+          imports:
+            iastpropagation: github.com/DataDog/dd-iast-go/iast/propagation
+          template: iastpropagation.BufferTruncate({{ .AST.Fun.X }}, {{ index .AST.Args 0 }})
+
+  - id: bytes.Buffer.Truncate.value
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - method-call:
+            receiver: bytes.Buffer
+            name: Truncate
+            match: value-only
+    advice:
+      - wrap-expression:
+          imports:
+            iastpropagation: github.com/DataDog/dd-iast-go/iast/propagation
+          template: iastpropagation.BufferTruncate(&{{ .AST.Fun.X }}, {{ index .AST.Args 0 }})
+
+  - id: bytes.Buffer.String.pointer
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - method-call:
+            receiver: bytes.Buffer
+            name: String
+            match: pointer-only
+    advice:
+      - wrap-expression:
+          imports:
+            iastpropagation: github.com/DataDog/dd-iast-go/iast/propagation
+          template: iastpropagation.BufferString({{ .AST.Fun.X }})
+
+  - id: bytes.Buffer.String.value
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - method-call:
+            receiver: bytes.Buffer
+            name: String
+            match: value-only
+    advice:
+      - wrap-expression:
+          imports:
+            iastpropagation: github.com/DataDog/dd-iast-go/iast/propagation
+          template: iastpropagation.BufferString(&{{ .AST.Fun.X }})
+
+  - id: strings.Builder.Grow.pointer
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - method-call: {receiver: strings.Builder, name: Grow, match: pointer-only}
+    advice:
+      - wrap-expression:
+          imports: {iastpropagation: github.com/DataDog/dd-iast-go/iast/propagation}
+          template: iastpropagation.BuilderGrow({{ .AST.Fun.X }}, {{ index .AST.Args 0 }})
+
+  - id: strings.Builder.Grow.value
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - method-call: {receiver: strings.Builder, name: Grow, match: value-only}
+    advice:
+      - wrap-expression:
+          imports: {iastpropagation: github.com/DataDog/dd-iast-go/iast/propagation}
+          template: iastpropagation.BuilderGrow(&{{ .AST.Fun.X }}, {{ index .AST.Args 0 }})
+
+  - id: bytes.Buffer.Grow.pointer
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - method-call: {receiver: bytes.Buffer, name: Grow, match: pointer-only}
+    advice:
+      - wrap-expression:
+          imports: {iastpropagation: github.com/DataDog/dd-iast-go/iast/propagation}
+          template: iastpropagation.BufferGrow({{ .AST.Fun.X }}, {{ index .AST.Args 0 }})
+
+  - id: bytes.Buffer.Grow.value
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - method-call: {receiver: bytes.Buffer, name: Grow, match: value-only}
+    advice:
+      - wrap-expression:
+          imports: {iastpropagation: github.com/DataDog/dd-iast-go/iast/propagation}
+          template: iastpropagation.BufferGrow(&{{ .AST.Fun.X }}, {{ index .AST.Args 0 }})
+
+  - id: strings.Replacer.Replace.pointer
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - method-call:
+            receiver: strings.Replacer
+            name: Replace
+            match: pointer-only
+    advice:
+      - wrap-expression:
+          imports:
+            iastpropagation: github.com/DataDog/dd-iast-go/iast/propagation
+          template: iastpropagation.ReplacerReplace({{ .AST.Fun.X }}, {{ index .AST.Args 0 }})
+
+  - id: strings.Replacer.Replace.value
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - method-call:
+            receiver: strings.Replacer
+            name: Replace
+            match: value-only
+    advice:
+      - wrap-expression:
+          imports:
+            iastpropagation: github.com/DataDog/dd-iast-go/iast/propagation
+          template: iastpropagation.ReplacerReplace(&{{ .AST.Fun.X }}, {{ index .AST.Args 0 }})
+
+  - id: bytes.Buffer.invalidate-writer-state
+    join-point:
+      all-of:
+        - import-path: bytes
+        - one-of:
+              - function-body:
+                  function:
+                    - receiver: "*bytes.Buffer"
+                    - name: Write
+              - function-body:
+                  function:
+                    - receiver: "*bytes.Buffer"
+                    - name: WriteString
+              - function-body:
+                  function:
+                    - receiver: "*bytes.Buffer"
+                    - name: WriteByte
+              - function-body:
+                  function:
+                    - receiver: "*bytes.Buffer"
+                    - name: WriteRune
+              - function-body:
+                  function:
+                    - receiver: "*bytes.Buffer"
+                    - name: Reset
+              - function-body:
+                  function:
+                    - receiver: "*bytes.Buffer"
+                    - name: Truncate
+              - function-body:
+                  function:
+                    - receiver: "*bytes.Buffer"
+                    - name: Read
+              - function-body:
+                  function:
+                    - receiver: "*bytes.Buffer"
+                    - name: Next
+              - function-body:
+                  function:
+                    - receiver: "*bytes.Buffer"
+                    - name: ReadByte
+              - function-body:
+                  function:
+                    - receiver: "*bytes.Buffer"
+                    - name: ReadRune
+              - function-body:
+                  function:
+                    - receiver: "*bytes.Buffer"
+                    - name: ReadBytes
+              - function-body:
+                  function:
+                    - receiver: "*bytes.Buffer"
+                    - name: ReadString
+              - function-body:
+                  function:
+                    - receiver: "*bytes.Buffer"
+                    - name: WriteTo
+              - function-body:
+                  function:
+                    - receiver: "*bytes.Buffer"
+                    - name: Grow
+              - function-body:
+                  function:
+                    - receiver: "*bytes.Buffer"
+                    - name: ReadFrom
+              - function-body:
+                  function:
+                    - receiver: "*bytes.Buffer"
+                    - name: Bytes
+              - function-body:
+                  function:
+                    - receiver: "*bytes.Buffer"
+                    - name: AvailableBuffer
+    advice:
+      - prepend-statements:
+          imports:
+            unsafe: unsafe
+            iastwriterbridge: github.com/DataDog/dd-iast-go/internal/taint/writerbridge
+          template: |-
+            iastwriterbridge.Invalidate(uintptr(unsafe.Pointer({{ .Function.Receiver }})))
