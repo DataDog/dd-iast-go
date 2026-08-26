@@ -23,6 +23,30 @@ Many of the functionality provided by this module relies on taint tracking:
   query execution function), and no corresponding safety _mark_ has been placed,
   a _vulnerability_ is reported.
 
+### Propagation coverage
+
+Category | Supported operations
+---|---
+String windows | `Cut*`, `Split*`, `Fields*`, `Trim*`, `Lines`, and their sequence variants
+String copies and transforms | `Clone`, `Join`, `Repeat`, `Replace*`, case conversion, `Map`, and `ToValidUTF8`
+Formatting and encoding | `fmt.Sprint*`, `net/url` escape and unescape functions, and `strconv` quote and unquote functions
+Byte windows | `Cut*`, `Split*`, `Fields*`, and `Trim*`
+Byte copies and transforms | `Clone`, `Join`, `Repeat`, `Replace*`, case conversion, `Map`, and `ToValidUTF8`
+Stateful writers | Direct `strings.Builder` and `bytes.Buffer` writes, `Grow`, `Reset`, `Truncate`, and `String`
+
+Propagation instrumentation applies to direct calls in the application root.
+Calls through function or method values are not supported. A later direct writer
+call validates the current receiver shape and drops stale provenance. Mutable
+`bytes.Buffer.Bytes` and `AvailableBuffer` results remain untainted; accessing
+them invalidates tracked buffer state. Tainted replacement terms supplied to
+`strings.Replacer` are not tracked in this release. Builder and buffer value
+copies, and aliases that share backing memory without the same receiver, can
+only lose provenance and never publish unchecked provenance.
+
+Tracking a stateful writer uses a strong request-bounded receiver anchor. This
+can make a stack receiver escape. Writer state is limited to eight receivers per
+request owner, four owners per receiver, and 64 KiB of charged visible capacity.
+
 ## Cost Control
 
 Taint tracking has non-trivial associated cost; both in terms of memory and

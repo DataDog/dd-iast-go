@@ -14,7 +14,7 @@ const expectationSlots = 128
 type callback struct{ invalidate func(uintptr) }
 
 var registered atomic.Pointer[callback]
-var activeCounter atomic.Pointer[atomic.Int32]
+var activeStates atomic.Int32
 var expected [expectationSlots]atomic.Uintptr
 
 // Register installs the numeric writer invalidation callback.
@@ -24,15 +24,15 @@ func Register(invalidate func(uintptr)) {
 	}
 }
 
-// BindActiveCounter installs the process request store's writer-state counter.
-func BindActiveCounter(counter *atomic.Int32) {
-	activeCounter.Store(counter)
+// ActiveCounter returns the process writer-state fast gate. The request store
+// is the sole writer after initialization.
+func ActiveCounter() *atomic.Int32 {
+	return &activeStates
 }
 
 // Active reports whether any writer state can require invalidation.
 func Active() bool {
-	counter := activeCounter.Load()
-	return counter != nil && counter.Load() > 0
+	return activeStates.Load() > 0
 }
 
 // Expect marks one direct wrapped mutation. False means no state needs a marker

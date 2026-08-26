@@ -6,7 +6,6 @@
 package writerbridge_test
 
 import (
-	"sync/atomic"
 	"testing"
 
 	"github.com/DataDog/dd-iast-go/internal/taint/writerbridge"
@@ -15,10 +14,8 @@ import (
 func TestExpectedMutationSkipsOneInvalidation(t *testing.T) {
 	calls := 0
 	writerbridge.Register(func(uintptr) { calls++ })
-	var active atomic.Int32
-	active.Store(1)
-	writerbridge.BindActiveCounter(&active)
-	t.Cleanup(func() { writerbridge.BindActiveCounter(nil) })
+	writerbridge.ActiveCounter().Store(1)
+	t.Cleanup(func() { writerbridge.ActiveCounter().Store(0) })
 	const pointer = uintptr(0x1000)
 	marked := writerbridge.Expect(pointer)
 	if !marked {
@@ -38,10 +35,8 @@ func TestExpectedMutationSkipsOneInvalidation(t *testing.T) {
 func TestCancelRemovesUnusedExpectation(t *testing.T) {
 	calls := 0
 	writerbridge.Register(func(uintptr) { calls++ })
-	var active atomic.Int32
-	active.Store(1)
-	writerbridge.BindActiveCounter(&active)
-	t.Cleanup(func() { writerbridge.BindActiveCounter(nil) })
+	writerbridge.ActiveCounter().Store(1)
+	t.Cleanup(func() { writerbridge.ActiveCounter().Store(0) })
 	const pointer = uintptr(0x2000)
 	marked := writerbridge.Expect(pointer)
 	writerbridge.Cancel(pointer, marked)

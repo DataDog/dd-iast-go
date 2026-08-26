@@ -252,5 +252,13 @@ func init() {
 		if cnt != 0 {
 			c.Count(instrumentation.TelemetryNamespaceIAST, "executed.propagation", nil).Submit(float64(cnt))
 		}
+		cnt = telemetry.CoarsenedPropagation.Swap(0)
+		if cnt != 0 {
+			c.Count(instrumentation.TelemetryNamespaceIAST, "propagation.coarsened", nil).Submit(float64(cnt))
+		}
+		cnt = telemetry.DroppedPropagation.Swap(0)
+		if cnt != 0 {
+			c.Count(instrumentation.TelemetryNamespaceIAST, "propagation.dropped", nil).Submit(float64(cnt))
+		}
 	})
 }

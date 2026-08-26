@@ -84,6 +84,9 @@ func updateWriter(s *store.Store, object any, kind store.WriterKind, before, aft
 	}
 	var refs [store.MaxSnapshotOwners]store.WriterRef
 	refCount := store.LookupWriterValue(s, object, kind, refs[:])
+	if refCount > 0 || input.Len() > 0 {
+		recordExecuted()
+	}
 	var seen [store.MaxSnapshotOwners]writerIdentity
 	seenCount := 0
 	for refIndex := 0; refIndex < refCount; refIndex++ {
@@ -199,6 +202,7 @@ func publishWriterString(s *store.Store, object any, kind store.WriterKind, view
 	if count == 0 {
 		return result
 	}
+	recordExecuted()
 	published := result
 	if clone {
 		published = strings.Clone(result)

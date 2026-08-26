@@ -14,6 +14,7 @@ import (
 	"unsafe"
 
 	"github.com/DataDog/dd-iast-go/internal/config"
+	"github.com/DataDog/dd-iast-go/internal/instrumentation/telemetry"
 	"github.com/DataDog/dd-iast-go/internal/model/constants"
 	"github.com/DataDog/dd-iast-go/internal/taint/propagation"
 	"github.com/DataDog/dd-iast-go/internal/taint/ranges"
@@ -86,6 +87,33 @@ func lookupRanges(s *store.Store, value string) []ranges.Range {
 	out := make([]ranges.Range, entry.Ranges.Len())
 	entry.Ranges.CopyTo(out)
 	return out
+}
+
+func TestPropagationTelemetry(t *testing.T) {
+	telemetry.ExecutedPropagation.Store(0)
+	telemetry.CoarsenedPropagation.Store(0)
+	telemetry.DroppedPropagation.Store(0)
+	t.Cleanup(func() {
+		telemetry.ExecutedPropagation.Store(0)
+		telemetry.CoarsenedPropagation.Store(0)
+		telemetry.DroppedPropagation.Store(0)
+	})
+
+	s, _ := beginScope(t)
+	owner := acquireOwner(t, s)
+	input, _ := taintString(t, owner, "attacker-value", []ranges.Range{{Start: 0, Length: 8, SourceID: 1}})
+
+	result := propagation.CoarseString("prefix:"+input, input)
+	require.NotEmpty(t, lookupRanges(s, result))
+	outputs := make([]string, 33)
+	for index := range outputs {
+		outputs[index] = input[:2]
+	}
+	propagation.StringWindows(input, outputs)
+
+	require.Equal(t, uint64(2), telemetry.ExecutedPropagation.Load())
+	require.Equal(t, uint64(1), telemetry.CoarsenedPropagation.Load())
+	require.Equal(t, uint64(1), telemetry.DroppedPropagation.Load())
 }
 
 func lookupByteRanges(s *store.Store, value []byte) []ranges.Range {

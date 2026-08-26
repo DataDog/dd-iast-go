@@ -48,9 +48,11 @@ func joinBytesHit(s *store.Store, elements [][]byte, separator, result []byte) [
 		return result
 	}
 	if len(elements) > maxInputs {
+		recordDropped()
 		return coarseBytesHit(s, result, inputs[:inputCount+1])
 	}
 
+	recordExecuted()
 	for ownerIndex := 0; ownerIndex < ownerCount; ownerIndex++ {
 		entry := &owners[ownerIndex]
 		limit := entry.Ranges.Limit()
@@ -127,12 +129,15 @@ func replaceBytesHit(s *store.Store, input, old, replacement, result []byte, cou
 		return result
 	}
 	if uint64(len(input)) > uint64(^uint32(0)) {
+		recordDropped()
 		return coarseBytesHit(s, result, coarseInputs[:])
 	}
 	segments, segmentCount, exact := mapReplaceByteSegments(input, old, count)
 	if !exact {
+		recordDropped()
 		return coarseBytesHit(s, result, coarseInputs[:])
 	}
+	recordExecuted()
 	for ownerIndex := 0; ownerIndex < ownerCount; ownerIndex++ {
 		entry := &owners[ownerIndex]
 		var inputSet, replacementSet ranges.Set
@@ -257,12 +262,15 @@ func validUTF8BytesHit(s *store.Store, input, replacement, result []byte) []byte
 		return result
 	}
 	if uint64(len(input)) > uint64(^uint32(0)) {
+		recordDropped()
 		return coarseBytesHit(s, result, coarseInputs[:])
 	}
 	segments, segmentCount, exact := mapValidUTF8Segments(input)
 	if !exact {
+		recordDropped()
 		return coarseBytesHit(s, result, coarseInputs[:])
 	}
+	recordExecuted()
 	for ownerIndex := 0; ownerIndex < ownerCount; ownerIndex++ {
 		entry := &owners[ownerIndex]
 		var inputSet, replacementSet ranges.Set
@@ -366,11 +374,15 @@ func caseBytesHit(s *store.Store, key store.Key, input, result []byte) []byte {
 	if !s.Lookup(key, &snapshot) || snapshot.Len() == 0 {
 		return result
 	}
+	recordExecuted()
 	if bytesAlias(input, result) {
 		deriveBytesWindow(result, &snapshot, s)
 		return result
 	}
 	exact := len(input) == len(result) && asciiBytes(input)
+	if !exact {
+		recordCoarse()
+	}
 	for entryIndex := 0; entryIndex < snapshot.Len(); entryIndex++ {
 		entry, ok := snapshot.At(entryIndex)
 		if !ok {

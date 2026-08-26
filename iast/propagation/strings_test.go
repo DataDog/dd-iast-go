@@ -7,17 +7,27 @@ package propagation_test
 
 import (
 	"context"
+	"os"
 	"slices"
+	"strings"
 	"testing"
 	"unicode"
 
 	"github.com/DataDog/dd-iast-go/iast/internal/propagationtest"
 	"github.com/DataDog/dd-iast-go/internal/config"
+	"github.com/DataDog/dd-iast-go/internal/instrumentation/telemetry"
 	"github.com/DataDog/dd-iast-go/internal/taint/request"
 	"github.com/DataDog/dd-iast-go/taint"
 	"github.com/DataDog/orchestrion/runtime/built"
 	"github.com/stretchr/testify/require"
 )
+
+func TestInstrumentedPropagationTelemetry(t *testing.T) {
+	contents, err := os.ReadFile("orchestrion.yml")
+	require.NoError(t, err)
+	registered := strings.Count(string(contents), "\n  - id:")
+	require.Equal(t, uint(registered), telemetry.InstrumentedPropagation)
+}
 
 func activeString(t *testing.T, value string) string {
 	t.Helper()

@@ -129,6 +129,7 @@ func adoptStringCopyHit(s *store.Store, key store.Key, input, result string) {
 	if !s.Lookup(key, &snapshot) || snapshot.Len() == 0 {
 		return
 	}
+	recordExecuted()
 	publishStringCopy(result, uint32(len(input)), &snapshot, s)
 }
 
@@ -158,6 +159,7 @@ func copyStringHit(s *store.Store, key store.Key, input, result string) string {
 	if !s.Lookup(key, &snapshot) || snapshot.Len() == 0 {
 		return result
 	}
+	recordExecuted()
 	if stringAlias(input, result) {
 		deriveStringWindow(result, &snapshot, s)
 		return result
@@ -207,6 +209,7 @@ func StringWindow(input, output string) {
 func stringWindowHit(s *store.Store, key store.Key, output string) {
 	var snapshot store.Snapshot
 	if s.Lookup(key, &snapshot) && snapshot.Len() > 0 {
+		recordExecuted()
 		deriveStringWindow(output, &snapshot, s)
 	}
 }
@@ -231,6 +234,10 @@ func stringWindowsHit(s *store.Store, key store.Key, input string, outputs []str
 	var snapshot store.Snapshot
 	if !s.Lookup(key, &snapshot) || snapshot.Len() == 0 {
 		return
+	}
+	recordExecuted()
+	if len(outputs) > maxWindows {
+		recordDropped()
 	}
 	published := 0
 	for outputIndex, output := range outputs {
@@ -273,6 +280,7 @@ func repeatStringHit(s *store.Store, key store.Key, input, result string, count 
 	if !s.Lookup(key, &snapshot) || snapshot.Len() == 0 {
 		return result
 	}
+	recordExecuted()
 	if count == 1 {
 		if !stringAlias(input, result) {
 			return result
@@ -343,6 +351,7 @@ func coarseStringAlias(s *store.Store, result string, inputs []string) bool {
 		}
 		var snapshot store.Snapshot
 		if s.Lookup(key, &snapshot) && snapshot.Len() > 0 {
+			recordExecuted()
 			deriveStringWindow(result, &snapshot, s)
 			return true
 		}
@@ -388,6 +397,8 @@ func coarseStringHit(s *store.Store, result string, inputs []string) string {
 	if ownerCount == 0 {
 		return result
 	}
+	recordExecuted()
+	recordCoarse()
 	clone := strings.Clone(result)
 	for i := 0; i < ownerCount; i++ {
 		o := &owners[i]
@@ -435,6 +446,7 @@ func copyBytesHit(s *store.Store, key store.Key, input, result []byte) []byte {
 	if !s.Lookup(key, &snapshot) || snapshot.Len() == 0 {
 		return result
 	}
+	recordExecuted()
 	if bytesAlias(input, result) {
 		deriveBytesWindow(result, &snapshot, s)
 		return result
@@ -481,6 +493,7 @@ func ByteWindow(input, output []byte) {
 func byteWindowHit(s *store.Store, key store.Key, output []byte) {
 	var snapshot store.Snapshot
 	if s.Lookup(key, &snapshot) && snapshot.Len() > 0 {
+		recordExecuted()
 		deriveBytesWindow(output, &snapshot, s)
 	}
 }
@@ -504,6 +517,10 @@ func byteWindowsHit(s *store.Store, key store.Key, input []byte, outputs [][]byt
 	var snapshot store.Snapshot
 	if !s.Lookup(key, &snapshot) || snapshot.Len() == 0 {
 		return
+	}
+	recordExecuted()
+	if len(outputs) > maxWindows {
+		recordDropped()
 	}
 	published := 0
 	for outputIndex, output := range outputs {
@@ -544,6 +561,7 @@ func repeatBytesHit(s *store.Store, key store.Key, input, result []byte, count i
 	if !s.Lookup(key, &snapshot) || snapshot.Len() == 0 {
 		return result
 	}
+	recordExecuted()
 	if bytesAlias(input, result) {
 		deriveBytesWindow(result, &snapshot, s)
 		return result
@@ -595,6 +613,7 @@ func CoarseBytes(result []byte, inputs ...[]byte) []byte {
 //go:noinline
 func coarseBytesAlias(s *store.Store, result []byte, inputs [][]byte) bool {
 	aliased := false
+	recorded := false
 	inspected := min(len(inputs), maxInputs)
 	for i := 0; i < inspected; i++ {
 		input := inputs[i]
@@ -608,6 +627,10 @@ func coarseBytesAlias(s *store.Store, result []byte, inputs [][]byte) bool {
 		}
 		var snapshot store.Snapshot
 		if s.Lookup(key, &snapshot) && snapshot.Len() > 0 {
+			if !recorded {
+				recordExecuted()
+				recorded = true
+			}
 			deriveBytesWindow(result, &snapshot, s)
 		}
 	}
@@ -652,6 +675,8 @@ func coarseBytesHit(s *store.Store, result []byte, inputs [][]byte) []byte {
 	if ownerCount == 0 {
 		return result
 	}
+	recordExecuted()
+	recordCoarse()
 	for i := 0; i < ownerCount; i++ {
 		o := &owners[i]
 		if !o.found {

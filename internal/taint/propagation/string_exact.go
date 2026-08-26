@@ -48,9 +48,11 @@ func joinStringHit(s *store.Store, elements []string, separator, result string) 
 		return result
 	}
 	if len(elements) > maxInputs {
+		recordDropped()
 		return coarseStringHit(s, result, inputs[:inputCount+1])
 	}
 
+	recordExecuted()
 	clone := strings.Clone(result)
 	for ownerIndex := 0; ownerIndex < ownerCount; ownerIndex++ {
 		entry := &owners[ownerIndex]
@@ -124,12 +126,15 @@ func replaceStringHit(s *store.Store, input, old, replacement, result string, co
 		return result
 	}
 	if uint64(len(input)) > uint64(^uint32(0)) {
+		recordDropped()
 		return coarseStringHit(s, result, []string{input, replacement})
 	}
 	segments, segmentCount, exact := mapReplaceSegments(input, old, count)
 	if !exact {
+		recordDropped()
 		return coarseStringHit(s, result, []string{input, replacement})
 	}
+	recordExecuted()
 	clone := strings.Clone(result)
 	for ownerIndex := 0; ownerIndex < ownerCount; ownerIndex++ {
 		entry := &owners[ownerIndex]

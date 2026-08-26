@@ -115,3 +115,41 @@ Benchmark every enabled aspect with at least twenty one-second samples on an idl
 For every byte operation, run its escape/allocation benchmark before adding its aspect to `orchestrion.yml`; a failing operation is recorded as unsupported and never lands enabled. The writer-specific receiver allocation is the only user-approved exception and must remain exactly measured. Update `orchestrion.tool.go` only if a new integration package is required, publish the exact README matrix and limitations, assert exact build-time aspect-match telemetry, add accepted/debug propagation telemetry, enforce the parent coverage floors, and record the mutation-feasibility result for pure mapping logic.
 
 The parent Phase 5 requirement for general function-body propagation callback audits is vacuous because named value propagation uses call-site wrappers. The numeric `bytes.Buffer` invalidation callback is the sole function-body callback and must pass the complete init, reentrancy, import-cycle, and escape audit. Call-site wrappers still receive recursion and dependency-closure tests.
+
+## Implementation status and benchmark checkpoint
+
+The named string, byte, formatting, URL, quoting, replacer, builder, and buffer
+operations in this plan are implemented. The implementation uses 105 exact
+Orchestrion aspect shapes. Runtime telemetry counts accepted propagation,
+coarsening, and bounded drops. The README records the operation matrix and the
+unsupported indirect-call, mutable-buffer, replacer-term, and shared-backing
+cases.
+
+Representative primitive-shape benchmarks used twenty one-second samples. All
+local estimates and paired-bootstrap 95% upper bounds passed the four-nanosecond
+local gate, with unchanged allocation counts:
+
+Benchmark shape | Median delta | Paired-bootstrap 95% upper
+---|---:|---:
+String clone | +0.315 ns | +0.490 ns
+String join | +0.545 ns | +1.445 ns
+Formatting | +0.650 ns | +1.330 ns
+Byte split | -0.080 ns | +1.955 ns
+Active clean string windows | +0.445 ns | +1.620 ns
+Active clean byte copy | -0.095 ns | +0.295 ns
+Sequence window | -1.535 ns | -1.380 ns
+
+A fifty-sample writer rerun also passed: `strings.Builder` measured +0.090 ns
+with a +0.960 ns upper bound, and `bytes.Buffer` measured +1.700 ns with a
++2.955 ns upper bound. Both variants retained their baseline allocations. This
+measurement includes the approved receiver-escape tradeoff; no additional
+allocation delta was visible in the end operation benchmark.
+
+The fifty-sample sampled-out HTTP run measured 95.54 microseconds for control
+and 97.27 microseconds for IAST: a +1.81% median estimate, unchanged from a
+statistical perspective (`p=0.176`). Its paired-bootstrap 95% upper bound was
++3.93%, which does **not** pass the strict +2% upper-bound gate. Bytes increased
+from 33.81 KiB to 34.28 KiB (+1.39%), and allocations increased from 422 to 428
+(+1.42%). Consequently, Checkpoint 7 remains unapproved and these propagation
+aspects must not be treated as generally enabled until the user accepts the
+measured sampled-out uncertainty or requests further overhead work.

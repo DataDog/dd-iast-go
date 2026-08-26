@@ -38,7 +38,7 @@ func (s *Store) Acquire() *Owner {
 		record.writerVersion.Add(1)
 		if record.writerCount > 0 {
 			delta := -int32(record.writerCount)
-			s.writerStates.Add(delta)
+			s.addWriterStates(delta)
 		}
 		clear(record.writers[:])
 		for writerIndex := range record.writerPointers {

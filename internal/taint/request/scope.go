@@ -43,8 +43,8 @@ var (
 	processManager atomic.Pointer[Manager]
 	defaultManager = sync.OnceValue(func() *Manager {
 		manager := NewManager(nil)
+		manager.store.BindWriterActive(writerbridge.ActiveCounter())
 		processManager.Store(manager)
-		writerbridge.BindActiveCounter(manager.store.WriterStateCounter())
 		return manager
 	})
 )

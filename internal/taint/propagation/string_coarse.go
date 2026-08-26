@@ -38,6 +38,7 @@ func caseStringHit(s *store.Store, key store.Key, input, result string) string {
 	if !s.Lookup(key, &snapshot) || snapshot.Len() == 0 {
 		return result
 	}
+	recordExecuted()
 	if stringAlias(input, result) {
 		deriveStringWindow(result, &snapshot, s)
 		return result
@@ -46,6 +47,9 @@ func caseStringHit(s *store.Store, key store.Key, input, result string) string {
 		return result
 	}
 	exact := len(input) == len(result) && asciiString(input)
+	if !exact {
+		recordCoarse()
+	}
 	clone := strings.Clone(result)
 	for entryIndex := 0; entryIndex < snapshot.Len(); entryIndex++ {
 		entry, ok := snapshot.At(entryIndex)
@@ -166,6 +170,8 @@ func publishCoarseOwners(s *store.Store, result string, owners *[store.MaxSnapsh
 	if ownerCount == 0 {
 		return result
 	}
+	recordExecuted()
+	recordCoarse()
 	clone := strings.Clone(result)
 	for ownerIndex := 0; ownerIndex < ownerCount; ownerIndex++ {
 		state := &owners[ownerIndex]

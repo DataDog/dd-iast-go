@@ -168,6 +168,7 @@ type Store struct {
 	charged       atomic.Int64
 	values        atomic.Int32
 	writerStates  atomic.Int32
+	writerActive  *atomic.Int32
 	overflow      [OverflowBlocks]overflowBlock
 	overflowFree  [OverflowBlocks]uint16
 	overflowN     uint16

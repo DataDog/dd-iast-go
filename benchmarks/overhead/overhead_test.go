@@ -22,6 +22,8 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/DataDog/dd-iast-go/internal/config"
+	"github.com/DataDog/dd-iast-go/internal/taint/request"
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/mocktracer"
 )
 
@@ -29,10 +31,73 @@ var (
 	resultInt     atomic.Int64
 	resultString  string
 	resultStrings []string
+	resultBytes   []byte
 	md5Result     [md5.Size]byte
 	sha1Result    [sha1.Size]byte
 	desResult     any
 )
+
+func BenchmarkPropagationActiveUntainted(b *testing.B) {
+	previousEnabled := config.Enabled
+	previousSampling := config.RequestSamplingPct
+	previousMax := config.MaxConcurrentRequests
+	config.Enabled = true
+	config.RequestSamplingPct = 100
+	config.MaxConcurrentRequests = 64
+	_, scope, created := request.Begin(context.Background())
+	if !created {
+		b.Fatal("active propagation benchmark did not create a request scope")
+	}
+	b.Cleanup(func() {
+		scope.Finish()
+		config.Enabled = previousEnabled
+		config.RequestSamplingPct = previousSampling
+		config.MaxConcurrentRequests = previousMax
+	})
+
+	b.Run("StringWindow", func(b *testing.B) {
+		value := "  attacker  "
+		b.ReportAllocs()
+		for b.Loop() {
+			resultString = strings.TrimSpace(value)
+		}
+	})
+	b.Run("StringWindows", func(b *testing.B) {
+		value := "a,b,c"
+		b.ReportAllocs()
+		for b.Loop() {
+			resultStrings = strings.Split(value, ",")
+		}
+	})
+	b.Run("StringCopy", func(b *testing.B) {
+		value := "attacker"
+		b.ReportAllocs()
+		for b.Loop() {
+			resultString = strings.Clone(value)
+		}
+	})
+	b.Run("StringCoarse", func(b *testing.B) {
+		value := "Attacker"
+		b.ReportAllocs()
+		for b.Loop() {
+			resultString = strings.ToLower(value)
+		}
+	})
+	b.Run("ByteWindow", func(b *testing.B) {
+		value := []byte("  attacker  ")
+		b.ReportAllocs()
+		for b.Loop() {
+			resultBytes = bytes.TrimSpace(value)
+		}
+	})
+	b.Run("ByteCopy", func(b *testing.B) {
+		value := []byte("attacker")
+		b.ReportAllocs()
+		for b.Loop() {
+			resultBytes = bytes.Clone(value)
+		}
+	})
+}
 
 func BenchmarkStringsBuilder(b *testing.B) {
 	b.ReportAllocs()

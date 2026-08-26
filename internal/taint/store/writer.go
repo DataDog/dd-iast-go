@@ -171,7 +171,7 @@ func (o *Owner) UpdateWriter(object any, kind WriterKind, before, after WriterVi
 		record.writers[index] = writerRecord{object: object, pointer: pointer, kind: kind}
 		record.writerPointers[index].Store(pointer)
 		record.writerVersion.Add(1)
-		o.store.writerStates.Add(1)
+		o.store.addWriterStates(1)
 	}
 	entry := &record.writers[index]
 	if !o.resizeWriterChargeLocked(entry, after.Capacity) {
@@ -283,13 +283,20 @@ func (o *Owner) TruncateWriter(object any, kind WriterKind, before, after Writer
 	return true
 }
 
-// WriterStateCounter returns the process writer-state counter used by the
-// dependency-minimal standard-library invalidation gate.
-func (s *Store) WriterStateCounter() *atomic.Int32 {
+// BindWriterActive binds the process invalidation fast counter. It must be
+// called once before the store is made visible to request handlers.
+func (s *Store) BindWriterActive(active *atomic.Int32) {
 	if s == nil {
-		return nil
+		return
 	}
-	return &s.writerStates
+	s.writerActive = active
+}
+
+func (s *Store) addWriterStates(delta int32) {
+	s.writerStates.Add(delta)
+	if s.writerActive != nil {
+		s.writerActive.Add(delta)
+	}
 }
 
 // HasWriterStates reports whether any owner retains writer state.
@@ -407,7 +414,7 @@ func (o *Owner) removeWriterLocked(index int, release bool) {
 	record.writerPointers[last].Store(0)
 	record.writerCount--
 	record.writerVersion.Add(1)
-	o.store.writerStates.Add(-1)
+	o.store.addWriterStates(-1)
 }
 
 func (o *Owner) clearDirtyWritersLocked() {
@@ -430,7 +437,7 @@ func releaseWritersForFinishLocked(s *Store, record *owner) int64 {
 	}
 	record.writerVersion.Add(1)
 	if count > 0 {
-		s.writerStates.Add(int32(-count))
+		s.addWriterStates(int32(-count))
 	}
 	return charged
 }
