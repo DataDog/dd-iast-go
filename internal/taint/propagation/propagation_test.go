@@ -296,6 +296,81 @@ func TestPartialSlicedRangesPreservedAndSliced(t *testing.T) {
 	require.Equal(t, []ranges.Range{{Start: 2, Length: 1, SourceID: 1}}, lookupRanges(s, window))
 }
 
+func TestJoinAndReplaceActiveUntaintedAreAllocationFree(t *testing.T) {
+	_, _ = beginScope(t)
+	elements := []string{"alpha", "beta", "gamma"}
+	joined := strings.Join(elements, ",")
+	replaced := strings.ReplaceAll(joined, "alpha", "delta")
+	require.Zero(t, testing.AllocsPerRun(100, func() {
+		if propagation.JoinString(elements, ",", joined) != joined {
+			panic("JoinString changed an untainted value")
+		}
+	}))
+	require.Zero(t, testing.AllocsPerRun(100, func() {
+		if propagation.ReplaceString(joined, "alpha", "delta", replaced, -1) != replaced {
+			panic("ReplaceString changed an untainted value")
+		}
+	}))
+}
+
+func TestJoinStringPreservesElementAndSeparatorRanges(t *testing.T) {
+	s, _ := beginScope(t)
+	owner := acquireOwner(t, s)
+	left, _ := taintString(t, owner, "left", []ranges.Range{{Length: 4, SourceID: 0}})
+	right, _ := taintString(t, owner, "right", []ranges.Range{{Length: 5, SourceID: 1}})
+	separator, _ := taintString(t, owner, "::", []ranges.Range{{Length: 2, SourceID: 2}})
+	elements := []string{left, "plain", right}
+	result := strings.Join(elements, separator)
+	out := propagation.JoinString(elements, separator, result)
+	require.Equal(t, []ranges.Range{
+		{Length: 4, SourceID: 0},
+		{Start: 4, Length: 2, SourceID: 2},
+		{Start: 11, Length: 2, SourceID: 2},
+		{Start: 13, Length: 5, SourceID: 1},
+	}, lookupRanges(s, out))
+}
+
+func TestReplaceStringMapsCopiedAndReplacementSegments(t *testing.T) {
+	s, _ := beginScope(t)
+	owner := acquireOwner(t, s)
+	input, _ := taintString(t, owner, "abc-abc", []ranges.Range{
+		{Length: 3, SourceID: 0},
+		{Start: 3, Length: 1, SourceID: 2},
+	})
+	replacement, _ := taintString(t, owner, "XY", []ranges.Range{{Length: 2, SourceID: 1}})
+	result := strings.ReplaceAll(input, "abc", replacement)
+	out := propagation.ReplaceString(input, "abc", replacement, result, -1)
+	require.Equal(t, []ranges.Range{
+		{Length: 2, SourceID: 1},
+		{Start: 2, Length: 1, SourceID: 2},
+		{Start: 3, Length: 2, SourceID: 1},
+	}, lookupRanges(s, out))
+}
+
+func TestReplaceStringHandlesEmptyPatternAndCoarseLimit(t *testing.T) {
+	s, _ := beginScope(t)
+	owner := acquireOwner(t, s)
+	input, _ := taintString(t, owner, "éx", []ranges.Range{{Length: 3, SourceID: 0}})
+	replacement, _ := taintString(t, owner, "__", []ranges.Range{{Length: 2, SourceID: 1}})
+	result := strings.ReplaceAll(input, "", replacement)
+	out := propagation.ReplaceString(input, "", replacement, result, -1)
+	require.Equal(t, []ranges.Range{
+		{Length: 2, SourceID: 1},
+		{Start: 2, Length: 2, SourceID: 0},
+		{Start: 4, Length: 2, SourceID: 1},
+		{Start: 6, Length: 1, SourceID: 0},
+		{Start: 7, Length: 2, SourceID: 1},
+	}, lookupRanges(s, out))
+
+	many := strings.Repeat("a", maxTestReplaceMatches+1)
+	managed, _ := taintString(t, owner, many, []ranges.Range{{Length: uint32(len(many)), SourceID: 3}})
+	coarseResult := strings.ReplaceAll(managed, "a", "b")
+	coarse := propagation.ReplaceString(managed, "a", "b", coarseResult, -1)
+	require.Equal(t, []ranges.Range{{Length: uint32(len(coarse)), SourceID: 3}}, lookupRanges(s, coarse))
+}
+
+const maxTestReplaceMatches = 32
+
 func TestRepeatStringCountOneDerivesAndCountNClones(t *testing.T) {
 	s, _ := beginScope(t)
 	owner := acquireOwner(t, s)

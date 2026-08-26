@@ -220,6 +220,42 @@ aspects:
         - function-call: strings.FieldsFuncSeq
     advice: [{replace-function: github.com/DataDog/dd-iast-go/iast/propagation.StringsFieldsFuncSeq}]
 
+  - id: strings.Join
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - function-call: strings.Join
+    advice: [{replace-function: github.com/DataDog/dd-iast-go/iast/propagation.StringsJoin}]
+
+  - id: strings.Repeat
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - function-call: strings.Repeat
+    advice: [{replace-function: github.com/DataDog/dd-iast-go/iast/propagation.StringsRepeat}]
+
+  - id: strings.Replace
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - function-call: strings.Replace
+    advice: [{replace-function: github.com/DataDog/dd-iast-go/iast/propagation.StringsReplace}]
+
+  - id: strings.ReplaceAll
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not: {one-of: [{import-path: github.com/DataDog/dd-iast-go/iast/propagation}, {import-path: github.com/DataDog/dd-iast-go/taint}]}
+        - function-call: strings.ReplaceAll
+    advice: [{replace-function: github.com/DataDog/dd-iast-go/iast/propagation.StringsReplaceAll}]
+
   - id: strings.TrimRightFunc
     join-point:
       all-of:

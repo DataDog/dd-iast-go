@@ -99,6 +99,17 @@ func TestStringWindowOperations(t *testing.T) {
 	)
 }
 
+func TestAllocatingStringOperations(t *testing.T) {
+	if !built.WithOrchestrion {
+		t.Skip("orchestrion is not enabled, use `go tool orchestrion go test`")
+	}
+	value := activeString(t, "ab-cd")
+	require.True(t, taint.IsTaintedString(testapp.Join([]string{"plain", value}, ":")))
+	require.True(t, taint.IsTaintedString(testapp.Repeat(value, 2)))
+	require.True(t, taint.IsTaintedString(testapp.Replace(value, "cd", "XY", 1)))
+	require.True(t, taint.IsTaintedString(testapp.ReplaceAll(value, "cd", "XY")))
+}
+
 func TestIndirectStringCallIsUnsupported(t *testing.T) {
 	if !built.WithOrchestrion {
 		t.Skip("orchestrion is not enabled, use `go tool orchestrion go test`")

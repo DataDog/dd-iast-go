@@ -47,6 +47,28 @@ func BenchmarkStringsTrimSpace(b *testing.B) {
 	}
 }
 
+func BenchmarkStringsJoin(b *testing.B) {
+	elements := []string{"alpha", "beta", "gamma"}
+	b.ReportAllocs()
+	for b.Loop() {
+		resultString = strings.Join(elements, ",")
+	}
+}
+
+func BenchmarkStringsRepeat(b *testing.B) {
+	b.ReportAllocs()
+	for b.Loop() {
+		resultString = strings.Repeat("alpha", 3)
+	}
+}
+
+func BenchmarkStringsReplaceAll(b *testing.B) {
+	b.ReportAllocs()
+	for b.Loop() {
+		resultString = strings.ReplaceAll("alpha-beta-alpha", "alpha", "gamma")
+	}
+}
+
 func BenchmarkStringsSplitSeq(b *testing.B) {
 	const value = "alpha,beta,gamma"
 	b.ReportAllocs()

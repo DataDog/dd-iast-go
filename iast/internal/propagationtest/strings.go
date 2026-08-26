@@ -38,6 +38,14 @@ func FieldsSeq(value string) iter.Seq[string] { return strings.FieldsSeq(value) 
 func FieldsFuncSeq(value string, predicate func(rune) bool) iter.Seq[string] {
 	return strings.FieldsFuncSeq(value, predicate)
 }
+func Join(elements []string, separator string) string { return strings.Join(elements, separator) }
+func Repeat(value string, count int) string           { return strings.Repeat(value, count) }
+func Replace(value, old, replacement string, count int) string {
+	return strings.Replace(value, old, replacement, count)
+}
+func ReplaceAll(value, old, replacement string) string {
+	return strings.ReplaceAll(value, old, replacement)
+}
 func Trim(value, cutset string) string       { return strings.Trim(value, cutset) }
 func TrimSpace(value string) string          { return strings.TrimSpace(value) }
 func TrimLeft(value, cutset string) string   { return strings.TrimLeft(value, cutset) }
