@@ -6,6 +6,7 @@
 package overhead_test
 
 import (
+	"bytes"
 	"context"
 	"crypto/des"
 	"crypto/md5"
@@ -32,6 +33,70 @@ var (
 	sha1Result    [sha1.Size]byte
 	desResult     any
 )
+
+func BenchmarkBytesClone(b *testing.B) {
+	value := []byte("representative-value")
+	b.ReportAllocs()
+	for b.Loop() {
+		resultInt.Store(int64(len(bytes.Clone(value))))
+	}
+}
+
+func BenchmarkBytesTrimSpace(b *testing.B) {
+	value := []byte("representative-value")
+	b.ReportAllocs()
+	for b.Loop() {
+		resultInt.Store(int64(len(bytes.TrimSpace(value))))
+	}
+}
+
+func BenchmarkBytesSplit(b *testing.B) {
+	value := []byte("alpha,beta,gamma")
+	b.ReportAllocs()
+	for b.Loop() {
+		resultInt.Store(int64(len(bytes.Split(value, []byte(",")))))
+	}
+}
+
+func BenchmarkBytesJoin(b *testing.B) {
+	elements := [][]byte{[]byte("alpha"), []byte("beta"), []byte("gamma")}
+	b.ReportAllocs()
+	for b.Loop() {
+		resultInt.Store(int64(len(bytes.Join(elements, []byte(",")))))
+	}
+}
+
+func BenchmarkBytesRepeat(b *testing.B) {
+	value := []byte("alpha")
+	b.ReportAllocs()
+	for b.Loop() {
+		resultInt.Store(int64(len(bytes.Repeat(value, 3))))
+	}
+}
+
+func BenchmarkBytesReplaceAll(b *testing.B) {
+	value := []byte("alpha-beta-alpha")
+	b.ReportAllocs()
+	for b.Loop() {
+		resultInt.Store(int64(len(bytes.ReplaceAll(value, []byte("alpha"), []byte("gamma")))))
+	}
+}
+
+func BenchmarkBytesToLower(b *testing.B) {
+	value := []byte("Attack Value")
+	b.ReportAllocs()
+	for b.Loop() {
+		resultInt.Store(int64(len(bytes.ToLower(value))))
+	}
+}
+
+func BenchmarkBytesMap(b *testing.B) {
+	value := []byte("Attack Value")
+	b.ReportAllocs()
+	for b.Loop() {
+		resultInt.Store(int64(len(bytes.Map(func(r rune) rune { return r + 1 }, value))))
+	}
+}
 
 func BenchmarkStringsClone(b *testing.B) {
 	const value = "representative-value"

@@ -37,6 +37,9 @@ func JoinString(elements []string, separator, result string) string {
 func joinStringHit(s *store.Store, elements []string, separator, result string) string {
 	var inputs [maxInputs + 1]string
 	inputCount := min(len(elements), maxInputs)
+	if len(elements) > maxInputs {
+		inputCount = maxInputs - 1 // Reserve one coarse-input slot for separator provenance.
+	}
 	copy(inputs[:inputCount], elements[:inputCount])
 	inputs[inputCount] = separator
 	var owners [store.MaxSnapshotOwners]store.Entry

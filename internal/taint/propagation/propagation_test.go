@@ -6,6 +6,7 @@
 package propagation_test
 
 import (
+	"bytes"
 	"context"
 	"strings"
 	"sync"
@@ -330,6 +331,19 @@ func TestJoinStringPreservesElementAndSeparatorRanges(t *testing.T) {
 	}, lookupRanges(s, out))
 }
 
+func TestJoinStringCoarseFallbackIncludesSeparator(t *testing.T) {
+	s, _ := beginScope(t)
+	owner := acquireOwner(t, s)
+	separator, _ := taintString(t, owner, "::", []ranges.Range{{Length: 2, SourceID: 7}})
+	elements := make([]string, maxTestReplaceMatches)
+	for index := range elements {
+		elements[index] = "x"
+	}
+	result := strings.Join(elements, separator)
+	out := propagation.JoinString(elements, separator, result)
+	require.Equal(t, []ranges.Range{{Length: uint32(len(out)), SourceID: 7}}, lookupRanges(s, out))
+}
+
 func TestReplaceStringMapsCopiedAndReplacementSegments(t *testing.T) {
 	s, _ := beginScope(t)
 	owner := acquireOwner(t, s)
@@ -404,7 +418,7 @@ func TestRepeatStringIsolatesStaticBacking(t *testing.T) {
 	require.Equal(t, []ranges.Range{{Length: 6, SourceID: 0}}, lookupRanges(s, out))
 }
 
-func TestRepeatBytesCountOneDerivesAndCountNAdopts(t *testing.T) {
+func TestRepeatBytesAdoptsCountOneAndCountNResults(t *testing.T) {
 	s, _ := beginScope(t)
 	owner := acquireOwner(t, s)
 	value := []byte("ab")
@@ -415,9 +429,12 @@ func TestRepeatBytesCountOneDerivesAndCountNAdopts(t *testing.T) {
 	_, ok := owner.AdoptBytes(managed, &set)
 	require.True(t, ok)
 
-	// count == 1: derive the alias without replacement.
-	out := propagation.RepeatBytes(managed, managed, 1)
-	require.True(t, unsafe.SliceData(out) == unsafe.SliceData(managed), "count-one must derive the alias")
+	// Go 1.26.6 allocates a fresh result even when count is one.
+	one := bytes.Repeat(managed, 1)
+	require.True(t, unsafe.SliceData(one) != unsafe.SliceData(managed))
+	oneData := unsafe.SliceData(one)
+	out := propagation.RepeatBytes(managed, one, 1)
+	require.True(t, unsafe.SliceData(out) == oneData, "count-one result must be adopted as-is")
 	require.Equal(t, []ranges.Range{{Length: 2, SourceID: 0}}, lookupByteRanges(s, out))
 
 	// count == 3: adopt the fresh result as-is.

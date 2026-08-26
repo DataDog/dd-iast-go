@@ -544,10 +544,7 @@ func repeatBytesHit(s *store.Store, key store.Key, input, result []byte, count i
 	if !s.Lookup(key, &snapshot) || snapshot.Len() == 0 {
 		return result
 	}
-	if count == 1 {
-		if !bytesAlias(input, result) {
-			return result
-		}
+	if bytesAlias(input, result) {
 		deriveBytesWindow(result, &snapshot, s)
 		return result
 	}
