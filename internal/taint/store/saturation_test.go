@@ -103,10 +103,25 @@ func TestBindingLimit(t *testing.T) {
 	objects := make([]*object, MaxBindings+1)
 	for i := 0; i < MaxBindings; i++ {
 		objects[i] = &object{index: i}
-		require.True(t, BindObject(owner, objects[i], BindingReader))
+		require.True(t, BindObject(owner, objects[i], BindingURL))
 	}
 	objects[MaxBindings] = &object{index: MaxBindings}
-	require.False(t, BindObject(owner, objects[MaxBindings], BindingReader))
+	require.False(t, BindObject(owner, objects[MaxBindings], BindingURL))
+	require.Greater(t, owner.Counters().Full, uint64(0))
+	owner.Finish()
+}
+
+func TestReaderBindingLimit(t *testing.T) {
+	type reader struct{ index int }
+	store := New()
+	owner := store.Acquire()
+	readers := make([]*reader, MaxReaderBindings+1)
+	for i := 0; i < MaxReaderBindings; i++ {
+		readers[i] = &reader{index: i}
+		require.True(t, BindObject(owner, readers[i], BindingReader))
+	}
+	readers[MaxReaderBindings] = &reader{index: MaxReaderBindings}
+	require.False(t, BindObject(owner, readers[MaxReaderBindings], BindingReader))
 	require.Greater(t, owner.Counters().Full, uint64(0))
 	owner.Finish()
 }

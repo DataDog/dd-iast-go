@@ -50,6 +50,22 @@ func TestTaintSourceBytesChargesImmutableMetadata(t *testing.T) {
 	require.Zero(t, taintStore.ProcessCharged())
 }
 
+func TestAdoptSourceBytesKeepsOriginalAllocation(t *testing.T) {
+	taintStore := store.New()
+	owner := taintStore.Acquire()
+	value := make([]byte, 6, 12)
+	copy(value, "attack")
+	before := unsafe.SliceData(value)
+	managedName, managedValue, _, ok := owner.AdoptSourceBytes(value, "", ranges.SourceID(0))
+	require.True(t, ok)
+	require.Empty(t, managedName)
+	require.Equal(t, "attack", managedValue)
+	require.True(t, before == unsafe.SliceData(value))
+	require.Equal(t, int64(24), owner.Charged())
+	owner.Finish()
+	require.Zero(t, taintStore.ProcessCharged())
+}
+
 func TestTaintSourceBytesAcceptsMaximumCombinedCharge(t *testing.T) {
 	require.Equal(t, 3*store.MaxRootBytes, store.MaxRootChargeBytes)
 	taintStore := store.New()

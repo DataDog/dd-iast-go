@@ -13,6 +13,7 @@ import (
 
 const (
 	MaxBindings       = 256
+	MaxReaderBindings = 8
 	bindingIndexSlots = 512
 )
 
@@ -27,18 +28,20 @@ const (
 
 type binding struct {
 	// Bindings retain arbitrary typed objects outside the managed-root byte
-	// charge. Their count and fixed table are bounded; Phase 4 must bind only
-	// small URL/reader wrapper objects, never request payload graphs.
+	// charge. Their count and fixed table are bounded, with a separate small
+	// reader cap; Phase 4 must bind only small URL/reader wrapper objects, never
+	// request payload graphs.
 	object  any // strong typed pointer
 	pointer uintptr
 	kind    BindingKind
 }
 
 type bindingTable struct {
-	mu      sync.RWMutex
-	entries [MaxBindings]binding
-	index   [bindingIndexSlots]uint16 // entry index + 1
-	count   uint16
+	mu          sync.RWMutex
+	entries     [MaxBindings]binding
+	index       [bindingIndexSlots]uint16 // entry index + 1
+	count       uint16
+	readerCount uint8
 }
 
 // OwnerRef is a compact generation-captured binding result.
@@ -167,7 +170,7 @@ func (t *bindingTable) bind(owner *Owner, object any, pointer uintptr, kind Bind
 		slot := (start + probe) & (bindingIndexSlots - 1)
 		encoded := t.index[slot]
 		if encoded == 0 {
-			if t.count >= MaxBindings {
+			if t.count >= MaxBindings || kind == BindingReader && t.readerCount >= MaxReaderBindings {
 				owner.owner.drops.full.Add(1)
 				return false
 			}
@@ -175,10 +178,22 @@ func (t *bindingTable) bind(owner *Owner, object any, pointer uintptr, kind Bind
 			t.entries[entry] = binding{object: object, pointer: pointer, kind: kind}
 			t.index[slot] = entry + 1
 			t.count++
+			if kind == BindingReader {
+				t.readerCount++
+			}
 			return true
 		}
 		entry := &t.entries[encoded-1]
 		if entry.pointer == pointer {
+			if entry.kind != BindingReader && kind == BindingReader {
+				if t.readerCount >= MaxReaderBindings {
+					owner.owner.drops.full.Add(1)
+					return false
+				}
+				t.readerCount++
+			} else if entry.kind == BindingReader && kind != BindingReader {
+				t.readerCount--
+			}
 			entry.object = object
 			entry.kind = kind
 			return true
@@ -220,6 +235,7 @@ func (t *bindingTable) reset() {
 	clear(t.entries[:])
 	clear(t.index[:])
 	t.count = 0
+	t.readerCount = 0
 	t.mu.Unlock()
 }
 

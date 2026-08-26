@@ -73,6 +73,17 @@ func TestEagerHTTPManagesFieldsHeadersAndBindings(t *testing.T) {
 	require.Equal(t, analysis.index, resolved.index)
 	require.Equal(t, analysis.ownerIndex, resolved.ownerIndex)
 	require.Equal(t, 1, store.LookupObjectValue(analysis.manager.store, bodyObject, store.BindingReader, refs[:]))
+	wrapper := &object{value: 3}
+	PropagateReader(bodyObject, wrapper)
+	require.Equal(t, 1, store.LookupObjectValue(analysis.manager.store, wrapper, store.BindingReader, refs[:]))
+	body := make([]byte, 4, 8)
+	copy(body, "body")
+	bodyPointer := unsafe.SliceData(body)
+	ReadAllBytes(wrapper, body)
+	require.True(t, bodyPointer == unsafe.SliceData(body))
+	bodyKey, _ := store.BytesKey(body)
+	require.True(t, analysis.manager.store.Lookup(bodyKey, &snapshot))
+	require.Equal(t, 1, snapshot.Len())
 	scope.Finish()
 	require.Zero(t, store.LookupObjectValue(analysis.manager.store, urlObject, store.BindingURL, refs[:]))
 }
@@ -92,6 +103,76 @@ func TestManagedLazyMapIsIdempotentAndAllocationFree(t *testing.T) {
 	require.Equal(t, 2, analysis.SourceCount())
 	require.Equal(t, charged, manager.Store().ProcessCharged())
 	analysis.Finish()
+}
+
+func TestReadAllBytesPublishesEveryBoundOwner(t *testing.T) {
+	previousEnabled := config.Enabled
+	previousSampling := config.RequestSamplingPct
+	previousMax := config.MaxConcurrentRequests
+	config.Enabled = true
+	config.RequestSamplingPct = 100
+	config.MaxConcurrentRequests = 64
+	t.Cleanup(func() {
+		config.Enabled = previousEnabled
+		config.RequestSamplingPct = previousSampling
+		config.MaxConcurrentRequests = previousMax
+	})
+	firstCtx, firstScope, created := Begin(context.Background())
+	require.True(t, created)
+	secondCtx, secondScope, created := Begin(context.Background())
+	require.True(t, created)
+	reader := new(int)
+	require.True(t, BindReader(firstCtx, reader))
+	require.True(t, BindReader(secondCtx, reader))
+	data := make([]byte, 4, 8)
+	copy(data, "body")
+	ReadAllBytes(reader, data)
+	firstAnalysis, ok := firstScope.Analysis()
+	require.True(t, ok)
+	secondAnalysis, ok := secondScope.Analysis()
+	require.True(t, ok)
+	require.Equal(t, 1, firstAnalysis.SourceCount())
+	require.Equal(t, 1, secondAnalysis.SourceCount())
+	key, _ := store.BytesKey(data)
+	var snapshot store.Snapshot
+	require.True(t, firstAnalysis.manager.store.Lookup(key, &snapshot))
+	require.Equal(t, 2, snapshot.Len())
+
+	firstScope.Finish()
+	require.True(t, secondAnalysis.manager.store.Lookup(key, &snapshot))
+	require.Equal(t, 1, snapshot.Len())
+	secondScope.Finish()
+	if secondAnalysis.manager.store.Lookup(key, &snapshot) {
+		require.Zero(t, snapshot.Len())
+	}
+}
+
+func TestAdoptBodyBytesPreservesSliceAndReusesSource(t *testing.T) {
+	manager := NewManager(nil)
+	analysis, ok := manager.Acquire(1)
+	require.True(t, ok)
+	first := make([]byte, 6, 12)
+	copy(first, "attack")
+	firstPointer := unsafe.SliceData(first)
+	require.True(t, analysis.adoptBodyBytes(first))
+	require.True(t, firstPointer == unsafe.SliceData(first))
+	require.Equal(t, 1, analysis.SourceCount())
+	firstCharge := manager.Store().ProcessCharged()
+
+	second := make([]byte, 6, 12)
+	copy(second, "attack")
+	require.True(t, analysis.adoptBodyBytes(second))
+	require.Equal(t, 1, analysis.SourceCount())
+	require.Greater(t, manager.Store().ProcessCharged(), firstCharge)
+	for _, value := range [][]byte{first, second} {
+		key, valid := store.BytesKey(value)
+		require.True(t, valid)
+		var snapshot store.Snapshot
+		require.True(t, manager.Store().Lookup(key, &snapshot))
+		require.Equal(t, 1, snapshot.Len())
+	}
+	analysis.Finish()
+	require.Zero(t, manager.Store().ProcessCharged())
 }
 
 func TestEagerHeadersDoNotAllocateWhenAnalysisIsInactive(t *testing.T) {

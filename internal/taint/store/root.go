@@ -180,6 +180,50 @@ func (o *Owner) TaintSourceBytes(value []byte, name string, source ranges.Source
 	return managed, managedName, managedValue, RootRef{ID: rootID, Generation: generation}, true
 }
 
+// AdoptSourceBytes adopts an audited complete mutable allocation and returns
+// immutable source metadata. Value must start at its allocation base, and its
+// capacity must describe the complete retained allocation. Later writes require
+// normal root-generation invalidation. The source table must retain managedName
+// and managedValue for exactly the root lifetime; both are included in the
+// charge.
+func (o *Owner) AdoptSourceBytes(value []byte, name string, source ranges.SourceID) (managedName, managedValue string, ref RootRef, ok bool) {
+	if !o.beginWrite() {
+		return "", "", RootRef{}, false
+	}
+	defer o.endWrite()
+	if len(value) < 2 {
+		o.owner.drops.oneByte.Add(1)
+		return "", "", RootRef{}, false
+	}
+	if len(value) > MaxRootBytes || cap(value) > MaxRootBytes || len(name) > MaxRootBytes {
+		o.owner.drops.bytes.Add(1)
+		return "", "", RootRef{}, false
+	}
+	charge := sizeClass(cap(value)) + sizeClass(len(name)) + sizeClass(len(value))
+	rootID, reserved := o.reserveRootSlot(charge)
+	if !reserved {
+		return "", "", RootRef{}, false
+	}
+	managedName = strings.Clone(name)
+	managedValue = string(value)
+	key, valid := BytesKey(value)
+	if !valid {
+		o.rollbackRoot(rootID, charge)
+		return "", "", RootRef{}, false
+	}
+	var set ranges.Set
+	if !ranges.AdoptCanonical(&set, ranges.DefaultLimit, []ranges.Range{{Length: uint32(len(value)), SourceID: source}}, uint32(cap(value))).Valid {
+		o.rollbackRoot(rootID, charge)
+		return "", "", RootRef{}, false
+	}
+	generation, published := o.publishRoot(rootID, key.Pointer, uint32(cap(value)), charge, "", value, &set)
+	if !published || !o.putWindow(key, rootID, generation) {
+		o.rollbackRoot(rootID, charge)
+		return "", "", RootRef{}, false
+	}
+	return managedName, managedValue, RootRef{ID: rootID, Generation: generation}, true
+}
+
 // AdoptString adopts an audited complete allocation without cloning it. The
 // caller must prove that value starts at the allocation base; an interior
 // substring can retain more memory than the store charges and must not be used.

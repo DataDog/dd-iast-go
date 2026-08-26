@@ -112,6 +112,23 @@ aspects:
               iastspans.BindScopeContext(__dd_iast_ctx)
             }
 
+  - id: net/http.MaxBytesReader
+    join-point:
+      all-of:
+        - import-path: net/http
+        - function-body:
+            function:
+              - receiver: false
+              - name: MaxBytesReader
+    advice:
+      - prepend-statements:
+          imports:
+            iastiobridge: github.com/DataDog/dd-iast-go/internal/taint/iobridge
+          template: |-
+            {{- $input := .Function.Argument 1 -}}
+            {{- $result := .Function.Result 0 -}}
+            defer func() { iastiobridge.Propagate({{ $input }}, {{ $result }}) }()
+
   - id: net/http.Request.ParseForm
     join-point:
       all-of:

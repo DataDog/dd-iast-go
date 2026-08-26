@@ -13,6 +13,7 @@ import (
 
 	"github.com/DataDog/dd-iast-go/internal/config"
 	"github.com/DataDog/dd-iast-go/internal/taint/httpbridge"
+	"github.com/DataDog/dd-iast-go/internal/taint/iobridge"
 	"github.com/DataDog/dd-iast-go/internal/taint/urlbridge"
 )
 
@@ -124,6 +125,7 @@ func FinishContext(ctx context.Context, created bool) {
 
 func init() {
 	httpbridge.Register(BeginServerContext, FinishContext, EagerHTTP)
+	iobridge.Register(PropagateReader, ReadAllBytes)
 	httpbridge.RegisterLazy(
 		ManageForm, ManageParameter, ManageMultipartParameter,
 		ManagePathParameter, ManageCookie, ManageMultipart,

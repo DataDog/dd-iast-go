@@ -1,0 +1,32 @@
+# Unless explicitly stated otherwise all files in this repository are licensed
+# under the Apache License Version 2.0.
+# This product includes software developed at Datadog (https://www.datadoghq.com/).
+# Copyright 2026-present Datadog, Inc.
+---
+# $schema: https://datadoghq.dev/orchestrion/schema.json
+meta:
+  name: github.com/DataDog/dd-iast-go/iast/bufio
+  description: Reader wrapper provenance
+
+aspects:
+  # NewReader delegates to NewReaderSize, so this single hook covers both.
+  - id: bufio.NewReaderSize
+    join-point:
+      all-of:
+        - import-path: bufio
+        - function-body:
+            function:
+              - receiver: false
+              - name: NewReaderSize
+    advice:
+      - prepend-statements:
+          imports:
+            iastiobridge: github.com/DataDog/dd-iast-go/internal/taint/iobridge
+          template: |-
+            {{- $input := .Function.Argument 0 -}}
+            {{- $result := .Function.Result 0 -}}
+            defer func() {
+              if {{ $result }} != nil && {{ $result }}.Size() <= 4096 {
+                iastiobridge.Propagate({{ $input }}, {{ $result }})
+              }
+            }()

@@ -91,6 +91,13 @@ func (o *Owner) Values() int32 {
 	return o.owner.values.Load()
 }
 
+// RecordBytesDrop records one byte-root rejection for an active owner.
+func (o *Owner) RecordBytesDrop() {
+	if o != nil && !o.Disabled() {
+		o.owner.drops.bytes.Add(1)
+	}
+}
+
 // Counters returns this owner's bounded-loss counters.
 func (o *Owner) Counters() Counters {
 	if o.Disabled() {

@@ -12,8 +12,10 @@ package ddiast
 import (
 	_ "github.com/DataDog/orchestrion" // integration
 
+	_ "github.com/DataDog/dd-iast-go/iast/bufio"         // integration
 	_ "github.com/DataDog/dd-iast-go/iast/crypto/cipher" // integration
 	_ "github.com/DataDog/dd-iast-go/iast/crypto/hash"   // integration
+	_ "github.com/DataDog/dd-iast-go/iast/io"            // integration
 	_ "github.com/DataDog/dd-iast-go/iast/net/http"      // integration
 	_ "github.com/DataDog/dd-iast-go/iast/net/url"       // integration
 	_ "github.com/DataDog/dd-iast-go/internal/spans"     // integration

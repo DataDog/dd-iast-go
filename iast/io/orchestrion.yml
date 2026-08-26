@@ -1,0 +1,85 @@
+# Unless explicitly stated otherwise all files in this repository are licensed
+# under the Apache License Version 2.0.
+# This product includes software developed at Datadog (https://www.datadoghq.com/).
+# Copyright 2026-present Datadog, Inc.
+---
+# $schema: https://datadoghq.dev/orchestrion/schema.json
+meta:
+  name: github.com/DataDog/dd-iast-go/iast/io
+  description: Reader provenance and owned body results
+
+aspects:
+  - id: io.LimitReader
+    join-point:
+      all-of:
+        - import-path: io
+        - function-body:
+            function:
+              - receiver: false
+              - name: LimitReader
+    advice:
+      - prepend-statements:
+          imports:
+            iastiobridge: github.com/DataDog/dd-iast-go/internal/taint/iobridge
+          template: |-
+            {{- $input := .Function.Argument 0 -}}
+            {{- $result := .Function.Result 0 -}}
+            defer func() { iastiobridge.Propagate({{ $input }}, {{ $result }}) }()
+
+  - id: io.TeeReader
+    join-point:
+      all-of:
+        - import-path: io
+        - function-body:
+            function:
+              - receiver: false
+              - name: TeeReader
+    advice:
+      - prepend-statements:
+          imports:
+            iastiobridge: github.com/DataDog/dd-iast-go/internal/taint/iobridge
+          template: |-
+            {{- $input := .Function.Argument 0 -}}
+            {{- $result := .Function.Result 0 -}}
+            defer func() { iastiobridge.Propagate({{ $input }}, {{ $result }}) }()
+
+  - id: io.MultiReader
+    join-point:
+      all-of:
+        - import-path: io
+        - function-body:
+            function:
+              - receiver: false
+              - name: MultiReader
+    advice:
+      - prepend-statements:
+          imports:
+            iastiobridge: github.com/DataDog/dd-iast-go/internal/taint/iobridge
+          template: |-
+            {{- $inputs := .Function.Argument 0 -}}
+            {{- $result := .Function.Result 0 -}}
+            defer func() {
+              for __dd_iast_index, __dd_iast_reader := range {{ $inputs }} {
+                if __dd_iast_index >= 8 {
+                  break
+                }
+                iastiobridge.Propagate(__dd_iast_reader, {{ $result }})
+              }
+            }()
+
+  - id: io.ReadAll
+    join-point:
+      all-of:
+        - import-path: io
+        - function-body:
+            function:
+              - receiver: false
+              - name: ReadAll
+    advice:
+      - prepend-statements:
+          imports:
+            iastiobridge: github.com/DataDog/dd-iast-go/internal/taint/iobridge
+          template: |-
+            {{- $input := .Function.Argument 0 -}}
+            {{- $result := .Function.Result 0 -}}
+            defer func() { iastiobridge.ReadAll({{ $input }}, {{ $result }}) }()

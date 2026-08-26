@@ -64,6 +64,14 @@ type observation struct {
 }
 
 func tracedEndpoint(w http.ResponseWriter, req *http.Request) {
+	if req.URL.Path == "/body" {
+		bodyEndpoint(w, req)
+		return
+	}
+	if req.URL.Path == "/direct-body" {
+		directBodyEndpoint(w, req)
+		return
+	}
 	req.SetPathValue("user", "alice")
 	span, spanCtx := tracer.StartSpanFromContext(req.Context(), "iast.http.request")
 	defer span.Finish()
@@ -136,6 +144,37 @@ func boundEndpoint(w http.ResponseWriter, req *http.Request) {
 	}, "attacker")
 	got.Tainted = taint.IsTaintedString(managed)
 	_ = json.NewEncoder(w).Encode(got)
+}
+
+type bodyObservation struct {
+	Value   string `json:"value"`
+	Tainted bool   `json:"tainted"`
+}
+
+func directBodyEndpoint(w http.ResponseWriter, req *http.Request) {
+	data := make([]byte, len("request-body"))
+	n, _ := req.Body.Read(data)
+	data = data[:n]
+	_ = json.NewEncoder(w).Encode(bodyObservation{
+		Value: string(data), Tainted: taintedBytesFrom(data, taint.OriginHttpRequestBody),
+	})
+}
+
+func bodyEndpoint(w http.ResponseWriter, req *http.Request) {
+	reader := http.MaxBytesReader(w, req.Body, store.MaxRootBytes)
+	data, _ := io.ReadAll(reader)
+	_ = json.NewEncoder(w).Encode(bodyObservation{
+		Value: string(data), Tainted: taintedBytesFrom(data, taint.OriginHttpRequestBody),
+	})
+}
+
+func taintedBytesFrom(value []byte, origin taint.Origin) bool {
+	found := false
+	taint.VisitBytes(value, func(r taint.Range) bool {
+		found = found || r.Source.Origin == origin
+		return !found
+	})
+	return found
 }
 
 func directEndpoint(w http.ResponseWriter, req *http.Request) {
@@ -273,6 +312,16 @@ func getObservation(t *testing.T, client *http.Client, url string) observation {
 	var got observation
 	require.NoError(t, json.NewDecoder(response.Body).Decode(&got))
 	_, _ = io.Copy(io.Discard, response.Body)
+	return got
+}
+
+func getBodyObservation(t *testing.T, client *http.Client, url, path string) bodyObservation {
+	t.Helper()
+	response, err := client.Post(url+path, "application/octet-stream", strings.NewReader("request-body"))
+	require.NoError(t, err)
+	defer func() { _ = response.Body.Close() }()
+	var got bodyObservation
+	require.NoError(t, json.NewDecoder(response.Body).Decode(&got))
 	return got
 }
 
@@ -574,7 +623,12 @@ func TestServerProtocolsReleasePerRequest(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			mockTracer := mocktracer.Start()
 			defer mockTracer.Stop()
-			client, url, closeServer := test.serve(t, http.HandlerFunc(tracedEndpoint))
+			endpoint := http.HandlerFunc(tracedEndpoint)
+			middleware := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+				req.Body = http.MaxBytesReader(w, req.Body, store.MaxRootBytes)
+				endpoint.ServeHTTP(w, req)
+			})
+			client, url, closeServer := test.serve(t, middleware)
 			defer closeServer()
 
 			first := getObservation(t, client, url)
@@ -582,6 +636,12 @@ func TestServerProtocolsReleasePerRequest(t *testing.T) {
 			requireActiveRequest(t, first, test.entry)
 			requireActiveRequest(t, second, test.entry)
 			require.Equal(t, first.SourceCountAtHandler, second.SourceCountAtHandler)
+			body := getBodyObservation(t, client, url, "/body")
+			require.Equal(t, "request-body", body.Value)
+			require.True(t, body.Tainted)
+			directBody := getBodyObservation(t, client, url, "/direct-body")
+			require.Equal(t, "request-body", directBody.Value)
+			require.False(t, directBody.Tainted)
 			for _, got := range []observation{first, second} {
 				require.True(t, got.RequestURITainted)
 				require.True(t, got.PathTainted)
@@ -598,7 +658,8 @@ func TestServerProtocolsReleasePerRequest(t *testing.T) {
 				require.True(t, got.PathValueTainted)
 				require.True(t, got.CookieNameTainted)
 				require.True(t, got.CookieValueTainted)
-				require.Equal(t, got.SourceCountAtHandler+7, got.SourceCountAfterLazy)
+				// Query/form/path/cookie sources plus the ParseForm-owned body read.
+				require.Equal(t, got.SourceCountAtHandler+8, got.SourceCountAfterLazy)
 			}
 			finished := mockTracer.FinishedSpans()
 			require.Len(t, finished, 2)
