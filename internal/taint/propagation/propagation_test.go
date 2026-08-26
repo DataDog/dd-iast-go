@@ -1,0 +1,569 @@
+// Unless explicitly stated otherwise all files in this repository are licensed
+// under the Apache License Version 2.0.
+// This product includes software developed at Datadog (https://www.datadoghq.com/).
+// Copyright 2026-present Datadog, Inc.
+
+package propagation_test
+
+import (
+	"context"
+	"strings"
+	"sync"
+	"testing"
+	"unsafe"
+
+	"github.com/DataDog/dd-iast-go/internal/config"
+	"github.com/DataDog/dd-iast-go/internal/model/constants"
+	"github.com/DataDog/dd-iast-go/internal/taint/propagation"
+	"github.com/DataDog/dd-iast-go/internal/taint/ranges"
+	"github.com/DataDog/dd-iast-go/internal/taint/request"
+	"github.com/DataDog/dd-iast-go/internal/taint/store"
+	"github.com/stretchr/testify/require"
+)
+
+// enableIAST turns on full sampling for the duration of the test. The global
+// configuration is restored on cleanup so shuffled execution stays isolated.
+func enableIAST(t *testing.T) {
+	t.Helper()
+	prevEnabled := config.Enabled
+	prevSampling := config.RequestSamplingPct
+	prevMax := config.MaxConcurrentRequests
+	config.Enabled = true
+	config.RequestSamplingPct = 100
+	config.MaxConcurrentRequests = 64
+	t.Cleanup(func() {
+		config.Enabled = prevEnabled
+		config.RequestSamplingPct = prevSampling
+		config.MaxConcurrentRequests = prevMax
+	})
+}
+
+// beginScope activates the global manager and returns its store. The scope is
+// finished on cleanup, so request.ActiveStore returns nil again afterwards.
+func beginScope(t *testing.T) (*store.Store, *request.Scope) {
+	t.Helper()
+	enableIAST(t)
+	_, scope, created := request.Begin(context.Background())
+	require.True(t, created)
+	t.Cleanup(func() { scope.Finish() })
+	s := request.ActiveStore()
+	require.NotNil(t, s)
+	return s, scope
+}
+
+// acquireOwner returns a fresh raw store owner and finishes it on cleanup.
+func acquireOwner(t *testing.T, s *store.Store) *store.Owner {
+	t.Helper()
+	owner := s.Acquire()
+	require.False(t, owner.Disabled())
+	t.Cleanup(func() { owner.Finish() })
+	return owner
+}
+
+// taintString publishes value as a managed root with the given raw ranges.
+func taintString(t *testing.T, owner *store.Owner, value string, rs []ranges.Range) (string, store.RootRef) {
+	t.Helper()
+	clone := strings.Clone(value)
+	var set ranges.Set
+	require.True(t, ranges.AdoptCanonical(&set, ranges.DefaultLimit, rs, uint32(len(clone))).Valid)
+	ref, ok := owner.AdoptString(clone, &set)
+	require.True(t, ok)
+	return clone, ref
+}
+
+// lookupRanges returns the ranges of the first live entry for value, or nil.
+func lookupRanges(s *store.Store, value string) []ranges.Range {
+	key, ok := store.StringKey(value)
+	if !ok {
+		return nil
+	}
+	var snapshot store.Snapshot
+	if !s.Lookup(key, &snapshot) || snapshot.Len() == 0 {
+		return nil
+	}
+	entry, _ := snapshot.At(0)
+	out := make([]ranges.Range, entry.Ranges.Len())
+	entry.Ranges.CopyTo(out)
+	return out
+}
+
+func lookupByteRanges(s *store.Store, value []byte) []ranges.Range {
+	key, ok := store.BytesKey(value)
+	if !ok {
+		return nil
+	}
+	var snapshot store.Snapshot
+	if !s.Lookup(key, &snapshot) || snapshot.Len() == 0 {
+		return nil
+	}
+	entry, _ := snapshot.At(0)
+	out := make([]ranges.Range, entry.Ranges.Len())
+	entry.Ranges.CopyTo(out)
+	return out
+}
+
+func lookupEntryCount(s *store.Store, key store.Key) int {
+	var snapshot store.Snapshot
+	if !s.Lookup(key, &snapshot) {
+		return 0
+	}
+	return snapshot.Len()
+}
+
+func TestNoActiveStoreIsNoOpAndAllocationFree(t *testing.T) {
+	// No scope is active at the start of this test, so the fast gate is nil.
+	if request.ActiveStore() != nil {
+		t.Fatalf("request.ActiveStore() = non-nil, another test leaked an analysis")
+	}
+	input := "attacker-input"
+	result := strings.Clone(input)
+	allocs := testing.AllocsPerRun(100, func() {
+		if got := propagation.CopyString(input, result); got != result {
+			panic("CopyString changed result")
+		}
+	})
+	require.Zero(t, allocs)
+
+	bytesInput := []byte(input)
+	bytesResult := make([]byte, len(bytesInput))
+	copy(bytesResult, bytesInput)
+	allocs = testing.AllocsPerRun(100, func() {
+		if got := propagation.CopyBytes(bytesInput, bytesResult); !equalBytes(got, bytesResult) {
+			panic("CopyBytes changed result")
+		}
+	})
+	require.Zero(t, allocs)
+
+	allocs = testing.AllocsPerRun(100, func() {
+		propagation.StringWindows(input, []string{input[:3], input[3:]})
+	})
+	require.Zero(t, allocs)
+
+	allocs = testing.AllocsPerRun(100, func() {
+		propagation.CoarseString(result, input)
+	})
+	require.Zero(t, allocs)
+}
+
+func TestUntaintedPathIsAllocationFree(t *testing.T) {
+	s, _ := beginScope(t)
+	untainted := "not-in-store"
+	result := strings.Clone(untainted)
+	allocs := testing.AllocsPerRun(100, func() {
+		if got := propagation.CopyString(untainted, result); got != result {
+			panic("CopyString changed result")
+		}
+	})
+	require.Zero(t, allocs)
+
+	windows := []string{untainted[:2], untainted[2:]}
+	allocs = testing.AllocsPerRun(100, func() {
+		propagation.StringWindows(untainted, windows)
+	})
+	require.Zero(t, allocs)
+	require.Nil(t, lookupRanges(s, untainted[:2]))
+}
+
+func TestCopyStringDerivesAliasAndClonesNonAlias(t *testing.T) {
+	s, _ := beginScope(t)
+	owner := acquireOwner(t, s)
+	managed, _ := taintString(t, owner, "attacker-input", []ranges.Range{{Length: 14, SourceID: 0}})
+
+	// Alias path: an equal-length alias stays on the managed root.
+	alias := managed
+	allocs := testing.AllocsPerRun(100, func() {
+		propagation.CopyString(managed, alias)
+	})
+	require.Zero(t, allocs)
+	require.Equal(t, []ranges.Range{{Length: 14, SourceID: 0}}, lookupRanges(s, alias))
+
+	// Non-alias path: a fresh copy is cloned once and adopted.
+	fresh := strings.Clone(managed)
+	out := propagation.CopyString(managed, fresh)
+	require.True(t, unsafe.StringData(out) != unsafe.StringData(fresh), "result must be a managed clone")
+	allocs = testing.AllocsPerRun(100, func() {
+		out = propagation.CopyString(managed, fresh)
+	})
+	require.Equal(t, 1.0, allocs, "non-alias tainted path clones once")
+	require.Equal(t, []ranges.Range{{Length: 14, SourceID: 0}}, lookupRanges(s, out))
+}
+
+func TestCopyStringRejectsLengthChangesAndOversizedResults(t *testing.T) {
+	_, _ = beginScope(t)
+	owner := acquireOwner(t, request.ActiveStore())
+	managed, _ := taintString(t, owner, "attacker-input", []ranges.Range{{Length: 14, SourceID: 0}})
+
+	for _, result := range []string{"short", strings.Repeat("x", store.MaxRootBytes+1)} {
+		allocs := testing.AllocsPerRun(100, func() {
+			if got := propagation.CopyString(managed, result); got != result {
+				panic("CopyString changed rejected result")
+			}
+		})
+		require.Zero(t, allocs)
+	}
+	oversized := strings.Repeat("x", store.MaxRootBytes+1)
+	allocs := testing.AllocsPerRun(100, func() {
+		if got := propagation.CoarseString(oversized, managed); got != oversized {
+			panic("CoarseString changed oversized result")
+		}
+	})
+	require.Zero(t, allocs)
+}
+
+func TestCopyBytesDerivesAliasAndAdoptsNonAlias(t *testing.T) {
+	s, _ := beginScope(t)
+	owner := acquireOwner(t, s)
+	value := []byte("attacker-input")
+	managed := make([]byte, len(value), 16)
+	copy(managed, value)
+	var set ranges.Set
+	require.True(t, ranges.AdoptCanonical(&set, ranges.DefaultLimit, []ranges.Range{{Length: uint32(len(value)), SourceID: 0}}, uint32(cap(managed))).Valid)
+	ref, ok := owner.AdoptBytes(managed, &set)
+	require.True(t, ok)
+	require.NotZero(t, ref.Generation)
+
+	// Alias path: an equal-length alias stays on the managed root.
+	alias := managed
+	aliasData := unsafe.SliceData(alias)
+	allocs := testing.AllocsPerRun(100, func() {
+		if got := propagation.CopyBytes(managed, alias); unsafe.SliceData(got) != aliasData {
+			panic("alias result was replaced")
+		}
+	})
+	require.Zero(t, allocs)
+	require.Equal(t, []ranges.Range{{Length: uint32(len(alias)), SourceID: 0}}, lookupByteRanges(s, alias))
+
+	// A length-changing value is outside the exact-copy contract.
+	short := make([]byte, len(value)-1)
+	copy(short, value)
+	propagation.CopyBytes(managed, short)
+	require.Nil(t, lookupByteRanges(s, short))
+
+	// Non-alias path: a fresh copy is adopted as-is, never cloned or replaced.
+	fresh := make([]byte, len(value), 24)
+	copy(fresh, value)
+	freshData := unsafe.SliceData(fresh)
+	out := propagation.CopyBytes(managed, fresh)
+	require.True(t, unsafe.SliceData(out) == freshData, "byte result must not be replaced")
+	allocs = testing.AllocsPerRun(100, func() {
+		out = propagation.CopyBytes(managed, fresh)
+	})
+	require.Zero(t, allocs, "byte adoption never allocates")
+	require.Equal(t, []ranges.Range{{Length: uint32(len(fresh)), SourceID: 0}}, lookupByteRanges(s, fresh))
+}
+
+func TestStringWindowsPublishesAtMost32NonEmptyWindows(t *testing.T) {
+	s, _ := beginScope(t)
+	owner := acquireOwner(t, s)
+	input := strings.Repeat("0123456789", 4)
+	managed, _ := taintString(t, owner, input, []ranges.Range{{Length: 40, SourceID: 0}})
+
+	// Build 40 single-byte windows; only the first 32 non-empty ones publish.
+	windows := make([]string, 40)
+	for i := range windows {
+		windows[i] = managed[i : i+1]
+	}
+	propagation.StringWindows(managed, windows)
+	published := 0
+	for _, w := range windows {
+		if lookupRanges(s, w) != nil {
+			published++
+		}
+	}
+	require.Equal(t, 32, published, "exactly 32 windows must be published")
+	// The 33rd window must remain untainted.
+	require.Nil(t, lookupRanges(s, windows[32]))
+
+	// Empty outputs remain untainted.
+	propagation.StringWindows(managed, []string{"", managed[0:0]})
+	require.Nil(t, lookupRanges(s, ""))
+}
+
+func TestPartialSlicedRangesPreservedAndSliced(t *testing.T) {
+	s, _ := beginScope(t)
+	owner := acquireOwner(t, s)
+	managed, _ := taintString(t, owner, "0123456789",
+		[]ranges.Range{{Start: 0, Length: 3, SourceID: 0}, {Start: 5, Length: 2, SourceID: 1}})
+
+	// Exact copy preserves the partial ranges.
+	fresh := strings.Clone(managed)
+	out := propagation.CopyString(managed, fresh)
+	require.Equal(t, []ranges.Range{{Start: 0, Length: 3, SourceID: 0}, {Start: 5, Length: 2, SourceID: 1}}, lookupRanges(s, out))
+
+	// A sliced window derives only the intersecting range, shifted to the window.
+	window := managed[3:6] // bytes 3,4,5; only byte 5 (window offset 2) is tainted.
+	propagation.StringWindows(managed, []string{window})
+	require.Equal(t, []ranges.Range{{Start: 2, Length: 1, SourceID: 1}}, lookupRanges(s, window))
+}
+
+func TestRepeatStringCountOneDerivesAndCountNClones(t *testing.T) {
+	s, _ := beginScope(t)
+	owner := acquireOwner(t, s)
+	managed, _ := taintString(t, owner, "ab", []ranges.Range{{Length: 2, SourceID: 0}})
+
+	// count == 1: strings.Repeat returns the input itself, so derive the alias.
+	out := propagation.RepeatString(managed, managed, 1)
+	require.True(t, unsafe.StringData(out) == unsafe.StringData(managed), "count-one must derive the alias")
+	require.Equal(t, []ranges.Range{{Length: 2, SourceID: 0}}, lookupRanges(s, out))
+
+	// count == 3: a fresh allocation is cloned once and adopted.
+	result := strings.Repeat(managed, 3)
+	out = propagation.RepeatString(managed, result, 3)
+	require.True(t, unsafe.StringData(out) != unsafe.StringData(result), "repeat result must be a managed clone")
+	require.Equal(t, []ranges.Range{{Length: 6, SourceID: 0}}, lookupRanges(s, out))
+}
+
+func TestRepeatStringIsolatesStaticBacking(t *testing.T) {
+	s, _ := beginScope(t)
+	owner := acquireOwner(t, s)
+	// Two spaces form a tainted value of length 2 (the minimum root size).
+	managed, _ := taintString(t, owner, "  ", []ranges.Range{{Length: 2, SourceID: 0}})
+
+	// strings.Repeat fast path returns a window of the static repeatedSpaces buffer.
+	result := strings.Repeat("  ", 3)
+	require.True(t, len(result) == 6)
+
+	out := propagation.RepeatString(managed, result, 3)
+	// The published result must be a managed clone, not the static backing.
+	require.True(t, unsafe.StringData(out) != unsafe.StringData(result), "static backing must be isolated by cloning")
+	require.Equal(t, []ranges.Range{{Length: 6, SourceID: 0}}, lookupRanges(s, out))
+}
+
+func TestRepeatBytesCountOneDerivesAndCountNAdopts(t *testing.T) {
+	s, _ := beginScope(t)
+	owner := acquireOwner(t, s)
+	value := []byte("ab")
+	managed := make([]byte, len(value), 4)
+	copy(managed, value)
+	var set ranges.Set
+	require.True(t, ranges.AdoptCanonical(&set, ranges.DefaultLimit, []ranges.Range{{Length: 2, SourceID: 0}}, uint32(cap(managed))).Valid)
+	_, ok := owner.AdoptBytes(managed, &set)
+	require.True(t, ok)
+
+	// count == 1: derive the alias without replacement.
+	out := propagation.RepeatBytes(managed, managed, 1)
+	require.True(t, unsafe.SliceData(out) == unsafe.SliceData(managed), "count-one must derive the alias")
+	require.Equal(t, []ranges.Range{{Length: 2, SourceID: 0}}, lookupByteRanges(s, out))
+
+	// count == 3: adopt the fresh result as-is.
+	result := bytesRepeat(managed, 3)
+	resultData := unsafe.SliceData(result)
+	out = propagation.RepeatBytes(managed, result, 3)
+	require.True(t, unsafe.SliceData(out) == resultData, "byte repeat result must not be replaced")
+	require.Equal(t, []ranges.Range{{Length: 6, SourceID: 0}}, lookupByteRanges(s, out))
+}
+
+func TestOneByteWindowDerivesButOneByteRootIsRejected(t *testing.T) {
+	s, _ := beginScope(t)
+	owner := acquireOwner(t, s)
+	managed, _ := taintString(t, owner, "ab", []ranges.Range{{Length: 2, SourceID: 0}})
+
+	// A one-byte non-empty window derives from the existing root.
+	one := managed[:1]
+	propagation.StringWindows(managed, []string{one})
+	require.Equal(t, []ranges.Range{{Length: 1, SourceID: 0}}, lookupRanges(s, one), "one-byte windows derive")
+
+	// A one-byte non-alias result cannot create a root and stays untainted.
+	fresh := "x"
+	out := propagation.CopyString(managed, fresh)
+	require.Equal(t, "x", out)
+	require.Nil(t, lookupRanges(s, "x"))
+}
+
+func TestCoarseStringTwoOwnersKeepLocalSourceIDs(t *testing.T) {
+	enableIAST(t)
+	_, scopeA, createdA := request.Begin(context.Background())
+	require.True(t, createdA)
+	_, scopeB, createdB := request.Begin(context.Background())
+	require.True(t, createdB)
+	t.Cleanup(func() { scopeA.Finish() })
+	t.Cleanup(func() { scopeB.Finish() })
+
+	analysisA, ok := scopeA.Analysis()
+	require.True(t, ok)
+	analysisB, ok := scopeB.Analysis()
+	require.True(t, ok)
+
+	managedA, ok := analysisA.TaintString(constants.OriginHttpRequestParameter, "a", "attacker")
+	require.True(t, ok)
+	managedB, ok := analysisB.TaintString(constants.OriginHttpRequestParameter, "b", "victim")
+	require.True(t, ok)
+
+	s := request.ActiveStore()
+	require.NotNil(t, s)
+
+	result := "attacker-victim"
+	out := propagation.CoarseString(result, managedA, managedB)
+	require.True(t, unsafe.StringData(out) != unsafe.StringData(result), "coarse result must be a managed clone")
+
+	// Both owners publish the same clone; source IDs stay owner-local (both 0).
+	key, _ := store.StringKey(out)
+	require.Equal(t, 2, lookupEntryCount(s, key), "two owners must each publish")
+	var snapshot store.Snapshot
+	require.True(t, s.Lookup(key, &snapshot))
+	seen := map[uint8]ranges.SourceID{}
+	for i := 0; i < snapshot.Len(); i++ {
+		entry, _ := snapshot.At(i)
+		r, _ := entry.Ranges.At(0)
+		seen[entry.OwnerIndex] = r.SourceID
+		require.Equal(t, uint32(len(out)), r.Length)
+	}
+	require.Len(t, seen, 2)
+	for _, id := range seen {
+		require.Equal(t, ranges.SourceID(0), id, "source IDs are owner-local")
+	}
+}
+
+func TestCoarseBytesAdoptsResultWithVisibleCap(t *testing.T) {
+	s, _ := beginScope(t)
+	owner := acquireOwner(t, s)
+	input := []byte("attacker")
+	managed := make([]byte, len(input), 8)
+	copy(managed, input)
+	var set ranges.Set
+	require.True(t, ranges.AdoptCanonical(&set, ranges.DefaultLimit, []ranges.Range{{Length: uint32(len(input)), SourceID: 0}}, uint32(cap(managed))).Valid)
+	_, ok := owner.AdoptBytes(managed, &set)
+	require.True(t, ok)
+
+	result := make([]byte, len(input), 16)
+	copy(result, input)
+	resultData := unsafe.SliceData(result)
+	out := propagation.CoarseBytes(result, managed)
+	require.True(t, unsafe.SliceData(out) == resultData, "coarse bytes must not replace the result")
+	require.Equal(t, []ranges.Range{{Length: uint32(len(result)), SourceID: 0}}, lookupByteRanges(s, result))
+}
+
+func TestCoarseBytesNeverAdoptsAnUntaintedInputWindow(t *testing.T) {
+	s, _ := beginScope(t)
+	owner := acquireOwner(t, s)
+	tainted := make([]byte, 10)
+	copy(tainted, "attacker!!")
+	var set ranges.Set
+	require.True(t, ranges.AdoptCanonical(&set, ranges.DefaultLimit, []ranges.Range{{Length: 10, SourceID: 0}}, uint32(cap(tainted))).Valid)
+	_, ok := owner.AdoptBytes(tainted, &set)
+	require.True(t, ok)
+
+	parent := make([]byte, 1<<20)
+	window := parent[len(parent)-10:]
+	charged := s.ProcessCharged()
+	out := propagation.CoarseBytes(window, window, tainted)
+	require.True(t, unsafe.SliceData(out) == unsafe.SliceData(window))
+	require.Equal(t, charged, s.ProcessCharged())
+	require.Nil(t, lookupByteRanges(s, window))
+}
+
+func TestByteCapBoundRejectsOversizedResult(t *testing.T) {
+	s, _ := beginScope(t)
+	owner := acquireOwner(t, s)
+	input := []byte("attacker")
+	managed := make([]byte, len(input), 8)
+	copy(managed, input)
+	var set ranges.Set
+	require.True(t, ranges.AdoptCanonical(&set, ranges.DefaultLimit, []ranges.Range{{Length: uint32(len(input)), SourceID: 0}}, uint32(cap(managed))).Valid)
+	_, ok := owner.AdoptBytes(managed, &set)
+	require.True(t, ok)
+
+	// A result whose visible capacity exceeds the root byte limit is not adopted.
+	oversized := make([]byte, len(input), store.MaxRootBytes+1)
+	copy(oversized, input)
+	out := propagation.CopyBytes(managed, oversized)
+	require.True(t, unsafe.SliceData(out) == unsafe.SliceData(oversized))
+	require.Nil(t, lookupByteRanges(s, oversized), "oversized cap must not be adopted")
+
+	// A result within bounds is adopted.
+	bounded := make([]byte, len(input), 32)
+	copy(bounded, input)
+	propagation.CopyBytes(managed, bounded)
+	require.Equal(t, []ranges.Range{{Length: uint32(len(bounded)), SourceID: 0}}, lookupByteRanges(s, bounded))
+}
+
+func TestEntryHandleRejectsFinishedAndReusedOwner(t *testing.T) {
+	s, _ := beginScope(t)
+	owner := acquireOwner(t, s)
+	managed, _ := taintString(t, owner, "attacker-value", []ranges.Range{{Length: 14, SourceID: 0}})
+
+	key, _ := store.StringKey(managed)
+	var snapshot store.Snapshot
+	require.True(t, s.Lookup(key, &snapshot))
+	require.Equal(t, 1, snapshot.Len())
+	entry, _ := snapshot.At(0)
+	handle, valid := entry.Handle(s)
+	require.True(t, valid)
+	require.Equal(t, owner.ID(), handle.ID())
+
+	// After finish, the stale entry must not produce a handle.
+	oldOwnerID := owner.ID()
+	owner.Finish()
+	_, valid = entry.Handle(s)
+	require.False(t, valid)
+
+	// After slot reuse with a new generation and owner ID, the stale entry still fails.
+	reused := s.Acquire()
+	require.False(t, reused.Disabled())
+	require.NotEqual(t, owner.Generation(), reused.Generation())
+	require.NotEqual(t, oldOwnerID, reused.ID())
+	_, valid = entry.Handle(s)
+	require.False(t, valid, "stale entry must not handle a reused slot")
+
+	// Propagation after finish is a safe no-op: the lookup finds nothing live.
+	out := propagation.CopyString(managed, strings.Clone(managed))
+	require.Nil(t, lookupRanges(s, out))
+	reused.Finish()
+}
+
+func TestPropagationFinishRaceIsSafe(t *testing.T) {
+	s, _ := beginScope(t)
+	owner := acquireOwner(t, s)
+	managed, _ := taintString(t, owner, "attacker-value", []ranges.Range{{Length: 14, SourceID: 0}})
+	fresh := strings.Clone(managed)
+
+	start := make(chan struct{})
+	var wait sync.WaitGroup
+	for worker := 0; worker < 8; worker++ {
+		wait.Add(1)
+		go func() {
+			defer wait.Done()
+			<-start
+			for i := 0; i < 200; i++ {
+				propagation.CopyString(managed, fresh)
+				propagation.StringWindows(managed, []string{managed[:3], managed[3:7]})
+			}
+		}()
+	}
+	// Finish concurrently with the propagating workers.
+	close(start)
+	finished := make(chan struct{})
+	go func() {
+		owner.Finish()
+		close(finished)
+	}()
+	wait.Wait()
+	<-finished
+	// The store must remain usable and consistent.
+	require.Zero(t, s.ProcessValues())
+}
+
+func equalBytes(a, b []byte) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+// bytesRepeat mirrors bytes.Repeat without importing it from the wrapper package,
+// to keep the test dependency closure minimal.
+func bytesRepeat(b []byte, count int) []byte {
+	if count <= 0 || len(b) == 0 {
+		return nil
+	}
+	out := make([]byte, len(b)*count)
+	for i := 0; i < count; i++ {
+		copy(out[i*len(b):], b)
+	}
+	return out
+}

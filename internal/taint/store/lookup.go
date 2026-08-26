@@ -27,6 +27,22 @@ type Entry struct {
 	Ranges     ranges.Set
 }
 
+// Handle revalidates this entry against s and returns a live owner by value.
+// It validates the store, owner index, owner generation, active state, and
+// owner ID before returning. A mismatch returns a disabled zero handle, so a
+// stale snapshot cannot publish into a reused slot. Numeric addresses remain
+// comparison keys and are never converted back to pointers.
+func (e *Entry) Handle(s *Store) (Owner, bool) {
+	if s == nil || e == nil || e.OwnerIndex >= MaxOwners || e.OwnerID == 0 || e.OwnerGen == 0 {
+		return Owner{}, false
+	}
+	record := &s.owners[e.OwnerIndex]
+	if record.generation.Load() != e.OwnerGen || ownerState(record.state.Load()) != stateActive || record.id.Load() != e.OwnerID {
+		return Owner{}, false
+	}
+	return Owner{store: s, owner: record, index: e.OwnerIndex, gen: e.OwnerGen}, true
+}
+
 // Snapshot is caller-owned fixed lookup storage.
 type Snapshot struct {
 	entries [MaxSnapshotOwners]Entry

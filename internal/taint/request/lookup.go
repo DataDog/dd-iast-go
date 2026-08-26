@@ -63,6 +63,17 @@ func visitKey(key store.Key, visit func(ResolvedRange) bool) bool {
 	return visitKeyHit(manager, key, visit)
 }
 
+// ActiveStore returns the process taint store when at least one analysis is
+// active, or nil otherwise. It is a cheap fast gate for propagation; callers
+// must still use Store.MayContain before any lookup. It performs no allocation.
+func ActiveStore() *store.Store {
+	manager := processManager.Load()
+	if manager == nil || manager.used.Load() == 0 {
+		return nil
+	}
+	return manager.store
+}
+
 //go:noinline
 func visitKeyHit(manager *Manager, key store.Key, visit func(ResolvedRange) bool) bool {
 	var snapshot store.Snapshot
