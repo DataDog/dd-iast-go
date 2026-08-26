@@ -820,9 +820,22 @@ Instrumented tests cover every listed origin, repeated lazy calls with stable so
 
 ### Phase 5 — named propagation operations
 
-Implement the approved `strings`, `bytes`, `fmt`, `strconv`, `net/url`, builder, and buffer matrix with the function-body or call-site pattern selected in Phase 0. Add exact/coarse semantics as explicit tests.
+**Complete.** The approved `strings`, `bytes`, `fmt`, `strconv`, `net/url`,
+replacer, builder, and buffer matrix is implemented with root-only call-site
+aspects and bounded standard-library buffer invalidation. Exact, coarse,
+mutation, alias, multi-owner, range-limit, telemetry, and unsupported indirect
+cases are covered by ordinary and woven tests.
 
-**Exit:** untainted hooks allocate zero objects where the wrapped operation itself allocates none; telemetry tests assert coarse and dropped-range counts; call-site filters exclude `dd-iast-go` and `dd-trace-go`; function-body callbacks pass init/reentrancy/import audits; indirect-call coverage matches the selected pattern.
+Local disabled and active-clean benchmarks passed the four-nanosecond and
+zero-allocation-delta gates. The fifty-sample writer run passed with upper
+bounds of +0.960 ns for `strings.Builder` and +2.955 ns for `bytes.Buffer`. The
+sampled-out HTTP median was +1.81% and statistically unchanged, but its
+paired-bootstrap 95% upper bound was +3.93%. The user explicitly approved this
+uncertainty at Checkpoint 7; Phase 9 must measure it again.
+
+**Exit:** satisfied. The exact supported matrix and its indirect-call,
+replacement-term, mutable-buffer, receiver-escape, and shared-backing
+limitations are documented in the README and the Phase 5 implementation plan.
 
 ### Phase 6 — runtime and expression propagation
 

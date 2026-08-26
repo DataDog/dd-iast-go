@@ -150,6 +150,7 @@ and 97.27 microseconds for IAST: a +1.81% median estimate, unchanged from a
 statistical perspective (`p=0.176`). Its paired-bootstrap 95% upper bound was
 +3.93%, which does **not** pass the strict +2% upper-bound gate. Bytes increased
 from 33.81 KiB to 34.28 KiB (+1.39%), and allocations increased from 422 to 428
-(+1.42%). Consequently, Checkpoint 7 remains unapproved and these propagation
-aspects must not be treated as generally enabled until the user accepts the
-measured sampled-out uncertainty or requests further overhead work.
+(+1.42%). The strict statistical upper bound did not pass, but the user approved
+Checkpoint 7 on the median result and statistically unchanged comparison. The
+named propagation aspects are therefore approved to remain enabled. The
+sampled-out uncertainty remains recorded here for final Phase 9 measurement.
