@@ -132,8 +132,8 @@ func (a *Annotation) TryCommitTainted(commit *TaintedCommit, beforeCommit func(*
 		eventIndex := mapping[localIndex]
 		if candidate.Model.Redacted && !stagedModels[eventIndex].Redacted {
 			stagedModels[eventIndex] = candidate.Model
-			redacted[eventIndex] = true
 		}
+		redacted[eventIndex] = stagedModels[eventIndex].Redacted
 	}
 	stagedVulnerabilities := redactSourceOccurrences(a.Event.Vulnerabilities, redacted)
 	vulnerability = redactSourceOccurrence(vulnerability, redacted)
@@ -235,10 +235,24 @@ func redactSourceOccurrence(vulnerability model.Vulnerability, redacted [MaxEven
 	if vulnerability.Evidence == nil || len(vulnerability.Evidence.ValueParts) == 0 {
 		return vulnerability
 	}
+	needsRedaction := false
+	for index := range vulnerability.Evidence.ValueParts {
+		part := &vulnerability.Evidence.ValueParts[index]
+		if part.SourceIndex == nil || part.Redacted {
+			continue
+		}
+		sourceIndex := *part.SourceIndex
+		if sourceIndex >= 0 && sourceIndex < len(redacted) && redacted[sourceIndex] {
+			needsRedaction = true
+			break
+		}
+	}
+	if !needsRedaction {
+		return vulnerability
+	}
 	evidence := *vulnerability.Evidence
 	parts := make([]model.ValuePart, len(evidence.ValueParts))
 	copy(parts, evidence.ValueParts)
-	changed := false
 	for index := range parts {
 		if parts[index].SourceIndex == nil {
 			continue
@@ -250,10 +264,6 @@ func redactSourceOccurrence(vulnerability model.Vulnerability, redacted [MaxEven
 		parts[index].Pattern = strings.Repeat("*", len(parts[index].Value))
 		parts[index].Value = ""
 		parts[index].Redacted = true
-		changed = true
-	}
-	if !changed {
-		return vulnerability
 	}
 	evidence.ValueParts = parts
 	vulnerability.Evidence = &evidence

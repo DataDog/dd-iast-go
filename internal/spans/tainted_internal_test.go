@@ -81,6 +81,30 @@ func TestTryCommitTaintedUpgradesExistingSourceRedaction(t *testing.T) {
 }
 
 // +checklocksignore
+func TestTryCommitTaintedKeepsExistingSourceRedaction(t *testing.T) {
+	configureTaintedCommitTest(t)
+	ann := &Annotation{Sampled: true}
+	first := taintedCommit(1, []string{"secret"}, []int{0})
+	first.Sources[0].Model = model.NewSourceRedactedString(constants.OriginHttpRequestParameter, "parameter", "abcdef")
+	if !ann.TryCommitTainted(&first, nil) {
+		t.Fatal("redacted transaction failed")
+	}
+	second := taintedCommit(2, []string{"secret"}, []int{0})
+	if !ann.TryCommitTainted(&second, nil) {
+		t.Fatal("unredacted transaction failed")
+	}
+	for index, vulnerability := range ann.Event.Vulnerabilities {
+		part := vulnerability.Evidence.ValueParts[0]
+		if !part.Redacted || part.Value != "" || part.SourceIndex == nil || *part.SourceIndex != 0 {
+			t.Fatalf("vulnerability %d exposed an existing redacted source: %#v", index, part)
+		}
+	}
+	ann.Lock()
+	ann.releaseSourceIdentities()
+	ann.Unlock()
+}
+
+// +checklocksignore
 func TestTryCommitTaintedRejectsWithoutPartialState(t *testing.T) {
 	configureTaintedCommitTest(t)
 	tests := []struct {

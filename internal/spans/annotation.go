@@ -79,6 +79,23 @@ func (a *Annotation) TryUseOpen(use func(*Annotation)) bool {
 	return true
 }
 
+// ExistingForSpan returns the existing root annotation without creating one.
+// The caller must use Annotation.TryUseOpen and tolerate closure after return.
+func ExistingForSpan(span *tracer.Span) (*tracer.Span, *Annotation, bool) {
+	if span == nil {
+		return nil, nil, false
+	}
+	root := span.Root()
+	if root == nil {
+		root = span
+	}
+	annotation, ok := store.Load(weak.Make(root))
+	if !ok || annotation == nil || annotation.Closed() {
+		return nil, nil, false
+	}
+	return root, annotation, true
+}
+
 // TryUseExisting invokes use with the existing open annotation for span
 // exclusively locked. It never creates an annotation. The callback has the
 // same restrictions as [Annotation.TryUseOpen].
