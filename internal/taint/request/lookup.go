@@ -14,10 +14,14 @@ import (
 // valid for the synchronous visitor call and must not be retained by internal
 // instrumentation after that call returns.
 type ResolvedRange struct {
-	Start  uint32
-	Length uint32
-	Source Source
-	Marks  uint64
+	Start        uint32
+	Length       uint32
+	Source       Source
+	Marks        uint64
+	OwnerID      uint64
+	OwnerGen     uint64
+	OwnerIndex   uint8
+	RangeOrdinal uint8
 }
 
 // VisitString visits complete live provenance for value. It returns true if it
@@ -113,10 +117,14 @@ func deliverEntry(manager *Manager, entry *store.Entry, visit func(ResolvedRange
 	for i := 0; i < count; i++ {
 		delivered = true
 		if !visit(ResolvedRange{
-			Start:  compact[i].Start,
-			Length: compact[i].Length,
-			Source: sources[i],
-			Marks:  compact[i].Marks,
+			Start:        compact[i].Start,
+			Length:       compact[i].Length,
+			Source:       sources[i],
+			Marks:        compact[i].Marks,
+			OwnerID:      entry.OwnerID,
+			OwnerGen:     entry.OwnerGen,
+			OwnerIndex:   entry.OwnerIndex,
+			RangeOrdinal: uint8(i),
 		}) {
 			return true, false
 		}
