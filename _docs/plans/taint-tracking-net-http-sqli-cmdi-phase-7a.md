@@ -106,8 +106,10 @@ Each body installs a result-preserving deferred callback and performs expensive
 reporting only after the original operation has selected its result. This cannot
 consume a context deadline before the driver checks it or change the returned
 error. Deferred callbacks are panic-shielded and cannot replace an original
-panic. `Stmt` callbacks check a nil receiver inside the deferred closure before
-reading its private query, so a nil receiver retains its original panic site.
+panic. `Stmt` hooks check a nil receiver before reading its private query and
+pass an explicit validity bit to one unconditional minimal-bridge defer. This
+retains the original nil-receiver panic site without adding a prepared-statement
+allocation.
 Near-deadline, canceled-context, nil-receiver, panic-stack, and returned-error
 fixtures lock this behavior.
 

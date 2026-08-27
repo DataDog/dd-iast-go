@@ -15,6 +15,7 @@ import (
 	"github.com/DataDog/dd-iast-go/internal/taint/httpbridge"
 	"github.com/DataDog/dd-iast-go/internal/taint/iobridge"
 	"github.com/DataDog/dd-iast-go/internal/taint/scopebridge"
+	"github.com/DataDog/dd-iast-go/internal/taint/sqlbridge"
 	"github.com/DataDog/dd-iast-go/internal/taint/urlbridge"
 	"github.com/DataDog/dd-iast-go/internal/taint/writerbridge"
 )
@@ -45,6 +46,7 @@ var (
 	defaultManager = sync.OnceValue(func() *Manager {
 		manager := NewManager(nil)
 		manager.store.BindWriterActive(writerbridge.ActiveCounter())
+		sqlbridge.BindActiveOwners(&manager.used)
 		processManager.Store(manager)
 		return manager
 	})
