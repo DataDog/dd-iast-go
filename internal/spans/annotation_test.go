@@ -16,6 +16,62 @@ import (
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
 )
 
+func TestFinishedClosesExistingAnnotation(t *testing.T) {
+	previousSampling := config.RequestSamplingPct
+	config.RequestSamplingPct = 100
+	t.Cleanup(func() { config.RequestSamplingPct = previousSampling })
+
+	mockTracer := mocktracer.Start()
+	t.Cleanup(mockTracer.Stop)
+	span, _ := tracer.StartSpanFromContext(context.Background(), "test")
+	ann := spans.AnnotationFor(span)
+	ann.Lock()
+
+	started := make(chan struct{})
+	finished := make(chan struct{})
+	go func() {
+		close(started)
+		spans.Finished(span)
+		close(finished)
+	}()
+	<-started
+	ann.RequestTainted.Store(7)
+	ann.Unlock()
+	<-finished
+
+	if ann.TryUseOpen(func(*spans.Annotation) {
+		t.Fatal("used closed annotation pointer")
+	}) {
+		t.Fatal("closed annotation pointer remained open")
+	}
+	if spans.TryUseExisting(span, func(*spans.Annotation) {
+		t.Fatal("used finished annotation")
+	}) {
+		t.Fatal("finished annotation remained open")
+	}
+	span.Finish()
+}
+
+func TestTryLockExistingDropsContention(t *testing.T) {
+	previousSampling := config.RequestSamplingPct
+	config.RequestSamplingPct = 100
+	t.Cleanup(func() { config.RequestSamplingPct = previousSampling })
+
+	mockTracer := mocktracer.Start()
+	t.Cleanup(mockTracer.Stop)
+	span, _ := tracer.StartSpanFromContext(context.Background(), "test")
+	ann := spans.AnnotationFor(span)
+	ann.Lock()
+	if spans.TryUseExisting(span, func(*spans.Annotation) {
+		t.Fatal("used contended annotation")
+	}) {
+		t.Fatal("acquired contended annotation")
+	}
+	ann.Unlock()
+	spans.Finished(span)
+	span.Finish()
+}
+
 func TestAnnotationForDoesNotStoreWithoutCapacity(t *testing.T) {
 	previousMaxConcurrentRequests := config.MaxConcurrentRequests
 	previousSampling := config.RequestSamplingPct

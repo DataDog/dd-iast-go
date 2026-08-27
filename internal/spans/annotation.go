@@ -38,12 +38,52 @@ type Annotation struct {
 	sync.RWMutex
 	// +checklocks:RWMutex
 	model.Event
+	closed atomic.Bool
 
 	// Sampled is immutable after annotation construction.
 	Sampled bool
 
 	// RequestTainted is the number of tainted elemets at the end of the request.
 	RequestTainted atomic.Uint64
+}
+
+// Closed reports whether span finishing has closed the annotation.
+func (a *Annotation) Closed() bool {
+	return a == nil || a.closed.Load()
+}
+
+// TryUseOpen invokes use with the annotation exclusively locked when it is
+// open. It returns false on nil, contention, or a closed annotation. The
+// callback must not re-lock the annotation, finish its span, or let a panic
+// escape.
+func (a *Annotation) TryUseOpen(use func(*Annotation)) bool {
+	if a == nil || use == nil {
+		return false
+	}
+	if !a.RWMutex.TryLock() {
+		return false
+	}
+	defer a.RWMutex.Unlock() // +checklocksforce: TryLock.
+	if a.closed.Load() {
+		return false
+	}
+	use(a)
+	return true
+}
+
+// TryUseExisting invokes use with the existing open annotation for span
+// exclusively locked. It never creates an annotation. The callback has the
+// same restrictions as [Annotation.TryUseOpen].
+func TryUseExisting(span *tracer.Span, use func(*Annotation)) bool {
+	if span == nil {
+		return false
+	}
+	root := span.Root()
+	if root == nil {
+		root = span
+	}
+	ann, ok := store.Load(weak.Make(root))
+	return ok && ann.TryUseOpen(use)
 }
 
 // AnnotationFor returns the [*Annotation] for the root of the given

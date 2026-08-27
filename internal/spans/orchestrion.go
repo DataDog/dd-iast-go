@@ -27,8 +27,9 @@ func Finished(span *tracer.Span) {
 
 	defer ann.submitTelemetry()
 
-	ann.RLock()
-	defer ann.RUnlock()
+	ann.Lock()
+	defer ann.Unlock()
+	ann.closed.Store(true)
 
 	if len(ann.Event.Vulnerabilities) > 0 {
 		span.SetTag(ext.ManualKeep, samplingMechanismAppSec)
