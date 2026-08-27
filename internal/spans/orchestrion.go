@@ -43,4 +43,5 @@ func Finished(span *tracer.Span) {
 			}
 		}
 	}
+	ann.releaseSourceIdentities()
 }

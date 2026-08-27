@@ -39,6 +39,14 @@ type Annotation struct {
 	// +checklocks:RWMutex
 	model.Event
 	closed atomic.Bool
+	// +checklocks:RWMutex
+	sourceIdentities []SourceIdentity
+	// +checklocks:RWMutex
+	sourceIdentityBytes int64
+	// +checklocks:RWMutex
+	sourceIndex [2 * MaxEventSources]uint16
+	// +checklocks:RWMutex
+	eventSourceIndexes [MaxEventSources]int
 
 	// Sampled is immutable after annotation construction.
 	Sampled bool
@@ -57,7 +65,7 @@ func (a *Annotation) Closed() bool {
 // callback must not re-lock the annotation, finish its span, or let a panic
 // escape.
 func (a *Annotation) TryUseOpen(use func(*Annotation)) bool {
-	if a == nil || use == nil {
+	if a == nil || use == nil || !a.Sampled {
 		return false
 	}
 	if !a.RWMutex.TryLock() {
@@ -91,7 +99,7 @@ func TryUseExisting(span *tracer.Span, use func(*Annotation)) bool {
 // root). If none exists yet, a new [*Annotation] is allocated.
 func AnnotationFor(span *tracer.Span) *Annotation {
 	if span == nil {
-		return new(Annotation)
+		return nonSampledAnnotation
 	}
 	root := span.Root()
 	if root == nil {
@@ -111,18 +119,20 @@ func AnnotationFor(span *tracer.Span) *Annotation {
 		if !hasSpace {
 			instrumentation.Instance.TelemetryLog().
 				Warn("iast/annotation: max concurrent requests reached, not storing annotation for span", slog.Any("span", spanID))
+			fallback = nonSampledAnnotation
 			return nil, true
 		}
-		fallback = &Annotation{Sampled: samplingDecision()}
-		if !fallback.Sampled {
+		if !samplingDecision() {
+			fallback = nonSampledAnnotation
 			return nil, true
 		}
+		fallback = &Annotation{Sampled: true}
 		return fallback, false
 	})
 	if ann == nil {
 		ann = fallback
 		if ann == nil {
-			ann = new(Annotation)
+			ann = nonSampledAnnotation
 		}
 	}
 	root.SetTag(SpanTagEnabled, ann.enabledTag())
@@ -210,10 +220,22 @@ func trimStore() bool {
 	if store.Size() < triggerTrimThreshold {
 		return true
 	}
-	store.DeleteMatching(func(key weak.Pointer[tracer.Span], _ *Annotation) (delete bool, stop bool) {
-		return key.Value() == nil, false
-	})
+	store.DeleteMatching(releaseDeadAnnotation)
 	return store.Size() < config.MaxConcurrentRequests
+}
+
+// +checklocksignore
+func releaseDeadAnnotation(key weak.Pointer[tracer.Span], ann *Annotation) (delete bool, stop bool) {
+	if key.Value() != nil || ann == nil {
+		return false, false
+	}
+	if !ann.RWMutex.TryLock() {
+		return false, false
+	}
+	defer ann.RWMutex.Unlock() // +checklocksforce: TryLock.
+	ann.closed.Store(true)
+	ann.releaseSourceIdentities()
+	return true, false
 }
 
 func samplingDecision() bool {

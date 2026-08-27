@@ -6,7 +6,6 @@
 package config
 
 import (
-	"math"
 	"regexp"
 
 	"github.com/DataDog/dd-iast-go/internal/config/loader"
@@ -28,6 +27,9 @@ const (
 	EnvVarTelemetryVerbosity        = "DD_IAST_TELEMETRY_VERBOSITY"
 	EnvVarDbRowsToTaint             = "DD_IAST_DB_ROWS_TO_TAINT"
 	EnvVarStackTraceEnabled         = "DD_IAST_STACK_TRACE_ENABLED"
+
+	// MaxVulnerabilitiesPerRequest is the non-configurable hard event bound.
+	MaxVulnerabilitiesPerRequest = 64
 )
 
 var (
@@ -68,7 +70,7 @@ func load(observer loader.Observer) {
 	Enabled = loader.BoolFromEnv(observer, EnvVarEnabled, true)
 	RequestSamplingPct = int(loader.UintFromEnvBounded(observer, EnvVarRequestSampling, 30, uint8(0), uint8(100)))
 	MaxConcurrentRequests = int(loader.UintFromEnvBounded(observer, EnvVarMaxConcurrentRequests, uint64(2), uint8(0), uint8(64)))
-	VulnerabilitiesPerRequest = int(loader.UintFromEnvBounded(observer, EnvVarVulnerabilitiesPerRequest, 2, uint64(1), uint64(math.MaxInt)))
+	VulnerabilitiesPerRequest = int(loader.UintFromEnvBounded(observer, EnvVarVulnerabilitiesPerRequest, 2, uint64(1), uint64(MaxVulnerabilitiesPerRequest)))
 	DeduplicationEnabled = loader.BoolFromEnv(observer, EnvVarDeduplicationEnabled, true)
 	RedactionEnabled = loader.BoolFromEnv(observer, EnvVarRedactionEnabled, true)
 	RedactionNamePattern = loader.FromEnv(observer, EnvVarRedactionNamePattern, defaultRedactionNamePattern, parser.ParseRegexp)

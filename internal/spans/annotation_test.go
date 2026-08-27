@@ -89,8 +89,8 @@ func TestAnnotationForDoesNotStoreWithoutCapacity(t *testing.T) {
 
 	first := spans.AnnotationFor(span)
 	second := spans.AnnotationFor(span)
-	if first == second {
-		t.Fatal("AnnotationFor() reused an annotation with no request capacity")
+	if first != second {
+		t.Fatal("AnnotationFor() allocated distinct annotations with no request capacity")
 	}
 	if first.Sampled || second.Sampled {
 		t.Error("AnnotationFor() sampled an annotation with no request capacity")

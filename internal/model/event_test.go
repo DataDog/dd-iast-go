@@ -120,6 +120,16 @@ func withConfig(t *testing.T, vulnerabilitiesPerRequest int, deduplicationEnable
 	})
 }
 
+func TestAddVulnerabilityEnforcesHardCap(t *testing.T) {
+	withConfig(t, model.MaxVulnerabilities+100, false)
+	event := model.NewEvent()
+	for index := 0; index < model.MaxVulnerabilities; index++ {
+		require.True(t, event.AddVulnerability(model.Vulnerability{Hash: int32(index)}))
+	}
+	require.False(t, event.AddVulnerability(model.Vulnerability{Hash: 999}))
+	require.Len(t, event.Vulnerabilities, model.MaxVulnerabilities)
+}
+
 func TestAddVulnerabilityDeduplicationEnabledRejectsDuplicateHash(t *testing.T) {
 	withConfig(t, 10, true)
 
