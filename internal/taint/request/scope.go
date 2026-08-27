@@ -14,6 +14,7 @@ import (
 	"github.com/DataDog/dd-iast-go/internal/config"
 	"github.com/DataDog/dd-iast-go/internal/taint/httpbridge"
 	"github.com/DataDog/dd-iast-go/internal/taint/iobridge"
+	"github.com/DataDog/dd-iast-go/internal/taint/scopebridge"
 	"github.com/DataDog/dd-iast-go/internal/taint/urlbridge"
 	"github.com/DataDog/dd-iast-go/internal/taint/writerbridge"
 )
@@ -205,5 +206,9 @@ func (s *Scope) Finish() {
 	analysis := s.analysis
 	s.analysis = Analysis{}
 	s.mu.Unlock()
+	index, id, generation, identified := analysis.Identity()
 	analysis.Finish()
+	if identified {
+		scopebridge.Finish(index, id, generation)
+	}
 }

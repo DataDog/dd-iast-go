@@ -180,6 +180,7 @@ func BindScope(span *tracer.Span, scope *request.Scope) *Annotation {
 	}
 	ptr := weak.Make(root)
 	if existing, ok := store.Load(ptr); ok {
+		bindOwnerSpan(scope, root, existing)
 		return existing
 	}
 	if !scope.Active() {
@@ -198,6 +199,7 @@ func BindScope(span *tracer.Span, scope *request.Scope) *Annotation {
 		return nil
 	}
 	root.SetTag(SpanTagEnabled, 1)
+	bindOwnerSpan(scope, root, ann)
 	return ann
 }
 

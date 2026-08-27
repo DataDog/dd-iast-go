@@ -108,6 +108,20 @@ func (a Analysis) Active() bool {
 	return a.manager != nil && a.slot != nil && a.slot.generation.Load() == a.gen && a.slot.active.Load()
 }
 
+// Identity returns the live store owner slot index, ID, and generation captured
+// by this analysis. The index is not the analysis permit index.
+func (a Analysis) Identity() (ownerIndex uint8, id, generation uint64, ok bool) {
+	if !a.Active() {
+		return 0, 0, 0, false
+	}
+	id = a.slot.ownerID.Load()
+	generation = a.slot.ownerGen.Load()
+	if id == 0 || generation == 0 || !a.Active() {
+		return 0, 0, 0, false
+	}
+	return a.ownerIndex, id, generation, true
+}
+
 func (a Analysis) storeOwner() *store.Owner {
 	if !a.Active() {
 		return nil
