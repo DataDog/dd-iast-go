@@ -12,8 +12,10 @@ import (
 	"testing"
 
 	"github.com/DataDog/dd-iast-go/internal/config"
+	"github.com/DataDog/dd-iast-go/internal/model"
 	"github.com/DataDog/dd-iast-go/internal/model/constants"
 	"github.com/DataDog/dd-iast-go/internal/taint/evidence"
+	"github.com/DataDog/dd-iast-go/internal/taint/propagation"
 	"github.com/DataDog/dd-iast-go/internal/taint/ranges"
 	"github.com/DataDog/dd-iast-go/internal/taint/request"
 	"github.com/DataDog/dd-iast-go/taint"
@@ -90,6 +92,91 @@ func TestBuildSourcesDisabledKeepsRawValue(t *testing.T) {
 	}
 }
 
+func TestBuildWithSensitiveRedactsSourcesAndLiteralGaps(t *testing.T) {
+	configureRedaction(t, true, `never-match`, `never-match`)
+	snapshot := compositeSnapshot(t, "SELECT '", "secret", "' AND 123")
+	result, ok := BuildWithSensitive(snapshot, []Interval{{Start: 9, Length: 2}, {Start: 20, Length: 3}}, false)
+	if !ok {
+		t.Fatal("BuildWithSensitive failed")
+	}
+	if !result.Sources[0].Model.Redacted || normalizeParts(result.Parts) != "SELECT '******' AND ***" {
+		t.Fatalf("sensitive result = source:%#v parts:%#v normalized:%q", result.Sources[0], result.Parts, normalizeParts(result.Parts))
+	}
+	for _, part := range result.Parts {
+		if part.SourceIndex != nil && !part.Redacted {
+			t.Fatalf("source occurrence remained raw: %#v", part)
+		}
+	}
+}
+
+func TestBuildWithSensitiveDisabledIgnoresSinkIntervals(t *testing.T) {
+	configureRedaction(t, false, `secret`, `secret`)
+	snapshot := compositeSnapshot(t, "SELECT '", "secret", "'")
+	result, ok := BuildWithSensitive(snapshot, []Interval{{Start: 8, Length: 6}}, true)
+	if !ok || result.Sources[0].Model.Redacted || normalizeParts(result.Parts) != "SELECT 'secret'" {
+		t.Fatalf("disabled result = %#v, %t", result, ok)
+	}
+}
+
+func TestBuildWithSensitiveAnalyzerFallbackRedactsEverything(t *testing.T) {
+	configureRedaction(t, true, `never-match`, `never-match`)
+	snapshot := compositeSnapshot(t, "prefix", "secret", "suffix")
+	result, ok := BuildWithSensitive(snapshot, nil, true)
+	if !ok || !result.Sources[0].Model.Redacted || normalizeParts(result.Parts) != strings.Repeat("*", len("prefixsecretsuffix")) {
+		t.Fatalf("fallback result = %#v, %t", result, ok)
+	}
+}
+
+func TestBuildWithSensitiveUsesRunningTruncationBudget(t *testing.T) {
+	configureRedaction(t, true, `never-match`, `never-match`)
+	previous := config.TruncationMaxValue
+	config.TruncationMaxValue = 10
+	t.Cleanup(func() { config.TruncationMaxValue = previous })
+	result, ok := BuildWithSensitive(compositeSnapshot(t, "prefix", "secret", "suffix"), []Interval{{Start: 6, Length: 6}}, false)
+	if !ok {
+		t.Fatal("BuildWithSensitive failed")
+	}
+	retained := 0
+	truncated := false
+	for _, part := range result.Parts {
+		retained += len([]rune(part.Value)) + len([]rune(part.Pattern))
+		truncated = truncated || part.Truncated.String() == "right"
+	}
+	if retained != 10 || !truncated {
+		t.Fatalf("retained characters = %d, truncated = %t, parts = %#v", retained, truncated, result.Parts)
+	}
+}
+
+func TestBuildWithSensitiveBoundsMultibytePatterns(t *testing.T) {
+	configureRedaction(t, true, `never-match`, `never-match`)
+	previous := config.TruncationMaxValue
+	config.TruncationMaxValue = 250
+	t.Cleanup(func() { config.TruncationMaxValue = previous })
+	value := strings.Repeat("é", 250)
+	result, ok := BuildWithSensitive(sourceSnapshot(t, "parameter", value), nil, true)
+	if !ok || len(result.Parts) != 1 {
+		t.Fatalf("BuildWithSensitive = %#v, %t", result, ok)
+	}
+	part := result.Parts[0]
+	if len(part.Pattern) != 250 || part.Truncated != model.TruncatedSideRight {
+		t.Fatalf("multibyte pattern = bytes:%d truncated:%v", len(part.Pattern), part.Truncated)
+	}
+}
+
+func TestBuildWithSensitiveRejectsInvalidIntervals(t *testing.T) {
+	configureRedaction(t, true, `never-match`, `never-match`)
+	snapshot := sourceSnapshot(t, "parameter", "secret")
+	tooMany := make([]Interval, MaxSensitiveIntervals+1)
+	for index := range tooMany {
+		tooMany[index] = Interval{Start: uint32(index), Length: 1}
+	}
+	for _, intervals := range [][]Interval{{{Start: 1}}, {{Start: 5, Length: 2}}, {{Start: 3, Length: 2}, {Start: 1, Length: 1}}, tooMany} {
+		if _, ok := BuildWithSensitive(snapshot, intervals, false); ok {
+			t.Fatalf("accepted invalid intervals %#v", intervals)
+		}
+	}
+}
+
 func TestMappedPattern(t *testing.T) {
 	pattern := alphanumericPattern(len("prefix-secret-suffix"))
 	tests := []struct {
@@ -145,6 +232,28 @@ func TestBuildSourcesRejectsNilSnapshot(t *testing.T) {
 
 func sourceSnapshot(t *testing.T, name, value string) *evidence.Snapshot {
 	t.Helper()
+	managed := managedSource(t, name, value)
+	snapshot, status := evidence.CollectString(managed, constants.VulnerabilityTypeSqlInjection)
+	if status != evidence.StatusCollected {
+		t.Fatalf("CollectString status = %v", status)
+	}
+	return snapshot
+}
+
+func compositeSnapshot(t *testing.T, prefix, source, suffix string) *evidence.Snapshot {
+	t.Helper()
+	managed := managedSource(t, "parameter", source)
+	value := prefix + managed + suffix
+	value = propagation.JoinString([]string{prefix, managed, suffix}, "", value)
+	snapshot, status := evidence.CollectString(value, constants.VulnerabilityTypeSqlInjection)
+	if status != evidence.StatusCollected {
+		t.Fatalf("composite CollectString status = %v", status)
+	}
+	return snapshot
+}
+
+func managedSource(t *testing.T, name, value string) string {
+	t.Helper()
 	previousEnabled := config.Enabled
 	previousSampling := config.RequestSamplingPct
 	previousMax := config.MaxConcurrentRequests
@@ -161,12 +270,19 @@ func sourceSnapshot(t *testing.T, name, value string) *evidence.Snapshot {
 		config.RequestSamplingPct = previousSampling
 		config.MaxConcurrentRequests = previousMax
 	})
-	managed := taint.TaintString(ctx, taint.Source{Origin: constants.OriginHttpRequestParameter, Name: name}, value)
-	snapshot, status := evidence.CollectString(managed, constants.VulnerabilityTypeSqlInjection)
-	if status != evidence.StatusCollected {
-		t.Fatalf("CollectString status = %v", status)
+	return taint.TaintString(ctx, taint.Source{Origin: constants.OriginHttpRequestParameter, Name: name}, value)
+}
+
+func normalizeParts(parts []model.ValuePart) string {
+	var builder strings.Builder
+	for _, part := range parts {
+		if part.Redacted {
+			builder.WriteString(strings.Repeat("*", len(part.Pattern)))
+		} else {
+			builder.WriteString(part.Value)
+		}
 	}
-	return snapshot
+	return builder.String()
 }
 
 func configureRedaction(t *testing.T, enabled bool, name, value string) {

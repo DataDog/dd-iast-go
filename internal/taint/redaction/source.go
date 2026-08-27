@@ -9,10 +9,12 @@ package redaction
 
 import (
 	"strings"
+	"unicode/utf8"
 
 	"github.com/DataDog/dd-iast-go/internal/config"
 	"github.com/DataDog/dd-iast-go/internal/model"
 	"github.com/DataDog/dd-iast-go/internal/model/constants"
+	"github.com/DataDog/dd-iast-go/internal/model/truncation"
 	"github.com/DataDog/dd-iast-go/internal/spans"
 	"github.com/DataDog/dd-iast-go/internal/taint/evidence"
 	"github.com/DataDog/dd-iast-go/internal/taint/ranges"
@@ -31,22 +33,78 @@ type Result struct {
 // BuildSources converts a complete snapshot using configured source name/value
 // redaction. It returns false if a snapshot accessor or source index is invalid.
 func BuildSources(snapshot *evidence.Snapshot) (Result, bool) {
-	if snapshot == nil || snapshot.SourceCount() > spans.MaxEventSources || snapshot.PartCount() > evidence.MaxParts {
+	return BuildWithSensitive(snapshot, nil, false)
+}
+
+// BuildWithSensitive additionally redacts vulnerability-specific byte
+// intervals. Intervals must be sorted, non-overlapping, non-empty, in bounds,
+// and no more numerous than MaxSensitiveIntervals. fullySensitive is the
+// conservative fallback for analyzer failure. Sink intervals are ignored when
+// redaction is disabled. Invalid snapshot data or intervals return false.
+func BuildWithSensitive(snapshot *evidence.Snapshot, intervals []Interval, fullySensitive bool) (Result, bool) {
+	if snapshot == nil || snapshot.SourceCount() > spans.MaxEventSources || snapshot.PartCount() > evidence.MaxParts || !validIntervals(snapshot.Value(), intervals) {
 		return Result{}, false
 	}
-	result := Result{
-		Sources: make([]spans.TaintedSource, snapshot.SourceCount()),
-		Parts:   make([]model.ValuePart, snapshot.PartCount()),
+	if !config.RedactionEnabled {
+		intervals = nil
+		fullySensitive = false
 	}
+
 	sensitive := make([]bool, snapshot.SourceCount())
-	patterns := make([]string, snapshot.SourceCount())
 	for index := 0; index < snapshot.SourceCount(); index++ {
 		source, ok := snapshot.SourceAt(index)
 		if !ok {
 			return Result{}, false
 		}
+		sensitive[index] = config.RedactionEnabled && (fullySensitive || sourceSensitive(source))
+	}
+	for index := 0; index < snapshot.PartCount(); index++ {
+		part, ok := snapshot.PartAt(index)
+		if !ok || part.Source < -1 || part.Source >= int16(snapshot.SourceCount()) {
+			return Result{}, false
+		}
+		if part.Source >= 0 && !sensitive[part.Source] && overlapsSensitive(part.Start, part.Length, intervals) {
+			sensitive[part.Source] = true
+		}
+	}
+
+	result, patterns, ok := buildWireSources(snapshot, sensitive)
+	if !ok {
+		return Result{}, false
+	}
+	parts, overflow, ok := buildParts(snapshot, sensitive, patterns, intervals, fullySensitive)
+	if !ok {
+		return Result{}, false
+	}
+	if overflow {
+		if !config.RedactionEnabled {
+			return Result{}, false
+		}
+		for index := range sensitive {
+			sensitive[index] = true
+		}
+		result, patterns, ok = buildWireSources(snapshot, sensitive)
+		if !ok {
+			return Result{}, false
+		}
+		parts, overflow, ok = buildParts(snapshot, sensitive, patterns, nil, true)
+		if !ok || overflow {
+			return Result{}, false
+		}
+	}
+	result.Parts = parts
+	return result, true
+}
+
+func buildWireSources(snapshot *evidence.Snapshot, sensitive []bool) (Result, []string, bool) {
+	result := Result{Sources: make([]spans.TaintedSource, snapshot.SourceCount())}
+	patterns := make([]string, snapshot.SourceCount())
+	for index := 0; index < snapshot.SourceCount(); index++ {
+		source, ok := snapshot.SourceAt(index)
+		if !ok {
+			return Result{}, nil, false
+		}
 		identity := spans.SourceIdentity{Origin: source.Origin, Name: source.Name, Value: source.Value}
-		sensitive[index] = config.RedactionEnabled && sourceSensitive(source)
 		var wire model.Source
 		if sensitive[index] {
 			wire = model.NewSourceRedactedString(source.Origin, source.Name, alphanumericPattern(len(source.Value)))
@@ -56,35 +114,161 @@ func BuildSources(snapshot *evidence.Snapshot) (Result, bool) {
 		}
 		result.Sources[index] = spans.TaintedSource{Identity: identity, Model: wire}
 	}
+	return result, patterns, true
+}
 
+func buildParts(snapshot *evidence.Snapshot, sensitive []bool, patterns []string, intervals []Interval, fullySensitive bool) ([]model.ValuePart, bool, bool) {
+	parts := make([]model.ValuePart, 0, min(snapshot.PartCount()+2*len(intervals), evidence.MaxParts))
+	remainingCharacters := config.TruncationMaxValue
 	remainingComparisons := sourceComparisonBudget
+	intervalIndex := 0
 	for index := 0; index < snapshot.PartCount(); index++ {
 		part, ok := snapshot.PartAt(index)
 		if !ok {
-			return Result{}, false
+			return nil, false, false
 		}
-		value, ok := snapshot.PartValue(part)
-		if !ok {
-			return Result{}, false
+		if part.Length == 0 || part.Start > uint32(len(snapshot.Value())) || part.Length > uint32(len(snapshot.Value()))-part.Start {
+			return nil, false, false
 		}
-		if part.Source < 0 {
-			result.Parts[index] = model.NewValuePartString(value)
+		partEnd := part.Start + part.Length
+		if fullySensitive || part.Source >= 0 && sensitive[part.Source] {
+			if len(parts) >= evidence.MaxParts {
+				return nil, true, true
+			}
+			value, _ := snapshot.PartValue(part)
+			output, truncated, valid := buildPart(snapshot, part, value, fullySensitive, sensitive, patterns, &remainingComparisons, &remainingCharacters)
+			if !valid {
+				return nil, false, false
+			}
+			parts = append(parts, output)
+			if truncated {
+				return parts, false, true
+			}
 			continue
 		}
-		sourceIndex := int(part.Source)
-		if sourceIndex >= len(result.Sources) {
-			return Result{}, false
+		position := part.Start
+		for intervalIndex < len(intervals) && intervals[intervalIndex].Start+intervals[intervalIndex].Length <= position {
+			intervalIndex++
 		}
-		marks := markTypes(part.Marks)
-		if !sensitive[sourceIndex] {
-			result.Parts[index] = model.NewValuePartTaintedString(value, sourceIndex, marks)
-			continue
+		for position < partEnd {
+			for intervalIndex < len(intervals) && intervals[intervalIndex].Start+intervals[intervalIndex].Length <= position {
+				intervalIndex++
+			}
+			sinkSensitive := fullySensitive
+			next := partEnd
+			if !sinkSensitive && intervalIndex < len(intervals) {
+				interval := intervals[intervalIndex]
+				intervalEnd := interval.Start + interval.Length
+				if interval.Start <= position && position < intervalEnd {
+					sinkSensitive = true
+					next = min(next, intervalEnd)
+				} else if position < interval.Start {
+					next = min(next, interval.Start)
+				}
+			}
+			if len(parts) >= evidence.MaxParts {
+				return nil, true, true
+			}
+			value := snapshot.Value()[position:next]
+			output, truncated, valid := buildPart(snapshot, part, value, sinkSensitive, sensitive, patterns, &remainingComparisons, &remainingCharacters)
+			if !valid {
+				return nil, false, false
+			}
+			parts = append(parts, output)
+			if truncated {
+				return parts, false, true
+			}
+			position = next
 		}
-		source, _ := snapshot.SourceAt(sourceIndex)
-		pattern := mappedPattern(value, source.Value, patterns[sourceIndex], &remainingComparisons)
-		result.Parts[index] = model.NewValuePartTaintedRedactedString(pattern, sourceIndex, marks)
 	}
-	return result, true
+	return parts, false, true
+}
+
+func buildPart(snapshot *evidence.Snapshot, part evidence.Part, value string, sinkSensitive bool, sensitive []bool, patterns []string, comparisons *int, characters *uint64) (model.ValuePart, bool, bool) {
+	redacted := sinkSensitive || part.Source >= 0 && sensitive[part.Source]
+	var truncated model.TruncatedSide
+	if redacted {
+		value, truncated = truncateRedactedEvidence(value, characters)
+	} else {
+		value, truncated = truncateEvidence(value, characters)
+	}
+	if part.Source < 0 {
+		if redacted {
+			return model.ValuePart{Pattern: strings.Repeat("*", len(value)), Redacted: true, Truncated: truncated}, truncated != model.TruncatedSideNone, true
+		}
+		return model.ValuePart{Value: value, Truncated: truncated}, truncated != model.TruncatedSideNone, true
+	}
+	sourceIndex := int(part.Source)
+	if sourceIndex >= len(sensitive) {
+		return model.ValuePart{}, false, false
+	}
+	marks := markTypes(part.Marks)
+	if !redacted {
+		return model.ValuePart{Value: value, SourceIndex: &sourceIndex, SecureMarks: marks, Truncated: truncated}, truncated != model.TruncatedSideNone, true
+	}
+	source, ok := snapshot.SourceAt(sourceIndex)
+	if !ok {
+		return model.ValuePart{}, false, false
+	}
+	pattern := mappedPattern(value, source.Value, patterns[sourceIndex], comparisons)
+	return model.ValuePart{Pattern: pattern, Redacted: true, SourceIndex: &sourceIndex, SecureMarks: marks, Truncated: truncated}, truncated != model.TruncatedSideNone, true
+}
+
+func truncateRedactedEvidence(value string, remaining *uint64) (string, model.TruncatedSide) {
+	if remaining == nil {
+		return "", model.TruncatedSideRight
+	}
+	if uint64(len(value)) <= *remaining {
+		*remaining -= uint64(len(value))
+		return value, model.TruncatedSideNone
+	}
+	result := value[:int(*remaining)]
+	*remaining = 0
+	return result, model.TruncatedSideRight
+}
+
+func truncateEvidence(value string, remaining *uint64) (string, model.TruncatedSide) {
+	if remaining == nil {
+		return "", model.TruncatedSideRight
+	}
+	result, truncatedValue := truncation.String(value, *remaining)
+	consumed := uint64(utf8.RuneCountInString(result))
+	if consumed > *remaining {
+		consumed = *remaining
+	}
+	*remaining -= consumed
+	if truncatedValue {
+		return result, model.TruncatedSideRight
+	}
+	return result, model.TruncatedSideNone
+}
+
+func validIntervals(value string, intervals []Interval) bool {
+	if len(intervals) > MaxSensitiveIntervals {
+		return false
+	}
+	var previousEnd uint32
+	for index, interval := range intervals {
+		if interval.Length == 0 || interval.Start > uint32(len(value)) || interval.Length > uint32(len(value))-interval.Start || index > 0 && interval.Start < previousEnd {
+			return false
+		}
+		previousEnd = interval.Start + interval.Length
+	}
+	return true
+}
+
+func overlapsSensitive(start, length uint32, intervals []Interval) bool {
+	end := start + length
+	for _, interval := range intervals {
+		intervalEnd := interval.Start + interval.Length
+		if interval.Start >= end {
+			return false
+		}
+		if intervalEnd > start {
+			return true
+		}
+	}
+	return false
 }
 
 func sourceSensitive(source evidence.Source) bool {
