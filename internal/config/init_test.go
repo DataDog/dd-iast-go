@@ -12,6 +12,29 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestDefaultRedactionPatternsMatchAcceptedSensitiveForms(t *testing.T) {
+	for _, name := range []string{"password", "API_KEY", "Authorization", "consumer_secret"} {
+		if !defaultRedactionNamePattern.MatchString(name) {
+			t.Errorf("name pattern did not match %q", name)
+		}
+	}
+	for _, value := range []string{"Bearer ABC.def-123", "token:abcdefghijklm", "ghp_123456789012345678901234567890123456"} {
+		if !defaultRedactionValuePattern.MatchString(value) {
+			t.Errorf("value pattern did not match %q", value)
+		}
+	}
+	for _, name := range []string{"username", "limit", "plain"} {
+		if defaultRedactionNamePattern.MatchString(name) {
+			t.Errorf("name pattern unexpectedly matched %q", name)
+		}
+	}
+	for _, value := range []string{"plain text", "token:short", "Bearer"} {
+		if defaultRedactionValuePattern.MatchString(value) {
+			t.Errorf("value pattern unexpectedly matched %q", value)
+		}
+	}
+}
+
 func TestObserveReplaysInitialConfiguration(t *testing.T) {
 	count := 0
 	observer := loader.Observer{

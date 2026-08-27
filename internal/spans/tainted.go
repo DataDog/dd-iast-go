@@ -7,6 +7,7 @@ package spans
 
 import (
 	"log/slog"
+	"strings"
 	"sync/atomic"
 
 	"github.com/DataDog/dd-iast-go/internal/instrumentation"
@@ -103,6 +104,9 @@ func (a *Annotation) TryCommitTainted(commit *TaintedCommit, beforeCommit func(*
 		mapping[localIndex] = eventIndex
 	}
 
+	for _, eventIndex := range mapping {
+		a.eventSourceIndexes[eventIndex] = eventIndex
+	}
 	vulnerability := commit.Vulnerability
 	if vulnerability.Location != nil {
 		location := *vulnerability.Location
@@ -123,7 +127,16 @@ func (a *Annotation) TryCommitTainted(commit *TaintedCommit, beforeCommit func(*
 		stagedIdentities = append(stagedIdentities, commit.Sources[localIndex].Identity)
 		stagedModels = append(stagedModels, commit.Sources[localIndex].Model)
 	}
-	stagedVulnerabilities := append(make([]model.Vulnerability, 0, len(a.Event.Vulnerabilities)+1), a.Event.Vulnerabilities...)
+	var redacted [MaxEventSources]bool
+	for localIndex, candidate := range commit.Sources {
+		eventIndex := mapping[localIndex]
+		if candidate.Model.Redacted && !stagedModels[eventIndex].Redacted {
+			stagedModels[eventIndex] = candidate.Model
+			redacted[eventIndex] = true
+		}
+	}
+	stagedVulnerabilities := redactSourceOccurrences(a.Event.Vulnerabilities, redacted)
+	vulnerability = redactSourceOccurrence(vulnerability, redacted)
 
 	if !reserveEventSourceBytes(additionalBytes) {
 		return false
@@ -148,9 +161,6 @@ func (a *Annotation) TryCommitTainted(commit *TaintedCommit, beforeCommit func(*
 	a.Event.Vulnerabilities = stagedVulnerabilities
 	a.sourceIdentityBytes += additionalBytes
 	a.sourceIndex = index
-	for eventIndex := range a.Event.Sources {
-		a.eventSourceIndexes[eventIndex] = eventIndex
-	}
 	committed = true
 	return true
 }
@@ -211,6 +221,43 @@ func sourceIdentityHash(identity SourceIdentity) uint64 {
 		hash = (hash ^ uint64(identity.Value[index])) * prime
 	}
 	return hash
+}
+
+func redactSourceOccurrences(vulnerabilities []model.Vulnerability, redacted [MaxEventSources]bool) []model.Vulnerability {
+	result := append(make([]model.Vulnerability, 0, len(vulnerabilities)+1), vulnerabilities...)
+	for index := range result {
+		result[index] = redactSourceOccurrence(result[index], redacted)
+	}
+	return result
+}
+
+func redactSourceOccurrence(vulnerability model.Vulnerability, redacted [MaxEventSources]bool) model.Vulnerability {
+	if vulnerability.Evidence == nil || len(vulnerability.Evidence.ValueParts) == 0 {
+		return vulnerability
+	}
+	evidence := *vulnerability.Evidence
+	parts := make([]model.ValuePart, len(evidence.ValueParts))
+	copy(parts, evidence.ValueParts)
+	changed := false
+	for index := range parts {
+		if parts[index].SourceIndex == nil {
+			continue
+		}
+		sourceIndex := *parts[index].SourceIndex
+		if sourceIndex < 0 || sourceIndex >= len(redacted) || !redacted[sourceIndex] || parts[index].Redacted {
+			continue
+		}
+		parts[index].Pattern = strings.Repeat("*", len(parts[index].Value))
+		parts[index].Value = ""
+		parts[index].Redacted = true
+		changed = true
+	}
+	if !changed {
+		return vulnerability
+	}
+	evidence.ValueParts = parts
+	vulnerability.Evidence = &evidence
+	return vulnerability
 }
 
 // +checklocks:a.RWMutex

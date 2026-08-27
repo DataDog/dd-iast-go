@@ -54,6 +54,33 @@ func TestTryCommitTaintedMergesAndRemapsSources(t *testing.T) {
 }
 
 // +checklocksignore
+func TestTryCommitTaintedUpgradesExistingSourceRedaction(t *testing.T) {
+	configureTaintedCommitTest(t)
+	ann := &Annotation{Sampled: true}
+	first := taintedCommit(1, []string{"secret"}, []int{0})
+	if !ann.TryCommitTainted(&first, nil) {
+		t.Fatal("first transaction failed")
+	}
+	second := taintedCommit(2, []string{"secret"}, []int{0})
+	second.Sources[0].Model = model.NewSourceRedactedString(constants.OriginHttpRequestParameter, "parameter", "abcdef")
+	if !ann.TryCommitTainted(&second, nil) {
+		t.Fatal("redacting transaction failed")
+	}
+	if len(ann.Event.Sources) != 1 || !ann.Event.Sources[0].Redacted || ann.Event.Sources[0].Value != "" {
+		t.Fatalf("source was not upgraded: %#v", ann.Event.Sources)
+	}
+	for index, vulnerability := range ann.Event.Vulnerabilities {
+		part := vulnerability.Evidence.ValueParts[0]
+		if !part.Redacted || part.Value != "" || part.Pattern != "*" || part.SourceIndex == nil || *part.SourceIndex != 0 {
+			t.Fatalf("vulnerability %d source occurrence was not upgraded: %#v", index, part)
+		}
+	}
+	ann.Lock()
+	ann.releaseSourceIdentities()
+	ann.Unlock()
+}
+
+// +checklocksignore
 func TestTryCommitTaintedRejectsWithoutPartialState(t *testing.T) {
 	configureTaintedCommitTest(t)
 	tests := []struct {
