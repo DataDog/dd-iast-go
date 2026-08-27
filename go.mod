@@ -10,6 +10,7 @@ tool (
 
 require (
 	github.com/DataDog/dd-trace-go/v2 v2.11.0-dev.0.20260804111058-8828d86aa5e7
+	github.com/DataDog/go-sqllexer v0.2.4
 	github.com/DataDog/orchestrion v1.12.2
 	github.com/google/uuid v1.6.0
 	github.com/puzpuzpuz/xsync/v4 v4.5.0
@@ -33,7 +34,6 @@ require (
 	github.com/DataDog/datadog-go/v5 v5.9.1 // indirect
 	github.com/DataDog/go-libddwaf/v5 v5.0.1 // indirect
 	github.com/DataDog/go-runtime-metrics-internal v0.0.4-0.20260317103029-7c129975f019 // indirect
-	github.com/DataDog/go-sqllexer v0.2.4 // indirect
 	github.com/DataDog/go-tuf v1.1.1-0.5.2 // indirect
 	github.com/DataDog/sketches-go v1.4.8 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect

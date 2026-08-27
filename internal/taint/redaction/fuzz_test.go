@@ -5,7 +5,82 @@
 
 package redaction
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/DataDog/go-sqllexer"
+)
+
+func FuzzAnalyzeSQL(f *testing.F) {
+	f.Add("SELECT 'secret', 123")
+	f.Add("SELECT q'{pass'word}' FROM dual")
+	f.Add("SELECT $tag$secret$tag$")
+	f.Add("SELECT q'\\x\\'hunter2'")
+	f.Add("'!q'!1!'!\\]]1{{ {")
+	f.Add("a)(q'![['{!',(][")
+	f.Fuzz(func(t *testing.T, query string) {
+		if len(query) > MaxAnalyzerBytes+1 {
+			return
+		}
+		analysis := AnalyzeSQL(query)
+		if analysis.Status != AnalysisOK {
+			if analysis.Value != "" || len(analysis.Sensitive) != 0 {
+				t.Fatalf("non-OK analysis exposed evidence: %#v", analysis)
+			}
+			return
+		}
+		if analysis.Value != query || len(analysis.Sensitive) > MaxSensitiveIntervals {
+			t.Fatalf("invalid OK analysis: %#v", analysis)
+		}
+		var previousEnd uint32
+		for index, interval := range analysis.Sensitive {
+			if interval.Length == 0 || interval.Start > uint32(len(query)) || interval.Length > uint32(len(query))-interval.Start || index > 0 && interval.Start <= previousEnd {
+				t.Fatalf("invalid interval %d: %#v", index, interval)
+			}
+			previousEnd = interval.Start + interval.Length
+		}
+		assertDefaultSQLLiteralsCovered(t, query, analysis.Sensitive)
+	})
+}
+
+func assertDefaultSQLLiteralsCovered(t *testing.T, query string, intervals []Interval) {
+	t.Helper()
+	_, quoteSpans, _ := scanOracleQuotes(query)
+	segmentStart := 0
+	for _, span := range quoteSpans {
+		assertSQLSegmentLiteralsCovered(t, query[segmentStart:span.start], segmentStart, intervals)
+		segmentStart = span.end
+	}
+	assertSQLSegmentLiteralsCovered(t, query[segmentStart:], segmentStart, intervals)
+}
+
+func assertSQLSegmentLiteralsCovered(t *testing.T, segment string, offset int, intervals []Interval) {
+	t.Helper()
+	lexer := sqllexer.New(segment)
+	position := 0
+	for tokens := 0; tokens < maxAnalyzerTokens; tokens++ {
+		token := lexer.Scan()
+		if token == nil || token.Type == sqllexer.ERROR || token.Type == sqllexer.EOF {
+			return
+		}
+		interval, sensitive := sqlSensitiveToken(token.Type, offset+position, token.Value)
+		position += len(token.Value)
+		if !sensitive {
+			continue
+		}
+		end := interval.Start + interval.Length
+		covered := false
+		for _, candidate := range intervals {
+			if candidate.Start <= interval.Start && candidate.Start+candidate.Length >= end {
+				covered = true
+				break
+			}
+		}
+		if !covered {
+			t.Fatalf("literal interval %#v is not covered by %#v", interval, intervals)
+		}
+	}
+}
 
 func FuzzMappedPattern(f *testing.F) {
 	f.Add("secret", "prefix-secret-suffix", 1_000)
