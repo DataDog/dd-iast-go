@@ -208,6 +208,7 @@ func (o *Owner) Finish() {
 
 	o.store.charged.Add(-charged)
 	o.store.values.Add(-values)
+	o.store.addOperatorValues(-values)
 	record.bindings.reset()
 	record.state.Store(uint32(stateDead))
 }

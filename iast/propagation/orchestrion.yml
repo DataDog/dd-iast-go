@@ -9,6 +9,399 @@ meta:
   description: Named taint propagation call-site wrappers
 
 aspects:
+  - id: operator string concat 2
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not:
+            one-of:
+              - import-path: github.com/DataDog/dd-iast-go/iast/propagation
+              - import-path: github.com/DataDog/dd-iast-go/taint
+        - string-concat: {min-operands: 2, max-operands: 2}
+    advice:
+      - wrap-expression:
+          imports:
+            iastprop: github.com/DataDog/dd-iast-go/iast/propagation
+          template: |-
+            iastprop.Concat2(
+              {{- range .StringConcatOperands }}
+              {{ . }},
+              {{- end }}
+            )
+
+  - id: operator string concat 3
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not:
+            one-of:
+              - import-path: github.com/DataDog/dd-iast-go/iast/propagation
+              - import-path: github.com/DataDog/dd-iast-go/taint
+        - string-concat: {min-operands: 3, max-operands: 3}
+    advice:
+      - wrap-expression:
+          imports:
+            iastprop: github.com/DataDog/dd-iast-go/iast/propagation
+          template: |-
+            iastprop.Concat3(
+              {{- range .StringConcatOperands }}
+              {{ . }},
+              {{- end }}
+            )
+
+  - id: operator string concat 4
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not:
+            one-of:
+              - import-path: github.com/DataDog/dd-iast-go/iast/propagation
+              - import-path: github.com/DataDog/dd-iast-go/taint
+        - string-concat: {min-operands: 4, max-operands: 4}
+    advice:
+      - wrap-expression:
+          imports:
+            iastprop: github.com/DataDog/dd-iast-go/iast/propagation
+          template: |-
+            iastprop.Concat4(
+              {{- range .StringConcatOperands }}
+              {{ . }},
+              {{- end }}
+            )
+
+  - id: operator string concat 5
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not:
+            one-of:
+              - import-path: github.com/DataDog/dd-iast-go/iast/propagation
+              - import-path: github.com/DataDog/dd-iast-go/taint
+        - string-concat: {min-operands: 5, max-operands: 5}
+    advice:
+      - wrap-expression:
+          imports:
+            iastprop: github.com/DataDog/dd-iast-go/iast/propagation
+          template: |-
+            iastprop.Concat5(
+              {{- range .StringConcatOperands }}
+              {{ . }},
+              {{- end }}
+            )
+
+  - id: operator string concat 6
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not:
+            one-of:
+              - import-path: github.com/DataDog/dd-iast-go/iast/propagation
+              - import-path: github.com/DataDog/dd-iast-go/taint
+        - string-concat: {min-operands: 6, max-operands: 6}
+    advice:
+      - wrap-expression:
+          imports:
+            iastprop: github.com/DataDog/dd-iast-go/iast/propagation
+          template: |-
+            iastprop.Concat6(
+              {{- range .StringConcatOperands }}
+              {{ . }},
+              {{- end }}
+            )
+
+  - id: operator string concat 7
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not:
+            one-of:
+              - import-path: github.com/DataDog/dd-iast-go/iast/propagation
+              - import-path: github.com/DataDog/dd-iast-go/taint
+        - string-concat: {min-operands: 7, max-operands: 7}
+    advice:
+      - wrap-expression:
+          imports:
+            iastprop: github.com/DataDog/dd-iast-go/iast/propagation
+          template: |-
+            iastprop.Concat7(
+              {{- range .StringConcatOperands }}
+              {{ . }},
+              {{- end }}
+            )
+
+  - id: operator string concat 8
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not:
+            one-of:
+              - import-path: github.com/DataDog/dd-iast-go/iast/propagation
+              - import-path: github.com/DataDog/dd-iast-go/taint
+        - string-concat: {min-operands: 8, max-operands: 8}
+    advice:
+      - wrap-expression:
+          imports:
+            iastprop: github.com/DataDog/dd-iast-go/iast/propagation
+          template: |-
+            iastprop.Concat8(
+              {{- range .StringConcatOperands }}
+              {{ . }},
+              {{- end }}
+            )
+
+  - id: operator string concat 9
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not:
+            one-of:
+              - import-path: github.com/DataDog/dd-iast-go/iast/propagation
+              - import-path: github.com/DataDog/dd-iast-go/taint
+        - string-concat: {min-operands: 9, max-operands: 9}
+    advice:
+      - wrap-expression:
+          imports:
+            iastprop: github.com/DataDog/dd-iast-go/iast/propagation
+          template: |-
+            iastprop.Concat9(
+              {{- range .StringConcatOperands }}
+              {{ . }},
+              {{- end }}
+            )
+
+  - id: operator string concat 10
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not:
+            one-of:
+              - import-path: github.com/DataDog/dd-iast-go/iast/propagation
+              - import-path: github.com/DataDog/dd-iast-go/taint
+        - string-concat: {min-operands: 10, max-operands: 10}
+    advice:
+      - wrap-expression:
+          imports:
+            iastprop: github.com/DataDog/dd-iast-go/iast/propagation
+          template: |-
+            iastprop.Concat10(
+              {{- range .StringConcatOperands }}
+              {{ . }},
+              {{- end }}
+            )
+
+  - id: operator string concat 11
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not:
+            one-of:
+              - import-path: github.com/DataDog/dd-iast-go/iast/propagation
+              - import-path: github.com/DataDog/dd-iast-go/taint
+        - string-concat: {min-operands: 11, max-operands: 11}
+    advice:
+      - wrap-expression:
+          imports:
+            iastprop: github.com/DataDog/dd-iast-go/iast/propagation
+          template: |-
+            iastprop.Concat11(
+              {{- range .StringConcatOperands }}
+              {{ . }},
+              {{- end }}
+            )
+
+  - id: operator string concat 12
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not:
+            one-of:
+              - import-path: github.com/DataDog/dd-iast-go/iast/propagation
+              - import-path: github.com/DataDog/dd-iast-go/taint
+        - string-concat: {min-operands: 12, max-operands: 12}
+    advice:
+      - wrap-expression:
+          imports:
+            iastprop: github.com/DataDog/dd-iast-go/iast/propagation
+          template: |-
+            iastprop.Concat12(
+              {{- range .StringConcatOperands }}
+              {{ . }},
+              {{- end }}
+            )
+
+  - id: operator string concat 13
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not:
+            one-of:
+              - import-path: github.com/DataDog/dd-iast-go/iast/propagation
+              - import-path: github.com/DataDog/dd-iast-go/taint
+        - string-concat: {min-operands: 13, max-operands: 13}
+    advice:
+      - wrap-expression:
+          imports:
+            iastprop: github.com/DataDog/dd-iast-go/iast/propagation
+          template: |-
+            iastprop.Concat13(
+              {{- range .StringConcatOperands }}
+              {{ . }},
+              {{- end }}
+            )
+
+  - id: operator string concat 14
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not:
+            one-of:
+              - import-path: github.com/DataDog/dd-iast-go/iast/propagation
+              - import-path: github.com/DataDog/dd-iast-go/taint
+        - string-concat: {min-operands: 14, max-operands: 14}
+    advice:
+      - wrap-expression:
+          imports:
+            iastprop: github.com/DataDog/dd-iast-go/iast/propagation
+          template: |-
+            iastprop.Concat14(
+              {{- range .StringConcatOperands }}
+              {{ . }},
+              {{- end }}
+            )
+
+  - id: operator string concat 15
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not:
+            one-of:
+              - import-path: github.com/DataDog/dd-iast-go/iast/propagation
+              - import-path: github.com/DataDog/dd-iast-go/taint
+        - string-concat: {min-operands: 15, max-operands: 15}
+    advice:
+      - wrap-expression:
+          imports:
+            iastprop: github.com/DataDog/dd-iast-go/iast/propagation
+          template: |-
+            iastprop.Concat15(
+              {{- range .StringConcatOperands }}
+              {{ . }},
+              {{- end }}
+            )
+
+  - id: operator string concat 16
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not:
+            one-of:
+              - import-path: github.com/DataDog/dd-iast-go/iast/propagation
+              - import-path: github.com/DataDog/dd-iast-go/taint
+        - string-concat: {min-operands: 16, max-operands: 16}
+    advice:
+      - wrap-expression:
+          imports:
+            iastprop: github.com/DataDog/dd-iast-go/iast/propagation
+          template: |-
+            iastprop.Concat16(
+              {{- range .StringConcatOperands }}
+              {{ . }},
+              {{- end }}
+            )
+
+  - id: operator bytes to string conversion
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not:
+            one-of:
+              - import-path: github.com/DataDog/dd-iast-go/iast/propagation
+              - import-path: github.com/DataDog/dd-iast-go/taint
+        - type-conversion: {from: bytes, to: string}
+    advice:
+      - wrap-expression:
+          imports:
+            iastprop: github.com/DataDog/dd-iast-go/iast/propagation
+          template: '{{ .AST.Fun }}(iastprop.BytesToString({{ index .AST.Args 0 }}))'
+
+  - id: operator string slice
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not:
+            one-of:
+              - import-path: github.com/DataDog/dd-iast-go/iast/propagation
+              - import-path: github.com/DataDog/dd-iast-go/taint
+        - slice-expression: {operand: string}
+    advice:
+      - wrap-expression:
+          imports:
+            iastprop: github.com/DataDog/dd-iast-go/iast/propagation
+          template: |-
+            {{- if .SliceHasLow }}
+              {{- if .SliceHasHigh }}
+                iastprop.StringSliceBounds({{ .AST.X }}, {{ .AST.Low }}, {{ .AST.High }})
+              {{- else }}
+                iastprop.StringSliceLow({{ .AST.X }}, {{ .AST.Low }})
+              {{- end }}
+            {{- else }}
+              {{- if .SliceHasHigh }}
+                iastprop.StringSliceHigh({{ .AST.X }}, {{ .AST.High }})
+              {{- else }}
+                iastprop.StringSliceAll({{ .AST.X }})
+              {{- end }}
+            {{- end }}
+
+  - id: operator byte slice
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: false, pattern: "github.com/DataDog/dd-iast-go/internal/**"}}
+        - not:
+            one-of:
+              - import-path: github.com/DataDog/dd-iast-go/iast/propagation
+              - import-path: github.com/DataDog/dd-iast-go/taint
+        - slice-expression: {operand: bytes}
+    advice:
+      - wrap-expression:
+          imports:
+            iastprop: github.com/DataDog/dd-iast-go/iast/propagation
+          template: |-
+            {{- if .SliceHasMax }}
+              {{- if .SliceHasLow }}
+                iastprop.BytesSliceFull({{ .AST.X }}, {{ .AST.Low }}, {{ .AST.High }}, {{ .AST.Max }})
+              {{- else }}
+                iastprop.BytesSliceFullZero({{ .AST.X }}, {{ .AST.High }}, {{ .AST.Max }})
+              {{- end }}
+            {{- else if .SliceHasLow }}
+              {{- if .SliceHasHigh }}
+                iastprop.BytesSliceBounds({{ .AST.X }}, {{ .AST.Low }}, {{ .AST.High }})
+              {{- else }}
+                iastprop.BytesSliceLow({{ .AST.X }}, {{ .AST.Low }})
+              {{- end }}
+            {{- else if .SliceHasHigh }}
+              iastprop.BytesSliceHigh({{ .AST.X }}, {{ .AST.High }})
+            {{- else }}
+              iastprop.BytesSliceAll({{ .AST.X }})
+            {{- end }}
+
   - id: strings.Clone
     join-point:
       all-of:

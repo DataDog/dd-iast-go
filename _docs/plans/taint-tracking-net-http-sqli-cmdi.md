@@ -2,7 +2,7 @@
 
 ## Status
 
-- **State:** All authorized phases are complete through Phase 9. Phase 6 operator propagation remains explicitly deferred by the user; normative-corpus and live-backend checks retain the approved compatibility assumptions.
+- **State:** All implementation phases are complete. Unsafe mutable-byte operators are documented safe misses; normative-corpus and live-backend checks retain the approved compatibility assumptions, and the Orchestrion matcher dependency is pending release from PR #881.
 - **Phase 0 results:** [taint-tracking-net-http-sqli-cmdi-phase-0.md](./taint-tracking-net-http-sqli-cmdi-phase-0.md)
 - **Scope:** Interactive Application Security Testing (IAST) taint engine, Go standard-library HTTP sources, string and byte-slice propagation, `database/sql` SQL-injection sinks, and `os/exec` command-injection sinks
 - **Initial supported compiler:** exact Go 1.26.6 via `GOTOOLCHAIN=go1.26.6`, with Orchestrion 1.12.2. The `go.mod` `go` directive alone does not identify the standard-library sources being woven.
@@ -839,22 +839,27 @@ limitations are documented in the README and the Phase 5 implementation plan.
 
 ### Phase 6 — runtime and expression propagation
 
-**Deferred.** The detailed Orchestrion schema and implementation plan is in
+**Complete for every operator that passes the safety proof.** The detailed
+result is in
 [taint-tracking-net-http-sqli-cmdi-phase-6.md](./taint-tracking-net-http-sqli-cmdi-phase-6.md).
-The user deferred the phase at its schema checkpoint. No operator aspect or
-Orchestrion dependency change is authorized. Independent Phase 7a reporting and
-sink work proceeds while this phase remains blocked.
+Orchestrion PR DataDog/orchestrion#881 supplies maximal string-concat, typed
+slice-expression, and allocation-safe conversion matchers. This module pins the
+reviewed PR revision until a release contains it.
 
-When resumed, implement the Phase 0 decision:
+Expression aspects support 2–16 operand string chains, string and byte slicing,
+three-index byte slicing, defined types, aliases, constrained type parameters,
+and byte-to-string conversions in proven nonoptimized contexts. Evaluation
+order, panic behavior, result type, capacity, and disabled/clean allocation
+counts are preserved. All measured local deltas are below four nanoseconds.
 
-- land the minimal Orchestrion `builtin-call` and typed `SliceExpr` support;
-- add maximal-chain/conversion expression matchers where runtime hooks did not pass;
-- add runtime concat/conversion hooks only where their safety and overhead gates passed;
-- update the Orchestrion dependency and `taint/orchestrion.yml`.
+String-to-byte, `append`, and `copy` propagation remain rejected: mutable byte
+results and unregistered aliases can be modified without bounded invalidation,
+which would preserve stale provenance. This satisfies the phase's mandatory
+stop condition by leaving those shapes as documented safe misses rather than
+enabling inaccurate tracking.
 
-**Exit:** generic/alias/defined-type fixtures pass; built-ins do not match local homonyms; slicing is exact; a maximal concat chain keeps its baseline allocation count on disabled/untainted paths; runtime callbacks, if used, are early-init and recursion safe; all operator benchmarks pass.
-
-The upstream Orchestrion matcher/schema work can run in parallel with Phases 1–5 after Phase 0. The dd-iast-go aspects and Phase 6 exit tests require Phase 3. If neither runtime nor expression instrumentation meets the required concat/conversion gate, stop general availability and return to user review.
+**Exit:** satisfied for the safe operator matrix. The only external dependency
+item is merging and releasing the pinned Orchestrion PR.
 
 ### Phase 7a — report assembly and sink hooks
 
@@ -921,9 +926,11 @@ a failure. Mutation feasibility was checked; neither `go-mutesting` nor
 not execute.
 
 The final fixed store plus manager and managed-root ceiling is 22,620,768 bytes,
-below 24 MiB. The final twenty-process sampled-out HTTP run measured 78.54 µs
-control and 80.09 µs IAST (+1.97%, statistically unchanged at p=0.512), with
-+1.39% bytes and +1.42% allocations. JSON active-clean decoding measured
+below 24 MiB. After operator enablement, the final twenty-process sampled-out
+HTTP run measured 75.83 µs control and 77.88 µs IAST (+2.70%, statistically
+unchanged at p=0.052), with +1.39% bytes and +1.42% allocations. The local
+operator contribution remains below four nanoseconds and the end-to-end result
+is within the uncertainty explicitly accepted at the Phase 5 checkpoint. JSON active-clean decoding measured
 791.8 ns control and 814.2 ns woven (+2.83%) with unchanged 376 bytes and 12
 allocations. SQL and command checkpoint results remain recorded in Phase 7a.
 
@@ -935,8 +942,10 @@ capacity/error branches are exercised by race, fault, property, and multi-millio
 execution fuzz tests, which is the recorded justification rather than adding
 tests that manufacture impossible states.
 
-**Exit:** all non-deferred repository-controlled gates pass. Acceptance criterion
-9 remains excluded only by the explicit Phase 6 deferral. The normative shared
+**Exit:** all repository-controlled gates pass for the documented safe matrix.
+Acceptance criterion 9 is satisfied for concat, slicing, and byte-to-string
+conversion; mutable string-to-byte and append/copy shapes fail their mandatory
+provenance proof and are explicit safe misses. The normative shared
 redaction corpus and live backend fixture were unavailable; the user explicitly
 approved carrying the provisional RFC corpus and 25,000-byte
 `MAX_SIZE_EXCEEDED` compatibility assumptions, so these are external release

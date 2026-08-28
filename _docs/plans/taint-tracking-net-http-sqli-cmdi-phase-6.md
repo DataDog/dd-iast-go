@@ -2,14 +2,17 @@
 
 ## Status
 
-- **State:** deferred by user at the Orchestrion schema checkpoint
+- **State:** implemented after the user resumed the phase; upstream PR DataDog/orchestrion#881 is pinned by pseudo-version
 - **Parent:** [taint-tracking-net-http-sqli-cmdi.md](./taint-tracking-net-http-sqli-cmdi.md)
 - **Evidence:** [taint-tracking-net-http-sqli-cmdi-phase-0.md](./taint-tracking-net-http-sqli-cmdi-phase-0.md), section 4
 - **Toolchain:** Go 1.26.6; Orchestrion 1.12.2 plus the additive APIs below
 
-The user deferred this phase before schema approval. No Orchestrion or operator
-implementation is authorized. Phase 7a reporting and sink work can proceed
-independently; this plan is retained as the reviewed basis for resuming Phase 6.
+The user initially deferred this phase, then explicitly required completion of
+all remaining work. The implemented schema is narrower than the initial draft:
+it adds maximal `string-concat`, typed `slice-expression`, and direction-aware
+`type-conversion` join points, with template helpers for concat operands and
+slice bound presence. Built-in mutation join points remain rejected by the
+section 5 safety proof rather than enabled unsafely.
 
 This phase targets string concatenation, string and byte slicing,
 `string`/`[]byte` conversions, and the built-in `append` and `copy` operations.
@@ -360,7 +363,38 @@ statistical uncertainty explicitly, as approved for Phase 5.
 Each repository uses separate clean Jujutsu changesets and its own validation.
 The Orchestrion repository documentation is read before modifying it.
 
-## 10. Stop conditions
+## 10. Implementation result
+
+Orchestrion PR [DataDog/orchestrion#881](https://github.com/DataDog/orchestrion/pull/881)
+adds the typed join points, constant-aware maximal-chain flattening, constrained
+core-type resolution, optimized conversion context exclusions, schemas, hashes,
+and compiled injector goldens. This module pins commit `23afa71d6dcb` as
+`v1.12.2-0.20260828141217-23afa71d6dcb` until the change is released.
+
+Enabled operators:
+
+- maximal nonconstant string `+` chains with 2–16 compiler-equivalent operands;
+- all two-index string and byte slice forms and valid three-index byte slices;
+- byte-to-string conversions in non-discarded assignments, declarations, and
+  returns, excluding compiler-optimized parent contexts.
+
+String-to-byte propagation was implemented during feasibility work but removed
+before enablement because the mutable result can retain stale provenance after
+direct assignment. `append` and `copy` remain disabled because no bounded exact
+key design can invalidate unregistered aliases and direct byte assignments.
+This is the plan's mandatory safe stop, not unfinished enabled behavior.
+
+Twenty one-second local samples pass the approved under-80-ns gate with no
+allocation delta: concat-4 inactive +3.72 ns, concat-4 active-clean +2.54 ns,
+byte-to-string conversion +2.06 ns, and combined string/byte slices +3.40 ns.
+The optimized `len(string(bytes))` form remains unwrapped at +0.04 ns and keeps
+zero allocations. The final sampled-out HTTP run measured 75.83 µs control and
+77.88 µs IAST (+2.70%, statistically unchanged at p=0.052), with the unchanged
++1.39% byte and +1.42% allocation deltas. One matched URL concat contributes
+only the measured sub-four-nanosecond local gate; the end-to-end variance remains
+inside the statistical uncertainty the user accepted at the Phase 5 checkpoint.
+
+## 11. Stop conditions
 
 Stop for user review if typed proxy data cannot reach advice; generated code
 evaluates an expression twice; an untyped or defined type changes; a panic or

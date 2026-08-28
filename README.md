@@ -28,9 +28,9 @@ Many of the functionality provided by this module relies on taint tracking:
 Category | Supported operations
 ---|---
 String windows | `Cut*`, `Split*`, `Fields*`, `Trim*`, `Lines`, and their sequence variants
-String copies and transforms | `Clone`, `Join`, `Repeat`, `Replace*`, case conversion, `Map`, and `ToValidUTF8`
+String copies and transforms | Maximal `+` chains of 2–16 operands; string slicing; allocation-preserving `[]byte`-to-`string` assignments, declarations, and returns; `Clone`, `Join`, `Repeat`, `Replace*`, case conversion, `Map`, and `ToValidUTF8`
 Formatting and encoding | `fmt.Sprint*`, `net/url` escape and unescape functions, and `strconv` quote and unquote functions
-Byte windows | `Cut*`, `Split*`, `Fields*`, and `Trim*`
+Byte windows | Two- and three-index `[]byte` slicing; `Cut*`, `Split*`, `Fields*`, and `Trim*`
 Byte copies and transforms | `Clone`, `Join`, `Repeat`, `Replace*`, case conversion, `Map`, and `ToValidUTF8`
 Stateful writers | Direct `strings.Builder` and `bytes.Buffer` writes, `Grow`, `Reset`, `Truncate`, and `String`
 JSON decoding | Go 1.26 `json.Unmarshal` and `json.Decoder.Decode` string values in nested structs, arrays, slices, and typed map values
@@ -39,7 +39,15 @@ Propagation instrumentation applies to direct calls in the application root.
 Calls through function or method values are not supported. A later direct writer
 call validates the current receiver shape and drops stale provenance. Mutable
 `bytes.Buffer.Bytes` and `AvailableBuffer` results remain untainted; accessing
-them invalidates tracked buffer state. Tainted replacement terms supplied to
+them invalidates tracked buffer state. String-to-byte conversion, `append`,
+`copy`, `+=`, and direct byte index/slice assignment remain unsupported because
+mutation can otherwise leave stale provenance; these unsupported shapes safely
+lose taint instead of creating a new mutable root. Supported byte-slice windows
+share the parent managed root and therefore inherit its existing limitation:
+direct writes through an alias cannot invalidate ranges until a tracked writer
+operation observes the mutation. Conversion contexts optimized by the Go
+compiler, including calls, comparisons, map keys, ranges, and concatenations,
+are intentionally not wrapped. Tainted replacement terms supplied to
 `strings.Replacer` are not tracked in this release. Builder and buffer value
 copies, and aliases that share backing memory without the same receiver, can
 only lose provenance and never publish unchecked provenance.

@@ -22,9 +22,22 @@ func JoinString(elements []string, separator, result string) string {
 	if len(result) == 0 || len(result) > store.MaxRootBytes {
 		return result
 	}
-	if len(elements) == 1 && stringAlias(elements[0], result) {
-		StringWindow(elements[0], result)
-		return result
+	if separator == "" {
+		candidate := ""
+		for _, element := range elements {
+			if element == "" {
+				continue
+			}
+			if candidate != "" {
+				candidate = ""
+				break
+			}
+			candidate = element
+		}
+		if candidate != "" && stringAlias(candidate, result) {
+			StringWindow(candidate, result)
+			return result
+		}
 	}
 	s := request.ActiveStore()
 	if s == nil || !mayContainJoinedString(s, elements, separator) {

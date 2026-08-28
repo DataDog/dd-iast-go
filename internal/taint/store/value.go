@@ -204,10 +204,12 @@ func (o *Owner) insertWindow(slot *valueSlot, shard *shard, key Key, offset uint
 		o.owner.drops.full.Add(1)
 		return false
 	}
+	o.store.addOperatorValues(1)
 	// Reserve the generation quota last. A concurrent generation claim can now
 	// bulk-subtract only reservations whose value counters are already owned.
 	if root.generation.Load() != rootGen || !reserveRootValue(root, rootGen) {
 		o.store.values.Add(-1)
+		o.store.addOperatorValues(-1)
 		o.owner.values.Add(-1)
 		o.owner.drops.full.Add(1)
 		return false

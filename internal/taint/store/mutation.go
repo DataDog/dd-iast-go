@@ -93,6 +93,7 @@ func (o *Owner) claimMutation(ref RootRef) (uint32, bool) {
 		count := int32(uint32(previousQuota))
 		o.owner.values.Add(-count)
 		o.store.values.Add(-count)
+		o.store.addOperatorValues(-count)
 	}
 	return next, true
 }

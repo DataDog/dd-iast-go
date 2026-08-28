@@ -160,21 +160,35 @@ type Stats struct {
 
 // Store owns all fixed-capacity process storage.
 type Store struct {
-	shards        [Shards]shard
-	owners        [MaxOwners]owner
-	ownerMu       sync.Mutex
-	nextOwnerID   atomic.Uint64
-	acquireDrops  atomic.Uint64
-	charged       atomic.Int64
-	values        atomic.Int32
-	writerStates  atomic.Int32
-	writerActive  *atomic.Int32
-	overflow      [OverflowBlocks]overflowBlock
-	overflowFree  [OverflowBlocks]uint16
-	overflowN     uint16
-	overflowMu    sync.Mutex
-	compactions   atomic.Uint64
-	compactAborts atomic.Uint64
+	shards         [Shards]shard
+	owners         [MaxOwners]owner
+	ownerMu        sync.Mutex
+	nextOwnerID    atomic.Uint64
+	acquireDrops   atomic.Uint64
+	charged        atomic.Int64
+	values         atomic.Int32
+	writerStates   atomic.Int32
+	writerActive   *atomic.Int32
+	operatorActive atomic.Pointer[atomic.Int32]
+	overflow       [OverflowBlocks]overflowBlock
+	overflowFree   [OverflowBlocks]uint16
+	overflowN      uint16
+	overflowMu     sync.Mutex
+	compactions    atomic.Uint64
+	compactAborts  atomic.Uint64
+}
+
+// BindOperatorActive binds a mirror counter used by operator fast gates.
+func (s *Store) BindOperatorActive(active *atomic.Int32) {
+	if active != nil {
+		s.operatorActive.Store(active)
+	}
+}
+
+func (s *Store) addOperatorValues(delta int32) {
+	if active := s.operatorActive.Load(); active != nil {
+		active.Add(delta)
+	}
 }
 
 // ActiveValues returns the process value counter for allocation-free bridge gates.

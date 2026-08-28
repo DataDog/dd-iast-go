@@ -6,6 +6,7 @@
 package store
 
 import (
+	"sync/atomic"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -100,6 +101,18 @@ func TestRootValueReleaseAndWriterIdentityDefenses(t *testing.T) {
 	owner.Finish()
 	_, _, ok = ref.Identity()
 	require.False(t, ok)
+}
+
+func TestOperatorValueMirror(t *testing.T) {
+	store := New()
+	var active atomic.Int32
+	store.BindOperatorActive(&active)
+	owner := store.Acquire()
+	_, _, ok := owner.TaintString("mirrored", 1)
+	require.True(t, ok)
+	require.Equal(t, int32(1), active.Load())
+	owner.Finish()
+	require.Zero(t, active.Load())
 }
 
 func TestProcessCounterAccessors(t *testing.T) {
