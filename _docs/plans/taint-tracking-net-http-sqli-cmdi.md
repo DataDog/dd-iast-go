@@ -934,8 +934,8 @@ is within the uncertainty explicitly accepted at the Phase 5 checkpoint. JSON ac
 791.8 ns control and 814.2 ns woven (+2.83%) with unchanged 376 bytes and 12
 allocations. SQL and command checkpoint results remain recorded in Phase 7a.
 
-Merged ordinary, aggregate-woven, and isolated integration coverage is 85.38%
-for request and 80.27% for store. Direct package coverage is 89.3% public taint,
+Merged ordinary, aggregate-woven, and isolated integration coverage is 85.43%
+for request and 80.07% for store after operator enablement. Direct package coverage is 89.3% public taint,
 93.6% ranges, 83.9% evidence, 86.9% redaction, and 100% deduplication. Evidence
 and redaction do not reach the 90% pure-code target; their remaining defensive
 capacity/error branches are exercised by race, fault, property, and multi-million
