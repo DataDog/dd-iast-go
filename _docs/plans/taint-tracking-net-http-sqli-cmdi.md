@@ -2,7 +2,7 @@
 
 ## Status
 
-- **State:** Phases 0-4 complete; Phase 5 named propagation operations are next
+- **State:** All authorized phases are complete through Phase 9. Phase 6 operator propagation remains explicitly deferred by the user; normative-corpus and live-backend checks retain the approved compatibility assumptions.
 - **Phase 0 results:** [taint-tracking-net-http-sqli-cmdi-phase-0.md](./taint-tracking-net-http-sqli-cmdi-phase-0.md)
 - **Scope:** Interactive Application Security Testing (IAST) taint engine, Go standard-library HTTP sources, string and byte-slice propagation, `database/sql` SQL-injection sinks, and `os/exec` command-injection sinks
 - **Initial supported compiler:** exact Go 1.26.6 via `GOTOOLCHAIN=go1.26.6`, with Orchestrion 1.12.2. The `go.mod` `go` directive alone does not identify the standard-library sources being woven.
@@ -911,9 +911,36 @@ provenance rather than publishing unchecked provenance.
 
 ### Phase 9 — system validation and documentation
 
-Run all checks, add overhead workloads, document exact coverage and limitations, update the vulnerability table, and run system tests against an agent/backend fixture.
+**Complete for the authorized feature set.** Ordinary and aggregate woven tests,
+all three isolated sink/JSON modules, focused race suites, `go vet`, checklocks,
+`GODEBUG=checkptr=2`, benchmark-module tests/vet, and executable bootstrap checks
+pass on Go 1.26.6 with Orchestrion 1.12.2. Twenty-second fuzz runs completed
+2,144,130 range, 3,509,499 evidence, and 690,615 SQL-redaction executions without
+a failure. Mutation feasibility was checked; neither `go-mutesting` nor
+`mutilate` is installed, so the non-blocking first-release mutation run could
+not execute.
 
-**Exit:** all acceptance criteria in section 19 pass and benchmark results are recorded in the change description.
+The final fixed store plus manager and managed-root ceiling is 22,620,768 bytes,
+below 24 MiB. The final twenty-process sampled-out HTTP run measured 78.54 µs
+control and 80.09 µs IAST (+1.97%, statistically unchanged at p=0.512), with
++1.39% bytes and +1.42% allocations. JSON active-clean decoding measured
+791.8 ns control and 814.2 ns woven (+2.83%) with unchanged 376 bytes and 12
+allocations. SQL and command checkpoint results remain recorded in Phase 7a.
+
+Merged ordinary, aggregate-woven, and isolated integration coverage is 85.38%
+for request and 80.27% for store. Direct package coverage is 89.3% public taint,
+93.6% ranges, 83.9% evidence, 86.9% redaction, and 100% deduplication. Evidence
+and redaction do not reach the 90% pure-code target; their remaining defensive
+capacity/error branches are exercised by race, fault, property, and multi-million
+execution fuzz tests, which is the recorded justification rather than adding
+tests that manufacture impossible states.
+
+**Exit:** all non-deferred repository-controlled gates pass. Acceptance criterion
+9 remains excluded only by the explicit Phase 6 deferral. The normative shared
+redaction corpus and live backend fixture were unavailable; the user explicitly
+approved carrying the provisional RFC corpus and 25,000-byte
+`MAX_SIZE_EXCEEDED` compatibility assumptions, so these are external release
+validation items rather than incomplete implementation work.
 
 ## 17. File change map
 

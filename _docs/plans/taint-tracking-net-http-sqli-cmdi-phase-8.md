@@ -23,8 +23,9 @@ input already carries byte provenance.
 - `iast/encoding/json` registers reader binding, document adoption, typed
   literal callbacks. Heavy registration is injected into
   root production `main` packages and excluded from generated `.test` mains.
-- Aspects pin `Decoder.Decode`, `decodeState.init`, `literalStore`, and
-  `literalInterface`. All callbacks are synchronous and request-bounded.
+- Aspects pin `Decoder.Decode`, `decodeState.init`, and `literalStore`. The
+  `literalInterface` path was evaluated and remains an explicit safe miss. All
+  callbacks are synchronous and request-bounded.
 
 ## Semantics and limits
 
@@ -51,3 +52,12 @@ and downstream sink use. Pin Go source shape and jsonv1. Add inactive and
 active-clean allocation benchmarks, telemetry counts, executable bootstrap
 checks, race, vet, checklocks, checkptr, and aggregate woven tests. Register in
 the aggregate tool, CI, and README only after all gates pass.
+
+## Result
+
+Complete. Decoder documents are exact-capacity immutable clones; tests prove
+that same-decoder documents retain distinct source values, custom unmarshalers
+stay clean, and panic identity is unchanged. The 64-slot/four-probe decoder
+mapping is refcounted and collision drops are documented. Twenty active-clean
+samples measured +2.83% with no byte or allocation delta. All listed validation
+lanes pass.

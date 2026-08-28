@@ -6,7 +6,6 @@
 package request
 
 import (
-	"bytes"
 	"context"
 
 	"github.com/DataDog/dd-iast-go/internal/model/constants"
@@ -52,7 +51,8 @@ func CloneReaderBytes(input any, data []byte) []byte {
 	if count == 0 {
 		return nil
 	}
-	clone := bytes.Clone(data)
+	clone := make([]byte, len(data))
+	copy(clone, data)
 	for index := 0; index < count; index++ {
 		analysis, ok := analysisForOwner(refs[index])
 		if ok {
