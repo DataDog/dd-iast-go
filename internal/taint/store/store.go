@@ -177,6 +177,10 @@ type Store struct {
 	compactAborts atomic.Uint64
 }
 
+// ActiveValues returns the process value counter for allocation-free bridge gates.
+// Callers may only load the counter; the store owns all updates.
+func (s *Store) ActiveValues() *atomic.Int32 { return &s.values }
+
 // New allocates and initializes a bounded store.
 func New() *Store {
 	store := new(Store)

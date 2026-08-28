@@ -33,6 +33,7 @@ Formatting and encoding | `fmt.Sprint*`, `net/url` escape and unescape functions
 Byte windows | `Cut*`, `Split*`, `Fields*`, and `Trim*`
 Byte copies and transforms | `Clone`, `Join`, `Repeat`, `Replace*`, case conversion, `Map`, and `ToValidUTF8`
 Stateful writers | Direct `strings.Builder` and `bytes.Buffer` writes, `Grow`, `Reset`, `Truncate`, and `String`
+JSON decoding | Go 1.26 `json.Unmarshal` and `json.Decoder.Decode` string values in nested structs, arrays, slices, and typed map values
 
 Propagation instrumentation applies to direct calls in the application root.
 Calls through function or method values are not supported. A later direct writer
@@ -42,6 +43,13 @@ them invalidates tracked buffer state. Tainted replacement terms supplied to
 `strings.Replacer` are not tracked in this release. Builder and buffer value
 copies, and aliases that share backing memory without the same receiver, can
 only lose provenance and never publish unchecked provenance.
+
+JSON string output uses coarse whole-value ranges while retaining the exact
+intersecting source identity. Custom unmarshaler output, decoded byte slices,
+interface values, typed map keys, and `map[string]any` keys are not propagated. Decoder documents
+larger than 64 KiB safely drop provenance. Decoder tracking uses 64 process
+slots with four-probe admission; excess or colliding concurrent decodes drop
+provenance. Reentrant use of the same decoder can lose outer-decode provenance.
 
 Tracking a stateful writer uses a strong request-bounded receiver anchor. This
 can make a stack receiver escape. Writer state is limited to eight receivers per

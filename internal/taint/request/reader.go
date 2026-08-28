@@ -6,6 +6,7 @@
 package request
 
 import (
+	"bytes"
 	"context"
 
 	"github.com/DataDog/dd-iast-go/internal/model/constants"
@@ -36,6 +37,29 @@ func PropagateReader(input, output any) {
 		}
 		store.BindObjectValue(&owner, output, store.BindingReader)
 	}
+}
+
+// CloneReaderBytes returns an exact-capacity clone of data and attempts to
+// publish it for every active owner bound to input. It returns nil when no owner
+// is bound or data exceeds the root limit. Publication failures remain safe
+// misses, and decoder buffers are never retained directly.
+func CloneReaderBytes(input any, data []byte) []byte {
+	if len(data) < 2 || len(data) > store.MaxRootBytes {
+		return nil
+	}
+	var refs [store.MaxSnapshotOwners]store.OwnerRef
+	count := LookupObject(input, store.BindingReader, refs[:])
+	if count == 0 {
+		return nil
+	}
+	clone := bytes.Clone(data)
+	for index := 0; index < count; index++ {
+		analysis, ok := analysisForOwner(refs[index])
+		if ok {
+			analysis.adoptBodyBytes(clone)
+		}
+	}
+	return clone
 }
 
 // ReadAllBytes adopts an io.ReadAll result into every active owner bound to its

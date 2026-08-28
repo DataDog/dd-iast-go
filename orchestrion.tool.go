@@ -16,6 +16,7 @@ import (
 	_ "github.com/DataDog/dd-iast-go/iast/crypto/cipher" // integration
 	_ "github.com/DataDog/dd-iast-go/iast/crypto/hash"   // integration
 	_ "github.com/DataDog/dd-iast-go/iast/database/sql"  // integration
+	_ "github.com/DataDog/dd-iast-go/iast/encoding/json" // integration
 	_ "github.com/DataDog/dd-iast-go/iast/io"            // integration
 	_ "github.com/DataDog/dd-iast-go/iast/net/http"      // integration
 	_ "github.com/DataDog/dd-iast-go/iast/net/url"       // integration

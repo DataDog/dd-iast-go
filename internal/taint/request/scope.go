@@ -15,6 +15,7 @@ import (
 	"github.com/DataDog/dd-iast-go/internal/taint/commandbridge"
 	"github.com/DataDog/dd-iast-go/internal/taint/httpbridge"
 	"github.com/DataDog/dd-iast-go/internal/taint/iobridge"
+	"github.com/DataDog/dd-iast-go/internal/taint/jsonbridge"
 	"github.com/DataDog/dd-iast-go/internal/taint/scopebridge"
 	"github.com/DataDog/dd-iast-go/internal/taint/sqlbridge"
 	"github.com/DataDog/dd-iast-go/internal/taint/urlbridge"
@@ -48,6 +49,8 @@ var (
 		manager := NewManager(nil)
 		manager.store.BindWriterActive(writerbridge.ActiveCounter())
 		commandbridge.BindActiveOwners(&manager.used)
+		jsonbridge.BindActiveOwners(&manager.used)
+		jsonbridge.BindActiveValues(manager.store.ActiveValues())
 		sqlbridge.BindActiveOwners(&manager.used)
 		processManager.Store(manager)
 		return manager

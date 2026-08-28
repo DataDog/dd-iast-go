@@ -892,9 +892,22 @@ coverage remains governed only by the explicit Phase 6 deferral.
 
 ### Phase 8 — `encoding/json` fast follow-up
 
-Implement `json.Unmarshal` and `json.Decoder.Decode` propagation from tainted bytes or owner-bound readers to decoded strings. Keep `encoding/xml` and generic reflection out of this phase. Add `iast/encoding/json` to `orchestrion.tool.go`, the README coverage documentation, and build-time propagation telemetry.
+**Complete for decoder-native typed string destinations.** Go 1.26
+`json.Unmarshal` and `json.Decoder.Decode` propagate exact token source identity
+through coarse whole-string ranges in nested structs, arrays, slices, and typed
+map values. Decoder reader ownership is republished before decoding each
+reused-buffer document. Invalid input does not publish taint. A bounded atomic
+bridge and process value counter keep inactive and active-clean paths
+allocation-free.
 
-**Exit:** nested structs, maps, arrays, escaped strings, invalid input, partial decoder reads, reused decoders, coarse fallback, range limits, and overhead tests pass.
+The twenty-sample active-clean `json.Unmarshal` median is 791.8 ns control and
+814.2 ns woven (+2.83%), with unchanged 376 bytes and 12 allocations. Interface
+values, custom unmarshaler output, decoded byte slices, and map keys remain
+explicit safe misses because Orchestrion 1.12.2 cannot associate those internal
+materialization statements with exact input tokens.
+
+**Exit:** satisfied for the documented matrix; the unsupported shapes lose
+provenance rather than publishing unchecked provenance.
 
 ### Phase 9 — system validation and documentation
 

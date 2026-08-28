@@ -96,6 +96,8 @@ jobs:
           go tool nm "$RUNNER_TEMP/iast-sql-bootstrap" | grep -F 'github.com/DataDog/dd-iast-go/iast/database/sql.init.0'
           go -C iast/os/exec/testapp tool orchestrion go build -o "$RUNNER_TEMP/iast-command-bootstrap" ./cmd/bootstrap
           go tool nm "$RUNNER_TEMP/iast-command-bootstrap" | grep -F 'github.com/DataDog/dd-iast-go/iast/os/exec.init.0'
+          go -C iast/integration/testapp tool orchestrion go build -o "$RUNNER_TEMP/iast-json-bootstrap" ./cmd/bootstrap
+          go tool nm "$RUNNER_TEMP/iast-json-bootstrap" | grep -F 'github.com/DataDog/dd-iast-go/iast/encoding/json.init.0'
       - name: Overhead benchmark unit tests
         run: go -C benchmarks/overhead test -shuffle=on ./...
       - name: Upload coverage artifact
