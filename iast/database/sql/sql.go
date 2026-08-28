@@ -49,5 +49,8 @@ func Report(ctx context.Context, query string, kind sqlbridge.Kind) {
 }
 
 func init() {
+	// The pinned source-shape test keeps this link-time total aligned with the
+	// three prepare, four exec, and four query method bodies.
+	telemetry.InstrumentedSink[constants.VulnerabilityTypeSqlInjection] += 11
 	sqlbridge.Register(Report)
 }

@@ -23,14 +23,13 @@ aspects:
             - github.com/DataDog/dd-iast-go/internal/taint/commandbridge
           imports:
             context: context
-            os: os
           template: |-
-            //go:linkname __dd__iast_StartProcess__ github.com/DataDog/dd-iast-go/internal/taint/commandbridge.StartProcess
-            func __dd__iast_StartProcess__(context.Context, string, []string, *os.ProcAttr) (*os.Process, error)
+            //go:linkname __dd__iast_ReportCommand__ github.com/DataDog/dd-iast-go/internal/taint/commandbridge.Report
+            func __dd__iast_ReportCommand__(context.Context, []string)
 
   # Cmd.Start performs validation and setup before this sole process attempt.
-  # The replacement helper evaluates every original argument once, invokes
-  # os.StartProcess once, reports only after it returns, and preserves results.
+  # The source IIFE evaluates every original argument once, invokes the host
+  # os.StartProcess directly, reports only after it returns, and preserves results.
   - id: os/exec.Cmd.Start process attempt
     join-point:
       all-of:
@@ -38,8 +37,22 @@ aspects:
         - function-call: os.StartProcess
     advice:
       - wrap-expression:
+          imports:
+            context: context
+            os: os
           template: |-
-            __dd__iast_StartProcess__(
+            func(
+              __dd_iast_ctx context.Context,
+              __dd_iast_path string,
+              __dd_iast_argv []string,
+              __dd_iast_attr *os.ProcAttr,
+            ) (*os.Process, error) {
+              __dd_iast_process, __dd_iast_err := os.StartProcess(
+                __dd_iast_path, __dd_iast_argv, __dd_iast_attr,
+              )
+              __dd__iast_ReportCommand__(__dd_iast_ctx, __dd_iast_argv)
+              return __dd_iast_process, __dd_iast_err
+            }(
               {{ .Function.Receiver }}.ctx,
               {{ index .AST.Args 0 }},
               {{ index .AST.Args 1 }},

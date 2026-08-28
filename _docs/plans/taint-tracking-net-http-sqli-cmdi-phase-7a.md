@@ -128,16 +128,18 @@ Instrument the single `os.StartProcess` call inside `(*exec.Cmd).Start`. Command
 construction does not report. `Run`, `Output`, and `CombinedOutput` converge on
 `Start`.
 
-A source-expression replacement passes `c.ctx` and every original
-`os.StartProcess` argument once to a dependency-minimal bridge helper. The
-helper calls `os.StartProcess` once, invokes the reporting callback with the
-captured argv only after return, and returns the original process and error
-unchanged. This avoids an extra anonymous frame and allocation. Reporting after
-the call records an attempted OS start even when it returns an error, while
-validation failures before that call do not report. If the host call panics,
-the callback does not execute and the original panic is unchanged. Location
-selection permits the one compiler-elided `Cmd.Start` frame observed in the
-pinned toolchain but rejects larger or cumulative gaps.
+A source-expression IIFE evaluates `c.ctx` and every original
+`os.StartProcess` argument once. It calls the host `os.StartProcess` directly,
+invokes a dependency-minimal reporting bridge with the captured argv only after
+return, and returns the original process and error unchanged. Keeping the host
+call in the woven body preserves its compiler escape contract; the bridge does
+not use an unsound `noescape` assertion. Reporting after the call records an
+attempted OS start even when it returns an error, while validation failures
+before that call do not report. If the host call panics, the callback does not
+execute and the original panic is unchanged. Location selection permits a cumulative two-frame gap budget across
+the skipped prefix for the compiler-elided IIFE and `Cmd.Start` frames observed
+in the pinned toolchain. It rejects larger total gaps; pinned source and woven
+location tests constrain the accepted attribution shape.
 
 Evidence is argv joined by one untainted ASCII space, with checked offsets for
 argument ranges. The strict command redactor preserves argv[0], or preserves
@@ -438,7 +440,52 @@ the sink-enablement checkpoint.
 11. User sink-enablement checkpoint, then `orchestrion.tool.go` registration,
     payload-guard activation, README enabled coverage, and Phase 7a exit record.
 
-## 16. Stop conditions
+## 16. Implementation checkpoint evidence (2026-08-27)
+
+Commit boundaries 1 through 10 are implemented with SQL and command aspects
+kept out of the root `orchestrion.tool.go`. The shared cross-tracer corpus was
+not available in public sources, Google Drive, or Jira. The user approved the
+RFC-derived regression corpus provisionally; final enablement remains explicitly
+conditioned on replacing or validating it against the normative corpus.
+
+The isolated woven suites cover all eleven Go 1.26 SQL context methods, prepared
+statements, delegation, retries, canceled results, driver panics, the one command
+process-attempt boundary, process errors, construction and validation failures,
+nil-context owner fallback, analyzer limits, and source locations. Semantic
+wire goldens encode and decode accepted SQL and command events through both JSON
+and msgpack, require equivalent models, and reject raw tainted evidence in both
+encodings. Actual payload-limit boundaries remain covered at 24,999, 25,000,
+and 25,001 bytes for both encodings.
+
+Twenty one-second sample medians on Apple M1 Max:
+
+Benchmark | Control | Woven/active | Delta | Allocations
+---|---:|---:|---:|---:
+Prepared `Stmt.ExecContext`, inactive | 214.40 ns | 216.15 ns | +0.82% | 3 / 3
+Failed process start, inactive | 1.186 ms | 1.151 ms | -2.99% | 28 / 28
+SQL bridge, inactive | — | 2.37 ns | — | 0
+Command bridge, inactive | — | 2.19 ns | — | 0
+SQL report, active clean | — | 17.33 ns | — | 0
+Command report, active clean | — | 28.63 ns | — | 0
+
+The source IIFE initially exposed a false `noescape` optimization opportunity.
+That assertion was removed after review; the host `os.StartProcess` call remains
+directly visible to the compiler and allocation parity is restored. The
+command location policy uses a cumulative two-frame compiler-gap budget and
+re-indexes the retained application frame to zero.
+
+The Phase 5 sampled-out HTTP result remains +1.81% median with a +3.93%
+bootstrap upper bound, which the user explicitly accepted. Sink aspects do not
+run on the benchmark request path and remain unregistered in the aggregate tool.
+
+Open enablement decisions:
+
+- validate or explicitly carry the provisional redaction corpus limitation;
+- confirm backend acceptance of the `MAX_SIZE_EXCEEDED` compatibility sentinel
+  and 25,000-byte encoded event limit;
+- approve root SQL/command registration and payload-guard activation.
+
+## 17. Stop conditions
 
 Stop for user review if the shared redaction corpus is unavailable or fails; a
 bridge dependency reaches its instrumented standard package; a host value,

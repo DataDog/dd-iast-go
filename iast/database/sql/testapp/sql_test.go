@@ -6,10 +6,13 @@
 package testapp_test
 
 import (
+	"bytes"
 	"context"
 	stdsql "database/sql"
 	"database/sql/driver"
+	"encoding/json"
 	"io"
+	"reflect"
 	"regexp"
 	"strings"
 	"sync/atomic"
@@ -45,6 +48,15 @@ func init() {
 	config.RedactionValuePattern = regexp.MustCompile(`never-match`)
 	config.TruncationMaxValue = 250
 	config.StackTraceEnabled = true
+}
+
+func TestDatabaseSQLInstrumentedCount(t *testing.T) {
+	if !built.WithOrchestrion {
+		t.Skip("orchestrion is not enabled")
+	}
+	if got := telemetry.InstrumentedSink[constants.VulnerabilityTypeSqlInjection]; got != 11 {
+		t.Fatalf("instrumented SQL sinks = %d, want 11", got)
+	}
 }
 
 func TestDatabaseSQLPublicOperationBoundaries(t *testing.T) {
@@ -236,6 +248,17 @@ func TestDatabaseSQLCanceledContextPreservesResult(t *testing.T) {
 	}
 }
 
+func TestDatabaseSQLPayloadEncodings(t *testing.T) {
+	if !built.WithOrchestrion {
+		t.Skip("orchestrion is not enabled")
+	}
+	fixture := newSQLFixture(t)
+	if _, err := fixture.db.ExecContext(fixture.ctx, fixture.query); err != nil {
+		t.Fatal(err)
+	}
+	assertEventEncodings(t, fixture.annotation)
+}
+
 func TestDatabaseSQLRetryReportsOnce(t *testing.T) {
 	if !built.WithOrchestrion {
 		t.Skip("orchestrion is not enabled")
@@ -292,6 +315,31 @@ func TestDatabaseSQLNilStmtPreservesPanic(t *testing.T) {
 	}()
 	var stmt *stdsql.Stmt
 	_, _ = stmt.ExecContext(context.Background())
+}
+
+func assertEventEncodings(t *testing.T, annotation *spans.Annotation) {
+	t.Helper()
+	annotation.RLock()
+	jsonData, jsonErr := json.Marshal(&annotation.Event)
+	msgpackData, msgpackErr := annotation.Event.MarshalMsg(nil)
+	annotation.RUnlock()
+	if jsonErr != nil || msgpackErr != nil {
+		t.Fatalf("encode errors = JSON:%v msgpack:%v", jsonErr, msgpackErr)
+	}
+	if bytes.Contains(jsonData, []byte("secret")) || bytes.Contains(msgpackData, []byte("secret")) {
+		t.Fatal("wire payload exposed raw tainted evidence")
+	}
+	var jsonEvent, msgpackEvent model.Event
+	if err := json.Unmarshal(jsonData, &jsonEvent); err != nil {
+		t.Fatal(err)
+	}
+	remainder, err := msgpackEvent.UnmarshalMsg(msgpackData)
+	if err != nil || len(remainder) != 0 {
+		t.Fatalf("msgpack decode = remainder:%d error:%v", len(remainder), err)
+	}
+	if !reflect.DeepEqual(jsonEvent, msgpackEvent) {
+		t.Fatalf("encoding mismatch = JSON:%#v msgpack:%#v", jsonEvent, msgpackEvent)
+	}
 }
 
 func BenchmarkStmtExecContextInactive(b *testing.B) {

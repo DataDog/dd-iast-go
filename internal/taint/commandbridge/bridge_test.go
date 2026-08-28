@@ -64,8 +64,9 @@ func BenchmarkReportInactive(b *testing.B) {
 	b.Cleanup(func() { activeOwners.Store(oldOwners) })
 	var owners atomic.Uint64
 	BindActiveOwners(&owners)
+	argv := []string{"echo"}
 	b.ReportAllocs()
 	for b.Loop() {
-		Report(context.Background(), []string{"echo"})
+		Report(context.Background(), argv)
 	}
 }

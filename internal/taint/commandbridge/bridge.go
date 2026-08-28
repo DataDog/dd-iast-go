@@ -8,7 +8,6 @@ package commandbridge
 
 import (
 	"context"
-	"os"
 	"sync/atomic"
 )
 
@@ -37,15 +36,6 @@ func BindActiveOwners(owners *atomic.Uint64) {
 func Active() bool {
 	owners := activeOwners.Load()
 	return owners != nil && owners.Load() != 0
-}
-
-// StartProcess evaluates one OS process attempt and then reports its captured
-// argv. The original process and error are returned unchanged; a host panic
-// bypasses reporting and propagates unchanged.
-func StartProcess(ctx context.Context, path string, argv []string, attr *os.ProcAttr) (*os.Process, error) {
-	process, err := os.StartProcess(path, argv, attr)
-	Report(ctx, argv)
-	return process, err
 }
 
 // Report invokes the registered callback when analysis is active. Callback

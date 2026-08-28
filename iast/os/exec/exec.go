@@ -34,7 +34,7 @@ var commandSkip = vulnerability.SkipWhile{
 		"os",
 	},
 	MaxDepth:    32,
-	MaxFrameGap: 1, // Cmd.Start can be compiler-elided between bridge and Run.
+	MaxFrameGap: 2, // The source IIFE and Cmd.Start can both be compiler-elided.
 }
 
 // Report analyzes one attempted os.StartProcess operation. The minimal bridge
@@ -92,5 +92,7 @@ func boundedJoin(argv []string) (string, bool) {
 }
 
 func init() {
+	// The pinned source-shape test guarantees one process-attempt call site.
+	telemetry.InstrumentedSink[constants.VulnerabilityTypeCommandInjection] += 1
 	commandbridge.Register(Report)
 }

@@ -6,9 +6,12 @@
 package testapp_test
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"os"
 	stdexec "os/exec"
+	"reflect"
 	"regexp"
 	"strings"
 	"testing"
@@ -38,6 +41,15 @@ func init() {
 	config.RedactionValuePattern = regexp.MustCompile(`never-match`)
 	config.TruncationMaxValue = 250
 	config.StackTraceEnabled = true
+}
+
+func TestCommandInstrumentedCount(t *testing.T) {
+	if !built.WithOrchestrion {
+		t.Skip("orchestrion is not enabled")
+	}
+	if got := telemetry.InstrumentedSink[constants.VulnerabilityTypeCommandInjection]; got != 1 {
+		t.Fatalf("instrumented command sinks = %d, want 1", got)
+	}
 }
 
 func TestCommandExecutionBoundaries(t *testing.T) {
@@ -143,6 +155,17 @@ func TestCommandBeyondCollectionBoundsDrops(t *testing.T) {
 	assertCommandFinding(t, fixture, 0)
 }
 
+func TestCommandPayloadEncodings(t *testing.T) {
+	if !built.WithOrchestrion {
+		t.Skip("orchestrion is not enabled")
+	}
+	fixture := newCommandFixture(t)
+	if err := fixture.command().Run(); err != nil {
+		t.Fatal(err)
+	}
+	assertEventEncodings(t, fixture.annotation)
+}
+
 func TestCommandConstructionDoesNotReport(t *testing.T) {
 	if !built.WithOrchestrion {
 		t.Skip("orchestrion is not enabled")
@@ -194,6 +217,41 @@ func TestHelperProcess(t *testing.T) {
 	}
 	_, _ = os.Stdout.WriteString(strings.Join(os.Args[separator:], " "))
 	os.Exit(0)
+}
+
+func assertEventEncodings(t *testing.T, annotation *spans.Annotation) {
+	t.Helper()
+	annotation.RLock()
+	jsonData, jsonErr := json.Marshal(&annotation.Event)
+	msgpackData, msgpackErr := annotation.Event.MarshalMsg(nil)
+	annotation.RUnlock()
+	if jsonErr != nil || msgpackErr != nil {
+		t.Fatalf("encode errors = JSON:%v msgpack:%v", jsonErr, msgpackErr)
+	}
+	if bytes.Contains(jsonData, []byte("secret")) || bytes.Contains(msgpackData, []byte("secret")) {
+		t.Fatal("wire payload exposed raw tainted evidence")
+	}
+	var jsonEvent, msgpackEvent model.Event
+	if err := json.Unmarshal(jsonData, &jsonEvent); err != nil {
+		t.Fatal(err)
+	}
+	remainder, err := msgpackEvent.UnmarshalMsg(msgpackData)
+	if err != nil || len(remainder) != 0 {
+		t.Fatalf("msgpack decode = remainder:%d error:%v", len(remainder), err)
+	}
+	if !reflect.DeepEqual(jsonEvent, msgpackEvent) {
+		t.Fatalf("encoding mismatch = JSON:%#v msgpack:%#v", jsonEvent, msgpackEvent)
+	}
+}
+
+func BenchmarkCommandStartErrorInactive(b *testing.B) {
+	b.ReportAllocs()
+	for b.Loop() {
+		command := stdexec.Command("/definitely/not/a/real/dd-iast-command", "clean")
+		if err := command.Run(); err == nil {
+			b.Fatal("missing executable unexpectedly ran")
+		}
+	}
 }
 
 type commandFixture struct {
