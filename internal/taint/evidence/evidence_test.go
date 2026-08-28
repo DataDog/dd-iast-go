@@ -45,6 +45,49 @@ func TestCollectStringOwnsCanonicalEvidence(t *testing.T) {
 	}
 }
 
+func TestCollectJoinedStringsPreservesArgumentOffsets(t *testing.T) {
+	ctx := withScope(t)
+	managed := taint.TaintString(ctx, taint.Source{Origin: constants.OriginHttpRequestParameter, Name: "argument"}, "secret")
+	values := []string{"echo", managed, "tail"}
+	result := strings.Join(values, " ")
+	snapshot, status := CollectJoinedStrings(values, " ", result, constants.VulnerabilityTypeCommandInjection)
+	if status != StatusCollected || snapshot == nil {
+		t.Fatalf("status = %v", status)
+	}
+	if snapshot.Value() != result || snapshot.SourceCount() != 1 || snapshot.PartCount() != 3 {
+		t.Fatalf("snapshot = value:%q sources:%d parts:%d", snapshot.Value(), snapshot.SourceCount(), snapshot.PartCount())
+	}
+	part, _ := snapshot.PartAt(1)
+	if part.Start != 5 || part.Length != 6 || part.Source != 0 {
+		t.Fatalf("tainted argument part = %#v", part)
+	}
+}
+
+func TestCollectJoinedStringsFindsLateArgument(t *testing.T) {
+	ctx := withScope(t)
+	managed := taint.TaintString(ctx, taint.Source{Origin: constants.OriginHttpRequestParameter, Name: "argument"}, "secret")
+	values := make([]string, 20)
+	for index := range values {
+		values[index] = "clean"
+	}
+	values[len(values)-1] = managed
+	result := strings.Join(values, " ")
+	snapshot, status := CollectJoinedStrings(values, " ", result, constants.VulnerabilityTypeCommandInjection)
+	if status != StatusCollected || snapshot == nil {
+		t.Fatalf("late argument status = %v", status)
+	}
+	part, _ := snapshot.PartAt(snapshot.PartCount() - 1)
+	if part.Source != 0 || part.Start != uint32(len(result)-len(managed)) {
+		t.Fatalf("late argument part = %#v", part)
+	}
+}
+
+func TestCollectJoinedStringsRejectsMismatchedResult(t *testing.T) {
+	if snapshot, status := CollectJoinedStrings([]string{"echo", "secret"}, " ", "different", constants.VulnerabilityTypeCommandInjection); snapshot != nil || status != StatusNone {
+		t.Fatalf("mismatched result = (%#v, %v)", snapshot, status)
+	}
+}
+
 func TestCollectorCanonicalOrderingAndOverlap(t *testing.T) {
 	value := "0123456789"
 	inputs := []request.ResolvedRange{

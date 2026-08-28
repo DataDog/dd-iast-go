@@ -27,7 +27,9 @@ const (
 	MaxParts = 2*MaxCollectedRanges + 1
 	// MaxSources bounds exact source identities in one report.
 	MaxSources = request.MaxSources
-	maxOwners  = store.MaxSnapshotOwners
+	// MaxJoinedValues bounds command argv traversal.
+	MaxJoinedValues = 256
+	maxOwners       = store.MaxSnapshotOwners
 )
 
 // Status is the result of collecting one value.
@@ -122,6 +124,74 @@ func CollectString(value string, vulnerability constants.VulnerabilityType) (*Sn
 	return collector.finish(value), StatusCollected
 }
 
+// CollectJoinedStrings assembles provenance from values at their exact
+// positions in result, with one untainted separator between values.
+func CollectJoinedStrings(values []string, separator, result string, vulnerability constants.VulnerabilityType) (*Snapshot, Status) {
+	if len(values) == 0 || len(values) > MaxJoinedValues || len(result) == 0 || len(result) > store.MaxRootBytes || !matchesJoin(values, separator, result) {
+		return nil, StatusNone
+	}
+	if _, valid := ranges.MarkBit(vulnerability); !valid {
+		return nil, StatusDropped
+	}
+	active := request.ActiveStore()
+	if active == nil {
+		return nil, StatusNone
+	}
+	possible := false
+	for _, value := range values {
+		key, ok := store.StringKey(value)
+		if ok && active.MayContain(key) {
+			possible = true
+			break
+		}
+	}
+	if !possible {
+		return nil, StatusNone
+	}
+	collector := new(collector)
+	delivered := false
+	offset := uint32(0)
+	for index, value := range values {
+		if key, ok := store.StringKey(value); ok && active.MayContain(key) {
+			visited := request.VisitString(value, func(resolved request.ResolvedRange) bool {
+				return collector.addAt(value, vulnerability, resolved, offset)
+			})
+			delivered = delivered || visited
+		}
+		offset += uint32(len(value))
+		if index+1 < len(values) {
+			offset += uint32(len(separator))
+		}
+		if collector.dropped {
+			return nil, StatusDropped
+		}
+	}
+	if collector.count == 0 {
+		if delivered {
+			return nil, StatusSuppressed
+		}
+		return nil, StatusNone
+	}
+	return collector.finish(result), StatusCollected
+}
+
+func matchesJoin(values []string, separator, result string) bool {
+	position := 0
+	for index, value := range values {
+		if len(value) > len(result)-position || result[position:position+len(value)] != value {
+			return false
+		}
+		position += len(value)
+		if index+1 < len(values) {
+			if len(separator) > len(result)-position || result[position:position+len(separator)] != separator {
+				return false
+			}
+			position += len(separator)
+		}
+	}
+	return position == len(result)
+}
+
 type collector struct {
 	count         int
 	sourceCount   int
@@ -133,6 +203,10 @@ type collector struct {
 }
 
 func (c *collector) add(value string, vulnerability constants.VulnerabilityType, resolved request.ResolvedRange) bool {
+	return c.addAt(value, vulnerability, resolved, 0)
+}
+
+func (c *collector) addAt(value string, vulnerability constants.VulnerabilityType, resolved request.ResolvedRange, offset uint32) bool {
 	if resolved.Length == 0 || resolved.Start > uint32(len(value)) || resolved.Length > uint32(len(value))-resolved.Start {
 		c.dropped = true
 		return false
@@ -150,7 +224,7 @@ func (c *collector) add(value string, vulnerability constants.VulnerabilityType,
 		return false
 	}
 	c.ranges[c.count] = collectedRange{
-		start:        resolved.Start,
+		start:        offset + resolved.Start,
 		length:       resolved.Length,
 		marks:        resolved.Marks,
 		ownerID:      resolved.OwnerID,

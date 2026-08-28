@@ -47,7 +47,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: oldstable
+          go-version-file: go.mod
       - name: 'Linter: gofmt'
         run: |
           unformatted="$(find . -type f -name '*.go' -exec gofmt -l {} +)"
@@ -61,6 +61,8 @@ jobs:
         run: go -C benchmarks/overhead vet ./...
       - name: 'Linter: isolated SQL sink fixtures vet'
         run: go -C iast/database/sql/testapp vet ./...
+      - name: 'Linter: isolated command sink fixtures vet'
+        run: go -C iast/os/exec/testapp vet ./...
 
   test:
     runs-on: ubuntu-latest
@@ -71,7 +73,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: oldstable
+          go-version-file: go.mod
       - name: Unit Tests
         run: |
           go tool orchestrion go test \
@@ -82,6 +84,8 @@ jobs:
             ./...
       - name: Isolated SQL sink tests
         run: go -C iast/database/sql/testapp tool orchestrion go test -shuffle=on ./...
+      - name: Isolated command sink tests
+        run: go -C iast/os/exec/testapp tool orchestrion go test -shuffle=on ./...
       - name: Overhead benchmark unit tests
         run: go -C benchmarks/overhead test -shuffle=on ./...
       - name: Upload coverage artifact
@@ -147,7 +151,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: oldstable
+          go-version-file: go.mod
       - name: Prepare artifact directory
         run: mkdir -p "$BENCHMARK_OUTPUT_DIR"
       - name: Run benchmarks

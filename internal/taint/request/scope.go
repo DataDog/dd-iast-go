@@ -12,6 +12,7 @@ import (
 	"sync/atomic"
 
 	"github.com/DataDog/dd-iast-go/internal/config"
+	"github.com/DataDog/dd-iast-go/internal/taint/commandbridge"
 	"github.com/DataDog/dd-iast-go/internal/taint/httpbridge"
 	"github.com/DataDog/dd-iast-go/internal/taint/iobridge"
 	"github.com/DataDog/dd-iast-go/internal/taint/scopebridge"
@@ -46,6 +47,7 @@ var (
 	defaultManager = sync.OnceValue(func() *Manager {
 		manager := NewManager(nil)
 		manager.store.BindWriterActive(writerbridge.ActiveCounter())
+		commandbridge.BindActiveOwners(&manager.used)
 		sqlbridge.BindActiveOwners(&manager.used)
 		processManager.Store(manager)
 		return manager

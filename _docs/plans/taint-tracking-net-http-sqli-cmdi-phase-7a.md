@@ -128,13 +128,16 @@ Instrument the single `os.StartProcess` call inside `(*exec.Cmd).Start`. Command
 construction does not report. `Run`, `Output`, and `CombinedOutput` converge on
 `Start`.
 
-A source-expression IIFE evaluates `c.argv()` and every original
-`os.StartProcess` argument once, calls `os.StartProcess` once, then invokes the
-bridge with the captured argv and `c.ctx`. It returns the original process and
-error unchanged. Reporting after the call records an attempted OS start even
-when it returns an error, while validation failures before that call do not
-report. If the host call panics, the callback does not execute and the original
-panic is unchanged.
+A source-expression replacement passes `c.ctx` and every original
+`os.StartProcess` argument once to a dependency-minimal bridge helper. The
+helper calls `os.StartProcess` once, invokes the reporting callback with the
+captured argv only after return, and returns the original process and error
+unchanged. This avoids an extra anonymous frame and allocation. Reporting after
+the call records an attempted OS start even when it returns an error, while
+validation failures before that call do not report. If the host call panics,
+the callback does not execute and the original panic is unchanged. Location
+selection permits the one compiler-elided `Cmd.Start` frame observed in the
+pinned toolchain but rejects larger or cumulative gaps.
 
 Evidence is argv joined by one untainted ASCII space, with checked offsets for
 argument ranges. The strict command redactor preserves argv[0], or preserves
