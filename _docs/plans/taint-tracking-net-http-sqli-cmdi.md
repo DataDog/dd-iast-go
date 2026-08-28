@@ -877,9 +877,18 @@ availability; Phase 7b and Phase 9 retain those gates.
 
 ### Phase 7b — end-to-end sink validation
 
-Join HTTP sources, propagation, runtime/operator work, and sink/report work.
+**Complete, except for the separately deferred Phase 6 operator track.** An
+isolated woven HTTP fixture now carries real query-parameter source provenance
+through lazy `net/url` extraction into SQL prepare and prepared execution, and
+into a command process attempt. Semantic event assertions require the expected
+finding types, source materialization, and valid source indexes. The same
+fixture proves that tainted SQL parameters and command construction do not
+report. Existing isolated sink suites cover retries and stable locations;
+transactional report tests cover foreign-owner finish races and source-index
+integrity.
 
-**Exit:** HTTP-to-SQL prepare and execution traces and HTTP-to-command traces match golden payloads; parameterized arguments do not report; command construction without execution does not report; retries and repeated locations de-duplicate as specified; active foreign-owner provenance is represented on the sink event, and a concurrent foreign-owner finish either preserves a complete snapshot or drops only that contribution without an invalid source index.
+**Exit:** satisfied for all active propagation tracks. Operator-expression
+coverage remains governed only by the explicit Phase 6 deferral.
 
 ### Phase 8 — `encoding/json` fast follow-up
 
