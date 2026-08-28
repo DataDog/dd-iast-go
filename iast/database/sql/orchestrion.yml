@@ -9,9 +9,27 @@ meta:
   description: Request-scoped SQL injection sinks
 
 aspects:
-  # Anchor one package-scoped link declaration on a unique Go 1.26.6 method.
-  # Link dependencies activate the reporting callback without adding the full
-  # reporting dependency closure to the database/sql compile graph.
+  # Link callback registration from the application executable, not from the
+  # standard-library archive. Heavy links from database/sql create synthetic
+  # test-variant cycles; every woven production executable has one root main.
+  # Generated .test mains are excluded to keep same-package test graphs acyclic.
+  - id: application SQL sink bootstrap
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: true, pattern: "**.test"}}
+        - function-body:
+            function:
+              - receiver: false
+              - name: main
+    advice:
+      - prepend-statements:
+          imports:
+            iastsql: github.com/DataDog/dd-iast-go/iast/database/sql
+          template: |-
+            _ = iastsql.Report
+
+  # Anchor one package-scoped bridge declaration on a unique Go 1.26.6 method.
   - id: database/sql IAST bridge declaration
     join-point:
       all-of:
@@ -22,7 +40,6 @@ aspects:
     advice:
       - inject-declarations:
           links:
-            - github.com/DataDog/dd-iast-go/iast/database/sql
             - github.com/DataDog/dd-iast-go/internal/taint/sqlbridge
           imports:
             context: context

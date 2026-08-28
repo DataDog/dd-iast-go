@@ -7,6 +7,7 @@ package spans
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -287,6 +288,41 @@ func TestFinishedReleasesExactSourceIdentities(t *testing.T) {
 	}
 	assertPartSources(t, ann.Event.Vulnerabilities[0], []int{0, 1})
 	span.Finish()
+}
+
+// +checklocksignore
+func TestFinishedActivatesPayloadLimit(t *testing.T) {
+	configureTaintedCommitTest(t)
+	mock := mocktracer.Start()
+	t.Cleanup(mock.Stop)
+	span := tracer.StartSpan("payload-limit")
+	annotation := AnnotationFor(span)
+	annotation.Lock()
+	annotation.Event.Sources = []model.Source{{Name: "parameter", Value: strings.Repeat("secret", 5_000)}}
+	annotation.Event.Vulnerabilities = []model.Vulnerability{{
+		Type:     constants.VulnerabilityTypeSqlInjection,
+		Hash:     42,
+		Evidence: &model.Evidence{Value: strings.Repeat("secret", 5_000)},
+		Location: &model.Location{SpanID: span.Context().SpanID(), Path: "app/main.go", Line: 7},
+	}}
+	annotation.Unlock()
+	Finished(span)
+	span.Finish()
+	finished := mock.FinishedSpans()
+	if len(finished) != 1 {
+		t.Fatalf("finished spans = %d", len(finished))
+	}
+	encoded, ok := finished[0].Tag(SpanTagJson).(string)
+	if !ok || len(encoded) > MaxEventPayloadBytes {
+		t.Fatalf("JSON payload = type:%T bytes:%d", finished[0].Tag(SpanTagJson), len(encoded))
+	}
+	var event model.Event
+	if err := json.Unmarshal([]byte(encoded), &event); err != nil {
+		t.Fatal(err)
+	}
+	if len(event.Sources) != 0 || len(event.Vulnerabilities) != 1 || event.Vulnerabilities[0].Evidence.Value != MaxSizeExceededEvidence {
+		t.Fatalf("bounded event = %#v", event)
+	}
 }
 
 // +checklocksignore

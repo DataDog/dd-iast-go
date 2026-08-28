@@ -468,6 +468,17 @@ Command bridge, inactive | — | 2.19 ns | — | 0
 SQL report, active clean | — | 17.33 ns | — | 0
 Command report, active clean | — | 28.63 ns | — | 0
 
+The active meta-structure path performs one bounded msgpack encoding to enforce
+the exact limit and the tracer later encodes the immutable event again at flush.
+No tracer API accepts pre-encoded meta-structure bytes, so this bounded
+finding-only completion cost is currently unavoidable.
+
+Standard-library archives link only dependency-minimal bridge packages. Heavy
+sink callback registration is injected into the root executable's `main`
+function; linking it from `database/sql` or `os/exec` caused Orchestrion
+synthetic test-variant cycles. Isolated executable builds verify that each sink
+`init` task is retained without an explicit source import.
+
 The source IIFE initially exposed a false `noescape` optimization opportunity.
 That assertion was removed after review; the host `os.StartProcess` call remains
 directly visible to the compiler and allocation parity is restored. The
@@ -478,12 +489,12 @@ The Phase 5 sampled-out HTTP result remains +1.81% median with a +3.93%
 bootstrap upper bound, which the user explicitly accepted. Sink aspects do not
 run on the benchmark request path and remain unregistered in the aggregate tool.
 
-Open enablement decisions:
-
-- validate or explicitly carry the provisional redaction corpus limitation;
-- confirm backend acceptance of the `MAX_SIZE_EXCEEDED` compatibility sentinel
-  and 25,000-byte encoded event limit;
-- approve root SQL/command registration and payload-guard activation.
+At the enablement checkpoint, the user approved activation with assumptions.
+The root tool now registers both sink packages and span attachment enforces the
+actual-encoding payload guard. This approval explicitly carries the provisional
+RFC-derived corpus and assumes backend acceptance of `MAX_SIZE_EXCEEDED` and
+the 25,000-byte limit. The normative corpus and backend system fixture remain
+mandatory Phase 9 general-availability gates rather than Phase 7a blockers.
 
 ## 17. Stop conditions
 

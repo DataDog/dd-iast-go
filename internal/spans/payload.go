@@ -45,9 +45,9 @@ var (
 
 // BuildLimitedPayload encodes event on the selected path and returns a separate
 // bounded fallback if its actual encoding exceeds MaxEventPayloadBytes. It does
-// not mutate event and is not active in span attachment until the compatibility
-// checkpoint is approved. A caller that shares event must hold its exclusive
-// lock for the complete call and until it has consumed either Event or Encoded.
+// not mutate event. A caller that shares event must hold its exclusive lock for
+// the complete call. Event may be handed to a deferred encoder only after the
+// caller has made the shared input permanently immutable.
 func BuildLimitedPayload(event *model.Event, encoding PayloadEncoding) (LimitedPayload, error) {
 	if event == nil || len(event.Vulnerabilities) > model.MaxVulnerabilities {
 		return LimitedPayload{}, errInvalidPayloadEvent

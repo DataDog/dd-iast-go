@@ -9,6 +9,25 @@ meta:
   description: Request-scoped command injection sink
 
 aspects:
+  # Link callback registration from the application executable, not from the
+  # standard-library archive, to avoid synthetic test-variant dependency cycles.
+  # Generated .test mains are excluded for the same reason.
+  - id: application command sink bootstrap
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: true, pattern: "**.test"}}
+        - function-body:
+            function:
+              - receiver: false
+              - name: main
+    advice:
+      - prepend-statements:
+          imports:
+            iastexec: github.com/DataDog/dd-iast-go/iast/os/exec
+          template: |-
+            _ = iastexec.Report
+
   - id: os/exec IAST bridge declaration
     join-point:
       all-of:
@@ -19,7 +38,6 @@ aspects:
     advice:
       - inject-declarations:
           links:
-            - github.com/DataDog/dd-iast-go/iast/os/exec
             - github.com/DataDog/dd-iast-go/internal/taint/commandbridge
           imports:
             context: context

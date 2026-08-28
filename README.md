@@ -47,6 +47,21 @@ Tracking a stateful writer uses a strong request-bounded receiver anchor. This
 can make a stack receiver escape. Writer state is limited to eight receivers per
 request owner, four owners per receiver, and 64 KiB of charged visible capacity.
 
+### Sink coverage
+
+Category | Supported operations
+---|---
+SQL injection | Go 1.26 `database/sql` prepare, execute, query, prepared-statement, and delegated `QueryRow` operations on `DB`, `Conn`, `Tx`, and `Stmt`
+Command injection | Process attempts made by `exec.Cmd.Start`, including `Run`, `Output`, and `CombinedOutput`
+
+SQL parameters are not query evidence. Command construction alone does not
+report a vulnerability; reporting occurs only after an `os.StartProcess`
+attempt. Sink callback registration is injected into executable `main`
+packages in the root module; plugin, library, and non-root executable builds do
+not activate these request-scoped sinks. Sink evidence is limited to 32 KiB
+before conservative redaction, and the encoded vulnerability event is limited
+to 25,000 bytes.
+
 ## Cost Control
 
 Taint tracking has non-trivial associated cost; both in terms of memory and
@@ -89,7 +104,7 @@ Name | Severity | Implemented
 ---|---|:---:
 Admin console active | Low | :x:
 Code injection | High | :x:
-Command injection | Critical | :x:
+Command injection | Critical | :white_check_mark: `github.com/DataDog/dd-iast-go/iast/os/exec`
 Default application deployed | Low | :x:
 Default HTML escape invalid | High | :x:
 Directory listing leak | High | :x:
@@ -110,7 +125,7 @@ Reflection injection | Medium | :x:
 Server-side request forgery | Critical | :x:
 Session rewriting | Medium | :x:
 Session timeout | Low | :x:
-SQL injection | Critical | :x:
+SQL injection | Critical | :white_check_mark: `github.com/DataDog/dd-iast-go/iast/database/sql`
 Stacktrace leak | Medium | :x:
 Template injection | High | :x:
 Trust boundary violation | High | :x:

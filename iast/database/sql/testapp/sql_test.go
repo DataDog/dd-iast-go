@@ -18,6 +18,7 @@ import (
 	"sync/atomic"
 	"testing"
 
+	_ "github.com/DataDog/dd-iast-go/iast/database/sql" // register isolated sink callback
 	"github.com/DataDog/dd-iast-go/internal/config"
 	"github.com/DataDog/dd-iast-go/internal/instrumentation/telemetry"
 	"github.com/DataDog/dd-iast-go/internal/model"

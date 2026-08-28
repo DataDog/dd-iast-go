@@ -858,9 +858,22 @@ The upstream Orchestrion matcher/schema work can run in parallel with Phases 1�
 
 ### Phase 7a — report assembly and sink hooks
 
-Implement source materialization, evidence parts, redaction and environment fallbacks, process de-duplication, payload-size limits, tainted reporting, SQL prepare/execute aspects, command aspects, and bounded cross-owner source materialization. This can run in parallel after Phase 3.
+**Complete with approved compatibility assumptions.** Bounded immutable evidence
+snapshots, exact source identities, transactional event merging, source and sink
+redaction, process deduplication, the 25,000-byte actual-encoding payload guard,
+owner-to-span selection, SQL sinks, and command sinks are implemented. SQL and
+command aspects are registered in the aggregate tool after the user approved
+activation with the RFC-derived provisional redaction corpus and the
+`MAX_SIZE_EXCEEDED`/25,000-byte backend compatibility assumptions.
 
-**Exit:** report-model unit/golden tests and isolated sink-aspect tests pass; every linkname callback passes init, import-graph, and reentrancy gates.
+Ordinary, aggregate woven, isolated sink, race, checkptr, vet, and checklocks
+suites pass. JSON and msgpack semantic goldens have parity and contain no raw
+tainted evidence. The exact benchmark and compatibility record is in
+[the Phase 7a plan](./taint-tracking-net-http-sqli-cmdi-phase-7a.md).
+
+**Exit:** satisfied for the approved assumptions. The normative shared corpus
+and backend fixture must still replace the assumptions before general
+availability; Phase 7b and Phase 9 retain those gates.
 
 ### Phase 7b — end-to-end sink validation
 

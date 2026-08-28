@@ -16,6 +16,7 @@ import (
 	"strings"
 	"testing"
 
+	_ "github.com/DataDog/dd-iast-go/iast/os/exec" // register isolated sink callback
 	"github.com/DataDog/dd-iast-go/internal/config"
 	"github.com/DataDog/dd-iast-go/internal/instrumentation/telemetry"
 	"github.com/DataDog/dd-iast-go/internal/model"
