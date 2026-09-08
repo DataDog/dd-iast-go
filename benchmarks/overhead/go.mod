@@ -13,7 +13,7 @@ require (
 	github.com/DataDog/dd-iast-go v0.0.0
 	github.com/DataDog/dd-trace-go/contrib/net/http/v2 v2.11.0-dev.0.20260724102042-cf24b817c453
 	github.com/DataDog/dd-trace-go/v2 v2.11.0-dev.0.20260804111058-8828d86aa5e7
-	github.com/DataDog/orchestrion v1.12.2
+	github.com/DataDog/orchestrion v1.13.0
 )
 
 require (
