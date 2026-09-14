@@ -16,9 +16,9 @@ import (
 )
 
 // BindStartSpan binds an already-created span context to its request scope and
-// returns both values unchanged. It is the multi-result expression wrapper for
-// tracer.StartSpanFromContext call sites.
-func BindStartSpan(span *tracer.Span, ctx context.Context) (*tracer.Span, context.Context) {
+// returns the span and context unchanged. It supports the multi-result expression
+// wrapper for tracer.StartSpanFromContext call sites.
+func BindStartSpan(ctx context.Context, span *tracer.Span) (*tracer.Span, context.Context) {
 	if request.FromContext(ctx) != nil {
 		spans.BindScopeFromContext(ctx)
 	}

@@ -26,21 +26,21 @@ func StringsCut(value, separator string) (before, after string, found bool) {
 	before, after, found = strings.Cut(value, separator)
 	internal.StringWindow(value, before)
 	internal.StringWindow(value, after)
-	return
+	return before, after, found
 }
 
 // StringsCutPrefix wraps strings.CutPrefix.
 func StringsCutPrefix(value, prefix string) (after string, found bool) {
 	after, found = strings.CutPrefix(value, prefix)
 	internal.StringWindow(value, after)
-	return
+	return after, found
 }
 
 // StringsCutSuffix wraps strings.CutSuffix.
 func StringsCutSuffix(value, suffix string) (before string, found bool) {
 	before, found = strings.CutSuffix(value, suffix)
 	internal.StringWindow(value, before)
-	return
+	return before, found
 }
 
 // StringsSplit wraps strings.Split.

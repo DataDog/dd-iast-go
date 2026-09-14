@@ -34,21 +34,21 @@ func BytesCut(value, separator []byte) (before, after []byte, found bool) {
 	before, after, found = bytes.Cut(value, separator)
 	internal.ByteWindow(value, before)
 	internal.ByteWindow(value, after)
-	return
+	return before, after, found
 }
 
 // BytesCutPrefix wraps bytes.CutPrefix.
 func BytesCutPrefix(value, prefix []byte) (after []byte, found bool) {
 	after, found = bytes.CutPrefix(value, prefix)
 	internal.ByteWindow(value, after)
-	return
+	return after, found
 }
 
 // BytesCutSuffix wraps bytes.CutSuffix.
 func BytesCutSuffix(value, suffix []byte) (before []byte, found bool) {
 	before, found = bytes.CutSuffix(value, suffix)
 	internal.ByteWindow(value, before)
-	return
+	return before, found
 }
 
 // BytesSplit wraps bytes.Split.

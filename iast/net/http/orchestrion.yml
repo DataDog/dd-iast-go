@@ -63,8 +63,16 @@ aspects:
     advice:
       - wrap-expression:
           imports:
+            context: context
             iasthttp: github.com/DataDog/dd-iast-go/iast/net/http
-          template: iasthttp.BindStartSpan({{ . }})
+            tracer: github.com/DataDog/dd-trace-go/v2/ddtrace/tracer
+          template: |-
+            func(
+              __dd_iast_span *tracer.Span,
+              __dd_iast_ctx context.Context,
+            ) (*tracer.Span, context.Context) {
+              return iasthttp.BindStartSpan(__dd_iast_ctx, __dd_iast_span)
+            }({{ . }})
 
   # Direct/custom dispatch can bypass serverHandler. Restrict fallback matching
   # to the exact http.HandlerFunc shape to avoid treating unrelated helpers as
