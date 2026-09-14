@@ -7,6 +7,7 @@ package json
 
 import (
 	"context"
+	"errors"
 	"go/ast"
 	"go/parser"
 	"go/token"
@@ -17,7 +18,10 @@ import (
 	"testing"
 
 	"github.com/DataDog/dd-iast-go/internal/config"
+	"github.com/DataDog/dd-iast-go/internal/model/constants"
 	"github.com/DataDog/dd-iast-go/internal/taint/request"
+	"github.com/DataDog/dd-iast-go/taint"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGo126SourceShape(t *testing.T) {
@@ -55,6 +59,52 @@ func TestGo126SourceShape(t *testing.T) {
 		if !found[key] {
 			t.Fatalf("missing pinned encoding/json function %s", key)
 		}
+	}
+}
+
+type customJSONString string
+
+func (*customJSONString) UnmarshalJSON([]byte) error { return nil }
+
+func TestPropagateLiteral(t *testing.T) {
+	oldEnabled, oldSampling, oldMax := config.Enabled, config.RequestSamplingPct, config.MaxConcurrentRequests
+	config.Enabled, config.RequestSamplingPct, config.MaxConcurrentRequests = true, 100, 64
+	t.Cleanup(func() {
+		config.Enabled, config.RequestSamplingPct, config.MaxConcurrentRequests = oldEnabled, oldSampling, oldMax
+	})
+	ctx, scope, created := request.Begin(context.Background())
+	require.True(t, created)
+	t.Cleanup(scope.Finish)
+
+	document := taint.TaintBytes(ctx, taint.Source{Origin: constants.OriginHttpRequestBody}, []byte(`{"value":"attack"}`))
+	literal := document[9:17]
+	destination := "attack"
+	propagateLiteral(document, literal, reflect.ValueOf(&destination).Elem(), nil)
+	require.Equal(t, "attack", destination)
+	require.True(t, taint.IsTaintedString(destination))
+
+	custom := customJSONString("unchanged")
+	propagateLiteral(document, literal, reflect.ValueOf(&custom).Elem(), nil)
+	require.Equal(t, customJSONString("unchanged"), custom)
+}
+
+func TestPropagateLiteralRejectsInvalidResults(t *testing.T) {
+	document := []byte(`{"value":"clean"}`)
+	literal := document[9:16]
+	for name, test := range map[string]struct {
+		item  []byte
+		value reflect.Value
+		err   error
+	}{
+		"decode error":     {item: literal, value: reflect.ValueOf(new(string)).Elem(), err: errors.New("decode failed")},
+		"unquoted literal": {item: []byte("null"), value: reflect.ValueOf(new(string)).Elem()},
+		"invalid value":    {item: literal},
+		"wrong kind":       {item: literal, value: reflect.ValueOf(new(int)).Elem()},
+		"unsettable value": {item: literal, value: reflect.ValueOf("clean")},
+	} {
+		t.Run(name, func(t *testing.T) {
+			propagateLiteral(document, test.item, test.value, test.err)
+		})
 	}
 }
 

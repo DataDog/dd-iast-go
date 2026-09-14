@@ -147,6 +147,54 @@ func TestReadAllBytesPublishesEveryBoundOwner(t *testing.T) {
 	}
 }
 
+func TestCloneReaderBytesPublishesIndependentDocument(t *testing.T) {
+	previousEnabled := config.Enabled
+	previousSampling := config.RequestSamplingPct
+	previousMax := config.MaxConcurrentRequests
+	config.Enabled = true
+	config.RequestSamplingPct = 100
+	config.MaxConcurrentRequests = 64
+	t.Cleanup(func() {
+		config.Enabled = previousEnabled
+		config.RequestSamplingPct = previousSampling
+		config.MaxConcurrentRequests = previousMax
+	})
+
+	reader := new(int)
+	require.Nil(t, CloneReaderBytes(reader, []byte("unbound")))
+	require.Nil(t, CloneReaderBytes(reader, []byte("x")))
+	require.Nil(t, CloneReaderBytes(reader, make([]byte, store.MaxRootBytes+1)))
+
+	firstCtx, firstScope, created := Begin(context.Background())
+	require.True(t, created)
+	t.Cleanup(firstScope.Finish)
+	secondCtx, secondScope, created := Begin(context.Background())
+	require.True(t, created)
+	t.Cleanup(secondScope.Finish)
+	require.True(t, BindReader(firstCtx, reader))
+	require.True(t, BindReader(secondCtx, reader))
+
+	document := make([]byte, 4, 16)
+	copy(document, "body")
+	clone := CloneReaderBytes(reader, document)
+	require.Equal(t, document, clone)
+	require.Equal(t, len(clone), cap(clone))
+	document[0] = 'x'
+	require.Equal(t, []byte("body"), clone)
+
+	firstAnalysis, ok := firstScope.Analysis()
+	require.True(t, ok)
+	secondAnalysis, ok := secondScope.Analysis()
+	require.True(t, ok)
+	require.Equal(t, 1, firstAnalysis.SourceCount())
+	require.Equal(t, 1, secondAnalysis.SourceCount())
+	key, valid := store.BytesKey(clone)
+	require.True(t, valid)
+	var snapshot store.Snapshot
+	require.True(t, firstAnalysis.manager.store.Lookup(key, &snapshot))
+	require.Equal(t, 2, snapshot.Len())
+}
+
 func TestAdoptBodyBytesPreservesSliceAndReusesSource(t *testing.T) {
 	manager := NewManager(nil)
 	analysis, ok := manager.Acquire(1)

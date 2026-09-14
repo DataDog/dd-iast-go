@@ -10,9 +10,30 @@ import (
 	"testing"
 
 	"github.com/DataDog/dd-iast-go/internal/config"
+	"github.com/DataDog/dd-iast-go/internal/instrumentation/telemetry"
+	"github.com/DataDog/dd-iast-go/internal/model/constants"
 	"github.com/DataDog/dd-iast-go/internal/taint/request"
 	"github.com/DataDog/dd-iast-go/internal/taint/sqlbridge"
+	"github.com/DataDog/dd-iast-go/taint"
+	"github.com/stretchr/testify/require"
 )
+
+func TestReport(t *testing.T) {
+	oldEnabled, oldSampling, oldMax := config.Enabled, config.RequestSamplingPct, config.MaxConcurrentRequests
+	config.Enabled, config.RequestSamplingPct, config.MaxConcurrentRequests = true, 100, 64
+	t.Cleanup(func() {
+		config.Enabled, config.RequestSamplingPct, config.MaxConcurrentRequests = oldEnabled, oldSampling, oldMax
+	})
+	ctx, scope, created := request.Begin(context.Background())
+	require.True(t, created)
+	t.Cleanup(scope.Finish)
+
+	before := telemetry.ExecutedSink.SqlInjection.Load()
+	Report(ctx, "SELECT 1", sqlbridge.KindExec)
+	tainted := taint.TaintString(ctx, taint.Source{Origin: constants.OriginHttpRequestParameter, Name: "q"}, "SELECT * FROM users")
+	Report(ctx, tainted, sqlbridge.KindQuery)
+	require.Equal(t, before+2, telemetry.ExecutedSink.SqlInjection.Load())
+}
 
 func BenchmarkReportActiveClean(b *testing.B) {
 	oldEnabled, oldSampling, oldMax := config.Enabled, config.RequestSamplingPct, config.MaxConcurrentRequests

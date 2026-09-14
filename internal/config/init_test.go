@@ -35,6 +35,36 @@ func TestDefaultRedactionPatternsMatchAcceptedSensitiveForms(t *testing.T) {
 	}
 }
 
+func TestObserveReplaysWarningsAndEnvironment(t *testing.T) {
+	previousObservations, previousWarnings := observations, warnings
+	observations = []observation{
+		{name: "default", value: 1},
+		{name: "environment", value: 2, environment: true},
+	}
+	warnings = []string{"invalid setting"}
+	t.Cleanup(func() {
+		observations, warnings = previousObservations, previousWarnings
+	})
+
+	var warning string
+	defaults := make(map[string]any)
+	environment := make(map[string]any)
+	Observe(loader.Observer{
+		Warn: func(format string, args ...any) {
+			warning = format
+		},
+		RegisterDefault: func(name string, value any) {
+			defaults[name] = value
+		},
+		RegisterEnvironment: func(name string, value any) {
+			environment[name] = value
+		},
+	})
+	require.Equal(t, "%s", warning)
+	require.Equal(t, map[string]any{"default": 1}, defaults)
+	require.Equal(t, map[string]any{"environment": 2}, environment)
+}
+
 func TestObserveReplaysInitialConfiguration(t *testing.T) {
 	count := 0
 	observer := loader.Observer{
