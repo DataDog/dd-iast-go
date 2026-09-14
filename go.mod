@@ -16,7 +16,7 @@ require (
 	github.com/puzpuzpuz/xsync/v4 v4.5.0
 	github.com/stretchr/testify v1.12.1
 	github.com/tinylib/msgp v1.6.4
-	golang.org/x/crypto v0.55.0
+	golang.org/x/crypto v0.56.0
 )
 
 require golang.org/x/text v0.41.0 // indirect
