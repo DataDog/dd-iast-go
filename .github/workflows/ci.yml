@@ -27,6 +27,7 @@ jobs:
         uses: DataDog/dd-license-attribution@c2f0821bb962277c085fafe2a1f1be3f14eb10e0 # main
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
+          override-spec: .ddla-overrides
           go-version: 'stable'
           github-sbom-strategy: false
           npm-strategy: false

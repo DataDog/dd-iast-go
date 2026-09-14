@@ -1,0 +1,155 @@
+[
+  {
+    "override_type": "replace",
+    "target": {
+      "component": "github.com/xeipuuv/gojsonpointer",
+      "origin": "https://github.com/xeipuuv/gojsonpointer"
+    },
+    "replacement": {
+      "name": "github.com/xeipuuv/gojsonpointer",
+      "origin": "https://github.com/xeipuuv/gojsonpointer",
+      "license": [
+        "Apache-2.0"
+      ],
+      "copyright": [
+        "xeipuuv"
+      ]
+    }
+  },
+  {
+    "override_type": "replace",
+    "target": {
+      "component": "github.com/xeipuuv/gojsonreference",
+      "origin": "https://github.com/xeipuuv/gojsonreference"
+    },
+    "replacement": {
+      "name": "github.com/xeipuuv/gojsonreference",
+      "origin": "https://github.com/xeipuuv/gojsonreference",
+      "license": [
+        "Apache-2.0"
+      ],
+      "copyright": [
+        "xeipuuv"
+      ]
+    }
+  },
+  {
+    "override_type": "replace",
+    "target": {
+      "component": "github.com/xeipuuv/gojsonschema",
+      "origin": "https://github.com/xeipuuv/gojsonschema"
+    },
+    "replacement": {
+      "name": "github.com/xeipuuv/gojsonschema",
+      "origin": "https://github.com/xeipuuv/gojsonschema",
+      "license": [
+        "Apache-2.0"
+      ],
+      "copyright": [
+        "xeipuuv"
+      ]
+    }
+  },
+  {
+    "override_type": "replace",
+    "target": {
+      "component": "go.opentelemetry.io/collector/component",
+      "origin": "https://go.opentelemetry.io/collector/component"
+    },
+    "replacement": {
+      "name": "go.opentelemetry.io/collector/component",
+      "origin": "https://go.opentelemetry.io/collector/component",
+      "license": [
+        "Apache-2.0"
+      ],
+      "copyright": [
+        "The OpenTelemetry Authors"
+      ]
+    }
+  },
+  {
+    "override_type": "replace",
+    "target": {
+      "component": "go.opentelemetry.io/collector/featuregate",
+      "origin": "https://go.opentelemetry.io/collector/featuregate"
+    },
+    "replacement": {
+      "name": "go.opentelemetry.io/collector/featuregate",
+      "origin": "https://go.opentelemetry.io/collector/featuregate",
+      "license": [
+        "Apache-2.0"
+      ],
+      "copyright": [
+        "The OpenTelemetry Authors"
+      ]
+    }
+  },
+  {
+    "override_type": "replace",
+    "target": {
+      "component": "go.opentelemetry.io/collector/pdata",
+      "origin": "https://go.opentelemetry.io/collector/pdata"
+    },
+    "replacement": {
+      "name": "go.opentelemetry.io/collector/pdata",
+      "origin": "https://go.opentelemetry.io/collector/pdata",
+      "license": [
+        "Apache-2.0"
+      ],
+      "copyright": [
+        "The OpenTelemetry Authors"
+      ]
+    }
+  },
+  {
+    "override_type": "replace",
+    "target": {
+      "component": "go.opentelemetry.io/collector/pdata/pprofile",
+      "origin": "https://go.opentelemetry.io/collector/pdata/pprofile"
+    },
+    "replacement": {
+      "name": "go.opentelemetry.io/collector/pdata/pprofile",
+      "origin": "https://go.opentelemetry.io/collector/pdata/pprofile",
+      "license": [
+        "Apache-2.0"
+      ],
+      "copyright": [
+        "The OpenTelemetry Authors"
+      ]
+    }
+  },
+  {
+    "override_type": "replace",
+    "target": {
+      "component": "go.opentelemetry.io/proto/otlp",
+      "origin": "https://go.opentelemetry.io/proto/otlp"
+    },
+    "replacement": {
+      "name": "go.opentelemetry.io/proto/otlp",
+      "origin": "https://go.opentelemetry.io/proto/otlp",
+      "license": [
+        "Apache-2.0"
+      ],
+      "copyright": [
+        "The OpenTelemetry Authors"
+      ]
+    }
+  },
+  {
+    "override_type": "replace",
+    "target": {
+      "component": "google.golang.org/genproto/googleapis/rpc",
+      "origin": "https://google.golang.org/genproto/googleapis/rpc"
+    },
+    "replacement": {
+      "name": "google.golang.org/genproto/googleapis/rpc",
+      "origin": "https://google.golang.org/genproto/googleapis/rpc",
+      "license": [
+        "Apache-2.0"
+      ],
+      "copyright": [
+        "Google LLC"
+      ]
+    }
+  }
+]
