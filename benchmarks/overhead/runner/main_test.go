@@ -25,7 +25,7 @@ func TestParseFlags(t *testing.T) {
 	}{
 		{
 			name: "defaults",
-			want: options{count: 10, benchtime: "500ms", cpu: 1, benchmark: "."},
+			want: options{count: 10, benchtime: "500ms", cpu: 1, benchmark: ".", sampling: 100},
 		},
 		{
 			name: "overrides",
@@ -35,18 +35,21 @@ func TestParseFlags(t *testing.T) {
 				"-benchtime=2s",
 				"-cpu=4",
 				"-bench=Hash/.+",
+				"-sampling=0",
 			},
-			want: options{outputDir: "results", count: 3, benchtime: "2s", cpu: 4, benchmark: "Hash/.+"},
+			want: options{outputDir: "results", count: 3, benchtime: "2s", cpu: 4, benchmark: "Hash/.+", sampling: 0},
 		},
 		{
 			name:      "iteration benchtime",
 			arguments: []string{"-benchtime=100x"},
-			want:      options{count: 10, benchtime: "100x", cpu: 1, benchmark: "."},
+			want:      options{count: 10, benchtime: "100x", cpu: 1, benchmark: ".", sampling: 100},
 		},
 		{name: "positional argument", arguments: []string{"extra"}, wantError: "unexpected positional arguments"},
 		{name: "zero count", arguments: []string{"-count=0"}, wantError: "-count must be a single positive integer"},
 		{name: "invalid count", arguments: []string{"-count=many"}, wantError: "-count must be a single positive integer"},
 		{name: "zero CPU", arguments: []string{"-cpu=0"}, wantError: "-cpu must be a single positive integer"},
+		{name: "negative sampling", arguments: []string{"-sampling=-1"}, wantError: "-sampling must be an integer from 0 to 100"},
+		{name: "high sampling", arguments: []string{"-sampling=101"}, wantError: "-sampling must be an integer from 0 to 100"},
 		{name: "CPU list", arguments: []string{"-cpu=1,2"}, wantError: `-cpu must be a single positive integer: "1,2"`},
 		{name: "empty benchtime", arguments: []string{"-benchtime="}, wantError: "-benchtime must be a positive duration"},
 		{name: "zero duration", arguments: []string{"-benchtime=0s"}, wantError: "-benchtime must be a positive duration"},
@@ -56,10 +59,10 @@ func TestParseFlags(t *testing.T) {
 		{name: "invalid benchmark", arguments: []string{"-bench=["}, wantError: "invalid -bench expression"},
 		{name: "invalid benchmark element", arguments: []string{"-bench=A/*"}, wantError: "invalid -bench expression"},
 		{name: "invalid benchmark alternative", arguments: []string{"-bench=[]|[a]"}, wantError: `invalid -bench expression "[]"`},
-		{name: "benchmark character class slash", arguments: []string{"-bench=[/]"}, want: options{count: 10, benchtime: "500ms", cpu: 1, benchmark: "[/]"}},
-		{name: "benchmark parenthesized slash", arguments: []string{"-bench=(A/B)"}, want: options{count: 10, benchtime: "500ms", cpu: 1, benchmark: "(A/B)"}},
-		{name: "benchmark character class pipe", arguments: []string{"-bench=[|]"}, want: options{count: 10, benchtime: "500ms", cpu: 1, benchmark: "[|]"}},
-		{name: "benchmark parenthesized pipe", arguments: []string{"-bench=(A|B)"}, want: options{count: 10, benchtime: "500ms", cpu: 1, benchmark: "(A|B)"}},
+		{name: "benchmark character class slash", arguments: []string{"-bench=[/]"}, want: options{count: 10, benchtime: "500ms", cpu: 1, benchmark: "[/]", sampling: 100}},
+		{name: "benchmark parenthesized slash", arguments: []string{"-bench=(A/B)"}, want: options{count: 10, benchtime: "500ms", cpu: 1, benchmark: "(A/B)", sampling: 100}},
+		{name: "benchmark character class pipe", arguments: []string{"-bench=[|]"}, want: options{count: 10, benchtime: "500ms", cpu: 1, benchmark: "[|]", sampling: 100}},
+		{name: "benchmark parenthesized pipe", arguments: []string{"-bench=(A|B)"}, want: options{count: 10, benchtime: "500ms", cpu: 1, benchmark: "(A|B)", sampling: 100}},
 		{name: "unknown flag", arguments: []string{"-unknown"}, wantError: "flag provided but not defined"},
 	}
 
@@ -91,7 +94,7 @@ func TestHelp(t *testing.T) {
 	if strings.Contains(usage.String(), "`") {
 		t.Fatalf("usage contains a stray backtick:\n%s", usage.String())
 	}
-	for _, name := range []string{"-bench", "-benchtime", "-count", "-cpu", "-outputdir"} {
+	for _, name := range []string{"-bench", "-benchtime", "-count", "-cpu", "-outputdir", "-sampling"} {
 		if !strings.Contains(usage.String(), name) {
 			t.Errorf("usage does not contain %q:\n%s", name, usage.String())
 		}

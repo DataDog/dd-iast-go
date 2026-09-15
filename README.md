@@ -23,6 +23,61 @@ Many of the functionality provided by this module relies on taint tracking:
   query execution function), and no corresponding safety _mark_ has been placed,
   a _vulnerability_ is reported.
 
+### Propagation coverage
+
+Category | Supported operations
+---|---
+String windows | `Cut*`, `Split*`, `Fields*`, `Trim*`, `Lines`, and their sequence variants
+String copies and transforms | Maximal `+` chains of 2–16 operands; string slicing; allocation-preserving `[]byte`-to-`string` assignments, declarations, and returns; `Clone`, `Join`, `Repeat`, `Replace*`, case conversion, `Map`, and `ToValidUTF8`
+Formatting and encoding | `fmt.Sprint*`, `net/url` escape and unescape functions, and `strconv` quote and unquote functions
+Byte windows | Two- and three-index `[]byte` slicing; `Cut*`, `Split*`, `Fields*`, and `Trim*`
+Byte copies and transforms | `Clone`, `Join`, `Repeat`, `Replace*`, case conversion, `Map`, and `ToValidUTF8`
+Stateful writers | Direct `strings.Builder` and `bytes.Buffer` writes, `Grow`, `Reset`, `Truncate`, and `String`
+JSON decoding | Go 1.26 `json.Unmarshal` and `json.Decoder.Decode` string values in nested structs, arrays, slices, and typed map values
+
+Propagation instrumentation applies to direct calls in the application root.
+Calls through function or method values are not supported. A later direct writer
+call validates the current receiver shape and drops stale provenance. Mutable
+`bytes.Buffer.Bytes` and `AvailableBuffer` results remain untainted; accessing
+them invalidates tracked buffer state. String-to-byte conversion, `append`,
+`copy`, `+=`, and direct byte index/slice assignment remain unsupported because
+mutation can otherwise leave stale provenance; these unsupported shapes safely
+lose taint instead of creating a new mutable root. Supported byte-slice windows
+share the parent managed root and therefore inherit its existing limitation:
+direct writes through an alias cannot invalidate ranges until a tracked writer
+operation observes the mutation. Conversion contexts optimized by the Go
+compiler, including calls, comparisons, map keys, ranges, and concatenations,
+are intentionally not wrapped. Tainted replacement terms supplied to
+`strings.Replacer` are not tracked in this release. Builder and buffer value
+copies, and aliases that share backing memory without the same receiver, can
+only lose provenance and never publish unchecked provenance.
+
+JSON string output uses coarse whole-value ranges while retaining the exact
+intersecting source identity. Custom unmarshaler output, decoded byte slices,
+interface values, typed map keys, and `map[string]any` keys are not propagated. Decoder documents
+larger than 64 KiB safely drop provenance. Decoder tracking uses 64 process
+slots with four-probe admission; excess or colliding concurrent decodes drop
+provenance. Reentrant use of the same decoder can lose outer-decode provenance.
+
+Tracking a stateful writer uses a strong request-bounded receiver anchor. This
+can make a stack receiver escape. Writer state is limited to eight receivers per
+request owner, four owners per receiver, and 64 KiB of charged visible capacity.
+
+### Sink coverage
+
+Category | Supported operations
+---|---
+SQL injection | Go 1.26 `database/sql` prepare, execute, query, prepared-statement, and delegated `QueryRow` operations on `DB`, `Conn`, `Tx`, and `Stmt`
+Command injection | Process attempts made by `exec.Cmd.Start`, including `Run`, `Output`, and `CombinedOutput`
+
+SQL parameters are not query evidence. Command construction alone does not
+report a vulnerability; reporting occurs only after an `os.StartProcess`
+attempt. Sink callback registration is injected into executable `main`
+packages in the root module; plugin, library, and non-root executable builds do
+not activate these request-scoped sinks. Sink evidence is limited to 32 KiB
+before conservative redaction, and the encoded vulnerability event is limited
+to 25,000 bytes.
+
 ## Cost Control
 
 Taint tracking has non-trivial associated cost; both in terms of memory and
@@ -41,14 +96,14 @@ Environment variable | Type | Default | Description
 ---|---|---:|---
 `DD_IAST_ENABLED` | Boolean | `true` | Enables IAST.
 `DD_IAST_REQUEST_SAMPLING` | Integer from `0` to `100` | `30` | Percentage of requests sampled for IAST analysis.
-`DD_IAST_MAX_CONCURRENT_REQUESTS` | Non-negative integer | `2` | Maximum number of requests that IAST processes concurrently.
+`DD_IAST_MAX_CONCURRENT_REQUESTS` | Integer from `0` to `64` | `2` | Maximum number of requests that IAST processes concurrently; `0` disables request analysis.
 `DD_IAST_VULNERABILITIES_PER_REQUEST` | Integer greater than or equal to `1` | `2` | Maximum number of vulnerabilities reported for one request.
 `DD_IAST_DEDUPLICATION_ENABLED` | Boolean | `true` | Enables vulnerability deduplication.
 `DD_IAST_REDACTION_ENABLED` | Boolean | `true` | Enables sensitive data redaction.
-`DD_IAST_REDACTION_NAME_PATTERN` | `regexp` regular expression | Sensible built-in pattern | Pattern used to identify source names that must be redacted.
-`DD_IAST_REDACTION_VALUE_PATTERN` | `regexp` regular expression | Sensible built-in pattern | Pattern used to identify source values that must be redacted.
+`DD_IAST_REDACTION_NAME_PATTERN` | `regexp` regular expression | Sensible built-in pattern | Pattern used to identify source names that must be redacted. Falls back to the compatibility alias `DD_IAST_REDACTION_KEYS_REGEXP` when unset.
+`DD_IAST_REDACTION_VALUE_PATTERN` | `regexp` regular expression | Sensible built-in pattern | Pattern used to identify source values that must be redacted. Falls back to the compatibility alias `DD_IAST_REDACTION_VALUES_REGEXP` when unset.
 `DD_IAST_TRUNCATION_MAX_VALUE` | Non-negative integer | `250` | Maximum number of Unicode characters retained before truncating source values, vulnerability evidence, redacted patterns, and individual evidence value parts.
-`DD_IAST_MAX_RANGE_COUNT` | Non-negative integer | `10` | Maximum number of taint ranges retained for one value.
+`DD_IAST_MAX_RANGE_COUNT` | Integer from `1` to `64` | `10` | Maximum number of taint ranges retained for one value.
 `DD_IAST_TELEMETRY_VERBOSITY` | `OFF`, `MANDATORY`, `INFORMATION`, or `DEBUG` | `INFORMATION` | Sets IAST telemetry verbosity.
 `DD_IAST_DB_ROWS_TO_TAINT` | Non-negative integer | `1` | Number of database rows tainted for each request.
 `DD_IAST_STACK_TRACE_ENABLED` | Boolean | `true` | Includes stack traces in vulnerability reports.
@@ -65,7 +120,7 @@ Name | Severity | Implemented
 ---|---|:---:
 Admin console active | Low | :x:
 Code injection | High | :x:
-Command injection | Critical | :x:
+Command injection | Critical | :white_check_mark: `github.com/DataDog/dd-iast-go/iast/os/exec`
 Default application deployed | Low | :x:
 Default HTML escape invalid | High | :x:
 Directory listing leak | High | :x:
@@ -86,7 +141,7 @@ Reflection injection | Medium | :x:
 Server-side request forgery | Critical | :x:
 Session rewriting | Medium | :x:
 Session timeout | Low | :x:
-SQL injection | Critical | :x:
+SQL injection | Critical | :white_check_mark: `github.com/DataDog/dd-iast-go/iast/database/sql`
 Stacktrace leak | Medium | :x:
 Template injection | High | :x:
 Trust boundary violation | High | :x:

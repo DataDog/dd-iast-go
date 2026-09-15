@@ -1,0 +1,114 @@
+# Unless explicitly stated otherwise all files in this repository are licensed
+# under the Apache License Version 2.0.
+# This product includes software developed at Datadog (https://www.datadoghq.com/).
+# Copyright 2026-present Datadog, Inc.
+---
+# $schema: https://datadoghq.dev/orchestrion/schema.json
+meta:
+  name: github.com/DataDog/dd-iast-go/iast/database/sql
+  description: Request-scoped SQL injection sinks
+
+aspects:
+  # Link callback registration from the application executable, not from the
+  # standard-library archive. Heavy links from database/sql create synthetic
+  # test-variant cycles; every woven production executable has one root main.
+  # Generated .test mains are excluded to keep same-package test graphs acyclic.
+  - id: application SQL sink bootstrap
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - not: {package-filter: {root: true, pattern: "**.test"}}
+        - function-body:
+            function:
+              - receiver: false
+              - name: main
+    advice:
+      - prepend-statements:
+          imports:
+            iastsql: github.com/DataDog/dd-iast-go/iast/database/sql
+          template: |-
+            _ = iastsql.Report
+
+  # Anchor one package-scoped bridge declaration on a unique Go 1.26.6 method.
+  - id: database/sql IAST bridge declaration
+    join-point:
+      all-of:
+        - import-path: database/sql
+        - function-body:
+            function:
+              - name: SetMaxIdleConns
+    advice:
+      - inject-declarations:
+          links:
+            - github.com/DataDog/dd-iast-go/internal/taint/sqlbridge
+          imports:
+            context: context
+          template: |-
+            //go:linkname __dd__iast_ReportSQL__ github.com/DataDog/dd-iast-go/internal/taint/sqlbridge.Report
+            func __dd__iast_ReportSQL__(context.Context, string, uint8, bool)
+
+  # Go 1.26.6 declares each context method name below only on DB, Conn, Tx, and
+  # Stmt. The isolated source-shape test pins that exact eleven-method set and
+  # the private Stmt.query field. Non-context and QueryRow methods delegate to
+  # these boundaries; retries stay inside one body and cannot report twice.
+  - id: database/sql prepare operations
+    join-point:
+      all-of:
+        - import-path: database/sql
+        - function-body:
+            function:
+              - name: PrepareContext
+    advice:
+      - prepend-statements:
+          template: |-
+            {{- $ctx := .Function.Argument 0 -}}
+            {{- $query := .Function.Argument 1 -}}
+            defer __dd__iast_ReportSQL__({{ $ctx }}, {{ $query }}, 1, true)
+
+  - id: database/sql exec operations
+    join-point:
+      all-of:
+        - import-path: database/sql
+        - function-body:
+            function:
+              - name: ExecContext
+    advice:
+      - prepend-statements:
+          template: |-
+            {{- $receiver := .Function.Receiver -}}
+            {{- $ctx := .Function.Argument 0 -}}
+            {{- $queryOrArgs := .Function.Argument 1 -}}
+            {{- if eq $queryOrArgs "query" }}
+            defer __dd__iast_ReportSQL__({{ $ctx }}, {{ $queryOrArgs }}, 2, true)
+            {{- else }}
+            __dd_iast_query := ""
+            __dd_iast_query_ok := {{ $receiver }} != nil
+            if __dd_iast_query_ok {
+              __dd_iast_query = {{ $receiver }}.query
+            }
+            defer __dd__iast_ReportSQL__({{ $ctx }}, __dd_iast_query, 2, __dd_iast_query_ok)
+            {{- end }}
+
+  - id: database/sql query operations
+    join-point:
+      all-of:
+        - import-path: database/sql
+        - function-body:
+            function:
+              - name: QueryContext
+    advice:
+      - prepend-statements:
+          template: |-
+            {{- $receiver := .Function.Receiver -}}
+            {{- $ctx := .Function.Argument 0 -}}
+            {{- $queryOrArgs := .Function.Argument 1 -}}
+            {{- if eq $queryOrArgs "query" }}
+            defer __dd__iast_ReportSQL__({{ $ctx }}, {{ $queryOrArgs }}, 3, true)
+            {{- else }}
+            __dd_iast_query := ""
+            __dd_iast_query_ok := {{ $receiver }} != nil
+            if __dd_iast_query_ok {
+              __dd_iast_query = {{ $receiver }}.query
+            }
+            defer __dd__iast_ReportSQL__({{ $ctx }}, __dd_iast_query, 3, __dd_iast_query_ok)
+            {{- end }}

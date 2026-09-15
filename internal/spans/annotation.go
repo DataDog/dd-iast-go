@@ -6,6 +6,7 @@
 package spans
 
 import (
+	"context"
 	"log/slog"
 	"math/rand/v2"
 	"sync"
@@ -13,14 +14,19 @@ import (
 	"weak"
 
 	"github.com/DataDog/dd-iast-go/internal/config"
+	"github.com/DataDog/dd-iast-go/internal/config/loader"
 	"github.com/DataDog/dd-iast-go/internal/instrumentation"
 	"github.com/DataDog/dd-iast-go/internal/instrumentation/telemetry"
 	"github.com/DataDog/dd-iast-go/internal/model"
+	"github.com/DataDog/dd-iast-go/internal/taint/request"
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
 	"github.com/puzpuzpuz/xsync/v4"
 )
 
 var (
+	// nonSampledAnnotation is immutable by convention. Reporting returns before
+	// touching Event or RequestTainted when Sampled is false.
+	nonSampledAnnotation = new(Annotation)
 	// store is the association of tracer spans to annotation objects.
 	store = xsync.NewMap[weak.Pointer[tracer.Span], *Annotation](xsync.WithPresize(2 * config.MaxConcurrentRequests))
 	// triggerTrimThreshold is the threshold utilization at which we start
@@ -32,17 +38,86 @@ type Annotation struct {
 	sync.RWMutex
 	// +checklocks:RWMutex
 	model.Event
+	closed atomic.Bool
+	// +checklocks:RWMutex
+	sourceIdentities []SourceIdentity
+	// +checklocks:RWMutex
+	sourceIdentityBytes int64
+	// +checklocks:RWMutex
+	sourceIndex [2 * MaxEventSources]uint16
+	// +checklocks:RWMutex
+	eventSourceIndexes [MaxEventSources]int
 
+	// Sampled is immutable after annotation construction.
 	Sampled bool
 
 	// RequestTainted is the number of tainted elemets at the end of the request.
 	RequestTainted atomic.Uint64
 }
 
+// Closed reports whether span finishing has closed the annotation.
+func (a *Annotation) Closed() bool {
+	return a == nil || a.closed.Load()
+}
+
+// TryUseOpen invokes use with the annotation exclusively locked when it is
+// open. It returns false on nil, contention, or a closed annotation. The
+// callback must not re-lock the annotation, finish its span, or let a panic
+// escape.
+func (a *Annotation) TryUseOpen(use func(*Annotation)) bool {
+	if a == nil || use == nil || !a.Sampled {
+		return false
+	}
+	if !a.RWMutex.TryLock() {
+		return false
+	}
+	defer a.RWMutex.Unlock() // +checklocksforce: TryLock.
+	if a.closed.Load() {
+		return false
+	}
+	use(a)
+	return true
+}
+
+// ExistingForSpan returns the existing root annotation without creating one.
+// The caller must use Annotation.TryUseOpen and tolerate closure after return.
+func ExistingForSpan(span *tracer.Span) (*tracer.Span, *Annotation, bool) {
+	if span == nil {
+		return nil, nil, false
+	}
+	root := span.Root()
+	if root == nil {
+		root = span
+	}
+	annotation, ok := store.Load(weak.Make(root))
+	if !ok || annotation == nil || annotation.Closed() {
+		return nil, nil, false
+	}
+	return root, annotation, true
+}
+
+// TryUseExisting invokes use with the existing open annotation for span
+// exclusively locked. It never creates an annotation. The callback has the
+// same restrictions as [Annotation.TryUseOpen].
+func TryUseExisting(span *tracer.Span, use func(*Annotation)) bool {
+	if span == nil {
+		return false
+	}
+	root := span.Root()
+	if root == nil {
+		root = span
+	}
+	ann, ok := store.Load(weak.Make(root))
+	return ok && ann.TryUseOpen(use)
+}
+
 // AnnotationFor returns the [*Annotation] for the root of the given
 // [*tracer.Span] (or the span itself if it does not have a valid, un-finished
 // root). If none exists yet, a new [*Annotation] is allocated.
 func AnnotationFor(span *tracer.Span) *Annotation {
+	if span == nil {
+		return nonSampledAnnotation
+	}
 	root := span.Root()
 	if root == nil {
 		instrumentation.Instance.TelemetryLog().
@@ -56,31 +131,92 @@ func AnnotationFor(span *tracer.Span) *Annotation {
 	hasSpace := trimStore()
 
 	ptr := weak.Make(root)
-	ann, _ := store.LoadOrCompute(
-		ptr,
-		func() (*Annotation, bool) {
-			if !hasSpace {
-				instrumentation.Instance.TelemetryLog().
-					Warn("iast/annotation: max concurrent requests reached, not storing annotation for span", slog.Any("span", spanID))
-				// Cancel the computation. Returning false would store a nil value,
-				// which Finished would later dereference.
-				return nil, true
-			}
-			ann := new(Annotation)
-			ann.Sampled = samplingDecision()
-			if ann.Sampled {
-				root.SetTag(SpanTagEnabled, 1)
-			} else {
-				root.SetTag(SpanTagEnabled, 0)
-			}
-			return ann, false
-		},
-	)
-
+	var fallback *Annotation
+	ann, _ := store.LoadOrCompute(ptr, func() (*Annotation, bool) {
+		if !hasSpace {
+			instrumentation.Instance.TelemetryLog().
+				Warn("iast/annotation: max concurrent requests reached, not storing annotation for span", slog.Any("span", spanID))
+			fallback = nonSampledAnnotation
+			return nil, true
+		}
+		if !samplingDecision() {
+			fallback = nonSampledAnnotation
+			return nil, true
+		}
+		fallback = &Annotation{Sampled: true}
+		return fallback, false
+	})
 	if ann == nil {
-		ann = new(Annotation)
+		ann = fallback
+		if ann == nil {
+			ann = nonSampledAnnotation
+		}
 	}
+	root.SetTag(SpanTagEnabled, ann.enabledTag())
+	return ann
+}
 
+// BindScopeContext binds a handler context and discards the annotation result.
+func BindScopeContext(ctx context.Context) {
+	BindScopeFromContext(ctx)
+}
+
+// BindScopeFromContext binds a scope and span carried by ctx, when both exist.
+func BindScopeFromContext(ctx context.Context) *Annotation {
+	scope := request.FromContext(ctx)
+	if scope == nil {
+		return nil
+	}
+	span, ok := tracer.SpanFromContext(ctx)
+	if !ok {
+		return nil
+	}
+	return BindScope(span, scope)
+}
+
+// AnnotationForContext reuses the request's precomputed decision when present.
+// Taint-free orphan and non-request findings retain the legacy sampling path.
+func AnnotationForContext(ctx context.Context, span *tracer.Span) *Annotation {
+	if scope := request.FromContext(ctx); scope != nil {
+		if ann := BindScope(span, scope); ann != nil {
+			return ann
+		}
+		return nonSampledAnnotation
+	}
+	return AnnotationFor(span)
+}
+
+// BindScope binds the request's existing active decision to the root span.
+func BindScope(span *tracer.Span, scope *request.Scope) *Annotation {
+	if span == nil || scope == nil {
+		return nil
+	}
+	root := span.Root()
+	if root == nil {
+		root = span
+	}
+	ptr := weak.Make(root)
+	if existing, ok := store.Load(ptr); ok {
+		bindOwnerSpan(scope, root, existing)
+		return existing
+	}
+	if !scope.Active() {
+		root.SetTag(SpanTagEnabled, 0)
+		return nil
+	}
+	hasSpace := trimStore()
+	ann, _ := store.LoadOrCompute(ptr, func() (*Annotation, bool) {
+		if !hasSpace {
+			return nil, true
+		}
+		return &Annotation{Sampled: true}, false
+	})
+	if ann == nil {
+		root.SetTag(SpanTagEnabled, 0)
+		return nil
+	}
+	root.SetTag(SpanTagEnabled, 1)
+	bindOwnerSpan(scope, root, ann)
 	return ann
 }
 
@@ -103,13 +239,24 @@ func trimStore() bool {
 	if store.Size() < triggerTrimThreshold {
 		return true
 	}
-	store.DeleteMatching(func(key weak.Pointer[tracer.Span], _ *Annotation) (delete bool, stop bool) {
-		return key.Value() == nil, false
-	})
+	store.DeleteMatching(releaseDeadAnnotation)
 	return store.Size() < config.MaxConcurrentRequests
 }
 
-// samplingDecision returns true if the request should be sampled for IAST.
+// +checklocksignore
+func releaseDeadAnnotation(key weak.Pointer[tracer.Span], ann *Annotation) (delete bool, stop bool) {
+	if key.Value() != nil || ann == nil {
+		return false, false
+	}
+	if !ann.RWMutex.TryLock() {
+		return false, false
+	}
+	defer ann.RWMutex.Unlock() // +checklocksforce: TryLock.
+	ann.closed.Store(true)
+	ann.releaseSourceIdentities()
+	return true, false
+}
+
 func samplingDecision() bool {
 	switch config.RequestSamplingPct {
 	case 0:
@@ -121,7 +268,29 @@ func samplingDecision() bool {
 	}
 }
 
+func (a *Annotation) enabledTag() int {
+	if a != nil && a.Sampled {
+		return 1
+	}
+	return 0
+}
+
 func init() {
+	enabled := config.Observe(loader.Observer{
+		Warn: func(format string, args ...any) {
+			instrumentation.Instance.Logger().Warn(format, args...)
+		},
+		RegisterDefault: func(name string, value any) {
+			instrumentation.Instance.TelemetryRegisterAppConfig(name, value, instrumentation.OriginDefault)
+		},
+		RegisterEnvironment: func(name string, value any) {
+			instrumentation.Instance.TelemetryRegisterAppConfig(name, value, instrumentation.OriginEnvVar)
+		},
+	})
+	if enabled {
+		instrumentation.Instance.TelemetryProductStarted(instrumentation.TelemetryNamespaceIAST)
+	}
+
 	// Note: this is here and not in the [github.com/DataDog/dd-iast-go/internal/instrumentation/telemetry] package in
 	// order to avoid creating a dependency from it to some of the tracer's internal, as it would make it much harder to
 	// avoid creating circular dependencies when instrumenting packages the tracer itself uses.
@@ -163,6 +332,14 @@ func init() {
 		cnt = telemetry.ExecutedPropagation.Swap(0)
 		if cnt != 0 {
 			c.Count(instrumentation.TelemetryNamespaceIAST, "executed.propagation", nil).Submit(float64(cnt))
+		}
+		cnt = telemetry.CoarsenedPropagation.Swap(0)
+		if cnt != 0 {
+			c.Count(instrumentation.TelemetryNamespaceIAST, "propagation.coarsened", nil).Submit(float64(cnt))
+		}
+		cnt = telemetry.DroppedPropagation.Swap(0)
+		if cnt != 0 {
+			c.Count(instrumentation.TelemetryNamespaceIAST, "propagation.dropped", nil).Submit(float64(cnt))
 		}
 	})
 }

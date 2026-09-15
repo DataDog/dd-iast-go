@@ -10,13 +10,16 @@ tool (
 
 require (
 	github.com/DataDog/dd-trace-go/v2 v2.11.0-dev.0.20260804111058-8828d86aa5e7
-	github.com/DataDog/orchestrion v1.12.2
+	github.com/DataDog/go-sqllexer v0.2.4
+	github.com/DataDog/orchestrion v1.12.2-0.20260828141217-23afa71d6dcb
 	github.com/google/uuid v1.6.0
 	github.com/puzpuzpuz/xsync/v4 v4.5.0
 	github.com/stretchr/testify v1.12.1
 	github.com/tinylib/msgp v1.6.4
 	golang.org/x/crypto v0.56.0
 )
+
+require golang.org/x/text v0.41.0 // indirect
 
 require (
 	github.com/DataDog/datadog-agent/comp/core/tagger/origindetection v0.82.2 // indirect
@@ -31,7 +34,6 @@ require (
 	github.com/DataDog/datadog-go/v5 v5.9.1 // indirect
 	github.com/DataDog/go-libddwaf/v5 v5.0.1 // indirect
 	github.com/DataDog/go-runtime-metrics-internal v0.0.4-0.20260317103029-7c129975f019 // indirect
-	github.com/DataDog/go-sqllexer v0.2.4 // indirect
 	github.com/DataDog/go-tuf v1.1.1-0.5.2 // indirect
 	github.com/DataDog/sketches-go v1.4.8 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
@@ -114,6 +116,7 @@ require (
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	golang.org/x/exp v0.0.0-20260813180055-c1d0aacb2297 // indirect
 	golang.org/x/mod v0.40.0 // indirect
+	golang.org/x/net v0.58.0
 	golang.org/x/sync v0.22.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/term v0.45.0 // indirect

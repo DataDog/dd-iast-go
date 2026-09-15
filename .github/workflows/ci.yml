@@ -48,7 +48,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: oldstable
+          go-version-file: go.mod
       - name: 'Linter: gofmt'
         run: |
           unformatted="$(find . -type f -name '*.go' -exec gofmt -l {} +)"
@@ -60,6 +60,12 @@ jobs:
         run: go tool checklocks ./...
       - name: 'Linter: overhead benchmarks vet'
         run: go -C benchmarks/overhead vet ./...
+      - name: 'Linter: isolated SQL sink fixtures vet'
+        run: go -C iast/database/sql/testapp vet ./...
+      - name: 'Linter: isolated command sink fixtures vet'
+        run: go -C iast/os/exec/testapp vet ./...
+      - name: 'Linter: sink integration fixtures vet'
+        run: go -C iast/integration/testapp vet ./...
 
   test:
     runs-on: ubuntu-latest
@@ -70,7 +76,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: oldstable
+          go-version-file: go.mod
       - name: Unit Tests
         run: |
           go tool orchestrion go test \
@@ -79,6 +85,54 @@ jobs:
             -coverpkg=./... \
             -coverprofile=coverage.txt \
             ./...
+      # The Datadog uploader does not merge duplicate blocks emitted by
+      # `go test -coverpkg=./...`; normalize them before upload.
+      - name: Normalize coverage profile
+        run: |
+          python3 <<'PY'
+          from collections import defaultdict
+          from pathlib import Path
+
+          source = Path("coverage.txt")
+          destination = Path("coverage.merged.txt")
+          lines = source.read_text().splitlines()
+          if not lines or lines[0] != "mode: atomic":
+              raise SystemExit("expected an atomic Go coverage profile")
+
+          counts = defaultdict(int)
+          for line in lines[1:]:
+              location, statements, count = line.split()
+              counts[(location, int(statements))] += int(count)
+
+          def position(item):
+              (location, statements), _ = item
+              path, span = location.rsplit(":", 1)
+              start, end = span.split(",")
+              start_line, start_column = map(int, start.split("."))
+              end_line, end_column = map(int, end.split("."))
+              return path, start_line, start_column, end_line, end_column, statements
+
+          with destination.open("w") as output:
+              output.write("mode: atomic\n")
+              for (location, statements), count in sorted(counts.items(), key=position):
+                  output.write(f"{location} {statements} {count}\n")
+          PY
+          go tool cover -func=coverage.merged.txt >/dev/null
+          mv coverage.merged.txt coverage.txt
+      - name: Isolated SQL sink tests
+        run: go -C iast/database/sql/testapp tool orchestrion go test -shuffle=on ./...
+      - name: Isolated command sink tests
+        run: go -C iast/os/exec/testapp tool orchestrion go test -shuffle=on ./...
+      - name: End-to-end sink integration tests
+        run: go -C iast/integration/testapp tool orchestrion go test -shuffle=on ./...
+      - name: Sink executable bootstrap tests
+        run: |
+          go -C iast/database/sql/testapp tool orchestrion go build -o "$RUNNER_TEMP/iast-sql-bootstrap" ./cmd/bootstrap
+          go tool nm "$RUNNER_TEMP/iast-sql-bootstrap" | grep -F 'github.com/DataDog/dd-iast-go/iast/database/sql.init.0'
+          go -C iast/os/exec/testapp tool orchestrion go build -o "$RUNNER_TEMP/iast-command-bootstrap" ./cmd/bootstrap
+          go tool nm "$RUNNER_TEMP/iast-command-bootstrap" | grep -F 'github.com/DataDog/dd-iast-go/iast/os/exec.init.0'
+          go -C iast/integration/testapp tool orchestrion go build -o "$RUNNER_TEMP/iast-json-bootstrap" ./cmd/bootstrap
+          go tool nm "$RUNNER_TEMP/iast-json-bootstrap" | grep -F 'github.com/DataDog/dd-iast-go/iast/encoding/json.init.0'
       - name: Overhead benchmark unit tests
         run: go -C benchmarks/overhead test -shuffle=on ./...
       - name: Upload coverage artifact
@@ -144,7 +198,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: oldstable
+          go-version-file: go.mod
       - name: Prepare artifact directory
         run: mkdir -p "$BENCHMARK_OUTPUT_DIR"
       - name: Run benchmarks
