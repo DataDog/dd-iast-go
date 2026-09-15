@@ -85,6 +85,40 @@ jobs:
             -coverpkg=./... \
             -coverprofile=coverage.txt \
             ./...
+      # The Datadog uploader does not merge duplicate blocks emitted by
+      # `go test -coverpkg=./...`; normalize them before upload.
+      - name: Normalize coverage profile
+        run: |
+          python3 <<'PY'
+          from collections import defaultdict
+          from pathlib import Path
+
+          source = Path("coverage.txt")
+          destination = Path("coverage.merged.txt")
+          lines = source.read_text().splitlines()
+          if not lines or lines[0] != "mode: atomic":
+              raise SystemExit("expected an atomic Go coverage profile")
+
+          counts = defaultdict(int)
+          for line in lines[1:]:
+              location, statements, count = line.split()
+              counts[(location, int(statements))] += int(count)
+
+          def position(item):
+              (location, statements), _ = item
+              path, span = location.rsplit(":", 1)
+              start, end = span.split(",")
+              start_line, start_column = map(int, start.split("."))
+              end_line, end_column = map(int, end.split("."))
+              return path, start_line, start_column, end_line, end_column, statements
+
+          with destination.open("w") as output:
+              output.write("mode: atomic\n")
+              for (location, statements), count in sorted(counts.items(), key=position):
+                  output.write(f"{location} {statements} {count}\n")
+          PY
+          go tool cover -func=coverage.merged.txt >/dev/null
+          mv coverage.merged.txt coverage.txt
       - name: Isolated SQL sink tests
         run: go -C iast/database/sql/testapp tool orchestrion go test -shuffle=on ./...
       - name: Isolated command sink tests

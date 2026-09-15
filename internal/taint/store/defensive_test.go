@@ -6,9 +6,11 @@
 package store
 
 import (
+	"strings"
 	"sync/atomic"
 	"testing"
 
+	"github.com/DataDog/dd-iast-go/internal/taint/ranges"
 	"github.com/stretchr/testify/require"
 )
 
@@ -77,6 +79,72 @@ func TestByteRootDefensiveBoundaries(t *testing.T) {
 	require.False(t, ok)
 	_, _, _, ok = owner.AdoptSourceBytes([]byte("late"), "", 1)
 	require.False(t, ok)
+}
+
+func TestRootAPIDefensiveBoundaries(t *testing.T) {
+	taintStore := New()
+	owner := taintStore.Acquire()
+	t.Cleanup(func() { owner.Finish() })
+	oversizedString := strings.Repeat("x", MaxRootBytes+1)
+	oversizedBytes := make([]byte, MaxRootBytes+1)
+	oversizedCapacity := make([]byte, 2, MaxRootBytes+1)
+
+	_, _, _, ok := owner.TaintSourceString("x", "name", 1)
+	require.False(t, ok)
+	_, _, _, ok = owner.TaintSourceString(oversizedString, "name", 1)
+	require.False(t, ok)
+	_, _, _, ok = owner.TaintSourceString("value", oversizedString, 1)
+	require.False(t, ok)
+
+	_, _, ok = owner.TaintBytes(oversizedCapacity, 1)
+	require.False(t, ok)
+	_, _, _, _, ok = owner.TaintSourceBytes([]byte("x"), "name", 1)
+	require.False(t, ok)
+	_, _, _, _, ok = owner.TaintSourceBytes(oversizedCapacity, "name", 1)
+	require.False(t, ok)
+	_, _, _, _, ok = owner.TaintSourceBytes([]byte("value"), oversizedString, 1)
+	require.False(t, ok)
+
+	_, _, _, ok = owner.AdoptSourceBytes(oversizedBytes, "name", 1)
+	require.False(t, ok)
+	_, _, _, ok = owner.AdoptSourceBytes(oversizedCapacity, "name", 1)
+	require.False(t, ok)
+	_, _, _, ok = owner.AdoptSourceBytes([]byte("value"), oversizedString, 1)
+	require.False(t, ok)
+
+	var valid ranges.Set
+	require.True(t, ranges.AdoptCanonical(&valid, ranges.DefaultLimit, []ranges.Range{{Length: 2}}, 2).Valid)
+	_, ok = owner.AdoptString("", &valid)
+	require.False(t, ok)
+	_, ok = owner.AdoptString("x", &valid)
+	require.False(t, ok)
+	_, ok = owner.AdoptString(oversizedString, &valid)
+	require.False(t, ok)
+	_, ok = owner.AdoptString("xx", nil)
+	require.False(t, ok)
+	_, ok = owner.AdoptBytes(nil, &valid)
+	require.False(t, ok)
+	_, ok = owner.AdoptBytes([]byte("x"), &valid)
+	require.False(t, ok)
+	_, ok = owner.AdoptBytes(oversizedCapacity, &valid)
+	require.False(t, ok)
+	_, ok = owner.AdoptBytes([]byte("xx"), nil)
+	require.False(t, ok)
+
+	_, ok = owner.reserveRootSlot(0)
+	require.False(t, ok)
+	_, ok = owner.reserveRootSlot(MaxRootChargeBytes + 1)
+	require.False(t, ok)
+	owner.owner.rootsMu.Lock()
+	_, _, ok = owner.TaintString("contended", 1)
+	owner.owner.rootsMu.Unlock()
+	require.False(t, ok)
+
+	counters := owner.Counters()
+	require.Equal(t, uint64(10), counters.Bytes)
+	require.Equal(t, uint64(2), counters.OneByte)
+	require.Equal(t, uint64(2), counters.Ranges)
+	require.Equal(t, uint64(1), counters.Contention)
 }
 
 func TestRootValueReleaseAndWriterIdentityDefenses(t *testing.T) {

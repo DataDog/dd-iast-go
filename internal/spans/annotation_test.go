@@ -16,6 +16,58 @@ import (
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
 )
 
+func TestAnnotationGuardPaths(t *testing.T) {
+	var nilAnnotation *spans.Annotation
+	if !nilAnnotation.Closed() {
+		t.Fatal("nil annotation reported open")
+	}
+	if nilAnnotation.TryUseOpen(func(*spans.Annotation) {}) {
+		t.Fatal("nil annotation was used")
+	}
+	if (&spans.Annotation{}).TryUseOpen(func(*spans.Annotation) {}) {
+		t.Fatal("non-sampled annotation was used")
+	}
+	open := &spans.Annotation{Sampled: true}
+	if open.TryUseOpen(nil) {
+		t.Fatal("nil callback was accepted")
+	}
+	called := false
+	if !open.TryUseOpen(func(*spans.Annotation) { called = true }) || !called {
+		t.Fatal("open sampled annotation was not used")
+	}
+
+	if root, annotation, ok := spans.ExistingForSpan(nil); ok || root != nil || annotation != nil {
+		t.Fatal("nil span produced an existing annotation")
+	}
+	if spans.TryUseExisting(nil, func(*spans.Annotation) {}) {
+		t.Fatal("nil span was used")
+	}
+	if annotation := spans.AnnotationFor(nil); annotation == nil || annotation.Sampled {
+		t.Fatal("nil span did not return the non-sampled annotation")
+	}
+	if spans.BindScope(nil, nil) != nil {
+		t.Fatal("nil span and scope were bound")
+	}
+
+	previousSampling := config.RequestSamplingPct
+	config.RequestSamplingPct = 0
+	t.Cleanup(func() { config.RequestSamplingPct = previousSampling })
+	mockTracer := mocktracer.Start()
+	t.Cleanup(mockTracer.Stop)
+	span := tracer.StartSpan("unsampled")
+	t.Cleanup(func() { span.Finish() })
+	if root, annotation, ok := spans.ExistingForSpan(span); ok || root != nil || annotation != nil {
+		t.Fatal("span unexpectedly had an annotation")
+	}
+	annotation := spans.AnnotationFor(span)
+	if annotation == nil || annotation.Sampled {
+		t.Fatal("zero sampling did not return a non-sampled annotation")
+	}
+	if spans.TryUseExisting(span, func(*spans.Annotation) {}) {
+		t.Fatal("sampled-out span was used")
+	}
+}
+
 func TestFinishedClosesExistingAnnotation(t *testing.T) {
 	previousSampling := config.RequestSamplingPct
 	config.RequestSamplingPct = 100

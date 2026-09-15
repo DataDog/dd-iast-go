@@ -239,6 +239,81 @@ func TestCopyStringRejectsLengthChangesAndOversizedResults(t *testing.T) {
 	require.Zero(t, allocs)
 }
 
+func TestPropagationGuardAndRejectionPaths(t *testing.T) {
+	input := "attacker-input"
+	result := strings.Clone(input)
+	require.Equal(t, result, propagation.AdoptStringCopy("short", result))
+	require.Equal(t, result, propagation.AdoptStringCopy(input, result))
+	require.Equal(t, result, propagation.CopyString(input, result))
+	require.Equal(t, []byte("result"), propagation.CopyBytes([]byte("input"), []byte("result")))
+	require.Equal(t, result, propagation.RepeatString(input, result, 1))
+	require.Equal(t, []byte("result"), propagation.RepeatBytes([]byte("input"), []byte("result"), 1))
+
+	s, _ := beginScope(t)
+	owner := acquireOwner(t, s)
+	managed, _ := taintString(t, owner, input, []ranges.Range{{Length: uint32(len(input)), SourceID: 4}})
+	managedBytes, _ := taintBytes(t, owner, []byte("bytes"), []ranges.Range{{Length: 5, SourceID: 5}})
+
+	clean := strings.Clone("clean-value")
+	require.Equal(t, clean, propagation.AdoptStringCopy("clean-value", clean))
+	propagation.StringWindow(managed, "")
+	require.Nil(t, lookupRanges(s, ""))
+	nonAliasWindow := strings.Clone(managed[:4])
+	propagation.StringWindow(managed, nonAliasWindow)
+	require.Nil(t, lookupRanges(s, nonAliasWindow))
+	cleanWindow := "clean"
+	propagation.StringWindow("clean-value", cleanWindow)
+	require.Nil(t, lookupRanges(s, cleanWindow))
+	propagation.ByteWindow(managedBytes, nil)
+	require.Nil(t, lookupByteRanges(s, nil))
+	nonAliasByteWindow := append([]byte(nil), managedBytes[:2]...)
+	propagation.ByteWindow(managedBytes, nonAliasByteWindow)
+	require.Nil(t, lookupByteRanges(s, nonAliasByteWindow))
+	cleanByteWindow := []byte("cle")
+	propagation.ByteWindow([]byte("clean"), cleanByteWindow)
+	require.Nil(t, lookupByteRanges(s, cleanByteWindow))
+
+	adopted := strings.Clone(managed)
+	require.Equal(t, adopted, propagation.AdoptStringCopy(managed, adopted))
+	require.Equal(t, []ranges.Range{{Length: uint32(len(adopted)), SourceID: 4}}, lookupRanges(s, adopted))
+
+	nonAlias := strings.Clone(managed)
+	require.Equal(t, nonAlias, propagation.RepeatString(managed, nonAlias, 1))
+	require.Nil(t, lookupRanges(s, nonAlias))
+	require.Empty(t, propagation.RepeatString(managed, "", 0))
+	oversizedString := strings.Repeat("x", store.MaxRootBytes+1)
+	oversizedStringOut := propagation.RepeatString(managed, oversizedString, 2)
+	require.True(t, unsafe.StringData(oversizedStringOut) == unsafe.StringData(oversizedString))
+
+	shortBytes := []byte{'x'}
+	shortOut := propagation.RepeatBytes(managedBytes, shortBytes, 1)
+	require.True(t, unsafe.SliceData(shortOut) == unsafe.SliceData(shortBytes))
+	oversizedBytes := make([]byte, len(managedBytes), store.MaxRootBytes+1)
+	oversizedOut := propagation.RepeatBytes(managedBytes, oversizedBytes, 1)
+	require.True(t, unsafe.SliceData(oversizedOut) == unsafe.SliceData(oversizedBytes))
+	invalidRepeat := append([]byte(nil), managedBytes...)
+	invalidOut := propagation.RepeatBytes(managedBytes, invalidRepeat, -1)
+	require.True(t, unsafe.SliceData(invalidOut) == unsafe.SliceData(invalidRepeat))
+	require.Nil(t, lookupByteRanges(s, invalidRepeat))
+
+	require.Equal(t, "x", propagation.CoarseString("x", managed))
+	require.Equal(t, "result", propagation.CoarseString("result"))
+	require.Equal(t, "result", propagation.CoarseString("result", "clean"))
+	inputs := make([]string, 17)
+	for index := range inputs {
+		inputs[index] = "clean"
+	}
+	inputs[len(inputs)-1] = managed
+	coarseResult := string([]byte("result"))
+	coarseOut := propagation.CoarseString(coarseResult, inputs...)
+	require.True(t, unsafe.StringData(coarseOut) == unsafe.StringData(coarseResult))
+
+	byteResult := []byte("result")
+	require.True(t, unsafe.SliceData(byteResult) == unsafe.SliceData(propagation.CoarseBytes(byteResult)))
+	require.True(t, unsafe.SliceData(shortBytes) == unsafe.SliceData(propagation.CoarseBytes(shortBytes, managedBytes)))
+	require.True(t, unsafe.SliceData(byteResult) == unsafe.SliceData(propagation.CoarseBytes(byteResult, []byte("clean"))))
+}
+
 func TestCopyBytesDerivesAliasAndAdoptsNonAlias(t *testing.T) {
 	s, _ := beginScope(t)
 	owner := acquireOwner(t, s)

@@ -84,6 +84,158 @@ func TestEventMarshalMsg(t *testing.T) {
 	), decoded.String())
 }
 
+func TestEventMarshalMsgRoundTrip(t *testing.T) {
+	sourceIndex := 3
+	event := model.Event{
+		Sources: []model.Source{{
+			Origin:    constants.OriginHttpRequestHeader,
+			Name:      "Authorization",
+			Value:     "Bearer token",
+			Pattern:   "Bearer ***",
+			Redacted:  true,
+			Truncated: model.TruncatedSideRight,
+		}},
+		Vulnerabilities: []model.Vulnerability{{
+			Type: constants.VulnerabilityTypeSqlInjection,
+			Hash: 42,
+			Evidence: &model.Evidence{
+				Value:     "SELECT attack",
+				Pattern:   "SELECT ***",
+				Redacted:  true,
+				Truncated: model.TruncatedSideRight,
+				ValueParts: []model.ValuePart{{
+					Value:       "attack",
+					Pattern:     "***",
+					Redacted:    true,
+					Truncated:   model.TruncatedSideRight,
+					SourceIndex: &sourceIndex,
+					SecureMarks: []constants.VulnerabilityType{
+						constants.VulnerabilityTypeXss,
+						constants.VulnerabilityTypeSqlInjection,
+					},
+				}},
+			},
+			Location: &model.Location{
+				SpanID:  123,
+				Path:    "query.go",
+				Class:   "Repository",
+				Line:    17,
+				Method:  "Lookup",
+				StackID: "stack-1",
+			},
+		}},
+	}
+	trailing := []byte{0xde, 0xad, 0xbe, 0xef}
+	encoded, err := event.MarshalMsg(nil)
+	require.NoError(t, err)
+	encoded = append(encoded, trailing...)
+
+	var decoded model.Event
+	remainder, err := decoded.UnmarshalMsg(encoded)
+	require.NoError(t, err)
+	require.Equal(t, trailing, remainder)
+	require.Equal(t, event, decoded)
+
+	// Decode again to exercise bounded slice reuse instead of allocating new
+	// source and vulnerability arrays for every payload.
+	remainder, err = decoded.UnmarshalMsg(encoded)
+	require.NoError(t, err)
+	require.Equal(t, trailing, remainder)
+	require.Equal(t, event, decoded)
+}
+
+func TestEventUnmarshalMsgSkipsUnknownFields(t *testing.T) {
+	encoded := msgp.AppendMapHeader(nil, 1)
+	encoded = msgp.AppendString(encoded, "unknown")
+	encoded = msgp.AppendString(encoded, "ignored")
+
+	var event model.Event
+	remainder, err := event.UnmarshalMsg(encoded)
+	require.NoError(t, err)
+	require.Empty(t, remainder)
+}
+
+func TestGeneratedUnmarshalMsgRejectsMalformedPayloads(t *testing.T) {
+	decodeEvent := func(data []byte) error { _, err := new(model.Event).UnmarshalMsg(data); return err }
+	decodeSource := func(data []byte) error { _, err := new(model.Source).UnmarshalMsg(data); return err }
+	decodeVulnerability := func(data []byte) error { _, err := new(model.Vulnerability).UnmarshalMsg(data); return err }
+	decodeEvidence := func(data []byte) error { _, err := new(model.Evidence).UnmarshalMsg(data); return err }
+	decodeValuePart := func(data []byte) error { _, err := new(model.ValuePart).UnmarshalMsg(data); return err }
+	decodeLocation := func(data []byte) error { _, err := new(model.Location).UnmarshalMsg(data); return err }
+	decoders := []struct {
+		name   string
+		decode func([]byte) error
+	}{
+		{"event", decodeEvent},
+		{"source", decodeSource},
+		{"vulnerability", decodeVulnerability},
+		{"evidence", decodeEvidence},
+		{"value part", decodeValuePart},
+		{"location", decodeLocation},
+	}
+	for _, decoder := range decoders {
+		t.Run(decoder.name+" header", func(t *testing.T) {
+			require.Error(t, decoder.decode(nil))
+		})
+		t.Run(decoder.name+" key", func(t *testing.T) {
+			require.Error(t, decoder.decode(msgp.AppendMapHeader(nil, 1)))
+		})
+		t.Run(decoder.name+" unknown value", func(t *testing.T) {
+			payload := msgp.AppendMapHeader(nil, 1)
+			payload = msgp.AppendString(payload, "unknown")
+			payload = append(payload, 0xc1) // Reserved MessagePack prefix.
+			require.Error(t, decoder.decode(payload))
+		})
+	}
+
+	nilValue := msgp.AppendNil(nil)
+	stringValue := msgp.AppendString(nil, "wrong type")
+	fieldCases := []struct {
+		name   string
+		field  string
+		value  []byte
+		decode func([]byte) error
+	}{
+		{"event sources", "sources", nilValue, decodeEvent},
+		{"event vulnerabilities", "vulnerabilities", nilValue, decodeEvent},
+		{"source origin", "origin", nilValue, decodeSource},
+		{"source name", "name", nilValue, decodeSource},
+		{"source value", "value", nilValue, decodeSource},
+		{"source pattern", "pattern", nilValue, decodeSource},
+		{"source redacted", "redacted", nilValue, decodeSource},
+		{"source truncated", "truncated", nilValue, decodeSource},
+		{"vulnerability type", "type", nilValue, decodeVulnerability},
+		{"vulnerability hash", "hash", nilValue, decodeVulnerability},
+		{"vulnerability evidence", "evidence", stringValue, decodeVulnerability},
+		{"vulnerability location", "location", stringValue, decodeVulnerability},
+		{"evidence value", "value", nilValue, decodeEvidence},
+		{"evidence pattern", "pattern", nilValue, decodeEvidence},
+		{"evidence redacted", "redacted", nilValue, decodeEvidence},
+		{"evidence truncated", "truncated", nilValue, decodeEvidence},
+		{"evidence value parts", "valueParts", nilValue, decodeEvidence},
+		{"value part value", "value", nilValue, decodeValuePart},
+		{"value part pattern", "pattern", nilValue, decodeValuePart},
+		{"value part redacted", "redacted", nilValue, decodeValuePart},
+		{"value part truncated", "truncated", nilValue, decodeValuePart},
+		{"value part source", "source", stringValue, decodeValuePart},
+		{"value part secure marks", "secure_marks", nilValue, decodeValuePart},
+		{"location span ID", "spanId", nilValue, decodeLocation},
+		{"location path", "path", nilValue, decodeLocation},
+		{"location class", "class", nilValue, decodeLocation},
+		{"location line", "line", nilValue, decodeLocation},
+		{"location method", "method", nilValue, decodeLocation},
+		{"location stack ID", "stackId", nilValue, decodeLocation},
+	}
+	for _, test := range fieldCases {
+		t.Run(test.name, func(t *testing.T) {
+			payload := msgp.AppendMapHeader(nil, 1)
+			payload = msgp.AppendString(payload, test.field)
+			payload = append(payload, test.value...)
+			require.Error(t, test.decode(payload))
+		})
+	}
+}
+
 func TestEventMarshalMsgOmitsEmptyFields(t *testing.T) {
 	event := model.Event{Vulnerabilities: []model.Vulnerability{model.NewVulnerability(
 		constants.VulnerabilityTypeWeakHash,
