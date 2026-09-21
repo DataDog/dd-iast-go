@@ -29,6 +29,29 @@ func TestJSONStringPropagatesLiteralProvenance(t *testing.T) {
 	require.Equal(t, []ranges.Range{{Length: 6, SourceID: 7}}, lookupRanges(s, result))
 }
 
+func TestJSONStringUsesExactRepeatedLiteral(t *testing.T) {
+	s, _ := beginScope(t)
+	owner := acquireOwner(t, s)
+	raw := []byte(`{"a":"\"same\"","b":"\"same\""}`)
+	second := strings.LastIndex(string(raw), `"\"same\""`)
+	require.NotEqual(t, -1, second)
+	document, _ := taintBytes(t, owner, raw, []ranges.Range{{Start: uint32(second + 3), Length: 4, SourceID: 9}})
+	first := strings.Index(string(document), `"\"same\""`)
+
+	result, propagated := propagation.JSONString(document, document[second:second+len(`"\"same\""`)], "same")
+	require.True(t, propagated)
+	require.Equal(t, []ranges.Range{{Length: 4, SourceID: 9}}, lookupRanges(s, result))
+
+	result, propagated = propagation.JSONString(document, document[first:first+len(`"\"same\""`)], "same")
+	require.False(t, propagated, "the first equal token has no provenance")
+	require.Empty(t, lookupRanges(s, result))
+
+	copied := append([]byte(nil), document[second:second+len(`"\"same\""`)]...)
+	result, propagated = propagation.JSONString(document, copied, "same")
+	require.False(t, propagated, "equal bytes from another allocation must not acquire provenance")
+	require.Empty(t, lookupRanges(s, result))
+}
+
 func TestJSONStringRejectsIneligibleInputs(t *testing.T) {
 	document := []byte(`{"value":"clean"}`)
 	literal := document[9:16]

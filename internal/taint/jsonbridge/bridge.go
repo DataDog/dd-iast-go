@@ -13,19 +13,29 @@ import (
 )
 
 type callbacks struct {
-	bind     func(any, any)
 	document func(any, []byte) []byte
 	literal  func([]byte, []byte, reflect.Value, error)
+}
+type readerRef struct {
+	value any
 }
 type document struct {
 	original uintptr
 	length   uint32
 	clone    []byte
 }
+type quotedLiteral struct {
+	original       uintptr
+	documentLength uint32
+	offset         uint32
+	length         uint32
+}
 type decoderSlot struct {
 	pointer  atomic.Uintptr
 	depth    atomic.Uint32
+	reader   atomic.Pointer[readerRef]
 	document atomic.Pointer[document]
+	quoted   atomic.Pointer[quotedLiteral]
 }
 
 var registered atomic.Pointer[callbacks]
@@ -33,22 +43,20 @@ var activeOwners atomic.Pointer[atomic.Uint64]
 var activeValues atomic.Pointer[atomic.Int32]
 var decoderStates [64]decoderSlot
 
-func BindActiveValues(values *atomic.Int32) {
-	if values != nil {
-		activeValues.Store(values)
-	}
-}
-func BindActiveOwners(owners *atomic.Uint64) {
-	if owners != nil {
-		activeOwners.Store(owners)
-	}
-}
-func Register(bind func(any, any), document func(any, []byte) []byte, literal func([]byte, []byte, reflect.Value, error)) {
-	registered.Store(&callbacks{bind: bind, document: document, literal: literal})
+// BindActiveValues replaces the process active-value counter and returns the previous counter.
+func BindActiveValues(values *atomic.Int32) *atomic.Int32 { return activeValues.Swap(values) }
+
+// BindActiveOwners replaces the process request-owner bitset and returns the previous bitset.
+func BindActiveOwners(owners *atomic.Uint64) *atomic.Uint64 { return activeOwners.Swap(owners) }
+
+// Register installs the JSON document and literal callbacks.
+func Register(document func(any, []byte) []byte, literal func([]byte, []byte, reflect.Value, error)) {
+	registered.Store(&callbacks{document: document, literal: literal})
 }
 func active() bool    { owners := activeOwners.Load(); return owners != nil && owners.Load() != 0 }
 func hasValues() bool { values := activeValues.Load(); return values != nil && values.Load() != 0 }
 
+// Bind associates state with reader until the matching Unbind.
 func Bind(reader, state any) bool {
 	if !active() {
 		return false
@@ -57,11 +65,13 @@ func Bind(reader, state any) bool {
 	if slot == nil {
 		return false
 	}
-	if callback := registered.Load(); callback != nil {
-		bindSlow(callback, reader, state)
+	if reader != nil {
+		slot.reader.Store(&readerRef{value: reader})
 	}
 	return true
 }
+
+// Unbind releases one state binding depth and all state metadata at the final depth.
 func Unbind(state any) {
 	pointer := pointerOf(state)
 	slot := findDecoderState(pointer)
@@ -79,13 +89,17 @@ func Unbind(state any) {
 		if depth > 1 {
 			return
 		}
+		slot.quoted.Store(nil)
 		slot.document.Store(nil)
+		slot.reader.Store(nil)
 		if slot.depth.Load() == 0 {
 			slot.pointer.CompareAndSwap(pointer, 0)
 		}
 		return
 	}
 }
+
+// Document publishes data read by the reader associated with state.
 func Document(state any, data []byte) {
 	if !active() {
 		return
@@ -95,19 +109,63 @@ func Document(state any, data []byte) {
 	if slot == nil || callback == nil {
 		return
 	}
-	clone := documentSlow(callback, state, data)
+	slot.document.Store(nil)
+	reader := slot.reader.Load()
+	if reader == nil {
+		return
+	}
+	clone := documentSlow(callback, reader.value, data)
 	if len(clone) != len(data) {
-		slot.document.Store(nil)
 		return
 	}
 	slot.document.Store(&document{original: slicePointer(data), length: uint32(len(data)), clone: clone})
 }
-func Literal(state any, original, item []byte, value reflect.Value, err error) {
+
+// Quoted records the outer token when valueQuoted returns an encoded string.
+func Quoted(state any, original []byte, start, end int, result any) {
+	slot := findDecoderState(pointerOf(state))
+	if slot == nil {
+		return
+	}
+	slot.quoted.Store(nil)
 	if !active() || !hasValues() {
 		return
 	}
+	encoded, ok := result.(string)
+	// Null and invalid scalar tokens can leave a string destination unchanged.
+	// Do not attribute that existing value to this token.
+	if !ok || len(encoded) == 0 || encoded[0] != '"' {
+		return
+	}
+	if start < 0 || start >= end || end > len(original) || uint64(len(original)) > uint64(^uint32(0)) {
+		return
+	}
+	slot.quoted.Store(&quotedLiteral{
+		original:       slicePointer(original),
+		documentLength: uint32(len(original)),
+		offset:         uint32(start),
+		length:         uint32(end - start),
+	})
+}
+
+// Literal publishes a decoded typed string and its exact source token.
+func Literal(state any, original, item []byte, value reflect.Value, err error, fromQuoted bool) {
+	slot := findDecoderState(pointerOf(state))
+	var quoted *quotedLiteral
+	if slot != nil {
+		quoted = slot.quoted.Swap(nil)
+	}
+	if !active() || !hasValues() {
+		return
+	}
+	if fromQuoted && quoted != nil && quoted.original == slicePointer(original) && quoted.documentLength == uint32(len(original)) {
+		end := uint64(quoted.offset) + uint64(quoted.length)
+		if end <= uint64(len(original)) {
+			item = original[quoted.offset:end]
+		}
+	}
 	document, literal := original, item
-	if slot := findDecoderState(pointerOf(state)); slot != nil {
+	if slot != nil {
 		if mapped := slot.document.Load(); mapped != nil && mapped.original == slicePointer(original) && mapped.length == uint32(len(original)) {
 			offset := slicePointer(item) - mapped.original
 			if offset <= uintptr(len(mapped.clone)) && uintptr(len(item)) <= uintptr(len(mapped.clone))-offset {
@@ -122,12 +180,9 @@ func Literal(state any, original, item []byte, value reflect.Value, err error) {
 }
 
 //go:noinline
-func bindSlow(callback *callbacks, reader, state any) { defer shield(); callback.bind(reader, state) }
-
-//go:noinline
-func documentSlow(callback *callbacks, state any, data []byte) (result []byte) {
+func documentSlow(callback *callbacks, reader any, data []byte) (result []byte) {
 	defer shield()
-	return callback.document(state, data)
+	return callback.document(reader, data)
 }
 
 //go:noinline
@@ -160,7 +215,9 @@ func addDecoderState(pointer uintptr) *decoderSlot {
 			return slot
 		}
 		if slot.pointer.CompareAndSwap(0, 1) {
+			slot.reader.Store(nil)
 			slot.document.Store(nil)
+			slot.quoted.Store(nil)
 			slot.depth.Store(1)
 			slot.pointer.Store(pointer)
 			return slot

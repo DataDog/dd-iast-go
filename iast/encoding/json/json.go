@@ -15,9 +15,11 @@ import (
 	"github.com/DataDog/dd-iast-go/internal/taint/request"
 )
 
+const instrumentedPropagationPoints = 5
+
 func init() {
-	telemetry.InstrumentedPropagation += 3
-	jsonbridge.Register(request.PropagateReader, request.CloneReaderBytes, propagateLiteral)
+	telemetry.InstrumentedPropagation += instrumentedPropagationPoints
+	jsonbridge.Register(request.CloneReaderBytes, propagateLiteral)
 }
 
 // Activate is referenced by executable bootstrap instrumentation so package

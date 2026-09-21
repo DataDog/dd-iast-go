@@ -13,18 +13,29 @@ import (
 	"go/parser"
 	"go/token"
 	"go/types"
+	"os"
 	"path/filepath"
 	"reflect"
 	"regexp"
 	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/DataDog/dd-iast-go/internal/config"
+	"github.com/DataDog/dd-iast-go/internal/instrumentation/telemetry"
 	"github.com/DataDog/dd-iast-go/internal/model/constants"
 	"github.com/DataDog/dd-iast-go/internal/taint/request"
 	"github.com/DataDog/dd-iast-go/taint"
 	"github.com/stretchr/testify/require"
 )
+
+func TestInstrumentedPropagationTelemetry(t *testing.T) {
+	contents, err := os.ReadFile("orchestrion.yml")
+	require.NoError(t, err)
+	registered := strings.Count(string(contents), "- import-path: encoding/json")
+	require.Equal(t, registered, instrumentedPropagationPoints)
+	require.GreaterOrEqual(t, telemetry.InstrumentedPropagation, uint(registered))
+}
 
 func TestSourceShape(t *testing.T) {
 	directory := filepath.Join(runtime.GOROOT(), "src", "encoding", "json")
@@ -69,12 +80,12 @@ func TestSourceShape(t *testing.T) {
 			}
 			key := identifier.Name + "." + function.Name.Name
 			switch key {
-			case "Decoder.Decode", "decodeState.init", "decodeState.literalStore":
+			case "Decoder.Decode", "decodeState.init", "decodeState.literalStore", "decodeState.unmarshal", "decodeState.valueQuoted":
 				found[key] = true
 			}
 		}
 	}
-	for _, key := range []string{"Decoder.Decode", "decodeState.init", "decodeState.literalStore"} {
+	for _, key := range []string{"Decoder.Decode", "decodeState.init", "decodeState.literalStore", "decodeState.unmarshal", "decodeState.valueQuoted"} {
 		if !found[key] {
 			t.Errorf("missing encoding/json instrumentation target %s", key)
 		}
@@ -106,6 +117,14 @@ func TestPropagateLiteral(t *testing.T) {
 	propagateLiteral(document, literal, reflect.ValueOf(&destination).Elem(), nil)
 	require.Equal(t, "attack", destination)
 	require.True(t, taint.IsTaintedString(destination))
+
+	type named string
+	outerDocument := taint.TaintBytes(ctx, taint.Source{Origin: constants.OriginHttpRequestBody}, []byte(`{"value":"\"attack\""}`))
+	outer := outerDocument[9:21]
+	typed := named("attack")
+	propagateLiteral(outerDocument, outer, reflect.ValueOf(&typed).Elem(), nil)
+	require.Equal(t, named("attack"), typed)
+	require.True(t, taint.IsTaintedString(string(typed)))
 
 	custom := customJSONString("unchanged")
 	propagateLiteral(document, literal, reflect.ValueOf(&custom).Elem(), nil)

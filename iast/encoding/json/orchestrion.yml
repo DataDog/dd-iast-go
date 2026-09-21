@@ -42,6 +42,47 @@ aspects:
               defer iastjsonbridge.Unbind(&{{ .Function.Receiver }}.d)
             }
 
+  - id: encoding/json decode state lifetime
+    join-point:
+      all-of:
+        - import-path: encoding/json
+        - function-body:
+            function:
+              - receiver: "*encoding/json.decodeState"
+              - name: unmarshal
+    advice:
+      - prepend-statements:
+          imports:
+            iastjsonbridge: github.com/DataDog/dd-iast-go/internal/taint/jsonbridge
+          template: |-
+            if iastjsonbridge.Bind(nil, {{ .Function.Receiver }}) {
+              defer iastjsonbridge.Unbind({{ .Function.Receiver }})
+            }
+
+  - id: encoding/json quoted string source
+    join-point:
+      all-of:
+        - import-path: encoding/json
+        - function-body:
+            function:
+              - receiver: "*encoding/json.decodeState"
+              - name: valueQuoted
+    advice:
+      - prepend-statements:
+          imports:
+            iastjsonbridge: github.com/DataDog/dd-iast-go/internal/taint/jsonbridge
+          template: |-
+            __dd_iast_quoted_start := {{ .Function.Receiver }}.readIndex()
+            defer func() {
+              iastjsonbridge.Quoted(
+                {{ .Function.Receiver }},
+                {{ .Function.Receiver }}.data,
+                __dd_iast_quoted_start,
+                {{ .Function.Receiver }}.readIndex(),
+                {{ .Function.Result 0 }},
+              )
+            }()
+
   - id: encoding/json document publication
     join-point:
       all-of:
@@ -77,5 +118,6 @@ aspects:
                 {{ .Function.Argument 0 }},
                 {{ .Function.Argument 1 }},
                 {{ .Function.Result 0 }},
+                {{ .Function.Argument 2 }},
               )
             }()

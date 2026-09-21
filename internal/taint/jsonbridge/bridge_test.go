@@ -6,7 +6,9 @@
 package jsonbridge_test
 
 import (
+	"errors"
 	"reflect"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"unsafe"
@@ -16,89 +18,152 @@ import (
 )
 
 func TestDecoderCallbacks(t *testing.T) {
-	state := new(int)
-	require.False(t, jsonbridge.Bind(nil, state))
-	jsonbridge.Document(state, []byte("inactive"))
-	jsonbridge.Literal(state, nil, nil, reflect.Value{}, nil)
-
 	var owners atomic.Uint64
 	owners.Store(1)
-	jsonbridge.BindActiveOwners(&owners)
+	previousOwners := jsonbridge.BindActiveOwners(&owners)
 	var values atomic.Int32
-	jsonbridge.BindActiveValues(&values)
+	values.Store(1)
+	previousValues := jsonbridge.BindActiveValues(&values)
+	t.Cleanup(func() {
+		jsonbridge.BindActiveOwners(previousOwners)
+		jsonbridge.BindActiveValues(previousValues)
+	})
 
 	original := []byte(`{"value":"attack"}`)
 	clone := append([]byte(nil), original...)
-	var boundReader, boundState any
+	state := new(int)
+	reader := new(int)
+	var callbackReader any
+	var documentCalls int
 	var literalDocument, literalItem []byte
-	var literalCalls int
+	var literalErr error
 	jsonbridge.Register(
-		func(reader, state any) { boundReader, boundState = reader, state },
-		func(_ any, data []byte) []byte { return clone[:len(data)] },
+		func(reader any, data []byte) []byte {
+			callbackReader = reader
+			documentCalls++
+			return clone[:len(data)]
+		},
 		func(document, item []byte, _ reflect.Value, err error) {
-			require.NoError(t, err)
-			literalDocument, literalItem = document, item
-			literalCalls++
+			literalDocument, literalItem, literalErr = document, item, err
 		},
 	)
 
 	require.False(t, jsonbridge.Bind(nil, nil))
-	reader := new(int)
 	require.True(t, jsonbridge.Bind(reader, state))
-	require.Same(t, reader, boundReader)
-	require.Same(t, state, boundState)
 	jsonbridge.Document(state, original)
-	jsonbridge.Literal(state, original, original[9:17], reflect.Value{}, nil)
-	require.Zero(t, literalCalls, "literal callbacks require active tainted values")
-
-	values.Store(1)
-	jsonbridge.Literal(state, original, original[9:17], reflect.Value{}, nil)
-	require.Equal(t, 1, literalCalls)
+	require.Same(t, reader, callbackReader)
+	jsonbridge.Literal(state, original, original[9:17], reflect.Value{}, nil, false)
 	require.Equal(t, clone, literalDocument)
 	require.Equal(t, clone[9:17], literalItem)
 	require.Equal(t, unsafe.SliceData(clone), unsafe.SliceData(literalDocument))
 	require.Equal(t, unsafe.SliceData(clone[9:17]), unsafe.SliceData(literalItem))
 
-	// A clone with a different length disables offset mapping.
-	jsonbridge.Register(
-		func(any, any) {},
-		func(_ any, data []byte) []byte { return append([]byte(nil), data[:len(data)-1]...) },
-		func(document, item []byte, _ reflect.Value, _ error) {
-			literalDocument, literalItem = document, item
-		},
-	)
+	// A nested direct-unmarshal binding must preserve the decoder's outer reader.
+	require.True(t, jsonbridge.Bind(nil, state))
 	jsonbridge.Document(state, original)
-	item := original[1:4]
-	jsonbridge.Literal(state, original, item, reflect.Value{}, nil)
-	require.Equal(t, unsafe.SliceData(original), unsafe.SliceData(literalDocument))
-	require.Equal(t, unsafe.SliceData(item), unsafe.SliceData(literalItem))
+	require.Same(t, reader, callbackReader)
+	jsonbridge.Unbind(state)
+	jsonbridge.Unbind(state)
 
-	// Nested decoder use keeps the state until the matching outer unbind.
+	// Final unbind releases the source, document, and callback eligibility.
+	documentCalls = 0
+	jsonbridge.Document(state, original)
+	require.Zero(t, documentCalls)
+	jsonbridge.Literal(state, original, original[9:17], reflect.Value{}, nil, false)
+	require.Equal(t, unsafe.SliceData(original), unsafe.SliceData(literalDocument))
+
+	// Reusing the state binds only the new reader and clears failed publication.
+	cleanReader := new(int)
+	require.True(t, jsonbridge.Bind(cleanReader, state))
 	jsonbridge.Register(
-		func(any, any) {},
-		func(_ any, _ []byte) []byte { return clone },
-		func(document, item []byte, _ reflect.Value, _ error) {
-			literalDocument, literalItem = document, item
+		func(reader any, _ []byte) []byte { callbackReader = reader; return nil },
+		func(document, item []byte, _ reflect.Value, err error) {
+			literalDocument, literalItem, literalErr = document, item, err
 		},
 	)
 	jsonbridge.Document(state, original)
+	require.Same(t, cleanReader, callbackReader)
+	jsonbridge.Literal(state, original, original[9:17], reflect.Value{}, errors.New("decode"), false)
+	require.EqualError(t, literalErr, "decode")
+	require.Equal(t, unsafe.SliceData(original), unsafe.SliceData(literalDocument))
+	jsonbridge.Unbind(state)
+}
+
+func TestDecoderCallbacksQuotedIdentityAndCleanup(t *testing.T) {
+	var owners atomic.Uint64
+	owners.Store(1)
+	previousOwners := jsonbridge.BindActiveOwners(&owners)
+	var values atomic.Int32
+	values.Store(1)
+	previousValues := jsonbridge.BindActiveValues(&values)
+	t.Cleanup(func() {
+		jsonbridge.BindActiveOwners(previousOwners)
+		jsonbridge.BindActiveValues(previousValues)
+	})
+
+	original := []byte(`{"a":"\"same\"","b":"\"same\""}`)
+	clone := append([]byte(nil), original...)
+	second := strings.LastIndex(string(original), `"\"same\""`)
+	require.NotEqual(t, -1, second)
+	state := new(int)
+	reader := new(int)
+	var literalDocument, literalItem []byte
+	jsonbridge.Register(
+		func(any, []byte) []byte { return clone },
+		func(document, item []byte, _ reflect.Value, _ error) { literalDocument, literalItem = document, item },
+	)
 	require.True(t, jsonbridge.Bind(reader, state))
-	jsonbridge.Unbind(state)
-	jsonbridge.Literal(state, original, item, reflect.Value{}, nil)
+	jsonbridge.Document(state, original)
+	jsonbridge.Quoted(state, original, second, second+len(`"\"same\""`), `"same"`)
+	jsonbridge.Literal(state, original, []byte(`"same"`), reflect.Value{}, nil, true)
 	require.Equal(t, unsafe.SliceData(clone), unsafe.SliceData(literalDocument))
-	jsonbridge.Unbind(state)
-	jsonbridge.Literal(state, original, item, reflect.Value{}, nil)
+	require.Equal(t, unsafe.SliceData(clone[second:]), unsafe.SliceData(literalItem))
+
+	// A failed oversized publication clears the prior clone mapping.
+	jsonbridge.Register(
+		func(any, []byte) []byte { return nil },
+		func(document, item []byte, _ reflect.Value, _ error) { literalDocument, literalItem = document, item },
+	)
+	jsonbridge.Document(state, make([]byte, 1<<20))
+	jsonbridge.Literal(state, original, original[second:second+len(`"\"same\""`)], reflect.Value{}, nil, false)
 	require.Equal(t, unsafe.SliceData(original), unsafe.SliceData(literalDocument))
 	jsonbridge.Unbind(state)
 
+	// Panicking callbacks are shielded and final unbind permits clean reuse.
 	jsonbridge.Register(
-		func(any, any) { panic("bind") },
 		func(any, []byte) []byte { panic("document") },
 		func([]byte, []byte, reflect.Value, error) { panic("literal") },
 	)
-	panicState := new(int)
-	require.NotPanics(t, func() { require.True(t, jsonbridge.Bind(nil, panicState)) })
-	require.NotPanics(t, func() { jsonbridge.Document(panicState, original) })
-	require.NotPanics(t, func() { jsonbridge.Literal(panicState, original, item, reflect.Value{}, nil) })
-	jsonbridge.Unbind(panicState)
+	require.True(t, jsonbridge.Bind(reader, state))
+	require.NotPanics(t, func() { jsonbridge.Document(state, original) })
+	jsonbridge.Quoted(state, original, second, second+len(`"\"same\""`), `"same"`)
+	require.NotPanics(t, func() { jsonbridge.Literal(state, original, []byte(`"same"`), reflect.Value{}, nil, true) })
+	jsonbridge.Unbind(state)
+
+	cleanReader := new(int)
+	var callbackReader any
+	jsonbridge.Register(
+		func(reader any, _ []byte) []byte { callbackReader = reader; return nil },
+		func(document, item []byte, _ reflect.Value, _ error) { literalDocument, literalItem = document, item },
+	)
+	require.True(t, jsonbridge.Bind(cleanReader, state))
+	jsonbridge.Document(state, original)
+	require.Same(t, cleanReader, callbackReader)
+	jsonbridge.Literal(state, original, original[second:second+len(`"\"same\""`)], reflect.Value{}, nil, true)
+	require.Equal(t, unsafe.SliceData(original), unsafe.SliceData(literalDocument))
+	jsonbridge.Unbind(state)
+}
+
+func TestDecoderCallbacksInactive(t *testing.T) {
+	previousOwners := jsonbridge.BindActiveOwners(nil)
+	previousValues := jsonbridge.BindActiveValues(nil)
+	t.Cleanup(func() {
+		jsonbridge.BindActiveOwners(previousOwners)
+		jsonbridge.BindActiveValues(previousValues)
+	})
+	state := new(int)
+	require.False(t, jsonbridge.Bind(nil, state))
+	jsonbridge.Document(state, []byte("inactive"))
+	jsonbridge.Quoted(state, []byte(`"inactive"`), 0, 10, "inactive")
+	jsonbridge.Literal(state, nil, nil, reflect.Value{}, nil, false)
 }
