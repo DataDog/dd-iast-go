@@ -27,10 +27,9 @@ const (
 )
 
 type binding struct {
-	// Bindings retain arbitrary typed objects outside the managed-root byte
-	// charge. Their count and fixed table are bounded, with a separate small
-	// reader cap; Phase 4 must bind only small URL/reader wrapper objects, never
-	// request payload graphs.
+	// Bindings retain typed objects outside the managed-root byte charge.
+	// The table and reader count are bounded, but reader graphs can retain
+	// uncharged payload data. This trade-off preserves reader propagation.
 	object  any // strong typed pointer
 	pointer uintptr
 	kind    BindingKind

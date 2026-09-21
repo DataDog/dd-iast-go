@@ -16,7 +16,7 @@ aspects:
     join-point:
       all-of:
         - package-filter: {root: true, pattern: "**"}
-        - not: {package-filter: {root: true, pattern: "**.test"}}
+        - test-main: false
         - function-body:
             function:
               - receiver: false

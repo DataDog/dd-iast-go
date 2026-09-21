@@ -32,36 +32,49 @@ String copies and transforms | Maximal `+` chains of 2–16 operands; string sli
 Formatting and encoding | `fmt.Sprint*`, `net/url` escape and unescape functions, and `strconv` quote and unquote functions
 Byte windows | Two- and three-index `[]byte` slicing; `Cut*`, `Split*`, `Fields*`, and `Trim*`
 Byte copies and transforms | `Clone`, `Join`, `Repeat`, `Replace*`, case conversion, `Map`, and `ToValidUTF8`
-Stateful writers | Direct `strings.Builder` and `bytes.Buffer` writes, `Grow`, `Reset`, `Truncate`, and `String`
-JSON decoding | Go 1.26 `json.Unmarshal` and `json.Decoder.Decode` string values in nested structs, arrays, slices, and typed map values
+Stateful writers | Direct `strings.Builder` and `bytes.Buffer` writes, `Grow`, `Reset`, `Truncate`, and `String`; exact current `bytes.Buffer` value copies
+JSON decoding | Go 1.26 `json.Unmarshal` and `json.Decoder.Decode` string values in nested structs, arrays, slices, and typed map values, including named string types and `,string` fields
 
 Propagation instrumentation applies to direct calls in the application root.
-Calls through function or method values are not supported. A later direct writer
-call validates the current receiver shape and drops stale provenance. Mutable
-`bytes.Buffer.Bytes` and `AvailableBuffer` results remain untainted; accessing
-them invalidates tracked buffer state. String-to-byte conversion, `append`,
-`copy`, `+=`, and direct byte index/slice assignment remain unsupported because
-mutation can otherwise leave stale provenance; these unsupported shapes safely
-lose taint instead of creating a new mutable root. Supported byte-slice windows
-share the parent managed root and therefore inherit its existing limitation:
-direct writes through an alias cannot invalidate ranges until a tracked writer
-operation observes the mutation. Conversion contexts optimized by the Go
+Calls through function or method values do not propagate input taint. Native
+`bytes.Buffer` hooks still invalidate tracked state for indirect mutations and
+mutable exposure. `Bytes`, `AvailableBuffer`, and `Peek` results remain
+untainted; accessing them invalidates tracked overlapping buffer views.
+String-to-byte conversion, `append`, `copy`, `+=`, and direct byte index/slice
+assignment do not create new tainted mutable roots. Supported byte-slice windows
+share the parent managed root. Writes through mutable aliases retained before
+tracking, or across later tracking, are not observed and can leave stale ranges.
+Conversion contexts optimized by the Go
 compiler, including calls, comparisons, map keys, ranges, and concatenations,
 are intentionally not wrapped. Tainted replacement terms supplied to
-`strings.Replacer` are not tracked in this release. Builder and buffer value
-copies, and aliases that share backing memory without the same receiver, can
-only lose provenance and never publish unchecked provenance.
+`strings.Replacer` are not tracked in this release. Builder value copies are not
+supported.
+
+Buffer value copies retain provenance when their backing, unread pointer,
+length, and capacity match a tracked view. Before a supported direct mutation,
+the existing writer entry moves to the copy without adding another entry or
+byte charge. Divergent or historical views can lose provenance, as can the
+original receiver after this transfer. Backing writes and mutable exposure
+conservatively invalidate overlapping views, including views whose bytes the
+operation does not ultimately change.
 
 JSON string output uses coarse whole-value ranges while retaining the exact
 intersecting source identity. Custom unmarshaler output, decoded byte slices,
-interface values, typed map keys, and `map[string]any` keys are not propagated. Decoder documents
-larger than 64 KiB safely drop provenance. Decoder tracking uses 64 process
+interface values, typed map keys, and `map[string]any` keys are not propagated.
+Decoder documents larger than 64 KiB safely drop provenance. Decoder tracking uses 64 process
 slots with four-probe admission; excess or colliding concurrent decodes drop
-provenance. Reentrant use of the same decoder can lose outer-decode provenance.
+provenance. Reader associations last only for the outer decode call and are
+cleared on return or panic. Reentrant use of the same decoder can lose
+outer-decode provenance.
 
 Tracking a stateful writer uses a strong request-bounded receiver anchor. This
 can make a stack receiver escape. Writer state is limited to eight receivers per
 request owner, four owners per receiver, and 64 KiB of charged visible capacity.
+The byte budget does not bound all memory retained through these anchors. A
+buffer can refer to a short slice of a larger allocation, and a bound reader can
+retain other readers and their data. The number of these references is bounded,
+and they are released when the tracking owner ends. Their full retained size is
+not known. This is an accepted trade-off to preserve useful taint propagation.
 
 ### Sink coverage
 
@@ -77,6 +90,10 @@ packages in the root module; plugin, library, and non-root executable builds do
 not activate these request-scoped sinks. Sink evidence is limited to 32 KiB
 before conservative redaction, and the encoded vulnerability event is limited
 to 25,000 bytes.
+
+When no traced span is available, each tainted report creates a separate orphan
+event. In that case, `DD_IAST_VULNERABILITIES_PER_REQUEST` limits each event but
+does not limit the total findings from one request.
 
 ## Cost Control
 
