@@ -8,6 +8,7 @@ package propagation_test
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"strings"
 	"sync"
 	"testing"
@@ -137,6 +138,88 @@ func lookupEntryCount(s *store.Store, key store.Key) int {
 		return 0
 	}
 	return snapshot.Len()
+}
+
+func TestConfiguredSourceRangeLimit(t *testing.T) {
+	const replacements = 32
+	inputValue := strings.Repeat("a-", replacements) + "a"
+	wantAll := make([]ranges.Range, 0, 2*replacements+1)
+	for index := 0; index <= replacements; index++ {
+		wantAll = append(wantAll, ranges.Range{Start: uint32(3 * index), Length: 1, SourceID: 0})
+		if index < replacements {
+			wantAll = append(wantAll, ranges.Range{Start: uint32(3*index + 1), Length: 2, SourceID: 1})
+		}
+	}
+
+	for _, limit := range []uint64{1, ranges.DefaultLimit, ranges.HardLimit} {
+		limit := limit
+		t.Run(fmt.Sprintf("limit_%d", limit), func(t *testing.T) {
+			previous := config.MaxRangeCount
+			config.MaxRangeCount = limit
+			t.Cleanup(func() { config.MaxRangeCount = previous })
+			want := wantAll[:min(int(limit), len(wantAll))]
+
+			t.Run("string", func(t *testing.T) {
+				s, scope := beginScope(t)
+				analysis, ok := scope.Analysis()
+				require.True(t, ok)
+				input, ok := analysis.TaintString(constants.OriginHttpRequestParameter, "input", inputValue)
+				require.True(t, ok)
+				replacement, ok := analysis.TaintString(constants.OriginHttpRequestHeader, "replacement", "bb")
+				require.True(t, ok)
+
+				inputSource, ok := analysis.Source(0)
+				require.True(t, ok)
+				require.Equal(t, constants.OriginHttpRequestParameter, inputSource.Origin)
+				require.Equal(t, "input", inputSource.Name)
+				require.Equal(t, inputValue, inputSource.Value)
+				replacementSource, ok := analysis.Source(1)
+				require.True(t, ok)
+				require.Equal(t, constants.OriginHttpRequestHeader, replacementSource.Origin)
+				require.Equal(t, "replacement", replacementSource.Name)
+				require.Equal(t, "bb", replacementSource.Value)
+
+				result := strings.ReplaceAll(input, "-", replacement)
+				out := propagation.ReplaceString(input, "-", replacement, result, -1)
+				require.Equal(t, want, lookupRanges(s, out))
+				copied := propagation.CopyString(out, strings.Clone(out))
+				require.Equal(t, want, lookupRanges(s, copied), "exact derived root must retain the source limit")
+				coarse := propagation.CoarseString("coarse-string", copied)
+				require.Equal(t, []ranges.Range{{Length: uint32(len(coarse)), SourceID: 0}}, lookupRanges(s, coarse))
+			})
+
+			t.Run("bytes", func(t *testing.T) {
+				s, scope := beginScope(t)
+				analysis, ok := scope.Analysis()
+				require.True(t, ok)
+				input, ok := analysis.TaintBytes(constants.OriginHttpRequestParameter, "input", []byte(inputValue))
+				require.True(t, ok)
+				replacement, ok := analysis.TaintBytes(constants.OriginHttpRequestHeader, "replacement", []byte("bb"))
+				require.True(t, ok)
+
+				inputSource, ok := analysis.Source(0)
+				require.True(t, ok)
+				require.Equal(t, constants.OriginHttpRequestParameter, inputSource.Origin)
+				require.Equal(t, "input", inputSource.Name)
+				require.Equal(t, inputValue, inputSource.Value)
+				replacementSource, ok := analysis.Source(1)
+				require.True(t, ok)
+				require.Equal(t, constants.OriginHttpRequestHeader, replacementSource.Origin)
+				require.Equal(t, "replacement", replacementSource.Name)
+				require.Equal(t, "bb", replacementSource.Value)
+
+				result := bytes.ReplaceAll(input, []byte("-"), replacement)
+				out := propagation.ReplaceBytes(input, []byte("-"), replacement, result, -1)
+				require.Equal(t, want, lookupByteRanges(s, out))
+				copiedResult := append([]byte(nil), out...)
+				copied := propagation.CopyBytes(out, copiedResult)
+				require.Equal(t, want, lookupByteRanges(s, copied), "exact derived root must retain the source limit")
+				coarseResult := []byte("coarse-bytes")
+				coarse := propagation.CoarseBytes(coarseResult, copied)
+				require.Equal(t, []ranges.Range{{Length: uint32(len(coarse)), SourceID: 0}}, lookupByteRanges(s, coarse))
+			})
+		})
+	}
 }
 
 func TestNoActiveStoreIsNoOpAndAllocationFree(t *testing.T) {

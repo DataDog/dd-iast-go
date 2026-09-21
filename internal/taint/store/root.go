@@ -8,6 +8,7 @@ package store
 import (
 	"strings"
 
+	"github.com/DataDog/dd-iast-go/internal/config"
 	"github.com/DataDog/dd-iast-go/internal/taint/ranges"
 )
 
@@ -43,7 +44,7 @@ func (o *Owner) TaintString(value string, source ranges.SourceID) (string, RootR
 		return value, RootRef{}, false
 	}
 	var set ranges.Set
-	if !ranges.AdoptCanonical(&set, ranges.ClampLimit(uint64(ranges.DefaultLimit)), []ranges.Range{{Length: uint32(len(clone)), SourceID: source}}, uint32(len(clone))).Valid {
+	if !ranges.AdoptCanonical(&set, ranges.Limit(config.MaxRangeCount), []ranges.Range{{Length: uint32(len(clone)), SourceID: source}}, uint32(len(clone))).Valid {
 		o.rollbackRoot(rootID, charge)
 		return value, RootRef{}, false
 	}
@@ -84,7 +85,7 @@ func (o *Owner) TaintSourceString(value, name string, source ranges.SourceID) (m
 		return value, "", RootRef{}, false
 	}
 	var set ranges.Set
-	if !ranges.AdoptCanonical(&set, ranges.ClampLimit(uint64(ranges.DefaultLimit)), []ranges.Range{{Length: uint32(len(managed)), SourceID: source}}, uint32(len(managed))).Valid {
+	if !ranges.AdoptCanonical(&set, ranges.Limit(config.MaxRangeCount), []ranges.Range{{Length: uint32(len(managed)), SourceID: source}}, uint32(len(managed))).Valid {
 		o.rollbackRoot(rootID, charge)
 		return value, "", RootRef{}, false
 	}
@@ -124,7 +125,7 @@ func (o *Owner) TaintBytes(value []byte, source ranges.SourceID) ([]byte, RootRe
 		return value, RootRef{}, false
 	}
 	var set ranges.Set
-	if !ranges.AdoptCanonical(&set, ranges.DefaultLimit, []ranges.Range{{Length: uint32(len(clone)), SourceID: source}}, uint32(cap(clone))).Valid {
+	if !ranges.AdoptCanonical(&set, ranges.Limit(config.MaxRangeCount), []ranges.Range{{Length: uint32(len(clone)), SourceID: source}}, uint32(cap(clone))).Valid {
 		o.rollbackRoot(rootID, charge)
 		return value, RootRef{}, false
 	}
@@ -168,7 +169,7 @@ func (o *Owner) TaintSourceBytes(value []byte, name string, source ranges.Source
 		return value, "", "", RootRef{}, false
 	}
 	var set ranges.Set
-	if !ranges.AdoptCanonical(&set, ranges.DefaultLimit, []ranges.Range{{Length: uint32(len(managed)), SourceID: source}}, uint32(cap(managed))).Valid {
+	if !ranges.AdoptCanonical(&set, ranges.Limit(config.MaxRangeCount), []ranges.Range{{Length: uint32(len(managed)), SourceID: source}}, uint32(cap(managed))).Valid {
 		o.rollbackRoot(rootID, charge)
 		return value, "", "", RootRef{}, false
 	}
@@ -212,7 +213,7 @@ func (o *Owner) AdoptSourceBytes(value []byte, name string, source ranges.Source
 		return "", "", RootRef{}, false
 	}
 	var set ranges.Set
-	if !ranges.AdoptCanonical(&set, ranges.DefaultLimit, []ranges.Range{{Length: uint32(len(value)), SourceID: source}}, uint32(cap(value))).Valid {
+	if !ranges.AdoptCanonical(&set, ranges.Limit(config.MaxRangeCount), []ranges.Range{{Length: uint32(len(value)), SourceID: source}}, uint32(cap(value))).Valid {
 		o.rollbackRoot(rootID, charge)
 		return "", "", RootRef{}, false
 	}
