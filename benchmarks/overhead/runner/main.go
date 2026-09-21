@@ -253,7 +253,10 @@ func printUsage(output io.Writer) {
 
 func percentage(name, value string) (int, error) {
 	parsed, err := strconv.Atoi(value)
-	if err != nil || parsed < 0 || parsed > 100 {
+	if err != nil {
+		return 0, fmt.Errorf("%s must be an integer from 0 to 100: %q: %w", name, value, err)
+	}
+	if parsed < 0 || parsed > 100 {
 		return 0, fmt.Errorf("%s must be an integer from 0 to 100: %q", name, value)
 	}
 	return parsed, nil
@@ -261,7 +264,10 @@ func percentage(name, value string) (int, error) {
 
 func positiveInteger(name, value string) (int, error) {
 	parsed, err := strconv.Atoi(value)
-	if err != nil || parsed < 1 {
+	if err != nil {
+		return 0, fmt.Errorf("%s must be a single positive integer: %q: %w", name, value, err)
+	}
+	if parsed < 1 {
 		return 0, fmt.Errorf("%s must be a single positive integer: %q", name, value)
 	}
 	return parsed, nil
@@ -306,11 +312,20 @@ func splitRegexp(expression string) []string {
 func validateBenchtime(value string) error {
 	if strings.HasSuffix(value, "x") {
 		iterations, err := strconv.ParseInt(strings.TrimSuffix(value, "x"), 10, 0)
-		if err == nil && iterations > 0 {
+		if err != nil {
+			return fmt.Errorf("-benchtime must be a positive duration or iteration count such as 100x: %q: %w", value, err)
+		}
+		if iterations > 0 {
 			return nil
 		}
-	} else if duration, err := time.ParseDuration(value); err == nil && duration > 0 {
-		return nil
+	} else {
+		duration, err := time.ParseDuration(value)
+		if err != nil {
+			return fmt.Errorf("-benchtime must be a positive duration or iteration count such as 100x: %q: %w", value, err)
+		}
+		if duration > 0 {
+			return nil
+		}
 	}
 	return fmt.Errorf("-benchtime must be a positive duration or iteration count such as 100x: %q", value)
 }

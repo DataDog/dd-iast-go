@@ -29,7 +29,7 @@ aspects:
           template: |-
             _ = iastsql.Report
 
-  # Anchor one package-scoped bridge declaration on a unique Go 1.26.6 method.
+  # Anchor one package-scoped bridge declaration on a unique method.
   - id: database/sql IAST bridge declaration
     join-point:
       all-of:
@@ -47,8 +47,8 @@ aspects:
             //go:linkname __dd__iast_ReportSQL__ github.com/DataDog/dd-iast-go/internal/taint/sqlbridge.Report
             func __dd__iast_ReportSQL__(context.Context, string, uint8, bool)
 
-  # Go 1.26.6 declares each context method name below only on DB, Conn, Tx, and
-  # Stmt. The isolated source-shape test pins that exact eleven-method set and
+  # Each context method name below is declared only on DB, Conn, Tx, and Stmt.
+  # The isolated source-shape test checks that exact eleven-method set and
   # the private Stmt.query field. Non-context and QueryRow methods delegate to
   # these boundaries; retries stay inside one body and cannot report twice.
   - id: database/sql prepare operations

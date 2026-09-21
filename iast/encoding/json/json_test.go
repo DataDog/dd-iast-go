@@ -9,8 +9,10 @@ import (
 	"context"
 	"errors"
 	"go/ast"
+	"go/build"
 	"go/parser"
 	"go/token"
+	"go/types"
 	"path/filepath"
 	"reflect"
 	"regexp"
@@ -24,18 +26,35 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestGo126SourceShape(t *testing.T) {
-	if runtime.Version() != "go1.26.6" {
-		t.Fatalf("encoding/json aspects require go1.26.6, got %s", runtime.Version())
-	}
-	files := []string{"decode.go", "stream.go"}
+func TestSourceShape(t *testing.T) {
+	directory := filepath.Join(runtime.GOROOT(), "src", "encoding", "json")
+	pkg, err := build.ImportDir(directory, 0)
+	require.NoError(t, err)
 	found := map[string]bool{}
-	for _, name := range files {
-		file, err := parser.ParseFile(token.NewFileSet(), filepath.Join(runtime.GOROOT(), "src", "encoding", "json", name), nil, 0)
+	fields := map[string]string{}
+	for _, name := range pkg.GoFiles {
+		file, err := parser.ParseFile(token.NewFileSet(), filepath.Join(directory, name), nil, 0)
 		if err != nil {
 			t.Fatal(err)
 		}
 		for _, declaration := range file.Decls {
+			if general, ok := declaration.(*ast.GenDecl); ok {
+				for _, specification := range general.Specs {
+					typeSpec, ok := specification.(*ast.TypeSpec)
+					if !ok || (typeSpec.Name.Name != "Decoder" && typeSpec.Name.Name != "decodeState") {
+						continue
+					}
+					structure, ok := typeSpec.Type.(*ast.StructType)
+					if !ok {
+						continue
+					}
+					for _, field := range structure.Fields.List {
+						for _, name := range field.Names {
+							fields[typeSpec.Name.Name+"."+name.Name] = types.ExprString(field.Type)
+						}
+					}
+				}
+			}
 			function, ok := declaration.(*ast.FuncDecl)
 			if !ok || function.Recv == nil || len(function.Recv.List) != 1 {
 				continue
@@ -57,7 +76,12 @@ func TestGo126SourceShape(t *testing.T) {
 	}
 	for _, key := range []string{"Decoder.Decode", "decodeState.init", "decodeState.literalStore"} {
 		if !found[key] {
-			t.Fatalf("missing pinned encoding/json function %s", key)
+			t.Errorf("missing encoding/json instrumentation target %s", key)
+		}
+	}
+	for key, want := range map[string]string{"Decoder.r": "io.Reader", "Decoder.d": "decodeState", "decodeState.data": "[]byte"} {
+		if got := fields[key]; got != want {
+			t.Errorf("encoding/json field %s has type %q, want %q", key, got, want)
 		}
 	}
 }

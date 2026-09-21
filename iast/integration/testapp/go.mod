@@ -121,5 +121,3 @@ require (
 )
 
 replace github.com/DataDog/dd-iast-go => ../../..
-
-replace github.com/DataDog/dd-trace-go/v2 => github.com/DataDog/dd-trace-go/v2 v2.11.0-dev.0.20260804111058-8828d86aa5e7

@@ -6,4 +6,6 @@
 // Command bootstrap verifies executable-time JSON callback registration.
 package main
 
+// Keep main empty and do not import the JSON integration here. CI checks that
+// Orchestrion alone links its callback registration into this executable.
 func main() {}

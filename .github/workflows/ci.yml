@@ -14,6 +14,32 @@ permissions:
   contents: read
 
 jobs:
+  modules:
+    runs-on: ubuntu-latest
+    name: Discover Go modules
+    outputs:
+      modules: ${{ steps.discover.outputs.modules }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Find Go modules
+        id: discover
+        run: |
+          python3 <<'PY'
+          import json
+          import os
+
+          modules = []
+          for directory, children, files in os.walk("."):
+              children[:] = [name for name in children if not name.startswith(".") and name != "vendor"]
+              if "go.mod" in files:
+                  modules.append(os.path.normpath(directory))
+          if not any(os.path.isfile(os.path.join(module, "cmd", "bootstrap", "symbols.txt")) for module in modules):
+              raise SystemExit("no executable bootstrap fixtures found")
+          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+              output.write(f"modules={json.dumps(sorted(modules))}\n")
+          PY
+
   validate-licenses:
     runs-on: ubuntu-latest
     name: Validate LICENSE-3rdparty.csv
@@ -40,16 +66,26 @@ jobs:
           path: ${{ steps.dd-license-attribution.outputs.sbom-path }}
 
   lint:
+    needs: modules
     runs-on: ubuntu-latest
-    name: Linter & Formatting
+    name: Linter & Formatting (${{ matrix.module }})
+    strategy:
+      fail-fast: false
+      matrix:
+        module: ${{ fromJSON(needs.modules.outputs.modules) }}
+    defaults:
+      run:
+        working-directory: ${{ matrix.module }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Setup Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version-file: go.mod
+          go-version-file: ${{ matrix.module }}/go.mod
+          cache-dependency-path: ${{ matrix.module }}/go.sum
       - name: 'Linter: gofmt'
+        if: matrix.module == '.'
         run: |
           unformatted="$(find . -type f -name '*.go' -exec gofmt -l {} +)"
           if [[ -n "${unformatted}" ]]; then
@@ -57,37 +93,48 @@ jobs:
             exit 1
           fi
       - name: 'Linter: checklocks'
+        if: matrix.module == '.'
         run: go tool checklocks ./...
-      - name: 'Linter: overhead benchmarks vet'
-        run: go -C benchmarks/overhead vet ./...
-      - name: 'Linter: isolated SQL sink fixtures vet'
-        run: go -C iast/database/sql/testapp vet ./...
-      - name: 'Linter: isolated command sink fixtures vet'
-        run: go -C iast/os/exec/testapp vet ./...
-      - name: 'Linter: sink integration fixtures vet'
-        run: go -C iast/integration/testapp vet ./...
+      - name: 'Linter: go vet'
+        run: go vet ./...
 
   test:
+    needs: modules
     runs-on: ubuntu-latest
-    name: Unit Tests
+    name: Unit Tests (${{ matrix.module }})
+    strategy:
+      fail-fast: false
+      matrix:
+        module: ${{ fromJSON(needs.modules.outputs.modules) }}
+    defaults:
+      run:
+        working-directory: ${{ matrix.module }}
+    env:
+      MODULE: ${{ matrix.module }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Setup Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version-file: go.mod
+          go-version-file: ${{ matrix.module }}/go.mod
+          cache-dependency-path: ${{ matrix.module }}/go.sum
       - name: Unit Tests
+        shell: bash
         run: |
-          go tool orchestrion go test \
-            -shuffle=on \
-            -covermode=atomic \
-            -coverpkg=./... \
-            -coverprofile=coverage.txt \
-            ./...
+          test_command=(go test)
+          if [[ -f orchestrion.tool.go ]]; then
+            test_command=(go tool orchestrion go test)
+          fi
+          coverage_flags=()
+          if [[ "$MODULE" == '.' ]]; then
+            coverage_flags=(-covermode=atomic -coverpkg=./... -coverprofile=coverage.txt)
+          fi
+          "${test_command[@]}" -shuffle=on "${coverage_flags[@]}" ./...
       # The Datadog uploader does not merge duplicate blocks emitted by
       # `go test -coverpkg=./...`; normalize them before upload.
       - name: Normalize coverage profile
+        if: matrix.module == '.'
         run: |
           python3 <<'PY'
           from collections import defaultdict
@@ -119,24 +166,26 @@ jobs:
           PY
           go tool cover -func=coverage.merged.txt >/dev/null
           mv coverage.merged.txt coverage.txt
-      - name: Isolated SQL sink tests
-        run: go -C iast/database/sql/testapp tool orchestrion go test -shuffle=on ./...
-      - name: Isolated command sink tests
-        run: go -C iast/os/exec/testapp tool orchestrion go test -shuffle=on ./...
-      - name: End-to-end sink integration tests
-        run: go -C iast/integration/testapp tool orchestrion go test -shuffle=on ./...
       - name: Sink executable bootstrap tests
+        shell: bash
         run: |
-          go -C iast/database/sql/testapp tool orchestrion go build -o "$RUNNER_TEMP/iast-sql-bootstrap" ./cmd/bootstrap
-          go tool nm "$RUNNER_TEMP/iast-sql-bootstrap" | grep -F 'github.com/DataDog/dd-iast-go/iast/database/sql.init.0'
-          go -C iast/os/exec/testapp tool orchestrion go build -o "$RUNNER_TEMP/iast-command-bootstrap" ./cmd/bootstrap
-          go tool nm "$RUNNER_TEMP/iast-command-bootstrap" | grep -F 'github.com/DataDog/dd-iast-go/iast/os/exec.init.0'
-          go -C iast/integration/testapp tool orchestrion go build -o "$RUNNER_TEMP/iast-json-bootstrap" ./cmd/bootstrap
-          go tool nm "$RUNNER_TEMP/iast-json-bootstrap" | grep -F 'github.com/DataDog/dd-iast-go/iast/encoding/json.init.0'
-      - name: Overhead benchmark unit tests
-        run: go -C benchmarks/overhead test -shuffle=on ./...
+          if [[ -d cmd/bootstrap ]]; then
+            if [[ ! -s cmd/bootstrap/symbols.txt ]]; then
+              echo 'Bootstrap fixture must declare its expected symbols in cmd/bootstrap/symbols.txt'
+              exit 1
+            fi
+            go tool orchestrion go build -o "$RUNNER_TEMP/iast-bootstrap" ./cmd/bootstrap
+            go tool nm "$RUNNER_TEMP/iast-bootstrap" > "$RUNNER_TEMP/iast-bootstrap.nm"
+            while IFS= read -r symbol || [[ -n "$symbol" ]]; do
+              if [[ -z "$symbol" ]]; then
+                echo 'Bootstrap symbol must not be empty'
+                exit 1
+              fi
+              grep -F -- "$symbol" "$RUNNER_TEMP/iast-bootstrap.nm"
+            done < cmd/bootstrap/symbols.txt
+          fi
       - name: Upload coverage artifact
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && matrix.module == '.' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: coverage-profile
@@ -231,12 +280,13 @@ jobs:
   green-ci:
     runs-on: ubuntu-latest
     name: Green CI
-    needs: [validate-licenses, lint, test, upload-coverage, benchmark]
+    needs: [modules, validate-licenses, lint, test, upload-coverage, benchmark]
     if: always()
     steps:
       - name: Success
         if: |-
-          needs.validate-licenses.result  == 'success'
+          needs.modules.result            == 'success'
+          && needs.validate-licenses.result == 'success'
           && needs.lint.result            == 'success'
           && needs.test.result            == 'success'
           && needs.upload-coverage.result == 'success'
@@ -244,7 +294,8 @@ jobs:
         run: echo "Success!"
       - name: Failure
         if: |-
-          needs.validate-licenses.result  != 'success'
+          needs.modules.result            != 'success'
+          || needs.validate-licenses.result != 'success'
           || needs.lint.result            != 'success'
           || needs.test.result            != 'success'
           || needs.upload-coverage.result != 'success'

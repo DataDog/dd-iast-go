@@ -8,6 +8,9 @@ package iobridge
 
 import "sync/atomic"
 
+// MaxBufferedReaderSize limits the buffer size of tracked bufio readers.
+const MaxBufferedReaderSize = 4096
+
 type callbacks struct {
 	propagate func(any, any)
 	readAll   func(any, []byte)

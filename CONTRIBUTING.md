@@ -63,10 +63,12 @@ Orchestrion:
 go tool orchestrion go test -shuffle=on ./...
 ```
 
-Run the tests for the separate overhead benchmark module as well:
+CI discovers each `go.mod` and runs tests and `go vet` in that module. Modules
+with an `orchestrion.tool.go` file run their tests through Orchestrion.
+Run the tests for the separate overhead benchmark module the same way:
 
 ```console
-go -C benchmarks/overhead test -shuffle=on ./...
+go -C benchmarks/overhead tool orchestrion go test -shuffle=on ./...
 ```
 
 A test that depends on injected instrumentation must clearly skip when it was

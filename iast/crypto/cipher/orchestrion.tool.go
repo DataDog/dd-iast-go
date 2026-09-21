@@ -3,5 +3,8 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2026-present Datadog, Inc.
 
-// Package io instruments reader provenance and owned io.ReadAll results.
-package io
+//go:build tools
+
+package cipher
+
+import _ "github.com/DataDog/dd-iast-go/internal/spans" // integration

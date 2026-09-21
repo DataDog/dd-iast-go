@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -82,6 +83,34 @@ func TestParseFlags(t *testing.T) {
 				t.Fatalf("parseFlags() = %#v, want %#v", got, test.want)
 			}
 		})
+	}
+}
+
+func TestParseFlagsPreservesNumberErrors(t *testing.T) {
+	for _, flag := range []string{"count", "cpu", "sampling", "benchtime"} {
+		for _, value := range []string{"many", "999999999999999999999999999999"} {
+			argument := "-" + flag + "=" + value
+			if flag == "benchtime" {
+				argument += "x"
+			}
+			t.Run(argument, func(t *testing.T) {
+				_, err := parseFlags([]string{argument})
+				var numberError *strconv.NumError
+				if !errors.As(err, &numberError) {
+					t.Fatalf("parseFlags(%q) error = %v, want a wrapped strconv.NumError", argument, err)
+				}
+				if !strings.Contains(err.Error(), numberError.Error()) {
+					t.Fatalf("error %q does not include the parse error %q", err, numberError)
+				}
+			})
+		}
+	}
+}
+
+func TestParseFlagsReportsDurationErrors(t *testing.T) {
+	_, err := parseFlags([]string{"-benchtime=1fortnight"})
+	if err == nil || !strings.Contains(err.Error(), `unknown unit "fortnight"`) {
+		t.Fatalf("parseFlags() error = %v, want the duration parse error", err)
 	}
 }
 

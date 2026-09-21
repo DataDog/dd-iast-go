@@ -12,14 +12,10 @@ import (
 	"path/filepath"
 	"runtime"
 	"slices"
-	"strings"
 	"testing"
 )
 
-func TestGo126DatabaseSQLSourceShape(t *testing.T) {
-	if !strings.HasPrefix(runtime.Version(), "go1.26.") {
-		t.Fatalf("toolchain = %s, want a pinned Go 1.26 patch", runtime.Version())
-	}
+func TestDatabaseSQLSourceShape(t *testing.T) {
 	path := filepath.Join(runtime.GOROOT(), "src", "database", "sql", "sql.go")
 	file, err := parser.ParseFile(token.NewFileSet(), path, nil, 0)
 	if err != nil {

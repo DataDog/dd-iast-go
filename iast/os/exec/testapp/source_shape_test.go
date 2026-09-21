@@ -16,10 +16,7 @@ import (
 	"testing"
 )
 
-func TestGo126OSExecStartProcessShape(t *testing.T) {
-	if !strings.HasPrefix(runtime.Version(), "go1.26.") {
-		t.Fatalf("toolchain = %s, want a pinned Go 1.26 patch", runtime.Version())
-	}
+func TestOSExecStartProcessShape(t *testing.T) {
 	directory := filepath.Join(runtime.GOROOT(), "src", "os", "exec")
 	path := filepath.Join(directory, "exec.go")
 	file, err := parser.ParseFile(token.NewFileSet(), path, nil, 0)

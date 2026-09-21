@@ -10,6 +10,8 @@ meta:
 
 aspects:
   # NewReader delegates to NewReaderSize, so this single hook covers both.
+  # Keep the same policy as iast/bufio.Propagate. Calling that helper here
+  # would create an import cycle: bufio -> iast/bufio -> bufio.
   - id: bufio.NewReaderSize
     join-point:
       all-of:
@@ -26,7 +28,7 @@ aspects:
             {{- $input := .Function.Argument 0 -}}
             {{- $result := .Function.Result 0 -}}
             defer func() {
-              if {{ $result }} != nil && {{ $result }}.Size() <= 4096 {
+              if {{ $result }} != nil && {{ $result }}.Size() <= iastiobridge.MaxBufferedReaderSize {
                 iastiobridge.Propagate({{ $input }}, {{ $result }})
               }
             }()

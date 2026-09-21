@@ -5,5 +5,3 @@
 
 // Package url instruments lazy net/url request sources.
 package url
-
-import _ "github.com/DataDog/dd-iast-go/internal/taint/request" // register callbacks

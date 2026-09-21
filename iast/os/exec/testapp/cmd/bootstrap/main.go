@@ -6,4 +6,7 @@
 // Command bootstrap verifies executable-time command sink callback registration.
 package main
 
+// Keep main empty and do not import the command integration here. CI checks
+// that Orchestrion alone links its callback registration into this executable.
+// This is a link-time fixture, not a command-injection payload.
 func main() {}
