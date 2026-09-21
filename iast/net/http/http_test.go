@@ -17,6 +17,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -275,6 +276,40 @@ func multipartEndpoint(w http.ResponseWriter, req *http.Request) {
 		}
 	}
 	_ = json.NewEncoder(w).Encode(got)
+}
+
+type sourceObservation struct {
+	Value       string       `json:"value"`
+	Origin      taint.Origin `json:"origin"`
+	Name        string       `json:"name"`
+	SourceCount int          `json:"source_count"`
+}
+
+func observeSource(value string) sourceObservation {
+	got := sourceObservation{Value: value}
+	taint.VisitString(value, func(r taint.Range) bool {
+		got.Origin = r.Source.Origin
+		got.Name = r.Source.Name
+		got.SourceCount++
+		return true
+	})
+	return got
+}
+
+type multipartFallbackObservation struct {
+	FormQuery     sourceObservation `json:"form_query"`
+	FormMultipart sourceObservation `json:"form_multipart"`
+	PostMultipart sourceObservation `json:"post_multipart"`
+	EqualValue    sourceObservation `json:"equal_value"`
+}
+
+func multipartFallbackEndpoint(w http.ResponseWriter, req *http.Request) {
+	_ = json.NewEncoder(w).Encode(multipartFallbackObservation{
+		FormQuery:     observeSource(req.FormValue("form-query")),
+		FormMultipart: observeSource(req.FormValue("form-multipart")),
+		PostMultipart: observeSource(req.PostFormValue("post-multipart")),
+		EqualValue:    observeSource(req.FormValue("equal-value")),
+	})
 }
 
 func weakBeforeBindingEndpoint(w http.ResponseWriter, req *http.Request) {
@@ -578,6 +613,55 @@ func TestMultipartValueSourcesAreIdempotent(t *testing.T) {
 	// Eager URI/path/header sources plus one multipart name and value.
 	require.GreaterOrEqual(t, got.SourceCount, 5)
 	require.Equal(t, got.FirstSourceCount, got.SourceCount)
+}
+
+func TestMultipartFallbackUsesReturnedMapPosition(t *testing.T) {
+	if !built.WithOrchestrion {
+		t.Skip("orchestrion is not enabled, use `go tool orchestrion go test`")
+	}
+	testConfig(t, 100, 1)
+
+	query := make(url.Values)
+	for i := range 49 {
+		query.Set(fmt.Sprintf("query-filler-%02d", i), fmt.Sprintf("query-value-%02d", i))
+	}
+	query.Set("form-query", "query-winner")
+	query.Set("post-multipart", "ignored-query")
+	query.Set("equal-value", "same-value")
+
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+	for i := range 49 {
+		require.NoError(t, writer.WriteField(fmt.Sprintf("multipart-filler-%02d", i), fmt.Sprintf("multipart-value-%02d", i)))
+	}
+	require.NoError(t, writer.WriteField("form-query", "ignored-multipart"))
+	require.NoError(t, writer.WriteField("form-multipart", "multipart-winner"))
+	require.NoError(t, writer.WriteField("post-multipart", "post-winner"))
+	require.NoError(t, writer.WriteField("equal-value", "same-value"))
+	require.NoError(t, writer.Close())
+
+	server := httptest.NewServer(http.HandlerFunc(multipartFallbackEndpoint))
+	defer server.Close()
+	req, err := http.NewRequest(http.MethodPost, server.URL+"/multipart-fallback?"+query.Encode(), &body)
+	require.NoError(t, err)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	response, err := server.Client().Do(req)
+	require.NoError(t, err)
+	defer response.Body.Close()
+	var got multipartFallbackObservation
+	require.NoError(t, json.NewDecoder(response.Body).Decode(&got))
+
+	assertSource := func(name string, got sourceObservation, value string, origin taint.Origin) {
+		t.Helper()
+		require.Equal(t, value, got.Value, name+" returned bytes")
+		require.Equal(t, 1, got.SourceCount, name+" source count")
+		require.Equal(t, origin, got.Origin, name+" source origin")
+		require.Equal(t, name, got.Name, name+" source name")
+	}
+	assertSource("form-query", got.FormQuery, "query-winner", taint.OriginHttpRequestParameter)
+	assertSource("form-multipart", got.FormMultipart, "multipart-winner", taint.OriginHttpRequestMultipartParameter)
+	assertSource("post-multipart", got.PostMultipart, "post-winner", taint.OriginHttpRequestMultipartParameter)
+	assertSource("equal-value", got.EqualValue, "same-value", taint.OriginHttpRequestParameter)
 }
 
 func TestServerProtocolsReleasePerRequest(t *testing.T) {

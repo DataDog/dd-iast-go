@@ -205,7 +205,9 @@ aspects:
             defer func() {
               if {{ $req }} != nil {
                 if {{ $req }}.MultipartForm != nil {
-                  if _, __dd_iast_multipart := {{ $req }}.MultipartForm.Value[{{ $name }}]; __dd_iast_multipart {
+                  __dd_iast_multipart := {{ $req }}.MultipartForm.Value[{{ $name }}]
+                  __dd_iast_form := {{ $req }}.Form[{{ $name }}]
+                  if len(__dd_iast_form) > 0 && len(__dd_iast_form) == len(__dd_iast_multipart) {
                     {{ $result }} = iasthttpbridge.MultipartParameter(
                       {{ $req }}.Context(), {{ $name }}, {{ $result }},
                     )
@@ -237,7 +239,9 @@ aspects:
             defer func() {
               if {{ $req }} != nil {
                 if {{ $req }}.MultipartForm != nil {
-                  if _, __dd_iast_multipart := {{ $req }}.MultipartForm.Value[{{ $name }}]; __dd_iast_multipart {
+                  __dd_iast_multipart := {{ $req }}.MultipartForm.Value[{{ $name }}]
+                  __dd_iast_post_form := {{ $req }}.PostForm[{{ $name }}]
+                  if len(__dd_iast_post_form) > 0 && len(__dd_iast_post_form) == len(__dd_iast_multipart) {
                     {{ $result }} = iasthttpbridge.MultipartParameter(
                       {{ $req }}.Context(), {{ $name }}, {{ $result }},
                     )
