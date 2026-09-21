@@ -55,7 +55,7 @@ func TestAnnotationGuardPaths(t *testing.T) {
 	mockTracer := mocktracer.Start()
 	t.Cleanup(mockTracer.Stop)
 	span := tracer.StartSpan("unsampled")
-	t.Cleanup(func() { span.Finish() })
+	t.Cleanup(func() { spans.Finished(span); span.Finish() })
 	if root, annotation, ok := spans.ExistingForSpan(span); ok || root != nil || annotation != nil {
 		t.Fatal("span unexpectedly had an annotation")
 	}
@@ -237,6 +237,7 @@ func TestBindScopeFromContextRequiresScopeAndSpan(t *testing.T) {
 		t.Fatal("stored an annotation for a sampled-out scope")
 	}
 	scope.Finish()
+	spans.Finished(span)
 	span.Finish()
 }
 

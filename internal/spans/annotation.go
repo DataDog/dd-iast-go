@@ -113,7 +113,8 @@ func TryUseExisting(span *tracer.Span, use func(*Annotation)) bool {
 
 // AnnotationFor returns the [*Annotation] for the root of the given
 // [*tracer.Span] (or the span itself if it does not have a valid, un-finished
-// root). If none exists yet, a new [*Annotation] is allocated.
+// root). If none exists yet and storage has capacity, a new [*Annotation] is
+// allocated, retaining both positive and negative sampling decisions.
 func AnnotationFor(span *tracer.Span) *Annotation {
 	if span == nil {
 		return nonSampledAnnotation
@@ -131,26 +132,16 @@ func AnnotationFor(span *tracer.Span) *Annotation {
 	hasSpace := trimStore()
 
 	ptr := weak.Make(root)
-	var fallback *Annotation
 	ann, _ := store.LoadOrCompute(ptr, func() (*Annotation, bool) {
 		if !hasSpace {
 			instrumentation.Instance.TelemetryLog().
 				Warn("iast/annotation: max concurrent requests reached, not storing annotation for span", slog.Any("span", spanID))
-			fallback = nonSampledAnnotation
 			return nil, true
 		}
-		if !samplingDecision() {
-			fallback = nonSampledAnnotation
-			return nil, true
-		}
-		fallback = &Annotation{Sampled: true}
-		return fallback, false
+		return &Annotation{Sampled: samplingDecision()}, false
 	})
 	if ann == nil {
-		ann = fallback
-		if ann == nil {
-			ann = nonSampledAnnotation
-		}
+		ann = nonSampledAnnotation
 	}
 	root.SetTag(SpanTagEnabled, ann.enabledTag())
 	return ann
@@ -186,7 +177,8 @@ func AnnotationForContext(ctx context.Context, span *tracer.Span) *Annotation {
 	return AnnotationFor(span)
 }
 
-// BindScope binds the request's existing active decision to the root span.
+// BindScope reuses the root span's decision or, when space is available, stores
+// the request's current decision. A stored span decision takes precedence.
 func BindScope(span *tracer.Span, scope *request.Scope) *Annotation {
 	if span == nil || scope == nil {
 		return nil
@@ -197,21 +189,21 @@ func BindScope(span *tracer.Span, scope *request.Scope) *Annotation {
 	}
 	ptr := weak.Make(root)
 	if existing, ok := store.Load(ptr); ok {
+		if !existing.Sampled {
+			return nil
+		}
 		bindOwnerSpan(scope, root, existing)
 		return existing
 	}
-	if !scope.Active() {
-		root.SetTag(SpanTagEnabled, 0)
-		return nil
-	}
+	active := scope.Active()
 	hasSpace := trimStore()
 	ann, _ := store.LoadOrCompute(ptr, func() (*Annotation, bool) {
 		if !hasSpace {
 			return nil, true
 		}
-		return &Annotation{Sampled: true}, false
+		return &Annotation{Sampled: active}, false
 	})
-	if ann == nil {
+	if ann == nil || !ann.Sampled {
 		root.SetTag(SpanTagEnabled, 0)
 		return nil
 	}
