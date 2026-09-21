@@ -679,6 +679,33 @@ func TestCoarseFormatSupportsDefinedStringsAndBytes(t *testing.T) {
 	require.Equal(t, []ranges.Range{{Length: uint32(len(out)), SourceID: 0}}, lookupRanges(s, out))
 }
 
+func TestCoarseStringPreservesEachOwnerSourceAndMarks(t *testing.T) {
+	s, _ := beginScope(t)
+	ownerA := acquireOwner(t, s)
+	ownerB := acquireOwner(t, s)
+	inputA, _ := taintString(t, ownerA, "invalid", []ranges.Range{{Length: 7, SourceID: 3, Marks: 0x4}})
+	inputB, _ := taintString(t, ownerB, "repair", []ranges.Range{{Length: 6, SourceID: 7, Marks: 0x8}})
+
+	out := propagation.CoarseString("invalid-repair", inputA, inputB)
+	key, ok := store.StringKey(out)
+	require.True(t, ok)
+	var snapshot store.Snapshot
+	require.True(t, s.Lookup(key, &snapshot))
+	require.Equal(t, 2, snapshot.Len())
+
+	got := make(map[ranges.SourceID]uint64, 2)
+	for index := 0; index < snapshot.Len(); index++ {
+		entry, ok := snapshot.At(index)
+		require.True(t, ok)
+		require.Equal(t, 1, entry.Ranges.Len())
+		observed, ok := entry.Ranges.At(0)
+		require.True(t, ok)
+		require.Equal(t, uint32(len(out)), observed.Length)
+		got[observed.SourceID] = observed.Marks
+	}
+	require.Equal(t, map[ranges.SourceID]uint64{3: 0x4, 7: 0x8}, got)
+}
+
 func TestCoarseStringTwoOwnersKeepLocalSourceIDs(t *testing.T) {
 	enableIAST(t)
 	_, scopeA, createdA := request.Begin(context.Background())

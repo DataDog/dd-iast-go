@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"unsafe"
 
 	internal "github.com/DataDog/dd-iast-go/internal/taint/propagation"
 )
@@ -36,7 +37,12 @@ func StringsMap(mapping func(rune) rune, value string) string {
 
 // StringsToValidUTF8 wraps strings.ToValidUTF8.
 func StringsToValidUTF8(value, replacement string) string {
-	return internal.CoarseString(strings.ToValidUTF8(value, replacement), value, replacement)
+	result := strings.ToValidUTF8(value, replacement)
+	// The native function returns the original string when no repair is needed.
+	if len(result) == len(value) && unsafe.StringData(result) == unsafe.StringData(value) {
+		return internal.CoarseString(result, value)
+	}
+	return internal.CoarseString(result, value, replacement)
 }
 
 // FmtSprint wraps fmt.Sprint.

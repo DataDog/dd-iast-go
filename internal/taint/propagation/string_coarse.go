@@ -113,6 +113,9 @@ func CoarseFormattedString(result, format string, arguments []any) string {
 
 //go:noinline
 func coarseFormattedStringHit(s *store.Store, result, format string, arguments []any) string {
+	if len(arguments) > maxInputs-1 {
+		recordDropped()
+	}
 	var owners [store.MaxSnapshotOwners]coarseOwner
 	ownerCount := accumulateCoarseKey(s, stringKey(format), &owners, 0)
 	inspected := min(len(arguments), maxInputs-1)
@@ -127,6 +130,9 @@ func coarseFormattedStringHit(s *store.Store, result, format string, arguments [
 
 //go:noinline
 func coarseFormatStringHit(s *store.Store, result string, arguments []any) string {
+	if len(arguments) > maxInputs {
+		recordDropped()
+	}
 	var owners [store.MaxSnapshotOwners]coarseOwner
 	ownerCount := 0
 	inspected := min(len(arguments), maxInputs)

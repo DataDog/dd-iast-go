@@ -30,6 +30,10 @@ func TestInstrumentedPropagationTelemetry(t *testing.T) {
 }
 
 func activeString(t *testing.T, value string) string {
+	return activeStringSource(t, "input", value)
+}
+
+func activeStringSource(t *testing.T, name, value string) string {
 	t.Helper()
 	previousEnabled := config.Enabled
 	previousSampling := config.RequestSamplingPct
@@ -45,7 +49,7 @@ func activeString(t *testing.T, value string) string {
 	ctx, scope, created := request.Begin(context.Background())
 	require.True(t, created)
 	t.Cleanup(scope.Finish)
-	return taint.TaintString(ctx, taint.Source{Origin: taint.OriginHttpRequestParameter, Name: "input"}, value)
+	return taint.TaintString(ctx, taint.Source{Origin: taint.OriginHttpRequestParameter, Name: name}, value)
 }
 
 func requireTaintedStrings(t *testing.T, values ...string) {
@@ -154,6 +158,133 @@ func TestCoarseStringOperations(t *testing.T) {
 	unquoted, err := testapp.Unquote(quoted)
 	require.NoError(t, err)
 	requireTaintedStrings(t, unquoted)
+}
+
+func TestToValidUTF8UsesOnlyContributingProvenance(t *testing.T) {
+	if !built.WithOrchestrion {
+		t.Skip("orchestrion is not enabled, use `go tool orchestrion go test`")
+	}
+	tests := []struct {
+		name        string
+		value       string
+		replacement string
+		taintValue  bool
+		taintRepair bool
+		wantSources map[string]string
+	}{
+		{
+			name: "tainted valid value ignores tainted replacement", value: "valid", replacement: "REPL",
+			taintValue: true, taintRepair: true, wantSources: map[string]string{"value": "valid"},
+		},
+		{
+			name: "clean valid value ignores tainted replacement", value: "valid", replacement: "REPL",
+			taintRepair: true,
+		},
+		{
+			name: "clean invalid value uses tainted replacement", value: "a\xffb", replacement: "REPL",
+			taintRepair: true, wantSources: map[string]string{"replacement": "REPL"},
+		},
+		{
+			name: "tainted invalid value uses both contributors", value: "a\xffb", replacement: "REPL",
+			taintValue: true, taintRepair: true,
+			wantSources: map[string]string{"value": "a\xffb", "replacement": "REPL"},
+		},
+		{
+			name: "tainted invalid value remains tainted with clean replacement", value: "a\xffb", replacement: "REPL",
+			taintValue: true, wantSources: map[string]string{"value": "a\xffb"},
+		},
+		{
+			name: "empty value ignores tainted replacement", value: "", replacement: "REPL",
+			taintRepair: true,
+		},
+		{
+			name: "used replacement can preserve the original bytes", value: "\xff\xc0", replacement: "\xff\xc0",
+			taintRepair: true, wantSources: map[string]string{"replacement": "\xff\xc0"},
+		},
+		{
+			name: "malformed run uses replacement once", value: "\xff\xc0", replacement: "REPL",
+			taintRepair: true, wantSources: map[string]string{"replacement": "REPL"},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			want := strings.ToValidUTF8(test.value, test.replacement)
+			value := test.value
+			if test.taintValue {
+				value = activeStringSource(t, "value", value)
+			}
+			replacement := test.replacement
+			if test.taintRepair {
+				replacement = activeStringSource(t, "replacement", replacement)
+			}
+
+			got := testapp.ToValidUTF8(value, replacement)
+			require.Equal(t, want, got)
+			gotSources := make(map[string]string)
+			tainted := taint.VisitString(got, func(observed taint.Range) bool {
+				require.Zero(t, observed.Start)
+				require.Equal(t, uint32(len(got)), observed.Length)
+				gotSources[observed.Source.Name] = observed.Source.Value
+				return true
+			})
+			require.Equal(t, len(test.wantSources) > 0, tainted)
+			if len(test.wantSources) == 0 {
+				require.Empty(t, gotSources)
+			} else {
+				require.Equal(t, test.wantSources, gotSources)
+			}
+		})
+	}
+}
+
+func TestCoarseFormattingRecordsBoundedDrops(t *testing.T) {
+	if !built.WithOrchestrion {
+		t.Skip("orchestrion is not enabled, use `go tool orchestrion go test`")
+	}
+	included := activeStringSource(t, "included", "attack")
+	dropped := activeStringSource(t, "dropped", "drop")
+
+	tests := []struct {
+		name      string
+		arguments []any
+		want      string
+		call      func([]any) string
+	}{
+		{
+			name: "Sprint", arguments: append([]any{included}, append(make([]any, 15), dropped)...),
+			want: included + strings.Repeat("x", 15) + dropped,
+			call: func(arguments []any) string { return testapp.Sprint(arguments...) },
+		},
+		{
+			name: "Sprintf", arguments: append([]any{included}, append(make([]any, 14), dropped)...),
+			want: included + strings.Repeat("x", 14) + dropped,
+			call: func(arguments []any) string {
+				return testapp.Sprintf(strings.Repeat("%s", len(arguments)), arguments...)
+			},
+		},
+		{
+			name: "Sprintln", arguments: append([]any{included}, append(make([]any, 15), dropped)...),
+			want: included + " " + strings.Repeat("x ", 15) + dropped + "\n",
+			call: func(arguments []any) string { return testapp.Sprintln(arguments...) },
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			for index := 1; index < len(test.arguments)-1; index++ {
+				test.arguments[index] = "x"
+			}
+			before := telemetry.DroppedPropagation.Load()
+			got := test.call(test.arguments)
+			require.Equal(t, test.want, got)
+			require.Equal(t, before+1, telemetry.DroppedPropagation.Load())
+			sources := make(map[string]bool)
+			require.True(t, taint.VisitString(got, func(observed taint.Range) bool {
+				sources[observed.Source.Name] = true
+				return true
+			}))
+			require.Equal(t, map[string]bool{"included": true}, sources)
+		})
+	}
 }
 
 func TestReplacerReplacementProvenanceIsUnsupported(t *testing.T) {
