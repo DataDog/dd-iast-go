@@ -102,6 +102,8 @@ type owner struct {
 	writersMu      sync.RWMutex
 	writers        [MaxWriters]writerRecord
 	writerPointers [MaxWriters]atomic.Uintptr
+	writerStarts   [MaxWriters]atomic.Uintptr
+	writerEnds     [MaxWriters]atomic.Uintptr
 	writerCount    uint8
 	writerDirty    atomic.Bool
 	writerVersion  atomic.Uint64

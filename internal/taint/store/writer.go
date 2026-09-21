@@ -21,11 +21,16 @@ const (
 )
 
 // WriterView describes the complete visible writer backing state. Pointer is a
-// numeric comparison key only and is never converted back to a pointer.
+// numeric comparison key only and is never converted back to a pointer. Buffer
+// views also retain an Anchor into the allocation at Backing; builders do not.
+// Capacity charges the accessible backing, not an unknowable larger allocation
+// retained by an interior slice.
 type WriterView struct {
 	Pointer  uintptr
 	Length   uint32
 	Capacity uint32
+	Backing  uintptr
+	Anchor   *byte
 }
 
 type writerRecord struct {
@@ -65,9 +70,10 @@ func (r WriterRef) Identity() (index uint8, generation uint64, ok bool) {
 	return r.index, r.generation, true
 }
 
-// LookupWriterValue returns active owners tracking object as kind. Contention is
-// a safe miss and out bounds the owner fanout.
-func LookupWriterValue(s *Store, object any, kind WriterKind, out []WriterRef) int {
+// LookupWriterValue returns candidate owners tracking object or an exact anchored
+// Buffer view. A zero view requests receiver-only discovery, as used by Reset.
+// Contention dirties possible matches so a skipped mutation cannot resume them.
+func LookupWriterValue(s *Store, object any, kind WriterKind, view WriterView, out []WriterRef) int {
 	pointer, ok := dynamicPointer(object)
 	if !ok || s == nil || kind == WriterInvalid || len(out) == 0 {
 		return 0
@@ -76,24 +82,27 @@ func LookupWriterValue(s *Store, object any, kind WriterKind, out []WriterRef) i
 	for ownerIndex := range s.owners {
 		record := &s.owners[ownerIndex]
 		generation := record.generation.Load()
-		if generation == 0 || ownerState(record.state.Load()) != stateActive || record.writerDirty.Load() || !writerPointerPresent(record, pointer) {
+		if generation == 0 || ownerState(record.state.Load()) != stateActive || record.writerDirty.Load() || !writerPresent(record, pointer, view.Backing, uintptr(view.Capacity), false) {
 			continue
 		}
 		if !record.lifecycleMu.TryRLock() {
+			record.writerDirty.Store(true)
 			record.drops.contention.Add(1)
 			continue
 		}
 		if generation != record.generation.Load() || ownerState(record.state.Load()) != stateActive || !record.writersMu.TryRLock() {
+			record.writerDirty.Store(true)
 			record.lifecycleMu.RUnlock() // +checklocksforce: TryRLock.
 			continue
 		}
-		found := writerIndexLocked(record, pointer, kind) >= 0
+		found := !record.writerDirty.Load() && (writerIndexLocked(record, pointer, kind) >= 0 || writerViewIndexLocked(record, pointer, kind, view) >= 0)
 		record.writersMu.RUnlock()   // +checklocksforce: TryRLock.
 		record.lifecycleMu.RUnlock() // +checklocksforce: TryRLock.
 		if !found {
 			continue
 		}
 		if count >= len(out) {
+			record.writerDirty.Store(true)
 			record.drops.fanout.Add(1)
 			continue
 		}
@@ -101,6 +110,41 @@ func LookupWriterValue(s *Store, object any, kind WriterKind, out []WriterRef) i
 		count++
 	}
 	return count
+}
+
+// AdoptBufferWriter transfers an exact Buffer view to the receiver before its
+// wrapped mutation. It reuses the canonical entry and its existing byte charge.
+func (o *Owner) AdoptBufferWriter(object any, view WriterView) bool {
+	pointer, ok := dynamicPointer(object)
+	if !ok || !o.beginWrite() {
+		if ok && o.alive() {
+			o.owner.writerDirty.Store(true)
+		}
+		return false
+	}
+	defer o.endWrite()
+	record := o.owner
+	if forceWriterLockFail.Load() || !record.writersMu.TryLock() {
+		record.writerDirty.Store(true)
+		record.drops.contention.Add(1)
+		return false
+	}
+	defer record.writersMu.Unlock() // +checklocksforce: TryLock.
+	record.writerVersion.Add(1)
+	defer record.writerVersion.Add(1)
+	o.clearDirtyWritersLocked()
+	index := writerIndexLocked(record, pointer, WriterBytesBuffer)
+	if index >= 0 && record.writers[index].view != view {
+		o.removeWriterLocked(index, true)
+	}
+	index = writerViewIndexLocked(record, pointer, WriterBytesBuffer, view)
+	if index < 0 || !validWriterView(view) {
+		return false
+	}
+	record.writers[index].object = object
+	record.writers[index].pointer = pointer
+	refreshWriterIndexLocked(record, index)
+	return true
 }
 
 // UpdateWriter validates one completed write and appends input provenance. It
@@ -118,6 +162,8 @@ func (o *Owner) UpdateWriter(object any, kind WriterKind, before, after WriterVi
 		return false
 	}
 	defer record.writersMu.Unlock() // +checklocksforce: TryLock.
+	record.writerVersion.Add(1)
+	defer record.writerVersion.Add(1)
 	o.clearDirtyWritersLocked()
 
 	index := writerIndexLocked(record, pointer, kind)
@@ -165,12 +211,9 @@ func (o *Owner) UpdateWriter(object any, kind WriterKind, before, after WriterVi
 			record.drops.full.Add(1)
 			return false
 		}
-		record.writerVersion.Add(1)
 		index = int(record.writerCount)
 		record.writerCount++
 		record.writers[index] = writerRecord{object: object, pointer: pointer, kind: kind}
-		record.writerPointers[index].Store(pointer)
-		record.writerVersion.Add(1)
 		o.store.addWriterStates(1)
 	}
 	entry := &record.writers[index]
@@ -183,6 +226,7 @@ func (o *Owner) UpdateWriter(object any, kind WriterKind, before, after WriterVi
 	entry.kind = kind
 	entry.view = after
 	entry.set = next
+	refreshWriterIndexLocked(record, index)
 	return true
 }
 
@@ -199,7 +243,9 @@ func (o *Owner) SnapshotWriter(object any, kind WriterKind, view WriterView, dst
 			record.drops.contention.Add(1)
 			return false
 		}
+		record.writerVersion.Add(1)
 		o.clearDirtyWritersLocked()
+		record.writerVersion.Add(1)
 		record.writersMu.Unlock() // +checklocksforce: TryLock.
 		return false
 	}
@@ -208,8 +254,8 @@ func (o *Owner) SnapshotWriter(object any, kind WriterKind, view WriterView, dst
 		return false
 	}
 	defer record.writersMu.RUnlock() // +checklocksforce: TryRLock.
-	index := writerIndexLocked(record, pointer, kind)
-	if index < 0 || record.writers[index].view != view {
+	index := writerViewIndexLocked(record, pointer, kind, view)
+	if record.writerDirty.Load() || index < 0 || record.writers[index].view != view {
 		return false
 	}
 	*dst = record.writers[index].set
@@ -230,6 +276,8 @@ func (o *Owner) ResetWriter(object any, kind WriterKind) bool {
 		return false
 	}
 	defer record.writersMu.Unlock() // +checklocksforce: TryLock.
+	record.writerVersion.Add(1)
+	defer record.writerVersion.Add(1)
 	o.clearDirtyWritersLocked()
 	index := writerIndexLocked(record, pointer, kind)
 	if index < 0 {
@@ -253,6 +301,8 @@ func (o *Owner) TruncateWriter(object any, kind WriterKind, before, after Writer
 		return false
 	}
 	defer record.writersMu.Unlock() // +checklocksforce: TryLock.
+	record.writerVersion.Add(1)
+	defer record.writerVersion.Add(1)
 	o.clearDirtyWritersLocked()
 	index := writerIndexLocked(record, pointer, kind)
 	if !validWriterView(before) || !validWriterView(after) || after.Length > before.Length {
@@ -280,6 +330,7 @@ func (o *Owner) TruncateWriter(object any, kind WriterKind, before, after Writer
 	}
 	entry.view = after
 	entry.set = next
+	refreshWriterIndexLocked(record, index)
 	return true
 }
 
@@ -306,12 +357,19 @@ func (s *Store) HasWriterStates() bool {
 
 // InvalidateWriterPointer drops every state matching the numeric object pointer.
 func (s *Store) InvalidateWriterPointer(pointer uintptr) {
+	s.InvalidateBuffer(pointer, 0, 0, false)
+}
+
+// InvalidateBuffer drops a receiver and overlapping anchored Buffer backing
+// intervals. Expected backing writes preserve only their prepared receiver.
+// The native-width interval also covers buffers larger than the tracking limit.
+func (s *Store) InvalidateBuffer(pointer, backing, capacity uintptr, preserve bool) {
 	if s == nil || pointer == 0 {
 		return
 	}
 	for ownerIndex := range s.owners {
 		record := &s.owners[ownerIndex]
-		if ownerState(record.state.Load()) != stateActive || !writerPointerPresent(record, pointer) {
+		if ownerState(record.state.Load()) != stateActive || !writerPresent(record, pointer, backing, capacity, preserve) {
 			continue
 		}
 		if !record.lifecycleMu.TryRLock() {
@@ -325,24 +383,33 @@ func (s *Store) InvalidateWriterPointer(pointer uintptr) {
 			continue
 		}
 		owner := Owner{store: s, owner: record, index: uint8(ownerIndex), gen: record.generation.Load()}
+		record.writerVersion.Add(1)
 		owner.clearDirtyWritersLocked()
 		for index := 0; index < int(record.writerCount); {
-			if record.writers[index].pointer == pointer {
+			entry := &record.writers[index]
+			if !(preserve && entry.pointer == pointer) && (entry.pointer == pointer || entry.kind == WriterBytesBuffer && overlaps(entry.view.Backing, uintptr(entry.view.Capacity), backing, capacity)) {
 				owner.removeWriterLocked(index, true)
 				continue
 			}
 			index++
 		}
+		record.writerVersion.Add(1)
 		record.writersMu.Unlock()    // +checklocksforce: TryLock.
 		record.lifecycleMu.RUnlock() // +checklocksforce: TryRLock.
 	}
 }
 
 func validWriterView(view WriterView) bool {
-	return view.Length <= view.Capacity && view.Capacity <= MaxRootBytes && (view.Length == 0 || view.Pointer != 0)
+	return view.Length <= view.Capacity && view.Capacity <= MaxRootBytes && (view.Length == 0 || view.Pointer != 0) &&
+		((view.Backing == 0 && view.Anchor == nil) || (view.Backing != 0 && view.Anchor != nil && view.Backing+uintptr(view.Capacity) > view.Backing))
 }
 
-func writerPointerPresent(record *owner, pointer uintptr) bool {
+func overlaps(first, firstCapacity, second, secondCapacity uintptr) bool {
+	return first != 0 && second != 0 && firstCapacity != 0 && secondCapacity != 0 &&
+		first < second+secondCapacity && second < first+firstCapacity
+}
+
+func writerPresent(record *owner, pointer, backing, capacity uintptr, preserve bool) bool {
 	for attempt := 0; attempt < 3; attempt++ {
 		before := record.writerVersion.Load()
 		if before&1 != 0 {
@@ -350,7 +417,12 @@ func writerPointerPresent(record *owner, pointer uintptr) bool {
 		}
 		found := false
 		for index := 0; index < MaxWriters; index++ {
-			found = found || record.writerPointers[index].Load() == pointer
+			candidate := record.writerPointers[index].Load()
+			if preserve && candidate == pointer {
+				continue
+			}
+			start, end := record.writerStarts[index].Load(), record.writerEnds[index].Load()
+			found = found || candidate == pointer || overlaps(start, end-start, backing, capacity)
 		}
 		after := record.writerVersion.Load()
 		if before == after && after&1 == 0 {
@@ -358,6 +430,35 @@ func writerPointerPresent(record *owner, pointer uintptr) bool {
 		}
 	}
 	return true // A concurrent change is a conservative possible match.
+}
+
+// Called with writersMu held and writerVersion odd, including view-only changes.
+func refreshWriterIndexLocked(record *owner, index int) {
+	entry := &record.writers[index]
+	record.writerPointers[index].Store(entry.pointer)
+	start, end := uintptr(0), uintptr(0)
+	if entry.kind == WriterBytesBuffer && entry.view.Anchor != nil {
+		start = entry.view.Backing
+		end = start + uintptr(entry.view.Capacity)
+	}
+	record.writerStarts[index].Store(start)
+	record.writerEnds[index].Store(end)
+}
+
+func writerViewIndexLocked(record *owner, pointer uintptr, kind WriterKind, view WriterView) int {
+	index := writerIndexLocked(record, pointer, kind)
+	if index >= 0 && (view == (WriterView{}) || record.writers[index].view == view) {
+		return index
+	}
+	if kind == WriterBytesBuffer && view.Anchor != nil && validWriterView(view) {
+		for index := 0; index < int(record.writerCount); index++ {
+			entry := &record.writers[index]
+			if entry.kind == kind && entry.view == view {
+				return index
+			}
+		}
+	}
+	return -1
 }
 
 func writerIndexLocked(record *owner, pointer uintptr, kind WriterKind) int {
@@ -404,16 +505,14 @@ func (o *Owner) removeWriterLocked(index int, release bool) {
 		record.charged.Add(-entry.charged)
 		o.store.charged.Add(-entry.charged)
 	}
-	record.writerVersion.Add(1)
 	last := int(record.writerCount) - 1
 	if index != last {
 		record.writers[index] = record.writers[last]
-		record.writerPointers[index].Store(record.writers[index].pointer)
+		refreshWriterIndexLocked(record, index)
 	}
 	record.writers[last] = writerRecord{}
-	record.writerPointers[last].Store(0)
+	refreshWriterIndexLocked(record, last)
 	record.writerCount--
-	record.writerVersion.Add(1)
 	o.store.addWriterStates(-1)
 }
 
@@ -433,7 +532,7 @@ func releaseWritersForFinishLocked(s *Store, record *owner) int64 {
 	for index := 0; index < count; index++ {
 		charged += record.writers[index].charged
 		record.writers[index] = writerRecord{}
-		record.writerPointers[index].Store(0)
+		refreshWriterIndexLocked(record, index)
 	}
 	record.writerVersion.Add(1)
 	if count > 0 {

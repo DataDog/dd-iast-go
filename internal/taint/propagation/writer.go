@@ -15,7 +15,7 @@ import (
 )
 
 func init() {
-	writerbridge.Register(invalidateWriterPointer)
+	writerbridge.Register(invalidateBuffer)
 }
 
 // WriterActive reports whether at least one request analysis can own writer
@@ -30,9 +30,25 @@ func WriterInvalidationActive() bool {
 	return writerbridge.Active()
 }
 
-func invalidateWriterPointer(pointer uintptr) {
+func invalidateBuffer(pointer, backing, capacity uintptr, preserve bool) {
 	if s := request.ActiveStore(); s != nil {
-		s.InvalidateWriterPointer(pointer)
+		s.InvalidateBuffer(pointer, backing, capacity, preserve)
+	}
+}
+
+// PrepareBufferWriter adopts an exact anchored copy before the native mutation
+// hook can invalidate its donor. No new writer entry or charge is created.
+func PrepareBufferWriter(object any, before store.WriterView) {
+	s := request.ActiveStore()
+	if s == nil {
+		return
+	}
+	var refs [store.MaxSnapshotOwners]store.WriterRef
+	count := store.LookupWriterValue(s, object, store.WriterBytesBuffer, before, refs[:])
+	for index := 0; index < count; index++ {
+		if owner, ok := refs[index].Handle(); ok {
+			owner.AdoptBufferWriter(object, before)
+		}
 	}
 }
 
@@ -83,7 +99,7 @@ func updateWriter(s *store.Store, object any, kind store.WriterKind, before, aft
 		s.Lookup(key, &input)
 	}
 	var refs [store.MaxSnapshotOwners]store.WriterRef
-	refCount := store.LookupWriterValue(s, object, kind, refs[:])
+	refCount := store.LookupWriterValue(s, object, kind, before, refs[:])
 	if refCount > 0 || input.Len() > 0 {
 		recordExecuted()
 	}
@@ -148,7 +164,7 @@ func ResetWriter(object any, kind store.WriterKind) {
 		return
 	}
 	var refs [store.MaxSnapshotOwners]store.WriterRef
-	count := store.LookupWriterValue(s, object, kind, refs[:])
+	count := store.LookupWriterValue(s, object, kind, store.WriterView{}, refs[:])
 	for index := 0; index < count; index++ {
 		if owner, ok := refs[index].Handle(); ok {
 			owner.ResetWriter(object, kind)
@@ -163,7 +179,7 @@ func TruncateWriter(object any, kind store.WriterKind, before, after store.Write
 		return
 	}
 	var refs [store.MaxSnapshotOwners]store.WriterRef
-	count := store.LookupWriterValue(s, object, kind, refs[:])
+	count := store.LookupWriterValue(s, object, kind, before, refs[:])
 	for index := 0; index < count; index++ {
 		if owner, ok := refs[index].Handle(); ok {
 			owner.TruncateWriter(object, kind, before, after)
@@ -198,7 +214,7 @@ func BufferString(object any, view store.WriterView, result string) string {
 //go:noinline
 func publishWriterString(s *store.Store, object any, kind store.WriterKind, view store.WriterView, result string, clone bool) string {
 	var refs [store.MaxSnapshotOwners]store.WriterRef
-	count := store.LookupWriterValue(s, object, kind, refs[:])
+	count := store.LookupWriterValue(s, object, kind, view, refs[:])
 	if count == 0 {
 		return result
 	}

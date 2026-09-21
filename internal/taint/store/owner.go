@@ -43,6 +43,8 @@ func (s *Store) Acquire() *Owner {
 		clear(record.writers[:])
 		for writerIndex := range record.writerPointers {
 			record.writerPointers[writerIndex].Store(0)
+			record.writerStarts[writerIndex].Store(0)
+			record.writerEnds[writerIndex].Store(0)
 		}
 		record.writerCount = 0
 		record.writerDirty.Store(false)

@@ -95,6 +95,7 @@ func BufferWrite(buffer *bytes.Buffer, value []byte) (int, error) {
 		return buffer.Write(value)
 	}
 	before := bufferView(buffer)
+	internal.PrepareBufferWriter(buffer, before)
 	pointer, marked := expectBufferMutation(buffer)
 	defer writerbridge.Cancel(pointer, marked)
 	written, err := buffer.Write(value)
@@ -108,6 +109,7 @@ func BufferWriteString(buffer *bytes.Buffer, value string) (int, error) {
 		return buffer.WriteString(value)
 	}
 	before := bufferView(buffer)
+	internal.PrepareBufferWriter(buffer, before)
 	pointer, marked := expectBufferMutation(buffer)
 	defer writerbridge.Cancel(pointer, marked)
 	written, err := buffer.WriteString(value)
@@ -121,6 +123,7 @@ func BufferWriteByte(buffer *bytes.Buffer, value byte) error {
 		return buffer.WriteByte(value)
 	}
 	before := bufferView(buffer)
+	internal.PrepareBufferWriter(buffer, before)
 	pointer, marked := expectBufferMutation(buffer)
 	defer writerbridge.Cancel(pointer, marked)
 	err := buffer.WriteByte(value)
@@ -134,6 +137,7 @@ func BufferWriteRune(buffer *bytes.Buffer, value rune) (int, error) {
 		return buffer.WriteRune(value)
 	}
 	before := bufferView(buffer)
+	internal.PrepareBufferWriter(buffer, before)
 	pointer, marked := expectBufferMutation(buffer)
 	nested := writerbridge.Expect(pointer) // ASCII WriteRune delegates to WriteByte.
 	defer writerbridge.Cancel(pointer, nested)
@@ -145,11 +149,12 @@ func BufferWriteRune(buffer *bytes.Buffer, value rune) (int, error) {
 
 // BufferGrow wraps bytes.Buffer.Grow.
 func BufferGrow(buffer *bytes.Buffer, capacity int) {
-	if !internal.WriterActive() {
+	if buffer == nil || !internal.WriterActive() {
 		buffer.Grow(capacity)
 		return
 	}
 	before := bufferView(buffer)
+	internal.PrepareBufferWriter(buffer, before)
 	pointer, marked := expectBufferMutation(buffer)
 	defer writerbridge.Cancel(pointer, marked)
 	buffer.Grow(capacity)
@@ -175,6 +180,7 @@ func BufferTruncate(buffer *bytes.Buffer, length int) {
 		return
 	}
 	before := bufferView(buffer)
+	internal.PrepareBufferWriter(buffer, before)
 	pointer, marked := expectBufferMutation(buffer)
 	defer writerbridge.Cancel(pointer, marked)
 	buffer.Truncate(length)
@@ -202,7 +208,12 @@ func bufferView(buffer *bytes.Buffer) store.WriterView {
 	pointer, marked := expectBufferMutation(buffer)
 	defer writerbridge.Cancel(pointer, marked)
 	value := buffer.Bytes()
-	return writerView(bytesPointer(value), buffer.Len(), buffer.Cap())
+	view := writerView(bytesPointer(value), buffer.Len(), buffer.Cap())
+	if cap(value) > 0 {
+		view.Anchor = unsafe.SliceData(value)
+		view.Backing = uintptr(unsafe.Pointer(view.Anchor)) - uintptr(buffer.Cap()-cap(value))
+	}
+	return view
 }
 
 func writerView(pointer uintptr, length, capacity int) store.WriterView {

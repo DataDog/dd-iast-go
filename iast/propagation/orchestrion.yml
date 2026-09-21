@@ -1550,7 +1550,7 @@ aspects:
             iastpropagation: github.com/DataDog/dd-iast-go/iast/propagation
           template: iastpropagation.ReplacerReplace(&{{ .AST.Fun.X }}, {{ index .AST.Args 0 }})
 
-  - id: bytes.Buffer.invalidate-writer-state
+  - id: bytes.Buffer.invalidate-backing
     join-point:
       all-of:
         - import-path: bytes
@@ -1574,11 +1574,57 @@ aspects:
               - function-body:
                   function:
                     - receiver: "*bytes.Buffer"
+                    - name: Grow
+              - function-body:
+                  function:
+                    - receiver: "*bytes.Buffer"
+                    - name: ReadFrom
+    advice:
+      - prepend-statements:
+          imports:
+            unsafe: unsafe
+            iastwriterbridge: github.com/DataDog/dd-iast-go/internal/taint/writerbridge
+          template: |-
+            if iastwriterbridge.Active() && {{ .Function.Receiver }} != nil {
+              var backing uintptr
+              if cap({{ .Function.Receiver }}.buf) > 0 {
+                backing = uintptr(unsafe.Pointer(unsafe.SliceData({{ .Function.Receiver }}.buf)))
+              }
+              iastwriterbridge.Invalidate(uintptr(unsafe.Pointer({{ .Function.Receiver }})), backing, uintptr(cap({{ .Function.Receiver }}.buf)), iastwriterbridge.BackingWrite)
+            }
+
+  - id: bytes.Buffer.invalidate-header
+    join-point:
+      all-of:
+        - import-path: bytes
+        - one-of:
+              - function-body:
+                  function:
+                    - receiver: "*bytes.Buffer"
                     - name: Reset
               - function-body:
                   function:
                     - receiver: "*bytes.Buffer"
                     - name: Truncate
+    advice:
+      - prepend-statements:
+          imports:
+            unsafe: unsafe
+            iastwriterbridge: github.com/DataDog/dd-iast-go/internal/taint/writerbridge
+          template: |-
+            if iastwriterbridge.Active() && {{ .Function.Receiver }} != nil {
+              var backing uintptr
+              if cap({{ .Function.Receiver }}.buf) > 0 {
+                backing = uintptr(unsafe.Pointer(unsafe.SliceData({{ .Function.Receiver }}.buf)))
+              }
+              iastwriterbridge.Invalidate(uintptr(unsafe.Pointer({{ .Function.Receiver }})), backing, uintptr(cap({{ .Function.Receiver }}.buf)), iastwriterbridge.HeaderOnly)
+            }
+
+  - id: bytes.Buffer.invalidate-exposure
+    join-point:
+      all-of:
+        - import-path: bytes
+        - one-of:
               - function-body:
                   function:
                     - receiver: "*bytes.Buffer"
@@ -1610,23 +1656,25 @@ aspects:
               - function-body:
                   function:
                     - receiver: "*bytes.Buffer"
-                    - name: Grow
-              - function-body:
-                  function:
-                    - receiver: "*bytes.Buffer"
-                    - name: ReadFrom
-              - function-body:
-                  function:
-                    - receiver: "*bytes.Buffer"
                     - name: Bytes
               - function-body:
                   function:
                     - receiver: "*bytes.Buffer"
                     - name: AvailableBuffer
+              - function-body:
+                  function:
+                    - receiver: "*bytes.Buffer"
+                    - name: Peek
     advice:
       - prepend-statements:
           imports:
             unsafe: unsafe
             iastwriterbridge: github.com/DataDog/dd-iast-go/internal/taint/writerbridge
           template: |-
-            iastwriterbridge.Invalidate(uintptr(unsafe.Pointer({{ .Function.Receiver }})))
+            if iastwriterbridge.Active() && {{ .Function.Receiver }} != nil {
+              var backing uintptr
+              if cap({{ .Function.Receiver }}.buf) > 0 {
+                backing = uintptr(unsafe.Pointer(unsafe.SliceData({{ .Function.Receiver }}.buf)))
+              }
+              iastwriterbridge.Invalidate(uintptr(unsafe.Pointer({{ .Function.Receiver }})), backing, uintptr(cap({{ .Function.Receiver }}.buf)), iastwriterbridge.Exposure)
+            }

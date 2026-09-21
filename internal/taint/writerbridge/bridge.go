@@ -11,14 +11,25 @@ import "sync/atomic"
 
 const expectationSlots = 128
 
-type callback struct{ invalidate func(uintptr) }
+// Mutation classifies backing writes, receiver-only changes, and exposures.
+type Mutation uint8
+
+const (
+	BackingWrite Mutation = iota
+	HeaderOnly
+	Exposure
+)
+
+type callback struct {
+	invalidate func(uintptr, uintptr, uintptr, bool)
+}
 
 var registered atomic.Pointer[callback]
 var activeStates atomic.Int32
 var expected [expectationSlots]atomic.Uintptr
 
 // Register installs the numeric writer invalidation callback.
-func Register(invalidate func(uintptr)) {
+func Register(invalidate func(pointer, backing, capacity uintptr, preserve bool)) {
 	if invalidate != nil {
 		registered.Store(&callback{invalidate: invalidate})
 	}
@@ -58,22 +69,28 @@ func Cancel(pointer uintptr, marked bool) {
 	}
 }
 
-// Invalidate is called before one bytes.Buffer mutation.
-func Invalidate(pointer uintptr) {
+// Invalidate receives only scalar native backing metadata from bytes.Buffer.
+// Expected writes still invalidate peers; only internal observations and
+// precise wrapped header changes suppress the callback altogether.
+func Invalidate(pointer, backing, capacity uintptr, mutation Mutation) {
 	if pointer == 0 || !Active() {
 		return
 	}
-	invalidateSlow(pointer)
+	invalidateSlow(pointer, backing, capacity, mutation)
 }
 
 //go:noinline
-func invalidateSlow(pointer uintptr) {
-	if consume(pointer) {
+func invalidateSlow(pointer, backing, capacity uintptr, mutation Mutation) {
+	expected := consume(pointer)
+	if expected && mutation != BackingWrite {
 		return
+	}
+	if mutation == HeaderOnly {
+		backing, capacity = 0, 0
 	}
 	callback := registered.Load()
 	if callback != nil {
-		callback.invalidate(pointer)
+		callback.invalidate(pointer, backing, capacity, expected)
 	}
 }
 
