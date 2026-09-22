@@ -11,8 +11,8 @@ tool (
 
 require (
 	github.com/DataDog/dd-iast-go v0.0.0
-	github.com/DataDog/dd-trace-go/contrib/net/http/v2 v2.11.0-dev.0.20260724102042-cf24b817c453
-	github.com/DataDog/dd-trace-go/v2 v2.11.0-rc.1
+	github.com/DataDog/dd-trace-go/contrib/net/http/v2 v2.12.0-dev.3
+	github.com/DataDog/dd-trace-go/v2 v2.12.0-dev.3
 	github.com/DataDog/orchestrion v1.13.0
 )
 
