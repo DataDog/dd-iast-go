@@ -197,7 +197,7 @@ jobs:
 
       - name: Upload test results to Test Optimization
         if: always()
-        uses: DataDog/system-tests/.github/actions/push_to_test_optim@81e41e24e5bb8df8995de54a1e7064ba5b8c8619
+        uses: DataDog/system-tests/.github/actions/push_to_test_optim@d5fb7c8fb12aaa5d0e6e2c7fd7826bf212e5e9db
 
       - name: Compress logs
         if: always()
