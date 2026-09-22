@@ -24,7 +24,7 @@ jobs:
           persist-credentials: false
       - name: Validate third-party licenses
         id: dd-license-attribution
-        uses: DataDog/dd-license-attribution@c2f0821bb962277c085fafe2a1f1be3f14eb10e0 # main
+        uses: DataDog/dd-license-attribution@c03a8815a9ba581f7de21575f8d6244e148ef5cb # main
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           override-spec: .ddla-overrides
