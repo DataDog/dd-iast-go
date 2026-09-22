@@ -3,14 +3,17 @@
 ## Start here
 
 Read this file, `AGENTS.md`, and `CONTRIBUTING.md`, then inspect `jj status`.
-The first implementation task is to map the supported propagation operations
-to their existing tests and remaining reachable paths.
+The [operation matrix](propagation-coverage-matrix.md) and
+[engine path classification](propagation-coverage-paths.md) are complete.
+Independent critic review is complete. The user's subsequent annotations
+exclude external System Tests and retain the focus on local coverage. Read the
+[review decisions](propagation-coverage-review.md).
+The user approved this revised plan and its local commit on 2026-09-22.
+Implementation may proceed; publication remains unauthorized.
 
 This is a handoff plan written on 2026-09-22 from a completed read-only
-assessment. Implementation of this follow-up has not started. The user asked
-for this file so a new session can take over; this file does not claim formal
-plan approval or authorize publication by itself. Follow the repository's plan
-review requirements before implementation.
+assessment. Implementation of this follow-up starts after the approved plan
+is committed. The user asked for this file so a new session can take over.
 
 User requirement:
 
@@ -18,7 +21,8 @@ User requirement:
 > central to our business here.
 
 The goal is confidence in propagation behavior, not merely a higher aggregate
-coverage percentage.
+coverage percentage. Local unit, native-call, and source-to-sink tests must
+provide that confidence without relying on external System Tests.
 
 ## Baseline and completed work
 
@@ -84,29 +88,7 @@ simple tainted/not-tainted check.
 
 ## Verified gaps
 
-### The green external System Tests check does not prove injection coverage
-
-The actual JUnit artifacts from
-[System Tests run 35721738190](https://github.com/DataDog/dd-iast-go/actions/runs/35721738190)
-showed:
-
-- `DEFAULT`: 218 IAST cases, 13 executed and 205 skipped. The executed cases
-  covered weak hash, weak cipher, and vulnerability schema.
-- `IAST_DEDUPLICATION`: five IAST cases, two executed and three skipped. The
-  executed cases covered weak-hash deduplication.
-- All SQL-injection and command-injection cases were skipped with
-  `missing_feature`.
-
-The execution check in `.github/workflows/system-tests.yml:151` currently
-requires only weak hash, weak cipher, and deduplication. Thus a successful job
-can still omit the propagation-dependent injection cases.
-
-The local `../system-tests/manifests/golang.yml` contained version-dependent
-SQL/command declarations, but the precise cause of the published run's skips
-was not established. Inspect the exact system-tests revision used by CI before
-changing a manifest. Do not infer the cause from the current local checkout.
-
-### End-to-end tests do not yet exercise transformation chains
+### Local end-to-end tests do not yet exercise transformation chains
 
 `iast/integration/testapp/e2e_test.go:51` and `:73` send an HTTP query value
 directly to SQL or command execution. JSON cases decode and inspect taint but
@@ -119,6 +101,10 @@ bounds, not the complete expected evidence and source identity.
 `iast/propagation/bytes_test.go:108` mostly check that allocating operations
 produce a tainted result. A wrong offset, wrong contributing source, or lost
 secure mark can still pass.
+
+Strengthening those local assertions is a required part of this work. Allocating
+operations must assert native values and the promised ranges, source identity,
+and marks; taint presence alone is not sufficient.
 
 `iast/propagation/operators_test.go:23` exercises concatenation arities 2-16
 through direct wrapper calls. Native operator injection is tested on
@@ -144,6 +130,11 @@ the previous task but are not a dedicated CI requirement.
 
 This is primarily test and test-enforcement work:
 
+- External System Tests are out of scope. The user has a separate PR for that
+  work; requiring feature-specific cases before they are implemented is not a
+  goal here. Do not change the system-tests repository, its manifests or weblogs,
+  `.github/workflows/system-tests.yml`, or its execution gate. This plan has no
+  dependency on that PR's publication or external job results.
 - Cover supported operations and their real failure behavior. Preserve current
   native values, aliases, evaluation order, counts, errors, and panics.
 - Keep exact provenance where promised. Where the contract uses coarse
@@ -155,6 +146,8 @@ This is primarily test and test-enforcement work:
   a failing regression and make only the smallest necessary correction.
 - Use deterministic synchronization and existing test seams. No fixed sleeps,
   polling-based test success, arbitrary corrupt snapshots, or prose assertions.
+- Do not add `t.Parallel` to suites that mutate process configuration globals.
+  Keep all seeded state and request owners bounded and release them per case.
 
 Use current code and `README.md` as the contract. Historical plans contain
 superseded statements, including older buffer-copy limitations. Exact current
@@ -166,9 +159,9 @@ limitations. Do not turn a negative test into an unrequested feature.
 
 ### Phase 1: establish the operation and path matrix
 
-- [ ] Verify the current baseline and preserve unrelated work.
-- [ ] Map every supported operation to unit and native-call tests.
-- [ ] Classify each remaining uncovered engine path.
+- [x] Verify the current baseline and preserve unrelated work.
+- [x] Map every supported operation to unit and native-call tests.
+- [x] Classify each remaining uncovered engine path.
 
 Build the matrix from `README.md`, `iast/propagation/orchestrion.yml`, the
 operator and JSON advice, and the implementation. Include reader propagation.
@@ -189,17 +182,30 @@ not-applicable cell must name the relevant invariant.
 
 **Acceptance:** every supported operation has a named test location, and every
 remaining uncovered engine block is assigned either a reachable scenario or
-a concrete reason it cannot occur under the current contract. An aggregate
+a concrete reason it cannot occur under the current contract. For reachable
+race-dependent blocks, also name the available test seam and any ordering that
+cannot be forced through that seam. A missing test seam does not make a block
+unreachable. Record block coordinates and per-file statement counts in the
+matrix so the result does not depend on temporary artifacts. An aggregate
 percentage is not an acceptable substitute.
 
-### Phase 2: protect complete source-to-sink scenarios
+### Phase 2: protect complete local source-to-sink scenarios
 
 - [ ] Add multi-stage HTTP-to-SQL propagation scenarios.
 - [ ] Add multi-stage HTTP-to-command propagation scenarios.
 - [ ] Add reader/JSON/writer chains with negative controls.
-- [ ] Enable and enforce the required external injection cases.
 
 Use the existing `iast/integration/testapp` infrastructure:
+
+First add `iast/propagation`, `iast/io`, and `iast/bufio` to that module's
+`orchestrion.tool.go`. Its current imports enable sources, JSON, and sinks but
+not the transformation chains. Start with a chain test that fails because the
+fresh transformed value loses provenance, then enable those existing aspects.
+This changes fixture setup, not the supported production feature set.
+Immediately run this nested module's woven coverage command with a fresh cache
+and the existing CI bridge-package exclusion before adding the remaining chain
+tests. This checks the new fixture imports against the known bridge archive
+linking limitation early.
 
 | Scenario | Required observations |
 | --- | --- |
@@ -219,24 +225,16 @@ Inspect exact evidence parts and source origin/name/value, not only finding
 counts or valid source indexes. Where redaction changes the visible evidence,
 assert the existing redaction contract. Seed secure marks through existing
 test access only; do not add a new public sanitizer API.
-
-For external System Tests:
-
-1. Identify the checkout SHA and effective reason for the injection skips.
-2. Coordinate any required change in the separate system-tests repository.
-   Reuse its existing SQL/command endpoints and test classes where suitable.
-3. Correct feature activation for the tested build without inventing a release
-   version or claiming support in other Go weblog variants.
-4. Require both `test_insecure` and `test_secure` from `TestSqlInjection` and
-   `TestCommandInjection`. Fail if any required case is missing or skipped;
-   a telemetry-only case must not satisfy this requirement. Do not require
-   unsupported extended-location or stack-trace cases. Parse actual JUnit
-   identities: this run put the complete identifier in `name`, with no
-   `classname` attribute.
+Use the recipe in `iast/propagation/writer_test.go:318`: obtain the owner from
+a store snapshot, mark its ranges with `ranges.MarkAll`, and adopt a complete
+string clone. The nested testapp can import the internal store and ranges
+packages. These cases prove preservation of seeded marks, not a production
+sanitizer feature.
 
 **Acceptance:** positive and negative chains pass through real injected
-application calls to captured findings. The external job cannot pass solely
-on weak-hash/cipher tests while required injection cases are skipped.
+application calls to captured findings in the local integration fixture.
+These tests verify complete expected evidence and source identity independently
+of external System Tests.
 
 ### Phase 3: complete native-call provenance assertions
 
@@ -258,6 +256,12 @@ Test native concatenations of arities 2-16, each supported slice form, named and
 generic types, and supported byte-to-string conversions. Include side-effecting
 operands to prove single evaluation and order. Direct calls to `ConcatN` remain
 useful unit tests but are not proof that Orchestrion rewrites the native syntax.
+Also exercise both pointer and value receiver forms for the writer advice;
+identical wrapper callees do not prove both forms are injected.
+Prefer native expressions in the external `iast/propagation` test package;
+existing tests prove that those expressions are injected. Add non-test
+`iast/internal/propagationtest` helpers only when necessary, and exercise every
+new helper in a test included in the woven root coverage run.
 
 For allocating operations, combine clean data, partial taint, distinct sources,
 tainted separators/replacements, and unused contributors. For writers, cover
@@ -291,15 +295,52 @@ provenance, released charges and anchors, and unchanged native results.
 Retain existing stress tests, but add deterministic tests at the narrowest
 existing seam for the specific lifecycle orders they do not guarantee.
 
-Generate short sequences from supported operations. Compare values with native
-Go behavior and provenance with an independent per-byte source/mark model.
-Include Unicode, invalid UTF-8, partial ranges, repeated values, and existing
-limit boundaries. Extend the current range oracle rather than creating a
-parallel generic test framework.
+Put lock-contention and late-write ordering tests in the existing in-package
+store tests, which can hold the actual lock without a production test hook.
+Use propagation tests for stale handles, owner-slot reuse, partial admission,
+and native-result preservation. Do not claim these tests force a pause between
+an engine lookup and publication: no existing propagation seam provides that
+pause. The path matrix must distinguish lower-level deterministic coverage,
+engine stress coverage, and an engine block whose execution is not guaranteed.
+Approval of this plan includes review of those explicit residual gaps; it does
+not authorize production hooks merely to force coverage counters.
+
+The path table accounts for all 128 zero-hit blocks (142 statements):
+53 ordinary or documented internal-contract statements, eight stale-owner
+statements testable through exported internal access, seven stale-snapshot
+statements testable through existing private helpers, 17 inline race-dependent
+statements, ten statements requiring native values above 4 GiB, five guards
+requiring non-native arguments, and 42 native-impossible invariant guards.
+
+Cover the seven private-helper statements with one in-package
+`stale_owner_internal_test.go`. Use real snapshots captured before finish or
+slot reuse, not corrupt snapshots. Validate its ordinary and woven coverage
+linkage first. This does not provide a seam for the 17 inline race statements.
+Do not add negative native counts or mismatched result lengths to force the
+five argument guards. Leave the >4 GiB cases outside the bounded test budget.
+Test the documented `RepeatBytes` count-one alias contract directly, clearly
+labelled engine-only evidence rather than a native `bytes.Repeat` result.
+
+Generate short sequences from supported exact operations. Compare values with
+native Go behavior and provenance with an independent per-byte source/mark
+model. Include Unicode, invalid UTF-8, partial ranges, repeated values, and
+existing limit boundaries. Extend the current range oracle rather than creating
+a parallel generic test framework.
+
+Test coarse transitions separately with named fixtures. Assert the expected
+first contributing source per owner, whole-result range, mark intersection,
+and inspected-input/owner bounds, including bounded drops. A subset-of-input
+source assertion alone is too weak: it can miss a swapped source. Do not demand
+exact byte attribution after a coarse transition, or use an unconditional
+"tainted iff an input is tainted" assertion when admission can fail.
 
 **Acceptance:** each reachable failure path has a named scenario and expected
 outcome. Generated tests can detect incorrect provenance, not merely invalid
 range structure. Remaining unreachable guards have explicit explanations.
+Race-dependent engine blocks without an existing deterministic seam remain
+listed separately with their lower-level and stress evidence; do not mark them
+as deterministically exercised. The >4 GiB cases and non-native argument guards
+remain explicit exclusions, not scenarios claimed to have run.
 
 ### Phase 5: make the checks continuous and verify delivery
 
@@ -312,11 +353,42 @@ Keep test execution in test jobs and static checks in lint jobs. Run each fuzz
 target separately with a finite iteration or time budget; record the target,
 budget and result. Do not introduce a new fuzzing dependency without need.
 
+The root CI test job will run
+`go test -race -count=1 -shuffle=on ./internal/taint/...` in addition to the
+existing CI-tool race check. Keep the full local root race run in validation.
+
+Use 10,000 fuzz executions per target in the root CI test job, with
+`-run='^$'`, `-parallel=4`, `-fuzzminimizetime=1000x`, and `-timeout=5m`.
+Run `FuzzCanonicalize` and `FuzzSliceAndCopy` separately in the ranges package,
+plus `FuzzEngineSequence` and `FuzzOwnerLifecycle` separately in propagation.
+Replay seeds during ordinary tests as well. Upload any failing input corpus.
+This adds real mutation campaigns to PR checks without a new scheduled workflow.
+Limit generated sequences to eight operations, two owners, 256 input bytes,
+and 4 KiB of output; test larger capacity and fanout boundaries with named
+fixtures. Use 2,000 fixed-seed sequences in the property test as well. Keep the
+small per-byte oracle helper local to the external propagation test package;
+no shared production helper is needed. Record the local campaign results.
+The execution budget is `-fuzztime=10000x`; the timeout is a failure deadline,
+not a successful campaign end. Record elapsed time per target and check that it
+leaves sufficient headroom before pinning the CI timeout. Investigate any
+timeout as a separate failure, not as a found fuzz input.
+
+For example, one campaign is:
+
+```sh
+go test -run='^$' -fuzz='^FuzzCanonicalize$' -fuzztime=10000x \
+  -fuzzminimizetime=1000x -parallel=4 -timeout=5m ./internal/taint/ranges
+```
+
+Invoke the same command separately for `FuzzSliceAndCopy` in ranges and for
+`FuzzEngineSequence` and `FuzzOwnerLifecycle` in propagation. Never use a
+pattern that selects two fuzz targets in one invocation.
+
 If work is delegated, Phase 1 comes first. After it is complete, the in-repo
 integration, native-call, and engine test tracks can proceed independently in
-their listed directories. Give the coordinator ownership of workflow edits
-and cross-repository coordination. Do not let multiple workers edit shared
-test helpers concurrently.
+their listed directories. Give the coordinator ownership of the in-repository
+CI workflow edits. Do not let multiple workers edit shared test helpers
+concurrently.
 
 ## Validation instructions
 
@@ -347,8 +419,7 @@ go tool checklocks ./...
 ```
 
 Also apply the repository's formatting checks to modified Go files and
-`actionlint` to modified workflows. Validate changes in the external
-system-tests repository with that repository's tools.
+`actionlint` to modified workflows.
 
 For nested coverage, reproduce the collector in `.github/workflows/ci.yml`
 exactly for:
@@ -379,27 +450,30 @@ Preserve an executable regression before changing behavior to fix a defect.
 If publication is authorized, verify the resulting PR head, CI artifact and
 Datadog results for that exact SHA. Signing during `jj git push` can change
 the commit SHA without changing the tree; subscribe to the published SHA,
-not an earlier local hash. Inspect JUnit execution/skip results, not only a
-green aggregate job.
+not an earlier local hash. The external System Tests job is not an acceptance
+condition for this work.
 
 ## Completion criteria
 
 ### Scenario coverage
 
-- [ ] Every supported operation is represented in the scenario matrix.
-- [ ] Every reachable propagation path is exercised; remaining gaps are justified by specific invariants.
+- [x] Every supported operation is represented in the scenario matrix.
+- [ ] Every in-budget reachable scenario with an existing deterministic seam is exercised; native-impossible and non-native argument guards have specific invariants, and race-only and >4 GiB gaps retain their explicit classifications and applicable evidence.
 - [ ] Native-call tests check values and the promised provenance, not just taint presence.
 - [ ] Multi-stage source-to-sink tests verify findings and negative controls.
 
 ### Validation and delivery
 
-- [ ] Required external injection cases execute and cannot silently pass as skipped.
 - [ ] Deterministic lifecycle/pressure tests, property tests, fuzz campaigns and race checks pass.
 - [ ] Existing contracts, coverage thresholds and Datadog ignores remain intact.
 - [ ] Independent review is complete and the final report distinguishes statements, lines and scenario coverage.
 
 No arbitrary new percentage is the sole completion condition. A higher number
 does not compensate for a missing business-critical scenario.
+The user approved the revised path criterion above. It explicitly
+permits residual race-only engine blocks without adding production test hooks;
+it also excludes >4 GiB test allocations and fabricated native results. It does
+not claim that stress execution proves each internal ordering occurred.
 
 ## Handoff evidence and workspace notes
 
@@ -408,9 +482,8 @@ for this follow-up. At its start the primary working copy was empty above
 `31685220`. Use `jj` for version control and `apply_patch` for file changes.
 Do not modify immutable changes or overwrite work from another session.
 
-An unrelated `system-tests` workspace exists at
-`../system-tests/binaries/dd-iast-go`. Preserve it and inspect the separate
-system-tests repository's current state before proposing changes there.
+The separate `system-tests` workspaces are outside this plan and must remain
+unchanged.
 Temporary workspaces and compiler caches from the preceding coverage task
 were removed.
 
@@ -420,8 +493,6 @@ Local evidence is under `/tmp/dd-iast-pr39-coverage-20260922/`:
 | --- | --- |
 | Published merged profile and six inputs | `ci-published/` |
 | Per-function Go coverage report | `propagation-audit-functions.txt` |
-| DEFAULT JUnit report | `propagation-audit-systemtests/logs_net-http-orchestrion_DEFAULT/logs/reportJunit.xml` |
-| Deduplication JUnit report | `propagation-audit-systemtests/logs_net-http-orchestrion_IAST_DEDUPLICATION/logs_iast_deduplication/reportJunit.xml` |
 | Prior correction's QA and independent review | `qa.md`, `review-report.md`, `journal.md` |
 
 The temporary files are useful but are not the only record. They may expire.
@@ -430,8 +501,6 @@ above. CI evidence links:
 
 - Coverage and Go tests:
   <https://github.com/DataDog/dd-iast-go/actions/runs/35721738286>
-- External System Tests:
-  <https://github.com/DataDog/dd-iast-go/actions/runs/35721738190>
 
 Earlier design context:
 
