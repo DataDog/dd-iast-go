@@ -74,6 +74,24 @@ func bodySource(data []byte) (taint.SourceValue, bool) {
 	return source, found
 }
 
+func requireBodyRange(t *testing.T, data []byte, sourceValue string) {
+	t.Helper()
+	var observed []taint.Range
+	require.True(t, taint.VisitBytes(data, func(r taint.Range) bool {
+		observed = append(observed, r)
+		return true
+	}))
+	require.Equal(t, []taint.Range{{
+		Start:  0,
+		Length: uint32(len(data)),
+		Source: taint.SourceValue{
+			Source: taint.Source{Origin: taint.OriginHttpRequestBody},
+			Value:  sourceValue,
+		},
+		Marks: taint.Marks{},
+	}}, observed)
+}
+
 func TestReadAllThroughSupportedWrappers(t *testing.T) {
 	if !built.WithOrchestrion {
 		t.Skip("orchestrion is not enabled, use `go tool orchestrion go test`")
@@ -91,10 +109,43 @@ func TestReadAllThroughSupportedWrappers(t *testing.T) {
 	require.ErrorIs(t, err, errRead)
 	require.Equal(t, []byte("request-body"), data)
 	require.Equal(t, "request-body", side.String())
+	require.False(t, taint.IsTaintedString(side.String()), "TeeReader must not bind its side writer")
 	require.Equal(t, 1, input.reads, "ReadAll must not add reads")
-	source, found := bodySource(data)
-	require.True(t, found)
-	require.Equal(t, "request-body", source.Value)
+	requireBodyRange(t, data, "request-body")
+}
+
+func TestMultiReaderInspectionBoundAndCleanup(t *testing.T) {
+	if !built.WithOrchestrion {
+		t.Skip("orchestrion is not enabled, use `go tool orchestrion go test`")
+	}
+	includedCtx, includedScope := activeContext(t)
+	excludedCtx, excludedScope := activeContext(t)
+	readers := make([]io.Reader, 9)
+	for index := range 7 {
+		readers[index] = strings.NewReader("")
+	}
+	included := strings.NewReader("included-")
+	excluded := strings.NewReader("excluded")
+	readers[7] = included
+	readers[8] = excluded
+	require.True(t, request.BindReader(includedCtx, included))
+	require.True(t, request.BindReader(excludedCtx, excluded))
+
+	composed := io.MultiReader(readers...)
+	data, err := io.ReadAll(composed)
+	require.NoError(t, err)
+	require.Equal(t, []byte("included-excluded"), data)
+	requireBodyRange(t, data, "included-excluded")
+	includedAnalysis, ok := includedScope.Analysis()
+	require.True(t, ok)
+	require.Equal(t, 1, includedAnalysis.SourceCount())
+	excludedAnalysis, ok := excludedScope.Analysis()
+	require.True(t, ok)
+	require.Zero(t, excludedAnalysis.SourceCount(), "the ninth reader is outside MultiReader's inspection bound")
+
+	includedScope.Finish()
+	require.Nil(t, request.CloneReaderBytes(composed, []byte("after")), "finishing the only included owner must remove the composed binding")
+	excludedScope.Finish()
 }
 
 func TestReadAllEOFWithData(t *testing.T) {

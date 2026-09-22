@@ -25,10 +25,8 @@ import (
 	"github.com/DataDog/dd-iast-go/internal/config"
 	"github.com/DataDog/dd-iast-go/internal/model"
 	"github.com/DataDog/dd-iast-go/internal/model/constants"
-	"github.com/DataDog/dd-iast-go/internal/spans"
 	taintrequest "github.com/DataDog/dd-iast-go/internal/taint/request"
 	"github.com/DataDog/dd-iast-go/taint"
-	"github.com/DataDog/dd-trace-go/v2/ddtrace/mocktracer"
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
 	"github.com/DataDog/orchestrion/runtime/built"
 )
@@ -216,36 +214,11 @@ func serveRequest(t *testing.T, body io.Reader, operation func(context.Context, 
 
 func requestEvent(t *testing.T, operation func(context.Context, *http.Request), values url.Values) model.Event {
 	t.Helper()
-	mock := mocktracer.Start()
-	defer mock.Stop()
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		span, ctx := tracer.StartSpanFromContext(r.Context(), "iast.e2e.request")
-		defer span.Finish()
-		operation(ctx, r.WithContext(ctx))
-		w.WriteHeader(http.StatusNoContent)
-	}))
-	defer server.Close()
-	response, err := server.Client().Get(server.URL + "?" + values.Encode())
+	request, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "http://iast.test/?"+values.Encode(), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	response.Body.Close()
-	finished := mock.FinishedSpans()
-	if len(finished) != 1 {
-		t.Fatalf("finished spans = %d", len(finished))
-	}
-	raw, _ := finished[0].Tag(spans.SpanTagJson).(string)
-	if raw == "" {
-		if finished[0].Tag(spans.SpanTagEnabled) == float64(1) {
-			return model.Event{}
-		}
-		t.Fatal("request was not analyzed")
-	}
-	var event model.Event
-	if err := json.Unmarshal([]byte(raw), &event); err != nil {
-		t.Fatal(err)
-	}
-	return event
+	return captureRequestEvent(t, operation, request)
 }
 
 func BenchmarkJSONUnmarshalClean(b *testing.B) {

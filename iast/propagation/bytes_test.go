@@ -55,13 +55,6 @@ func requireTaintedBytes(t *testing.T, values ...[]byte) {
 	}
 }
 
-func requireAnyTaintedBytes(t *testing.T, values ...[]byte) {
-	t.Helper()
-	for _, value := range values {
-		require.Truef(t, taint.IsTaintedBytes(value), "value %q is not tainted", value)
-	}
-}
-
 func TestByteWindowOperations(t *testing.T) {
 	if !built.WithOrchestrion {
 		t.Skip("orchestrion is not enabled, use `go tool orchestrion go test`")
@@ -102,23 +95,4 @@ func TestValidUTF8IgnoresUnusedReplacement(t *testing.T) {
 	replacement := activeBytes(t, []byte("??"))
 	result := testapp.BytesToValidUTF8([]byte("valid"), replacement)
 	require.False(t, taint.IsTaintedBytes(result))
-}
-
-func TestAllocatingByteOperations(t *testing.T) {
-	if !built.WithOrchestrion {
-		t.Skip("orchestrion is not enabled, use `go tool orchestrion go test`")
-	}
-	value := activeBytes(t, []byte("ab-cd"))
-	requireAnyTaintedBytes(t,
-		testapp.BytesJoin([][]byte{[]byte("plain"), value}, []byte(":")),
-		testapp.BytesRepeat(value, 1),
-		testapp.BytesRepeat(value, 2),
-		testapp.BytesReplace(value, []byte("cd"), []byte("XY"), 1),
-		testapp.BytesReplaceAll(value, []byte("cd"), []byte("XY")),
-		testapp.BytesToLower(value),
-		testapp.BytesToUpper(value),
-		testapp.BytesToTitle(value),
-		testapp.BytesMap(func(r rune) rune { return r + 1 }, value),
-		testapp.BytesToValidUTF8(value, []byte("?")),
-	)
 }

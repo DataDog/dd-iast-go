@@ -149,7 +149,29 @@ jobs:
           if [[ "$MODULE" == '.' ]]; then
             go test -shuffle=on "${coverage_flags[@]}" -coverprofile=coverage.ordinary.txt ./...
             go test -race -shuffle=on ./.github
+            go test -race -count=1 -shuffle=on ./internal/taint/...
           fi
+      - name: Bounded propagation fuzz campaigns
+        if: matrix.module == '.'
+        shell: bash
+        run: |
+          for target in FuzzCanonicalize FuzzSliceAndCopy; do
+            go test -run='^$' -fuzz="^${target}$" -fuzztime=10000x \
+              -fuzzminimizetime=1000x -parallel=4 -timeout=5m ./internal/taint/ranges
+          done
+          for target in FuzzEngineSequence FuzzOwnerLifecycle; do
+            go test -run='^$' -fuzz="^${target}$" -fuzztime=10000x \
+              -fuzzminimizetime=1000x -parallel=4 -timeout=5m ./internal/taint/propagation
+          done
+      - name: Upload failing fuzz inputs
+        if: ${{ failure() && matrix.module == '.' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: propagation-fuzz-failures
+          path: |
+            internal/taint/ranges/testdata/fuzz/**
+            internal/taint/propagation/testdata/fuzz/**
+          if-no-files-found: ignore
       - name: Sink executable bootstrap tests
         shell: bash
         run: |

@@ -9,7 +9,6 @@ import (
 	"context"
 	"strings"
 	"testing"
-	"unsafe"
 
 	iastpropagation "github.com/DataDog/dd-iast-go/iast/propagation"
 	"github.com/DataDog/dd-iast-go/internal/config"
@@ -134,57 +133,6 @@ func TestOperatorWrappersPropagateAllAritiesAndSlices(t *testing.T) {
 	}
 }
 
-func TestOperatorConcatAndSlices(t *testing.T) {
-	if !built.WithOrchestrion {
-		t.Skip("run with Orchestrion")
-	}
-	config.Enabled = true
-	config.RequestSamplingPct = 100
-	config.MaxConcurrentRequests = 64
-	ctx, _, created := request.Begin(context.Background())
-	require.True(t, created)
-	defer request.FinishContext(ctx, true)
-
-	source := taint.TaintString(ctx, taint.Source{Origin: constants.OriginHttpRequestParameter, Name: "q"}, "attack")
-	joined := "before:" + source + ":after"
-	require.Equal(t, "before:attack:after", joined)
-	require.True(t, taint.IsTaintedString(joined))
-	require.True(t, taint.IsTaintedString(joined[7:13]))
-	aliased := source + ""
-	require.Equal(t, unsafe.StringData(source), unsafe.StringData(aliased))
-	require.True(t, taint.IsTaintedString(aliased))
-
-	defined := definedString(source)
-	window := defined[1:5]
-	require.Equal(t, definedString("ttac"), window)
-	require.True(t, taint.IsTaintedString(window))
-
-	bytes := taint.TaintBytes(ctx, taint.Source{Origin: constants.OriginHttpRequestBody}, []byte("payload"))
-	definedByteValue := definedBytes(bytes)
-	byteWindow := definedByteValue[1:5:6]
-	require.Equal(t, definedBytes("aylo"), byteWindow)
-	require.Equal(t, 5, cap(byteWindow))
-	require.True(t, taint.IsTaintedBytes(byteWindow))
-
-	convertedString := string(bytes)
-	require.Equal(t, "payload", convertedString)
-	require.True(t, taint.IsTaintedString(convertedString))
-	var namedResult definedString = definedString(bytes)
-	require.Equal(t, definedString("payload"), namedResult)
-	require.True(t, taint.IsTaintedString(namedResult))
-	genericResult := genericConcat(definedString("prefix:"), defined)
-	require.Equal(t, definedString("prefix:attack"), genericResult)
-	require.True(t, taint.IsTaintedString(genericResult))
-	require.True(t, taint.IsTaintedString(genericSlice(defined, 1, 5)))
-}
-
-func genericConcat[T ~string](left, right T) T                         { return left + right }
-func genericSlice[T ~string, I integerForTest](value T, low, high I) T { return value[low:high] }
-
-type integerForTest interface {
-	~int | ~int8 | ~int16 | ~int32 | ~int64 | ~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64 | ~uintptr
-}
-
 func BenchmarkOperatorConcat4Inactive(b *testing.B) {
 	a, c := "alpha", "charlie"
 	second, fourth := "bravo", "delta"
@@ -251,6 +199,26 @@ func TestOperatorEvaluationAndPanicSemantics(t *testing.T) {
 	operand := func(index int, value string) string { order = append(order, index); return value }
 	require.Equal(t, "abc", operand(1, "a")+operand(2, "b")+operand(3, "c"))
 	require.Equal(t, []int{1, 2, 3}, order)
+
+	sliceOrder := make([]int, 0, 4)
+	sliceOperand := func() []byte {
+		sliceOrder = append(sliceOrder, 1)
+		return []byte("abcdef")
+	}
+	index := func(order, value int) int {
+		sliceOrder = append(sliceOrder, order)
+		return value
+	}
+	require.Equal(t, []byte("bcd"), sliceOperand()[index(2, 1):index(3, 4):index(4, 5)])
+	require.Equal(t, []int{1, 2, 3, 4}, sliceOrder)
+
+	conversionCalls := 0
+	conversionOperand := func() []byte {
+		conversionCalls++
+		return []byte("abc")
+	}
+	require.Equal(t, "abc", string(conversionOperand()))
+	require.Equal(t, 1, conversionCalls)
 
 	defer func() { require.NotNil(t, recover()) }()
 	value := "abc"

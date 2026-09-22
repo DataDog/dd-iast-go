@@ -155,7 +155,8 @@ func TestBufferCopyAppendSeparateOwners(t *testing.T) {
 	if !built.WithOrchestrion {
 		t.Skip("orchestrion is not enabled, use `go tool orchestrion go test`")
 	}
-	first, second := activeString(t, "attack"), activeString(t, "second")
+	first := markWriterString(t, activeStringSource(t, "first", "attack"), taint.VulnerabilityTypeSqlInjection)
+	second := markWriterString(t, activeStringSource(t, "second", "second"), taint.VulnerabilityTypeCommandInjection)
 	result, n, err := testapp.BufferCopyAppend(first, second, "string")
 	require.NoError(t, err)
 	require.Equal(t, 6, n)
@@ -166,20 +167,22 @@ func TestBufferCopyAppendSeparateOwners(t *testing.T) {
 		return true
 	}))
 	require.Len(t, observed, 2)
-	for _, r := range observed {
-		require.Equal(t, uint32(6), r.Length)
-		require.Equal(t, taint.Marks{}, r.Marks)
-		require.Equal(t, taint.Source{Origin: taint.OriginHttpRequestParameter, Name: "input"}, r.Source.Source)
-		switch r.Source.Value {
-		case "attack":
-			require.Zero(t, r.Start)
-		case "second":
-			require.Equal(t, uint32(6), r.Start)
-		default:
-			t.Fatalf("unexpected source: %+v", r)
-		}
-	}
-	require.NotEqual(t, observed[0].Source.Value, observed[1].Source.Value)
+	require.Equal(t, uint32(0), observed[0].Start)
+	require.Equal(t, uint32(6), observed[0].Length)
+	require.Equal(t, taint.SourceValue{
+		Source: taint.Source{Origin: taint.OriginHttpRequestParameter, Name: "first"},
+		Value:  "attack",
+	}, observed[0].Source)
+	require.True(t, observed[0].Marks.Has(taint.VulnerabilityTypeSqlInjection))
+	require.False(t, observed[0].Marks.Has(taint.VulnerabilityTypeCommandInjection))
+	require.Equal(t, uint32(6), observed[1].Start)
+	require.Equal(t, uint32(6), observed[1].Length)
+	require.Equal(t, taint.SourceValue{
+		Source: taint.Source{Origin: taint.OriginHttpRequestParameter, Name: "second"},
+		Value:  "second",
+	}, observed[1].Source)
+	require.True(t, observed[1].Marks.Has(taint.VulnerabilityTypeCommandInjection))
+	require.False(t, observed[1].Marks.Has(taint.VulnerabilityTypeSqlInjection))
 }
 
 func TestBufferCopyResetThenOverwrite(t *testing.T) {

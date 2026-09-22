@@ -9,11 +9,14 @@ Independent critic review is complete. The user's subsequent annotations
 exclude external System Tests and retain the focus on local coverage. Read the
 [review decisions](propagation-coverage-review.md).
 The user approved this revised plan and its local commit on 2026-09-22.
-Implementation may proceed; publication remains unauthorized.
+Implementation is complete. The user authorized publication on 2026-09-23.
+
+Validation and independent implementation review passed. See the
+[measured results](propagation-coverage-results.md).
 
 This is a handoff plan written on 2026-09-22 from a completed read-only
-assessment. Implementation of this follow-up starts after the approved plan
-is committed. The user asked for this file so a new session can take over.
+assessment. The approved plan was committed before implementation. The user
+asked for this file so a new session could take over.
 
 User requirement:
 
@@ -191,9 +194,9 @@ percentage is not an acceptable substitute.
 
 ### Phase 2: protect complete local source-to-sink scenarios
 
-- [ ] Add multi-stage HTTP-to-SQL propagation scenarios.
-- [ ] Add multi-stage HTTP-to-command propagation scenarios.
-- [ ] Add reader/JSON/writer chains with negative controls.
+- [x] Add multi-stage HTTP-to-SQL propagation scenarios.
+- [x] Add multi-stage HTTP-to-command propagation scenarios.
+- [x] Add reader/JSON/writer chains with negative controls.
 
 Use the existing `iast/integration/testapp` infrastructure:
 
@@ -206,6 +209,14 @@ Immediately run this nested module's woven coverage command with a fresh cache
 and the existing CI bridge-package exclusion before adding the remaining chain
 tests. This checks the new fixture imports against the known bridge archive
 linking limitation early.
+
+Implementation verified another fixture constraint: the pinned injector's
+root-package filter excludes the module-root external test package
+`testapps/integration_test`. Native transforms therefore live in small
+application fixtures in `chains.go`, `command_chain.go`, and `json_chain.go`.
+The tests call these fixtures through real HTTP requests and inspect every
+promised stage. The initial SQL chain failed without propagation; the full
+nested woven coverage run passed after the imports and fixture were added.
 
 | Scenario | Required observations |
 | --- | --- |
@@ -238,9 +249,9 @@ of external System Tests.
 
 ### Phase 3: complete native-call provenance assertions
 
-- [ ] Strengthen native string and byte operation assertions.
-- [ ] Cover every advertised operator injection form.
-- [ ] Complete writer and reader boundary scenarios.
+- [x] Strengthen native string and byte operation assertions.
+- [x] Cover every advertised operator injection form.
+- [x] Complete writer and reader boundary scenarios.
 
 Primary locations:
 
@@ -279,10 +290,10 @@ the output is still tainted.
 
 ### Phase 4: close engine failure paths and generated scenarios
 
-- [ ] Cover reachable admission and publication failures.
-- [ ] Force critical owner-lifecycle orders deterministically.
-- [ ] Extend the independent oracle to propagation sequences.
-- [ ] Add bounded fuzz coverage for mapping and state transitions.
+- [x] Cover reachable admission and publication failures.
+- [x] Force critical owner-lifecycle orders deterministically.
+- [x] Extend the independent oracle to propagation sequences.
+- [x] Add bounded fuzz coverage for mapping and state transitions.
 
 Prioritize `internal/taint/propagation/{conversion,writer,propagation}.go`,
 then exact/coarse string and byte mapping. Relevant existing tests include
@@ -344,10 +355,10 @@ remain explicit exclusions, not scenarios claimed to have run.
 
 ### Phase 5: make the checks continuous and verify delivery
 
-- [ ] Add an appropriate propagation race check to CI.
-- [ ] Run bounded fuzz campaigns, not only seed replay.
-- [ ] Run ordinary, instrumented and nested-module validation.
-- [ ] Complete independent review and publish only when authorized.
+- [x] Add an appropriate propagation race check to CI.
+- [x] Run bounded fuzz campaigns, not only seed replay.
+- [x] Run ordinary, instrumented and nested-module validation.
+- [x] Complete independent review and publish only when authorized.
 
 Keep test execution in test jobs and static checks in lint jobs. Run each fuzz
 target separately with a finite iteration or time budget; record the target,
@@ -458,15 +469,15 @@ condition for this work.
 ### Scenario coverage
 
 - [x] Every supported operation is represented in the scenario matrix.
-- [ ] Every in-budget reachable scenario with an existing deterministic seam is exercised; native-impossible and non-native argument guards have specific invariants, and race-only and >4 GiB gaps retain their explicit classifications and applicable evidence.
-- [ ] Native-call tests check values and the promised provenance, not just taint presence.
-- [ ] Multi-stage source-to-sink tests verify findings and negative controls.
+- [x] Every in-budget reachable scenario with an existing deterministic seam is exercised; native-impossible and non-native argument guards have specific invariants, and race-only and >4 GiB gaps retain their explicit classifications and applicable evidence.
+- [x] Native-call tests check values and the promised provenance, not just taint presence.
+- [x] Multi-stage source-to-sink tests verify findings and negative controls.
 
 ### Validation and delivery
 
-- [ ] Deterministic lifecycle/pressure tests, property tests, fuzz campaigns and race checks pass.
-- [ ] Existing contracts, coverage thresholds and Datadog ignores remain intact.
-- [ ] Independent review is complete and the final report distinguishes statements, lines and scenario coverage.
+- [x] Deterministic lifecycle/pressure tests, property tests, fuzz campaigns and race checks pass.
+- [x] Existing contracts, coverage thresholds and Datadog ignores remain intact.
+- [x] Independent review is complete and the final report distinguishes statements, lines and scenario coverage.
 
 No arbitrary new percentage is the sole completion condition. A higher number
 does not compensate for a missing business-critical scenario.

@@ -104,4 +104,32 @@ avoid all version-control commands.
 
 The operation/path artifacts and critic review are complete. The user approved
 implementation of the revised local-coverage plan, including its explicit
-coverage limits. That approval is not permission to publish this repository.
+coverage limits. The user separately authorized publication on 2026-09-23.
+
+## Implementation gate review
+
+Claude Opus 5 reviewed the complete implementation diff and the relevant
+contracts with high reasoning, without modifying the repository. Quality,
+security, and context all passed. A focused follow-up also passed.
+
+| Note | Disposition |
+| --- | --- |
+| Blank line allegedly disables `go:noinline` | Disputed and verified: Go 1.26.6 compiler diagnostics report `cannot inline identityString: marked go:noinline`. No style-only change was made. |
+| SQL fixture column length precondition | Documented that `column` must contain at least two bytes. Existing valid-input behavior is unchanged. |
+| Command fixture comment says slicing | Corrected the comment to say trimming. |
+| Reader revocation is not physical release | Added `TestFinishReleasesReaderBindingObjects`, which observes real stored reader references and then nil references after `Finish`, using existing in-package state under its mutex. |
+
+The follow-up suggested assertions for the binding probe-index reset and
+contention counters as additional coverage. These were not required to prove
+the stated physical-release and refusal/recovery contracts and are not known
+defects. No further test expansion was made.
+
+The original review session record was unavailable when resumed, so the
+follow-up used its saved report as context. This was one focused follow-up,
+not a new review panel.
+
+Final reports:
+`/tmp/iast-final-validation.dw42rl/gate-review.md` and
+`/tmp/iast-final-validation.dw42rl/gate-review-followup.md`.
+See the [results](propagation-coverage-results.md) for exact validation and
+coverage evidence.

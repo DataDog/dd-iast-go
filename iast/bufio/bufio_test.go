@@ -14,6 +14,7 @@ import (
 	iastbufio "github.com/DataDog/dd-iast-go/iast/bufio"
 	"github.com/DataDog/dd-iast-go/internal/config"
 	"github.com/DataDog/dd-iast-go/internal/taint/request"
+	"github.com/DataDog/dd-iast-go/taint"
 	"github.com/DataDog/orchestrion/runtime/built"
 	"github.com/stretchr/testify/require"
 )
@@ -72,6 +73,45 @@ func testPropagation(t *testing.T, automatic bool) {
 			require.Nil(t, request.CloneReaderBytes(output, []byte("request-body")))
 		})
 	}
+}
+
+func TestAutomaticNewReaderDelegationAndCleanup(t *testing.T) {
+	if !built.WithOrchestrion {
+		t.Skip("orchestrion is not enabled, use `go tool orchestrion go test` to run this test suite")
+	}
+	previousEnabled, previousSampling, previousMax := config.Enabled, config.RequestSamplingPct, config.MaxConcurrentRequests
+	config.Enabled, config.RequestSamplingPct, config.MaxConcurrentRequests = true, 100, 64
+	t.Cleanup(func() {
+		config.Enabled, config.RequestSamplingPct, config.MaxConcurrentRequests = previousEnabled, previousSampling, previousMax
+	})
+
+	ctx, scope, created := request.Begin(context.Background())
+	require.True(t, created)
+	t.Cleanup(scope.Finish)
+	input := strings.NewReader("request-body")
+	require.True(t, request.BindReader(ctx, input))
+	output := bufio.NewReader(input)
+	require.Equal(t, 4096, output.Size())
+	data := request.CloneReaderBytes(output, []byte("request-body"))
+	require.Equal(t, []byte("request-body"), data)
+	require.Equal(t, len("request-body"), input.Len(), "propagation must not read input")
+	var observed []taint.Range
+	require.True(t, taint.VisitBytes(data, func(r taint.Range) bool {
+		observed = append(observed, r)
+		return true
+	}))
+	require.Equal(t, []taint.Range{{
+		Start:  0,
+		Length: uint32(len(data)),
+		Source: taint.SourceValue{
+			Source: taint.Source{Origin: taint.OriginHttpRequestBody},
+			Value:  "request-body",
+		},
+		Marks: taint.Marks{},
+	}}, observed)
+
+	scope.Finish()
+	require.Nil(t, request.CloneReaderBytes(output, []byte("request-body")))
 }
 
 func TestPropagateNilReaders(t *testing.T) {
