@@ -1,0 +1,123 @@
+# Unless explicitly stated otherwise all files in this repository are licensed
+# under the Apache License Version 2.0.
+# This product includes software developed at Datadog (https://www.datadoghq.com/).
+# Copyright 2026-present Datadog, Inc.
+---
+# $schema: https://datadoghq.dev/orchestrion/schema.json
+meta:
+  name: github.com/DataDog/dd-iast-go/iast/encoding/json
+  description: Request-scoped encoding/json propagation
+
+aspects:
+  - id: application JSON propagation bootstrap
+    join-point:
+      all-of:
+        - package-filter: {root: true, pattern: "**"}
+        - test-main: false
+        - function-body:
+            function:
+              - receiver: false
+              - name: main
+    advice:
+      - prepend-statements:
+          imports:
+            iastjson: github.com/DataDog/dd-iast-go/iast/encoding/json
+          template: |-
+            _ = iastjson.Activate
+
+  - id: encoding/json Decoder reader binding
+    join-point:
+      all-of:
+        - import-path: encoding/json
+        - function-body:
+            function:
+              - receiver: "*encoding/json.Decoder"
+              - name: Decode
+    advice:
+      - prepend-statements:
+          imports:
+            iastjsonbridge: github.com/DataDog/dd-iast-go/internal/taint/jsonbridge
+          template: |-
+            if iastjsonbridge.Bind({{ .Function.Receiver }}.r, &{{ .Function.Receiver }}.d) {
+              defer iastjsonbridge.Unbind(&{{ .Function.Receiver }}.d)
+            }
+
+  - id: encoding/json decode state lifetime
+    join-point:
+      all-of:
+        - import-path: encoding/json
+        - function-body:
+            function:
+              - receiver: "*encoding/json.decodeState"
+              - name: unmarshal
+    advice:
+      - prepend-statements:
+          imports:
+            iastjsonbridge: github.com/DataDog/dd-iast-go/internal/taint/jsonbridge
+          template: |-
+            if iastjsonbridge.Bind(nil, {{ .Function.Receiver }}) {
+              defer iastjsonbridge.Unbind({{ .Function.Receiver }})
+            }
+
+  - id: encoding/json quoted string source
+    join-point:
+      all-of:
+        - import-path: encoding/json
+        - function-body:
+            function:
+              - receiver: "*encoding/json.decodeState"
+              - name: valueQuoted
+    advice:
+      - prepend-statements:
+          imports:
+            iastjsonbridge: github.com/DataDog/dd-iast-go/internal/taint/jsonbridge
+          template: |-
+            __dd_iast_quoted_start := {{ .Function.Receiver }}.readIndex()
+            defer func() {
+              iastjsonbridge.Quoted(
+                {{ .Function.Receiver }},
+                {{ .Function.Receiver }}.data,
+                __dd_iast_quoted_start,
+                {{ .Function.Receiver }}.readIndex(),
+                {{ .Function.Result 0 }},
+              )
+            }()
+
+  - id: encoding/json document publication
+    join-point:
+      all-of:
+        - import-path: encoding/json
+        - function-body:
+            function:
+              - receiver: "*encoding/json.decodeState"
+              - name: init
+    advice:
+      - prepend-statements:
+          imports:
+            iastjsonbridge: github.com/DataDog/dd-iast-go/internal/taint/jsonbridge
+          template: |-
+            iastjsonbridge.Document({{ .Function.Receiver }}, {{ .Function.Argument 0 }})
+
+  - id: encoding/json typed string materialization
+    join-point:
+      all-of:
+        - import-path: encoding/json
+        - function-body:
+            function:
+              - receiver: "*encoding/json.decodeState"
+              - name: literalStore
+    advice:
+      - prepend-statements:
+          imports:
+            iastjsonbridge: github.com/DataDog/dd-iast-go/internal/taint/jsonbridge
+          template: |-
+            defer func() {
+              iastjsonbridge.Literal(
+                {{ .Function.Receiver }},
+                {{ .Function.Receiver }}.data,
+                {{ .Function.Argument 0 }},
+                {{ .Function.Argument 1 }},
+                {{ .Function.Result 0 }},
+                {{ .Function.Argument 2 }},
+              )
+            }()

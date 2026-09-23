@@ -2,6 +2,57 @@
   {
     "override_type": "replace",
     "target": {
+      "component": "github.com/DataDog/dd-iast-go/testapps/database-sql",
+      "origin": "https://github.com/DataDog/dd-iast-go/tree/main/testapps/database-sql"
+    },
+    "replacement": {
+      "name": "github.com/DataDog/dd-iast-go/testapps/database-sql",
+      "origin": "https://github.com/DataDog/dd-iast-go",
+      "license": [
+        "Apache-2.0"
+      ],
+      "copyright": [
+        "Datadog, Inc."
+      ]
+    }
+  },
+  {
+    "override_type": "replace",
+    "target": {
+      "component": "github.com/DataDog/dd-iast-go/testapps/integration",
+      "origin": "https://github.com/DataDog/dd-iast-go/tree/main/testapps/integration"
+    },
+    "replacement": {
+      "name": "github.com/DataDog/dd-iast-go/testapps/integration",
+      "origin": "https://github.com/DataDog/dd-iast-go",
+      "license": [
+        "Apache-2.0"
+      ],
+      "copyright": [
+        "Datadog, Inc."
+      ]
+    }
+  },
+  {
+    "override_type": "replace",
+    "target": {
+      "component": "github.com/DataDog/dd-iast-go/testapps/os-exec",
+      "origin": "https://github.com/DataDog/dd-iast-go/tree/main/testapps/os-exec"
+    },
+    "replacement": {
+      "name": "github.com/DataDog/dd-iast-go/testapps/os-exec",
+      "origin": "https://github.com/DataDog/dd-iast-go",
+      "license": [
+        "Apache-2.0"
+      ],
+      "copyright": [
+        "Datadog, Inc."
+      ]
+    }
+  },
+  {
+    "override_type": "replace",
+    "target": {
       "component": "github.com/xeipuuv/gojsonpointer",
       "origin": "https://github.com/xeipuuv/gojsonpointer"
     },

@@ -14,6 +14,32 @@ permissions:
   contents: read
 
 jobs:
+  modules:
+    runs-on: ubuntu-latest
+    name: Discover Go modules
+    outputs:
+      modules: ${{ steps.discover.outputs.modules }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Find Go modules
+        id: discover
+        run: |
+          python3 <<'PY'
+          import json
+          import os
+
+          modules = []
+          for directory, children, files in os.walk("."):
+              children[:] = [name for name in children if not name.startswith(".") and name != "vendor"]
+              if "go.mod" in files:
+                  modules.append(os.path.normpath(directory))
+          if not any(os.path.isfile(os.path.join(module, "cmd", "bootstrap", "symbols.txt")) for module in modules):
+              raise SystemExit("no executable bootstrap fixtures found")
+          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+              output.write(f"modules={json.dumps(sorted(modules))}\n")
+          PY
+
   validate-licenses:
     runs-on: ubuntu-latest
     name: Validate LICENSE-3rdparty.csv
@@ -40,16 +66,26 @@ jobs:
           path: ${{ steps.dd-license-attribution.outputs.sbom-path }}
 
   lint:
+    needs: modules
     runs-on: ubuntu-latest
-    name: Linter & Formatting
+    name: Linter & Formatting (${{ matrix.module }})
+    strategy:
+      fail-fast: false
+      matrix:
+        module: ${{ fromJSON(needs.modules.outputs.modules) }}
+    defaults:
+      run:
+        working-directory: ${{ matrix.module }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Setup Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: oldstable
+          go-version-file: ${{ matrix.module }}/go.mod
+          cache-dependency-path: ${{ matrix.module }}/go.sum
       - name: 'Linter: gofmt'
+        if: matrix.module == '.'
         run: |
           unformatted="$(find . -type f -name '*.go' -exec gofmt -l {} +)"
           if [[ -n "${unformatted}" ]]; then
@@ -57,38 +93,111 @@ jobs:
             exit 1
           fi
       - name: 'Linter: checklocks'
+        if: matrix.module == '.'
         run: go tool checklocks ./...
-      - name: 'Linter: overhead benchmarks vet'
-        run: go -C benchmarks/overhead vet ./...
+      - name: 'Linter: go vet'
+        run: go vet ./...
+      - name: 'Linter: go vet (CI tools)'
+        if: matrix.module == '.'
+        run: go vet ./.github
 
   test:
+    needs: modules
     runs-on: ubuntu-latest
-    name: Unit Tests
+    name: Unit Tests (${{ matrix.module }})
+    strategy:
+      fail-fast: false
+      matrix:
+        module: ${{ fromJSON(needs.modules.outputs.modules) }}
+    defaults:
+      run:
+        working-directory: ${{ matrix.module }}
+    env:
+      MODULE: ${{ matrix.module }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Setup Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: oldstable
+          go-version-file: ${{ matrix.module }}/go.mod
+          cache-dependency-path: ${{ matrix.module }}/go.sum
       - name: Unit Tests
+        shell: bash
         run: |
-          go tool orchestrion go test \
-            -shuffle=on \
-            -covermode=atomic \
-            -coverpkg=./... \
-            -coverprofile=coverage.txt \
-            ./...
-      - name: Overhead benchmark unit tests
-        run: go -C benchmarks/overhead test -shuffle=on ./...
+          test_command=(go test)
+          if [[ -f orchestrion.tool.go ]]; then
+            test_command=(go tool orchestrion go test)
+          fi
+          coverage_packages=./...
+          if [[ "$MODULE" != '.' ]]; then
+            root_packages=$(go -C "$GITHUB_WORKSPACE" list ./...)
+            packages=()
+            while IFS= read -r package; do
+              case "$package" in
+                # The pinned injector resolves these imports in a separate
+                # build, which cannot share nested-test coverage archives.
+                # Both root test runs still cover every bridge package.
+                */internal/taint/*bridge) ;;
+                *) packages+=("$package") ;;
+              esac
+            done <<< "$root_packages"
+            coverage_packages=$(IFS=,; printf '%s' "${packages[*]}")
+          fi
+          coverage_flags=(-covermode=atomic "-coverpkg=$coverage_packages")
+          "${test_command[@]}" -shuffle=on "${coverage_flags[@]}" -coverprofile=coverage.txt ./...
+          if [[ "$MODULE" == '.' ]]; then
+            go test -shuffle=on "${coverage_flags[@]}" -coverprofile=coverage.ordinary.txt ./...
+            go test -race -shuffle=on ./.github
+            go test -race -count=1 -shuffle=on ./internal/taint/...
+          fi
+      - name: Bounded propagation fuzz campaigns
+        if: matrix.module == '.'
+        shell: bash
+        run: |
+          for target in FuzzCanonicalize FuzzSliceAndCopy; do
+            go test -run='^$' -fuzz="^${target}$" -fuzztime=10000x \
+              -fuzzminimizetime=1000x -parallel=4 -timeout=5m ./internal/taint/ranges
+          done
+          for target in FuzzEngineSequence FuzzOwnerLifecycle; do
+            go test -run='^$' -fuzz="^${target}$" -fuzztime=10000x \
+              -fuzzminimizetime=1000x -parallel=4 -timeout=5m ./internal/taint/propagation
+          done
+      - name: Upload failing fuzz inputs
+        if: ${{ failure() && matrix.module == '.' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: propagation-fuzz-failures
+          path: |
+            internal/taint/ranges/testdata/fuzz/**
+            internal/taint/propagation/testdata/fuzz/**
+          if-no-files-found: ignore
+      - name: Sink executable bootstrap tests
+        shell: bash
+        run: |
+          if [[ -d cmd/bootstrap ]]; then
+            if [[ ! -s cmd/bootstrap/symbols.txt ]]; then
+              echo 'Bootstrap fixture must declare its expected symbols in cmd/bootstrap/symbols.txt'
+              exit 1
+            fi
+            go tool orchestrion go build -o "$RUNNER_TEMP/iast-bootstrap" ./cmd/bootstrap
+            go tool nm "$RUNNER_TEMP/iast-bootstrap" > "$RUNNER_TEMP/iast-bootstrap.nm"
+            while IFS= read -r symbol || [[ -n "$symbol" ]]; do
+              if [[ -z "$symbol" ]]; then
+                echo 'Bootstrap symbol must not be empty'
+                exit 1
+              fi
+              grep -F -- "$symbol" "$RUNNER_TEMP/iast-bootstrap.nm"
+            done < cmd/bootstrap/symbols.txt
+          fi
       - name: Upload coverage artifact
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: coverage-profile
-          path: coverage.txt
+          name: coverage-profile-${{ strategy.job-index }}
+          path: ${{ matrix.module }}/coverage*.txt
           retention-days: 1
-          if-no-files-found: ignore
+          if-no-files-found: error
 
   upload-coverage:
     needs: test
@@ -105,30 +214,40 @@ jobs:
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
-          sparse-checkout: code-coverage.datadog.yml
-          sparse-checkout-cone-mode: false
-      - name: Download coverage artifact
-        id: download-coverage
-        continue-on-error: true
+      - name: Setup Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: Download coverage artifacts
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: coverage-profile
+          pattern: coverage-profile-*
+          path: coverage-profiles
+      # Sum identical blocks across all runs before Datadog evaluates lines.
+      - name: Merge coverage profiles
+        run: |
+          python3 .github/merge-coverage.py coverage-profiles/*/*.txt
+          go tool cover -func=coverage.merged.txt
+      - name: Upload merged coverage artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: coverage-merged
+          path: coverage.merged.txt
+          retention-days: 1
+          if-no-files-found: error
       - name: Get Datadog credentials
         id: dd-sts
-        if: steps.download-coverage.outcome == 'success'
         continue-on-error: true
         uses: DataDog/dd-sts-action@639d841c72f15e4e77747bd726ef8105ce971da2 # v1.0.5
         with:
           policy: dd-iast-go
       - name: Upload coverage to Datadog
-        if: >-
-          steps.download-coverage.outcome == 'success' &&
-          steps.dd-sts.outcome == 'success'
+        if: steps.dd-sts.outcome == 'success'
         continue-on-error: true
         uses: DataDog/coverage-upload-github-action@d9548b1c3c4ab639d5d3ab29a1508af188975f77 # v1.0.5
         with:
           api_key: ${{ steps.dd-sts.outputs.api_key }}
-          files: coverage.txt
+          files: coverage.merged.txt
           format: go-coverprofile
           flags: type:unit-tests
 
@@ -144,7 +263,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: oldstable
+          go-version-file: go.mod
       - name: Prepare artifact directory
         run: mkdir -p "$BENCHMARK_OUTPUT_DIR"
       - name: Run benchmarks
@@ -177,12 +296,13 @@ jobs:
   green-ci:
     runs-on: ubuntu-latest
     name: Green CI
-    needs: [validate-licenses, lint, test, upload-coverage, benchmark]
+    needs: [modules, validate-licenses, lint, test, upload-coverage, benchmark]
     if: always()
     steps:
       - name: Success
         if: |-
-          needs.validate-licenses.result  == 'success'
+          needs.modules.result            == 'success'
+          && needs.validate-licenses.result == 'success'
           && needs.lint.result            == 'success'
           && needs.test.result            == 'success'
           && needs.upload-coverage.result == 'success'
@@ -190,7 +310,8 @@ jobs:
         run: echo "Success!"
       - name: Failure
         if: |-
-          needs.validate-licenses.result  != 'success'
+          needs.modules.result            != 'success'
+          || needs.validate-licenses.result != 'success'
           || needs.lint.result            != 'success'
           || needs.test.result            != 'success'
           || needs.upload-coverage.result != 'success'

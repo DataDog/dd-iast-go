@@ -6,12 +6,11 @@
 package config
 
 import (
-	"math"
 	"regexp"
 
 	"github.com/DataDog/dd-iast-go/internal/config/loader"
 	"github.com/DataDog/dd-iast-go/internal/config/parser"
-	"github.com/DataDog/dd-iast-go/internal/instrumentation"
+	"github.com/DataDog/dd-iast-go/internal/taint/ranges"
 )
 
 const (
@@ -23,16 +22,21 @@ const (
 	EnvVarRedactionEnabled          = "DD_IAST_REDACTION_ENABLED"
 	EnvVarRedactionNamePattern      = "DD_IAST_REDACTION_NAME_PATTERN"
 	EnvVarRedactionValuePattern     = "DD_IAST_REDACTION_VALUE_PATTERN"
+	EnvVarRedactionKeysRegexp       = "DD_IAST_REDACTION_KEYS_REGEXP"
+	EnvVarRedactionValuesRegexp     = "DD_IAST_REDACTION_VALUES_REGEXP"
 	EnvVarTruncationMaxValue        = "DD_IAST_TRUNCATION_MAX_VALUE"
 	EnvVarMaxRangeCount             = "DD_IAST_MAX_RANGE_COUNT"
 	EnvVarTelemetryVerbosity        = "DD_IAST_TELEMETRY_VERBOSITY"
 	EnvVarDbRowsToTaint             = "DD_IAST_DB_ROWS_TO_TAINT"
 	EnvVarStackTraceEnabled         = "DD_IAST_STACK_TRACE_ENABLED"
+
+	// MaxVulnerabilitiesPerRequest is the non-configurable hard event bound.
+	MaxVulnerabilitiesPerRequest = 64
 )
 
 var (
-	defaultRedactionNamePattern  = regexp.MustCompile(`(?:p(?:ass)?w(?:or)?d|pass(?:_?phrase)?|secret|(?:api_?|private_?|public_?|access_?|secret_?)key(?:_?id)?|token|consumer_?(?:id|key|secret)|sign(?:ed|ature)?|auth(?:entication|orization)?)`)
-	defaultRedactionValuePattern = regexp.MustCompile(`(?:bearer\s+[a-z0-9\._\-]+|glpat-[\w\-]{20}|gh[opsu]_[0-9a-zA-Z]{36}|ey[I-L][\w=\-]+\.ey[I-L][\w=\-]+(?:\.[\w.+/=\-]+)?|(?:[\-]{5}BEGIN[a-z\s]+PRIVATE\sKEY[\-]{5}[^\-]+[\-]{5}END[a-z\s]+PRIVATE\sKEY[\-]{5}|ssh-rsa\s*[a-z0-9/\.+]{100,}))`)
+	defaultRedactionNamePattern  = regexp.MustCompile(`(?i)(?:p(?:ass)?w(?:or)?d|pass(?:_?phrase)?|secret|(?:api_?|private_?|public_?|access_?|secret_?)key(?:_?id)?|token|consumer_?(?:id|key|secret)|sign(?:ed|ature)?|auth(?:entication|orization)?)`)
+	defaultRedactionValuePattern = regexp.MustCompile(`(?i)(?:bearer\s+[a-z0-9._-]+|token:[a-z0-9]{13}|glpat-[\w-]{20}|gh[opsu]_[0-9a-zA-Z]{36}|ey[I-L][\w=-]+\.ey[I-L][\w=-]+(?:\.[\w.+/=-]+)?|(?:-{5}BEGIN[a-z\s]+PRIVATE\sKEY-{5}[^-]+-{5}END[a-z\s]+PRIVATE\sKEY-{5}|ssh-rsa\s*[a-z0-9/.+]{100,}))`)
 )
 
 var (
@@ -64,29 +68,17 @@ var (
 	StackTraceEnabled bool
 )
 
-func load() {
-	observer := loader.Observer{
-		Warn: func(format string, args ...any) {
-			instrumentation.Instance.Logger().Warn(format, args...)
-		},
-		RegisterDefault: func(name string, value any) {
-			instrumentation.Instance.TelemetryRegisterAppConfig(name, value, instrumentation.OriginDefault)
-		},
-		RegisterEnvironment: func(name string, value any) {
-			instrumentation.Instance.TelemetryRegisterAppConfig(name, value, instrumentation.OriginEnvVar)
-		},
-	}
-
+func load(observer loader.Observer) {
 	Enabled = loader.BoolFromEnv(observer, EnvVarEnabled, true)
 	RequestSamplingPct = int(loader.UintFromEnvBounded(observer, EnvVarRequestSampling, 30, uint8(0), uint8(100)))
-	MaxConcurrentRequests = int(loader.UintFromEnvBounded(observer, EnvVarMaxConcurrentRequests, 2, uint64(0), uint64(math.MaxInt)))
-	VulnerabilitiesPerRequest = int(loader.UintFromEnvBounded(observer, EnvVarVulnerabilitiesPerRequest, 2, uint64(1), uint64(math.MaxInt)))
+	MaxConcurrentRequests = int(loader.UintFromEnvBounded(observer, EnvVarMaxConcurrentRequests, uint64(2), uint8(0), uint8(64)))
+	VulnerabilitiesPerRequest = int(loader.UintFromEnvBounded(observer, EnvVarVulnerabilitiesPerRequest, 2, uint64(1), uint64(MaxVulnerabilitiesPerRequest)))
 	DeduplicationEnabled = loader.BoolFromEnv(observer, EnvVarDeduplicationEnabled, true)
 	RedactionEnabled = loader.BoolFromEnv(observer, EnvVarRedactionEnabled, true)
-	RedactionNamePattern = loader.FromEnv(observer, EnvVarRedactionNamePattern, defaultRedactionNamePattern, parser.ParseRegexp)
-	RedactionValuePattern = loader.FromEnv(observer, EnvVarRedactionValuePattern, defaultRedactionValuePattern, parser.ParseRegexp)
+	RedactionNamePattern = loader.FromEnvWithFallback(observer, EnvVarRedactionNamePattern, EnvVarRedactionKeysRegexp, defaultRedactionNamePattern, parser.ParseRegexp)
+	RedactionValuePattern = loader.FromEnvWithFallback(observer, EnvVarRedactionValuePattern, EnvVarRedactionValuesRegexp, defaultRedactionValuePattern, parser.ParseRegexp)
 	TruncationMaxValue = loader.UintFromEnv(observer, EnvVarTruncationMaxValue, 250)
-	MaxRangeCount = loader.UintFromEnv(observer, EnvVarMaxRangeCount, 10)
+	MaxRangeCount = loader.UintFromEnvBounded(observer, EnvVarMaxRangeCount, uint64(ranges.DefaultLimit), uint64(1), uint64(ranges.HardLimit))
 	TelemetryVerbosity = loader.FromEnv(observer, EnvVarTelemetryVerbosity, LogLevelInformation, parser.ParseLogLevel)
 	DbRowsToTaint = loader.UintFromEnv(observer, EnvVarDbRowsToTaint, 1)
 	StackTraceEnabled = loader.BoolFromEnv(observer, EnvVarStackTraceEnabled, true)
