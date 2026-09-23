@@ -17,7 +17,7 @@ package tools
 import (
 	// Ensures `orchestrion` is present in `go.mod` so that builds are repeatable.
 	// Do not remove.
-	_ "github.com/DataDog/dd-iast-go" // integration
+	_ "github.com/DataDog/dd-iast-go"  // integration
 	_ "github.com/DataDog/orchestrion" // integration
 
 	// TODO: install back the gin integration when pprof labels carry the service entry span, not simply the current span

@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 
+	"fmt"
 	"github.com/DataDog/dd-iast-go/internal/config"
 	"github.com/DataDog/dd-iast-go/internal/taint/request"
-	"fmt"
 	"testing"
 
 	testapp "github.com/DataDog/dd-iast-go/iast/internal/propagationtest"

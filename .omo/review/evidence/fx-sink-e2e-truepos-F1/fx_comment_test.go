@@ -29,7 +29,7 @@ func TestFXCommentRedaction(t *testing.T) {
 			t.Fatalf("%s: BuildWithSensitive failed", c.name)
 		}
 		event := model.Event{
-			Sources: []model.Source{result.Sources[0].Model},
+			Sources:         []model.Source{result.Sources[0].Model},
 			Vulnerabilities: []model.Vulnerability{{Type: constants.VulnerabilityTypeSqlInjection, Evidence: model.NewEvidenceTaintedValue(result.Parts)}},
 		}
 		payload, _ := json.Marshal(event)

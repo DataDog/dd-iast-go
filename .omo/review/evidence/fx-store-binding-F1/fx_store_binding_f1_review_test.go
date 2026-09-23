@@ -26,7 +26,7 @@ type fxAliasBody struct {
 }
 
 func (*fxAliasBody) Read([]byte) (int, error) { return 0, io.EOF }
-func (*fxAliasBody) Close() error              { return nil }
+func (*fxAliasBody) Close() error             { return nil }
 
 type fxObs struct {
 	RawQueryTainted   bool `json:"raw_query_tainted"`

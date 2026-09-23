@@ -46,7 +46,7 @@ func TestReviewIntersectionCoreTypeRetainsProvenance(t *testing.T) {
 		requireNativeStringRanges(t, gotConcat, nativeExpectedRange{
 			length: 6,
 			source: want,
-			marks: []taint.VulnerabilityType{taint.VulnerabilityTypeSqlInjection, taint.VulnerabilityTypeCommandInjection},
+			marks:  []taint.VulnerabilityType{taint.VulnerabilityTypeSqlInjection, taint.VulnerabilityTypeCommandInjection},
 		})
 	})
 	t.Run("string slice", func(t *testing.T) {
@@ -55,7 +55,7 @@ func TestReviewIntersectionCoreTypeRetainsProvenance(t *testing.T) {
 		requireNativeStringRanges(t, gotSlice, nativeExpectedRange{
 			length: 5,
 			source: want,
-			marks: []taint.VulnerabilityType{taint.VulnerabilityTypeSqlInjection, taint.VulnerabilityTypeCommandInjection},
+			marks:  []taint.VulnerabilityType{taint.VulnerabilityTypeSqlInjection, taint.VulnerabilityTypeCommandInjection},
 		})
 	})
 
@@ -67,7 +67,7 @@ func TestReviewIntersectionCoreTypeRetainsProvenance(t *testing.T) {
 			length: 5,
 			source: taint.SourceValue{
 				Source: taint.Source{Origin: taint.OriginHttpRequestBody, Name: "core-byte"},
-				Value: "attack",
+				Value:  "attack",
 			},
 			marks: []taint.VulnerabilityType{taint.VulnerabilityTypeSqlInjection, taint.VulnerabilityTypeCommandInjection},
 		})

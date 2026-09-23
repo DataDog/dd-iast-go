@@ -32,7 +32,11 @@ func TestReview_NativePanicsPreserveIdentity(t *testing.T) {
 		{"strings.Repeat", func() { strings.Repeat(active, -1) }, func() { propagation.StringsRepeat(active, -1) }},
 		{"bytes.Repeat", func() { bytes.Repeat([]byte(active), -1) }, func() { propagation.BytesRepeat([]byte(active), -1) }},
 		{"Builder copy", func() { badCopy.WriteString("z") }, func() { propagation.BuilderWriteString(&badCopy, "z") }},
-		{"Buffer.Truncate", func() { var b bytes.Buffer; b.WriteString(active); b.Truncate(-1) }, func() { var b bytes.Buffer; propagation.BufferWriteString(&b, active); propagation.BufferTruncate(&b, -1) }},
+		{"Buffer.Truncate", func() { var b bytes.Buffer; b.WriteString(active); b.Truncate(-1) }, func() {
+			var b bytes.Buffer
+			propagation.BufferWriteString(&b, active)
+			propagation.BufferTruncate(&b, -1)
+		}},
 		{"string slice", func() { _ = active[:len(active)+1] }, func() { propagation.StringSliceHigh(active, len(active)+1) }},
 		{"byte slice", func() { _ = []byte(active)[:len(active)+1] }, func() { propagation.BytesSliceHigh([]byte(active), len(active)+1) }},
 	} {

@@ -5,7 +5,7 @@
 //
 //   - request.Begin / Scope.Finish            (woven net/http server advice)
 //   - request.BindReader / PropagateReader    (registered into iobridge; woven
-//                                              io/bufio reader hooks)
+//     io/bufio reader hooks)
 //   - Analysis.TaintString                   (woven HTTP source hooks)
 //   - propagation.UpdateStringWriter         (woven strings.Builder write hook)
 //

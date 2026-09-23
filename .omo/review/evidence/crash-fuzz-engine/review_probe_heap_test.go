@@ -154,4 +154,3 @@ func runOwnerLifecycleCycleNoCleanup(t *testing.T, taintStore *store.Store, curs
 		sibling.Finish()
 	}
 }
-

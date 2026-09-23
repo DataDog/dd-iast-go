@@ -13,9 +13,9 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"database/sql/driver"
-	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -97,19 +97,19 @@ func main() {
 	}
 
 	out := map[string]any{
-		"woven":              built.WithOrchestrion,
-		"go":                 runtime.Version(),
-		"iast_enabled":       config.Enabled,
-		"sampling":           config.RequestSamplingPct,
-		"dedup":              config.DeduplicationEnabled,
-		"stack_traces":       config.StackTraceEnabled,
-		"n":                  *n,
-		"warm":               *warm,
-		"bytes_per_req":      totalBytes / uint64(*n),
-		"objects_per_req":    totalObjs / uint64(*n),
-		"vulns_total":        vulns,
-		"vuln_spans_total":   vulnSpans,
-		"profiled_requests":  *warm + *n,
+		"woven":             built.WithOrchestrion,
+		"go":                runtime.Version(),
+		"iast_enabled":      config.Enabled,
+		"sampling":          config.RequestSamplingPct,
+		"dedup":             config.DeduplicationEnabled,
+		"stack_traces":      config.StackTraceEnabled,
+		"n":                 *n,
+		"warm":              *warm,
+		"bytes_per_req":     totalBytes / uint64(*n),
+		"objects_per_req":   totalObjs / uint64(*n),
+		"vulns_total":       vulns,
+		"vuln_spans_total":  vulnSpans,
+		"profiled_requests": *warm + *n,
 	}
 	if *memprofile != "" {
 		f, err := os.Create(*memprofile)

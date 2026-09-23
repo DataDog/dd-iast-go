@@ -135,7 +135,9 @@ func BenchmarkHotPathReview(b *testing.B) {
 		})
 		b.Run(prefix+"/json/native", func(b *testing.B) {
 			var decoded struct{ Name string }
-			if err := json.Unmarshal(payload, &decoded); err != nil { b.Fatal(err) }
+			if err := json.Unmarshal(payload, &decoded); err != nil {
+				b.Fatal(err)
+			}
 			reviewAny = decoded
 		})
 		b.Run(prefix+"/json/bridge", func(b *testing.B) {

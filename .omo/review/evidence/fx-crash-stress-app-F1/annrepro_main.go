@@ -90,7 +90,10 @@ func victim(base string, id int) result {
 	return r
 }
 
-type heldReq struct{ id string; done chan struct{} }
+type heldReq struct {
+	id   string
+	done chan struct{}
+}
 
 func startHeld(base, id string) (heldReq, bool) {
 	holdMu.Lock()

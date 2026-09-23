@@ -23,7 +23,7 @@ type fxAliasBody struct {
 }
 
 func (*fxAliasBody) Read([]byte) (int, error) { return 0, io.EOF }
-func (*fxAliasBody) Close() error              { return nil }
+func (*fxAliasBody) Close() error             { return nil }
 
 type fxObs struct {
 	Aliased      bool `json:"aliased"`

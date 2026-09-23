@@ -14,7 +14,10 @@ type Out struct {
 	*bytes.Buffer
 }
 
-type holder struct{ sb strings.Builder; bb bytes.Buffer }
+type holder struct {
+	sb strings.Builder
+	bb bytes.Buffer
+}
 
 func Build(s string) string {
 	var d Doc

@@ -51,8 +51,18 @@ func TestReviewConcurrentRegisterAndReport(t *testing.T) {
 	var wg sync.WaitGroup
 	for i := 0; i < 8; i++ {
 		wg.Add(2)
-		go func() { defer wg.Done(); for j := 0; j < 1000; j++ { Register(func(context.Context, string, Kind) {}) } }()
-		go func() { defer wg.Done(); for j := 0; j < 1000; j++ { Report(context.Background(), "q", KindQuery, true) } }()
+		go func() {
+			defer wg.Done()
+			for j := 0; j < 1000; j++ {
+				Register(func(context.Context, string, Kind) {})
+			}
+		}()
+		go func() {
+			defer wg.Done()
+			for j := 0; j < 1000; j++ {
+				Report(context.Background(), "q", KindQuery, true)
+			}
+		}()
 	}
 	wg.Wait()
 }

@@ -32,10 +32,10 @@ func TestFidelityInactiveAllocations(t *testing.T) {
 	b := []byte("0123456789abcdef")
 	a, c := "hello ", "world"
 	results := map[string]float64{
-		"native string(b)":   testing.AllocsPerRun(1000, func() { allocSink += nativeConv(b) }),
-		"BytesToString(b)":   testing.AllocsPerRun(1000, func() { allocSink += wrappedConv(b) }),
-		"native a+b":         testing.AllocsPerRun(1000, func() { allocSink += nativeConcat(a, c) }),
-		"Concat2(a,b)":       testing.AllocsPerRun(1000, func() { allocSink += wrappedConcat(a, c) }),
+		"native string(b)": testing.AllocsPerRun(1000, func() { allocSink += nativeConv(b) }),
+		"BytesToString(b)": testing.AllocsPerRun(1000, func() { allocSink += wrappedConv(b) }),
+		"native a+b":       testing.AllocsPerRun(1000, func() { allocSink += nativeConcat(a, c) }),
+		"Concat2(a,b)":     testing.AllocsPerRun(1000, func() { allocSink += wrappedConcat(a, c) }),
 	}
 	for k, v := range results {
 		t.Logf("ALLOCS %-20s %.1f", k, v)

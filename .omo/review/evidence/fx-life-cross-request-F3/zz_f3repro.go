@@ -18,5 +18,5 @@ func F3WriteTainted(backing []byte, value string) string {
 // returns the direct woven String result.
 func F3NewBufferString(backing []byte) string {
 	buf := bytes.NewBuffer(backing) // no hook on NewBuffer
-	return buf.String()            // woven bytes.Buffer.String
+	return buf.String()             // woven bytes.Buffer.String
 }

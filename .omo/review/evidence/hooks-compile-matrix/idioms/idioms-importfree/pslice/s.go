@@ -1,6 +1,9 @@
 package pslice
 
-type T struct{ Name string; Raw []byte }
+type T struct {
+	Name string
+	Raw  []byte
+}
 
 func get() string { return "hello-world" }
 

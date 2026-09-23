@@ -29,7 +29,7 @@ func TestReviewSQLCommentSecretMustBeRedacted(t *testing.T) {
 	event := model.Event{
 		Sources: []model.Source{result.Sources[0].Model},
 		Vulnerabilities: []model.Vulnerability{{
-			Type: constants.VulnerabilityTypeSqlInjection,
+			Type:     constants.VulnerabilityTypeSqlInjection,
 			Evidence: model.NewEvidenceTaintedValue(result.Parts),
 		}},
 	}

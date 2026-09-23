@@ -13,8 +13,8 @@ import (
 	"testing"
 
 	"github.com/DataDog/dd-iast-go/internal/config"
-	testapp "github.com/DataDog/dd-iast-go/testapps/integration"
 	"github.com/DataDog/dd-iast-go/taint"
+	testapp "github.com/DataDog/dd-iast-go/testapps/integration"
 )
 
 // TestFXPasswordPatternLeakE2E sends password=abc as an HTTP query parameter,

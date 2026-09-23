@@ -21,7 +21,10 @@ type CountingFormatter struct {
 	Value string
 }
 
-func (c CountingFormatter) Format(f fmt.State, verb rune) { *c.Calls++; _, _ = f.Write([]byte(c.Value)) }
+func (c CountingFormatter) Format(f fmt.State, verb rune) {
+	*c.Calls++
+	_, _ = f.Write([]byte(c.Value))
+}
 
 // CountingError counts Error invocations.
 type CountingError struct {
@@ -84,17 +87,17 @@ func ReviewBuilderFprintfFirst(tainted, clean string) string {
 	return b.String()
 }
 
-func ReviewSprintMulti() string                      { return fmt.Sprint(two()) }
-func ReviewSprint(arguments ...any) string           { return fmt.Sprint(arguments...) }
+func ReviewSprintMulti() string                       { return fmt.Sprint(two()) }
+func ReviewSprint(arguments ...any) string            { return fmt.Sprint(arguments...) }
 func ReviewSprintf(f string, arguments ...any) string { return fmt.Sprintf(f, arguments...) }
-func ReviewSprintfType(v any) string                 { return fmt.Sprintf("SELECT %T", v) }
-func ReviewSprintfZeroPrecision(v string) string     { return fmt.Sprintf("SELECT 1%.0s", v) }
-func ReviewSprintfIndexed(v string) string           { return fmt.Sprintf("SELECT %[2]s", v, "safe") }
+func ReviewSprintfType(v any) string                  { return fmt.Sprintf("SELECT %T", v) }
+func ReviewSprintfZeroPrecision(v string) string      { return fmt.Sprintf("SELECT 1%.0s", v) }
+func ReviewSprintfIndexed(v string) string            { return fmt.Sprintf("SELECT %[2]s", v, "safe") }
 func ReviewSprintfTwo(a, b string) string {
 	return fmt.Sprintf("SELECT * FROM t WHERE a='%s' AND b='%s'", a, b)
 }
-func ReviewQuoteWrap(v string) string            { return "\"" + v + "\"" }
-func ReviewUnquote(v string) (string, error)     { return strconv.Unquote(v) }
+func ReviewQuoteWrap(v string) string              { return "\"" + v + "\"" }
+func ReviewUnquote(v string) (string, error)       { return strconv.Unquote(v) }
 func ReviewQueryUnescape(v string) (string, error) { return url.QueryUnescape(v) }
-func ReviewQueryEscape(v string) string          { return url.QueryEscape(v) }
-func ReviewPrefix(v string) string               { return "ab" + v + "cd" }
+func ReviewQueryEscape(v string) string            { return url.QueryEscape(v) }
+func ReviewPrefix(v string) string                 { return "ab" + v + "cd" }

@@ -19,11 +19,11 @@ import (
 	"reflect"
 	"runtime"
 	"slices"
-	"sync/atomic"
-	"time"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"testing"
+	"time"
 	"unicode"
 	"unsafe"
 
@@ -297,14 +297,26 @@ func strCases() []strCase {
 			std:  func(s []string, _ int) []any { return []any{strings.TrimSuffix(s[0], s[1])} },
 			wrap: func(s []string, _ int) []any { return []any{iastprop.StringsTrimSuffix(s[0], s[1])} }},
 		{name: "TrimFunc", nstr: 1,
-			std:  func(s []string, _ int) []any { c := &counter{}; return []any{strings.TrimFunc(s[0], c.space), c.n} },
-			wrap: func(s []string, _ int) []any { c := &counter{}; return []any{iastprop.StringsTrimFunc(s[0], c.space), c.n} }},
+			std: func(s []string, _ int) []any { c := &counter{}; return []any{strings.TrimFunc(s[0], c.space), c.n} },
+			wrap: func(s []string, _ int) []any {
+				c := &counter{}
+				return []any{iastprop.StringsTrimFunc(s[0], c.space), c.n}
+			}},
 		{name: "TrimLeftFunc", nstr: 1,
-			std:  func(s []string, _ int) []any { c := &counter{}; return []any{strings.TrimLeftFunc(s[0], c.space), c.n} },
-			wrap: func(s []string, _ int) []any { c := &counter{}; return []any{iastprop.StringsTrimLeftFunc(s[0], c.space), c.n} }},
+			std: func(s []string, _ int) []any { c := &counter{}; return []any{strings.TrimLeftFunc(s[0], c.space), c.n} },
+			wrap: func(s []string, _ int) []any {
+				c := &counter{}
+				return []any{iastprop.StringsTrimLeftFunc(s[0], c.space), c.n}
+			}},
 		{name: "TrimRightFunc", nstr: 1,
-			std:  func(s []string, _ int) []any { c := &counter{}; return []any{strings.TrimRightFunc(s[0], c.space), c.n} },
-			wrap: func(s []string, _ int) []any { c := &counter{}; return []any{iastprop.StringsTrimRightFunc(s[0], c.space), c.n} }},
+			std: func(s []string, _ int) []any {
+				c := &counter{}
+				return []any{strings.TrimRightFunc(s[0], c.space), c.n}
+			},
+			wrap: func(s []string, _ int) []any {
+				c := &counter{}
+				return []any{iastprop.StringsTrimRightFunc(s[0], c.space), c.n}
+			}},
 		{name: "ToLower", nstr: 1,
 			std:  func(s []string, _ int) []any { return []any{strings.ToLower(s[0])} },
 			wrap: func(s []string, _ int) []any { return []any{iastprop.StringsToLower(s[0])} }},
@@ -319,10 +331,20 @@ func strCases() []strCase {
 			wrap: func(s []string, _ int) []any { c := &counter{}; return []any{iastprop.StringsMap(c.mapr, s[0]), c.n} }},
 		{name: "MapPanics", nstr: 1,
 			std: func(s []string, _ int) []any {
-				return []any{strings.Map(func(r rune) rune { if r == ',' { panic("map:,") }; return r }, s[0])}
+				return []any{strings.Map(func(r rune) rune {
+					if r == ',' {
+						panic("map:,")
+					}
+					return r
+				}, s[0])}
 			},
 			wrap: func(s []string, _ int) []any {
-				return []any{iastprop.StringsMap(func(r rune) rune { if r == ',' { panic("map:,") }; return r }, s[0])}
+				return []any{iastprop.StringsMap(func(r rune) rune {
+					if r == ',' {
+						panic("map:,")
+					}
+					return r
+				}, s[0])}
 			}},
 		{name: "ToValidUTF8", nstr: 2,
 			std:  func(s []string, _ int) []any { return []any{strings.ToValidUTF8(s[0], s[1])} },
@@ -370,6 +392,7 @@ func strCases() []strCase {
 type namedStr string
 type namedBytes []byte
 type namedByte byte
+
 // countingStringer counts String calls in a package counter (no per-call
 // pointer so address-printing verbs stay identical between std and wrapper).
 var fmtCount int
@@ -408,11 +431,19 @@ var (
 func fmtCases() []strCase {
 	return []strCase{
 		{name: "Sprint", nstr: 2,
-			std:  func(s []string, _ int) []any { n := 0; r := fmt.Sprint(fmtArgs(s, &n)...); return []any{r, fmtCount} },
-			wrap: func(s []string, _ int) []any { n := 0; r := iastprop.FmtSprint(fmtArgs(s, &n)...); return []any{r, fmtCount} }},
+			std: func(s []string, _ int) []any { n := 0; r := fmt.Sprint(fmtArgs(s, &n)...); return []any{r, fmtCount} },
+			wrap: func(s []string, _ int) []any {
+				n := 0
+				r := iastprop.FmtSprint(fmtArgs(s, &n)...)
+				return []any{r, fmtCount}
+			}},
 		{name: "Sprintln", nstr: 2,
-			std:  func(s []string, _ int) []any { n := 0; r := fmt.Sprintln(fmtArgs(s, &n)...); return []any{r, fmtCount} },
-			wrap: func(s []string, _ int) []any { n := 0; r := iastprop.FmtSprintln(fmtArgs(s, &n)...); return []any{r, fmtCount} }},
+			std: func(s []string, _ int) []any { n := 0; r := fmt.Sprintln(fmtArgs(s, &n)...); return []any{r, fmtCount} },
+			wrap: func(s []string, _ int) []any {
+				n := 0
+				r := iastprop.FmtSprintln(fmtArgs(s, &n)...)
+				return []any{r, fmtCount}
+			}},
 		{name: "SprintfFmt", nstr: 3,
 			std: func(s []string, _ int) []any {
 				n := 0
@@ -747,7 +778,9 @@ func TestFidelityOperatorsDifferential(t *testing.T) {
 			var nilb []byte
 			check("BytesSliceNil", capture(func() []any { return []any{nilb[:], nilb[0:0] == nil} }), capture(func() []any { return []any{iastprop.BytesSliceAll(nilb), iastprop.BytesSliceBounds(nilb, 0, 0) == nil} }))
 			check("BytesToString", capture(func() []any { return []any{string(tb), string(tb[:0]), string(nilb)} }),
-				capture(func() []any { return []any{iastprop.BytesToString(tb), iastprop.BytesToString(tb[:0]), iastprop.BytesToString(nilb)} }))
+				capture(func() []any {
+					return []any{iastprop.BytesToString(tb), iastprop.BytesToString(tb[:0]), iastprop.BytesToString(nilb)}
+				}))
 			check("BytesToStringNamed", capture(func() []any { return []any{string(namedBytes(tb))} }), capture(func() []any { return []any{iastprop.BytesToString(namedBytes(tb))} }))
 			// Mutating the source bytes after conversion must not affect the string (copy semantics).
 			if len(tb) > 0 {

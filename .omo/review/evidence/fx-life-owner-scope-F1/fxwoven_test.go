@@ -43,12 +43,12 @@ func TestFXWovenRedispatchOfStoredRequestLosesSourceTaint(t *testing.T) {
 	}
 	storedReq := <-stored
 
-		deadline := time.Now().Add(5 * time.Second)
+	deadline := time.Now().Add(5 * time.Second)
 	for taint.IsTaintedString(storedReq.RequestURI) && time.Now().Before(deadline) {
 		time.Sleep(10 * time.Millisecond)
 	}
 
-		rec := httptest.NewRecorder()
+	rec := httptest.NewRecorder()
 	dispatch := http.HandlerFunc(capture)
 	dispatch(rec, storedReq)
 	if rec.Code != http.StatusOK {

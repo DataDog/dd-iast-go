@@ -12,13 +12,13 @@ func Test_ReviewStaleCapacityTaint(t *testing.T) {
 	active = newRegistryLifecycle()
 	t.Cleanup(func() { active = newRegistryLifecycle() })
 
-	b := NewBuffer(make([]byte, 0, 4096)) // no reallocation on ReadFrom (MinRead=512)
+	b := NewBuffer(make([]byte, 0, 4096))                                         // no reallocation on ReadFrom (MinRead=512)
 	if _, err := BufferWriteString(b, SourceString("SECRETSECRET")); err != nil { // 12 tainted bytes
 		t.Fatal(err)
 	}
 	t.Logf("after source write ranges = %#v", RangesBytes(b.Bytes()))
-	_ = BufferNext(b, b.Len())                         // consume everything
-	_, _ = BufferRead(b, make([]byte, 1))               // empty buffer: bytes.Buffer.Read calls b.Reset() internally (uninstrumented), off=0
+	_ = BufferNext(b, b.Len())                                    // consume everything
+	_, _ = BufferRead(b, make([]byte, 1))                         // empty buffer: bytes.Buffer.Read calls b.Reset() internally (uninstrumented), off=0
 	if _, err := BufferWriteString(b, "cleanclean"); err != nil { // 10 clean bytes, same backing
 		t.Fatal(err)
 	}

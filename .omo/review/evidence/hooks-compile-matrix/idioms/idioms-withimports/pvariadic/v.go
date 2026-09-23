@@ -1,11 +1,11 @@
 package pvariadic
 
 import (
+	. "bytes"
 	"fmt"
 	"net/url"
 	"strconv"
 	"strings"
-	. "bytes"
 )
 
 func pair(a, b string, ok bool) string { return fmt.Sprint(a, b, ok) }

@@ -4,8 +4,8 @@ package overhead_test
 
 import (
 	"context"
-	"os"
 	"crypto/md5"
+	"os"
 	"strings"
 	"testing"
 

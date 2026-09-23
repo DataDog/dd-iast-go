@@ -19,7 +19,10 @@ func TestReviewSeamRebindMutationDrift(t *testing.T) {
 	if !ok {
 		t.Fatal("adopt r1")
 	}
-	reviewRebindHook = func() { _, claimed := o.claimMutation(r1); t.Logf("claimMutation(r1) inside rebind window: %v", claimed) }
+	reviewRebindHook = func() {
+		_, claimed := o.claimMutation(r1)
+		t.Logf("claimMutation(r1) inside rebind window: %v", claimed)
+	}
 	r2, ok := o.AdoptBytes(buf, &set)
 	t.Logf("r1=%+v r2=%+v adopt2=%v", r1, r2, ok)
 	t.Logf("after rebind: owner_values=%d process_values=%d r2_quota_count=%d (one live key)", o.Values(), s.ProcessValues(), uint32(o.owner.roots[r2.ID].valueQuota.Load()))

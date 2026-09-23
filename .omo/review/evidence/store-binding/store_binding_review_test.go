@@ -23,7 +23,7 @@ type reviewFirstFieldBody struct {
 }
 
 func (*reviewFirstFieldBody) Read([]byte) (int, error) { return 0, io.EOF }
-func (*reviewFirstFieldBody) Close() error              { return nil }
+func (*reviewFirstFieldBody) Close() error             { return nil }
 
 func TestReviewURLBindingSurvivesReaderAtSameAddress(t *testing.T) {
 	// Given: the request URL is the first field of its body reader.

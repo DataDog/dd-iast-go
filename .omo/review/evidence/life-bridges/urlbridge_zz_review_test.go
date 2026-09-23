@@ -12,5 +12,7 @@ func TestReviewCallbackPanicReachesHost(t *testing.T) {
 		return nil
 	}()
 	t.Logf("panic escaping bridge into host: %v", got)
-	if got == nil { t.Fatal("expected unshielded panic") }
+	if got == nil {
+		t.Fatal("expected unshielded panic")
+	}
 }

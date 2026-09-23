@@ -50,8 +50,8 @@ func TestFxSQLCommentTokensAreNotSensitive(t *testing.T) {
 
 func TestFxSQLCommentBodiesAreRedacted(t *testing.T) {
 	cases := []struct {
-		name  string
-		query string
+		name   string
+		query  string
 		secret string
 	}{
 		{"exploit line comment", fxExploitQuery, fxPasswordHash},

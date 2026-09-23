@@ -133,18 +133,25 @@ func TestReviewParity(t *testing.T) {
 	}
 	for _, bind := range []bool{false, true} {
 		cases := map[string]func() io.Reader{
-			"n+err":      func() io.Reader { return mk(bind, &nErrReader{chunks: [][]byte{[]byte("ab"), []byte("cdef")}, err: errCustom}) },
-			"n+eof":      func() io.Reader { return mk(bind, &nErrReader{chunks: [][]byte{[]byte("abcdef")}, err: io.EOF}) },
-			"onebyte":    func() io.Reader { return oneByte{mk(bind, strings.NewReader("one-byte-at-a-time"))} },
-			"big":        func() io.Reader { return mk(bind, bytes.NewReader(big)) },
-			"limit":      func() io.Reader { return io.LimitReader(mk(bind, bytes.NewReader(big)), 70000) },
-			"limit0":     func() io.Reader { return io.LimitReader(mk(bind, strings.NewReader("abc")), 0) },
-			"limitneg":   func() io.Reader { return io.LimitReader(mk(bind, strings.NewReader("abc")), -5) },
-			"multi-nil":  func() io.Reader { return io.MultiReader() },
-			"multi":      func() io.Reader { return io.MultiReader(strings.NewReader("x"), mk(bind, strings.NewReader("yz")), &nErrReader{chunks: [][]byte{[]byte("w")}, err: errCustom}) },
-			"tee":        func() io.Reader { var b bytes.Buffer; return io.TeeReader(mk(bind, strings.NewReader("teedata")), &b) },
-			"bufio16":    func() io.Reader { return bufio.NewReaderSize(mk(bind, bytes.NewReader(big)), 1) },
-			"bufio-self": func() io.Reader { b := bufio.NewReaderSize(mk(bind, strings.NewReader("self")), 64); return bufio.NewReaderSize(b, 32) },
+			"n+err": func() io.Reader {
+				return mk(bind, &nErrReader{chunks: [][]byte{[]byte("ab"), []byte("cdef")}, err: errCustom})
+			},
+			"n+eof":     func() io.Reader { return mk(bind, &nErrReader{chunks: [][]byte{[]byte("abcdef")}, err: io.EOF}) },
+			"onebyte":   func() io.Reader { return oneByte{mk(bind, strings.NewReader("one-byte-at-a-time"))} },
+			"big":       func() io.Reader { return mk(bind, bytes.NewReader(big)) },
+			"limit":     func() io.Reader { return io.LimitReader(mk(bind, bytes.NewReader(big)), 70000) },
+			"limit0":    func() io.Reader { return io.LimitReader(mk(bind, strings.NewReader("abc")), 0) },
+			"limitneg":  func() io.Reader { return io.LimitReader(mk(bind, strings.NewReader("abc")), -5) },
+			"multi-nil": func() io.Reader { return io.MultiReader() },
+			"multi": func() io.Reader {
+				return io.MultiReader(strings.NewReader("x"), mk(bind, strings.NewReader("yz")), &nErrReader{chunks: [][]byte{[]byte("w")}, err: errCustom})
+			},
+			"tee":     func() io.Reader { var b bytes.Buffer; return io.TeeReader(mk(bind, strings.NewReader("teedata")), &b) },
+			"bufio16": func() io.Reader { return bufio.NewReaderSize(mk(bind, bytes.NewReader(big)), 1) },
+			"bufio-self": func() io.Reader {
+				b := bufio.NewReaderSize(mk(bind, strings.NewReader("self")), 64)
+				return bufio.NewReaderSize(b, 32)
+			},
 		}
 		for _, name := range []string{"n+err", "n+eof", "onebyte", "big", "limit", "limit0", "limitneg", "multi-nil", "multi", "tee", "bufio16", "bufio-self"} {
 			data, err := io.ReadAll(cases[name]())

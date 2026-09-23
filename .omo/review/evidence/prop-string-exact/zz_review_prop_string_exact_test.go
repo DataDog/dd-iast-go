@@ -37,22 +37,22 @@ func TestReviewReplaceEmptyOldAndOverlappingMatches(t *testing.T) {
 		want        []ranges.Range
 	}{
 		{
-			name: "count zero ignores replacement",
+			name:  "count zero ignores replacement",
 			input: "aaaa", old: "aa", replacement: "XY", n: 0,
 			want: []ranges.Range{{Length: 4, SourceID: 7}},
 		},
 		{
-			name: "negative count uses nonoverlapping matches",
+			name:  "negative count uses nonoverlapping matches",
 			input: "aaaa", old: "aa", replacement: "XY", n: -1,
 			want: []ranges.Range{{Length: 4, SourceID: 8}},
 		},
 		{
-			name: "single match keeps the unmapped suffix",
+			name:  "single match keeps the unmapped suffix",
 			input: "aaaa", old: "aa", replacement: "XY", n: 1,
 			want: []ranges.Range{{Length: 2, SourceID: 8}, {Start: 2, Length: 2, SourceID: 7}},
 		},
 		{
-			name: "empty old inserts around UTF8 rune boundaries",
+			name:  "empty old inserts around UTF8 rune boundaries",
 			input: "éx", old: "", replacement: "XY", n: -1,
 			want: []ranges.Range{
 				{Length: 2, SourceID: 8},

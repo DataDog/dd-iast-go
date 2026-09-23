@@ -12,9 +12,9 @@ import (
 	"github.com/DataDog/dd-iast-go/internal/model/constants"
 	"github.com/DataDog/dd-iast-go/internal/taint/evidence"
 	"github.com/DataDog/dd-iast-go/internal/taint/propagation"
+	"github.com/DataDog/dd-iast-go/internal/taint/ranges"
 	"github.com/DataDog/dd-iast-go/internal/taint/request"
 	"github.com/DataDog/dd-iast-go/taint"
-	"github.com/DataDog/dd-iast-go/internal/taint/ranges"
 )
 
 // sortField is an allowlisting Stringer: fmt prints only a fixed column name.

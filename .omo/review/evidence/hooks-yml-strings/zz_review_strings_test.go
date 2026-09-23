@@ -34,7 +34,9 @@ func TestReviewStringsIteratorFactoryNoOwnerAllocations(t *testing.T) {
 		{"SplitAfterSeq", func() iter.Seq[string] { return strings.SplitAfterSeq(input, ",") }, func() iter.Seq[string] { return propagation.StringsSplitAfterSeq(input, ",") }},
 		{"Lines", func() iter.Seq[string] { return strings.Lines(input) }, func() iter.Seq[string] { return propagation.StringsLines(input) }},
 		{"FieldsSeq", func() iter.Seq[string] { return strings.FieldsSeq(input) }, func() iter.Seq[string] { return propagation.StringsFieldsSeq(input) }},
-		{"FieldsFuncSeq", func() iter.Seq[string] { return strings.FieldsFuncSeq(input, func(r rune) bool { return r == ',' }) }, func() iter.Seq[string] { return propagation.StringsFieldsFuncSeq(input, func(r rune) bool { return r == ',' }) }},
+		{"FieldsFuncSeq", func() iter.Seq[string] { return strings.FieldsFuncSeq(input, func(r rune) bool { return r == ',' }) }, func() iter.Seq[string] {
+			return propagation.StringsFieldsFuncSeq(input, func(r rune) bool { return r == ',' })
+		}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			require.Equal(t, slices.Collect(test.native()), slices.Collect(test.wrap()))

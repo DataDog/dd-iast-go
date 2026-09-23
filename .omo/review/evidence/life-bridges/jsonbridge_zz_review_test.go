@@ -21,7 +21,9 @@ func TestReviewDeferredLiteralKeepsHostPanic(t *testing.T) {
 	reviewActive(t)
 	Register(func(any, []byte) []byte { return nil }, func([]byte, []byte, reflect.Value, error) { panic("callback panic") })
 	state := new(int)
-	if !Bind(nil, state) { t.Fatal("bind") }
+	if !Bind(nil, state) {
+		t.Fatal("bind")
+	}
 	defer Unbind(state)
 	doc := []byte(`"abc"`)
 	got := func() (r any) {
@@ -33,7 +35,9 @@ func TestReviewDeferredLiteralKeepsHostPanic(t *testing.T) {
 		return nil
 	}()
 	t.Logf("host recovered=%v", got)
-	if got != "literalStore panic" { t.Fatalf("host panic swallowed or replaced: %v", got) }
+	if got != "literalStore panic" {
+		t.Fatalf("host panic swallowed or replaced: %v", got)
+	}
 }
 
 func TestReviewNilRegisterIsShielded(t *testing.T) {
@@ -41,7 +45,9 @@ func TestReviewNilRegisterIsShielded(t *testing.T) {
 	Register(nil, nil)
 	t.Logf("registered non-nil holder with nil funcs: %v", registered.Load() != nil)
 	state := new(int)
-	if !Bind(new(int), state) { t.Fatal("bind") }
+	if !Bind(new(int), state) {
+		t.Fatal("bind")
+	}
 	defer Unbind(state)
 	doc := []byte(`{"a":"b"}`)
 	Document(state, doc)

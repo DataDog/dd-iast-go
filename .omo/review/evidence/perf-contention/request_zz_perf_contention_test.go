@@ -41,7 +41,7 @@ func BenchmarkPCAdmissionMax2(b *testing.B)  { pcAdmission(b, 2) }
 
 // Holding admission: each goroutine keeps its analysis for a short "request"
 // body (8 sources + lookups) so admissions overlap with real work.
-func BenchmarkPCBeginRequestFinish(b *testing.B)        { pcBeginRequestFinish(b, 64) }
+func BenchmarkPCBeginRequestFinish(b *testing.B)         { pcBeginRequestFinish(b, 64) }
 func BenchmarkPCBeginRequestFinishDefault2(b *testing.B) { pcBeginRequestFinish(b, 2) }
 
 func pcBeginRequestFinish(b *testing.B, maxConcurrent int) {
@@ -187,4 +187,3 @@ func TestPCConcurrentVisitorSeesClean(t *testing.T) {
 		t.Fatal("expected a miss")
 	}
 }
-

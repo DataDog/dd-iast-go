@@ -33,8 +33,8 @@ func TestReviewNestedBindCreatesDuplicateSlotAndDropsDocument(t *testing.T) {
 	if !Bind(reader, ours) { // our Decode lands on probe 1
 		t.Fatal("bind ours")
 	}
-	Document(ours, data) // d.init: clone mapping stored on our slot
-	Unbind(other)        // the other Decode returns while ours blocks in Read
+	Document(ours, data)  // d.init: clone mapping stored on our slot
+	Unbind(other)         // the other Decode returns while ours blocks in Read
 	if !Bind(nil, ours) { // decodeState.unmarshal nested bind
 		t.Fatal("nested bind")
 	}
