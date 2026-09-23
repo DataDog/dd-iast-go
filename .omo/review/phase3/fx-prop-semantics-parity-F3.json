@@ -1,0 +1,13 @@
+[
+  {
+    "id": "prop-semantics-parity-F3",
+    "verdict": "CONFIRMED",
+    "original_severity": "High",
+    "adjusted_severity": "High",
+    "reachable_default": true,
+    "documented_limitation": true,
+    "reason": "An independently authored Go 1.26.6 woven HTTP-header-to-database/sql reproducer deletes the only tainted interval with strings.Map, obtains SELECT 42, and commits one SQL_INJECTION report attributed to the deleted header. Literal, native Map, and exact ReplaceAll controls remain clean; the uninstrumented program passes. The documented coarse-transform trade-off still violates the brief's no-false-provenance rule when no tainted bytes survive. Default sampled requests reach the same path; sampling=100 only makes reproduction deterministic. Go 1.27.0 was attempted but is blocked before execution by the separately reported encoding/json advice compile failure.",
+    "evidence_path": ".omo/review/evidence/fx-prop-semantics-parity-F3/woven-go1.26.6.out.txt",
+    "repro_command": "cd /tmp/ddiast-review/wt/fx-prop-semantics-parity-F3 && /usr/bin/time -l env GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 DD_IAST_REQUEST_SAMPLING=100 go tool orchestrion go run ./cmd/f3verify"
+  }
+]

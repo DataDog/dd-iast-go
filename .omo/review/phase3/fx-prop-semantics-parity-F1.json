@@ -1,0 +1,13 @@
+[
+  {
+    "id": "prop-semantics-parity-F1",
+    "verdict": "CONFIRMED",
+    "original_severity": "High",
+    "adjusted_severity": "High",
+    "reachable_default": true,
+    "documented_limitation": false,
+    "reason": "A supported woven fmt.Sprintf call emits a tainted Stringer field, but top-level argument inspection ignores the struct; SQL collection returns StatusNone for the resulting tainted query.",
+    "evidence_path": ".omo/review/evidence/fx-prop-semantics-parity-F1/review_f1_test.go",
+    "repro_command": "cd /tmp/ddiast-review/wt/fx-prop-semantics-parity-F1 && /usr/bin/time -l env GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -timeout 8m -count=1 -run '^TestReviewF1_' -v ./iast/propagation"
+  }
+]

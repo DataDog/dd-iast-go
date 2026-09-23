@@ -1,0 +1,68 @@
+[
+  {
+    "id": "sink-e2e-truepos-F1",
+    "severity": "Critical",
+    "category": "redaction",
+    "location": "internal/taint/redaction/sql.go:83-100",
+    "title": "An injected -- hides the application's SQL literals from redaction and ships them in clear",
+    "claim": "sqlSensitiveToken treats only string, number, boolean, and null tokens as sensitive; COMMENT and MULTILINE_COMMENT are clean. With the payload admin' -- the application's trailing literals ('app-secret-literal-7f3a', 42) appear verbatim in meta_struct evidence, while a benign input redacts them. Clean and tainted comment bodies are also never redacted. dd-trace-java redacts LINE_COMMENT and BLOCK_COMMENT.",
+    "evidence_path": ".omo/review/evidence/sink-e2e-truepos/nodedup-output.txt",
+    "repro_command": "cd <copy>/demoapp && GOTOOLCHAIN=go1.26.6 go build -o ../driver ./cmd/driver && GOTOOLCHAIN=go1.26.6 go tool orchestrion go build -o ../demo . && cd .. && ./driver -bin ./demo -mode agent -nodedup",
+    "needs_repro": false
+  },
+  {
+    "id": "sink-e2e-truepos-F2",
+    "severity": "Medium",
+    "category": "false-positive",
+    "location": "internal/taint/propagation/string_coarse.go:115-145",
+    "title": "fmt.Sprintf reports SQLi when the tainted argument contributes no bytes (%T)",
+    "claim": "fmt.Sprintf(\"SELECT id FROM users /* %T */\", userInput) yields a query with no user bytes, yet it is reported as SQL_INJECTION with the whole query attributed to the parameter and the raw source value attached. The coarse format publisher counts every tainted string argument regardless of verb. The verb shape is rare, so the impact is limited.",
+    "evidence_path": ".omo/review/evidence/sink-e2e-truepos/agent-output.txt",
+    "repro_command": "./driver -bin ./demo -mode agent   # case neg-fp-sprintf-type",
+    "needs_repro": false
+  },
+  {
+    "id": "sink-e2e-truepos-F3",
+    "severity": "Medium",
+    "category": "false-positive",
+    "location": "internal/taint/request/reader.go:67-125",
+    "title": "Clean in-place overwrite of an io.ReadAll body still reports SQLi with the body as source",
+    "claim": "After io.ReadAll(r.Body), copy(body, cleanConstant) followed by string(body) is reported as SQL_INJECTION, with the constant fully attributed to http.request.body. The documented copy/append limitation yields a wrong report instead of a safe miss.",
+    "evidence_path": ".omo/review/evidence/sink-e2e-truepos/agent-output.txt",
+    "repro_command": "./driver -bin ./demo -mode agent   # case doc-fp-body-overwrite",
+    "needs_repro": false
+  },
+  {
+    "id": "sink-e2e-truepos-F4",
+    "severity": "Low",
+    "category": "test-gap",
+    "location": "iast/integration/testapp/request_event_test.go:22-50",
+    "title": "The checked-in e2e suite never exercises contrib server spans or the meta_struct wire path",
+    "claim": "The repository harness uses explicit StartSpanFromContext spans and reads only the mocktracer _dd.iast.json fallback. Neither the customer contrib/net/http span binding nor the MessagePack meta_struct/_dd.stack path is covered, although both work in this review's harness.",
+    "evidence_path": ".omo/review/evidence/sink-e2e-truepos/demoapp",
+    "repro_command": null,
+    "needs_repro": false
+  },
+  {
+    "id": "sink-e2e-truepos-F5",
+    "severity": "Info",
+    "category": "provenance",
+    "location": "internal/taint/propagation/string_coarse.go:90-145",
+    "title": "fmt-built queries yield evidence that marks the whole template as user input",
+    "claim": "The documented coarse fmt behavior makes the most common Go SQL idiom produce whole-query tainted evidence. When the input lands in a literal, the evidence is fully masked (48 asterisks). Taint also survives %x into hex literals.",
+    "evidence_path": ".omo/review/evidence/sink-e2e-truepos/agent-output.txt",
+    "repro_command": null,
+    "needs_repro": false
+  },
+  {
+    "id": "sink-e2e-truepos-F6",
+    "severity": "Info",
+    "category": "perf",
+    "location": "internal/taint/store/owner.go:20-24",
+    "title": "6 of 32 overlapping requests were not analyzed despite a limit of 64",
+    "claim": "Under a 32-request barrier burst with max concurrency 64 and 100% sampling, 19% of requests got _dd.iast.enabled=0, consistent with ownerMu.TryLock admission drops. There was no false or foreign attribution. This corroborates the existing admission-contention findings.",
+    "evidence_path": ".omo/review/evidence/sink-e2e-truepos/conc-output.txt",
+    "repro_command": "./driver -bin ./demo -mode agent -phase conc",
+    "needs_repro": false
+  }
+]

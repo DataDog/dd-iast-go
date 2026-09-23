@@ -1,0 +1,10 @@
+Independent reproducer: minimal/main.go (does not import encoding/json).
+Command: cd /tmp/ddiast-review/wt/fx-base-test-127-F1 && GOTOOLCHAIN=local GOFLAGS=-p=4 /usr/bin/time -l timeout 180 go tool orchestrion go build -o /dev/null ./repro
+go version go1.27.0 darwin/arm64; default encoding/json GoFiles include v2_stream.go.
+Exit status: 1 (captured by bash_4 completion).
+# github.com/DataDog/dd-iast-go/repro
+resolving woven dependency on github.com/DataDog/dd-iast-go/iast/database/sql: internal error: nats: maximum payload exceeded
+exit status 1
+       92.10 real       158.16 user        43.90 sys
+         24120426496  maximum resident set size
+                   0  swaps

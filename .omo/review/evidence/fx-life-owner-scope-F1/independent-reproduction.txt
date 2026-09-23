@@ -1,0 +1,37 @@
+Independent reproducer:
+.omo/review/evidence/fx-life-owner-scope-F1/independent-default-reproducer_test.go
+
+The test uses request.BeginContext, which is called by the Orchestrion direct/custom
+application-handler fallback, and request.EagerHTTP, which is the actual eager
+HTTP source hook. The stale-context attempt uses enabled=true, sampling=30, and
+maxConcurrent=2, matching the documented defaults. A fresh active control
+acquires after the previous scope finishes and taints /fresh-control.
+
+Go toolchain checks:
+GOTOOLCHAIN=go1.26.6 go version
+go version go1.26.6 darwin/arm64
+GOTOOLCHAIN=go1.27.0 go version
+go version go1.27.0 darwin/arm64
+gofmt -d on both private reproducer files produced no output.
+
+Command (Go 1.26.6):
+cd /tmp/ddiast-review/wt/fx-life-owner-scope-F1 && GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 go test -race -run '^TestReviewEagerHTTPReacquiresSourceForFinishedContext$' -count=1 -timeout 2m ./internal/taint/request
+
+Captured output:
+--- FAIL: TestReviewEagerHTTPReacquiresSourceForFinishedContext (0.00s)
+    scope_stale_context_review_test.go:48: later request source missing: created=false active=false uri_tainted=false sampling=30 max_concurrent=2 previous_decision=1
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/request	0.607s
+FAIL
+Exit status: 1.
+
+Command (Go 1.27.0):
+cd /tmp/ddiast-review/wt/fx-life-owner-scope-F1 && GOFLAGS=-p=4 GOTOOLCHAIN=go1.27.0 go test -race -run '^TestReviewEagerHTTPReacquiresSourceForFinishedContext$' -count=1 -timeout 2m ./internal/taint/request
+
+Captured output:
+--- FAIL: TestReviewEagerHTTPReacquiresSourceForFinishedContext (0.01s)
+    scope_stale_context_review_test.go:48: later request source missing: created=false active=false uri_tainted=false sampling=30 max_concurrent=2 previous_decision=1
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/request	0.882s
+FAIL
+Exit status: 1.

@@ -1,0 +1,10 @@
+Command (run in /tmp/ddiast-review/wt/life-lazy-reader):
+GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -race -timeout 10m -count=1 -run "TestReview(RepeatedMultipartParseDoesNotWriteForm|MultiReaderDoesNotTaintCleanPrefix)$" -v ./iast/net/http ./iast/io
+
+Captured output (exit status 1; unedited lines):
+=== RUN   TestReviewMultiReaderDoesNotTaintCleanPrefix
+    zz_life_lazy_reader_provenance_test.go:31: range [0,16) origin=http.request.body source="trusted-attacker"
+    zz_life_lazy_reader_provenance_test.go:33: trusted prefix attributed to request body: [0,16)
+--- FAIL: TestReviewMultiReaderDoesNotTaintCleanPrefix (0.00s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/iast/io	1.223s

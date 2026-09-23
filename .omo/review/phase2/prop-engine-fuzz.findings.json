@@ -1,0 +1,46 @@
+[
+  {
+    "id": "prop-engine-fuzz-F1",
+    "severity": "Low",
+    "category": "perf",
+    "location": "internal/taint/propagation/string_exact.go:24-47,50-111",
+    "title": "JoinString clones a single-element join that already aliases a tracked value, doubling the root charge",
+    "claim": "strings.Join of one element with a non-empty separator returns the element itself; JoinString's alias fast path only handles separator==\"\", so joinStringHit clones and adopts a second root with identical ranges, spending up to 64 KiB of extra allocation and root charge per call.",
+    "evidence_path": ".omo/review/evidence/prop-engine-fuzz/join_single.out.txt",
+    "repro_command": "go test -run '^TestReviewJoinSingleElementClones$' -v ./internal/taint/propagation (with evidence/prop-engine-fuzz/zz_review_join_single_test.go copied in)",
+    "needs_repro": false
+  },
+  {
+    "id": "prop-engine-fuzz-F2",
+    "severity": "Low",
+    "category": "test-gap",
+    "location": "internal/taint/propagation/sequence_operations_test.go:16-33",
+    "title": "Repository fuzzing covers only a narrow slice of the exact/coarse transition space",
+    "claim": "FuzzEngineSequence covers 6 operation kinds with 2-element joins and 1-byte replace (32 or fewer matches); the >16-element join, >32-match replace, empty-old, ValidUTF8, Case/Coarse and multi-window paths are fuzzed only by the review harness, not in the repository.",
+    "evidence_path": ".omo/review/evidence/prop-engine-fuzz/zz_review_exact_ops_fuzz_test.go",
+    "repro_command": "go test -run '^$' -fuzz '^FuzzExactStringOps$' -fuzztime 12m -parallel 2 ./internal/taint/propagation",
+    "needs_repro": false
+  },
+  {
+    "id": "prop-engine-fuzz-F3",
+    "severity": "Info",
+    "category": "provenance",
+    "location": "internal/taint/propagation/string_exact.go:52-55,269-277",
+    "title": "The >16-element join gate inspects 16 elements, but the coarse fallback reads only 15",
+    "claim": "For joins with more than 16 elements, the MayContain gate covers elements[0..15] but the coarse fallback reads elements[0..14] plus the separator; taint only in element 15 wastes a slow path and yields no provenance, within the documented bounded-prefix trade-off.",
+    "evidence_path": null,
+    "repro_command": null,
+    "needs_repro": false
+  },
+  {
+    "id": "prop-engine-fuzz-F4",
+    "severity": "Info",
+    "category": "perf",
+    "location": "internal/taint/propagation/propagation.go:546-575",
+    "title": "RepeatBytes looks up the store before its cheap bounds check",
+    "claim": "RepeatBytes performs MayContain and Lookup (a snapshot copy) before checking withinByteBounds, so results that can never be adopted still pay the lookup.",
+    "evidence_path": null,
+    "repro_command": null,
+    "needs_repro": false
+  }
+]

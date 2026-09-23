@@ -1,0 +1,16 @@
+=== RUN   TestOwnerSpanBindingLifecycle
+--- PASS: TestOwnerSpanBindingLifecycle (0.02s)
+=== RUN   TestOwnerSpanBindingRejectsClosedAnnotation
+--- PASS: TestOwnerSpanBindingRejectsClosedAnnotation (0.01s)
+=== RUN   TestOwnerSpanConcurrentBindAndFinish
+--- PASS: TestOwnerSpanConcurrentBindAndFinish (0.08s)
+=== RUN   TestReviewGCLifecycleNoLossNoRetention
+    review_gc_internal_test.go:170: admissionDrops=132 iterations=1068 emitted=1068 failures=0 aliveSpans=0 aliveAnnotations=0 storeSize=0 processSourceBytes=0
+--- PASS: TestReviewGCLifecycleNoLossNoRetention (5.47s)
+=== RUN   TestReviewContextOnlyReachability
+--- PASS: TestReviewContextOnlyReachability (0.01s)
+=== RUN   TestReviewAbandonedSpanReclaimed
+    review_gc_internal_test.go:242: charge before trim=25 after=0 storeSize=0
+--- PASS: TestReviewAbandonedSpanReclaimed (0.01s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/spans	7.458s

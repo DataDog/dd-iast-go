@@ -1,0 +1,25 @@
+Rerun of .omo/review/evidence/crash-panic-static/initorder-repro (unmodified) in this node's private copy.
+EXIT=2
+--- stdout ---
+
+--- stderr ---
+panic: interface conversion: interface {} is nil, not *tracer.Tracer
+
+goroutine 1 [running]:
+github.com/DataDog/dd-trace-go/v2/ddtrace/internal.GetGlobalTracer[...](...)
+	/Users/eliott.bouhana/go/pkg/mod/github.com/!data!dog/dd-trace-go/v2@v2.11.0-rc.1/ddtrace/internal/globaltracer.go:43
+github.com/DataDog/dd-trace-go/v2/ddtrace/tracer.getGlobalTracer(...)
+	/Users/eliott.bouhana/go/pkg/mod/github.com/!data!dog/dd-trace-go/v2@v2.11.0-rc.1/ddtrace/tracer/globaltracer.go:22
+github.com/DataDog/dd-trace-go/v2/ddtrace/tracer.StartSpan({0x105337c47?, 0x1059b84a0?}, {0x2fb30559aa40?, 0x1052e5184?, 0x2fb3055bdbf8?})
+	/Users/eliott.bouhana/go/pkg/mod/github.com/!data!dog/dd-trace-go/v2@v2.11.0-rc.1/ddtrace/tracer/tracer.go:468 +0xb8
+github.com/DataDog/dd-iast-go/internal/spans.NewOrphanVulnerabilitySpan()
+	/private/tmp/ddiast-review/wt/fx-crash-panic-static-F1/internal/spans/vulnerability.go:18 +0xf0
+github.com/DataDog/dd-iast-go/internal/vulnerability.Report({0x0?, 0x0?}, 0x20, {0x105331f4c, 0x3}, 0x105bfb118, {{0x105332f1a, 0x6}, {0x10537d2f8, 0x0}, ...})
+	/private/tmp/ddiast-review/wt/fx-crash-panic-static-F1/internal/vulnerability/report.go:47 +0xa0
+github.com/DataDog/dd-iast-go/iast/crypto/hash.ReportWeakHash({0x0, 0x0}, 0x2fb3055bddc8?)
+	/private/tmp/ddiast-review/wt/fx-crash-panic-static-F1/iast/crypto/hash/hash.go:19 +0x78
+crypto/md5.Sum({0x2fb3055bde04, 0x4, 0x4})
+	<generated>:2 +0x3c
+github.com/zzz/initorder/hasher.init()
+	/private/tmp/ddiast-review/wt/fx-crash-panic-static-F1/_repro/initorder/hasher/hasher.go:13 +0x68
+

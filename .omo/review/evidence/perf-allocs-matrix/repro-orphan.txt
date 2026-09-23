@@ -1,0 +1,10 @@
+=== RUN   TestReproOrphanSpanWhenSampledOut
+    zz_repro_quota_test.go:66: DD_IAST_REQUEST_SAMPLING=0: 100 md5.Sum calls emitted 100 spans, 0 carrying an IAST payload
+--- PASS: TestReproOrphanSpanWhenSampledOut (0.01s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/benchmarks/overhead	0.810s
+=== RUN   TestReproOrphanSpanWhenSampledOut
+    zz_repro_quota_test.go:66: DD_IAST_REQUEST_SAMPLING=100: 100 md5.Sum calls emitted 100 spans, 100 carrying an IAST payload
+--- PASS: TestReproOrphanSpanWhenSampledOut (0.03s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/benchmarks/overhead	0.896s

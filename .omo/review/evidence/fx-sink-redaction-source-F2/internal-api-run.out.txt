@@ -1,0 +1,11 @@
+Command:
+cd /tmp/ddiast-review/wt/fx-sink-redaction-source-F2 && env -u DD_IAST_REDACTION_ENABLED -u DD_IAST_REDACTION_NAME_PATTERN -u DD_IAST_REDACTION_VALUE_PATTERN -u DD_IAST_REDACTION_KEYS_REGEXP -u DD_IAST_REDACTION_VALUES_REGEXP GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 go test ./internal/taint/redaction -run TestFxSensitiveSourceNameSerializedUnredacted -count=1 -timeout 15m -v
+
+Output:
+=== RUN   TestFxSensitiveSourceNameSerializedUnredacted
+    fx_name_leak_test.go:81: LEAK (MessagePack meta-struct path): credential-shaped source name serialized unredacted: "\x82\xa7sources\x91\x84\xa6origin\xb6http.request.parameter\xa4name\xb3token:abcdefghijklm\xa7pattern\xa8abcdefgh\xa8redacted\xefvulnerabilities\x91\x83\xa4type\xadSQL_INJECTION\xa4hash\x00\xa8evidence\x81\xaavalueParts\x91\x83\xa7pattern\xa8abcdefgh\xa8redacted\xc3\xa6source\x00"
+--- FAIL: TestFxSensitiveSourceNameSerializedUnredacted (0.01s)
+FAIL
+FAIL\tgithub.com/DataDog/dd-iast-go/internal/taint/redaction\t0.923s
+FAIL
+(exit status 1; note: the raw MessagePack bytes above contain the literal name token:abcdefghijklm at the \\xa4name\\xb3 marker)

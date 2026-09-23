@@ -1,0 +1,12 @@
+Command:
+cd /tmp/ddiast-review/wt/fx-life-lazy-reader-F2 && GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 /usr/bin/time -l go tool orchestrion go test -race -timeout 10m -count=1 -run '^TestReviewFXMixedMultiReaderAttributesTrustedPrefixToRequestBody$' -v ./iast/net/http
+
+Captured output (exit status 0):
+=== RUN   TestReviewFXMixedMultiReaderAttributesTrustedPrefixToRequestBody
+    fx_life_lazy_reader_f2_test.go:62: OBSERVED false provenance: range=[0,16) origin=http.request.body source="trusted-attacker" trustedPrefix="trusted-"
+--- PASS: TestReviewFXMixedMultiReaderAttributesTrustedPrefixToRequestBody (0.01s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/iast/net/http	1.844s
+      131.07 real       143.84 user       112.86 sys
+           409403392  maximum resident set size
+            42648296  peak memory footprint

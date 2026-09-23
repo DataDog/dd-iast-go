@@ -1,0 +1,46 @@
+[
+  {
+    "id": "life-public-api-F1",
+    "severity": "Low",
+    "category": "quality",
+    "location": "taint/taint.go:142,163,182",
+    "title": "~[]byte generic functions cannot accept a bare nil literal",
+    "claim": "TaintBytes, IsTaintedBytes, and VisitBytes are generic over T ~[]byte; Go cannot infer T from an untyped nil literal alone, so taint.IsTaintedBytes(nil) (and the equivalent VisitBytes/TaintBytes calls) fails to compile with 'cannot infer T', even though a typed nil ([]byte(nil) or a nil []byte variable) works correctly.",
+    "evidence_path": ".omo/review/evidence/life-public-api/nil-inference-error.txt",
+    "repro_command": "cd /tmp/ddiast-review/wt/life-public-api && GOTOOLCHAIN=go1.26.6 go build -o /tmp/nilinfer.bin ./nilinfer/...",
+    "needs_repro": false
+  },
+  {
+    "id": "life-public-api-F2",
+    "severity": "Low",
+    "category": "doc",
+    "location": "taint/taint.go:126-151",
+    "title": "Undocumented drop condition: invalid Origin values are silently rejected",
+    "claim": "TaintString/TaintBytes doc comments list the drop conditions but omit that an invalid/unnamed Origin value (zero or above OriginCount) is also silently rejected via internal/taint/request/table.go's validOrigin, even though Source.Origin is a plain exported field an external caller can set to any uint8.",
+    "evidence_path": ".omo/review/evidence/life-public-api/review-public-api-test.out.txt",
+    "repro_command": "cd /tmp/ddiast-review/wt/life-public-api && GOTOOLCHAIN=go1.26.6 go test -race -run TestReviewPublicAPIInvalidOriginDropsSilently -v ./taint/...",
+    "needs_repro": false
+  },
+  {
+    "id": "life-public-api-F3",
+    "severity": "Low",
+    "category": "doc",
+    "location": "taint/taint.go:20-21,44-45",
+    "title": "go doc on the public package hides Origin/VulnerabilityType methods",
+    "claim": "Origin and VulnerabilityType are type aliases to internal/model/constants types; go doc resolves methods by declaring package, so go doc -all ./taint shows no String()/JSON methods for these aliases even though they exist and work, leaving external readers of the taint package's own docs unable to discover them.",
+    "evidence_path": ".omo/review/evidence/life-public-api/godoc-taint.txt",
+    "repro_command": "cd /tmp/ddiast-review/wt/life-public-api && GOTOOLCHAIN=go1.26.6 go doc -all ./taint",
+    "needs_repro": false
+  },
+  {
+    "id": "life-public-api-F4",
+    "severity": "Info",
+    "category": "test-gap",
+    "location": "taint/taint.go; orchestrion.tool.go:18",
+    "title": "Public API has no production caller; only its own unit tests exercise it",
+    "claim": "All current sources/sinks call internal/taint/request's Analysis/IsTainted*/Visit* directly, not taint.TaintString/TaintBytes/IsTainted*/Visit*. A repo-wide search for the import path finds only taint/taint_test.go and the never-invoked tooling import in orchestrion.tool.go, so this public surface's correctness is validated only by its own test file.",
+    "evidence_path": null,
+    "repro_command": null,
+    "needs_repro": false
+  }
+]

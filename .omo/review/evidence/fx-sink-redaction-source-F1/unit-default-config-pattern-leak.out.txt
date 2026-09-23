@@ -1,0 +1,16 @@
+Independent phase-3 reproducer (internal API, real default configuration loaded by package init).
+
+Command:
+cd /tmp/ddiast-review/wt/fx-sink-redaction-source-F1 && env -u DD_IAST_REDACTION_ENABLED -u DD_IAST_REDACTION_NAME_PATTERN -u DD_IAST_REDACTION_VALUE_PATTERN -u DD_IAST_REDACTION_KEYS_REGEXP -u DD_IAST_REDACTION_VALUES_REGEXP GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 go test ./internal/taint/redaction -run TestFXPatternMustNotReproduceSecret -count=1 -v -timeout 15m
+
+Output:
+=== RUN   TestFXPatternMustNotReproduceSecret
+    fx_repro_test.go:30: LEAK model.Source.Pattern == secret: model.Source{Origin:0x1, Name:"password", Value:"", Pattern:"abc", Redacted:true, Truncated:0x0}
+    fx_repro_test.go:34: LEAK evidence ValuePart.Pattern == secret: model.ValuePart{Value:"", Pattern:"abc", Redacted:true, Truncated:0x0, SourceIndex:(*int)(0x3f0022ece048), SecureMarks:[]constants.VulnerabilityType(nil)}
+    fx_repro_test.go:48: LEAK serialized event contains the raw secret: {"sources":[{"origin":"http.request.parameter","name":"password","pattern":"abc","redacted":true}],"vulnerabilities":[{"type":"SQL_INJECTION","hash":0,"evidence":{"valueParts":[{"pattern":"abc","redacted":true,"source":0}]}}]}
+--- FAIL: TestFXPatternMustNotReproduceSecret (0.01s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/redaction	0.788s
+FAIL
+
+--- stderr ---

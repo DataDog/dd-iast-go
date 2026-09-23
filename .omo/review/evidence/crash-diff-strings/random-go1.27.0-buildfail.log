@@ -1,0 +1,26 @@
+# encoding/json
+$WORK/b104/orchestrion/src/encoding/json/<generated>:2: dec.r undefined (type *Decoder has no field or method r)
+$WORK/b104/orchestrion/src/encoding/json/<generated>:2: dec.d undefined (type *Decoder has no field or method d)
+$WORK/b104/orchestrion/src/encoding/json/<generated>:3: dec.d undefined (type *Decoder has no field or method d)
+exit status 2
+FAIL	github.com/DataDog/dd-iast-go/iast/internal/crashdiff [build failed]
+FAIL
+exit status 1
+       15.34 real        36.65 user        21.98 sys
+           291897344  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+             2491438  page reclaims
+               89430  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                3237  messages sent
+                3554  messages received
+               29829  signals received
+               19427  voluntary context switches
+              501630  involuntary context switches
+          5159340606  instructions retired
+          3915873795  cycles elapsed
+            51364392  peak memory footprint

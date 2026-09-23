@@ -1,0 +1,22 @@
+$ cd /tmp/ddiast-review/wt/fx-hooks-yml-operators-F3 && export GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 && go version && /usr/bin/time -l timeout 1400 go tool orchestrion go build -o /dev/null ./fx3/cmd/control 2>&1
+go version go1.26.6 darwin/arm64
+      118.85 real        63.79 user        43.19 sys
+           429309952  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+             5189009  page reclaims
+              171636  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                9138  messages sent
+               10025  messages received
+               58888  signals received
+               32142  voluntary context switches
+             1078764  involuntary context switches
+            19659212  instructions retired
+            10566738  cycles elapsed
+             1212728  peak memory footprint
+
+[exit 0]

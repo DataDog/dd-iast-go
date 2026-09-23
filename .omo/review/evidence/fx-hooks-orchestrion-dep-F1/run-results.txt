@@ -1,0 +1,165 @@
+Env: darwin/arm64, HEAD 2e23b46, private copy /tmp/ddiast-review/wt/fx-hooks-orchestrion-dep-F1, GOFLAGS=-p=4.
+Place unevaluated_test.go in fxunevaluated/, constctx*.go in fxconstctx/ at module root.
+
+== A. plain: GOTOOLCHAIN=go1.26.6 go test -timeout 4m -count=1 -v ./fxunevaluated ./fxconstctx
+=== RUN   TestLenArrayLiteralStringSlice
+--- PASS: TestLenArrayLiteralStringSlice (0.00s)
+=== RUN   TestCapArrayLiteralByteSlice
+--- PASS: TestCapArrayLiteralByteSlice (0.00s)
+=== RUN   TestLenArrayPointerConversion
+--- PASS: TestLenArrayPointerConversion (0.00s)
+=== RUN   TestRangeArrayNotEvaluated
+--- PASS: TestRangeArrayNotEvaluated (0.00s)
+=== RUN   TestSizeofControl
+--- PASS: TestSizeofControl (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/fxunevaluated	0.395s
+=== RUN   TestConstCtx
+--- PASS: TestConstCtx (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/fxconstctx	0.589s
+
+== B. woven: GOTOOLCHAIN=go1.26.6 /usr/bin/time -l go tool orchestrion go test -timeout 10m -count=1 -v ./fxunevaluated
+exit=1
+=== RUN   TestLenArrayLiteralStringSlice
+    unevaluated_test.go:12: PANIC (native Go would not evaluate operand): runtime error: slice bounds out of range [99:3]
+--- FAIL: TestLenArrayLiteralStringSlice (0.00s)
+=== RUN   TestCapArrayLiteralByteSlice
+    unevaluated_test.go:12: PANIC (native Go would not evaluate operand): runtime error: slice bounds out of range [5:2]
+--- FAIL: TestCapArrayLiteralByteSlice (0.00s)
+=== RUN   TestLenArrayPointerConversion
+    unevaluated_test.go:12: PANIC (native Go would not evaluate operand): runtime error: cannot convert slice with length 1 to array or pointer to array with length 4
+--- FAIL: TestLenArrayPointerConversion (0.00s)
+=== RUN   TestRangeArrayNotEvaluated
+    unevaluated_test.go:12: PANIC (native Go would not evaluate operand): runtime error: slice bounds out of range [99:3]
+--- FAIL: TestRangeArrayNotEvaluated (0.00s)
+=== RUN   TestSizeofControl
+--- PASS: TestSizeofControl (0.00s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/fxunevaluated	0.438s
+FAIL
+exit status 1
+       27.19 real        39.71 user        46.71 sys
+           310870016  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+             2415164  page reclaims
+               86746  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                3646  messages sent
+                3976  messages received
+               31161  signals received
+               15675  voluntary context switches
+              574986  involuntary context switches
+          4643573660  instructions retired
+          2912199397  cycles elapsed
+            93717248  peak memory footprint
+
+== C. woven: GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -timeout 10m -count=1 -v ./fxconstctx
+exit=1
+# github.com/DataDog/dd-iast-go/fxconstctx [github.com/DataDog/dd-iast-go/fxconstctx.test]
+fxconstctx/constctx.go:7: len([1]string{…}) (value of type int) is not constant
+fxconstctx/constctx.go:12: len([1]string{…}) (value of type int) is not constant
+fxconstctx/constctx.go:17: array length len([1][]byte{…}) (value of type int) must be constant
+exit status 2
+FAIL	github.com/DataDog/dd-iast-go/fxconstctx [build failed]
+FAIL
+exit status 1
+
+== D. finder repro (copied from evidence/hooks-orchestrion-dep): GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -timeout 4m -count=1 -run '^TestArrayLengthLeavesSliceUnevaluated$' -v ./review_operator_arraylength
+exit=1
+=== RUN   TestArrayLengthLeavesSliceUnevaluated
+--- FAIL: TestArrayLengthLeavesSliceUnevaluated (0.00s)
+panic: runtime error: slice bounds out of range [99:3] [recovered, repanicked]
+
+goroutine 5 [running]:
+testing.tRunner.func1.2({0x100ba6780, 0x73cef23ae300})
+	/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/testing/testing.go:1974 +0x1a0
+testing.tRunner.func1()
+	/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/testing/testing.go:1977 +0x318
+panic({0x100ba6780?, 0x73cef23ae300?})
+	/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/panic.go:860 +0x12c
+github.com/DataDog/dd-iast-go/iast/propagation.StringSliceLow[...]({0x100a16ca4?, 0x73cef2430f58?}, 0x1009a15f8?)
+	/tmp/ddiast-review/wt/fx-hooks-orchestrion-dep-F1/iast/propagation/operators.go:218 +0x8c
+github.com/DataDog/dd-iast-go/review_operator_arraylength.TestArrayLengthLeavesSliceUnevaluated(0x73cef2510488?)
+	<generated>:1 +0x34
+testing.tRunner(0x73cef2510488, 0x100bb9a98)
+	/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+FAIL	github.com/DataDog/dd-iast-go/review_operator_arraylength	0.449s
+FAIL
+exit status 1
+
+== E. woven under GOTOOLCHAIN=go1.27.0 (all three packages): blocked by an unrelated encoding/json weaving failure
+exit=1
+go version go1.27.0 darwin/arm64
+# encoding/json
+$WORK/b104/orchestrion/src/encoding/json/<generated>:2: dec.r undefined (type *Decoder has no field or method r)
+$WORK/b104/orchestrion/src/encoding/json/<generated>:2: dec.d undefined (type *Decoder has no field or method d)
+$WORK/b104/orchestrion/src/encoding/json/<generated>:3: dec.d undefined (type *Decoder has no field or method d)
+exit status 2
+# github.com/DataDog/dd-iast-go/review_operator_arraylength [github.com/DataDog/dd-iast-go/review_operator_arraylength.test]
+resolving woven dependency on github.com/DataDog/dd-iast-go/iast/propagation: -: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice reques
+...(repeated 'sending never-build-twice request' lines elided)...
+d-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+FAIL	github.com/DataDog/dd-iast-go/fxconstctx [build failed]
+FAIL
+exit status 1
+       16.71 real        33.17 user        20.31 sys
+           292962304  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+             2408630  page reclaims
+               82513  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                3319  messages sent
+                3643  messages received
+               29496  signals received
+               18178  voluntary context switches
+              501168  involuntary context switches
+          5311922165  instructions retired
+          3446395061  cycles elapsed
+            51561048  peak memory footprint
+

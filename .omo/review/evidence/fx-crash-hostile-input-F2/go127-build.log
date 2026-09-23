@@ -1,0 +1,15 @@
+# Go 1.27.0 compatibility check from the same private worktree
+#
+# Command:
+# /usr/bin/time -l env GOTOOLCHAIN=go1.27.0 GOFLAGS=-p=4 \
+#   go tool orchestrion go build -o quota-woven-go127 ./cmd/quota-repro
+#
+# Result: exit 1
+
+# encoding/json
+$WORK/b108/orchestrion/src/encoding/json/<generated>:2: dec.r undefined (type *Decoder has no field or method r)
+$WORK/b108/orchestrion/src/encoding/json/<generated>:2: dec.d undefined (type *Decoder has no field or method d)
+$WORK/b108/orchestrion/src/encoding/json/<generated>:3: dec.d undefined (type *Decoder has no field or method d)
+exit status 2
+
+# The target Go 1.26.6 woven build and runtime reproduction above succeeded.

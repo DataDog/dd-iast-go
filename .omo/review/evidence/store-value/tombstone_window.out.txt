@@ -1,0 +1,13 @@
+$ GOTOOLCHAIN=go1.26.6 go test -count=1 -run TestReviewTombstoned -v ./internal/taint/store/
+=== RUN   TestReviewTombstonedProbeWindowDropsWithFreeCapacity
+    zz_review_tombstone_test.go:45: owner A derived 64/64 start-0 windows in shard 0
+    zz_review_tombstone_test.go:46: owner A 65th start-0 window accepted=false (expected false: window genuinely full of live slots)
+    zz_review_tombstone_test.go:48: after A.Finish: ProcessValues=0
+    zz_review_tombstone_test.go:63: owner B start-0 derives=[false false false] fullDrops=3 tombstones=64 maxTombstones=64 processValues=1
+    zz_review_tombstone_test.go:69: unrelated start-100 derive=true compactions=1
+    zz_review_tombstone_test.go:70: retry start-0 derive after compaction=true
+    zz_review_tombstone_test.go:75: BUG: window insert dropped as full although every slot in its probe window is a tombstone
+--- FAIL: TestReviewTombstonedProbeWindowDropsWithFreeCapacity (0.00s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/store	0.232s
+FAIL

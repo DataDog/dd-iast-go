@@ -1,0 +1,57 @@
+[
+  {
+    "id": "perf-memory-F1",
+    "severity": "High",
+    "category": "perf",
+    "location": "internal/vulnerability/tainted.go:57,76,90-100; iast/database/sql/sql.go:37-45",
+    "title": "Deduplicated SQLi findings still pay full evidence, redaction and stack capture (~18 KB per sampled tainted request)",
+    "claim": "With default dedup on, every sampled request hitting an already-reported SQLi location runs CollectString, AnalyzeSQL, BuildWithSensitive and a full CaptureLocationSkipWhile stack capture before the only dedup test in commitTainted (set.Check, tainted.go:93), although the SQLi hash only needs type+location. Measured 17.9 KB of the +25.4 KB sampled overhead per request (typical: 33,570 B vs 8,209 B plain, 4.09x) is discarded report work. Distinct trigger from crash-hostile-input-F2 (quota).",
+    "evidence_path": ".omo/review/evidence/perf-memory/prof/s100-typical-report-focus.txt",
+    "repro_command": "env DD_IAST_REQUEST_SAMPLING=100 ./memprobe-woven -scenario=typical -n=300 -warm=20 -memprofile=prof/s100-typical.pprof && go tool pprof -top -cum -focus='iast/database/sql.Report' -sample_index=alloc_space memprobe-woven prof/s100-typical.pprof (harness: evidence/perf-memory/README.txt)",
+    "needs_repro": false
+  },
+  {
+    "id": "perf-memory-F2",
+    "severity": "Medium",
+    "category": "perf",
+    "location": "internal/spans/annotation.go:37-55,199-205",
+    "title": "Every sampled-out request with a span allocates a 3,456-byte Annotation",
+    "claim": "BindScope's LoadOrCompute allocates &Annotation{Sampled:false} for sampled-out scopes; Annotation embeds [512]uint16 and [256]int arrays (3,456-byte size class). The existing nonSampledAnnotation sentinel is not used. Sampled-out requests cost +3.8 KB (+46% over plain typical) vs +0.18 KB for weaving alone, on ~70% of requests at default sampling.",
+    "evidence_path": ".omo/review/evidence/perf-memory/prof/s0-clean-bindscope-peek.txt",
+    "repro_command": "env DD_IAST_REQUEST_SAMPLING=0 ./memprobe-woven -scenario=clean -n=300 -warm=20 -memprofile=prof/s0-clean.pprof && go tool pprof -peek 'spans.BindScope.func1' -sample_index=alloc_space memprobe-woven prof/s0-clean.pprof",
+    "needs_repro": false
+  },
+  {
+    "id": "perf-memory-F3",
+    "severity": "Medium",
+    "category": "perf",
+    "location": "internal/taint/propagation/propagation.go:262-297",
+    "title": "Tainted strings.Repeat always clones its result, even after the owner's byte budget is exhausted",
+    "claim": "repeatStringHit clones every tainted Repeat result (up to 64 KiB) before attempting AdoptString; the clone is only needed for short results that may alias stdlib static backing. After the 2 MiB request root budget is full the root is rejected but the clone is still made. Saturated worst case: 4.92 MB/request of clones (400 x 12,288 B) with 244 byte-drops, 63% of the +7.8 MB overhead.",
+    "evidence_path": ".omo/review/evidence/perf-memory/prof/sat-worst-clone-peek.txt",
+    "repro_command": "env DD_IAST_REQUEST_SAMPLING=100 DD_IAST_DEDUPLICATION_ENABLED=false DD_IAST_MAX_RANGE_COUNT=64 DD_IAST_VULNERABILITIES_PER_REQUEST=64 ./memprobe-woven -scenario=worst -n=20 -warm=5 -memprofile=prof/sat-worst.pprof && go tool pprof -peek '^strings.Clone$' -sample_index=alloc_space memprobe-woven prof/sat-worst.pprof",
+    "needs_repro": false
+  },
+  {
+    "id": "perf-memory-F4",
+    "severity": "Medium",
+    "category": "false-negative",
+    "location": "internal/taint/request/lazy.go:163-173; internal/taint/request/http.go:97-106",
+    "title": "Requests with more than 48 query names or 32 header names get no query or header taint at all",
+    "claim": "manageMap and taintHeaders return the original map untouched when a cap is exceeded, so the caps are all-or-nothing. Adding 39 filler parameters to a request whose 10 parameters reach SQL removes all query taint and the SQLi report; undocumented in README.",
+    "evidence_path": ".omo/review/evidence/perf-memory/results.jsonl",
+    "repro_command": "env DD_IAST_REQUEST_SAMPLING=100 DD_IAST_DEDUPLICATION_ENABLED=false ./memprobe-woven -scenario=typical49 -n=10 -warm=1  (tainted_query=false, owner_sources=3; scenario=typical gives tainted_query=true)",
+    "needs_repro": false
+  },
+  {
+    "id": "perf-memory-F5",
+    "severity": "Info",
+    "category": "memory-bound",
+    "location": "internal/taint/store/store.go:201-208; internal/taint/request/scope.go:47-59",
+    "title": "Fixed and in-request footprint match the documented envelope",
+    "claim": "First sampled request allocates a one-time 14.25 MB (store.New 13.08 MB + NewManager 0.84 MB); saturated worst-case live heap inside the request is +2.48 MB (2 MiB root charge + event); all state returns to zero after Finish with no measurable retention versus the plain build.",
+    "evidence_path": ".omo/review/evidence/perf-memory/summary.txt",
+    "repro_command": "evidence/perf-memory/run-matrix.sh",
+    "needs_repro": false
+  }
+]

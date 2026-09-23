@@ -1,0 +1,68 @@
+[
+  {
+    "id": "hooks-yml-fmt-strconv-url-F1",
+    "severity": "High",
+    "category": "false-positive",
+    "location": "internal/taint/propagation/string_coarse.go:206-221",
+    "title": "fmt wrappers taint output produced by a Stringer/Formatter/error method that discards the tainted value",
+    "claim": "formatArgumentKey keys arguments by reflect Kind (String / []uint8) and ignores that fmt prints named types through Format/String/Error/GoString. An allowlist type whose String() returns constants yields a fully tainted SQL query built only from constants (false-positive SQLi).",
+    "evidence_path": ".omo/review/evidence/hooks-yml-fmt-strconv-url/run_woven_go1.26.6.out.txt",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -vet=off -count=1 -timeout 15m -run TestReview -v ./iast/propagation/  (with evidence zz_review_fmt.go in iast/internal/propagationtest and zz_review_fmt_test.go in iast/propagation)",
+    "needs_repro": false
+  },
+  {
+    "id": "hooks-yml-fmt-strconv-url-F2",
+    "severity": "Medium",
+    "category": "false-negative",
+    "location": "README.md:32; internal/taint/propagation/string_coarse.go:206-221",
+    "title": "README advertises fmt.Sprint* without saying only direct string/[]byte operands propagate",
+    "claim": "Tainted data inside structs, slices, maps, pointers, errors and Stringer wrappers is silently untainted after fmt.Sprint*; README row implies full support.",
+    "evidence_path": ".omo/review/evidence/hooks-yml-fmt-strconv-url/run_woven_go1.26.6.out.txt",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -vet=off -count=1 -timeout 15m -run TestReviewFmtUnderTaint -v ./iast/propagation/",
+    "needs_repro": false
+  },
+  {
+    "id": "hooks-yml-fmt-strconv-url-F3",
+    "severity": "Medium",
+    "category": "provenance",
+    "location": "internal/taint/propagation/string_coarse.go:113-203; internal/taint/propagation/propagation.go:721-736; README.md:32",
+    "title": "Coarse fmt/url/strconv output drops all but the first source and marks the whole SQL template as user input; README does not say these are coarse",
+    "claim": "Sprintf with two same-request sources yields a single [0,len) range from the first source only; exact input ranges are widened to the whole output. Documented as coarse in plans only, not README.",
+    "evidence_path": ".omo/review/evidence/hooks-yml-fmt-strconv-url/run_woven_go1.26.6.out.txt",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -vet=off -count=1 -timeout 15m -run TestReviewFmtTwoSources -v ./iast/propagation/",
+    "needs_repro": false
+  },
+  {
+    "id": "hooks-yml-fmt-strconv-url-F4",
+    "severity": "Low",
+    "category": "false-positive",
+    "location": "internal/taint/propagation/string_coarse.go:115-145",
+    "title": "Verbs and argument indexes that do not emit the operand still taint the output",
+    "claim": "%T, %p, %.0s and index-skipped arguments (%[2]s) produce output without the tainted bytes that is nonetheless fully tainted.",
+    "evidence_path": ".omo/review/evidence/hooks-yml-fmt-strconv-url/run_woven_go1.26.6.out.txt",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -vet=off -count=1 -timeout 15m -run TestReviewFmtOverTaint -v ./iast/propagation/",
+    "needs_repro": false
+  },
+  {
+    "id": "hooks-yml-fmt-strconv-url-F5",
+    "severity": "Low",
+    "category": "quality",
+    "location": "internal/taint/propagation/string_coarse.go:116-118,133-135",
+    "title": "DroppedPropagation telemetry fires on every Sprint* with >15/16 args even when nothing is tainted",
+    "claim": "recordDropped() runs before any lookup whenever an analysis is active and the argument count exceeds the budget, inflating the drop counter for clean calls.",
+    "evidence_path": null,
+    "repro_command": null,
+    "needs_repro": false
+  },
+  {
+    "id": "hooks-yml-fmt-strconv-url-F6",
+    "severity": "Info",
+    "category": "false-negative",
+    "location": "iast/propagation/orchestrion.yml:706-731",
+    "title": "Fprintf into a tracked strings.Builder silently discards existing builder provenance",
+    "claim": "WriteString(tainted) followed by an unhooked fmt.Fprintf write marks the writer dirty and String() is untainted; safe miss on a common idiom.",
+    "evidence_path": ".omo/review/evidence/hooks-yml-fmt-strconv-url/run_woven_go1.26.6.out.txt",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -vet=off -count=1 -timeout 15m -run TestReviewBuilderFprintf -v ./iast/propagation/",
+    "needs_repro": false
+  }
+]

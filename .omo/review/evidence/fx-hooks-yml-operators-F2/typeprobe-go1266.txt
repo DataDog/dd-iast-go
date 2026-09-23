@@ -1,0 +1,3 @@
+bound=maxLen resolved-type=int value=1000
+bound=complex(1, 0) resolved-type=int value=1
+bound=3 resolved-type=int value=3

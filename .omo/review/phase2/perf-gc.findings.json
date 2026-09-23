@@ -1,0 +1,13 @@
+[
+  {
+    "id": "perf-gc-F1",
+    "severity": "Info",
+    "category": "memory-bound",
+    "location": "internal/spans/annotation.go:223-245",
+    "title": "Dead weak-key annotations await a later trim",
+    "claim": "A dead weak span key does not itself remove its strongly held Annotation; normal woven Finish releases it synchronously, but an abnormal missing Finish can retain the bounded annotation and its source identities until a later trim.",
+    "evidence_path": null,
+    "repro_command": null,
+    "needs_repro": true
+  }
+]

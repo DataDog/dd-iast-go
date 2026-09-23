@@ -1,0 +1,90 @@
+[
+  {
+    "id": "life-spans-F1",
+    "severity": "High",
+    "category": "false-negative",
+    "location": "internal/spans/annotation.go:198-212, internal/spans/annotation.go:227-236, internal/spans/vulnerability.go:23-27, internal/vulnerability/tainted.go:62-68,125",
+    "title": "Negative sampling decisions fill the 2-slot annotation store; active requests lose their annotation and tainted findings are dropped",
+    "claim": "Since 87ecf02 BindScope stores Sampled=false annotations for sampled-out and capacity-dropped scopes against the MaxConcurrentRequests (default 2) bound. Two in-flight sampled-out requests leave an active, permit-holding request with no annotation (tag _dd.iast.enabled=0, no owner binding). NewOrphanTaintedSpan then gets no slot, so the tainted finding is dropped while an empty orphan span is emitted per sink hit. Weak findings are dropped too.",
+    "evidence_path": ".omo/review/evidence/life-spans/repro.out.txt",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 go test -count=1 -v -run TestReviewNegativeDecisionsCrowdOutActiveRequest ./internal/vulnerability/ (with evidence/life-spans/zz_review_lifespans_test.go in internal/vulnerability)",
+    "needs_repro": false
+  },
+  {
+    "id": "life-spans-F2",
+    "severity": "High",
+    "category": "false-negative",
+    "location": "internal/spans/orchestrion.go:28, internal/spans/annotation.go:134-142,190-205, iast/net/http/http.go:21-25",
+    "title": "Bind/report after root Finish re-creates an open annotation that is never flushed; findings silently lost",
+    "claim": "Finished deletes the root entry. A later BindScope/AnnotationFor on the finished root (late StartSpanFromContext, weak report) stores a fresh open annotation and rebinds the owner to it. ReportTainted commits into it and returns true, but nothing flushes it. The entry and its source-byte charge persist until the span is GC'd and a trim runs.",
+    "evidence_path": ".omo/review/evidence/life-spans/repro.out.txt",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 go test -count=1 -v -run TestReviewLateBindAfterRootFinishLosesFindings ./internal/vulnerability/",
+    "needs_repro": false
+  },
+  {
+    "id": "life-spans-F3",
+    "severity": "Critical",
+    "category": "race",
+    "location": "internal/spans/orchestrion.go:39-46",
+    "title": "Second Finish() of a root with a re-created annotation calls SetMetaStruct on a finished span, racing the trace writer",
+    "claim": "The woven prologue runs Finished on every Span.Finish. After a late report re-creates a sampled annotation (F2), a second Finish() calls span.SetMetaStruct on the already-finished span. dd-trace-go setMetaStructLocked has no finished guard, and the writer encodes finished spans without the span lock. The result is a data race on span.metaStruct (a map write that can race iteration, which is a fatal error) and on the encoded Event.",
+    "evidence_path": ".omo/review/evidence/life-spans/race.out.txt",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 go test -race -count=1 -v -run TestReviewDoubleFinishSetsMetaStructOnFinishedSpan ./internal/vulnerability/",
+    "needs_repro": false
+  },
+  {
+    "id": "life-spans-F4",
+    "severity": "High",
+    "category": "perf",
+    "location": "internal/spans/vulnerability.go:17-19, internal/vulnerability/report.go:45-54",
+    "title": "Weak-crypto reports outside any span create and finish one orphan trace span per call before sampling/dedup",
+    "claim": "Weak-hash hooks pass a nil ctx. Without a context or GLS span, every md5/sha1 call starts and finishes an orphan trace span (59 allocs/call) before the sampling decision. Report has no process-level dedup, so sampled calls re-emit the same finding with ManualKeep, and each orphan transiently occupies an annotation-store slot.",
+    "evidence_path": ".omo/review/evidence/life-spans/repro.out.txt",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 go test -count=1 -v -run TestReviewWeakReportWithoutSpanCreatesOrphanPerCall ./internal/vulnerability/",
+    "needs_repro": false
+  },
+  {
+    "id": "life-spans-F5",
+    "severity": "Medium",
+    "category": "memory-bound",
+    "location": "internal/spans/annotation.go:132-142,199-205,227-236; internal/spans/vulnerability.go:25-29",
+    "title": "Annotation-store capacity check is a TOCTOU; concurrent first binds exceed MaxConcurrentRequests",
+    "claim": "trimStore() is checked outside LoadOrCompute/LoadOrStore, so concurrent binders of distinct roots all insert. 7 entries were observed with a cap of 2. The overshoot is bounded by concurrency and self-corrects.",
+    "evidence_path": ".omo/review/evidence/life-spans/toctou.out.txt",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 go test -count=1 -v -run TestReviewStoreCapacityTOCTOU ./internal/spans/ (with evidence/life-spans/zz_review_internal_test.go in internal/spans)",
+    "needs_repro": false
+  },
+  {
+    "id": "life-spans-F6",
+    "severity": "Medium",
+    "category": "test-gap",
+    "location": "internal/spans/annotation_test.go, internal/spans/annotation_sampling_test.go, internal/spans/owner_internal_test.go; internal/spans/orchestrion.go:44-46",
+    "title": "Real-tracer meta_struct path and lifecycle edges are untested",
+    "claim": "All spans tests use mocktracer, where SetMetaStruct returns false, so the msgpack meta_struct branch is never exercised. No tests cover default capacity 2 with mixed decisions, post-finish bind/report, double Finish, or concurrent first binds; tests force MaxConcurrentRequests=64.",
+    "evidence_path": ".omo/review/evidence/life-spans/zz_review_lifespans_test.go",
+    "repro_command": null,
+    "needs_repro": false
+  },
+  {
+    "id": "life-spans-F7",
+    "severity": "Low",
+    "category": "false-negative",
+    "location": "internal/spans/annotation.go:84-97; internal/vulnerability/tainted.go:111-114",
+    "title": "A negative span annotation short-circuits owner fallback in selectTaintedAnnotation",
+    "claim": "ExistingForSpan returns found=true for a Sampled=false annotation, so taint from another active owner is dropped instead of being reported on the owner's bound span. This behavior is undocumented.",
+    "evidence_path": null,
+    "repro_command": null,
+    "needs_repro": true
+  },
+  {
+    "id": "life-spans-F8",
+    "severity": "Low",
+    "category": "quality",
+    "location": "internal/spans/annotation.go:54-55,215-221; internal/spans/orchestrion.go:33",
+    "title": "RequestTainted is never incremented; request.tainted telemetry always submits 0",
+    "claim": "Only a test writes RequestTainted. Finished submits request.tainted=0 for every finished annotation, including negative and orphan ones.",
+    "evidence_path": null,
+    "repro_command": null,
+    "needs_repro": false
+  }
+]

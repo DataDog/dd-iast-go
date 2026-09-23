@@ -1,0 +1,13 @@
+[
+  {
+    "id": "perf-contention-F1",
+    "verdict": "REFUTED",
+    "original_severity": "High",
+    "adjusted_severity": "Info",
+    "reachable_default": true,
+    "documented_limitation": true,
+    "reason": "Refuted as a correctness defect, not as an observed mechanism: an independent Go 1.26.6 woven HTTP harness using all IAST defaults reproduced 2384 store rejections among 29805 sampled requests with at most two callers. However, the design explicitly allows store-contention losses independently of capacity exhaustion; no separate product-rule violation or leaked permit was established. The finder's default-max benchmark forces 100% rather than default 30% sampling. Go 1.27.0 reproduces through the API, but woven execution is blocked by the separate known JSON advice compile failure.",
+    "evidence_path": ".omo/review/evidence/fx-perf-contention-F1/woven-go126.txt",
+    "repro_command": "cd /tmp/ddiast-review/wt/fx-perf-contention-F1 && GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 GOMAXPROCS=2 /usr/bin/time -l timeout 600 go tool orchestrion go run ./reviewadmission -surface=http"
+  }
+]

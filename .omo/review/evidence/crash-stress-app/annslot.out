@@ -1,0 +1,18 @@
+$ DD_IAST_REQUEST_SAMPLING=100 ./annslot   # built with: go tool orchestrion go build ./cmd/annslot (GOTOOLCHAIN=go1.26.6)
+woven=true DD_IAST_REQUEST_SAMPLING=100 DD_IAST_MAX_CONCURRENT_REQUESTS="" (default 2)
+CONTROL: no capacity-dropped request holds a root span
+  hold1 (span):    active=true
+  hold2 (no span): active=true
+  victim (span):   active=true queryTainted=true
+  span "req"         role=victim _dd.iast.enabled=1 iastJSONBytes=535
+  => victim SQL injection reported: true
+BUG: one capacity-dropped request holds a root span
+  hold1 (span):    active=true
+  hold2 (no span): active=true
+  hold3 (span):    active=false
+  victim (span):   active=true queryTainted=true
+  span "vulnerability" role=<nil> _dd.iast.enabled=1 iastJSONBytes=0
+  span "req"         role=victim _dd.iast.enabled=0 iastJSONBytes=0
+  => victim SQL injection reported: false
+2026/09/23 13:36:22 Datadog Tracer v2.11.0-rc.1 ERROR: loading features: Get "http://127.0.0.1:1/info": dial tcp 127.0.0.1:1: connect: connection refused (occurred: 23 Sep 26 13:36 CEST)
+# exit=0

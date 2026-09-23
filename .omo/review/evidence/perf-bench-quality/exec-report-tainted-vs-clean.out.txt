@@ -1,0 +1,9 @@
+$ GOTOOLCHAIN=go1.26.6 go test -run=NONE -bench='BenchmarkReportActive' -benchmem -benchtime=200000x ./iast/os/exec/...
+goos: darwin
+goarch: arm64
+pkg: github.com/DataDog/dd-iast-go/iast/os/exec
+cpu: Apple M4 Max
+BenchmarkReportActiveClean-16      	  200000	        21.18 ns/op	       0 B/op	       0 allocs/op
+BenchmarkReportActiveTainted-16    	  200000	     40523 ns/op	    1162 B/op	      19 allocs/op
+PASS
+ok  	github.com/DataDog/dd-iast-go/iast/os/exec	9.061s

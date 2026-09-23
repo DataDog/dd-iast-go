@@ -1,0 +1,8 @@
+$ GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go test -run '^TestJoinedEvidenceFindsFifthBoundOwner$' -count=1 -timeout=5m -v ./internal/vulnerability
+=== RUN   TestJoinedEvidenceFindsFifthBoundOwner
+    zz_review_owner_fanout_test.go:66: fifth owner reports = 0, snapshot owners = 4, orphan spans = 1; want 1 report on fifth owner
+--- FAIL: TestJoinedEvidenceFindsFifthBoundOwner (0.01s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/internal/vulnerability	0.887s
+FAIL
+Exit code: 1

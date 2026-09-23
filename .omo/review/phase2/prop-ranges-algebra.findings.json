@@ -1,0 +1,13 @@
+[
+  {
+    "id": "prop-ranges-algebra-F1",
+    "severity": "Medium",
+    "category": "quality",
+    "location": "internal/taint/propagation/string_exact.go:82-94",
+    "title": "Configured-range truncation is invisible to drop counters",
+    "claim": "JoinString discards ranges beyond the configured limit while ignoring Outcome.Truncated, leaving both owner range-drop and propagation-drop counters unchanged. Other transformation callers also ignore this flag.",
+    "evidence_path": ".omo/review/evidence/prop-ranges-algebra/range-drop.out.txt",
+    "repro_command": "Place .omo/review/evidence/prop-ranges-algebra/zz_review_range_drop_test.go in internal/taint/propagation/ in a private copy, then run GOTOOLCHAIN=go1.26.6 go test -timeout 5m -count=1 -run ^TestReview_JoinRecordsRangeTruncationWhenEleventhRangeIsDropped$ -v ./internal/taint/propagation",
+    "needs_repro": false
+  }
+]

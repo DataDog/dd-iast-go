@@ -1,0 +1,14 @@
+Command (private copy; test copied to internal/taint/redaction/schema_parity_test.go):
+GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 go test -timeout 5m -run '^TestTaintedPartAtTruncationBoundaryHasRequiredValue$' -count=1 -v ./internal/taint/redaction
+
+Captured output, exit status 1 (full WIRE_PAYLOAD line omitted here; it contains 250 literal prefix characters):
+=== RUN   TestTaintedPartAtTruncationBoundaryHasRequiredValue
+    schema_parity_test.go:62: unredacted tainted part omits required value: map[source:0 truncated:"right"]
+--- FAIL: TestTaintedPartAtTruncationBoundaryHasRequiredValue (0.00s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/redaction	0.628s
+FAIL
+
+The actual WIRE_PAYLOAD part printed by the test ends:
+{"truncated":"right","source":0}]},"location":{"spanId":1}}]}
+The system-tests vulnerability_schema.json definitions.UnredactedTaintedValue requires both "value" and "source".

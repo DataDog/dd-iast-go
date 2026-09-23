@@ -1,0 +1,10 @@
+$ GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go tool orchestrion go test -count=1 -timeout 15m \
+    -run TestFxF1WovenBuilderTaintWipedByUnrelatedBuffer -v ./iast/propagation/
+=== RUN   TestFxF1WovenBuilderTaintWipedByUnrelatedBuffer
+    zz_fx_f1_woven_test.go:86: FX-F1-WOVEN: ops=300 lost-taint=220 A-unrelated-buffer-writes=4754
+    zz_fx_f1_woven_test.go:88: BUG: request B lost woven builder taint on 220/300 checks while unrelated request A wrote clean data into its own buffer
+--- FAIL: TestFxF1WovenBuilderTaintWipedByUnrelatedBuffer (0.01s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/iast/propagation	0.953s
+FAIL
+(exit status 1)

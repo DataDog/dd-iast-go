@@ -1,0 +1,42 @@
+Environment: darwin/arm64 (Apple M4 Max), go1.27.0 host toolchain,
+GOTOOLCHAIN=go1.26.6 per build, orchestrion pinned pseudo-version from go.mod.
+Machine shared with other agents; timings are single uncalibrated samples.
+
+iast/database/sql/testapp (module github.com/DataDog/dd-iast-go/testapps/database-sql)
+COMMAND woven env GOTOOLCHAIN=go1.26.6 go tool orchestrion go build -o .../sql-bootstrap-woven ./cmd/bootstrap
+EXIT woven 0 ELAPSED_SECONDS 6.410
+SYMBOL_CHECK github.com/DataDog/dd-iast-go/iast/database/sql.init.0: 100548c40 T github.com/DataDog/dd-iast-go/iast/database/sql.init.0
+SYMBOL_CHECK github.com/DataDog/dd-iast-go/internal/spans.Finished: 10053d310 T github.com/DataDog/dd-iast-go/internal/spans.Finished
+  (also present: spans.Finished.deferwrap1 10053d780, deferwrap2 10053d740)
+COMMAND plain env GOTOOLCHAIN=go1.26.6 go build -o .../sql-bootstrap-plain ./cmd/bootstrap
+EXIT plain 0 ELAPSED_SECONDS 1.314
+SIZE woven 22139826  SIZE plain 1749218  SIZE_OVERHEAD_BYTES 20390608
+
+iast/os/exec/testapp (module github.com/DataDog/dd-iast-go/testapps/os-exec)
+COMMAND woven env GOTOOLCHAIN=go1.26.6 go tool orchestrion go build -o .../exec-bootstrap-woven ./cmd/bootstrap
+EXIT woven 0 ELAPSED_SECONDS 15.774
+SYMBOL_CHECK github.com/DataDog/dd-iast-go/iast/os/exec.init.0: 100547530 T github.com/DataDog/dd-iast-go/iast/os/exec.init.0
+SYMBOL_CHECK github.com/DataDog/dd-iast-go/internal/spans.Finished: 10053da30 T github.com/DataDog/dd-iast-go/internal/spans.Finished
+  (also present: spans.Finished.deferwrap1 10053dea0, deferwrap2 10053de60)
+COMMAND plain env GOTOOLCHAIN=go1.26.6 go build -o .../exec-bootstrap-plain ./cmd/bootstrap
+EXIT plain 0 ELAPSED_SECONDS 0.701
+SIZE woven 22137202  SIZE plain 1749218  SIZE_OVERHEAD_BYTES 20387984
+
+iast/integration/testapp (module github.com/DataDog/dd-iast-go/testapps/integration)
+COMMAND woven env GOTOOLCHAIN=go1.26.6 go tool orchestrion go build -o .../integration-bootstrap-woven ./cmd/bootstrap
+EXIT woven 0 ELAPSED_SECONDS 37.181
+SYMBOL_CHECK github.com/DataDog/dd-iast-go/iast/database/sql.init.0: 10054bc30 T github.com/DataDog/dd-iast-go/iast/database/sql.init.0
+SYMBOL_CHECK github.com/DataDog/dd-iast-go/iast/encoding/json.init.0: 10054c480 T github.com/DataDog/dd-iast-go/iast/encoding/json.init.0
+SYMBOL_CHECK github.com/DataDog/dd-iast-go/iast/os/exec.init.0: 10054ca90 T github.com/DataDog/dd-iast-go/iast/os/exec.init.0
+SYMBOL_CHECK github.com/DataDog/dd-iast-go/internal/spans.Finished: 100540040 T github.com/DataDog/dd-iast-go/internal/spans.Finished
+  (also present: spans.Finished.deferwrap1 1005404b0, deferwrap2 100540470)
+COMMAND plain env GOTOOLCHAIN=go1.26.6 go build -o .../integration-bootstrap-plain ./cmd/bootstrap
+EXIT plain 0 ELAPSED_SECONDS 1.357
+SIZE woven 22194578  SIZE plain 1749218  SIZE_OVERHEAD_BYTES 20445360
+
+Notes:
+- Every non-empty line of each cmd/bootstrap/symbols.txt was found by
+  `go tool nm <woven binary> | grep -F -- <symbol>`; no missing symbols.
+- The sql woven timing (6.4s) benefited from a prior partially cached build;
+  the exec (15.8s) and integration (37.2s) woven builds were cold.
+- Binaries built into ephemeral dirs; only captured output is retained here.

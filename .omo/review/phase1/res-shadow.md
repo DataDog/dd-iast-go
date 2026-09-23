@@ -1,0 +1,31 @@
+# res-shadow: Lessons from the go-shadow patched compiler/runtime experiment (orchestrion#858)
+Verdict: Research extraction complete. No correctness defect in dd-iast-go was established from this scope. The research surfaces one Low CI non-vacuity gap and one Info design-level false-negative class, the exact-identity keys. The main deliverable is `phase1/research/shadow.md`, which includes 37 CHECKS.
+Scope covered: orchestrion `eliottness/iast-testing:experiments/go-shadow/` README.md, COVERAGE-LEDGER.md (all 155 rows, condensed), fixture/README.md, suite/taint_test.go and report/ (skimmed), and go-taint-shadow.patch (per-file structure). In dd-iast-go at 2e23b46: README.md (Propagation/Sink coverage), internal/taint/store/store.go:1-80, internal/taint/request/lookup.go:1-120, .github/workflows/ci.yml, and the orchestrion skip guards in iast/**/_test.go and iast/integration/testapp/*_test.go (grep). Nothing was built or run.
+
+## Findings
+### res-shadow-F1: Instrumented CI lane has no guard against orchestrion-gated tests silently skipping
+- Severity: Low
+- Category: test-gap
+- Location: .github/workflows/ci.yml:128-148; for example iast/bufio/bufio_test.go:27-28 and iast/integration/testapp/e2e_test.go:263-266
+- Claim: Every instrumentation-dependent test does `if !built.WithOrchestrion { t.Skip(...) }`. CI chooses `go tool orchestrion go test` only because `orchestrion.tool.go` is present (ci.yml:128-130). If weaving is not applied (a misrouted lane, a refactored workflow, or a module that loses its tool file), every such test skips and the job still passes. The research PR hit exactly this failure mode and added a hard preflight: the suite fails unless the compiler reports `iast-taint-shadow-v28`, plus `TestFixtureInventory`. dd-iast-go has partial guards. The bootstrap `symbols.txt` nm check at ci.yml:176-192 verifies that sink registration symbols are linked, and `TestDatabaseSQLInstrumentedCount` (iast/database/sql/testapp/sql_test.go:54-60) asserts 11 sinks. Neither guard would fail if the root or nested test run were unwoven, because both skip or are scoped to bootstrap builds.
+- Evidence: static reasoning only (NEEDS-REPRO not required at Low). The skip conditions were located by grep of `t.Skip("orchestrion is not enabled` across iast/**/_test.go. The CI routing is at ci.yml:128-130,148.
+- Fix: In the woven lane, export something like `DD_IAST_REQUIRE_WOVEN=1` and make the shared skip helpers `t.Fatal` instead of `t.Skip` when it is set. Alternatively, run with `-json` and fail the step on any skip whose message contains "orchestrion is not enabled".
+
+### res-shadow-F2: Exact (pointer,length) identity keys make every alias created outside root-wrapped calls a silent false negative
+- Severity: Info
+- Category: false-negative
+- Location: internal/taint/store/store.go:41-61
+- Claim: `StringKey`/`BytesKey` key on the exact `unsafe.StringData` pointer, the length, and the kind. Both research prototypes resolved sub-slice aliases by backing address or range, and the shadow does it per byte. That gave them `strings.Cut`, `TrimPrefix`, `Split`, `regexp.FindString`, and dependency-internal reslices with no per-API adapter (ledger rows 152-155, 51, 117-118, 140). In dd-iast-go, any window that a root-level wrapper did not produce loses provenance. Examples are `regexp.FindString`, reslicing inside a dependency, `s[i:]` reached through a method value, and `bufio`/`path` helpers. The README documents this ("Propagation instrumentation applies to direct calls in the application root"), so it is not a bug. It is the largest coverage delta the research exposes, and it explains why the README tables must enumerate APIs one by one.
+- Evidence: static reasoning only. See store.go:48-61, and research/shadow.md CHECKS 17 and 32 for the scenarios to measure.
+- Fix: None required for the PoC. If coverage becomes a priority, evaluate a containment lookup (a root-span interval search, since `rootRecord` already stores `base`/`span`), gated behind `MayContain`, and measure its hot-path cost first.
+
+## Checked and found correct
+- dd-iast-go already avoids the rewriting prototype's two lifecycle failures. The first was case 104, where dirty owners stayed pinned for the process lifetime and were never swept. The second was case 108, where a process-wide saturation latch over-tainted later clean sinks. store.go:6-10 documents strong managed roots that are released synchronously when the owner finishes. `valueSlot` carries `ownerGen`/`rootGen` (store.go:63-72). `visitKey` gates on `used`, then `MayContain`, then `Lookup` and an owner/source copy (lookup.go:59-68, 82-120). Behaviour was not exercised, so this is listed as CHECKS 28-30 for other nodes.
+- dd-iast-go's integration tests assert exact ranges and full evidence value parts, not just report counts. See `assertChainRanges` in command_chain_test.go:39-47 and json_chain_test.go:56-59, and the `model.NewEvidenceTaintedValue` equality in command_chain_test.go:64-69. That meets the research's "Orchestrion standard". The count-only weakness of the shadow suite does not transfer.
+- `TaintString`/`TaintBytes` clone the source into a managed allocation (taint/taint_test.go:53,86). Stack moves therefore cannot invalidate keys (research rows 9, 102, 103).
+
+## Not covered / open questions
+- None of the 37 CHECKS in research/shadow.md were executed. They are the handoff for the propagation, e2e, and lifecycle reviewers. The ones most likely to expose rule-4 violations are 6 (a global read in a later request), 11 and 21 (stale ranges after a clean overwrite of a tracked byte window, which the README documents as a risk), 28 (address reuse after owner release), and 29 (escaped values).
+- Undocumented behaviour worth pinning down: SQL sinks through method values (CHECK 5), `fmt` aggregates (14), named non-JSON types (18), the Buffer read family, `bufio`, and `io.Copy` (22), and `Rows.Scan` (34).
+- The research contains no usable overhead numbers: one single-run data point of 0.66 s and about 18 MB for 65,536 values, with no baseline. It offers nothing to benchmark dd-iast-go against.
+- The shadow patch was skimmed for structure only. Its compiler/runtime correctness is out of scope because it is not shipped.

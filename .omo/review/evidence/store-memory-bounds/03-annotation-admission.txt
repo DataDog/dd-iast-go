@@ -1,0 +1,18 @@
+COMMAND
+cd /tmp/ddiast-review/wt/store-memory-bounds && env GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 DD_IAST_REQUEST_SAMPLING=100 DD_IAST_MAX_CONCURRENT_REQUESTS=64 DD_IAST_MAX_RANGE_COUNT=64 timeout 900 go test -count=1 -timeout 12m -v -run '^TestBoundsAnnotationAdmission$' ./internal/spans
+
+CAPTURED OUTPUT
+status: completed exit_code: 0
+=== RUN   TestBoundsAnnotationAdmission
+=== RUN   TestBoundsAnnotationAdmission/inflight=128
+    zz_review_annotation_admission_test.go:51: configured=64 inflight=128 retainedAnnotations=128 ratio=2 heapBefore=3153920 heapAfter=3670016 delta=516096 sourceCharge=0
+=== RUN   TestBoundsAnnotationAdmission/inflight=512
+    zz_review_annotation_admission_test.go:51: configured=64 inflight=512 retainedAnnotations=512 ratio=8 heapBefore=4186112 heapAfter=5980160 delta=1794048 sourceCharge=0
+=== RUN   TestBoundsAnnotationAdmission/inflight=2048
+    zz_review_annotation_admission_test.go:51: configured=64 inflight=2048 retainedAnnotations=2048 ratio=32 heapBefore=8429568 heapAfter=16080896 delta=7651328 sourceCharge=0
+--- PASS: TestBoundsAnnotationAdmission (0.05s)
+    --- PASS: TestBoundsAnnotationAdmission/inflight=128 (0.00s)
+    --- PASS: TestBoundsAnnotationAdmission/inflight=512 (0.01s)
+    --- PASS: TestBoundsAnnotationAdmission/inflight=2048 (0.03s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/spans	0.982s

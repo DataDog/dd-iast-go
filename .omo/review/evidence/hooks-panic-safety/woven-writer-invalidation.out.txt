@@ -1,0 +1,10 @@
+Command (private copy, GOTOOLCHAIN=go1.26.6):
+go tool orchestrion go test -timeout 10m -count=1 -run TestReview_InternalBufferInvalidation ./iast/propagation -v
+EXIT=1
+=== RUN   TestReview_InternalBufferInvalidationCannotPanicHost
+    zz_review_panic_test.go:89: IAST-only panic escaped bytes.Buffer.WriteString: type=*struct { origin string } value=&{IAST native writer invalidation} identical=true
+--- FAIL: TestReview_InternalBufferInvalidationCannotPanicHost (0.00s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/iast/propagation	0.749s
+FAIL
+exit status 1

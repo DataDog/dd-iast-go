@@ -1,0 +1,53 @@
+=== RUN   TestFX_FaultInjection
+    zz_fx_panic_test.go:56: FAULT io.LimitReader  escaped=true value=&{propagate}
+    zz_fx_panic_test.go:56: FAULT io.TeeReader    escaped=true value=&{propagate}
+    zz_fx_panic_test.go:56: FAULT io.MultiReader  escaped=true value=&{propagate}
+    zz_fx_panic_test.go:56: FAULT io.ReadAll      escaped=true value=&{readAll}
+    zz_fx_panic_test.go:61: FAULT io.ReadAll(host panics) recovered=&{readAll} hostPreserved=false
+--- PASS: TestFX_FaultInjection (0.00s)
+=== RUN   TestFX_NaturalInputsNoIASTPanic
+    zz_fx_panic_test.go:127: NATURAL LimitReader(bound)       panic=<nil>
+    zz_fx_panic_test.go:127: NATURAL LimitReader(typedNil)    panic=<nil>
+    zz_fx_panic_test.go:127: NATURAL LimitReader(nilIface)    panic=<nil>
+    zz_fx_panic_test.go:127: NATURAL LimitReader(zeroSize)    panic=<nil>
+    zz_fx_panic_test.go:127: NATURAL LimitReader(func)        panic=<nil>
+    zz_fx_panic_test.go:127: NATURAL LimitReader(value)       panic=<nil>
+    zz_fx_panic_test.go:127: NATURAL LimitReader(map)         panic=<nil>
+    zz_fx_panic_test.go:127: NATURAL LimitReader(negative)    panic=<nil>
+    zz_fx_panic_test.go:127: NATURAL TeeReader(nil,nil)       panic=<nil>
+    zz_fx_panic_test.go:127: NATURAL MultiReader(none)        panic=<nil>
+    zz_fx_panic_test.go:127: NATURAL MultiReader(20 mixed)    panic=<nil>
+    zz_fx_panic_test.go:127: NATURAL ReadAll(oversized)       panic=<nil>
+    zz_fx_panic_test.go:127: NATURAL ReadAll(empty)           panic=<nil>
+    zz_fx_panic_test.go:134: NATURAL ReadAll(host panics) hostPreserved=true
+    zz_fx_panic_test.go:162: NATURAL concurrent-with-Finish panics=0
+--- PASS: TestFX_NaturalInputsNoIASTPanic (0.01s)
+=== RUN   TestFX_HTTPHandlerReaders
+    zz_fx_panic_test.go:191: HTTP response=26 handlerPanic=<nil> bodyTainted=true
+--- PASS: TestFX_HTTPHandlerReaders (0.00s)
+=== RUN   TestReview_InternalReaderCallbackCannotPanicHost
+    zz_review_panic_test.go:30: IAST-only panic escaped io.LimitReader: type=*struct { origin string } value=&{IAST reader callback} identical=true
+--- FAIL: TestReview_InternalReaderCallbackCannotPanicHost (0.00s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/iast/io	0.677s
+FAIL
+exit status 1
+       93.77 real       137.31 user       101.22 sys
+           348782592  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+             7417329  page reclaims
+              266838  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+               14603  messages sent
+               16088  messages received
+               90962  signals received
+               48414  voluntary context switches
+             1940346  involuntary context switches
+          5573233851  instructions retired
+          3223118138  cycles elapsed
+            39830200  peak memory footprint
+EXIT=1

@@ -1,0 +1,142 @@
+package taint // import "github.com/DataDog/dd-iast-go/taint"
+
+Package taint provides bounded, request-scoped taint source and inspection
+operations for IAST integrations.
+
+CONSTANTS
+
+const (
+	OriginHttpRequestParameter          = constants.OriginHttpRequestParameter
+	OriginHttpRequestParameterName      = constants.OriginHttpRequestParameterName
+	OriginHttpRequestHeader             = constants.OriginHttpRequestHeader
+	OriginHttpRequestHeaderName         = constants.OriginHttpRequestHeaderName
+	OriginHttpRequestPath               = constants.OriginHttpRequestPath
+	OriginHttpRequestBody               = constants.OriginHttpRequestBody
+	OriginHttpRequestQuery              = constants.OriginHttpRequestQuery
+	OriginHttpRequestPathParameter      = constants.OriginHttpRequestPathParameter
+	OriginHttpRequestMatrixParameter    = constants.OriginHttpRequestMatrixParameter
+	OriginHttpRequestCookieName         = constants.OriginHttpRequestCookieName
+	OriginHttpRequestCookieValue        = constants.OriginHttpRequestCookieValue
+	OriginHttpRequestUri                = constants.OriginHttpRequestUri
+	OriginGrpcRequestBody               = constants.OriginGrpcRequestBody
+	OriginHttpRequestMultipartParameter = constants.OriginHttpRequestMultipartParameter
+	OriginKafkaMessageKey               = constants.OriginKafkaMessageKey
+	OriginKafkaMessageValue             = constants.OriginKafkaMessageValue
+	OriginGraphqlResolverArgument       = constants.OriginGraphqlResolverArgument
+	OriginSqlRowValue                   = constants.OriginSqlRowValue
+)
+const (
+	VulnerabilityTypeAdminConsoleActive        = constants.VulnerabilityTypeAdminConsoleActive
+	VulnerabilityTypeCodeInjection             = constants.VulnerabilityTypeCodeInjection
+	VulnerabilityTypeCommandInjection          = constants.VulnerabilityTypeCommandInjection
+	VulnerabilityTypeDefaultHtmlEscapeInvalid  = constants.VulnerabilityTypeDefaultHtmlEscapeInvalid
+	VulnerabilityTypeDirectoryListingLeak      = constants.VulnerabilityTypeDirectoryListingLeak
+	VulnerabilityTypeEmailHtmlInjection        = constants.VulnerabilityTypeEmailHtmlInjection
+	VulnerabilityTypeHardcodedKey              = constants.VulnerabilityTypeHardcodedKey
+	VulnerabilityTypeHardcodedPassword         = constants.VulnerabilityTypeHardcodedPassword
+	VulnerabilityTypeHardcodedSecret           = constants.VulnerabilityTypeHardcodedSecret
+	VulnerabilityTypeHeaderInjection           = constants.VulnerabilityTypeHeaderInjection
+	VulnerabilityTypeHstsHeaderMissing         = constants.VulnerabilityTypeHstsHeaderMissing
+	VulnerabilityTypeInsecureAuthProtocol      = constants.VulnerabilityTypeInsecureAuthProtocol
+	VulnerabilityTypeInsecureCookie            = constants.VulnerabilityTypeInsecureCookie
+	VulnerabilityTypeInsecureJspLayout         = constants.VulnerabilityTypeInsecureJspLayout
+	VulnerabilityTypeLdapInjection             = constants.VulnerabilityTypeLdapInjection
+	VulnerabilityTypeNosqlMongodbInjection     = constants.VulnerabilityTypeNosqlMongodbInjection
+	VulnerabilityTypeNoHttponlyCookie          = constants.VulnerabilityTypeNoHttponlyCookie
+	VulnerabilityTypeNoSamesiteCookie          = constants.VulnerabilityTypeNoSamesiteCookie
+	VulnerabilityTypePathTraversal             = constants.VulnerabilityTypePathTraversal
+	VulnerabilityTypeReflectionInjection       = constants.VulnerabilityTypeReflectionInjection
+	VulnerabilityTypeSessionRewriting          = constants.VulnerabilityTypeSessionRewriting
+	VulnerabilityTypeSessionTimeout            = constants.VulnerabilityTypeSessionTimeout
+	VulnerabilityTypeSqlInjection              = constants.VulnerabilityTypeSqlInjection
+	VulnerabilityTypeSsrf                      = constants.VulnerabilityTypeSsrf
+	VulnerabilityTypeStacktraceLeak            = constants.VulnerabilityTypeStacktraceLeak
+	VulnerabilityTypeTemplateInjection         = constants.VulnerabilityTypeTemplateInjection
+	VulnerabilityTypeTrustBoundaryViolation    = constants.VulnerabilityTypeTrustBoundaryViolation
+	VulnerabilityTypeUntrustedDeserialization  = constants.VulnerabilityTypeUntrustedDeserialization
+	VulnerabilityTypeUnvalidatedRedirect       = constants.VulnerabilityTypeUnvalidatedRedirect
+	VulnerabilityTypeVerbTampering             = constants.VulnerabilityTypeVerbTampering
+	VulnerabilityTypeWeakCipher                = constants.VulnerabilityTypeWeakCipher
+	VulnerabilityTypeWeakHash                  = constants.VulnerabilityTypeWeakHash
+	VulnerabilityTypeWeakRandomness            = constants.VulnerabilityTypeWeakRandomness
+	VulnerabilityTypeXcontenttypeHeaderMissing = constants.VulnerabilityTypeXcontenttypeHeaderMissing
+	VulnerabilityTypeXpathInjection            = constants.VulnerabilityTypeXpathInjection
+	VulnerabilityTypeXss                       = constants.VulnerabilityTypeXss
+)
+
+FUNCTIONS
+
+func IsTaintedBytes[T ~[]byte](value T) bool
+    IsTaintedBytes reports whether value has at least one complete live source.
+    Contention and owner-finish races safely return false.
+
+func IsTaintedString[T ~string](value T) bool
+    IsTaintedString reports whether value has at least one complete live source.
+    Contention and owner-finish races safely return false.
+
+func TaintBytes[T ~[]byte](ctx context.Context, source Source, value T) T
+    TaintBytes returns a managed mutable replacement with the same length and
+    capacity. Source metadata is copied separately and cannot change when the
+    returned bytes are mutated. It returns value unchanged under the same
+    drop conditions as TaintString and when the slice capacity exceeds 64 KiB,
+    because capacity is the retained and charged span. Reslicing or appending
+    needs a propagation or mutation operation before the changed window can be
+    recognized.
+
+func TaintString[T ~string](ctx context.Context, source Source, value T) T
+    TaintString returns a managed replacement tainted across its complete byte
+    length. It returns value unchanged when analysis is inactive, the value or
+    source name exceeds 64 KiB, the value is shorter than two bytes, storage
+    is full, or bounded synchronization is contended. Derived substrings need a
+    propagation operation before identity lookup can recognize them.
+
+func VisitBytes[T ~[]byte](value T, visit func(Range) bool) bool
+    VisitBytes synchronously visits complete live ranges. The callback returns
+    true to continue or false to stop. VisitBytes returns true if it delivered
+    at least one range, including when the callback stopped early.
+
+func VisitString[T ~string](value T, visit func(Range) bool) bool
+    VisitString synchronously visits complete live ranges. The callback returns
+    true to continue or false to stop. VisitString returns true if it delivered
+    at least one range, including when the callback stopped early.
+
+
+TYPES
+
+type Marks struct {
+	// Has unexported fields.
+}
+    Marks is an opaque set of vulnerability-specific secure marks.
+
+func (m Marks) Has(vulnerability VulnerabilityType) bool
+    Has reports whether the range is marked secure for vulnerability.
+
+type Origin = constants.Origin
+    Origin identifies the kind of input source.
+
+type Range struct {
+	Start  uint32
+	Length uint32
+	Source SourceValue
+	Marks  Marks
+}
+    Range describes one tainted byte interval and its complete source metadata.
+    Source strings are borrowed for the synchronous Visit call and should not be
+    retained by instrumentation after the callback returns.
+
+type Source struct {
+	Origin Origin
+	Name   string
+}
+    Source describes a value's source. Name is empty when the source kind has no
+    name, such as a request body.
+
+type SourceValue struct {
+	Source
+	Value string
+}
+    SourceValue is a copied source record. Value can contain arbitrary bytes.
+
+type VulnerabilityType = constants.VulnerabilityType
+    VulnerabilityType identifies a vulnerability class and its secure mark.
+

@@ -1,0 +1,135 @@
+=== RUN   TestReviewStoreStress
+STRESS seed=110280547 duration=30s workers=57 collide=false
+    stress_review_test.go:272: seed=110280547 workers=57 collide=false ops=914394 epochs=20 acquireDisabled=69491 strictChecks=295970 strictHits=293466 strictMisses=2399 mutations=37373 claimFail=283 overflowSets=9152 foreignDerive=4404 staleFinish=10784 writerSnapshots=7360 bindLookups=32212 quiescent=21 leakedReservations=1 fullWindows=0 maxFullWindowsPerShard=0 collideWedgedTombstones=0 stats={Compactions:1162 CompactAborts:0 OverflowFree:256 Tombstones:2685 MaxTombstones:31 ProbeCount:197297 AverageProbe:1.9672067999006573 MaxProbe:33}
+--- PASS: TestReviewStoreStress (30.85s)
+PASS
+=== RUN   TestReviewStoreStress
+STRESS seed=149485474 duration=30s workers=60 collide=false
+    stress_review_test.go:272: seed=149485474 workers=60 collide=false ops=569460 epochs=12 acquireDisabled=44614 strictChecks=185205 strictHits=182826 strictMisses=2312 mutations=22883 claimFail=222 overflowSets=5470 foreignDerive=2950 staleFinish=6626 writerSnapshots=4618 bindLookups=19760 quiescent=13 leakedReservations=0 fullWindows=0 maxFullWindowsPerShard=0 collideWedgedTombstones=0 stats={Compactions:685 CompactAborts:0 OverflowFree:256 Tombstones:2338 MaxTombstones:31 ProbeCount:122462 AverageProbe:1.9594813084875309 MaxProbe:30}
+--- PASS: TestReviewStoreStress (30.39s)
+PASS
+=== RUN   TestReviewStoreStress
+STRESS seed=168585590 duration=30s workers=40 collide=false
+VIOLATION seed=168585590 epoch=1 worker=34 op=finish id=1199: owner 1199 still alive after Finish
+      foreign lookup owner=982
+      stats
+      finish id=1201
+      check-absent owner=925 why=owner finished
+      check-absent owner=925 why=owner finished
+      check-absent owner=925 why=owner finished
+      check-absent owner=925 why=owner finished
+      check-absent owner=931 why=owner finished
+      check-absent owner=931 why=owner finished
+      check-absent owner=931 why=owner finished
+      check-absent owner=931 why=owner finished
+      check-absent owner=931 why=owner finished
+      taint kind=6 len=30 owner=1199
+      lookup owner=1199 root={0 1} [0,291)
+      taint kind=5 len=217 owner=1169
+      finish id=1199
+    stress_review_test.go:272: seed=168585590 workers=40 collide=false ops=55243 epochs=2 acquireDisabled=2631 strictChecks=18899 strictHits=18821 strictMisses=69 mutations=2527 claimFail=13 overflowSets=627 foreignDerive=241 staleFinish=771 writerSnapshots=413 bindLookups=1933 quiescent=3 leakedReservations=0 fullWindows=0 maxFullWindowsPerShard=0 collideWedgedTombstones=0 stats={Compactions:0 CompactAborts:0 OverflowFree:256 Tombstones:532 MaxTombstones:9 ProbeCount:13258 AverageProbe:1.2414391310906623 MaxProbe:7}
+    stress_review_test.go:280: seed=168585590: 1 invariant violations; first:
+        VIOLATION seed=168585590 epoch=1 worker=34 op=finish id=1199: owner 1199 still alive after Finish
+              foreign lookup owner=982
+              stats
+              finish id=1201
+              check-absent owner=925 why=owner finished
+              check-absent owner=925 why=owner finished
+              check-absent owner=925 why=owner finished
+              check-absent owner=925 why=owner finished
+              check-absent owner=931 why=owner finished
+              check-absent owner=931 why=owner finished
+              check-absent owner=931 why=owner finished
+              check-absent owner=931 why=owner finished
+              check-absent owner=931 why=owner finished
+              taint kind=6 len=30 owner=1199
+              lookup owner=1199 root={0 1} [0,291)
+              taint kind=5 len=217 owner=1169
+              finish id=1199
+--- FAIL: TestReviewStoreStress (4.58s)
+FAIL
+=== RUN   TestReviewStoreStress
+STRESS seed=387200398 duration=30s workers=45 collide=false
+    stress_review_test.go:272: seed=387200398 workers=45 collide=false ops=203355 epochs=6 acquireDisabled=12773 strictChecks=67723 strictHits=67451 strictMisses=259 mutations=8798 claimFail=47 overflowSets=2194 foreignDerive=916 staleFinish=2693 writerSnapshots=1673 bindLookups=7211 quiescent=7 leakedReservations=0 fullWindows=0 maxFullWindowsPerShard=0 collideWedgedTombstones=0 stats={Compactions:229 CompactAborts:0 OverflowFree:256 Tombstones:924 MaxTombstones:31 ProbeCount:46012 AverageProbe:1.8461705642006434 MaxProbe:20}
+--- PASS: TestReviewStoreStress (33.21s)
+PASS
+=== RUN   TestReviewStoreStress
+STRESS seed=413275690 duration=30s workers=57 collide=false
+    stress_review_test.go:272: seed=413275690 workers=57 collide=false ops=249147 epochs=5 acquireDisabled=18603 strictChecks=78670 strictHits=78078 strictMisses=567 mutations=10074 claimFail=58 overflowSets=2382 foreignDerive=1149 staleFinish=2819 writerSnapshots=2019 bindLookups=8891 quiescent=6 leakedReservations=0 fullWindows=0 maxFullWindowsPerShard=0 collideWedgedTombstones=0 stats={Compactions:252 CompactAborts:0 OverflowFree:256 Tombstones:952 MaxTombstones:29 ProbeCount:53372 AverageProbe:1.8087761373004572 MaxProbe:23}
+--- PASS: TestReviewStoreStress (35.33s)
+PASS
+=== RUN   TestReviewStoreStress
+STRESS seed=481602350 duration=30s workers=52 collide=false
+VIOLATION seed=481602350 epoch=3 worker=33 op=finish id=1925: owner 1925 still alive after Finish
+      check-absent owner=1993 why=mutation {1 1}->{1 2}
+      check-absent owner=1993 why=mutation to empty set
+      finish id=1993
+      check-absent owner=1993 why=mutation {2 1}->{2 2}
+      check-absent owner=1993 why=mutation to empty set
+      check-absent owner=1925 why=mutation {6 1}->{6 2}
+      check-absent owner=1983 why=mutation {0 1}->{0 2}
+      check-absent owner=1993 why=mutation {1 1}->{1 2}
+      check-absent owner=1993 why=mutation {1 1}->{1 2}
+      check-absent owner=1993 why=owner finished
+      check-absent owner=1993 why=owner finished
+      check-absent owner=1993 why=owner finished
+      check-absent owner=1993 why=owner finished
+      check-absent owner=1993 why=owner finished
+      bind owner=1925 kind=1
+      finish id=1925
+    stress_review_test.go:272: seed=481602350 workers=52 collide=false ops=106504 epochs=4 acquireDisabled=6991 strictChecks=35560 strictHits=35463 strictMisses=90 mutations=4451 claimFail=23 overflowSets=1125 foreignDerive=539 staleFinish=1415 writerSnapshots=833 bindLookups=3820 quiescent=5 leakedReservations=0 fullWindows=0 maxFullWindowsPerShard=0 collideWedgedTombstones=0 stats={Compactions:0 CompactAborts:0 OverflowFree:256 Tombstones:2708 MaxTombstones:26 ProbeCount:24058 AverageProbe:1.4975475933161526 MaxProbe:16}
+    stress_review_test.go:280: seed=481602350: 1 invariant violations; first:
+        VIOLATION seed=481602350 epoch=3 worker=33 op=finish id=1925: owner 1925 still alive after Finish
+              check-absent owner=1993 why=mutation {1 1}->{1 2}
+              check-absent owner=1993 why=mutation to empty set
+              finish id=1993
+              check-absent owner=1993 why=mutation {2 1}->{2 2}
+              check-absent owner=1993 why=mutation to empty set
+              check-absent owner=1925 why=mutation {6 1}->{6 2}
+              check-absent owner=1983 why=mutation {0 1}->{0 2}
+              check-absent owner=1993 why=mutation {1 1}->{1 2}
+              check-absent owner=1993 why=mutation {1 1}->{1 2}
+              check-absent owner=1993 why=owner finished
+              check-absent owner=1993 why=owner finished
+              check-absent owner=1993 why=owner finished
+              check-absent owner=1993 why=owner finished
+              check-absent owner=1993 why=owner finished
+              bind owner=1925 kind=1
+              finish id=1925
+--- FAIL: TestReviewStoreStress (12.03s)
+FAIL
+=== RUN   TestReviewStoreStress
+STRESS seed=489990909 duration=30s workers=44 collide=false
+    stress_review_test.go:272: seed=489990909 workers=44 collide=false ops=356048 epochs=9 acquireDisabled=12091 strictChecks=137044 strictHits=135954 strictMisses=1061 mutations=18538 claimFail=121 overflowSets=4401 foreignDerive=1810 staleFinish=5546 writerSnapshots=2995 bindLookups=12330 quiescent=10 leakedReservations=0 fullWindows=0 maxFullWindowsPerShard=0 collideWedgedTombstones=0 stats={Compactions:509 CompactAborts:0 OverflowFree:256 Tombstones:1437 MaxTombstones:31 ProbeCount:94699 AverageProbe:1.8937686775995524 MaxProbe:23}
+--- PASS: TestReviewStoreStress (32.21s)
+PASS
+=== RUN   TestReviewStoreStress
+STRESS seed=552064050 duration=30s workers=53 collide=false
+    stress_review_test.go:272: seed=552064050 workers=53 collide=false ops=284398 epochs=7 acquireDisabled=15763 strictChecks=101255 strictHits=100294 strictMisses=934 mutations=13191 claimFail=77 overflowSets=3157 foreignDerive=1372 staleFinish=3972 writerSnapshots=2466 bindLookups=9881 quiescent=8 leakedReservations=1 fullWindows=0 maxFullWindowsPerShard=0 collideWedgedTombstones=0 stats={Compactions:274 CompactAborts:0 OverflowFree:256 Tombstones:3879 MaxTombstones:31 ProbeCount:68373 AverageProbe:1.8628405949716993 MaxProbe:21}
+--- PASS: TestReviewStoreStress (33.83s)
+PASS
+=== RUN   TestReviewStoreStress
+STRESS seed=60652178 duration=30s workers=58 collide=false
+    stress_review_test.go:272: seed=60652178 workers=58 collide=false ops=458838 epochs=10 acquireDisabled=36281 strictChecks=140329 strictHits=137859 strictMisses=2412 mutations=18155 claimFail=162 overflowSets=4400 foreignDerive=2093 staleFinish=5387 writerSnapshots=3266 bindLookups=16243 quiescent=11 leakedReservations=0 fullWindows=0 maxFullWindowsPerShard=0 collideWedgedTombstones=0 stats={Compactions:509 CompactAborts:0 OverflowFree:256 Tombstones:1300 MaxTombstones:29 ProbeCount:93857 AverageProbe:1.8927410848418338 MaxProbe:22}
+--- PASS: TestReviewStoreStress (30.65s)
+PASS
+=== RUN   TestReviewStoreStress
+STRESS seed=613161072 duration=30s workers=50 collide=true
+    stress_review_test.go:272: seed=613161072 workers=50 collide=true ops=312450 epochs=7 acquireDisabled=17945 strictChecks=258 strictHits=224 strictMisses=0 mutations=48 claimFail=21 overflowSets=2936 foreignDerive=0 staleFinish=4304 writerSnapshots=2333 bindLookups=10913 quiescent=8 leakedReservations=0 fullWindows=8 maxFullWindowsPerShard=1 collideWedgedTombstones=64 stats={Compactions:0 CompactAborts:0 OverflowFree:256 Tombstones:64 MaxTombstones:64 ProbeCount:155 AverageProbe:31.8 MaxProbe:64}
+--- PASS: TestReviewStoreStress (40.85s)
+PASS
+=== RUN   TestReviewStoreStress
+STRESS seed=616197717 duration=30s workers=35 collide=false
+    stress_review_test.go:272: seed=616197717 workers=35 collide=false ops=191695 epochs=8 acquireDisabled=2947 strictChecks=78896 strictHits=78626 strictMisses=251 mutations=10736 claimFail=62 overflowSets=2582 foreignDerive=878 staleFinish=3275 writerSnapshots=1702 bindLookups=6836 quiescent=9 leakedReservations=0 fullWindows=0 maxFullWindowsPerShard=0 collideWedgedTombstones=0 stats={Compactions:256 CompactAborts:0 OverflowFree:256 Tombstones:1047 MaxTombstones:20 ProbeCount:54909 AverageProbe:1.8086106102824673 MaxProbe:20}
+--- PASS: TestReviewStoreStress (31.60s)
+PASS
+=== RUN   TestReviewStoreStress
+STRESS seed=848097242 duration=30s workers=46 collide=false
+    stress_review_test.go:272: seed=848097242 workers=46 collide=false ops=798468 epochs=19 acquireDisabled=30256 strictChecks=301302 strictHits=298863 strictMisses=2335 mutations=40209 claimFail=304 overflowSets=9713 foreignDerive=4044 staleFinish=12243 writerSnapshots=6303 bindLookups=27841 quiescent=20 leakedReservations=2 fullWindows=0 maxFullWindowsPerShard=0 collideWedgedTombstones=0 stats={Compactions:1240 CompactAborts:0 OverflowFree:256 Tombstones:1817 MaxTombstones:31 ProbeCount:206960 AverageProbe:1.9551169308078855 MaxProbe:27}
+--- PASS: TestReviewStoreStress (33.94s)
+PASS
+=== RUN   TestReviewStoreStress
+STRESS seed=85438873 duration=30s workers=57 collide=false
+    stress_review_test.go:272: seed=85438873 workers=57 collide=false ops=696141 epochs=12 acquireDisabled=52254 strictChecks=223762 strictHits=221383 strictMisses=2293 mutations=28799 claimFail=242 overflowSets=6844 foreignDerive=3540 staleFinish=8502 writerSnapshots=5425 bindLookups=24306 quiescent=13 leakedReservations=2 fullWindows=0 maxFullWindowsPerShard=0 collideWedgedTombstones=0 stats={Compactions:833 CompactAborts:0 OverflowFree:256 Tombstones:3105 MaxTombstones:30 ProbeCount:150435 AverageProbe:1.9466945857014657 MaxProbe:28}
+--- PASS: TestReviewStoreStress (33.45s)
+PASS

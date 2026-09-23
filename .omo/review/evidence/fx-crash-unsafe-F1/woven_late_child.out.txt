@@ -1,0 +1,11 @@
+$ cd /tmp/ddiast-review/wt/fx-crash-unsafe-F1 && /usr/bin/time -l env GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 GOCACHE=.gocache GOTMPDIR=.gotmp go tool orchestrion go test -count=1 -v -run 'TestWovenLateChildRecreatesAnnotationUnderFinishedRoot' -timeout=10m ./fxf1repro
+=== RUN   TestWovenLateChildRecreatesAnnotationUnderFinishedRoot
+    late_child_test.go:80: woven surface recreated an open non-sampled annotation under finished root 0x5ab5d0858160
+    late_child_test.go:104: live 100%-sampled request 2 (root=0x5ab5d08586e0) denied IAST analysis by the stale annotation under finished root 0x5ab5d0858160
+    late_child_test.go:116: stale annotation survives late child finish: no hook keyed to the finished root remains
+    late_child_test.go:120: finished "http.request" spanID=681938523455203938: _dd.iast.enabled=1
+    late_child_test.go:120: finished "http.request" spanID=9206513498962852760: _dd.iast.enabled=<nil>
+--- PASS: TestWovenLateChildRecreatesAnnotationUnderFinishedRoot (0.01s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/fxf1repro	0.564s
+(woven build: /usr/bin/time -l peak RSS 1,095,122,944 bytes ≈ 1.1 GB, wall ≈ 3 min; first cold build of this package took 186s real / 177s user)

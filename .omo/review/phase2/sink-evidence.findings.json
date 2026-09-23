@@ -1,0 +1,13 @@
+[
+  {
+    "id": "sink-evidence-F1",
+    "severity": "High",
+    "category": "provenance",
+    "location": "internal/taint/evidence/evidence.go:339,404-413",
+    "title": "Joined evidence omits a contributing owner's bound span",
+    "claim": "CollectJoinedStrings can collect more than four distinct active owners, but addOwner silently keeps only four identities. A fifth owner's bound request span cannot be selected, so a report with no sink span is attached to an orphan trace.",
+    "evidence_path": ".omo/review/evidence/sink-evidence/zz_review_owner_fanout_test.go",
+    "repro_command": "cd /tmp/ddiast-review/wt/sink-evidence && GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go test -run '^TestJoinedEvidenceFindsFifthBoundOwner$' -count=1 -timeout=5m -v ./internal/vulnerability",
+    "needs_repro": false
+  }
+]

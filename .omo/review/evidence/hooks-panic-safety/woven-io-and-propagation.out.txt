@@ -1,0 +1,28 @@
+Command (private copy, GOTOOLCHAIN=go1.26.6):
+go tool orchestrion go test -timeout 10m -count=1 -run TestReview_ ./iast/io ./iast/propagation -v
+EXIT=1
+=== RUN   TestReview_InternalReaderCallbackCannotPanicHost
+    zz_review_panic_test.go:29: IAST-only panic escaped io.LimitReader: type=*struct { origin string } value=&{IAST reader callback} identical=true
+--- FAIL: TestReview_InternalReaderCallbackCannotPanicHost (0.00s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/iast/io	0.700s
+=== RUN   TestReview_NativePanicsPreserveIdentity
+=== RUN   TestReview_NativePanicsPreserveIdentity/strings.Repeat
+=== RUN   TestReview_NativePanicsPreserveIdentity/bytes.Repeat
+=== RUN   TestReview_NativePanicsPreserveIdentity/Builder_copy
+=== RUN   TestReview_NativePanicsPreserveIdentity/Buffer.Truncate
+=== RUN   TestReview_NativePanicsPreserveIdentity/string_slice
+=== RUN   TestReview_NativePanicsPreserveIdentity/byte_slice
+--- PASS: TestReview_NativePanicsPreserveIdentity (0.00s)
+    --- PASS: TestReview_NativePanicsPreserveIdentity/strings.Repeat (0.00s)
+    --- PASS: TestReview_NativePanicsPreserveIdentity/bytes.Repeat (0.00s)
+    --- PASS: TestReview_NativePanicsPreserveIdentity/Builder_copy (0.00s)
+    --- PASS: TestReview_NativePanicsPreserveIdentity/Buffer.Truncate (0.00s)
+    --- PASS: TestReview_NativePanicsPreserveIdentity/string_slice (0.00s)
+    --- PASS: TestReview_NativePanicsPreserveIdentity/byte_slice (0.00s)
+=== RUN   TestReview_BufferTruncatePanicLeavesTaintAndExpectation
+--- PASS: TestReview_BufferTruncatePanicLeavesTaintAndExpectation (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/iast/propagation	1.071s
+FAIL
+exit status 1

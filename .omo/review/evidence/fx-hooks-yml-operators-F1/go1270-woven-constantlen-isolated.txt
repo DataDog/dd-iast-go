@@ -1,0 +1,13 @@
+With the private copy's orchestrion.tool.go replaced by
+fixtures/go1270-propagation-only/orchestrion.tool.go:
+GOTOOLCHAIN=local GOFLAGS=-p=2 DD_IAST_ENABLED=false REVIEW_WOVEN=1 go tool orchestrion go test -work -timeout 3m -count=1 -v ./reviewfxoperators/constantlen
+
+Captured output:
+go version go1.27.0 darwin/arm64
+# github.com/DataDog/dd-iast-go/reviewfxoperators/constantlen
+reviewfxoperators/constantlen/constant.go:7: len([1]string{…}) (value of type int) is not constant
+exit status 2
+FAIL	github.com/DataDog/dd-iast-go/reviewfxoperators/constantlen [build failed]
+GO1270_WOVEN_CONST_ISOLATED_EXIT=1
+16.75 real 1.67 user 3.45 sys
+82165760 maximum resident set size

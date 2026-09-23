@@ -1,0 +1,13 @@
+[
+  {
+    "id": "sink-evidence-F1",
+    "verdict": "CONFIRMED",
+    "original_severity": "High",
+    "adjusted_severity": "Medium",
+    "reachable_default": false,
+    "documented_limitation": false,
+    "reason": "Mechanism reproduced independently at HEAD 2e23b46 through the real command-sink entry iast/os/exec.Report: five active owners contribute joined-argv ranges, Snapshot.addOwner (evidence.go:405-413, maxOwners=store.MaxSnapshotOwners=4) silently keeps only four owner identities, and selectTaintedAnnotation (internal/vulnerability/tainted.go:110-125) then attaches the report to an orphan span even though the fifth contributing owner's request span is bound and open; a control test with the bound owner inside the cap reports correctly, isolating the defect to the identity truncation. The four-owner report bound is documented, but the implementation collects ranges from more owners than it records identities for, which is not the documented safe miss and breaks accurate report-to-span provenance on a supported path. Not reachable under the default configuration: DD_IAST_MAX_CONCURRENT_REQUESTS defaults to 2, so >=5 concurrent contributing owners require the documented, supported setting DD_IAST_MAX_CONCURRENT_REQUESTS>=5 plus a spanless sink context; the report is still emitted as an orphan with complete source provenance, so impact is trace mis-attribution only.",
+    "evidence_path": ".omo/review/evidence/fx-sink-evidence-F1/zz_fx_verify_owner_fanout_test.go",
+    "repro_command": "cd /tmp/ddiast-review/wt/fx-sink-evidence-F1 && GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go test -run 'TestFxDirectCollectionDropsFifthOwnerIdentity|TestFxJoinedReportOrphansFifthBoundOwner|TestFxControlFourthBoundOwnerFound' -count=1 -timeout=10m -v ./internal/vulnerability"
+  }
+]

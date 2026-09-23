@@ -1,0 +1,10 @@
+=== RUN   TestFXBoundaryVariants
+CASE=tainted_starts_at_250 parts=2 LAST_JSON={"truncated":"right","source":0} LAST_MSGPACK_AS_JSON={"truncated":"right","source":0}
+    fx_boundary_test.go:42: tainted_starts_at_250: emitted empty part {"truncated":"right","source":0}
+CASE=literal_starts_at_250 parts=3 LAST_JSON={"truncated":"right"} LAST_MSGPACK_AS_JSON={"truncated":"right"}
+    fx_boundary_test.go:42: literal_starts_at_250: emitted empty part {"truncated":"right"}
+--- FAIL: TestFXBoundaryVariants (0.00s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/redaction	0.513s
+FAIL
+EXIT=1

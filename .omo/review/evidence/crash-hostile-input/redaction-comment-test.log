@@ -1,0 +1,14 @@
+=== RUN   TestHostileSQLCommentBodiesAreRedacted
+    hostile_comment_repro_test.go:20: status=0 intervals=[{40 4}]
+    hostile_comment_repro_test.go:22: visible evidence: "SELECT * FROM Users WHERE email = '' OR **** --' AND password = '81dc9bdb52d04dc20036dbd8313ed055' AND deletedAt IS NULL"
+    hostile_comment_repro_test.go:24: secret "81dc9bdb52d04dc20036dbd8313ed055" is NOT covered by any sensitive interval in "SELECT * FROM Users WHERE email = '' OR TRUE --' AND password = '81dc9bdb52d04dc20036dbd8313ed055' AND deletedAt IS NULL"
+    hostile_comment_repro_test.go:20: status=0 intervals=[]
+    hostile_comment_repro_test.go:22: visible evidence: "select * from users -- This is a line comment with secret hunter2"
+    hostile_comment_repro_test.go:24: secret "hunter2" is NOT covered by any sensitive interval in "select * from users -- This is a line comment with secret hunter2"
+    hostile_comment_repro_test.go:20: status=0 intervals=[]
+    hostile_comment_repro_test.go:22: visible evidence: "select * from users/*\ntoken=tok_live_SECRETBLOCK\n*/"
+    hostile_comment_repro_test.go:24: secret "tok_live_SECRETBLOCK" is NOT covered by any sensitive interval in "select * from users/*\ntoken=tok_live_SECRETBLOCK\n*/"
+--- FAIL: TestHostileSQLCommentBodiesAreRedacted (0.00s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/redaction	0.984s
+FAIL

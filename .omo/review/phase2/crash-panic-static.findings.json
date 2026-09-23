@@ -1,0 +1,35 @@
+[
+  {
+    "id": "crash-panic-static-F1",
+    "severity": "Critical",
+    "category": "crash",
+    "location": "iast/crypto/hash/orchestrion.yml (prepend __dd__iast_ReportWeakHash__ via go:linkname); iast/crypto/cipher/orchestrion.yml; internal/vulnerability/report.go:37-52; internal/spans/vulnerability.go:18; internal/spans/annotation.go:29-31,52",
+    "title": "Weak-crypto hooks panic during package init: IAST runs before spans/tracer are initialized",
+    "claim": "The linkname-injected crypto hooks bypass Go init ordering. After internal/config initializes (Enabled defaults to true) but before dd-trace-go tracer and internal/spans initialize, any md5/sha1/des/rc4 use in a package init calls vulnerability.Report, and it panics (nil global tracer type assertion in tracer.StartSpan, or nil spans globals). Nothing recovers, so the process crashes before main.",
+    "evidence_path": ".omo/review/evidence/crash-panic-static/initorder.out.txt",
+    "repro_command": "cd <copy>/_repro/initorder && GOFLAGS='-p=4 -mod=mod' GOTOOLCHAIN=go1.26.6 go tool orchestrion go build -o initorder . && ./initorder",
+    "needs_repro": false
+  },
+  {
+    "id": "crash-panic-static-F2",
+    "severity": "Low",
+    "category": "crash",
+    "location": "internal/taint/{http,io,url,writer,scope}bridge; internal/spans/orchestrion.go:27-60; iast/propagation/*.go; internal/vulnerability/report.go:30-109",
+    "title": "Only three bridges have a panic boundary; the other hook entry points run unshielded in host goroutines",
+    "claim": "HTTP, reader, URL, writer, operator, scope-finish, span-finish and crypto hooks call IAST code without recover. No reachable panic was found today, but host safety depends only on per-site proofs.",
+    "evidence_path": null,
+    "repro_command": null,
+    "needs_repro": false
+  },
+  {
+    "id": "crash-panic-static-F3",
+    "severity": "Info",
+    "category": "deadlock",
+    "location": "internal/taint/store/lookup.go:114-185; internal/taint/request/lookup.go:143-157; internal/taint/store/binding.go:133-152; internal/taint/store/writer.go:88-100,375-398",
+    "title": "A recovered sink panic would leak store locks that are unlocked manually rather than deferred",
+    "claim": "Sink bridges recover, but the store and request code they call unlocks TryLock/TryRLock manually. A panic in those regions would leave locks held (permanent drops, or a deadlock on Finish). Latent: the critical sections are currently panic-free.",
+    "evidence_path": null,
+    "repro_command": null,
+    "needs_repro": false
+  }
+]

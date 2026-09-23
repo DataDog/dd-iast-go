@@ -1,0 +1,13 @@
+[
+  {
+    "id": "life-owner-scope-F1",
+    "verdict": "CONFIRMED",
+    "original_severity": "High",
+    "adjusted_severity": "High",
+    "reachable_default": true,
+    "documented_limitation": false,
+    "reason": "begin (internal/taint/request/scope.go:83-84) reuses any context-embedded scope without a liveness check; after Scope.Finish the stale scope is returned with created=false and the woven advice gates EagerHTTP on created, so no request source is tainted. Reproduced independently three ways: (1) finder's test re-run in my private copy, (2) my own reproducer driving the exact woven callbacks httpbridge.Begin/Finish + EagerHTTP, asserting created=false, inactive scope, _dd.iast.enabled=0 and no analysis across repeated entries on the retained context while a fresh-context control reacquires the released permit, and (3) a full woven build (go tool orchestrion) with a real net/http server where re-dispatching a stored *http.Request yields an untainted URI (HTTP 417) versus 200 for fresh requests. Identical on go1.26.6 and go1.27.0. Ordinary sequential requests are unaffected (fresh r.Context() per request), but retaining a request context or *http.Request and re-entering a woven handler with it is legal customer code needing no non-default configuration; the suppression is silent and permanent for that parent context. Not documented as a limitation; violates product rule 4 (no lost taint on supported paths). High stands: silent permanent false-negative / self-disable on a supported path, conditional on context retention.",
+    "evidence_path": ".omo/review/evidence/fx-life-owner-scope-F1/",
+    "repro_command": "cd /tmp/ddiast-review/wt/fx-life-owner-scope-F1 && cp .omo/review/evidence/fx-life-owner-scope-F1/fx_scope_reuse_test.go internal/taint/request/ && cp .omo/review/evidence/fx-life-owner-scope-F1/finder_lifecycle_review_test.go internal/taint/request/ && GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 go test -race -run '^TestFXWovenEntryReusesFinishedScopeFromRetainedContext$|^TestReviewServerScopeReacquiredWhenContextContainsFinishedScope$' -count=1 -timeout 2m ./internal/taint/request ; woven: GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 DD_IAST_REQUEST_SAMPLING=100 go tool orchestrion go test -run '^TestFXWovenRedispatchOfStoredRequestLosesSourceTaint$' -count=1 -timeout 10m ./fxwoven"
+  }
+]

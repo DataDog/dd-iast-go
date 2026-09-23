@@ -1,0 +1,13 @@
+[
+ {
+  "id": "store-binding-F1",
+  "verdict": "CONFIRMED",
+  "original_severity": "High",
+  "adjusted_severity": "Low",
+  "reachable_default": false,
+  "documented_limitation": false,
+  "reason": "Mechanism is real: binding.go:186-198 matches on the address alone, so a reader bound at the same address replaces the URL binding and URL.Query loses taint (reproduced woven via the fallback handler plus the net/url advice). Triggering it requires a hand-built *http.Request whose Body type embeds url.URL at offset 0 with req.URL pointing to it. Server paths (HTTP/1, HTTP/2, h2c) always use separate allocations, and the real-server control keeps taint. The effect is a false negative only. Only a code comment (binding.go:93-94) records the one-kind-per-address design.",
+  "evidence_path": ".omo/review/evidence/fx-store-binding-F1/woven-alias-go1.26.6.out.txt",
+  "repro_command": "In a private copy with evidence/fx-store-binding-F1/fx_store_binding_f1_review_test.go installed as iast/net/http/fx_store_binding_f1_review_test.go: GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go tool orchestrion go test -run TestFxURLReaderAlias -count=1 -v -timeout=20m ./iast/net/http"
+ }
+]

@@ -1,0 +1,140 @@
+# github.com/samber/lo
+resolving woven dependency on github.com/DataDog/dd-iast-go/iast/propagation: -: # encoding/json
+$WORK/b072/orchestrion/src/encoding/json/<generated>:2: dec.r undefined (type *Decoder has no field or method r)
+$WORK/b072/orchestrion/src/encoding/json/<generated>:2: dec.d undefined (type *Decoder has no field or method d)
+$WORK/b072/orchestrion/src/encoding/json/<generated>:3: dec.d undefined (type *Decoder has no field or method d)
+exit status 2
+-: # encoding/json
+$WORK/b072/orchestrion/src/encoding/json/<generated>:2: dec.r undefined (type *Decoder has no field or method r)
+$WORK/b072/orchestrion/src/encoding/json/<generated>:2: dec.d undefined (type *Decoder has no field or method d)
+$WORK/b072/orchestrion/src/encoding/json/<generated>:3: dec.d undefined (type *Decoder has no field or method d)
+exit status 2
+-: # encoding/json
+$WORK/b072/orchestrion/src/encoding/json/<generated>:2: dec.r undefined (type *Decoder has no field or method r)
+$WORK/b072/orchestrion/src/encoding/json/<generated>:2: dec.d undefined (type *Decoder has no field or method d)
+$WORK/b072/orchestrion/src/encoding/json/<generated>:3: dec.d undefined (type *Decoder has no field or method d)
+exit status 2
+-: # encoding/json
+$WORK/b072/orchestrion/src/encoding/json/<generated>:2: dec.r undefined (type *Decoder has no field or method r)
+$WORK/b072/orchestrion/src/encoding/json/<generated>:2: dec.d undefined (type *Decoder has no field or method d)
+$WORK/b072/orchestrion/src/encoding/json/<generated>:3: dec.d undefined (type *Decoder has no field or method d)
+exit status 2
+-: # encoding/json
+$WORK/b072/orchestrion/src/encoding/json/<generated>:2: dec.r undefined (type *Decoder has no field or method r)
+$WORK/b072/orchestrion/src/encoding/json/<generated>:2: dec.d undefined (type *Decoder has no field or method d)
+$WORK/b072/orchestrion/src/encoding/json/<generated>:3: dec.d undefined (type *Decoder has no field or method d)
+exit status 2
+-: # encoding/json
+$WORK/b072/orchestrion/src/encoding/json/<generated>:2: dec.r undefined (type *Decoder has no field or method r)
+$WORK/b072/orchestrion/src/encoding/json/<generated>:2: dec.d undefined (type *Decoder has no field or method d)
+$WORK/b072/orchestrion/src/encoding/json/<generated>:3: dec.d undefined (type *Decoder has no field or method d)
+exit status 2
+-: # encoding/json
+$WORK/b072/orchestrion/src/encoding/json/<generated>:2: dec.r undefined (type *Decoder has no field or method r)
+$WORK/b072/orchestrion/src/encoding/json/<generated>:2: dec.d undefined (type *Decoder has no field or method d)
+$WORK/b072/orchestrion/src/encoding/json/<generated>:3: dec.d undefined (type *Decoder has no field or method d)
+exit status 2
+-: # encoding/json
+$WORK/b072/orchestrion/src/encoding/json/<generated>:2: dec.r undefined (type *Decoder has no field or method r)
+$WORK/b072/orchestrion/src/encoding/json/<generated>:2: dec.d undefined (type *Decoder has no field or method d)
+$WORK/b072/orchestrion/src/encoding/json/<generated>:3: dec.d undefined (type *Decoder has no field or method d)
+exit status 2
+-: # encoding/json
+$WORK/b072/orchestrion/src/encoding/json/<generated>:2: dec.r undefined (type *Decoder has no field or method r)
+$WORK/b072/orchestrion/src/encoding/json/<generated>:2: dec.d undefined (type *Decoder has no field or method d)
+$WORK/b072/orchestrion/src/encoding/json/<generated>:3: dec.d undefined (type *Decoder has no field or method d)
+exit status 2
+-: # encoding/json
+$WORK/b072/orchestrion/src/encoding/json/<generated>:2: dec.r undefined (type *Decoder has no field or method r)
+$WORK/b072/orchestrion/src/encoding/json/<generated>:2: dec.d undefined (type *Decoder has no field or method d)
+$WORK/b072/orchestrion/src/encoding/json/<generated>:3: dec.d undefined (type *Decoder has no field or method d)
+exit status 2
+-: # encoding/json
+$WORK/b072/orchestrion/src/encoding/json/<generated>:2: dec.r undefined (type *Decoder has no field or method r)
+$WORK/b072/orchestrion/src/encoding/json/<generated>:2: dec.d undefined (type *Decoder has no field or method d)
+$WORK/b072/orchestrion/src/encoding/json/<generated>:3: dec.d undefined (type *Decoder has no field or method d)
+exit status 2
+-: # encoding/json
+$WORK/b072/orchestrion/src/encoding/json/<generated>:2: dec.r undefined (type *Decoder has no field or method r)
+$WORK/b072/orchestrion/src/encoding/json/<generated>:2: dec.d undefined (type *Decoder has no field or method d)
+$WORK/b072/orchestrion/src/encoding/json/<generated>:3: dec.d undefined (type *Decoder has no field or method d)
+exit status 2
+-: # encoding/json
+$WORK/b072/orchestrion/src/encoding/json/<generated>:2: dec.r undefined (type *Decoder has no field or method r)
+$WORK/b072/orchestrion/src/encoding/json/<generated>:2: dec.d undefined (type *Decoder has no field or method d)
+$WORK/b072/orchestrion/src/encoding/json/<generated>:3: dec.d undefined (type *Decoder has no field or method d)
+exit status 2
+-: # encoding/json
+$WORK/b072/orchestrion/src/encoding/json/<generated>:2: dec.r undefined (type *Decoder has no field or method r)
+$WORK/b072/orchestrion/src/encoding/json/<generated>:2: dec.d undefined (type *Decoder has no field or method d)
+$WORK/b072/orchestrion/src/encoding/json/<generated>:3: dec.d undefined (type *Decoder has no field or method d)
+exit status 2
+-: # encoding/json
+$WORK/b072/orchestrion/src/encoding/json/<generated>:2: dec.r undefined (type *Decoder has no field or method r)
+$WORK/b072/orchestrion/src/encoding/json/<generated>:2: dec.d undefined (type *Decoder has no field or method d)
+$WORK/b072/orchestrion/src/encoding/json/<generated>:3: dec.d undefined (type *Decoder has no field or method d)
+exit status 2
+-: # encoding/json
+$WORK/b072/orchestrion/src/encoding/json/<generated>:2: dec.r undefined (type *Decoder has no field or method r)
+$WORK/b072/orchestrion/src/encoding/json/<generated>:2: dec.d undefined (type *Decoder has no field or method d)
+$WORK/b072/orchestrion/src/encoding/json/<generated>:3: dec.d undefined (type *Decoder has no field or method d)
+exit status 2
+-: # encoding/json
+$WORK/b072/orchestrion/src/encoding/json/<generated>:2: dec.r undefined (type *Decoder has no field or method r)
+$WORK/b072/orchestrion/src/encoding/json/<generated>:2: dec.d undefined (type *Decoder has no field or method d)
+$WORK/b072/orchestrion/src/encoding/json/<generated>:3: dec.d undefined (type *Decoder has no field or method d)
+exit status 2
+-: # encoding/json
+$WORK/b072/orchestrion/src/encoding/json/<generated>:2: dec.r undefined (type *Decoder has no field or method r)
+$WORK/b072/orchestrion/src/encoding/json/<generated>:2: dec.d undefined (type *Decoder has no field or method d)
+$WORK/b072/orchestrion/src/encoding/json/<generated>:3: dec.d undefined (type *Decoder has no field or method d)
+exit status 2
+-: # encoding/json
+$WORK/b072/orchestrion/src/encoding/json/<generated>:2: dec.r undefined (type *Decoder has no field or method r)
+$WORK/b072/orchestrion/src/encoding/json/<generated>:2: dec.d undefined (type *Decoder has no field or method d)
+$WORK/b072/orchestrion/src/encoding/json/<generated>:3: dec.d undefined (type *Decoder has no field or method d)
+exit status 2
+-: # encoding/json
+$WORK/b072/orchestrion/src/encoding/json/<generated>:2: dec.r undefined (type *Decoder has no field or method r)
+$WORK/b072/orchestrion/src/encoding/json/<generated>:2: dec.d undefined (type *Decoder has no field or method d)
+$WORK/b072/orchestrion/src/encoding/json/<generated>:3: dec.d undefined (type *Decoder has no field or method d)
+exit status 2
+-: # encoding/json
+$WORK/b072/orchestrion/src/encoding/json/<generated>:2: dec.r undefined (type *Decoder has no field or method r)
+$WORK/b072/orchestrion/src/encoding/json/<generated>:2: dec.d undefined (type *Decoder has no field or method d)
+$WORK/b072/orchestrion/src/encoding/json/<generated>:3: dec.d undefined (type *Decoder has no field or method d)
+exit status 2
+-: # encoding/json
+$WORK/b072/orchestrion/src/encoding/json/<generated>:2: dec.r undefined (type *Decoder has no field or method r)
+$WORK/b072/orchestrion/src/encoding/json/<generated>:2: dec.d undefined (type *Decoder has no field or method d)
+$WORK/b072/orchestrion/src/encoding/json/<generated>:3: dec.d undefined (type *Decoder has no field or method d)
+exit status 2
+-: # encoding/json
+$WORK/b072/orchestrion/src/encoding/json/<generated>:2: dec.r undefined (type *Decoder has no field or method r)
+$WORK/b072/orchestrion/src/encoding/json/<generated>:2: dec.d undefined (type *Decoder has no field or method d)
+$WORK/b072/orchestrion/src/encoding/json/<generated>:3: dec.d undefined (type *Decoder has no field or method d)
+exit status 2
+-: # encoding/json
+$WORK/b072/orchestrion/src/encoding/json/<generated>:2: dec.r undefined (type *Decoder has no field or method r)
+$WORK/b072/orchestrion/src/encoding/json/<generated>:2: dec.d undefined (type *Decoder has no field or method d)
+$WORK/b072/orchestrion/src/encoding/json/<generated>:3: dec.d undefined (type *Decoder has no field or method d)
+exit status 2
+exit status 1
+       36.08 real       109.75 user        74.24 sys
+           896122880  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+             4650564  page reclaims
+               59499  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                2746  messages sent
+                3099  messages received
+               53915  signals received
+               38192  voluntary context switches
+              853066  involuntary context switches
+            19422055  instructions retired
+            10121407  cycles elapsed
+             1212728  peak memory footprint

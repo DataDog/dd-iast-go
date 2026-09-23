@@ -1,0 +1,13 @@
+[
+  {
+    "id": "life-weak-gc-F1",
+    "verdict": "CONFIRMED",
+    "original_severity": "High",
+    "adjusted_severity": "High",
+    "reachable_default": true,
+    "documented_limitation": false,
+    "reason": "Two live sampled-out HTTP roots consume the default two annotation slots despite holding no analysis permits; an independently admitted active request gets neither a bound reporting annotation nor orphan capacity on Go 1.26.6 and 1.27.0. The README documents sampling and bounded drops, not starvation of admitted analyses by sampled-out roots.",
+    "evidence_path": ".omo/review/evidence/fx-life-weak-gc-F1/review_independent_starvation_test.go",
+    "repro_command": "Copy evidence/fx-life-weak-gc-F1/review_independent_starvation_test.go to internal/spans/review_independent_starvation_test.go in a private copy, then run GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go test -count=1 -timeout 12m -run '^TestIndependentActiveRequestKeepsItsReportingSlot$' -v ./internal/spans/"
+  }
+]

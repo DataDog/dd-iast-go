@@ -1,0 +1,37 @@
+=== RUN   TestF3PooledNewBufferCrossRequest
+=== RUN   TestF3PooledNewBufferCrossRequest/concurrent-bleed
+    zz_f3repro_test.go:108: B: query="SELECT status FROM users" tainted=true
+    zz_f3repro_test.go:152: span f3.b: {"sources":[{"origin":"http.request.parameter","name":"uid","value":"1' OR '1'='1' --xxxxxxxx"}],"vulnerabilities":[{"type":"SQL_INJECTION","hash":-2128055613,"evidence":{"valueParts":[{"value":"SELECT status FROM users","source":0}]},"location":{"spanId":3628889986896784797,"path":"/tmp/ddiast-review/wt/fx-life-cross-request-F3/iast/integration/testapp/zz_f3repro_test.go","line":109,"method":"github.com/DataDog/dd-iast-go/testapps/integration_test.TestF3PooledNewBufferCrossRequest.func1.3","stackId":"71af03b7-a862-461f-9549-56b0c6efae7d"}}]}
+    zz_f3repro_test.go:162: CROSS-REQUEST BLEED: request B executed the constant query "SELECT status FROM users" but its span reports 1 vulnerabilities with sources [http.request.parameter:uid="1' OR '1'='1' --xxxxxxxx"]
+=== RUN   TestF3PooledNewBufferCrossRequest/sequential-control
+    zz_f3repro_test.go:108: B: query="SELECT status FROM users" tainted=false
+    zz_f3repro_test.go:152: span f3.b: 
+--- FAIL: TestF3PooledNewBufferCrossRequest (0.04s)
+    --- FAIL: TestF3PooledNewBufferCrossRequest/concurrent-bleed (0.03s)
+    --- PASS: TestF3PooledNewBufferCrossRequest/sequential-control (0.01s)
+=== RUN   TestF3PooledNewBufferCrossRequest
+=== RUN   TestF3PooledNewBufferCrossRequest/concurrent-bleed
+    zz_f3repro_test.go:108: B: query="SELECT status FROM users" tainted=true
+    zz_f3repro_test.go:152: span f3.b: {"sources":[{"origin":"http.request.parameter","name":"uid","value":"1' OR '1'='1' --xxxxxxxx"}],"vulnerabilities":[{"type":"SQL_INJECTION","hash":-2128055613,"evidence":{"valueParts":[{"value":"SELECT status FROM users","source":0}]},"location":{"spanId":5278825052703742448,"path":"/tmp/ddiast-review/wt/fx-life-cross-request-F3/iast/integration/testapp/zz_f3repro_test.go","line":109,"method":"github.com/DataDog/dd-iast-go/testapps/integration_test.TestF3PooledNewBufferCrossRequest.func1.3","stackId":"d333558c-7488-47f1-99ab-f3e095f79942"}}]}
+    zz_f3repro_test.go:162: CROSS-REQUEST BLEED: request B executed the constant query "SELECT status FROM users" but its span reports 1 vulnerabilities with sources [http.request.parameter:uid="1' OR '1'='1' --xxxxxxxx"]
+=== RUN   TestF3PooledNewBufferCrossRequest/sequential-control
+    zz_f3repro_test.go:108: B: query="SELECT status FROM users" tainted=false
+    zz_f3repro_test.go:152: span f3.b: 
+--- FAIL: TestF3PooledNewBufferCrossRequest (0.02s)
+    --- FAIL: TestF3PooledNewBufferCrossRequest/concurrent-bleed (0.01s)
+    --- PASS: TestF3PooledNewBufferCrossRequest/sequential-control (0.01s)
+=== RUN   TestF3PooledNewBufferCrossRequest
+=== RUN   TestF3PooledNewBufferCrossRequest/concurrent-bleed
+    zz_f3repro_test.go:108: B: query="SELECT status FROM users" tainted=true
+    zz_f3repro_test.go:152: span f3.b: {"sources":[{"origin":"http.request.parameter","name":"uid","value":"1' OR '1'='1' --xxxxxxxx"}],"vulnerabilities":[{"type":"SQL_INJECTION","hash":-2128055613,"evidence":{"valueParts":[{"value":"SELECT status FROM users","source":0}]},"location":{"spanId":1187797271443031802,"path":"/tmp/ddiast-review/wt/fx-life-cross-request-F3/iast/integration/testapp/zz_f3repro_test.go","line":109,"method":"github.com/DataDog/dd-iast-go/testapps/integration_test.TestF3PooledNewBufferCrossRequest.func1.3","stackId":"ef3f67a7-e9f7-47d4-a8c2-141641913a1d"}}]}
+    zz_f3repro_test.go:162: CROSS-REQUEST BLEED: request B executed the constant query "SELECT status FROM users" but its span reports 1 vulnerabilities with sources [http.request.parameter:uid="1' OR '1'='1' --xxxxxxxx"]
+=== RUN   TestF3PooledNewBufferCrossRequest/sequential-control
+    zz_f3repro_test.go:108: B: query="SELECT status FROM users" tainted=false
+    zz_f3repro_test.go:152: span f3.b: 
+--- FAIL: TestF3PooledNewBufferCrossRequest (0.02s)
+    --- FAIL: TestF3PooledNewBufferCrossRequest/concurrent-bleed (0.01s)
+    --- PASS: TestF3PooledNewBufferCrossRequest/sequential-control (0.01s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/testapps/integration	0.735s
+FAIL
+exit status 1

@@ -1,0 +1,6 @@
+Command: cd nho/net-http-orchestrion && GOTOOLCHAIN=go1.26.6 GOCACHE=/tmp/ddiast-review/wt/hooks-compile-matrix/gocache-nho-iast /usr/bin/time -l timeout 1320 go tool orchestrion go build -o /tmp/ddiast-review/wt/hooks-compile-matrix/nho-iast.bin .
+go version: go version go1.26.6 darwin/arm64
+start: Wed Sep 23 14:02:47 CEST 2026
+14:02  up 11 days, 20:41, 4 users, load averages: 24.89 39.68 89.95
+Exit status: 0
+end: Wed Sep 23 14:04:46 CEST 2026

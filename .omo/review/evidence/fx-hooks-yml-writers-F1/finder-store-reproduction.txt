@@ -1,0 +1,13 @@
+Command:
+cd /tmp/ddiast-review/wt/fx-hooks-yml-writers-F1 &&
+GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go test -count=1 -timeout=5m ./internal/taint/store \
+  -run TestReviewBufferAnchorsExceedAdvertisedMemoryCeiling -v
+
+Captured output:
+=== RUN   TestReviewBufferAnchorsExceedAdvertisedMemoryCeiling
+    review_retention_test.go:29: live heap increase=128 MiB, store charged=128 bytes, writer records=8
+    review_retention_test.go:31: advertised 24 MiB footprint exceeded by retained buffer allocations
+--- FAIL: TestReviewBufferAnchorsExceedAdvertisedMemoryCeiling (0.01s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/store	0.425s
+FAIL

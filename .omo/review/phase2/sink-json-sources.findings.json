@@ -1,0 +1,13 @@
+[
+  {
+    "id": "sink-json-sources-F1",
+    "severity": "Critical",
+    "category": "compile-break",
+    "location": "iast/encoding/json/orchestrion.yml:36-47",
+    "title": "Go 1.27 JSONv2 breaks every woven Decoder build",
+    "claim": "The Decoder.Decode advice references legacy private fields dec.r and dec.d. Under Go 1.27.0's default JSONv2 implementation those fields do not exist, so a valid program using json.NewDecoder(...).Decode(...) fails while compiling woven encoding/json.",
+    "evidence_path": ".omo/review/evidence/sink-json-sources/go127-jsonv2-repro/build-output.txt",
+    "repro_command": "go -C /tmp/ddiast-review/wt/sink-json-sources/review-json-go127 tool orchestrion go build .",
+    "needs_repro": false
+  }
+]

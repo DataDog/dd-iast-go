@@ -1,0 +1,35 @@
+[
+  {
+    "id": "store-memory-bounds-F1",
+    "severity": "Critical",
+    "category": "memory-bound",
+    "location": "internal/taint/store/binding.go:29-35,166-203; internal/taint/store/writer.go:23-42,224-229",
+    "title": "Strong reader and writer anchors retain arbitrarily large uncharged allocations",
+    "claim": "A single real reader or tracked capacity-limited bytes.Buffer can anchor arbitrarily large caller allocations outside the byte budget. GC measurements retained 100663296 bytes with incremental charge 0 for readers and 64 for buffers; untracked controls did not retain them and Finish released them. This explicitly challenges the documented README retained-anchor trade-off under the hard maximum-footprint rule.",
+    "evidence_path": ".omo/review/evidence/store-memory-bounds/01-store-and-anchors.txt",
+    "repro_command": "cd /tmp/ddiast-review/wt/store-memory-bounds && env GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 DD_IAST_REQUEST_SAMPLING=100 DD_IAST_MAX_CONCURRENT_REQUESTS=64 DD_IAST_MAX_RANGE_COUNT=64 timeout 900 go test -count=1 -timeout 12m -v -run '^TestBoundsRetainedAnchors$' ./internal/taint/store",
+    "needs_repro": false
+  },
+  {
+    "id": "store-memory-bounds-F2",
+    "severity": "Critical",
+    "category": "memory-bound",
+    "location": "internal/spans/annotation.go:131-143,198-205,227-236",
+    "title": "Non-atomic annotation admission permits unbounded map growth",
+    "claim": "The capacity check is separated from map insertion, allowing an arbitrary number of simultaneous calls to observe free space and insert independent annotations. A scheduling-only private patch deterministically yielded 2048 live entries against capacity 64, retaining 7651328 extra HeapInuse bytes and zero source charge; the same interleaving reproduced under -race. Request owner permits do not govern AnnotationFor.",
+    "evidence_path": ".omo/review/evidence/store-memory-bounds/03-annotation-admission.txt",
+    "repro_command": "cd /tmp/ddiast-review/wt/store-memory-bounds && env GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 DD_IAST_REQUEST_SAMPLING=100 DD_IAST_MAX_CONCURRENT_REQUESTS=64 DD_IAST_MAX_RANGE_COUNT=64 timeout 900 go test -count=1 -timeout 12m -v -run '^TestBoundsAnnotationAdmission$' ./internal/spans",
+    "needs_repro": false
+  },
+  {
+    "id": "store-memory-bounds-F3",
+    "severity": "High",
+    "category": "memory-bound",
+    "location": "internal/taint/redaction/source.go:187-207; internal/spans/tainted.go:114-162,274-294; internal/taint/evidence/evidence.go:293-300",
+    "title": "Short evidence parts pin full snapshots outside the event byte budget",
+    "claim": "Untruncated short value parts retain full sink-snapshot backing, while event admission reserves only new source identity bytes. At supported maximum configuration, real SQL analysis and default redaction/truncation retained an extra 138264576 HeapInuse bytes across 64 events with 64 findings each, 5.49 times the 24 MiB whole-feature ceiling. Each event encoded to 21772 bytes without fallback and exact source identity charge was only 192 bytes process-wide.",
+    "evidence_path": ".omo/review/evidence/store-memory-bounds/06-sql-evidence.txt",
+    "repro_command": "cd /tmp/ddiast-review/wt/store-memory-bounds && env GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 DD_IAST_REQUEST_SAMPLING=100 DD_IAST_MAX_CONCURRENT_REQUESTS=64 DD_IAST_MAX_RANGE_COUNT=64 DD_IAST_VULNERABILITIES_PER_REQUEST=64 timeout 900 go test -count=1 -timeout 12m -v -run '^TestBoundsEventEvidenceRetention$' ./internal/taint/store",
+    "needs_repro": false
+  }
+]

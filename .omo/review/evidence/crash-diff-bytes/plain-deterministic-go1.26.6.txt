@@ -1,0 +1,8 @@
+=== RUN   TestDiffWritersDeterministic
+    diff_test.go:476: writers: woven=false iterations=3000 DIGEST=61dbec8fe9aa6537
+--- PASS: TestDiffWritersDeterministic (0.74s)
+=== RUN   TestDiffBytesFnDeterministic
+    diff_test.go:476: bytesfn: woven=false iterations=3000 DIGEST=ad3db86df207a8b1
+--- PASS: TestDiffBytesFnDeterministic (0.24s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/iast/internal/zzdiffbytes	1.483s

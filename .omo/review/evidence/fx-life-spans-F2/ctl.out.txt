@@ -1,0 +1,27 @@
+=== RUN   TestFxCtlDoubleFinishNoLateBind
+    zz_fx_life_spans_f2_ctl_test.go:53: control double-finish-no-late-bind completed 20 requests
+--- PASS: TestFxCtlDoubleFinishNoLateBind (0.32s)
+=== RUN   TestFxCtlSingleFinishLateBind
+    zz_fx_life_spans_f2_ctl_test.go:53: control single-finish-late-bind completed 20 requests
+--- PASS: TestFxCtlSingleFinishLateBind (0.04s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/testapps/integration	2.262s
+        8.88 real         3.84 user         6.40 sys
+           408207360  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              367041  page reclaims
+               32511  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                2586  messages sent
+                2593  messages received
+               14119  signals received
+               30212  voluntary context switches
+              190273  involuntary context switches
+          5525279437  instructions retired
+          3284319665  cycles elapsed
+            42173112  peak memory footprint
+EXIT=0

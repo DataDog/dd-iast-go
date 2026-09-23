@@ -1,0 +1,26 @@
+$ cd iast/integration/testapp && GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -timeout 15m -count=1 -v -run TestFX .
+=== RUN   TestFXResetOntoConstantInRequest
+    zz_fx_reset_reader_test.go:91: diag reset body="name=alice" body-tainted=true q-tainted=true query="SELECT 1 FROM clean_constant" query-ranges={"Origin":"http.request.body","Name":"","Value":"SELECT 1 FROM clean_constant"} err=<nil>
+    zz_fx_reset_reader_test.go:95: diag control q-tainted=false query="SELECT 1 FROM clean_constant" query-ranges= err=<nil>
+    zz_fx_reset_reader_test.go:102: span fx.req=reset iast.enabled=1 hasJSON=true
+    zz_fx_reset_reader_test.go:102: span fx.req=control iast.enabled=1 hasJSON=false
+    zz_fx_reset_reader_test.go:103: case=in-request-reset vuln[0] type=SQL_INJECTION evidence={"valueParts":[{"pattern":"abcdefghijklmnopqrstuvwxyzAB","redacted":true,"source":0}]}
+    zz_fx_reset_reader_test.go:103: case=in-request-reset source[0]={"origin":"http.request.body","pattern":"abcdefghijklmnopqrstuvwxyzAB","redacted":true}
+    zz_fx_reset_reader_test.go:103: case=in-request-reset summary vulns=1 sources=1
+    zz_fx_reset_reader_test.go:104: case=in-request-control summary vulns=0 sources=0
+--- PASS: TestFXResetOntoConstantInRequest (0.01s)
+=== RUN   TestFXPooledReaderAcrossRequests
+    zz_fx_reset_reader_test.go:117: diag A body="body_of_A=1" tainted=true
+    zz_fx_reset_reader_test.go:124: diag B internal q-tainted=true query="SELECT 3 FROM b_internal_clean" query-ranges={"Origin":"http.request.body","Name":"","Value":"SELECT 3 FROM b_internal_clean"} err=<nil>
+    zz_fx_reset_reader_test.go:126: diag B own-body q-tainted=true query="SELECT 4 FROM t WHERE body_of_B=1" query-ranges={"Origin":"http.request.body","Name":"","Value":"body_of_B=1"} err=<nil>
+    zz_fx_reset_reader_test.go:140: span fx.req=B iast.enabled=1 hasJSON=true
+    zz_fx_reset_reader_test.go:140: span fx.req=A iast.enabled=1 hasJSON=false
+    zz_fx_reset_reader_test.go:141: case=pooled-A summary vulns=0 sources=0
+    zz_fx_reset_reader_test.go:142: case=pooled-B vuln[0] type=SQL_INJECTION evidence={"valueParts":[{"pattern":"abcdefghijklmnopqrstuvwxyzABCD","redacted":true,"source":0}]}
+    zz_fx_reset_reader_test.go:142: case=pooled-B vuln[1] type=SQL_INJECTION evidence={"valueParts":[{"value":"SELECT "},{"pattern":"*","redacted":true},{"value":" FROM t WHERE "},{"pattern":"abcdefghijk","redacted":true,"source":1}]}
+    zz_fx_reset_reader_test.go:142: case=pooled-B source[0]={"origin":"http.request.body","pattern":"abcdefghijklmnopqrstuvwxyzABCD","redacted":true}
+    zz_fx_reset_reader_test.go:142: case=pooled-B source[1]={"origin":"http.request.body","pattern":"abcdefghijk","redacted":true}
+    zz_fx_reset_reader_test.go:142: case=pooled-B summary vulns=2 sources=2
+--- PASS: TestFXPooledReaderAcrossRequests (0.01s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/testapps/integration	0.802s

@@ -1,0 +1,13 @@
+=== RUN   TestHeaderMapAliases
+=== RUN   TestHeaderMapAliases/empty
+    header_alias_test.go:41: woven=false request_copied=false source_tainted=false handler="visible" caller="visible"
+=== RUN   TestHeaderMapAliases/eligible
+    header_alias_test.go:41: woven=false request_copied=false source_tainted=false handler="visible" caller="visible"
+--- PASS: TestHeaderMapAliases (0.00s)
+    --- PASS: TestHeaderMapAliases/empty (0.00s)
+    --- PASS: TestHeaderMapAliases/eligible (0.00s)
+=== RUN   TestHeaderValueSliceAliases
+    header_alias_test.go:65: woven=false handler="changed" caller_slice="changed"
+--- PASS: TestHeaderValueSliceAliases (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/reviewhttp	0.780s

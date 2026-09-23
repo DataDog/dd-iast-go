@@ -1,0 +1,9 @@
+Command: cd <copy> && GOFLAGS=-p=4 GOTOOLCHAIN=local (go1.27.0) /usr/bin/time -l go tool orchestrion go test -c -race -o woven127.test ./iast/net/http
+(grep of error/timing lines; no binary produced)
+go version go1.27.0 darwin/arm64
+$WORK/b104/orchestrion/src/encoding/json/<generated>:2: dec.r undefined (type *Decoder has no field or method r)
+$WORK/b104/orchestrion/src/encoding/json/<generated>:2: dec.d undefined (type *Decoder has no field or method d)
+$WORK/b104/orchestrion/src/encoding/json/<generated>:3: dec.d undefined (type *Decoder has no field or method d)
+       53.40 real        85.37 user        58.90 sys
+           261931008  maximum resident set size
+BUILD3=0

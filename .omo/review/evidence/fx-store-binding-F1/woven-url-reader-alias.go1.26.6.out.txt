@@ -1,0 +1,16 @@
+Command (from /tmp/ddiast-review/wt/fx-store-binding-F1, reproducer installed as iast/net/http/fx_alias_review_test.go):
+GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 /usr/bin/time -l go tool orchestrion go test -run TestFxURLReaderAliasWoven -count=1 -v -timeout=20m ./iast/net/http
+
+=== RUN   TestFxURLReaderAliasWoven
+    fx_alias_review_test.go:73: control (httptest.NewRequest):   {Aliased:false Active:true URLBound:1 BodyBound:0 QueryTainted:true}
+    fx_alias_review_test.go:79: aliased (URL embedded in Body): {Aliased:true Active:true URLBound:0 BodyBound:1 QueryTainted:false}
+    fx_alias_review_test.go:90: real net/http server:           {Aliased:false Active:true URLBound:1 BodyBound:0 QueryTainted:true}
+    fx_alias_review_test.go:96: FINDING: URL.Query taint lost when Body embeds URL at offset 0 (url_bound=0 body_bound=1)
+--- FAIL: TestFxURLReaderAliasWoven (0.00s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/iast/net/http	0.555s
+FAIL
+exit status 1
+      131.32 real       106.53 user        99.65 sys
+           365920256  maximum resident set size
+            37487312  peak memory footprint

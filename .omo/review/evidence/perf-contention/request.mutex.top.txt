@@ -1,0 +1,23 @@
+File: request.test
+Type: delay
+Time: 2026-09-23 12:05:52 CEST
+Showing nodes accounting for 106.59s, 100% of 106.63s total
+Dropped 257 nodes (cum <= 0.53s)
+      flat  flat%   sum%        cum   cum%
+   102.73s 96.35% 96.35%    103.36s 96.94%  sync.(*Mutex).Unlock /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/sync/mutex.go:65 (inline)
+     3.85s  3.61%   100%      3.85s  3.61%  runtime.unlock /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/lock_spinbit.go:261 (partial-inline)
+         0     0%   100%     43.54s 40.84%  github.com/DataDog/dd-iast-go/internal/taint/request.(*Scope).Finish /private/tmp/ddiast-review/wt/perf-contention/internal/taint/request/scope.go:219
+         0     0%   100%    103.71s 97.26%  github.com/DataDog/dd-iast-go/internal/taint/request.Analysis.Finish /private/tmp/ddiast-review/wt/perf-contention/internal/taint/request/owner.go:270
+         0     0%   100%     43.54s 40.84%  github.com/DataDog/dd-iast-go/internal/taint/request.BenchmarkPCBeginRequestFinish.func2 /private/tmp/ddiast-review/wt/perf-contention/internal/taint/request/zz_perf_contention_test.go:74
+         0     0%   100%     60.17s 56.43%  github.com/DataDog/dd-iast-go/internal/taint/request.pcAdmission.func1 /private/tmp/ddiast-review/wt/perf-contention/internal/taint/request/zz_perf_contention_test.go:27
+         0     0%   100%    103.29s 96.87%  github.com/DataDog/dd-iast-go/internal/taint/store.(*Owner).Finish /private/tmp/ddiast-review/wt/perf-contention/internal/taint/store/owner.go:203
+         0     0%   100%      0.63s  0.59%  internal/sync.(*Mutex).Unlock /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/internal/sync/mutex.go:198 (inline)
+         0     0%   100%      0.63s  0.59%  internal/sync.(*Mutex).unlockSlow /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/internal/sync/mutex.go:221
+         0     0%   100%      0.63s  0.59%  internal/sync.runtime_Semrelease /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/sema.go:124
+         0     0%   100%      0.63s  0.59%  runtime.gopreempt_m /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/proc.go:4362 (inline)
+         0     0%   100%      1.65s  1.54%  runtime.mcall /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:339
+         0     0%   100%      0.76s  0.71%  runtime.park_m /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/proc.go:4283
+         0     0%   100%      0.76s  0.71%  runtime.parkunlock_c /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/proc.go:4248
+         0     0%   100%      0.82s  0.76%  runtime.schedule /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/proc.go:4164
+         0     0%   100%      0.70s  0.65%  runtime.systemstack /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:399
+         0     0%   100%    103.98s 97.52%  testing.(*B).RunParallel.func1 /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/testing/benchmark.go:982

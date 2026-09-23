@@ -1,0 +1,78 @@
+=== RUN   TestFidelityBytesDifferential
+    zz_fidelity_bytes_test.go:639: [tainted] tainted primary inputs (len>=2): 77323/77323
+    zz_fidelity_bytes_test.go:639: [foreign-owners] tainted primary inputs (len>=2): 77443/77443
+    zz_fidelity_bytes_test.go:642: wrapper results observed tainted per op: map[Clone:4390 Cut:4639 CutPrefix:4437 CutSuffix:4375 Fields:7968 FieldsFunc:7403 Join:4003 Map:3558 Repeat:2244 Replace:4620 ReplaceAll:4724 SliceAll:4451 SliceBounds:3209 SliceFull:2908 SliceFullZero:3054 SliceHigh:3217 SliceLow:3197 Split:22329 SplitAfter:22765 SplitAfterN:11470 SplitN:11384 ToLower:4443 ToTitle:4428 ToUpper:4451 ToValidUTF8:4348 Trim:4480 TrimFunc:4380 TrimLeft:4421 TrimLeftFunc:4371 TrimPrefix:4476 TrimRight:4400 TrimRightFunc:4370 TrimSpace:4396 TrimSuffix:4455]
+    zz_fidelity_bytes_test.go:643: byte differential: 420000 comparisons, 0 failures
+--- PASS: TestFidelityBytesDifferential (30.45s)
+=== RUN   TestFidelityWritersDifferential
+    zz_fidelity_bytes_test.go:1018: [inactive] Builder.String identity divergence (clone instead of alias): 0
+    zz_fidelity_bytes_test.go:1018: [active-clean] Builder.String identity divergence (clone instead of alias): 0
+    zz_fidelity_bytes_test.go:1018: [tainted] Builder.String identity divergence (clone instead of alias): 3971
+    zz_fidelity_bytes_test.go:1018: [foreign-owners] Builder.String identity divergence (clone instead of alias): 4144
+    zz_fidelity_bytes_test.go:1020: Buffer.String wrapper results observed tainted: 2633
+    zz_fidelity_bytes_test.go:1021: writer differential: 288000 comparisons, 0 failures
+--- PASS: TestFidelityWritersDifferential (1.00s)
+=== RUN   TestFidelityWriterEdgeCases
+    zz_fidelity_bytes_test.go:1127: [inactive] nil Buffer.String: ok (panicked=false )
+    zz_fidelity_bytes_test.go:1127: [inactive] nil Buffer.Write: ok (panicked=true runtime.errorString: runtime error: invalid memory address or nil pointer dereference)
+    zz_fidelity_bytes_test.go:1127: [inactive] nil Buffer.WriteString: ok (panicked=true runtime.errorString: runtime error: invalid memory address or nil pointer dereference)
+    zz_fidelity_bytes_test.go:1127: [inactive] nil Buffer.WriteByte: ok (panicked=true runtime.errorString: runtime error: invalid memory address or nil pointer dereference)
+    zz_fidelity_bytes_test.go:1127: [inactive] nil Buffer.WriteRune: ok (panicked=true runtime.errorString: runtime error: invalid memory address or nil pointer dereference)
+    zz_fidelity_bytes_test.go:1127: [inactive] nil Buffer.Grow: ok (panicked=true runtime.errorString: runtime error: invalid memory address or nil pointer dereference)
+    zz_fidelity_bytes_test.go:1127: [inactive] nil Buffer.Reset: ok (panicked=true runtime.errorString: runtime error: invalid memory address or nil pointer dereference)
+    zz_fidelity_bytes_test.go:1127: [inactive] nil Buffer.Truncate0: ok (panicked=true runtime.errorString: runtime error: invalid memory address or nil pointer dereference)
+    zz_fidelity_bytes_test.go:1127: [inactive] nil Builder.String: ok (panicked=true runtime.errorString: runtime error: invalid memory address or nil pointer dereference)
+    zz_fidelity_bytes_test.go:1127: [inactive] nil Builder.Write: ok (panicked=true runtime.errorString: runtime error: invalid memory address or nil pointer dereference)
+    zz_fidelity_bytes_test.go:1127: [inactive] nil Builder.WriteString: ok (panicked=true runtime.errorString: runtime error: invalid memory address or nil pointer dereference)
+    zz_fidelity_bytes_test.go:1127: [inactive] nil Builder.WriteByte: ok (panicked=true runtime.errorString: runtime error: invalid memory address or nil pointer dereference)
+    zz_fidelity_bytes_test.go:1127: [inactive] nil Builder.WriteRune: ok (panicked=true runtime.errorString: runtime error: invalid memory address or nil pointer dereference)
+    zz_fidelity_bytes_test.go:1127: [inactive] nil Builder.Grow: ok (panicked=true runtime.errorString: runtime error: invalid memory address or nil pointer dereference)
+    zz_fidelity_bytes_test.go:1127: [inactive] nil Builder.Reset: ok (panicked=true runtime.errorString: runtime error: invalid memory address or nil pointer dereference)
+    zz_fidelity_bytes_test.go:1127: [inactive] copied Builder.WriteString: ok (panicked=true string: strings: illegal use of non-zero Builder copied by value)
+    zz_fidelity_bytes_test.go:1127: [inactive] copied Builder.Write: ok (panicked=true string: strings: illegal use of non-zero Builder copied by value)
+    zz_fidelity_bytes_test.go:1127: [inactive] copied Builder.Grow: ok (panicked=true string: strings: illegal use of non-zero Builder copied by value)
+    zz_fidelity_bytes_test.go:1127: [inactive] copied Builder.String: ok (panicked=false )
+    zz_fidelity_bytes_test.go:1127: [inactive] copied Builder.Reset+Write: ok (panicked=false )
+    zz_fidelity_bytes_test.go:1127: [inactive] Builder.Grow(-1): ok (panicked=true string: strings.Builder.Grow: negative count)
+    zz_fidelity_bytes_test.go:1127: [inactive] Buffer.Grow(-1): ok (panicked=true string: bytes.Buffer.Grow: negative count)
+    zz_fidelity_bytes_test.go:1127: [inactive] Buffer.Truncate(-1): ok (panicked=true string: bytes.Buffer: truncation out of range)
+    zz_fidelity_bytes_test.go:1127: [inactive] Buffer.Truncate(>len): ok (panicked=true string: bytes.Buffer: truncation out of range)
+    zz_fidelity_bytes_test.go:1127: [inactive] Buffer.ReadRune+String+UnreadRune: ok (panicked=false )
+    zz_fidelity_bytes_test.go:1127: [inactive] Buffer.ReadByte+Write+UnreadByte: ok (panicked=false )
+    zz_fidelity_bytes_test.go:1127: [inactive] Buffer.ReadByte+Truncate+UnreadByte: ok (panicked=false )
+    zz_fidelity_bytes_test.go:1127: [inactive] Buffer.ReadByte+Grow+UnreadByte: ok (panicked=false )
+    zz_fidelity_bytes_test.go:1127: [tainted] nil Buffer.String: ok (panicked=false )
+    zz_fidelity_bytes_test.go:1127: [tainted] nil Buffer.Write: ok (panicked=true runtime.errorString: runtime error: invalid memory address or nil pointer dereference)
+    zz_fidelity_bytes_test.go:1127: [tainted] nil Buffer.WriteString: ok (panicked=true runtime.errorString: runtime error: invalid memory address or nil pointer dereference)
+    zz_fidelity_bytes_test.go:1127: [tainted] nil Buffer.WriteByte: ok (panicked=true runtime.errorString: runtime error: invalid memory address or nil pointer dereference)
+    zz_fidelity_bytes_test.go:1127: [tainted] nil Buffer.WriteRune: ok (panicked=true runtime.errorString: runtime error: invalid memory address or nil pointer dereference)
+    zz_fidelity_bytes_test.go:1127: [tainted] nil Buffer.Grow: ok (panicked=true runtime.errorString: runtime error: invalid memory address or nil pointer dereference)
+    zz_fidelity_bytes_test.go:1127: [tainted] nil Buffer.Reset: ok (panicked=true runtime.errorString: runtime error: invalid memory address or nil pointer dereference)
+    zz_fidelity_bytes_test.go:1127: [tainted] nil Buffer.Truncate0: ok (panicked=true runtime.errorString: runtime error: invalid memory address or nil pointer dereference)
+    zz_fidelity_bytes_test.go:1127: [tainted] nil Builder.String: ok (panicked=true runtime.errorString: runtime error: invalid memory address or nil pointer dereference)
+    zz_fidelity_bytes_test.go:1127: [tainted] nil Builder.Write: ok (panicked=true runtime.errorString: runtime error: invalid memory address or nil pointer dereference)
+    zz_fidelity_bytes_test.go:1127: [tainted] nil Builder.WriteString: ok (panicked=true runtime.errorString: runtime error: invalid memory address or nil pointer dereference)
+    zz_fidelity_bytes_test.go:1127: [tainted] nil Builder.WriteByte: ok (panicked=true runtime.errorString: runtime error: invalid memory address or nil pointer dereference)
+    zz_fidelity_bytes_test.go:1127: [tainted] nil Builder.WriteRune: ok (panicked=true runtime.errorString: runtime error: invalid memory address or nil pointer dereference)
+    zz_fidelity_bytes_test.go:1127: [tainted] nil Builder.Grow: ok (panicked=true runtime.errorString: runtime error: invalid memory address or nil pointer dereference)
+    zz_fidelity_bytes_test.go:1127: [tainted] nil Builder.Reset: ok (panicked=true runtime.errorString: runtime error: invalid memory address or nil pointer dereference)
+    zz_fidelity_bytes_test.go:1127: [tainted] copied Builder.WriteString: ok (panicked=true string: strings: illegal use of non-zero Builder copied by value)
+    zz_fidelity_bytes_test.go:1127: [tainted] copied Builder.Write: ok (panicked=true string: strings: illegal use of non-zero Builder copied by value)
+    zz_fidelity_bytes_test.go:1127: [tainted] copied Builder.Grow: ok (panicked=true string: strings: illegal use of non-zero Builder copied by value)
+    zz_fidelity_bytes_test.go:1127: [tainted] copied Builder.String: ok (panicked=false )
+    zz_fidelity_bytes_test.go:1127: [tainted] copied Builder.Reset+Write: ok (panicked=false )
+    zz_fidelity_bytes_test.go:1127: [tainted] Builder.Grow(-1): ok (panicked=true string: strings.Builder.Grow: negative count)
+    zz_fidelity_bytes_test.go:1127: [tainted] Buffer.Grow(-1): ok (panicked=true string: bytes.Buffer.Grow: negative count)
+    zz_fidelity_bytes_test.go:1127: [tainted] Buffer.Truncate(-1): ok (panicked=true string: bytes.Buffer: truncation out of range)
+    zz_fidelity_bytes_test.go:1127: [tainted] Buffer.Truncate(>len): ok (panicked=true string: bytes.Buffer: truncation out of range)
+    zz_fidelity_bytes_test.go:1127: [tainted] Buffer.ReadRune+String+UnreadRune: ok (panicked=false )
+    zz_fidelity_bytes_test.go:1127: [tainted] Buffer.ReadByte+Write+UnreadByte: ok (panicked=false )
+    zz_fidelity_bytes_test.go:1127: [tainted] Buffer.ReadByte+Truncate+UnreadByte: ok (panicked=false )
+    zz_fidelity_bytes_test.go:1127: [tainted] Buffer.ReadByte+Grow+UnreadByte: ok (panicked=false )
+--- PASS: TestFidelityWriterEdgeCases (0.00s)
+=== RUN   TestFidelityBuilderStringIdentityAndAllocs
+    zz_fidelity_bytes_test.go:1146: native ptr==buf: true; wrapped ptr==native ptr: false; wrapped tainted=true native tainted=false
+    zz_fidelity_bytes_test.go:1150: allocs/op for String() on a 6000-byte tainted builder: native=0.0 wrapped=1.0
+--- PASS: TestFidelityBuilderStringIdentityAndAllocs (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/iast/propagation	31.918s

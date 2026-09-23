@@ -1,0 +1,4 @@
+=== RUN   TestFxSlotIndexRaceReadAll
+--- PASS: TestFxSlotIndexRaceReadAll (0.07s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/request	1.389s

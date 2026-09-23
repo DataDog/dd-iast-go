@@ -1,0 +1,22 @@
+Fixed-iteration control versus woven run (Go 1.26.6; GOMAXPROCS=1):
+
+GODEBUG=gctrace=1 DD_IAST_ENABLED=true DD_IAST_REQUEST_SAMPLING=100 DD_IAST_DEDUPLICATION_ENABLED=false /tmp/ddiast-review/wt/perf-gc/control.test -test.run=^$ -test.bench=^BenchmarkWeakHashNoActiveSpan$ -test.benchmem -test.benchtime=100000x -test.count=1 -test.cpu=1
+
+BenchmarkWeakHashNoActiveSpan 	  100000	       562.2 ns/op	       0 B/op	       0 allocs/op
+PASS
+gc 1 @0.201s 0%: 0.10+44+0.005 ms clock, 0.10+0/0.44/44+0.005 ms cpu, 2->2->0 MB, 4 MB goal, 0 MB stacks, 0 MB globals, 1 P (forced)
+gc 2 @0.295s 0%: 0.036+0.63+0.002 ms clock, 0.036+0/0.093/0.53+0.002 ms cpu, 1->1->0 MB, 4 MB goal, 0 MB stacks, 0 MB globals, 1 P (forced)
+
+GODEBUG=gctrace=1 DD_IAST_ENABLED=true DD_IAST_REQUEST_SAMPLING=100 DD_IAST_DEDUPLICATION_ENABLED=false /tmp/ddiast-review/wt/perf-gc/iast.test -test.run=^$ -test.bench=^BenchmarkWeakHashNoActiveSpan$ -test.benchmem -test.benchtime=100000x -test.count=1 -test.cpu=1
+
+BenchmarkWeakHashNoActiveSpan 	  100000	       418.1 ns/op	     128 B/op	       4 allocs/op
+PASS
+gc 1 @0.212s 0%: 0.028+0.61+0.002 ms clock, 0.028+0/0.090/0.51+0.002 ms cpu, 2->2->1 MB, 4 MB goal, 0 MB stacks, 0 MB globals, 1 P (forced)
+gc 2 @0.213s 0%: 0.11+0.52+0.001 ms clock, 0.11+0/0.079/0.44+0.001 ms cpu, 1->1->0 MB, 4 MB goal, 0 MB stacks, 0 MB globals, 1 P (forced)
+gc 3 @0.219s 0%: 0.036+0.92+0.002 ms clock, 0.036+0.59/0/0+0.002 ms cpu, 3->3->1 MB, 4 MB goal, 0 MB stacks, 0 MB globals, 1 P
+gc 4 @0.225s 0%: 0.14+2.6+0.002 ms clock, 0.14+0.59/0/0+0.002 ms cpu, 3->3->1 MB, 4 MB goal, 0 MB stacks, 0 MB globals, 1 P
+gc 5 @0.231s 0%: 0.023+1.9+0.002 ms clock, 0.023+0.52/0/0+0.002 ms cpu, 3->3->1 MB, 4 MB goal, 0 MB stacks, 0 MB globals, 1 P
+gc 6 @0.236s 1%: 0.032+3.2+0.002 ms clock, 0.032+0.70/0/0+0.002 ms cpu, 3->3->1 MB, 4 MB goal, 0 MB stacks, 0 MB globals, 1 P
+gc 7 @0.248s 2%: 1.7+5.0+0.003 ms clock, 1.7+3.5/0.46/0+0.003 ms cpu, 3->3->1 MB, 4 MB goal, 0 MB stacks, 0 MB globals, 1 P
+
+Interpretation: the woven no-active-span weak-hash report path allocates short-lived reporting/span data (128 B, four allocations per operation) and triggers collections; the trace repeatedly returns to 1 MB live heap. This experiment does not attribute those allocations to weak.Pointer because the separate allocation probe above reports zero allocations for weak.Make plus Value.

@@ -1,0 +1,24 @@
+[
+  {
+    "id": "crash-fuzz-engine-F1",
+    "severity": "Medium",
+    "category": "test-gap",
+    "location": "internal/taint/propagation/sequence_operations_test.go:18,131,138; internal/taint/propagation/sequence_replace_test.go:26-31",
+    "title": "The engine fuzzer is built so it never reaches the exact-to-coarse, drop, or non-exact paths",
+    "claim": "FuzzEngineSequence generates only Copy/Window/Repeat/2-element Join/1-byte-old Replace (count clamped to at most 32 matches)/BytesToString. The replayed corpus from the 15m campaigns leaves CoarseString/Bytes, CaseString/Bytes, ValidUTF8Bytes, String/ByteWindows, Concat2-16, JSONString, all writer.go, recordCoarse and recordDropped at 0% coverage, and mapReplaceSegments at 55.3%. Architecture risk area #7 (exact-to-coarse transitions) is therefore not fuzzed.",
+    "evidence_path": ".omo/review/evidence/crash-fuzz-engine/fuzz-corpus-coverage.func.txt",
+    "repro_command": "cp -R $(go env GOCACHE)/fuzz/github.com/DataDog/dd-iast-go/internal/taint/propagation/Fuzz{EngineSequence,OwnerLifecycle} internal/taint/propagation/testdata/fuzz/ && go test -count=1 -run '^(FuzzEngineSequence|FuzzOwnerLifecycle)$' -coverpkg=./internal/taint/propagation,./internal/taint/store,./internal/taint/ranges -coverprofile=c.out ./internal/taint/propagation/ && go tool cover -func=c.out",
+    "needs_repro": false
+  },
+  {
+    "id": "crash-fuzz-engine-F2",
+    "severity": "Low",
+    "category": "test-gap",
+    "location": "internal/taint/propagation/owner_lifecycle_fuzz_test.go:30,45-129",
+    "title": "FuzzOwnerLifecycle fuzzes only data; the lifecycle sequence is fixed and single-threaded",
+    "claim": "The fuzz input picks bytes, range position, marks, cycle count and sibling presence, but the operation order is fixed (acquire, adopt string, CopyString, finish, stale adopt, reuse, stale CopyString). There are no byte roots, windows, joins, mutations or concurrency, so Finish/publish and root-generation interleavings are not explored. The corpus plateaued at 73 entries after 10.7M execs.",
+    "evidence_path": ".omo/review/evidence/crash-fuzz-engine/fuzz-OwnerLifecycle-15m.log",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 go test -run '^$' -fuzz '^FuzzOwnerLifecycle$' -fuzztime 15m -parallel=4 ./internal/taint/propagation/",
+    "needs_repro": false
+  }
+]

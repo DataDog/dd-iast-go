@@ -1,0 +1,49 @@
+Private-copy command (from iast/database/sql/testapp):
+GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -timeout 10m -count=1 -run TestReviewSQL -v .
+
+=== RUN   TestReviewSQLParameterValuerIsNotQueryEvidence
+--- PASS: TestReviewSQLParameterValuerIsNotQueryEvidence (0.01s)
+=== RUN   TestReviewSQLValuerErrorDoesNotChangeResultOrReport
+--- PASS: TestReviewSQLValuerErrorDoesNotChangeResultOrReport (0.01s)
+=== RUN   TestReviewSQLDelegatedOperations
+=== RUN   TestReviewSQLDelegatedOperations/DB.Prepare
+=== RUN   TestReviewSQLDelegatedOperations/DB.Exec
+=== RUN   TestReviewSQLDelegatedOperations/DB.Query
+=== RUN   TestReviewSQLDelegatedOperations/DB.QueryRow
+=== RUN   TestReviewSQLDelegatedOperations/Tx.Prepare
+=== RUN   TestReviewSQLDelegatedOperations/Tx.Exec
+=== RUN   TestReviewSQLDelegatedOperations/Tx.Query
+=== RUN   TestReviewSQLDelegatedOperations/Tx.QueryRow
+=== RUN   TestReviewSQLDelegatedOperations/Tx.QueryRowContext
+=== RUN   TestReviewSQLDelegatedOperations/Conn.QueryRowContext
+=== RUN   TestReviewSQLDelegatedOperations/Stmt.QueryRow
+=== RUN   TestReviewSQLDelegatedOperations/Stmt.Exec
+=== RUN   TestReviewSQLDelegatedOperations/Stmt.Query
+=== RUN   TestReviewSQLDelegatedOperations/Stmt.QueryRowContext
+--- PASS: TestReviewSQLDelegatedOperations (0.15s)
+    --- PASS: TestReviewSQLDelegatedOperations/DB.Prepare (0.01s)
+    --- PASS: TestReviewSQLDelegatedOperations/DB.Exec (0.01s)
+    --- PASS: TestReviewSQLDelegatedOperations/DB.Query (0.01s)
+    --- PASS: TestReviewSQLDelegatedOperations/DB.QueryRow (0.01s)
+    --- PASS: TestReviewSQLDelegatedOperations/Tx.Prepare (0.01s)
+    --- PASS: TestReviewSQLDelegatedOperations/Tx.Exec (0.01s)
+    --- PASS: TestReviewSQLDelegatedOperations/Tx.Query (0.01s)
+    --- PASS: TestReviewSQLDelegatedOperations/Tx.QueryRow (0.01s)
+    --- PASS: TestReviewSQLDelegatedOperations/Tx.QueryRowContext (0.01s)
+    --- PASS: TestReviewSQLDelegatedOperations/Conn.QueryRowContext (0.01s)
+    --- PASS: TestReviewSQLDelegatedOperations/Stmt.QueryRow (0.01s)
+    --- PASS: TestReviewSQLDelegatedOperations/Stmt.Exec (0.01s)
+    --- PASS: TestReviewSQLDelegatedOperations/Stmt.Query (0.01s)
+    --- PASS: TestReviewSQLDelegatedOperations/Stmt.QueryRowContext (0.01s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/testapps/database-sql	1.298s
+
+Private-copy command (from iast/database/sql/testapp):
+GOTOOLCHAIN=go1.27.0 go tool orchestrion go test -timeout 10m -count=1 -run TestReviewSQL .
+ok  	github.com/DataDog/dd-iast-go/testapps/database-sql	1.294s
+
+Private-copy command (from module root):
+GOTOOLCHAIN=go1.26.6 go test -timeout 10m -count=1 ./internal/taint/sqlbridge ./iast/database/sql ./internal/taint/evidence
+ok  	github.com/DataDog/dd-iast-go/internal/taint/sqlbridge	1.356s
+ok  	github.com/DataDog/dd-iast-go/iast/database/sql	0.903s
+ok  	github.com/DataDog/dd-iast-go/internal/taint/evidence	0.986s

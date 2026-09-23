@@ -1,0 +1,182 @@
+// Review harness (sink-systemtests): emulates the system-tests IAST weblog
+// endpoints for SQLi, CMDi, HTTP sources and weak hash/cipher, and dumps the
+// exact event JSON and _dd.stack value so they can be checked against the
+// system-tests assertions and vulnerability_schema.json.
+package testapp_test
+
+import (
+	"encoding/json"
+	"fmt"
+	"io"
+	"mime/multipart"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
+	"os"
+	"regexp"
+	"strings"
+	"sync"
+	"testing"
+
+	"github.com/DataDog/dd-iast-go/internal/config"
+	"github.com/DataDog/dd-iast-go/internal/spans"
+	testapp "github.com/DataDog/dd-iast-go/testapps/integration"
+	"github.com/DataDog/dd-trace-go/v2/ddtrace/mocktracer"
+	"github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
+)
+
+type stCase struct {
+	Name     string          `json:"name"`
+	Status   int             `json:"status"`
+	Enabled  any             `json:"enabled"`
+	RawEvent json.RawMessage `json:"event"`
+	Stack    any             `json:"stack"`
+	Note     string          `json:"note,omitempty"`
+}
+
+var (
+	stMu      sync.Mutex
+	stResults []stCase
+)
+
+func stServer(t *testing.T, mux *http.ServeMux) (*httptest.Server, mocktracer.Tracer) {
+	t.Helper()
+	mock := mocktracer.Start()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		span, ctx := tracer.StartSpanFromContext(r.Context(), "http.request")
+		defer span.Finish()
+		mux.ServeHTTP(w, r.WithContext(ctx))
+	}))
+	return server, mock
+}
+
+func stDo(t *testing.T, name string, mux *http.ServeMux, build func(base string) *http.Request) {
+	t.Helper()
+	server, mock := stServer(t, mux)
+	defer mock.Stop()
+	defer server.Close()
+	req := build(server.URL)
+	resp, err := server.Client().Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	io.Copy(io.Discard, resp.Body)
+	resp.Body.Close()
+	finished := mock.FinishedSpans()
+	c := stCase{Name: name, Status: resp.StatusCode}
+	for _, s := range finished {
+		if s.OperationName() != "http.request" {
+			continue
+		}
+		c.Enabled = s.Tag(spans.SpanTagEnabled)
+		if raw, _ := s.Tag(spans.SpanTagJson).(string); raw != "" {
+			c.RawEvent = json.RawMessage(raw)
+		}
+		if st := s.Tag("_dd.stack"); st != nil {
+			if b, err := json.Marshal(st); err == nil {
+				var v any
+				_ = json.Unmarshal(b, &v)
+				c.Stack = v
+			} else {
+				c.Stack = fmt.Sprintf("marshal error: %v (%T)", err, st)
+			}
+		}
+	}
+	if len(finished) != 1 {
+		c.Note = fmt.Sprintf("finished spans: %d", len(finished))
+	}
+	stMu.Lock()
+	stResults = append(stResults, c)
+	stMu.Unlock()
+}
+
+func TestZZSystemTestsShapes(t *testing.T) {
+	requireWoven(t)
+	// Match the system-tests DEFAULT scenario (containers.py) and restore the
+	// production default redaction patterns overridden by e2e_test.go init.
+	config.RequestSamplingPct = 100
+	config.MaxConcurrentRequests = 10
+	config.DeduplicationEnabled = false
+	config.VulnerabilitiesPerRequest = 10
+	config.StackTraceEnabled = true
+	config.RedactionEnabled = true
+	config.RedactionNamePattern = regexp.MustCompile(`(?i)(?:p(?:ass)?w(?:or)?d|pass(?:_?phrase)?|secret|(?:api_?|private_?|public_?|access_?|secret_?)key(?:_?id)?|token|consumer_?(?:id|key|secret)|sign(?:ed|ature)?|auth(?:entication|orization)?)`)
+	config.RedactionValuePattern = regexp.MustCompile(`(?i)(?:bearer\s+[a-z0-9._-]+|token:[a-z0-9]{13}|glpat-[\w-]{20}|gh[opsu]_[0-9a-zA-Z]{36}|ey[I-L][\w=-]+\.ey[I-L][\w=-]+(?:\.[\w.+/=-]+)?|(?:-{5}BEGIN[a-z\s]+PRIVATE\sKEY-{5}[^-]+-{5}END[a-z\s]+PRIVATE\sKEY-{5}|ssh-rsa\s*[a-z0-9/.+]{100,}))`)
+
+	db := openDB(t)
+	mux := testapp.SystemTestsMux(db)
+	mux.HandleFunc("POST /iast/sqli/testfile_concat", func(w http.ResponseWriter, r *http.Request) {
+		rows, err := db.QueryContext(r.Context(), "SELECT * FROM users WHERE name = '"+r.FormValue("q")+"'")
+		if err == nil {
+			rows.Close()
+		}
+	})
+
+	form := func(method, path string, values url.Values) func(string) *http.Request {
+		return func(base string) *http.Request {
+			req, _ := http.NewRequestWithContext(t.Context(), method, base+path, strings.NewReader(values.Encode()))
+			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+			return req
+		}
+	}
+	get := func(path string, mutate func(*http.Request)) func(string) *http.Request {
+		return func(base string) *http.Request {
+			req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, base+path, nil)
+			if mutate != nil {
+				mutate(req)
+			}
+			return req
+		}
+	}
+
+	creds := url.Values{"username": {"shaquille_oatmeal"}, "password": {"123456"}}
+	stDo(t, "sqli_insecure", mux, form(http.MethodPost, "/iast/sqli/test_insecure", creds))
+	stDo(t, "sqli_direct_nonconcat", mux, form(http.MethodPost, "/iast/sqli/direct", url.Values{"q": {"SELECT * FROM users WHERE name = 'x'"}}))
+	stDo(t, "sqli_testfile_concat", mux, form(http.MethodPost, "/iast/sqli/testfile_concat", url.Values{"q": {"shaquille_oatmeal"}}))
+	stDo(t, "sqli_secure", mux, form(http.MethodPost, "/iast/sqli/test_secure", creds))
+	stDo(t, "cmdi_insecure", mux, form(http.MethodPost, "/iast/cmdi/test_insecure", url.Values{"cmd": {"ls"}}))
+	stDo(t, "cmdi_secure", mux, form(http.MethodPost, "/iast/cmdi/test_secure", url.Values{"cmd": {"ls"}}))
+	stDo(t, "weak_hash_md5", mux, get("/iast/insecure_hashing/test_md5_algorithm", nil))
+	stDo(t, "weak_cipher_rc4", mux, get("/iast/insecure_cipher/test_insecure_algorithm", nil))
+	stDo(t, "source_header_value", mux, get("/iast/source/header/test", func(r *http.Request) { r.Header.Set("table", "user") }))
+	stDo(t, "source_header_name", mux, get("/iast/source/headername/test", func(r *http.Request) { r.Header.Set("user", "unused") }))
+	stDo(t, "source_cookie_name", mux, get("/iast/source/cookiename/test", func(r *http.Request) { r.AddCookie(&http.Cookie{Name: "table", Value: "unused"}) }))
+	stDo(t, "source_cookie_value", mux, get("/iast/source/cookievalue/test", func(r *http.Request) { r.AddCookie(&http.Cookie{Name: "table", Value: "user"}) }))
+	stDo(t, "source_parameter_name_get", mux, get("/iast/source/parametername/test?user=unused", nil))
+	stDo(t, "source_parameter_name_post", mux, form(http.MethodPost, "/iast/source/parametername/test", url.Values{"user": {"unused"}}))
+	stDo(t, "source_parameter_value_get_formvalue", mux, get("/iast/source/parameter/test?table=user", nil))
+	stDo(t, "source_parameter_value_get_urlquery", mux, get("/iast/source/parameter_query/test?table=user", nil))
+	stDo(t, "source_parameter_value_post", mux, form(http.MethodPost, "/iast/source/parameter/test", url.Values{"table": {"user"}}))
+	stDo(t, "source_path", mux, get("/iast/source/path/test", nil))
+	stDo(t, "source_path_parameter", mux, get("/iast/source/path_parameter/test/user", nil))
+	stDo(t, "source_uri_requesturi", mux, get("/iast/source/uri/test", nil))
+	stDo(t, "source_uri_urlstring", mux, get("/iast/source/uri_url/test", nil))
+	stDo(t, "source_body_json", mux, func(base string) *http.Request {
+		req, _ := http.NewRequestWithContext(t.Context(), http.MethodPost, base+"/iast/source/body/test", strings.NewReader(`{"name": "table", "value": "user"}`))
+		req.Header.Set("Content-Type", "application/json")
+		return req
+	})
+	stDo(t, "source_multipart_file", mux, func(base string) *http.Request {
+		var buf strings.Builder
+		mw := multipart.NewWriter(&buf)
+		fw, _ := mw.CreateFormFile("file1", "file1")
+		io.WriteString(fw, "bsldhkuqwgervf")
+		mw.Close()
+		req, _ := http.NewRequestWithContext(t.Context(), http.MethodPost, base+"/iast/source/multipart/test", strings.NewReader(buf.String()))
+		req.Header.Set("Content-Type", mw.FormDataContentType())
+		return req
+	})
+
+	out := os.Getenv("ST_SHAPES_OUT")
+	if out == "" {
+		out = "systemtests_shapes.json"
+	}
+	b, err := json.MarshalIndent(stResults, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(out, b, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("wrote %d cases to %s", len(stResults), out)
+}

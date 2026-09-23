@@ -1,0 +1,9 @@
+Command:
+cd /tmp/ddiast-review/wt/fx-life-table-lookup-F1 && GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 go test -race -count=1 -run '^TestFX_NULDelimiters_in_FormValue_create_a_full_probe_chain$' -v -timeout=5m ./internal/taint/request
+
+Captured output (exit 0):
+=== RUN   TestFX_NULDelimiters_in_FormValue_create_a_full_probe_chain
+    zz_fx_life_table_lookup_independent_test.go:91: parsed fields=256; ManageParameter callbacks=256; common home slot=96; final insertion probes=256; total insertion probes=32896
+--- PASS: TestFX_NULDelimiters_in_FormValue_create_a_full_probe_chain (0.08s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/request	1.820s

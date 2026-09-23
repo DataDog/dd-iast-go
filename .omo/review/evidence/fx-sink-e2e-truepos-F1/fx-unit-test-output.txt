@@ -1,0 +1,12 @@
+=== RUN   TestFxDashDashInjectionLeavesAppLiteralsClean
+    fx_comment_verify_test.go:25: LEAK: injected -- left app literals sensitive-visible: masked="SELECT id FROM users WHERE name = '?' -- AND pw_hash = 'fx-secret-literal-9c2e' AND tenant = 42" intervals=[{35 5}]
+    fx_comment_verify_test.go:39: CONTROL: benign masked: "SELECT id FROM users WHERE name = '?' AND pw_hash = '?' AND tenant = ?"
+--- PASS: TestFxDashDashInjectionLeavesAppLiteralsClean (0.00s)
+=== RUN   TestFxCleanBlockCommentNeverRedacted
+    fx_comment_verify_test.go:50: LEAK: clean comment body never redacted: "SELECT id FROM users /* api_key=fx_sk_live_CLEANCOMMENT */ ORDER BY name"
+--- PASS: TestFxCleanBlockCommentNeverRedacted (0.00s)
+=== RUN   TestFxTaintedCommentSecretLeaksEvent
+    fx_comment_verify_test.go:85: LEAK event JSON (tainted comment secret serialized raw as evidence): {"sources":[{"origin":"http.request.parameter","name":"parameter","value":"fxTOKENSECRETzebra42"}],"vulnerabilities":[{"type":"SQL_INJECTION","hash":0,"evidence":{"valueParts":[{"value":"SELECT id /* review_token="},{"value":"fxTOKENSECRETzebra42","source":0},{"value":" */ FROM users"}]}}]}
+--- PASS: TestFxTaintedCommentSecretLeaksEvent (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/redaction	0.894s

@@ -1,0 +1,8 @@
+plain=0
+           430391296  maximum resident set size
+wovenbuild=0
+wovenrun=0
+shop/dev shop/dev hello id-1 k-2 3
+shop/dev shop/dev hello id-1 k-2 3
+IDENTICAL
+2

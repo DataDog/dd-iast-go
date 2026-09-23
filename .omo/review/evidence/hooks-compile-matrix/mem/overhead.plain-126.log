@@ -1,0 +1,6 @@
+Command: cd overhead && GOTOOLCHAIN=go1.26.6 GOCACHE=/tmp/ddiast-review/wt/hooks-compile-matrix/gocache-cur /usr/bin/time -l timeout 1320 go build ./...
+go version: go version go1.26.6 darwin/arm64
+start: Wed Sep 23 14:24:20 CEST 2026
+14:24  up 11 days, 21:02, 4 users, load averages: 25.96 28.23 45.84
+Exit status: 0
+end: Wed Sep 23 14:24:24 CEST 2026

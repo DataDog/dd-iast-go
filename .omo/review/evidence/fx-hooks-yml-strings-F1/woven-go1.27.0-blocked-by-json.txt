@@ -1,0 +1,207 @@
+# encoding/json
+$WORK/b104/orchestrion/src/encoding/json/<generated>:2: dec.r undefined (type *Decoder has no field or method r)
+$WORK/b104/orchestrion/src/encoding/json/<generated>:2: dec.d undefined (type *Decoder has no field or method d)
+$WORK/b104/orchestrion/src/encoding/json/<generated>:3: dec.d undefined (type *Decoder has no field or method d)
+exit status 2
+# github.com/DataDog/dd-iast-go/testapps/integration/zzfx/buffer [github.com/DataDog/dd-iast-go/testapps/integration/zzfx/buffer.test]
+resolving woven dependency on github.com/DataDog/dd-iast-go/iast/propagation: -: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+FAIL	github.com/DataDog/dd-iast-go/testapps/integration/zzfx/buffer [build failed]
+# github.com/DataDog/dd-iast-go/testapps/integration/zzfx/builder [github.com/DataDog/dd-iast-go/testapps/integration/zzfx/builder.test]
+resolving woven dependency on github.com/DataDog/dd-iast-go/iast/propagation: -: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+FAIL	github.com/DataDog/dd-iast-go/testapps/integration/zzfx/builder [build failed]
+# github.com/DataDog/dd-iast-go/testapps/integration/zzfx/control [github.com/DataDog/dd-iast-go/testapps/integration/zzfx/control.test]
+resolving woven dependency on github.com/DataDog/dd-iast-go/iast/propagation: -: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+FAIL	github.com/DataDog/dd-iast-go/testapps/integration/zzfx/control [build failed]
+# github.com/DataDog/dd-iast-go/testapps/integration/zzfx/replacer [github.com/DataDog/dd-iast-go/testapps/integration/zzfx/replacer.test]
+resolving woven dependency on github.com/DataDog/dd-iast-go/iast/propagation: -: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+FAIL	github.com/DataDog/dd-iast-go/testapps/integration/zzfx/replacer [build failed]
+FAIL
+exit status 1

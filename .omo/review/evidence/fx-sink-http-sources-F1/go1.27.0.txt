@@ -1,0 +1,68 @@
+
+=== plain Go 1.27.0 ===
+=== RUN   TestHeaderDirectFunction
+    direct_call_test.go:30: woven=false direct_function_status=204 caller="visible"
+--- PASS: TestHeaderDirectFunction (0.00s)
+=== RUN   TestHeaderMapAliases
+=== RUN   TestHeaderMapAliases/empty
+    header_alias_test.go:41: woven=false request_copied=false source_tainted=false handler="visible" caller="visible"
+=== RUN   TestHeaderMapAliases/eligible
+    header_alias_test.go:41: woven=false request_copied=false source_tainted=false handler="visible" caller="visible"
+--- PASS: TestHeaderMapAliases (0.00s)
+    --- PASS: TestHeaderMapAliases/empty (0.00s)
+    --- PASS: TestHeaderMapAliases/eligible (0.00s)
+=== RUN   TestHeaderValueSliceAliases
+    header_alias_test.go:65: woven=false handler="changed" caller_slice="changed"
+--- PASS: TestHeaderValueSliceAliases (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/reviewhttp	0.666s
+EXIT_CODE=0
+
+=== woven Go 1.27.0 ===
+# encoding/json
+$WORK/b104/orchestrion/src/encoding/json/<generated>:2: dec.r undefined (type *Decoder has no field or method r)
+$WORK/b104/orchestrion/src/encoding/json/<generated>:2: dec.d undefined (type *Decoder has no field or method d)
+$WORK/b104/orchestrion/src/encoding/json/<generated>:3: dec.d undefined (type *Decoder has no field or method d)
+exit status 2
+# crypto/des
+resolving woven dependency on github.com/DataDog/dd-iast-go/internal/model/constants: -: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+# crypto/sha1
+resolving woven dependency on github.com/DataDog/dd-iast-go/internal/instrumentation/telemetry: -: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+# crypto/md5
+resolving woven dependency on github.com/DataDog/dd-iast-go/internal/instrumentation/telemetry: -: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+# crypto/rc4
+resolving woven dependency on github.com/DataDog/dd-iast-go/internal/instrumentation/telemetry: -: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+FAIL	github.com/DataDog/dd-iast-go/reviewhttp [build failed]
+FAIL
+exit status 1
+       38.57 real        79.75 user        48.40 sys
+           301481984  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+             6062754  page reclaims
+              237911  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                8176  messages sent
+                8956  messages received
+               55061  signals received
+               26694  voluntary context switches
+             1139988  involuntary context switches
+          5848520380  instructions retired
+          3160424727  cycles elapsed
+            38306392  peak memory footprint
+EXIT_CODE=1

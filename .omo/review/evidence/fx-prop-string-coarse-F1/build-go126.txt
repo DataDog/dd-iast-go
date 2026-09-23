@@ -1,0 +1,21 @@
+COMMAND=GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 /usr/bin/time -l timeout 900 go tool orchestrion go build -o /tmp/ddiast-review/wt/fx-prop-string-coarse-F1/fx-coarse-126 ./cmd/fx-coarse
+CWD=/tmp/ddiast-review/wt/fx-prop-string-coarse-F1/iast/integration/testapp
+status: completed exit_code: 0
+      105.25 real       119.25 user        67.80 sys
+           447840256  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+             6773651  page reclaims
+              197791  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                9402  messages sent
+                9971  messages received
+               78982  signals received
+               36858  voluntary context switches
+             1603846  involuntary context switches
+            20873962  instructions retired
+            15245227  cycles elapsed
+             1212728  peak memory footprint

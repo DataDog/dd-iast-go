@@ -1,0 +1,11 @@
+$ cd <private copy> && GOTOOLCHAIN=go1.26.6 go test -run "^TestReviewShardWedgeAfterOwnerFinish$" -count=1 -v ./internal/taint/store
+=== RUN   TestReviewShardWedgeAfterOwnerFinish
+    wedge_review_test.go:73: owner A derived 128 shard-0 windows: live=128 tomb=0 empty=0 values=129
+    wedge_review_test.go:119: round 0 (owner B0): shard-0 derives ok=0 fail=640; other-shard derives ok=197; shard-0 TaintString ok=0/50; shard0 live=0 tomb=128 empty=0 compactions=0->0 full-drops=11761
+    wedge_review_test.go:119: round 1 (owner B1): shard-0 derives ok=0 fail=640; other-shard derives ok=199; shard-0 TaintString ok=0/50; shard0 live=0 tomb=128 empty=0 compactions=0->0 full-drops=14495
+    wedge_review_test.go:119: round 2 (owner B2): shard-0 derives ok=0 fail=640; other-shard derives ok=199; shard-0 TaintString ok=0/50; shard0 live=0 tomb=128 empty=0 compactions=0->0 full-drops=12341
+    wedge_review_test.go:127: shard 0 permanently wedged: no key hashing to it can be published after its occupants finished (Stats={Compactions:0 CompactAborts:0 OverflowFree:256 Tombstones:132 MaxTombstones:128 ProbeCount:2260 AverageProbe:1.0327433628318583 MaxProbe:4})
+--- FAIL: TestReviewShardWedgeAfterOwnerFinish (0.04s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/store	0.504s
+FAIL

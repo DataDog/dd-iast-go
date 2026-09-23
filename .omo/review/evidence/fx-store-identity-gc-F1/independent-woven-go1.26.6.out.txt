@@ -1,0 +1,12 @@
+$ cd iast/integration/testapp && /usr/bin/time -l env GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -count=1 -timeout 15m -run TestIndependentPooledBuilderBleedsAcrossWovenRequests -v .
+=== RUN   TestIndependentPooledBuilderBleedsAcrossWovenRequests
+    zz_independent_builder_woven_test.go:146: B query="SELECT id FROM customers" tainted=true attempts=0 findings=1 sources=[{http.request.parameter q x' OR '1'='1' --comment!  false }]
+    zz_independent_builder_woven_test.go:147:
+        	Error:      	Should be false
+        	Messages:   	clean request-B query inherited request-A taint
+--- FAIL: TestIndependentPooledBuilderBleedsAcrossWovenRequests (0.02s)
+FAIL	github.com/DataDog/dd-iast-go/testapps/integration	0.766s
+FAIL
+exit status 1
+       71.66 real       134.05 user        80.02 sys
+           365592576  maximum resident set size

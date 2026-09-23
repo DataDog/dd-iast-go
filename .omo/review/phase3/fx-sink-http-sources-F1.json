@@ -1,0 +1,13 @@
+[
+  {
+    "id": "sink-http-sources-F1",
+    "verdict": "CONFIRMED",
+    "original_severity": "Critical",
+    "adjusted_severity": "Critical",
+    "reachable_default": true,
+    "documented_limitation": false,
+    "reason": "Independent Go 1.26.6 plain/woven tests show that eager header rebuilding loses caller-visible map and value-slice mutations. A directly called helper also fails, so the result does not depend on permitting http.Handler implementations to mutate requests. Defaults enable analysis with 30% sampling. The plan prescribes rebuilding but does not accept alias-breaking behavior, which violates the host-behavior rule.",
+    "evidence_path": ".omo/review/evidence/fx-sink-http-sources-F1/controls-go1.26.6.txt",
+    "repro_command": "cd /tmp/ddiast-review/wt/fx-sink-http-sources-F1 && env -u DD_IAST_MAX_CONCURRENT_REQUESTS GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 DD_IAST_ENABLED=true DD_IAST_REQUEST_SAMPLING=100 timeout 720s /usr/bin/time -l go tool orchestrion go test -timeout 10m -count=1 -run '^TestHeaderDirectFunction$' -v ./reviewhttp"
+  }
+]

@@ -1,0 +1,10 @@
+$ cd iast/integration/testapp && /usr/bin/time -l env GOFLAGS=-p=4 GOTOOLCHAIN=go1.27.0 go tool orchestrion go test -count=1 -timeout 15m -run TestIndependentPooledBuilderBleedsAcrossWovenRequests -v .
+# encoding/json
+$WORK/b104/orchestrion/src/encoding/json/<generated>:2: dec.r undefined (type *Decoder has no field or method r)
+$WORK/b104/orchestrion/src/encoding/json/<generated>:2: dec.d undefined (type *Decoder has no field or method d)
+$WORK/b104/orchestrion/src/encoding/json/<generated>:3: dec.d undefined (type *Decoder has no field or method d)
+FAIL	github.com/DataDog/dd-iast-go/testapps/integration [build failed]
+FAIL
+exit status 1
+       47.42 real        93.53 user        71.66 sys
+           312131584  maximum resident set size

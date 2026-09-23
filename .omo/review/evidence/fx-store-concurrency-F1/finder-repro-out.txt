@@ -1,0 +1,5 @@
+=== RUN   TestReviewStaleHandleBindAfterSlotReuse
+    zz_review_concurrency_test.go:86: cycles=484637 workers=14 bind_success_with_stale_gen_after_return=2724 cross_generation_bindings=0
+--- PASS: TestReviewStaleHandleBindAfterSlotReuse (60.29s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/store	60.738s

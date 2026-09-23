@@ -1,0 +1,41 @@
+=== RUN   TestFmtCoarseOverTaint
+    fxrepro_test.go:55: Sprintf-Stringer-sanitize result="level=AUDIT_OK" tainted=true containsSource=false
+    fxrepro_test.go:57: Sprintf-Stringer-sanitize: output "level=AUDIT_OK" contains none of the source bytes but is tainted
+    fxrepro_test.go:55: Sprint-Stringer          result="AUDIT_OK" tainted=true containsSource=false
+    fxrepro_test.go:57: Sprint-Stringer: output "AUDIT_OK" contains none of the source bytes but is tainted
+    fxrepro_test.go:55: Sprintf-%T               result="type=string" tainted=true containsSource=false
+    fxrepro_test.go:57: Sprintf-%T: output "type=string" contains none of the source bytes but is tainted
+    fxrepro_test.go:55: Sprintf-%.0s             result="xy" tainted=true containsSource=false
+    fxrepro_test.go:57: Sprintf-%.0s: output "xy" contains none of the source bytes but is tainted
+    fxrepro_test.go:55: Sprintf-%[2]s-skip       result="constant" tainted=true containsSource=false
+    fxrepro_test.go:57: Sprintf-%[2]s-skip: output "constant" contains none of the source bytes but is tainted
+    fxrepro_test.go:55: control-%d               result="n=12" tainted=false containsSource=false
+    fxrepro_test.go:55: positive-%s              result="q=1' OR '1'='1" tainted=true containsSource=true
+--- FAIL: TestFmtCoarseOverTaint (0.00s)
+=== RUN   TestFmtOverTaintReachesSqlSink
+    fxrepro_test.go:69: query="SELECT * FROM t WHERE level='AUDIT_OK'" tainted=true containsSource=false
+    fxrepro_test.go:81: CollectString status=1 sources=1 parts=1
+    fxrepro_test.go:89: part[0]="SELECT * FROM t WHERE level='AUDIT_OK'"
+--- PASS: TestFmtOverTaintReachesSqlSink (0.00s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/iast/internal/fxfmtrepro	0.425s
+FAIL
+exit status 1
+       20.08 real         2.39 user         5.09 sys
+           103464960  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              175797  page reclaims
+                9178  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                 322  messages sent
+                 318  messages received
+                4582  signals received
+                5684  voluntary context switches
+              116067  involuntary context switches
+          5326230819  instructions retired
+          3538999735  cycles elapsed
+            47301304  peak memory footprint

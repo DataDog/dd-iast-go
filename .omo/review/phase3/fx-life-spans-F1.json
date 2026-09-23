@@ -1,0 +1,13 @@
+[
+  {
+    "id": "life-spans-F1",
+    "verdict": "CONFIRMED",
+    "original_severity": "High",
+    "adjusted_severity": "High",
+    "reachable_default": true,
+    "documented_limitation": false,
+    "reason": "Mechanism verified at HEAD 2e23b46: since 87ecf02, BindScope stores Sampled=false annotations for sampled-out/capacity-dropped scopes while trimStore bounds the store by config.MaxConcurrentRequests (default 2, the active-analysis bound). Two in-flight sampled-out requests (70% of traffic at the default 30% sampling) deny a permit-holding active request its annotation (tag _dd.iast.enabled=0, no owner binding); ReportTainted then finishes an empty orphan span per sink hit (dedup included) and returns false, and weak findings drop via nonSampledAnnotation. Reproduced three ways: the finder's test re-run, my own internal-API reproducer at shipped defaults through the exact woven call sequence, and my own woven orchestrion build (real net/http server, database/sql SQLi sink, httptest) where 2 in-flight sampled-out requests made an admitted request report nothing, and a default-config 400-request run lost 79/117 admitted requests' request-span event with 6/117 producing no finding anywhere. Not documented as a limitation (README:116 calls the bound 'requests IAST processes concurrently'); breaks product rule 4 (lost taint on a supported path). Severity High stands: false-negative vulnerability on a supported default-config path; not Critical (no crash/race/leak; capacity stays bounded). Not a duplicate of life-spans-F2/F3/F5; life-spans-F4 amplifies it.",
+    "evidence_path": ".omo/review/evidence/fx-life-spans-F1/repro_combined.out.txt",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 go test -count=1 -v -run 'TestFxLifeSpansF1DefaultConfigCrowdOutDropsTaintedFinding' ./internal/vulnerability/ (with evidence/fx-life-spans-F1/zz_fx_life_spans_f1_repro_test.go in internal/vulnerability); woven: cd iast/integration/testapp && GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go tool orchestrion go test -count=1 -run 'TestReviewFxF1' . (with evidence/fx-life-spans-F1/zz_review_fx_f1_test.go)"
+  }
+]

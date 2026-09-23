@@ -1,0 +1,33 @@
+$ cd /tmp/ddiast-review/wt/fx-store-lookup-F1 && GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go test -timeout 15m ./internal/taint/propagation -run '^TestFx' -count=1 -v
+(this node's OWN reproducer, driven through the propagation surface a woven build uses: MayContain gate -> Store.Lookup -> publish)
+=== RUN   TestFxReproCopyStringLosesLiveOwnerBehindFourStaleSlots
+    fx_stale_fanout_repro_test.go:85: 
+        	Error Trace:	/private/tmp/ddiast-review/wt/fx-store-lookup-F1/internal/taint/propagation/fx_stale_fanout_repro_test.go:85
+        	Error:      	Not equal: 
+        	            	expected: 1
+        	            	actual  : 0
+        	Test:       	TestFxReproCopyStringLosesLiveOwnerBehindFourStaleSlots
+        	Messages:   	the copy must carry the fifth (live) owner's taint; four stale slots hid it
+--- FAIL: TestFxReproCopyStringLosesLiveOwnerBehindFourStaleSlots (0.01s)
+=== RUN   TestFxControlOneStaleOneLiveIsPreserved
+--- PASS: TestFxControlOneStaleOneLiveIsPreserved (0.00s)
+=== RUN   TestFxControlSequentialChurnReclaimsStaleSlots
+--- PASS: TestFxControlSequentialChurnReclaimsStaleSlots (0.00s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/propagation	0.693s
+FAIL
+
+Interpretation:
+- FAIL   TestFxReproCopyStringLosesLiveOwnerBehindFourStaleSlots: with four
+  stale (finished) owners and one live owner on the same key, MayContain still
+  reports a hit, but Lookup's four-entry candidate window is filled with the
+  stale slots; validation drops all four and the live owner's taint is lost,
+  so propagation.CopyString publishes the copy UNTAINTED (false negative).
+- PASS   TestFxControlOneStaleOneLiveIsPreserved: below the cap (1 stale +
+  1 live) the live owner's taint survives, matching the authors' contract test
+  TestPublishHelpersDropStaleAndPreserveLiveOwner.
+- PASS   TestFxControlSequentialChurnReclaimsStaleSlots: four owners that all
+  finish and a NEW owner adopting the same address get their dead slots
+  reclaimed by putWindow; the new live owner's taint survives. Sequential
+  churn cannot construct the failing state: it needs five owners holding
+  slots on one address simultaneously.

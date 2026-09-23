@@ -1,0 +1,68 @@
+[
+  {
+    "id": "prop-string-coarse-F1",
+    "severity": "High",
+    "category": "false-positive",
+    "location": "internal/taint/propagation/string_coarse.go:206-220",
+    "title": "fmt coarse propagation taints output produced by String()/Error() methods of string-kind arguments",
+    "claim": "formatArgumentKey uses any string-kind or byte-kind argument's backing identity as a coarse input even when fmt prints the value's String/Error/Format result instead of its bytes; an allowlisting Stringer yields a fully tainted (marks 0) query with no request data, collected as unsafe by the SQL sink.",
+    "evidence_path": ".omo/review/evidence/prop-string-coarse/repro-output.txt",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 go test -count=1 -run 'TestReview' -v ./internal/taint/propagation/ (with zz_review_coarse_test.go copied into internal/taint/propagation/ of a private copy)",
+    "needs_repro": false
+  },
+  {
+    "id": "prop-string-coarse-F2",
+    "severity": "Medium",
+    "category": "false-positive",
+    "location": "internal/taint/propagation/string_coarse.go:118-146",
+    "title": "fmt coarse propagation taints results for verbs that do not render the argument (%T, %.0s, %p, skipped %[n])",
+    "claim": "Every inspected string/byte argument contributes regardless of the consuming verb, so outputs containing none of its bytes are tainted.",
+    "evidence_path": ".omo/review/evidence/prop-string-coarse/repro-output.txt",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 go test -count=1 -run 'TestReview' -v ./internal/taint/propagation/ (with zz_review_coarse_test.go copied into internal/taint/propagation/ of a private copy)",
+    "needs_repro": false
+  },
+  {
+    "id": "prop-string-coarse-F3",
+    "severity": "Medium",
+    "category": "doc",
+    "location": "README.md:31",
+    "title": "README advertises fmt.Sprint* without the direct-string/[]byte-operand restriction",
+    "claim": "Tainted data inside []string, structs, pointers, and error values (errors.New(tainted)) is printed but not propagated; README lists fmt.Sprint* as supported without restriction.",
+    "evidence_path": ".omo/review/evidence/prop-string-coarse/repro-output.txt",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 go test -count=1 -run 'TestReview' -v ./internal/taint/propagation/ (with zz_review_coarse_test.go copied into internal/taint/propagation/ of a private copy)",
+    "needs_repro": false
+  },
+  {
+    "id": "prop-string-coarse-F4",
+    "severity": "Low",
+    "category": "provenance",
+    "location": "internal/taint/propagation/propagation.go:721-735",
+    "title": "Coarse source is the first contributor, not one lacking the surviving secure marks",
+    "claim": "Marks are intersected but SourceID is the first contributor, so an unsafe coarse range can be attributed to a sanitized source while the unsanitized one is dropped; latent because no production code sets marks today.",
+    "evidence_path": ".omo/review/evidence/prop-string-coarse/repro-output.txt",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 go test -count=1 -run 'TestReview' -v ./internal/taint/propagation/ (with zz_review_coarse_test.go copied into internal/taint/propagation/ of a private copy)",
+    "needs_repro": false
+  },
+  {
+    "id": "prop-string-coarse-F5",
+    "severity": "Low",
+    "category": "false-negative",
+    "location": "internal/taint/propagation/string_coarse.go:159-170",
+    "title": "Coarse owner slots consumed by snapshot entries with no ranges",
+    "claim": "A clean-window entry allocates one of 4 coarseOwner slots before it is known to contribute, which can crowd out a later contributing owner.",
+    "evidence_path": null,
+    "repro_command": null,
+    "needs_repro": false
+  },
+  {
+    "id": "prop-string-coarse-F6",
+    "severity": "Info",
+    "category": "quality",
+    "location": "internal/taint/propagation/propagation.go:415",
+    "title": "Inconsistent range limit between the coarse publishers",
+    "claim": "coarseStringHit/coarseBytesHit use ranges.DefaultLimit while publishCoarseOwners uses the entry limit; no behavioral effect with one range.",
+    "evidence_path": null,
+    "repro_command": null,
+    "needs_repro": false
+  }
+]

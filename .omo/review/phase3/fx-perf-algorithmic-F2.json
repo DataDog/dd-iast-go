@@ -1,0 +1,13 @@
+[
+  {
+    "id": "perf-algorithmic-F2",
+    "verdict": "CONFIRMED",
+    "original_severity": "High",
+    "adjusted_severity": "Medium",
+    "reachable_default": true,
+    "documented_limitation": false,
+    "reason": "Offline-generated cookie values collide in the unsalted evidence index: 256 distinct sources yield 32640 occupied-slot comparisons in the verified linear-probe sequence. The real command collection API accepts all 256 at default range and source limits; repeated full-collector benchmarks show roughly 2x cost, while the isolated index is roughly 5-6x slower. The work is bounded and requires an unusually large command report. Captured results: .omo/review/evidence/fx-perf-algorithmic-F2/repro-output.txt.",
+    "evidence_path": ".omo/review/evidence/fx-perf-algorithmic-F2/review_collision_independent_test.go",
+    "repro_command": "cd /tmp/ddiast-review/wt/fx-perf-algorithmic-F2 && env GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 go test -mod=readonly -run '^TestReviewCollision' -v -bench '^BenchmarkReviewIndependent(CommandCollectionLong|IndexOnly)$' -benchmem -benchtime=300ms -count=2 -cpu=1 -timeout 5m ./internal/taint/evidence"
+  }
+]

@@ -1,0 +1,8 @@
+=== RUN   TestReviewStaleHandleBindAfterSlotReuse
+    zz_review_concurrency_test.go:71: stale handle gen=300929 bound object into reused owner slot gen=300930
+    zz_review_concurrency_test.go:86: cycles=300930 workers=14 bind_success_with_stale_gen_after_return=1054 cross_generation_bindings=1
+    zz_review_concurrency_test.go:88: stale owner handle published a binding into a reused owner generation
+--- FAIL: TestReviewStaleHandleBindAfterSlotReuse (47.13s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/store	47.733s
+FAIL

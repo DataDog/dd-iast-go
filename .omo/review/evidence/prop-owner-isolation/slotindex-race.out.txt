@@ -1,0 +1,53 @@
+=== RUN   TestReviewAnalysisSlotIndexRace
+==================
+WARNING: DATA RACE
+Write at 0x00c001000018 by goroutine 8:
+  github.com/DataDog/dd-iast-go/internal/taint/request.(*Manager).Acquire()
+      /tmp/ddiast-review/wt/prop-owner-isolation/internal/taint/request/owner.go:82 +0x140
+  github.com/DataDog/dd-iast-go/internal/taint/request.begin()
+      /tmp/ddiast-review/wt/prop-owner-isolation/internal/taint/request/scope.go:95 +0x1c4
+  github.com/DataDog/dd-iast-go/internal/taint/request.Begin()
+      /tmp/ddiast-review/wt/prop-owner-isolation/internal/taint/request/scope.go:76 +0x1c4
+  github.com/DataDog/dd-iast-go/internal/taint/request.TestReviewAnalysisSlotIndexRace()
+      /tmp/ddiast-review/wt/prop-owner-isolation/internal/taint/request/zz_review_owner_isolation_test.go:39 +0x1ac
+  testing.tRunner()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.(*T).Run.gowrap1()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/testing/testing.go:2101 +0x34
+
+Previous read at 0x00c001000018 by goroutine 9:
+  github.com/DataDog/dd-iast-go/internal/taint/request.analysisForOwner()
+      /tmp/ddiast-review/wt/prop-owner-isolation/internal/taint/request/http.go:33 +0x170
+  github.com/DataDog/dd-iast-go/internal/taint/request.ManageURLQuery()
+      /tmp/ddiast-review/wt/prop-owner-isolation/internal/taint/request/lazy.go:37 +0x78
+  github.com/DataDog/dd-iast-go/internal/taint/request.TestReviewAnalysisSlotIndexRace.func1()
+      /tmp/ddiast-review/wt/prop-owner-isolation/internal/taint/request/zz_review_owner_isolation_test.go:33 +0xb4
+
+Goroutine 8 (running) created at:
+  testing.(*T).Run()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/testing/testing.go:2101 +0x7bc
+  testing.runTests.func1()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/testing/testing.go:2585 +0x74
+  testing.tRunner()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.runTests()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/testing/testing.go:2583 +0x7a0
+  testing.(*M).Run()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/testing/testing.go:2443 +0xb38
+  main.main()
+      _testmain.go:144 +0x100
+
+Goroutine 9 (running) created at:
+  github.com/DataDog/dd-iast-go/internal/taint/request.TestReviewAnalysisSlotIndexRace()
+      /tmp/ddiast-review/wt/prop-owner-isolation/internal/taint/request/zz_review_owner_isolation_test.go:29 +0x16c
+  testing.tRunner()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.(*T).Run.gowrap1()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/testing/testing.go:2101 +0x34
+==================
+    zz_review_owner_isolation_test.go:56: cycles=3000 acquired=3000
+    testing.go:1712: race detected during execution of test
+--- FAIL: TestReviewAnalysisSlotIndexRace (0.06s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/request	0.469s
+FAIL

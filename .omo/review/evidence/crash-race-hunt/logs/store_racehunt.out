@@ -1,0 +1,241 @@
+=== RUN   TestRaceHuntStoreChurn
+    zz_racehunt_store_test.go:206: owner states=[34 0 0 30 0 0 0 0] acquireDrops=5 postAcquireDisabled=false writerLocked=false
+    zz_racehunt_store_test.go:214: acquired=9600 tainted=9599 lookupHits=95796 liveHandles=19144 charged=0 values=0
+--- PASS: TestRaceHuntStoreChurn (10.96s)
+=== RUN   TestRaceHuntStoreChurn
+    zz_racehunt_store_test.go:206: owner states=[35 0 0 29 0 0 0 0] acquireDrops=12 postAcquireDisabled=false writerLocked=false
+    zz_racehunt_store_test.go:214: acquired=9600 tainted=9600 lookupHits=95828 liveHandles=19165 charged=0 values=0
+--- PASS: TestRaceHuntStoreChurn (7.74s)
+=== RUN   TestRaceHuntStoreChurn
+    zz_racehunt_store_test.go:206: owner states=[34 0 0 30 0 0 0 0] acquireDrops=0 postAcquireDisabled=false writerLocked=false
+    zz_racehunt_store_test.go:214: acquired=9600 tainted=9600 lookupHits=95891 liveHandles=19209 charged=0 values=0
+--- PASS: TestRaceHuntStoreChurn (4.81s)
+=== RUN   TestRaceHuntStoreChurn
+    zz_racehunt_store_test.go:206: owner states=[34 0 0 30 0 0 0 0] acquireDrops=0 postAcquireDisabled=false writerLocked=false
+    zz_racehunt_store_test.go:214: acquired=9600 tainted=9600 lookupHits=95890 liveHandles=19221 charged=0 values=0
+--- PASS: TestRaceHuntStoreChurn (3.81s)
+=== RUN   TestRaceHuntStoreChurn
+    zz_racehunt_store_test.go:206: owner states=[33 0 0 31 0 0 0 0] acquireDrops=0 postAcquireDisabled=false writerLocked=false
+    zz_racehunt_store_test.go:214: acquired=9600 tainted=9600 lookupHits=95893 liveHandles=19205 charged=0 values=0
+--- PASS: TestRaceHuntStoreChurn (3.50s)
+=== RUN   TestRaceHuntStoreChurn
+    zz_racehunt_store_test.go:206: owner states=[35 0 0 29 0 0 0 0] acquireDrops=0 postAcquireDisabled=false writerLocked=false
+    zz_racehunt_store_test.go:214: acquired=9600 tainted=9600 lookupHits=95830 liveHandles=19174 charged=0 values=0
+--- PASS: TestRaceHuntStoreChurn (3.79s)
+=== RUN   TestRaceHuntStoreChurn
+    zz_racehunt_store_test.go:206: owner states=[34 0 0 30 0 0 0 0] acquireDrops=0 postAcquireDisabled=false writerLocked=false
+    zz_racehunt_store_test.go:214: acquired=9600 tainted=9600 lookupHits=95876 liveHandles=19202 charged=0 values=0
+--- PASS: TestRaceHuntStoreChurn (3.27s)
+=== RUN   TestRaceHuntStoreChurn
+    zz_racehunt_store_test.go:206: owner states=[34 0 0 30 0 0 0 0] acquireDrops=0 postAcquireDisabled=false writerLocked=false
+    zz_racehunt_store_test.go:214: acquired=9600 tainted=9600 lookupHits=95870 liveHandles=19186 charged=0 values=0
+--- PASS: TestRaceHuntStoreChurn (2.96s)
+=== RUN   TestRaceHuntStoreChurn
+    zz_racehunt_store_test.go:206: owner states=[33 0 0 31 0 0 0 0] acquireDrops=0 postAcquireDisabled=false writerLocked=false
+    zz_racehunt_store_test.go:214: acquired=9600 tainted=9600 lookupHits=95901 liveHandles=19212 charged=0 values=0
+--- PASS: TestRaceHuntStoreChurn (3.21s)
+=== RUN   TestRaceHuntStoreChurn
+    zz_racehunt_store_test.go:206: owner states=[35 0 0 29 0 0 0 0] acquireDrops=0 postAcquireDisabled=false writerLocked=false
+    zz_racehunt_store_test.go:214: acquired=9600 tainted=9600 lookupHits=95940 liveHandles=19234 charged=0 values=0
+--- PASS: TestRaceHuntStoreChurn (3.31s)
+=== RUN   TestRaceHuntStoreChurn
+    zz_racehunt_store_test.go:206: owner states=[34 0 0 30 0 0 0 0] acquireDrops=0 postAcquireDisabled=false writerLocked=false
+    zz_racehunt_store_test.go:214: acquired=9600 tainted=9600 lookupHits=95882 liveHandles=19189 charged=0 values=0
+--- PASS: TestRaceHuntStoreChurn (3.07s)
+=== RUN   TestRaceHuntStoreChurn
+    zz_racehunt_store_test.go:206: owner states=[34 0 0 30 0 0 0 0] acquireDrops=0 postAcquireDisabled=false writerLocked=false
+    zz_racehunt_store_test.go:214: acquired=9600 tainted=9600 lookupHits=95877 liveHandles=19175 charged=0 values=0
+--- PASS: TestRaceHuntStoreChurn (2.82s)
+=== RUN   TestRaceHuntStoreChurn
+    zz_racehunt_store_test.go:206: owner states=[34 0 0 30 0 0 0 0] acquireDrops=0 postAcquireDisabled=false writerLocked=false
+    zz_racehunt_store_test.go:214: acquired=9600 tainted=9600 lookupHits=95907 liveHandles=19211 charged=0 values=0
+--- PASS: TestRaceHuntStoreChurn (2.69s)
+=== RUN   TestRaceHuntStoreChurn
+    zz_racehunt_store_test.go:206: owner states=[35 0 0 29 0 0 0 0] acquireDrops=0 postAcquireDisabled=false writerLocked=false
+    zz_racehunt_store_test.go:214: acquired=9600 tainted=9600 lookupHits=95920 liveHandles=19214 charged=0 values=0
+--- PASS: TestRaceHuntStoreChurn (2.73s)
+=== RUN   TestRaceHuntStoreChurn
+    zz_racehunt_store_test.go:206: owner states=[35 0 0 29 0 0 0 0] acquireDrops=0 postAcquireDisabled=false writerLocked=false
+    zz_racehunt_store_test.go:214: acquired=9600 tainted=9600 lookupHits=95838 liveHandles=19180 charged=0 values=0
+--- PASS: TestRaceHuntStoreChurn (2.71s)
+=== RUN   TestRaceHuntStoreChurn
+    zz_racehunt_store_test.go:206: owner states=[34 0 0 30 0 0 0 0] acquireDrops=0 postAcquireDisabled=false writerLocked=false
+    zz_racehunt_store_test.go:214: acquired=9600 tainted=9600 lookupHits=95953 liveHandles=19235 charged=0 values=0
+--- PASS: TestRaceHuntStoreChurn (2.93s)
+=== RUN   TestRaceHuntStoreChurn
+    zz_racehunt_store_test.go:206: owner states=[35 0 0 29 0 0 0 0] acquireDrops=0 postAcquireDisabled=false writerLocked=false
+    zz_racehunt_store_test.go:214: acquired=9600 tainted=9600 lookupHits=95885 liveHandles=19184 charged=0 values=0
+--- PASS: TestRaceHuntStoreChurn (3.38s)
+=== RUN   TestRaceHuntStoreChurn
+    zz_racehunt_store_test.go:206: owner states=[35 0 0 29 0 0 0 0] acquireDrops=0 postAcquireDisabled=false writerLocked=false
+    zz_racehunt_store_test.go:214: acquired=9600 tainted=9600 lookupHits=95914 liveHandles=19213 charged=0 values=0
+--- PASS: TestRaceHuntStoreChurn (3.58s)
+=== RUN   TestRaceHuntStoreChurn
+    zz_racehunt_store_test.go:206: owner states=[32 0 0 32 0 0 0 0] acquireDrops=0 postAcquireDisabled=false writerLocked=false
+    zz_racehunt_store_test.go:214: acquired=9600 tainted=9600 lookupHits=95874 liveHandles=19189 charged=0 values=0
+--- PASS: TestRaceHuntStoreChurn (4.20s)
+=== RUN   TestRaceHuntStoreChurn
+    zz_racehunt_store_test.go:206: owner states=[36 0 0 28 0 0 0 0] acquireDrops=0 postAcquireDisabled=false writerLocked=false
+    zz_racehunt_store_test.go:214: acquired=9600 tainted=9600 lookupHits=95858 liveHandles=19183 charged=0 values=0
+--- PASS: TestRaceHuntStoreChurn (4.16s)
+=== RUN   TestRaceHuntStoreChurn
+    zz_racehunt_store_test.go:206: owner states=[23 0 0 41 0 0 0 0] acquireDrops=6356 postAcquireDisabled=false writerLocked=false
+    zz_racehunt_store_test.go:214: acquired=9562 tainted=9545 lookupHits=85441 liveHandles=14034 charged=0 values=0
+--- PASS: TestRaceHuntStoreChurn (2.34s)
+=== RUN   TestRaceHuntStoreChurn
+    zz_racehunt_store_test.go:206: owner states=[11 0 0 53 0 0 0 0] acquireDrops=6464 postAcquireDisabled=false writerLocked=false
+    zz_racehunt_store_test.go:214: acquired=9582 tainted=9570 lookupHits=85929 liveHandles=13932 charged=0 values=0
+--- PASS: TestRaceHuntStoreChurn (2.68s)
+=== RUN   TestRaceHuntStoreChurn
+    zz_racehunt_store_test.go:206: owner states=[7 0 0 57 0 0 0 0] acquireDrops=9897 postAcquireDisabled=false writerLocked=false
+    zz_racehunt_store_test.go:214: acquired=9543 tainted=9529 lookupHits=84056 liveHandles=14066 charged=0 values=0
+--- PASS: TestRaceHuntStoreChurn (3.79s)
+=== RUN   TestRaceHuntStoreChurn
+    zz_racehunt_store_test.go:206: owner states=[12 0 0 52 0 0 0 0] acquireDrops=11052 postAcquireDisabled=false writerLocked=false
+    zz_racehunt_store_test.go:214: acquired=9528 tainted=9519 lookupHits=84477 liveHandles=13947 charged=0 values=0
+--- PASS: TestRaceHuntStoreChurn (5.11s)
+=== RUN   TestRaceHuntStoreChurn
+    zz_racehunt_store_test.go:206: owner states=[24 0 0 40 0 0 0 0] acquireDrops=320 postAcquireDisabled=false writerLocked=false
+    zz_racehunt_store_test.go:214: acquired=9600 tainted=9591 lookupHits=88059 liveHandles=14009 charged=0 values=0
+--- PASS: TestRaceHuntStoreChurn (1.77s)
+=== RUN   TestRaceHuntStoreChurn
+    zz_racehunt_store_test.go:206: owner states=[35 0 0 29 0 0 0 0] acquireDrops=2474 postAcquireDisabled=false writerLocked=false
+    zz_racehunt_store_test.go:214: acquired=9580 tainted=9571 lookupHits=88183 liveHandles=14008 charged=0 values=0
+--- PASS: TestRaceHuntStoreChurn (1.47s)
+=== RUN   TestRaceHuntStoreChurn
+    zz_racehunt_store_test.go:206: owner states=[21 0 0 43 0 0 0 0] acquireDrops=1723 postAcquireDisabled=false writerLocked=false
+    zz_racehunt_store_test.go:214: acquired=9597 tainted=9588 lookupHits=87837 liveHandles=13945 charged=0 values=0
+--- PASS: TestRaceHuntStoreChurn (2.13s)
+=== RUN   TestRaceHuntStoreChurn
+    zz_racehunt_store_test.go:206: owner states=[35 0 0 29 0 0 0 0] acquireDrops=614 postAcquireDisabled=false writerLocked=false
+    zz_racehunt_store_test.go:214: acquired=9598 tainted=9592 lookupHits=88375 liveHandles=13806 charged=0 values=0
+--- PASS: TestRaceHuntStoreChurn (1.41s)
+=== RUN   TestRaceHuntStoreChurn
+    zz_racehunt_store_test.go:206: owner states=[21 0 0 43 0 0 0 0] acquireDrops=10648 postAcquireDisabled=false writerLocked=false
+    zz_racehunt_store_test.go:214: acquired=9509 tainted=9502 lookupHits=86101 liveHandles=13806 charged=0 values=0
+--- PASS: TestRaceHuntStoreChurn (2.41s)
+=== RUN   TestRaceHuntStoreChurn
+    zz_racehunt_store_test.go:206: owner states=[7 0 0 57 0 0 0 0] acquireDrops=12613 postAcquireDisabled=false writerLocked=false
+    zz_racehunt_store_test.go:214: acquired=9505 tainted=9495 lookupHits=85419 liveHandles=13964 charged=0 values=0
+--- PASS: TestRaceHuntStoreChurn (3.47s)
+=== RUN   TestRaceHuntStoreChurn
+    zz_racehunt_store_test.go:206: owner states=[11 0 0 53 0 0 0 0] acquireDrops=31402 postAcquireDisabled=false writerLocked=false
+    zz_racehunt_store_test.go:214: acquired=9374 tainted=9362 lookupHits=81770 liveHandles=14466 charged=0 values=0
+--- PASS: TestRaceHuntStoreChurn (4.63s)
+=== RUN   TestRaceHuntStoreChurn
+    zz_racehunt_store_test.go:206: owner states=[9 0 0 55 0 0 0 0] acquireDrops=26996 postAcquireDisabled=false writerLocked=false
+    zz_racehunt_store_test.go:214: acquired=9383 tainted=9372 lookupHits=82437 liveHandles=13946 charged=0 values=0
+--- PASS: TestRaceHuntStoreChurn (4.17s)
+=== RUN   TestRaceHuntStoreChurn
+    zz_racehunt_store_test.go:206: owner states=[2 0 0 62 0 0 0 0] acquireDrops=18115 postAcquireDisabled=false writerLocked=false
+    zz_racehunt_store_test.go:214: acquired=9484 tainted=9471 lookupHits=82754 liveHandles=13895 charged=0 values=0
+--- PASS: TestRaceHuntStoreChurn (4.38s)
+=== RUN   TestRaceHuntStoreChurn
+    zz_racehunt_store_test.go:206: owner states=[16 0 0 48 0 0 0 0] acquireDrops=22642 postAcquireDisabled=false writerLocked=false
+    zz_racehunt_store_test.go:214: acquired=9474 tainted=9456 lookupHits=81979 liveHandles=14050 charged=0 values=0
+--- PASS: TestRaceHuntStoreChurn (6.38s)
+=== RUN   TestRaceHuntStoreChurn
+    zz_racehunt_store_test.go:206: owner states=[9 0 0 55 0 0 0 0] acquireDrops=7396 postAcquireDisabled=false writerLocked=false
+    zz_racehunt_store_test.go:214: acquired=9562 tainted=9553 lookupHits=85090 liveHandles=13777 charged=0 values=0
+--- PASS: TestRaceHuntStoreChurn (3.71s)
+=== RUN   TestRaceHuntStoreChurn
+    zz_racehunt_store_test.go:206: owner states=[12 0 0 52 0 0 0 0] acquireDrops=14174 postAcquireDisabled=false writerLocked=false
+    zz_racehunt_store_test.go:214: acquired=9483 tainted=9473 lookupHits=83166 liveHandles=13872 charged=0 values=0
+--- PASS: TestRaceHuntStoreChurn (8.96s)
+=== RUN   TestRaceHuntStoreChurn
+    zz_racehunt_store_test.go:206: owner states=[11 0 0 53 0 0 0 0] acquireDrops=25363 postAcquireDisabled=false writerLocked=false
+    zz_racehunt_store_test.go:214: acquired=9375 tainted=9370 lookupHits=81664 liveHandles=13858 charged=0 values=0
+--- PASS: TestRaceHuntStoreChurn (8.40s)
+=== RUN   TestRaceHuntStoreChurn
+    zz_racehunt_store_test.go:206: owner states=[8 0 0 56 0 0 0 0] acquireDrops=39565 postAcquireDisabled=false writerLocked=false
+    zz_racehunt_store_test.go:214: acquired=9282 tainted=9275 lookupHits=78976 liveHandles=13974 charged=0 values=0
+--- PASS: TestRaceHuntStoreChurn (13.57s)
+=== RUN   TestRaceHuntStoreChurn
+    zz_racehunt_store_test.go:206: owner states=[3 0 0 61 0 0 0 0] acquireDrops=51680 postAcquireDisabled=false writerLocked=false
+    zz_racehunt_store_test.go:214: acquired=9025 tainted=9015 lookupHits=77504 liveHandles=14063 charged=0 values=0
+--- PASS: TestRaceHuntStoreChurn (12.42s)
+=== RUN   TestRaceHuntStoreChurn
+    zz_racehunt_store_test.go:206: owner states=[16 0 0 48 0 0 0 0] acquireDrops=69367 postAcquireDisabled=false writerLocked=false
+    zz_racehunt_store_test.go:214: acquired=8900 tainted=8888 lookupHits=76470 liveHandles=13979 charged=0 values=0
+--- PASS: TestRaceHuntStoreChurn (10.25s)
+=== RUN   TestRaceHuntStoreChurn
+    zz_racehunt_store_test.go:206: owner states=[12 0 0 52 0 0 0 0] acquireDrops=487915 postAcquireDisabled=false writerLocked=false
+    zz_racehunt_store_test.go:214: acquired=2230 tainted=2219 lookupHits=7313 liveHandles=1201 charged=0 values=0
+--- PASS: TestRaceHuntStoreChurn (1.32s)
+=== RUN   TestRaceHuntStoreChurn
+    zz_racehunt_store_test.go:206: owner states=[15 0 0 49 0 0 0 0] acquireDrops=452643 postAcquireDisabled=false writerLocked=false
+    zz_racehunt_store_test.go:214: acquired=2857 tainted=2845 lookupHits=14043 liveHandles=2435 charged=0 values=0
+--- PASS: TestRaceHuntStoreChurn (1.33s)
+=== RUN   TestRaceHuntStoreChurn
+    zz_racehunt_store_test.go:206: owner states=[9 0 0 55 0 0 0 0] acquireDrops=399237 postAcquireDisabled=false writerLocked=false
+    zz_racehunt_store_test.go:214: acquired=3627 tainted=3611 lookupHits=15300 liveHandles=2111 charged=0 values=0
+--- PASS: TestRaceHuntStoreChurn (1.40s)
+=== RUN   TestRaceHuntStoreChurn
+    zz_racehunt_store_test.go:206: owner states=[8 0 0 56 0 0 0 0] acquireDrops=344788 postAcquireDisabled=false writerLocked=false
+    zz_racehunt_store_test.go:214: acquired=4516 tainted=4501 lookupHits=21321 liveHandles=1945 charged=0 values=0
+--- PASS: TestRaceHuntStoreChurn (1.59s)
+=== RUN   TestRaceHuntStoreChurn
+    zz_racehunt_store_test.go:206: owner states=[9 0 0 55 0 0 0 0] acquireDrops=440453 postAcquireDisabled=false writerLocked=false
+    zz_racehunt_store_test.go:214: acquired=3033 tainted=3022 lookupHits=10366 liveHandles=1643 charged=0 values=0
+--- PASS: TestRaceHuntStoreChurn (1.75s)
+=== RUN   TestRaceHuntStoreChurn
+    zz_racehunt_store_test.go:206: owner states=[5 0 0 59 0 0 0 0] acquireDrops=437218 postAcquireDisabled=false writerLocked=false
+    zz_racehunt_store_test.go:214: acquired=3088 tainted=3068 lookupHits=12351 liveHandles=1530 charged=0 values=0
+--- PASS: TestRaceHuntStoreChurn (1.36s)
+=== RUN   TestRaceHuntStoreChurn
+    zz_racehunt_store_test.go:206: owner states=[7 0 0 57 0 0 0 0] acquireDrops=324913 postAcquireDisabled=false writerLocked=false
+    zz_racehunt_store_test.go:214: acquired=4874 tainted=4856 lookupHits=17329 liveHandles=2224 charged=0 values=0
+--- PASS: TestRaceHuntStoreChurn (1.00s)
+=== RUN   TestRaceHuntStoreChurn
+    zz_racehunt_store_test.go:206: owner states=[3 0 0 61 0 0 0 0] acquireDrops=204687 postAcquireDisabled=false writerLocked=false
+    zz_racehunt_store_test.go:214: acquired=6877 tainted=6837 lookupHits=17600 liveHandles=1753 charged=0 values=0
+--- PASS: TestRaceHuntStoreChurn (0.72s)
+=== RUN   TestRaceHuntStoreChurn
+    zz_racehunt_store_test.go:206: owner states=[5 0 0 59 0 0 0 0] acquireDrops=202252 postAcquireDisabled=false writerLocked=false
+    zz_racehunt_store_test.go:214: acquired=6999 tainted=6942 lookupHits=20234 liveHandles=2312 charged=0 values=0
+--- PASS: TestRaceHuntStoreChurn (0.69s)
+=== RUN   TestRaceHuntStoreChurn
+    zz_racehunt_store_test.go:206: owner states=[1 0 0 63 0 0 0 0] acquireDrops=142998 postAcquireDisabled=false writerLocked=false
+    zz_racehunt_store_test.go:214: acquired=7931 tainted=7874 lookupHits=20690 liveHandles=2092 charged=0 values=0
+--- PASS: TestRaceHuntStoreChurn (0.63s)
+=== RUN   TestRaceHuntStoreChurn
+    zz_racehunt_store_test.go:206: owner states=[0 0 0 64 0 0 0 0] acquireDrops=97184 postAcquireDisabled=false writerLocked=false
+    zz_racehunt_store_test.go:214: acquired=8770 tainted=8708 lookupHits=16622 liveHandles=1568 charged=0 values=0
+--- PASS: TestRaceHuntStoreChurn (0.50s)
+=== RUN   TestRaceHuntStoreChurn
+    zz_racehunt_store_test.go:206: owner states=[7 0 0 57 0 0 0 0] acquireDrops=220042 postAcquireDisabled=false writerLocked=false
+    zz_racehunt_store_test.go:214: acquired=6605 tainted=6571 lookupHits=17483 liveHandles=1988 charged=0 values=0
+--- PASS: TestRaceHuntStoreChurn (0.85s)
+=== RUN   TestRaceHuntStoreChurn
+    zz_racehunt_store_test.go:206: owner states=[0 0 0 64 0 0 0 0] acquireDrops=253163 postAcquireDisabled=false writerLocked=false
+    zz_racehunt_store_test.go:214: acquired=6118 tainted=6078 lookupHits=19880 liveHandles=1977 charged=0 values=0
+--- PASS: TestRaceHuntStoreChurn (0.77s)
+=== RUN   TestRaceHuntStoreChurn
+    zz_racehunt_store_test.go:206: owner states=[0 0 0 64 0 0 0 0] acquireDrops=230325 postAcquireDisabled=false writerLocked=false
+    zz_racehunt_store_test.go:214: acquired=6384 tainted=6363 lookupHits=20711 liveHandles=2294 charged=0 values=0
+--- PASS: TestRaceHuntStoreChurn (0.73s)
+=== RUN   TestRaceHuntStoreChurn
+    zz_racehunt_store_test.go:206: owner states=[2 0 0 62 0 0 0 0] acquireDrops=306754 postAcquireDisabled=false writerLocked=false
+    zz_racehunt_store_test.go:214: acquired=5124 tainted=5096 lookupHits=18998 liveHandles=2408 charged=0 values=0
+--- PASS: TestRaceHuntStoreChurn (0.79s)
+=== RUN   TestRaceHuntStoreChurn
+    zz_racehunt_store_test.go:206: owner states=[0 0 0 64 0 0 0 0] acquireDrops=249592 postAcquireDisabled=false writerLocked=false
+    zz_racehunt_store_test.go:214: acquired=6170 tainted=6146 lookupHits=19794 liveHandles=2290 charged=0 values=0
+--- PASS: TestRaceHuntStoreChurn (1.20s)
+=== RUN   TestRaceHuntStoreChurn
+    zz_racehunt_store_test.go:206: owner states=[6 0 0 58 0 0 0 0] acquireDrops=308855 postAcquireDisabled=false writerLocked=false
+    zz_racehunt_store_test.go:214: acquired=5154 tainted=5123 lookupHits=18432 liveHandles=2470 charged=0 values=0
+--- PASS: TestRaceHuntStoreChurn (1.10s)
+=== RUN   TestRaceHuntStoreChurn
+    zz_racehunt_store_test.go:206: owner states=[7 0 0 57 0 0 0 0] acquireDrops=315496 postAcquireDisabled=false writerLocked=false
+    zz_racehunt_store_test.go:214: acquired=5036 tainted=5008 lookupHits=16508 liveHandles=2319 charged=0 values=0
+--- PASS: TestRaceHuntStoreChurn (1.02s)
+=== RUN   TestRaceHuntStoreChurn
+    zz_racehunt_store_test.go:206: owner states=[8 0 0 56 0 0 0 0] acquireDrops=344116 postAcquireDisabled=false writerLocked=false
+    zz_racehunt_store_test.go:214: acquired=4600 tainted=4583 lookupHits=15856 liveHandles=2197 charged=0 values=0
+--- PASS: TestRaceHuntStoreChurn (1.19s)
+=== RUN   TestRaceHuntStoreChurn
+    zz_racehunt_store_test.go:206: owner states=[0 0 0 64 0 0 0 0] acquireDrops=256827 postAcquireDisabled=false writerLocked=false
+    zz_racehunt_store_test.go:214: acquired=6003 tainted=5977 lookupHits=18137 liveHandles=1931 charged=0 values=0
+--- PASS: TestRaceHuntStoreChurn (0.84s)
+PASS

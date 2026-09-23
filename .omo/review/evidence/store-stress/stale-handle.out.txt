@@ -1,0 +1,26 @@
+$ STALE_BUDGET=60s go test  -run '^TestReviewStale' -count=1 -v ./internal/taint/store
+=== RUN   TestReviewStaleHandleBindsIntoReusedSlot
+    stale_review_test.go:96: iteration 2526: object bound only through the FINISHED request's handle (gen 5054) is bound to the NEW request (idx=0 gen=5055, id=5118); bindings=1
+--- FAIL: TestReviewStaleHandleBindsIntoReusedSlot (0.39s)
+=== RUN   TestReviewStaleFinishKillsReusedSlot
+    stale_review_test.go:145: iteration 1380: new owner (gen 2763, id 2826) was finished by the previous request's stale handle (gen 2762); state=3
+--- FAIL: TestReviewStaleFinishKillsReusedSlot (0.06s)
+=== RUN   TestReviewStaleHandleWriterStateBleedsIntoNextRequest
+    stale_review_test.go:217: iteration 41: builder written only through FINISHED request gen 84 is tracked by NEW request gen 85 (id 148); snapshot=true ranges=1 first={Start:0 Length:4 SourceID:7 Marks:0} (source 7 is request A's owner-local ID, now resolved in B's source table); B charged=64 writers=1
+--- FAIL: TestReviewStaleHandleWriterStateBleedsIntoNextRequest (0.12s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/store	0.772s
+FAIL
+$ STALE_BUDGET=60s go test -race -run '^TestReviewStale' -count=1 -v ./internal/taint/store
+=== RUN   TestReviewStaleHandleBindsIntoReusedSlot
+    stale_review_test.go:96: iteration 93: object bound only through the FINISHED request's handle (gen 188) is bound to the NEW request (idx=0 gen=189, id=252); bindings=1
+--- FAIL: TestReviewStaleHandleBindsIntoReusedSlot (0.15s)
+=== RUN   TestReviewStaleFinishKillsReusedSlot
+    stale_review_test.go:145: iteration 8: new owner (gen 19, id 82) was finished by the previous request's stale handle (gen 18); state=3
+--- FAIL: TestReviewStaleFinishKillsReusedSlot (0.45s)
+=== RUN   TestReviewStaleHandleWriterStateBleedsIntoNextRequest
+    stale_review_test.go:217: iteration 2367: builder written only through FINISHED request gen 4736 is tracked by NEW request gen 4737 (id 4800); snapshot=true ranges=1 first={Start:0 Length:4 SourceID:7 Marks:0} (source 7 is request A's owner-local ID, now resolved in B's source table); B charged=64 writers=1
+--- FAIL: TestReviewStaleHandleWriterStateBleedsIntoNextRequest (6.32s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/store	7.388s
+FAIL

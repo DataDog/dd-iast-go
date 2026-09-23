@@ -1,0 +1,49 @@
+# encoding/json
+$WORK/b041/orchestrion/src/encoding/json/<generated>:2: dec.r undefined (type *Decoder has no field or method r)
+$WORK/b041/orchestrion/src/encoding/json/<generated>:2: dec.d undefined (type *Decoder has no field or method d)
+$WORK/b041/orchestrion/src/encoding/json/<generated>:3: dec.d undefined (type *Decoder has no field or method d)
+exit status 2
+# crypto/des
+resolving woven dependency on github.com/DataDog/dd-iast-go/internal/instrumentation/telemetry: -: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+# golang.org/x/crypto/md4
+resolving woven dependency on github.com/DataDog/dd-iast-go/internal/model/constants: -: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+# crypto/rc4
+resolving woven dependency on github.com/DataDog/dd-iast-go/internal/instrumentation/telemetry: -: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+# crypto/md5
+resolving woven dependency on github.com/DataDog/dd-iast-go/internal/instrumentation/telemetry: -: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+# crypto/sha1
+resolving woven dependency on github.com/DataDog/dd-iast-go/internal/instrumentation/telemetry: -: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+exit status 1
+       34.25 real       155.12 user        59.26 sys
+           903413760  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+             9428490  page reclaims
+              200082  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+               12814  messages sent
+               14417  messages received
+               86686  signals received
+               49319  voluntary context switches
+             1716660  involuntary context switches
+            19640968  instructions retired
+            10538438  cycles elapsed
+             1212728  peak memory footprint

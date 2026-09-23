@@ -1,0 +1,16 @@
+$ env GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 go test -count=1 -timeout 5m -run TestFinderBuilderStaleViewAfterAddressReuse -v ./iast/propagation/
+=== RUN   TestFinderBuilderStaleViewAfterAddressReuse
+=== RUN   TestFinderBuilderStaleViewAfterAddressReuse/zero-assign
+    zz_finder_gc_identity_test.go:79: mode=zero-assign address=0x52308fffad20 len=10 cap=16 attempts=117 output="cleanvalue" tainted=true
+    zz_finder_gc_identity_test.go:80:
+        	Error:      	Should be false
+        	Messages:   	clean builder content inherited stale taint
+=== RUN   TestFinderBuilderStaleViewAfterAddressReuse/method-value-reset
+    zz_finder_gc_identity_test.go:79: mode=method-value-reset address=0x52308fffae40 len=10 cap=16 attempts=134 output="cleanvalue" tainted=true
+    zz_finder_gc_identity_test.go:80:
+        	Error:      	Should be false
+        	Messages:   	clean builder content inherited stale taint
+--- FAIL: TestFinderBuilderStaleViewAfterAddressReuse (0.01s)
+FAIL	github.com/DataDog/dd-iast-go/iast/propagation	0.574s
+FAIL
+exit 1

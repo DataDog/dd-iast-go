@@ -1,0 +1,2 @@
+## env: DD_IAST_REQUEST_SAMPLING=100 args: -mode=vuln -params=10 -memprofile=vuln-p10.pprof
+mode=vuln params=10 n=500 warm_committed=1 measured_committed=0 executed_tainted=500 bytes_per_req=30743 objs_per_req=278

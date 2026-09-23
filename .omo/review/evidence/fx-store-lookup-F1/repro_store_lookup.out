@@ -1,0 +1,14 @@
+$ cd /tmp/ddiast-review/wt/fx-store-lookup-F1 && GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go test -timeout 15m ./internal/taint/store -run '^TestReproLookupSkipsLiveOwnerAfterFourStaleMatches$' -count=1 -v
+(independent rerun of the phase-2 finder's reproducer, verbatim, in this node's private tree)
+=== RUN   TestReproLookupSkipsLiveOwnerAfterFourStaleMatches
+    fx_finder_repro_test.go:39: 
+        	Error Trace:	/private/tmp/ddiast-review/wt/fx-store-lookup-F1/internal/taint/store/fx_finder_repro_test.go:39
+        	Error:      	Not equal: 
+        	            	expected: 1
+        	            	actual  : 0
+        	Test:       	TestReproLookupSkipsLiveOwnerAfterFourStaleMatches
+        	Messages:   	the fifth live owner must not be excluded by four stale slots
+--- FAIL: TestReproLookupSkipsLiveOwnerAfterFourStaleMatches (0.01s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/store	0.721s
+FAIL

@@ -1,0 +1,57 @@
+[
+  {
+    "id": "perf-bench-quality-F1",
+    "severity": "Medium",
+    "category": "test-gap",
+    "location": "benchmarks/overhead/overhead_test.go:40; iast/database/sql/sql_test.go:38; iast/os/exec/exec_test.go:79; iast/propagation/operators_test.go:136-192; iast/encoding/json/json_test.go:154-186; iast/integration/testapp/e2e_test.go:224-263",
+    "title": "Nearly every \"Active\" benchmark only exercises the MayContain-miss (clean) path, never a genuine tainted hit",
+    "claim": "Across the whole repository, every sink/propagation benchmark named *ActiveClean, *Report, *Literal, or PropagationActiveUntainted creates an active request scope but only ever passes compile-time literal/clean values through it (e.g. sql_test.go:38 Report(ctx, \"SELECT 1\", ...); exec_test.go:79 argv := []string{\"echo\", \"clean\"}; json_test.go:165 document := []byte(`{\"value\":\"clean\"}`); overhead_test.go:40-97 uses plain literals like \"  attacker  \" that are never run through taint.TaintString/TaintBytes). Because sql.Report, exec.Report, evidence.CollectString/CollectJoinedStrings, and the propagation package all gate their expensive work behind an active.MayContain(key) cheap check that only returns true for values that were actually tainted, every one of these benchmarks silently measures only the cheap gate-check-miss cost, not the cost of the real attack path (evidence collection, redaction analysis, ranges snapshot/derive, vulnerability.ReportTainted, span attachment) that a genuine SQL/command injection attempt triggers. Only two Benchmark functions anywhere in the repository call taint.TaintString/TaintBytes and measure a genuine hit: taint/taint_test.go:191 BenchmarkStringLookup/hit (a bare boolean check) and benchmarks/overhead/buffer_test.go:22 BenchmarkBytesBufferCopies. There is no CI-tracked signal at all for the cost of the actual vulnerability-detection hot path, which is exactly the path AGENTS.md's 'never slow down the host more than necessary' rule is meant to police.",
+    "evidence_path": ".omo/review/evidence/perf-bench-quality/sql-report-tainted-vs-clean.out.txt, .omo/review/evidence/perf-bench-quality/exec-report-tainted-vs-clean.out.txt, .omo/review/evidence/perf-bench-quality/concat4-tainted-vs-untainted.out.txt, .omo/review/evidence/perf-bench-quality/json-literal-tainted-vs-clean.out.txt, .omo/review/evidence/perf-bench-quality/sql_repro_bench_test.go, .omo/review/evidence/perf-bench-quality/exec_repro_bench_test.go, .omo/review/evidence/perf-bench-quality/propagation_repro_bench_test.go, .omo/review/evidence/perf-bench-quality/json_repro_bench_test.go",
+    "repro_command": "cd /tmp/ddiast-review/wt/perf-bench-quality && GOTOOLCHAIN=go1.26.6 go test -run=NONE -bench='BenchmarkReportActive' -benchmem -benchtime=200000x ./iast/database/sql/... ./iast/os/exec/...  (with repro_bench_test.go added to each package, and BenchmarkReportActiveTainted using taint.TaintString on the query/argument)",
+    "needs_repro": false
+  },
+  {
+    "id": "perf-bench-quality-F2",
+    "severity": "Medium",
+    "category": "test-gap",
+    "location": "internal/taint/propagation/ (no *_test.go Benchmark); internal/spans/ (no Benchmark); internal/taint/httpbridge/, internal/taint/jsonbridge/, internal/taint/writerbridge/ (no Benchmark); iast/net/http/ (no Benchmark); internal/taint/request/ (no Benchmark)",
+    "title": "Zero microbenchmarks for the core propagation engine, HTTP eager source tainting, span lifecycle, and several bridges the phase-1 architecture review names as the riskiest areas",
+    "claim": "internal/taint/propagation (propagation.go, string_exact.go, bytes_exact.go, string_coarse.go, conversion.go, json.go, operator_concat.go, writer.go) is the actual hot-path engine invoked by every one of the ~1080 lines of iast/propagation/orchestrion.yml call-site advice, yet it has no Benchmark* function anywhere: `grep -rln 'func Benchmark' internal/taint/propagation` returns nothing. internal/spans (annotation/owner/tainted/payload -- weak-key span cleanup, source remap, event commit, listed as risk area #10 in phase1/00-architecture.md), internal/taint/httpbridge, internal/taint/jsonbridge (decoder-slot collision risk, listed as risk area #5), and internal/taint/writerbridge similarly have zero benchmarks. iast/net/http and internal/taint/request -- the code that runs on literally every sampled inbound request (EagerHTTP taints URI/path/query and rebuilds up to 32 header names/64 values, the 256-slot source Table, scope Begin/Finish sampling) -- also have zero direct benchmarks (internal/taint/request/ contains fuzz_test.go, table_test.go, scope_test.go, owner_test.go, admission_behavior_test.go, lazy_behavior_test.go, internal_test.go, but no benchmark_test.go). These mechanisms are only exercised indirectly and in aggregate through benchmarks/overhead's differential HTTP workloads (BenchmarkRequestProcessing, BenchmarkHTTPRoundTrip), where a regression in one specific internal mechanism cannot be attributed and is diluted by request-construction/httptest overhead that both control and IAST binaries pay equally. A reproducer added directly against internal/taint/propagation (BenchmarkConcat4Untainted/Tainted, calling propagation.Concat4 directly) shows the untested hit path costs roughly two orders of magnitude more than the untainted miss path already covered.",
+    "evidence_path": ".omo/review/evidence/perf-bench-quality/concat4-tainted-vs-untainted.out.txt, .omo/review/evidence/perf-bench-quality/propagation_repro_bench_test.go",
+    "repro_command": "grep -rln 'func Benchmark' internal/taint/propagation internal/spans internal/taint/httpbridge internal/taint/jsonbridge internal/taint/writerbridge iast/net/http internal/taint/request  (all empty except a directory listing with no benchmark_test.go); cd /tmp/ddiast-review/wt/perf-bench-quality && GOTOOLCHAIN=go1.26.6 go test -run=NONE -bench=BenchmarkConcat4 -benchmem -benchtime=200000x ./internal/taint/propagation/...",
+    "needs_repro": false
+  },
+  {
+    "id": "perf-bench-quality-F3",
+    "severity": "Medium",
+    "category": "test-gap",
+    "location": "iast/propagation/operators_test.go:136-192",
+    "title": "Operator concat/conversion/slice benchmarks give a false near-zero-overhead reading when run without Orchestrion weaving, unlike the correctness test in the same file",
+    "claim": "BenchmarkOperatorConcat4Inactive/ActiveClean, BenchmarkOperatorConversionsInactive, BenchmarkOperatorOptimizedConversionExcluded, and BenchmarkOperatorSlicesInactive all measure plain Go operators (`+`, `string(data)`, slicing) whose IAST behavior only exists when Orchestrion has woven iast/propagation/orchestrion.yml's operator advice into the call site. None of them check built.WithOrchestrion, unlike TestOperatorEvaluationAndPanicSemantics at line 195 in the same file, which does `if !built.WithOrchestrion { t.Skip(...) }`. Run with plain `go test -bench=. ./...` (the repository's own documented 'Plain tests' invocation in AGENTS.md/CONTRIBUTING.md, and what a developer or a non-orchestrion CI lane would naturally run), BenchmarkOperatorConcat4Inactive and BenchmarkOperatorConcat4ActiveClean report statistically indistinguishable numbers (38.76ns vs 38.17ns, identical 24B/1alloc) because config.Enabled/request.Begin have zero effect on an unwoven `+` operator. Anyone reading these numbers without separately confirming the binary was woven would conclude IAST concat overhead is ~0ns/op, which is not a validated conclusion; the benchmark neither skips nor reports whether weaving occurred.",
+    "evidence_path": ".omo/review/evidence/perf-bench-quality/concat4-unwoven-no-signal.out.txt",
+    "repro_command": "cd /tmp/ddiast-review/wt/perf-bench-quality && GOTOOLCHAIN=go1.26.6 go test -run=NONE -bench=BenchmarkOperatorConcat4 -benchmem -benchtime=200000x ./iast/propagation/...   (plain go test, no orchestrion)",
+    "needs_repro": false
+  },
+  {
+    "id": "perf-bench-quality-F4",
+    "severity": "Low",
+    "category": "quality",
+    "location": "internal/taint/store/lifecycle_test.go:37-49",
+    "title": "BenchmarkFinishWithActiveWriter times setup work and a goroutine spawn inside the loop, and has no b.ReportAllocs",
+    "claim": "BenchmarkFinishWithActiveWriter puts `store.Acquire()`, `owner.TaintString(...)`, `owner.owner.lifecycleMu.RLock()`, a `go func(){ owner.Finish(); close(done) }()` spawn, and the `<-done` wait all inside `for b.Loop()`. This conflates the allocation/registration cost of Acquire+TaintString with the specific Finish-under-a-held-read-lock contention behavior the benchmark's name says it measures, and the per-iteration goroutine creation adds scheduler noise on top. The function also has no b.ReportAllocs(), so the setup/goroutine allocations that are folded into ns/op are never surfaced as B/op or allocs/op, unlike every other benchmark in the codebase touching the store.",
+    "evidence_path": null,
+    "repro_command": null,
+    "needs_repro": false
+  },
+  {
+    "id": "perf-bench-quality-F5",
+    "severity": "Low",
+    "category": "quality",
+    "location": "internal/taint/evidence/evidence_test.go:182-187",
+    "title": "BenchmarkCollectStringMiss is missing b.ReportAllocs()",
+    "claim": "BenchmarkCollectStringMiss calls CollectString(\"clean-value\", ...) in a loop but never calls b.ReportAllocs(), so it reports only ns/op. A companion test, TestCollectStringMissDoesNotAllocate (line ~189), does assert zero allocations via testing.AllocsPerRun, but that guarantee is not re-verified by the benchmark itself; a future change that adds an allocation on the miss path would show up as a latency delta in benchstat output with no B/op or allocs/op context to diagnose it, and would not be caught by benchmark runs at all if latency noise masks it.",
+    "evidence_path": null,
+    "repro_command": null,
+    "needs_repro": false
+  }
+]

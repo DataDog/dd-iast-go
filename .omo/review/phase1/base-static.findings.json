@@ -1,0 +1,24 @@
+[
+  {
+    "id": "base-static-F1",
+    "severity": "Low",
+    "category": "quality",
+    "location": "internal/taint/store/root.go:323",
+    "title": "Remove the unused root publication charge parameter",
+    "claim": "(*Owner).publishRoot accepts charge but never reads it; callers already own reservation and rollback accounting.",
+    "evidence_path": ".omo/review/evidence/base-static/linter-excerpts.txt",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 $HOME/go/bin/golangci-lint run ./... --enable=gosec,errorlint,bodyclose,nilerr,unparam,gocritic,prealloc,unconvert,wastedassign",
+    "needs_repro": false
+  },
+  {
+    "id": "base-static-F2",
+    "severity": "Low",
+    "category": "quality",
+    "location": "internal/taint/store/writer.go:498",
+    "title": "Remove the always-true writer release parameter",
+    "claim": "(*Owner).removeWriterLocked accepts release, but every current call site passes true, leaving its conditional accounting branch unreachable.",
+    "evidence_path": ".omo/review/evidence/base-static/linter-excerpts.txt",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 $HOME/go/bin/golangci-lint run ./... --enable=gosec,errorlint,bodyclose,nilerr,unparam,gocritic,prealloc,unconvert,wastedassign",
+    "needs_repro": false
+  }
+]

@@ -1,0 +1,5 @@
+HEAD: 2e23b4614320defd0d32177a69888dcab73f4d11
+Command: cd /tmp/ddiast-review/wt/prop-bytes-exact && GOMAXPROCS=2 GOTOOLCHAIN=go1.26.6 go test -p=2 -count=1 -timeout=3m ./internal/taint/propagation ./internal/taint/store
+status: completed exit_code: 0
+ok  	github.com/DataDog/dd-iast-go/internal/taint/propagation	4.287s
+ok  	github.com/DataDog/dd-iast-go/internal/taint/store	18.100s

@@ -1,0 +1,12 @@
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+FAIL	github.com/DataDog/dd-iast-go/iast/internal/zzfid/methodexpr [build failed]
+FAIL
+exit status 1

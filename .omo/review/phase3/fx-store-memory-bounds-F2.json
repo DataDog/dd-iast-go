@@ -1,0 +1,13 @@
+[
+  {
+    "id": "store-memory-bounds-F2",
+    "verdict": "CONFIRMED",
+    "original_severity": "Critical",
+    "adjusted_severity": "High",
+    "reachable_default": true,
+    "documented_limitation": false,
+    "reason": "TOCTOU between trimStore() Size() check (annotation.go:132/199, :231/:235) and the LoadOrCompute insert (:135-142/:200-205) is real. Without any patch, a synchronized burst through BindScopeContext at default config retained 11 annotations vs cap 2 (5.5x), and 70 vs 64 at cap 64; the finder's barrier reached 2048 vs 64, so the excess has no code-imposed bound. Not Critical: the excess tracks live root spans, is removed at Finished(span), does not grow over time, and -race is clean. Real httptest serving showed no overshoot.",
+    "evidence_path": ".omo/review/evidence/fx-store-memory-bounds-F2/01-noPatch-admission.txt",
+    "repro_command": "cd /tmp/ddiast-review/wt/fx-store-memory-bounds-F2 && cp /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/.omo/review/evidence/fx-store-memory-bounds-F2/repro/internal/spans/zz_fx_f2_admission_test.go internal/spans/ && env GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 timeout 900 go test -count=1 -timeout 12m -v -run '^TestFxF2AdmissionNoPatch$' ./internal/spans"
+  }
+]

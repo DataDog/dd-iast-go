@@ -1,0 +1,16 @@
+$ GOTOOLCHAIN=go1.26.6 go run .
+go version go1.26.6 darwin/arm64
+1-byte conversion shares address: true
+""+s aliases s: true
+TrimPrefix result is interior view: true
+isolatedString 1-byte results share address: false
+tiny allocs distance (bytes): 4 same 16B block: false
+
+$ GOTOOLCHAIN=local go run .
+go version go1.27.0 darwin/arm64
+1-byte conversion shares address: true
+""+s aliases s: true
+TrimPrefix result is interior view: true
+isolatedString 1-byte results share address: false
+tiny allocs distance (bytes): 4 same 16B block: false
+

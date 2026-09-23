@@ -1,0 +1,13 @@
+[
+ {
+  "id": "crash-race-hunt-F1",
+  "verdict": "CONFIRMED",
+  "original_severity": "Critical",
+  "adjusted_severity": "High",
+  "reachable_default": true,
+  "documented_limitation": false,
+  "reason": "Woven ParseForm advice (iast/net/http/orchestrion.yml:152-162) unconditionally re-stores r.Form/r.PostForm on every call; a re-parse that is read-only in plain Go 1.26.6 becomes a data race with concurrent form readers. Reproduced in a minimal customer module enabling only iast/net/http, with no tracer or IAST scope (2 DATA RACE woven, 0 plain). Downgraded to High because the racing store writes the identical pointer (no value corruption or behaviour change beyond failing customer -race runs), and it needs concurrent re-parse+read of one request.",
+  "evidence_path": ".omo/review/evidence/fx-crash-race-hunt-F1/woven_repro.out",
+  "repro_command": "cd zzrepro (module at repo root, replace dd-iast-go => ../) && GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -race -count=3 -cpu=4,16 -run TestFxParseFormReparseRace .  # woven: 2 DATA RACE; plain go test -race: PASS"
+ }
+]

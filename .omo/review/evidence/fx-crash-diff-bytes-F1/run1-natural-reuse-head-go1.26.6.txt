@@ -1,0 +1,42 @@
+=== RUN   TestFxBuilderABA
+=== RUN   TestFxBuilderABA/zero-assign+io.WriteString/24
+    builder_aba_test.go:101: RESULT variant=zero-assign+io.WriteString size=24 requests=30 addressReused=0 falsePositiveWhenReused=0 falsePositiveWithoutReuse=0
+=== RUN   TestFxBuilderABA/zero-assign+io.WriteString/200
+    builder_aba_test.go:101: RESULT variant=zero-assign+io.WriteString size=200 requests=30 addressReused=0 falsePositiveWhenReused=0 falsePositiveWithoutReuse=0
+=== RUN   TestFxBuilderABA/methodvalue-Reset+fmt.Fprint/24
+    builder_aba_test.go:94: request 0: FALSE POSITIVE clean "cccccccc" tainted: start=0 len=24 origin=http.request.query name=q (backing 0x3308a75fe2d0 reused)
+    builder_aba_test.go:101: RESULT variant=methodvalue-Reset+fmt.Fprint size=24 requests=30 addressReused=1 falsePositiveWhenReused=1 falsePositiveWithoutReuse=0
+=== RUN   TestFxBuilderABA/methodvalue-Reset+fmt.Fprint/200
+    builder_aba_test.go:94: request 0: FALSE POSITIVE clean "cccccccc" tainted: start=0 len=200 origin=http.request.query name=q (backing 0x3308a760e340 reused)
+    builder_aba_test.go:101: RESULT variant=methodvalue-Reset+fmt.Fprint size=200 requests=30 addressReused=1 falsePositiveWhenReused=1 falsePositiveWithoutReuse=0
+=== RUN   TestFxBuilderABA/CONTROL-direct-Reset+io.WriteString/24
+    builder_aba_test.go:101: RESULT variant=CONTROL-direct-Reset+io.WriteString size=24 requests=30 addressReused=0 falsePositiveWhenReused=0 falsePositiveWithoutReuse=0
+=== RUN   TestFxBuilderABA/CONTROL-direct-Reset+io.WriteString/200
+    builder_aba_test.go:101: RESULT variant=CONTROL-direct-Reset+io.WriteString size=200 requests=30 addressReused=0 falsePositiveWhenReused=0 falsePositiveWithoutReuse=0
+--- PASS: TestFxBuilderABA (286.80s)
+    --- PASS: TestFxBuilderABA/zero-assign+io.WriteString/24 (56.25s)
+    --- PASS: TestFxBuilderABA/zero-assign+io.WriteString/200 (35.25s)
+    --- PASS: TestFxBuilderABA/methodvalue-Reset+fmt.Fprint/24 (57.10s)
+    --- PASS: TestFxBuilderABA/methodvalue-Reset+fmt.Fprint/200 (44.85s)
+    --- PASS: TestFxBuilderABA/CONTROL-direct-Reset+io.WriteString/24 (53.12s)
+    --- PASS: TestFxBuilderABA/CONTROL-direct-Reset+io.WriteString/200 (40.24s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/iast/internal/zzfx	287.087s
+      314.39 real        50.30 user        21.32 sys
+           103727104  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              182530  page reclaims
+                5332  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                 320  messages sent
+                 316  messages received
+               73513  signals received
+                5815  voluntary context switches
+             2328978  involuntary context switches
+          6081210105  instructions retired
+          3794929447  cycles elapsed
+            43254504  peak memory footprint

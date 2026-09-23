@@ -1,0 +1,5 @@
+Command:
+cd /tmp/ddiast-review/wt/fx-life-table-lookup-F1 && GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 go test -race -shuffle=on -count=1 -skip '^TestReviewHashDelimiterCollision$' -timeout=15m ./internal/taint/request
+
+Captured output (exit 0):
+ok  	github.com/DataDog/dd-iast-go/internal/taint/request	3.165s

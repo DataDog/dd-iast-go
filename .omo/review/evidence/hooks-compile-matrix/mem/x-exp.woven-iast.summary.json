@@ -1,0 +1,112 @@
+{
+ "peak_tree_rss_kb": 3359552,
+ "peak_tree_at_s": 61.1,
+ "peak_tree_top": [
+  [
+   422992,
+   [
+    "link",
+    ""
+   ]
+  ],
+  [
+   418704,
+   [
+    "link",
+    ""
+   ]
+  ],
+  [
+   413536,
+   [
+    "link",
+    ""
+   ]
+  ],
+  [
+   413264,
+   [
+    "link",
+    ""
+   ]
+  ],
+  [
+   407088,
+   [
+    "link",
+    ""
+   ]
+  ],
+  [
+   390512,
+   [
+    "link",
+    ""
+   ]
+  ]
+ ],
+ "top_process_peaks_kb": [
+  [
+   "compile github.com/nats-io/nats-server/v2/server",
+   847344
+  ],
+  [
+   "link ",
+   556896
+  ],
+  [
+   "(link) ",
+   463072
+  ],
+  [
+   "orchestrion-toolexec/compile runtime",
+   266368
+  ],
+  [
+   "compile net/http",
+   239760
+  ],
+  [
+   "(dsymutil) ",
+   214448
+  ],
+  [
+   "compile go.opentelemetry.io/collector/pdata/internal",
+   185856
+  ],
+  [
+   "dsymutil ",
+   184944
+  ],
+  [
+   "compile go/types",
+   176736
+  ],
+  [
+   "(compile) ",
+   173936
+  ],
+  [
+   "compile google.golang.org/protobuf/internal/impl",
+   150864
+  ],
+  [
+   "compile runtime",
+   147232
+  ],
+  [
+   "orchestrion-toolexec/compile github.com/DataDog/dd-trace-go/v2/ddtrace/tracer",
+   142944
+  ],
+  [
+   "compile crypto/tls",
+   141744
+  ],
+  [
+   "orchestrion-toolexec/compile net/http",
+   140304
+  ]
+ ],
+ "samples": 62,
+ "duration_s": 78.3
+}

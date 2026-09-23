@@ -1,0 +1,285 @@
+# perf-binary-compile build measurements (2026-09-23 16:52:08)
+# host: ['Apple', 'M4', 'Max', '16', '68719476736']
+
+==== itapp-bootstrap-plain
+cwd=/tmp/ddiast-review/wt/perf-binary-compile/iast/integration/testapp
+env: GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 GOCACHE=<fresh empty dir> TMPDIR=/tmp/ddiast-review/wt/perf-binary-compile/tmp
+$ /usr/bin/time -l go build -o /tmp/ddiast-review/wt/perf-binary-compile/bin/itapp-bootstrap-plain ./cmd/bootstrap
+loadavg before: { 60.87 56.80 48.45 }
+        4.30 real         2.71 user         1.03 sys
+           316506112  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              113674  page reclaims
+                 107  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                 734  signals received
+                1365  voluntary context switches
+               26573  involuntary context switches
+          2212806794  instructions retired
+          2404774844  cycles elapsed
+            14942904  peak memory footprint
+RESULT {"name": "itapp-bootstrap-plain", "moddir": "iast/integration/testapp", "cmd": "go build -o /tmp/ddiast-review/wt/perf-binary-compile/bin/itapp-bootstrap-plain ./cmd/bootstrap", "rc": 0, "real_s": 4.3, "user_s": 2.71, "sys_s": 1.03, "maxrss_bytes": 316506112, "size_bytes": 1749218, "load_before": "{ 60.87 56.80 48.45 }", "work": null, "cache_bytes": 20824064}
+
+==== itapp-test-plain
+cwd=/tmp/ddiast-review/wt/perf-binary-compile/iast/integration/testapp
+env: GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 GOCACHE=<fresh empty dir> TMPDIR=/tmp/ddiast-review/wt/perf-binary-compile/tmp
+$ /usr/bin/time -l go test -o /tmp/ddiast-review/wt/perf-binary-compile/bin/itapp-test-plain -c .
+loadavg before: { 58.64 56.41 48.36 }
+      116.40 real        63.69 user        22.56 sys
+           415973376  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+             2992721  page reclaims
+               19067  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+               38150  signals received
+               26960  voluntary context switches
+              638639  involuntary context switches
+         34076142769  instructions retired
+         34800889574  cycles elapsed
+            49283816  peak memory footprint
+RESULT {"name": "itapp-test-plain", "moddir": "iast/integration/testapp", "cmd": "go test -o /tmp/ddiast-review/wt/perf-binary-compile/bin/itapp-test-plain -c .", "rc": 0, "real_s": 116.4, "user_s": 63.69, "sys_s": 22.56, "maxrss_bytes": 415973376, "size_bytes": 19921106, "load_before": "{ 58.64 56.41 48.36 }", "work": null, "cache_bytes": 384712704}
+
+==== overhead-test-plain
+cwd=/tmp/ddiast-review/wt/perf-binary-compile/benchmarks/overhead
+env: GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 GOCACHE=<fresh empty dir> TMPDIR=/tmp/ddiast-review/wt/perf-binary-compile/tmp
+$ /usr/bin/time -l go test -o /tmp/ddiast-review/wt/perf-binary-compile/bin/overhead-test-plain -c .
+loadavg before: { 110.23 76.62 57.22 }
+       11.39 real        45.77 user        11.88 sys
+           401866752  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+             2904937  page reclaims
+               10245  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+               27754  signals received
+               26992  voluntary context switches
+              403981  involuntary context switches
+         31804308234  instructions retired
+         18635880507  cycles elapsed
+            48186040  peak memory footprint
+RESULT {"name": "overhead-test-plain", "moddir": "benchmarks/overhead", "cmd": "go test -o /tmp/ddiast-review/wt/perf-binary-compile/bin/overhead-test-plain -c .", "rc": 0, "real_s": 11.39, "user_s": 45.77, "sys_s": 11.88, "maxrss_bytes": 401866752, "size_bytes": 18273618, "load_before": "{ 110.23 76.62 57.22 }", "work": null, "cache_bytes": 374116352}
+
+==== orchestrion-tool-selfbuild
+cwd=/tmp/ddiast-review/wt/perf-binary-compile/iast/integration/testapp
+env: GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 GOCACHE=<fresh empty dir> TMPDIR=/tmp/ddiast-review/wt/perf-binary-compile/tmp
+$ /usr/bin/time -l go build -o /tmp/ddiast-review/wt/perf-binary-compile/bin/orchestrion-tool-selfbuild github.com/DataDog/orchestrion
+loadavg before: { 68.75 69.80 55.42 }
+      120.02 real        92.77 user        18.80 sys
+          1030569984  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+             2904223  page reclaims
+               37364  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+               24912  signals received
+               16856  voluntary context switches
+              602152  involuntary context switches
+         35012463610  instructions retired
+         23050228468  cycles elapsed
+            64668416  peak memory footprint
+RESULT {"name": "orchestrion-tool-selfbuild", "moddir": "iast/integration/testapp", "cmd": "go build -o /tmp/ddiast-review/wt/perf-binary-compile/bin/orchestrion-tool-selfbuild github.com/DataDog/orchestrion", "rc": 0, "real_s": 120.02, "user_s": 92.77, "sys_s": 18.8, "maxrss_bytes": 1030569984, "size_bytes": 52836898, "load_before": "{ 68.75 69.80 55.42 }", "work": null, "cache_bytes": 566284288}
+
+==== itapp-bootstrap-control
+cwd=/tmp/ddiast-review/wt/perf-binary-compile/iast/integration/testapp-control
+env: GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 GOCACHE=<fresh empty dir> TMPDIR=/tmp/ddiast-review/wt/perf-binary-compile/tmp
+$ /usr/bin/time -l go tool orchestrion go build -work -o /tmp/ddiast-review/wt/perf-binary-compile/bin/itapp-bootstrap-control ./cmd/bootstrap
+loadavg before: { 83.27 75.39 59.39 }
+WORK=/tmp/ddiast-review/wt/perf-binary-compile/tmp/go-build3168555525
+       44.36 real       119.92 user        36.52 sys
+           960266240  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+             7028656  page reclaims
+              197764  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                5685  messages sent
+                5762  messages received
+               40049  signals received
+               48637  voluntary context switches
+             1047109  involuntary context switches
+         35013244037  instructions retired
+         23837630609  cycles elapsed
+            51102392  peak memory footprint
+RESULT {"name": "itapp-bootstrap-control", "moddir": "iast/integration/testapp-control", "cmd": "go tool orchestrion go build -work -o /tmp/ddiast-review/wt/perf-binary-compile/bin/itapp-bootstrap-control ./cmd/bootstrap", "rc": 0, "real_s": 44.36, "user_s": 119.92, "sys_s": 36.52, "maxrss_bytes": 960266240, "size_bytes": 21098994, "load_before": "{ 83.27 75.39 59.39 }", "work": "/tmp/ddiast-review/wt/perf-binary-compile/tmp/go-build3168555525", "cache_bytes": 948711424}
+
+==== itapp-bootstrap-full
+cwd=/tmp/ddiast-review/wt/perf-binary-compile/iast/integration/testapp
+env: GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 GOCACHE=<fresh empty dir> TMPDIR=/tmp/ddiast-review/wt/perf-binary-compile/tmp
+$ /usr/bin/time -l go tool orchestrion go build -work -o /tmp/ddiast-review/wt/perf-binary-compile/bin/itapp-bootstrap-full ./cmd/bootstrap
+loadavg before: { 53.45 68.93 57.85 }
+WORK=/tmp/ddiast-review/wt/perf-binary-compile/tmp/go-build3946240270
+      167.82 real       200.16 user        83.06 sys
+          1012973568  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+             9335395  page reclaims
+              205609  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                9184  messages sent
+                9745  messages received
+               97568  signals received
+               58934  voluntary context switches
+             1974578  involuntary context switches
+         35857505709  instructions retired
+         34529594625  cycles elapsed
+            51839720  peak memory footprint
+RESULT {"name": "itapp-bootstrap-full", "moddir": "iast/integration/testapp", "cmd": "go tool orchestrion go build -work -o /tmp/ddiast-review/wt/perf-binary-compile/bin/itapp-bootstrap-full ./cmd/bootstrap", "rc": 0, "real_s": 167.82, "user_s": 200.16, "sys_s": 83.06, "maxrss_bytes": 1012973568, "size_bytes": 22194578, "load_before": "{ 53.45 68.93 57.85 }", "work": "/tmp/ddiast-review/wt/perf-binary-compile/tmp/go-build3946240270", "cache_bytes": 961552384}
+
+==== itapp-test-full
+cwd=/tmp/ddiast-review/wt/perf-binary-compile/iast/integration/testapp
+env: GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 GOCACHE=<fresh empty dir> TMPDIR=/tmp/ddiast-review/wt/perf-binary-compile/tmp
+$ /usr/bin/time -l go tool orchestrion go test -work -o /tmp/ddiast-review/wt/perf-binary-compile/bin/itapp-test-full -c .
+loadavg before: { 58.12 69.42 60.25 }
+WORK=/tmp/ddiast-review/wt/perf-binary-compile/tmp/go-build3470161074
+      148.54 real       197.70 user        86.92 sys
+          1143406592  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+            11641374  page reclaims
+              377130  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+               11967  messages sent
+               12570  messages received
+              113222  signals received
+               67214  voluntary context switches
+             2263082  involuntary context switches
+         35128857249  instructions retired
+         24946761400  cycles elapsed
+            52052688  peak memory footprint
+RESULT {"name": "itapp-test-full", "moddir": "iast/integration/testapp", "cmd": "go tool orchestrion go test -work -o /tmp/ddiast-review/wt/perf-binary-compile/bin/itapp-test-full -c .", "rc": 0, "real_s": 148.54, "user_s": 197.7, "sys_s": 86.92, "maxrss_bytes": 1143406592, "size_bytes": 20065122, "load_before": "{ 58.12 69.42 60.25 }", "work": "/tmp/ddiast-review/wt/perf-binary-compile/tmp/go-build3470161074", "cache_bytes": 983764992}
+
+==== overhead-test-control
+cwd=/tmp/ddiast-review/wt/perf-binary-compile/benchmarks/overhead-control
+env: GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 GOCACHE=<fresh empty dir> TMPDIR=/tmp/ddiast-review/wt/perf-binary-compile/tmp
+$ /usr/bin/time -l go tool orchestrion go test -work -o /tmp/ddiast-review/wt/perf-binary-compile/bin/overhead-test-control -c .
+loadavg before: { 51.28 67.55 61.27 }
+WORK=/tmp/ddiast-review/wt/perf-binary-compile/tmp/go-build2300416729
+       90.14 real       210.49 user        67.83 sys
+           937885696  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+             9404728  page reclaims
+              345544  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                6716  messages sent
+                7034  messages received
+               84572  signals received
+               57424  voluntary context switches
+             1725157  involuntary context switches
+         35591100018  instructions retired
+         27409433210  cycles elapsed
+            50430672  peak memory footprint
+RESULT {"name": "overhead-test-control", "moddir": "benchmarks/overhead-control", "cmd": "go tool orchestrion go test -work -o /tmp/ddiast-review/wt/perf-binary-compile/bin/overhead-test-control -c .", "rc": 0, "real_s": 90.14, "user_s": 210.49, "sys_s": 67.83, "maxrss_bytes": 937885696, "size_bytes": 19951154, "load_before": "{ 51.28 67.55 61.27 }", "work": "/tmp/ddiast-review/wt/perf-binary-compile/tmp/go-build2300416729", "cache_bytes": 979197952}
+
+==== overhead-test-full
+cwd=/tmp/ddiast-review/wt/perf-binary-compile/benchmarks/overhead
+env: GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 GOCACHE=<fresh empty dir> TMPDIR=/tmp/ddiast-review/wt/perf-binary-compile/tmp
+$ /usr/bin/time -l go tool orchestrion go test -work -o /tmp/ddiast-review/wt/perf-binary-compile/bin/overhead-test-full -c .
+loadavg before: { 46.84 64.60 60.88 }
+WORK=/tmp/ddiast-review/wt/perf-binary-compile/tmp/go-build2315348475
+       78.71 real       182.89 user        75.53 sys
+           971882496  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+            11734044  page reclaims
+              364711  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+               16662  messages sent
+               19064  messages received
+              117762  signals received
+               70441  voluntary context switches
+             1988468  involuntary context switches
+         34352685436  instructions retired
+         26887130668  cycles elapsed
+            51479272  peak memory footprint
+RESULT {"name": "overhead-test-full", "moddir": "benchmarks/overhead", "cmd": "go tool orchestrion go test -work -o /tmp/ddiast-review/wt/perf-binary-compile/bin/overhead-test-full -c .", "rc": 0, "real_s": 78.71, "user_s": 182.89, "sys_s": 75.53, "maxrss_bytes": 971882496, "size_bytes": 20313298, "load_before": "{ 46.84 64.60 60.88 }", "work": "/tmp/ddiast-review/wt/perf-binary-compile/tmp/go-build2315348475", "cache_bytes": 987201536}
+
+==== overhead-test-full-warm-noop
+cwd=/tmp/ddiast-review/wt/perf-binary-compile/benchmarks/overhead
+env: GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 GOCACHE=<fresh reused dir> TMPDIR=/tmp/ddiast-review/wt/perf-binary-compile/tmp
+$ /usr/bin/time -l go tool orchestrion go test -work -o /tmp/ddiast-review/wt/perf-binary-compile/bin/overhead-test-full-warm-noop -c .
+loadavg before: { 29.06 55.30 57.69 }
+WORK=/tmp/ddiast-review/wt/perf-binary-compile/tmp/go-build2153147763
+        6.67 real         5.50 user        10.56 sys
+           429506560  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              479519  page reclaims
+               21934  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                3744  messages sent
+                4488  messages received
+               18701  signals received
+               13308  voluntary context switches
+              241718  involuntary context switches
+          5228475622  instructions retired
+         13044532191  cycles elapsed
+            41796304  peak memory footprint
+RESULT {"name": "overhead-test-full-warm-noop", "moddir": "benchmarks/overhead", "cmd": "go tool orchestrion go test -work -o /tmp/ddiast-review/wt/perf-binary-compile/bin/overhead-test-full-warm-noop -c .", "rc": 0, "real_s": 6.67, "user_s": 5.5, "sys_s": 10.56, "maxrss_bytes": 429506560, "size_bytes": 20313298, "load_before": "{ 29.06 55.30 57.69 }", "work": "/tmp/ddiast-review/wt/perf-binary-compile/tmp/go-build2153147763", "cache_bytes": 987201536}
+
+==== overhead-test-full-warm-touch
+cwd=/tmp/ddiast-review/wt/perf-binary-compile/benchmarks/overhead
+env: GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 GOCACHE=<fresh reused dir> TMPDIR=/tmp/ddiast-review/wt/perf-binary-compile/tmp
+$ /usr/bin/time -l go tool orchestrion go test -work -o /tmp/ddiast-review/wt/perf-binary-compile/bin/overhead-test-full-warm-touch -c .
+loadavg before: { 27.13 54.47 57.38 }
+WORK=/tmp/ddiast-review/wt/perf-binary-compile/tmp/go-build945533187
+       13.83 real         6.21 user        11.24 sys
+           432439296  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              562217  page reclaims
+               22500  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                3770  messages sent
+                4521  messages received
+               23543  signals received
+               17499  voluntary context switches
+              287075  involuntary context switches
+          5219108302  instructions retired
+         12288197449  cycles elapsed
+            42599096  peak memory footprint
+RESULT {"name": "overhead-test-full-warm-touch", "moddir": "benchmarks/overhead", "cmd": "go tool orchestrion go test -work -o /tmp/ddiast-review/wt/perf-binary-compile/bin/overhead-test-full-warm-touch -c .", "rc": 0, "real_s": 13.83, "user_s": 6.21, "sys_s": 11.24, "maxrss_bytes": 432439296, "size_bytes": 20313298, "load_before": "{ 27.13 54.47 57.38 }", "work": "/tmp/ddiast-review/wt/perf-binary-compile/tmp/go-build945533187", "cache_bytes": 987246592}
+

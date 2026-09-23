@@ -1,0 +1,25 @@
+$ cd <private copy> && GOTOOLCHAIN=go1.26.6 go test -count=1 -run 'TestReview' -v ./internal/taint/propagation/ ./iast/propagation/
+=== RUN   TestReviewConcatOffsetsProperty
+CONCAT-PROPERTY: tainted comparisons=2244 of 3000
+--- PASS: TestReviewConcatOffsetsProperty (0.04s)
+=== RUN   TestReviewConcatAliasSingleNonEmpty
+--- PASS: TestReviewConcatAliasSingleNonEmpty (0.00s)
+=== RUN   TestReviewBytesToStringCopiesWindowRanges
+--- PASS: TestReviewBytesToStringCopiesWindowRanges (0.00s)
+=== RUN   TestReviewJSONStringBoundsAndEscapes
+QUOTE-ONLY: propagated=true ranges=[{0 5 9 0}]
+--- PASS: TestReviewJSONStringBoundsAndEscapes (0.00s)
+=== RUN   TestReviewJSONStringTwoOwners
+--- PASS: TestReviewJSONStringTwoOwners (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/propagation	0.487s
+=== RUN   TestReviewWovenAllocationsWithoutActiveRequest
+ALLOCS native string(b)             0
+ALLOCS woven BytesToString          1
+ALLOCS native a+b                   0
+ALLOCS woven Concat2                0
+ALLOCS native "p"+string(b)         0
+ALLOCS woven Concat2(p,string(b))   1
+--- PASS: TestReviewWovenAllocationsWithoutActiveRequest (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/iast/propagation	0.572s

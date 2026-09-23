@@ -1,0 +1,13 @@
+[
+  {
+    "id": "prop-bytes-exact-F1",
+    "severity": "High",
+    "category": "false-negative",
+    "location": "internal/taint/propagation/propagation.go:53-60",
+    "title": "Reslicing beyond the current length loses tracked byte provenance",
+    "claim": "ByteWindow uses bytesAlias, which rejects outputs extending beyond len(input) even when they are valid slices within cap(input) and the existing managed root. After a tracked root is shortened to root[:3:7], both short[1:6] and short[1:6:7] lose all exact taint ranges, and a supported byte-to-string conversion remains untainted. This occurs without mutation or saturation and reproduces with direct wrappers on Go 1.26.6 and Go 1.27.0 and compiler-woven public API calls on Go 1.26.6.",
+    "evidence_path": ".omo/review/evidence/prop-bytes-exact/repro-go1.26.6.txt",
+    "repro_command": "cd /tmp/ddiast-review/wt/prop-bytes-exact && GOMAXPROCS=2 GOTOOLCHAIN=go1.26.6 go test -p=2 -count=1 -timeout=3m -run '^TestReview' -v ./internal/taint/propagation",
+    "needs_repro": false
+  }
+]

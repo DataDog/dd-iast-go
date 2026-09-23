@@ -1,0 +1,86 @@
+Environment: darwin/arm64; GOTOOLCHAIN=go1.26.6; working directory /tmp/ddiast-review/wt/fx-hooks-orchestrion-dep-F4
+(private rsync copy of dd-iast-go @ 2e23b46, main checkout untouched). Phase-3 verification of
+hooks-orchestrion-dep-F4 (core-type resolution loses valid intersected generic constraints).
+Reproducer files in this directory: zz_f4verify_test.go (mine, placed in iast/propagation/),
+legality-main.go + legality-go.mod (standalone toolchain-legality module). The finder's
+zz_review_coretype_test.go was also run verbatim from
+.omo/review/evidence/hooks-orchestrion-dep/zz_review_coretype_test.go.
+
+1) Plain (non-woven) run: proves the intersected constraints are legal Go 1.26.6 and the tests skip.
+$ cd /tmp/ddiast-review/wt/fx-hooks-orchestrion-dep-F4 && GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go test -timeout 4m -count=1 -run 'TestReviewIntersectionCoreTypeRetainsProvenance|TestF4IntersectedCoreTypeKeepsProvenance' -v ./iast/propagation
+=== RUN   TestF4IntersectedCoreTypeKeepsProvenance
+    zz_f4verify_test.go:41: requires woven operator advice
+--- SKIP: TestF4IntersectedCoreTypeKeepsProvenance (0.00s)
+=== RUN   TestReviewIntersectionCoreTypeRetainsProvenance
+    zz_review_coretype_test.go:34: requires woven operator advice
+--- SKIP: TestReviewIntersectionCoreTypeRetainsProvenance (0.00s)
+PASS
+ok 	github.com/DataDog/dd-iast-go/iast/propagation	0.542s
+[exit 0]
+
+2) Woven run (my reproducer first, then the finder's, run together):
+$ cd /tmp/ddiast-review/wt/fx-hooks-orchestrion-dep-F4 && GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 /usr/bin/time -l go tool orchestrion go test -timeout 4m -count=1 -run 'TestReviewIntersectionCoreTypeRetainsProvenance|TestF4IntersectedCoreTypeKeepsProvenance' -v ./iast/propagation
+=== RUN   TestF4IntersectedCoreTypeKeepsProvenance
+=== RUN   TestF4IntersectedCoreTypeKeepsProvenance/control_plain_~string_generic_concat_is_advised
+    zz_f4verify_test.go:51: control tainted: true
+=== RUN   TestF4IntersectedCoreTypeKeepsProvenance/intersected_~string|~int_&_~string_concat
+    zz_f4verify_test.go:59: intersected concat tainted: false
+    zz_f4verify_test.go:60:
+        	Error:      	Should be true
+        	Messages:   	intersected constraint with string-only type set must retain taint
+=== RUN   TestF4IntersectedCoreTypeKeepsProvenance/intersected_~string|~int_&_~string_slice
+    zz_f4verify_test.go:67: intersected string slice tainted: false
+    zz_f4verify_test.go:68:
+        	Error:      	Should be true
+        	Messages:   	intersected constraint with string-only type set must retain taint
+=== RUN   TestF4IntersectedCoreTypeKeepsProvenance/intersected_~[]byte|~[]int_&_~[]byte_slice
+    zz_f4verify_test.go:75: intersected byte slice tainted: false
+    zz_f4verify_test.go:76:
+        	Error:      	Should be true
+        	Messages:   	intersected constraint with []byte-only type set must retain taint
+--- FAIL: TestF4IntersectedCoreTypeKeepsProvenance (0.00s)
+    --- PASS: TestF4IntersectedCoreTypeKeepsProvenance/control_plain_~string_generic_concat_is_advised (0.00s)
+    --- FAIL: TestF4IntersectedCoreTypeKeepsProvenance/intersected_~string|~int_&_~string_concat (0.00s)
+    --- FAIL: TestF4IntersectedCoreTypeKeepsProvenance/intersected_~string|~int_&_~string_slice (0.00s)
+    --- FAIL: TestF4IntersectedCoreTypeKeepsProvenance/intersected_~[]byte|~[]int_&_~[]byte_slice (0.00s)
+=== RUN   TestReviewIntersectionCoreTypeRetainsProvenance
+=== RUN   TestReviewIntersectionCoreTypeRetainsProvenance/string_concat
+    zz_review_coretype_test.go:46:  Error: Not equal: expected: true; actual: false
+=== RUN   TestReviewIntersectionCoreTypeRetainsProvenance/string_slice
+    zz_review_coretype_test.go:55:  Error: Not equal: expected: true; actual: false
+=== RUN   TestReviewIntersectionCoreTypeRetainsProvenance/byte_slice
+    zz_review_coretype_test.go:66:  Error: Not equal: expected: true; actual: false
+--- FAIL: TestReviewIntersectionCoreTypeRetainsProvenance (0.00s)
+    --- FAIL: TestReviewIntersectionCoreTypeRetainsProvenance/string_concat (0.00s)
+    --- FAIL: TestReviewIntersectionCoreTypeRetainsProvenance/string_slice (0.00s)
+    --- FAIL: TestReviewIntersectionCoreTypeRetainsProvenance/byte_slice (0.00s)
+FAIL	github.com/DataDog/dd-iast-go/iast/propagation	0.612s
+[exit 1]
+Build stats (/usr/bin/time -l): 168.97 real, 141.21 user; maximum resident set size 351,338,496 bytes (~335 MB, under the 4 GB watch threshold).
+
+Interpretation: the positive control (plain [T ~string] generic concat) retains taint woven, so
+generic operator propagation is supported and the harness works. All three intersected-constraint
+operations (string concat, string slice, byte slice) return CORRECT values (require.Equal on the
+result value passes in every subtest) but taint is dropped (IsTainted* false). This matches the
+finder's captured output exactly.
+
+3) Toolchain legality of the intersected constraints (standalone module, see legality-*.go):
+$ cd /tmp/ddiast-review/wt/fx-hooks-orchestrion-dep-F4/legality && GOTOOLCHAIN=<tc> go build -o /dev/null .
+go1.26.6: exit 0
+go1.27.0: exit 0
+The fact that `v[1:]` and `v + "!"` compile at all proves the final type set is string-only
+(integer terms are excluded by the ~string intersection), i.e. the core type IS string / []byte.
+
+4) Static mechanism (read at pinned rev 23afa71d6dcb via git show in the orchestrion clone):
+internal/injector/typed/coretype.go:87-97 - interfaceCoreType loops over embeddeds and returns
+(nil, false) at the FIRST pair of differing underlying types (line 93-95), before examining the
+remaining embedded constraints that narrow the type set by intersection. For constraint
+`interface{ ~string | ~int; ~string }` the first embedded union (~string | ~int) triggers the
+early return; the second embedded ~string is never consulted. Callers confirmed:
+internal/injector/aspect/join/slice_expression.go:86-89 (typed.IsStringCore/IsByteSliceCore on the
+slice operand) and internal/injector/aspect/concat/concat.go:63 (typed.IsStringCore on the binary
+concat expression), reached from iast/propagation/orchestrion.yml:12-31 (string-concat),
+:343-370 (slice-expression operand string), :372-405 (slice-expression operand bytes) at HEAD
+2e23b46. A secondary facet of the same root cause: a nested mixed union (e.g.
+`interface{ ~string; interface{ ~string | ~int } }`) is silently ignored (coretype.go:78-81
+`continue`), which loses the narrowing as well.

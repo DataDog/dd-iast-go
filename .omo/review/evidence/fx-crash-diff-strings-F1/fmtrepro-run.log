@@ -1,0 +1,41 @@
+=== RUN   TestFmtCoarseF1
+    fmtrepro_test.go:60: CONTROL Sprintf(%s tainted)                    result="SELECT * FROM t ORDER BY '; DROP TABLE users; --" tainted=true ranges=1
+    fmtrepro_test.go:62: CONTROL Sprintf(%d len)                        result="rows=23" tainted=false ranges=0
+    fmtrepro_test.go:65: F1a Sprintf(%s Stringer-enum)                  result="SELECT * FROM users ORDER BY col_safe" tainted=true ranges=1
+    fmtrepro_test.go:67: F1b Sprint(Stringer-enum)                      result="col_safe" tainted=true ranges=1
+    fmtrepro_test.go:69: F1c Sprintf(%v error-enum)                     result="query failed: err_safe" tainted=true ranges=1
+    fmtrepro_test.go:72: F2a Sprintf(%T)                                result="type=string" tainted=true ranges=1
+    fmtrepro_test.go:74: F2b Sprintf(%.0s)                              result="xy" tainted=true ranges=1
+    fmtrepro_test.go:76: F2c Sprintf(%[2]s skip)                        result="clean-literal" tainted=true ranges=1
+--- PASS: TestFmtCoarseF1 (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/iast/internal/fmtrepro	0.445s
+=== RUN   TestTargetedEdges
+    extra_test.go:37: Repeat(v,1): alias=true tainted=true
+    extra_test.go:41: Join([v], ","): woven alias=false native alias=true tainted=true
+    extra_test.go:55: Sprintf(%T)                    result="type=string" tainted=true ranges=1
+    extra_test.go:55: Sprintf(%.0s)                  result="xy" tainted=true ranges=1
+    extra_test.go:55: Sprintf(%[2]s)                 result="clean-literal" tainted=true ranges=1
+    extra_test.go:55: Sprint(Stringer named string)  result="constant-red" tainted=true ranges=1
+    extra_test.go:55: Sprintf(%d, len)               result="14" tainted=false ranges=0
+--- PASS: TestTargetedEdges (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/iast/internal/crashdiff	0.500s
+      137.31 real        49.23 user        69.71 sys
+           321863680  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+             2638624  page reclaims
+              102138  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                4028  messages sent
+                4395  messages received
+               47263  signals received
+               15922  voluntary context switches
+             1008328  involuntary context switches
+          5716076721  instructions retired
+          3212851066  cycles elapsed
+            41108200  peak memory footprint

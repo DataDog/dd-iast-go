@@ -1,0 +1,16 @@
+diff --git 1/Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/internal/taint/store/value.go 2/internal/taint/store/value.go
+index f09a4d4..849d8a7 100644
+--- 1/Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/internal/taint/store/value.go
++++ 2/internal/taint/store/value.go
+@@ -187,8 +187,9 @@ func (o *Owner) putWindow(key Key, rootID uint16, rootGen uint32) bool {
+ 			return true
+ 		}
+ 	}
+-	// Reaching the probe bound does not prove that this key is absent beyond the
+-	// window. Inserting into a tombstone could create a duplicate owner/key slot.
++	if firstTombstone >= 0 {
++		return o.insertWindow(&shard.slots[firstTombstone], shard, key, offset, rootID, rootGen, ProbeLimit, true)
++	}
+ 	record.drops.full.Add(1)
+ 	return false
+ }

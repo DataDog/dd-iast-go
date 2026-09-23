@@ -1,0 +1,24 @@
+[
+  {
+    "id": "life-owner-scope-F1",
+    "severity": "High",
+    "category": "false-negative",
+    "location": "internal/taint/request/scope.go:82-85",
+    "title": "Finished context silently disables later requests",
+    "claim": "begin reuses a finished scope from a retained request context, returning created=false and an inactive analysis for later requests; repeated use of that parent context permanently suppresses request source taint despite available capacity.",
+    "evidence_path": ".omo/review/evidence/life-owner-scope/lifecycle-review-output.txt",
+    "repro_command": "Copy .omo/review/evidence/life-owner-scope/lifecycle_review_test.go into private-copy internal/taint/request/lifecycle_review_test.go; cd /tmp/ddiast-review/wt/life-owner-scope && GOTOOLCHAIN=go1.26.6 go test -race -run '^TestReviewServerScopeReacquiredWhenContextContainsFinishedScope$' -count=1 -timeout 2m ./internal/taint/request",
+    "needs_repro": false
+  },
+  {
+    "id": "life-owner-scope-F2",
+    "severity": "Medium",
+    "category": "race",
+    "location": "internal/taint/request/scope.go:210-223",
+    "title": "Second concurrent Finish returns before external cleanup",
+    "claim": "Scope.Finish clears its analysis handle before completing analysis.Finish and scopebridge.Finish, so a second concurrent caller can return while owner teardown or external span cleanup remains in progress.",
+    "evidence_path": ".omo/review/evidence/life-owner-scope/lifecycle-review-output.txt",
+    "repro_command": "Copy .omo/review/evidence/life-owner-scope/lifecycle_review_test.go into private-copy internal/taint/request/lifecycle_review_test.go; cd /tmp/ddiast-review/wt/life-owner-scope && GOTOOLCHAIN=go1.26.6 go test -race -run '^TestReviewConcurrentScopeFinishWaitsForExternalCleanup$' -count=1 -timeout 2m ./internal/taint/request",
+    "needs_repro": false
+  }
+]

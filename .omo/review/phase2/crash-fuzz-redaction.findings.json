@@ -1,0 +1,68 @@
+[
+  {
+    "id": "crash-fuzz-redaction-F1",
+    "severity": "Critical",
+    "category": "redaction",
+    "location": "internal/taint/redaction/sql.go:27-43,108-151",
+    "title": "Oracle q-quote pre-scan ignores string-literal state and unredacts later SQL literals, including tainted values",
+    "claim": "scanOracleQuotes treats q'/Q' after a non-identifier byte as an Oracle q-quote even inside an ordinary '...' literal (e.g. 'Q' followed by ','). The bogus span closes at a later <open>' pair, the query is split there, and all dialect lexers resynchronize out of phase so real literal bodies lex as identifiers. A tainted value in such a literal is emitted raw both in the evidence part and as the wire source value, because BuildWithSensitive only redacts sources overlapping a sensitive interval (source.go:66).",
+    "evidence_path": ".omo/review/evidence/crash-fuzz-redaction/oracle_desync_repro.txt",
+    "repro_command": "cp .omo/review/evidence/crash-fuzz-redaction/zz_review_oracle_desync_test.go internal/taint/redaction/ && GOTOOLCHAIN=go1.26.6 go test ./internal/taint/redaction/ -run TestReview -count=1 -v",
+    "needs_repro": false
+  },
+  {
+    "id": "crash-fuzz-redaction-F2",
+    "severity": "Medium",
+    "category": "redaction",
+    "location": "internal/taint/redaction/sql.go:83-101; internal/taint/redaction/analyzer_test.go:30",
+    "title": "SQL comment bodies are not redacted, contrary to the shared normative redaction suite",
+    "claim": "The shared evidence-redaction-suite (dd-trace-js/dd-trace-py) and dd-trace-java's SqlRegexpTokenizer redact line and block comment bodies; dd-iast-go emits them verbatim and its analyzer test pins 'SELECT column -- secret' as raw. Credentials or tainted fragments in comments leave the process unredacted.",
+    "evidence_path": null,
+    "repro_command": null,
+    "needs_repro": false
+  },
+  {
+    "id": "crash-fuzz-redaction-F3",
+    "severity": "Medium",
+    "category": "test-gap",
+    "location": "internal/taint/redaction/fuzz_test.go:46-54",
+    "title": "FuzzAnalyzeSQL's coverage oracle reuses the production q-quote splitter, so it is blind to F1",
+    "claim": "assertDefaultSQLLiteralsCovered calls scanOracleQuotes and lexes the same segments as production, so any splitter desync is replicated in the oracle; a 20M-exec 8-minute campaign passed while F1 reproduces with a 70-byte query. The oracle also checks only the default dialect.",
+    "evidence_path": ".omo/review/evidence/crash-fuzz-redaction/FuzzAnalyzeSQL.txt",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 go test ./internal/taint/redaction/ -run '^$' -fuzz '^FuzzAnalyzeSQL$' -fuzztime 8m -parallel=4",
+    "needs_repro": false
+  },
+  {
+    "id": "crash-fuzz-redaction-F4",
+    "severity": "Low",
+    "category": "test-gap",
+    "location": "internal/taint/redaction/fuzz_test.go:85-102",
+    "title": "FuzzMappedPattern checks only length and budget, not the redaction property",
+    "claim": "A regression returning the raw value of the right length would pass; the corpus stayed at 15 entries over 9.2M execs.",
+    "evidence_path": ".omo/review/evidence/crash-fuzz-redaction/FuzzMappedPattern.txt",
+    "repro_command": null,
+    "needs_repro": false
+  },
+  {
+    "id": "crash-fuzz-redaction-F5",
+    "severity": "Low",
+    "category": "test-gap",
+    "location": "internal/taint/evidence/fuzz_test.go:14-40",
+    "title": "FuzzSnapshotCanonicalization never exercises marks, drop bounds or distinct owner generations",
+    "claim": "All generated ranges have Marks==0, OwnerGen==1, Name==Value, a fixed 16-byte value and at most 32 inputs, so mark-split merging, vulnerability-mark suppression, MaxCollectedRanges drop and source-byte budget drop are never fuzzed.",
+    "evidence_path": ".omo/review/evidence/crash-fuzz-redaction/FuzzSnapshotCanonicalization.txt",
+    "repro_command": null,
+    "needs_repro": false
+  },
+  {
+    "id": "crash-fuzz-redaction-F6",
+    "severity": "Info",
+    "category": "test-gap",
+    "location": "internal/taint/request/fuzz_test.go:20-61; internal/taint/request/table.go:130-157",
+    "title": "FuzzAdd covers only the isolated string Table.Add path",
+    "claim": "Production inserts use prepareBytes and transactional managed-source methods; the byte-equality branch and prepare/commit split are not fuzzed, and 300 Sprintf+testify calls per exec keep throughput low.",
+    "evidence_path": ".omo/review/evidence/crash-fuzz-redaction/FuzzAdd.txt",
+    "repro_command": null,
+    "needs_repro": false
+  }
+]

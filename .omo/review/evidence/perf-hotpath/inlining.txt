@@ -1,0 +1,20 @@
+Private checkout command, one package at a time:
+GOTOOLCHAIN=go1.26.6 go test -run "^$" -gcflags="github.com/DataDog/dd-iast-go/internal/taint/request=-m" ./iast/propagation
+internal/taint/request/lookup.go:73:6: can inline ActiveStore
+
+GOTOOLCHAIN=go1.26.6 go test -run "^$" -gcflags="github.com/DataDog/dd-iast-go/internal/taint/operatorbridge=-m" ./iast/propagation
+internal/taint/operatorbridge/bridge.go:17:6: can inline HasValues
+
+GOTOOLCHAIN=go1.26.6 go test -run "^$" -gcflags="github.com/DataDog/dd-iast-go/internal/taint/propagation=-m" ./iast/propagation
+internal/taint/propagation/writer.go:23:6: can inline WriterActive
+internal/taint/propagation/string_exact.go:42:26: inlining call to request.ActiveStore
+internal/taint/propagation/propagation.go:114:26: inlining call to request.ActiveStore
+internal/taint/propagation/propagation.go:221:26: inlining call to request.ActiveStore
+internal/taint/propagation/writer.go:24:28: inlining call to request.ActiveStore
+
+GOTOOLCHAIN=go1.26.6 go test -run "^$" -gcflags=-m ./iast/propagation
+iast/propagation/strings.go:113:6: can inline stringWindowSeq
+iast/propagation/strings.go:75:6: can inline StringsSplitSeq
+iast/propagation/strings.go:76:24: inlining call to stringWindowSeq
+iast/propagation/writer.go:31:27: inlining call to propagation.WriterActive
+iast/propagation/writer.go:122:27: inlining call to propagation.WriterActive

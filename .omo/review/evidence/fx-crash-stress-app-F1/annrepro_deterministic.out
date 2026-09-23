@@ -1,0 +1,13 @@
+# built in private copy iast/integration/testapp after:
+#   GOPROXY=off GOFLAGS=-mod=mod go get github.com/DataDog/dd-trace-go/contrib/net/http/v2@v2.11.0-rc.1
+#   GOTOOLCHAIN=go1.26.6 GOFLAGS='-p=4 -mod=mod' GOPROXY=off go tool orchestrion go build -o annrepro ./cmd/annrepro   (peak RSS 452 MB, 39 s)
+$ env -u DD_IAST_REQUEST_SAMPLING -u DD_IAST_MAX_CONCURRENT_REQUESTS -u DD_IAST_DEDUPLICATION_ENABLED ./annrepro deterministic
+woven=true DD_IAST_REQUEST_SAMPLING="" DD_IAST_MAX_CONCURRENT_REQUESTS="" DD_IAST_DEDUPLICATION_ENABLED="" (empty = default: 30%, 2, true)
+2026/09/23 18:36:36 Datadog Tracer v2.11.0-rc.1 WARN: appsec: error while flushing SCA Security Data: Post "http://localhost:8126/telemetry/proxy/api/v2/apmtelemetry": dial tcp 127.0.0.1:8126: connect: connection refused
+BUG phase: holding 2 in-flight NON-analyzed requests (found after 2 slow requests); 0 analysis permits in use
+  victims sent=28 analyzed(active && query tainted)=10 reported=0
+  victim root spans by (_dd.iast.enabled, hasPayload): map[[0 false]:28]
+  orphan "vulnerability" spans: empty=10 withPayload=0
+RECOVERY phase (holders released, same sink site): analyzed victim id=33 -> [1 true] (enabled, hasPayload); orphan empty=0 withPayload=0
+2026/09/23 18:36:36 Datadog Tracer v2.11.0-rc.1 ERROR: loading features: Get "http://localhost:8126/info": dial tcp 127.0.0.1:8126: connect: connection refused (occurred: 23 Sep 26 18:36 CEST)
+exit=0

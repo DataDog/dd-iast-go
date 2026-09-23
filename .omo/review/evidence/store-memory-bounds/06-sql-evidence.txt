@@ -1,0 +1,14 @@
+Final production-analyzer retention proof. SQL AnalyzeSQL returns AnalysisOK; default redaction stays enabled; MaxAnalyzerBytes=32768 and TruncationMaxValue=250. This supersedes the collector-only 64-KiB exploration.
+
+COMMAND
+cd /tmp/ddiast-review/wt/store-memory-bounds && env GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 DD_IAST_REQUEST_SAMPLING=100 DD_IAST_MAX_CONCURRENT_REQUESTS=64 DD_IAST_MAX_RANGE_COUNT=64 DD_IAST_VULNERABILITIES_PER_REQUEST=64 timeout 900 go test -count=1 -timeout 12m -v -run '^TestBoundsEventEvidenceRetention$' ./internal/taint/store
+
+CAPTURED OUTPUT
+status: completed exit_code: 0
+=== RUN   TestBoundsEventEvidenceRetention
+    zz_review_event_retention_test.go:76: events=64 vulnerabilities=4096 charsPerEvidence=250 sourceIdentityBytes=192 rootCharge=32784 heapBefore=17530880 heapAfter=155795456 delta=138264576 wholeFeatureCeiling=25165824 ratio=5.49
+    zz_review_event_retention_test.go:81: event wireBytes=21772 fallback=false retainedBackingBytesPerEvent=2097152
+    zz_review_event_retention_test.go:91: events finished heap=17391616 released=138403840
+--- PASS: TestBoundsEventEvidenceRetention (7.52s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/store	8.361s

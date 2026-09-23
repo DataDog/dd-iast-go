@@ -1,0 +1,13 @@
+[
+  {
+    "id": "crash-diff-strings-F1",
+    "verdict": "CONFIRMED",
+    "original_severity": "High",
+    "adjusted_severity": "High",
+    "reachable_default": true,
+    "documented_limitation": false,
+    "reason": "Independently reproduced on go1.26.6 with a woven build through real fmt.Sprintf/fmt.Sprint call sites (own reproducer, not the finder's harness): a named-string Stringer mapping attacker input '1' OR '1'='1' to the constant 'AUDIT_OK' produced tainted results ('level=AUDIT_OK', 'AUDIT_OK', 'type=string', 'xy', 'constant') containing none of the source bytes, while the %d control stayed untainted and the %s positive control stayed tainted. The tainted query 'SELECT * FROM t WHERE level='AUDIT_OK'' was accepted by evidence.CollectString (StatusCollected), the exact first step of iast/database/sql.Report, so a false-positive SQLi report is produced. Root cause: formatArgumentKey (string_coarse.go:206-219) keys any reflect.String/[]byte-kind argument without checking whether fmt renders its bytes, and publishCoarseOwners (string_coarse.go:175-204) taints the whole result clone. fmt.Sprint* is an advertised propagation (README:32); not listed as a documented limitation in README or phase1/01-design-intent.md; breaks product rule 4 (no false taint). prop-string-coarse-F1/F2, hooks-yml-fmt-strconv-url-F1/F4, prop-semantics-parity-F2 and crash-diff-strings-F1 share this one root cause.",
+    "evidence_path": ".omo/review/evidence/fx-crash-diff-strings-F1/woven-go1.26.6.log",
+    "repro_command": "cd /tmp/ddiast-review/wt/fx-crash-diff-strings-F1 && /usr/bin/time -l env GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -v -count=1 -timeout 15m -run 'TestFmt' ./iast/internal/fxfmtrepro/"
+  }
+]

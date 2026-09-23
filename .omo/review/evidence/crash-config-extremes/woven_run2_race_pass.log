@@ -1,0 +1,22 @@
+=== RUN   TestConfigExtremesMaxConcurrentRequestsZeroDisablesAnalysis
+--- PASS: TestConfigExtremesMaxConcurrentRequestsZeroDisablesAnalysis (0.04s)
+=== RUN   TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+--- PASS: TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic (0.08s)
+=== RUN   TestConfigExtremesVulnerabilitiesPerRequestClampedToOne
+--- PASS: TestConfigExtremesVulnerabilitiesPerRequestClampedToOne (0.01s)
+=== RUN   TestConfigExtremesVulnerabilitiesPerRequestHardMaxSixtyFour
+--- PASS: TestConfigExtremesVulnerabilitiesPerRequestHardMaxSixtyFour (0.02s)
+=== RUN   TestConfigExtremesTruncationMaxValueZero
+--- PASS: TestConfigExtremesTruncationMaxValueZero (0.01s)
+=== RUN   TestConfigExtremesTruncationMaxValueHuge
+--- PASS: TestConfigExtremesTruncationMaxValueHuge (0.01s)
+=== RUN   TestConfigExtremesRedactionEnabledFalseLeavesValueUnredacted
+--- PASS: TestConfigExtremesRedactionEnabledFalseLeavesValueUnredacted (0.01s)
+=== RUN   TestConfigExtremesInvalidRedactionRegexFallsBackToDefault
+--- PASS: TestConfigExtremesInvalidRedactionRegexFallsBackToDefault (0.01s)
+=== RUN   TestConfigExtremesDisabledSkipsAnalysisWithoutPanic
+--- PASS: TestConfigExtremesDisabledSkipsAnalysisWithoutPanic (0.02s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/testapps/integration	2.147s
+?   	github.com/DataDog/dd-iast-go/testapps/integration/cmd/bootstrap	[no test files]
+?   	github.com/DataDog/dd-iast-go/testapps/integration/cmd/bootstrap.test	[no test files]

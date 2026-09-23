@@ -1,0 +1,10 @@
+Command (in /tmp/ddiast-review/wt/fx-life-table-lookup-F1/fresh):
+GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go test -race -count=1 -run '^TestIndependentF1FormValueCollision$' -v -timeout=5m ./internal/taint/request
+
+=== RUN   TestIndependentF1FormValueCollision
+    zz_independent_f1_test.go:151: parsed query fields=256; map-level sources admitted=0; FormValue callbacks=256
+    zz_independent_f1_test.go:153: initial sources=0; common hash slot=325; prior cluster=0; final insertion probes=256; total insertion probes=32896
+    zz_independent_f1_test.go:155: all delimiter-shift tuples shared one slot under eight fresh hash seeds
+--- PASS: TestIndependentF1FormValueCollision (0.02s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/request	1.477s

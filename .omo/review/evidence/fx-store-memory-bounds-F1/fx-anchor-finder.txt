@@ -1,0 +1,20 @@
+=== RUN   TestBoundsRetainedAnchors
+=== RUN   TestBoundsRetainedAnchors/reader/1
+    zz_review_anchor_test.go:69: kind=reader payload=33554432 baseline=15187968 control=15187968 retained=48742400 delta=33554432 incrementalCharge=0
+    zz_review_anchor_test.go:79: kind=reader finish=15179776 released=33562624 charged=0
+=== RUN   TestBoundsRetainedAnchors/reader/3
+    zz_review_anchor_test.go:69: kind=reader payload=100663296 baseline=15163392 control=15163392 retained=115826688 delta=100663296 incrementalCharge=0
+    zz_review_anchor_test.go:79: kind=reader finish=15163392 released=100663296 charged=0
+=== RUN   TestBoundsRetainedAnchors/buffer/1
+    zz_review_anchor_test.go:69: kind=buffer payload=33554432 baseline=15163392 control=15163392 retained=48717824 delta=33554432 incrementalCharge=64
+    zz_review_anchor_test.go:79: kind=buffer finish=15163392 released=33554432 charged=0
+=== RUN   TestBoundsRetainedAnchors/buffer/3
+    zz_review_anchor_test.go:69: kind=buffer payload=100663296 baseline=15163392 control=15163392 retained=115826688 delta=100663296 incrementalCharge=64
+    zz_review_anchor_test.go:79: kind=buffer finish=15163392 released=100663296 charged=0
+--- PASS: TestBoundsRetainedAnchors (0.41s)
+    --- PASS: TestBoundsRetainedAnchors/reader/1 (0.05s)
+    --- PASS: TestBoundsRetainedAnchors/reader/3 (0.16s)
+    --- PASS: TestBoundsRetainedAnchors/buffer/1 (0.15s)
+    --- PASS: TestBoundsRetainedAnchors/buffer/3 (0.05s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/store	0.942s

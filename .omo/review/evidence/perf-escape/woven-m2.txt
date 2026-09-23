@@ -1,0 +1,851 @@
+# github.com/DataDog/dd-iast-go/perfsample
+./iast/propagation/operators.go:34:6: cannot inline propagation.concat3Result[go.shape.string]: function too complex: cost 127 exceeds budget 80
+./iast/propagation/operators.go:30:6: can inline propagation.Concat3[go.shape.string] with cost 71 as: func(*[2]uintptr, go.shape.string, go.shape.string, go.shape.string) go.shape.string { return propagation.concat3Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.a + propagation.b + propagation.c) }
+perfsample/sample.go:15: cannot inline ConcatLocal: marked go:noinline
+./iast/propagation/operators.go:198:6: cannot inline propagation.BytesToString[go.shape.[]uint8]: function too complex: cost 131 exceeds budget 80
+perfsample/sample.go:23: cannot inline ConvLocal: marked go:noinline
+./iast/propagation/operators.go:267:6: cannot inline propagation.BytesSliceHigh[go.shape.[]uint8,go.shape.int]: function too complex: cost 133 exceeds budget 80
+perfsample/sample.go:31: cannot inline ByteSliceLocal: marked go:noinline
+./iast/propagation/operators.go:217:6: cannot inline propagation.StringSliceLow[go.shape.string,go.shape.int]: function too complex: cost 133 exceeds budget 80
+perfsample/sample.go:45: cannot inline StringSliceLocal: marked go:noinline
+perfsample/sample.go:53: cannot inline BuilderLocal: marked go:noinline
+perfsample/sample.go:63: cannot inline BufferLocal: marked go:noinline
+perfsample/sample.go:73: cannot inline JoinLocal: marked go:noinline
+perfsample/sample.go:80: cannot inline SprintfLocal: marked go:noinline
+perfsample/sample.go:87: cannot inline CutLocal: marked go:noinline
+perfsample/sample.go:95: cannot inline TrimLocal: marked go:noinline
+perfsample/sample.go:102: cannot inline SplitSeqLocal: marked go:noinline
+perfsample/sample.go:104: can inline SplitSeqLocal-range1 with cost 24 as: func(string) bool { #tmpState := #state1; #state1 = 2; if #tmpState != 1 { runtime.panicrangestate(#tmpState) }; n += len(part); #state1 = 1; return true }
+perfsample/sample.go:113: cannot inline FieldsSeqLocal: marked go:noinline
+perfsample/sample.go:115: can inline FieldsSeqLocal-range1 with cost 24 as: func(string) bool { #tmpState := #state1; #state1 = 2; if #tmpState != 1 { runtime.panicrangestate(#tmpState) }; n += len(part); #state1 = 1; return true }
+perfsample/sample.go:124: cannot inline QuoteLocal: marked go:noinline
+perfsample/sample.go:131: cannot inline ToLowerLocal: marked go:noinline
+./iast/propagation/operators.go:22:6: cannot inline propagation.concat2Result[go.shape.string]: function too complex: cost 126 exceeds budget 80
+./iast/propagation/operators.go:18:6: can inline propagation.Concat2[go.shape.string] with cost 69 as: func(*[2]uintptr, go.shape.string, go.shape.string) go.shape.string { return propagation.concat2Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.a + propagation.b) }
+perfsample/sample.go:138: cannot inline ConcatLocal2: marked go:noinline
+./iast/propagation/operators.go:46:6: cannot inline propagation.concat4Result[go.shape.string]: function too complex: cost 128 exceeds budget 80
+./iast/propagation/operators.go:42:6: can inline propagation.Concat4[go.shape.string] with cost 73 as: func(*[2]uintptr, go.shape.string, go.shape.string, go.shape.string, go.shape.string) go.shape.string { return propagation.concat4Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.a + propagation.b + propagation.c + propagation.d) }
+perfsample/sample.go:143: cannot inline ConcatLocal4: marked go:noinline
+./iast/propagation/operators.go:58:6: cannot inline propagation.concat5Result[go.shape.string]: function too complex: cost 129 exceeds budget 80
+./iast/propagation/operators.go:54:6: can inline propagation.Concat5[go.shape.string] with cost 75 as: func(*[2]uintptr, go.shape.string, go.shape.string, go.shape.string, go.shape.string, go.shape.string) go.shape.string { return propagation.concat5Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.a + propagation.b + propagation.c + propagation.d + propagation.e) }
+perfsample/sample.go:145: cannot inline ConcatLocal5: marked go:noinline
+./iast/propagation/operators.go:94:6: cannot inline propagation.concat8Result[go.shape.string]: function too complex: cost 132 exceeds budget 80
+./iast/propagation/operators.go:90:6: cannot inline propagation.Concat8[go.shape.string]: function too complex: cost 81 exceeds budget 80
+perfsample/sample.go:148: cannot inline ConcatLocal8: marked go:noinline
+./iast/propagation/operators.go:190:6: cannot inline propagation.concat16Result[go.shape.string]: function too complex: cost 140 exceeds budget 80
+./iast/propagation/operators.go:186:6: cannot inline propagation.Concat16[go.shape.string]: function too complex: cost 97 exceeds budget 80
+perfsample/sample.go:151: cannot inline ConcatLocal16: marked go:noinline
+perfsample/sample.go:158: cannot inline ConcatConvOperand: marked go:noinline
+perfsample/sample.go:164: cannot inline count: marked go:noinline
+perfsample/sample.go:166: can inline count-range1 with cost 24 as: func(string) bool { #tmpState := #state1; #state1 = 2; if #tmpState != 1 { runtime.panicrangestate(#tmpState) }; n += len(s); #state1 = 1; return true }
+perfsample/sample.go:175: cannot inline SplitSeqPass: marked go:noinline
+perfsample/sample.go:182: cannot inline BufferStringLocal: marked go:noinline
+perfsample/sample.go:190: cannot inline BuilderStringLocal: marked go:noinline
+./iast/propagation/operators.go:18:6: can inline propagation.Concat2[string] with cost 76 as: func(string, string) string { return propagation.Concat2[go.shape.string](&propagation..dict.Concat2[string], propagation.a, propagation.b) }
+./iast/propagation/operators.go:186:6: can inline propagation.Concat16[string] with cost 78 as: func(string, string, string, string, string, string, string, string, string, string, string, string, string, string, string, string) string { return propagation.Concat16[go.shape.string](&propagation..dict.Concat16[string], propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.f, propagation.g, propagation.h, propagation.i, propagation.j, propagation.k, propagation.l, propagation.m, propagation.n, propagation.o, propagation.p) }
+./iast/propagation/operators.go:90:6: can inline propagation.Concat8[string] with cost 70 as: func(string, string, string, string, string, string, string, string) string { return propagation.Concat8[go.shape.string](&propagation..dict.Concat8[string], propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.f, propagation.g, propagation.h) }
+./iast/propagation/operators.go:54:6: cannot inline propagation.Concat5[string]: function too complex: cost 85 exceeds budget 80
+./iast/propagation/operators.go:42:6: cannot inline propagation.Concat4[string]: function too complex: cost 82 exceeds budget 80
+./iast/propagation/operators.go:217:6: can inline propagation.StringSliceLow[string,int] with cost 64 as: func(string, int) string { return propagation.StringSliceLow[go.shape.string,go.shape.int](&propagation..dict.StringSliceLow[string,int], propagation.value, propagation.low) }
+./iast/propagation/operators.go:198:6: can inline propagation.BytesToString[[]uint8] with cost 63 as: func([]byte) string { return propagation.BytesToString[go.shape.[]uint8](&propagation..dict.BytesToString[[]uint8], propagation.value) }
+./iast/propagation/operators.go:267:6: can inline propagation.BytesSliceHigh[[]uint8,int] with cost 64 as: func([]byte, int) []byte { return propagation.BytesSliceHigh[go.shape.[]uint8,go.shape.int](&propagation..dict.BytesSliceHigh[[]uint8,int], propagation.value, propagation.high) }
+./iast/propagation/operators.go:30:6: can inline propagation.Concat3[string] with cost 79 as: func(string, string, string) string { return propagation.Concat3[go.shape.string](&propagation..dict.Concat3[string], propagation.a, propagation.b, propagation.c) }
+<generated>:1: inlining call to propagation.Concat3[go.shape.string]
+perfsample/sample.go:67: inlining call to bytes.(*Buffer).Len
+perfsample/sample.go:104: inlining call to propagation.StringsSplitSeq
+perfsample/sample.go:104: inlining call to strings.SplitSeq
+perfsample/sample.go:104: inlining call to propagation.stringWindowSeq
+perfsample/sample.go:104: inlining call to strings.splitSeq
+./iast/propagation/strings.go:114:9: can inline SplitSeqLocal.StringsSplitSeq.stringWindowSeq.func1 with cost 40 as: func(func(string) bool) { propagation.inspected := 0; propagation.sequence(func literal) }
+perfsample/sample.go:104: inlining call to SplitSeqLocal.StringsSplitSeq.stringWindowSeq.func1
+/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/strings/iter.go:37:9: can inline SplitSeqLocal.StringsSplitSeq.SplitSeq.splitSeq.func2 with cost 265 as: func(func(string) bool) { if len(strings.sep) == 0 { for loop; return  }; for loop; strings.yield(strings.s) }
+perfsample/sample.go:104: inlining call to SplitSeqLocal.StringsSplitSeq.SplitSeq.splitSeq.func2
+perfsample/sample.go:104: inlining call to utf8.DecodeRuneInString
+./iast/propagation/strings.go:116:12: can inline SplitSeqLocal.SplitSeqLocal.StringsSplitSeq.stringWindowSeq.func1.func3 with cost 89 as: func(string) bool { if propagation.inspected < 32 { propagation.StringWindow(propagation.input, propagation.value) }; propagation.inspected++; return propagation.yield(propagation.value) }
+perfsample/sample.go:104: inlining call to SplitSeqLocal.SplitSeqLocal.StringsSplitSeq.stringWindowSeq.func1.func3
+perfsample/sample.go:104: inlining call to strings.Index
+perfsample/sample.go:104: inlining call to SplitSeqLocal.SplitSeqLocal.StringsSplitSeq.stringWindowSeq.func1.func3
+perfsample/sample.go:104: inlining call to SplitSeqLocal.SplitSeqLocal.StringsSplitSeq.stringWindowSeq.func1.func3
+perfsample/sample.go:104: inlining call to SplitSeqLocal-range1
+perfsample/sample.go:104: inlining call to SplitSeqLocal-range1
+perfsample/sample.go:104: inlining call to SplitSeqLocal-range1
+perfsample/sample.go:115: inlining call to propagation.StringsFieldsSeq
+perfsample/sample.go:115: inlining call to strings.FieldsSeq
+perfsample/sample.go:115: inlining call to propagation.stringWindowSeq
+./iast/propagation/strings.go:114:9: can inline FieldsSeqLocal.StringsFieldsSeq.stringWindowSeq.func2 with cost 40 as: func(func(string) bool) { propagation.inspected := 0; propagation.sequence(func literal) }
+perfsample/sample.go:115: inlining call to FieldsSeqLocal.StringsFieldsSeq.stringWindowSeq.func2
+/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/strings/iter.go:84:9: can inline FieldsSeqLocal.StringsFieldsSeq.FieldsSeq.func1 with cost 264 as: func(func(string) bool) { strings.start := -1; for loop; if strings.start >= 0 { strings.yield(strings.s[strings.start:]) } }
+perfsample/sample.go:115: inlining call to FieldsSeqLocal.StringsFieldsSeq.FieldsSeq.func1
+perfsample/sample.go:115: inlining call to utf8.DecodeRuneInString
+./iast/propagation/strings.go:116:12: can inline FieldsSeqLocal.FieldsSeqLocal.StringsFieldsSeq.stringWindowSeq.func2.func3 with cost 89 as: func(string) bool { if propagation.inspected < 32 { propagation.StringWindow(propagation.input, propagation.value) }; propagation.inspected++; return propagation.yield(propagation.value) }
+perfsample/sample.go:115: inlining call to FieldsSeqLocal.FieldsSeqLocal.StringsFieldsSeq.stringWindowSeq.func2.func3
+perfsample/sample.go:115: inlining call to FieldsSeqLocal.FieldsSeqLocal.StringsFieldsSeq.stringWindowSeq.func2.func3
+perfsample/sample.go:115: inlining call to FieldsSeqLocal-range1
+perfsample/sample.go:115: inlining call to FieldsSeqLocal-range1
+<generated>:1: inlining call to propagation.Concat2[go.shape.string]
+<generated>:1: inlining call to propagation.Concat4[go.shape.string]
+<generated>:1: inlining call to propagation.Concat5[go.shape.string]
+<generated>:1: inlining call to propagation.Concat2[go.shape.string]
+perfsample/sample.go:176: inlining call to propagation.StringsSplitSeq
+perfsample/sample.go:176: inlining call to strings.SplitSeq
+perfsample/sample.go:176: inlining call to propagation.stringWindowSeq
+perfsample/sample.go:176: inlining call to strings.splitSeq
+./iast/propagation/operators.go:18:6: inlining call to propagation.Concat2[go.shape.string]
+./iast/propagation/operators.go:54:6: inlining call to propagation.Concat5[go.shape.string]
+./iast/propagation/operators.go:42:6: inlining call to propagation.Concat4[go.shape.string]
+./iast/propagation/operators.go:30:6: inlining call to propagation.Concat3[go.shape.string]
+perfsample/sample.go:10: map[string]int{...} escapes to heap in init:
+perfsample/sample.go:10:   flow: {heap} ← &{storage for map[string]int{...}}:
+perfsample/sample.go:10:     from map[string]int{...} (spill) at perfsample/sample.go:10
+perfsample/sample.go:10:     from table = map[string]int{...} (assign) at perfsample/sample.go:10
+perfsample/sample.go:10: map[string]int{...} escapes to heap
+./iast/propagation/operators.go:34:31: parameter propagation.a leaks to {heap} for concat3Result[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:34:31:   flow: {heap} ← propagation.a:
+./iast/propagation/operators.go:34:31:     from propagation.Concat3(string(propagation.a), string(propagation.b), string(propagation.c), string(propagation.result)) (call parameter) at ./iast/propagation/operators.go:38:27
+./iast/propagation/operators.go:34:34: parameter propagation.b leaks to {heap} for concat3Result[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:34:34:   flow: {heap} ← propagation.b:
+./iast/propagation/operators.go:34:34:     from propagation.Concat3(string(propagation.a), string(propagation.b), string(propagation.c), string(propagation.result)) (call parameter) at ./iast/propagation/operators.go:38:27
+./iast/propagation/operators.go:34:37: parameter propagation.c leaks to {heap} for concat3Result[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:34:37:   flow: {heap} ← propagation.c:
+./iast/propagation/operators.go:34:37:     from propagation.Concat3(string(propagation.a), string(propagation.b), string(propagation.c), string(propagation.result)) (call parameter) at ./iast/propagation/operators.go:38:27
+./iast/propagation/operators.go:34:42: parameter propagation.result leaks to propagation.~r0 for concat3Result[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:34:42:   flow: propagation.~r0 ← propagation.result:
+./iast/propagation/operators.go:34:42:     from return propagation.result (return) at ./iast/propagation/operators.go:36:3
+perfsample/sample.go:15: parameter method leaks to {heap} for ConcatLocal with derefs=0:
+perfsample/sample.go:15:   flow: propagation.a ← method:
+perfsample/sample.go:15:     from propagation..dict, propagation.a, propagation.b, propagation.c := &propagation..dict.Concat3[string], method, ":", path (assign-pair) at <generated>:1
+perfsample/sample.go:15:   flow: {heap} ← propagation.a:
+perfsample/sample.go:15:     from propagation.concat3Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.a + propagation.b + propagation.c) (call parameter) at <generated>:1
+perfsample/sample.go:15: parameter path leaks to {heap} for ConcatLocal with derefs=0:
+perfsample/sample.go:15:   flow: propagation.c ← path:
+perfsample/sample.go:15:     from propagation..dict, propagation.a, propagation.b, propagation.c := &propagation..dict.Concat3[string], method, ":", path (assign-pair) at <generated>:1
+perfsample/sample.go:15:   flow: {heap} ← propagation.c:
+perfsample/sample.go:15:     from propagation.concat3Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.a + propagation.b + propagation.c) (call parameter) at <generated>:1
+perfsample/sample.go:15: leaking param: method
+perfsample/sample.go:15: leaking param: path
+<generated>:1: propagation.a + propagation.b + propagation.c does not escape
+./iast/propagation/operators.go:199:19: string(propagation.value) escapes to heap in BytesToString[go.shape.[]uint8]:
+./iast/propagation/operators.go:199:19:   flow: propagation.result ← &{storage for string(propagation.value)}:
+./iast/propagation/operators.go:199:19:     from string(propagation.value) (spill) at ./iast/propagation/operators.go:199:19
+./iast/propagation/operators.go:199:19:     from propagation.result := string(propagation.value) (assign) at ./iast/propagation/operators.go:199:9
+./iast/propagation/operators.go:199:19:   flow: {heap} ← propagation.result:
+./iast/propagation/operators.go:199:19:     from propagation.BytesToString(([]byte)(propagation.value), propagation.result) (call parameter) at ./iast/propagation/operators.go:203:31
+./iast/propagation/operators.go:199:19: string(propagation.value) escapes to heap
+perfsample/sample.go:23: b does not escape
+./iast/propagation/operators.go:267:43: parameter propagation.value leaks to propagation.~r0 for BytesSliceHigh[go.shape.[]uint8,go.shape.int] with derefs=0:
+./iast/propagation/operators.go:267:43:   flow: propagation.result ← propagation.value:
+./iast/propagation/operators.go:267:43:     from propagation.value[:propagation.high] (slice) at ./iast/propagation/operators.go:268:17
+./iast/propagation/operators.go:267:43:     from propagation.result := propagation.value[:propagation.high] (assign) at ./iast/propagation/operators.go:268:9
+./iast/propagation/operators.go:267:43:   flow: propagation.~r0 ← propagation.result:
+./iast/propagation/operators.go:267:43:     from return propagation.result (return) at ./iast/propagation/operators.go:270:3
+perfsample/sample.go:31: src does not escape
+perfsample/sample.go:32: make([]byte, 64) does not escape
+./iast/propagation/operators.go:217:43: parameter propagation.value leaks to propagation.~r0 for StringSliceLow[go.shape.string,go.shape.int] with derefs=0:
+./iast/propagation/operators.go:217:43:   flow: propagation.result ← propagation.value:
+./iast/propagation/operators.go:217:43:     from propagation.value[propagation.low:] (slice) at ./iast/propagation/operators.go:218:17
+./iast/propagation/operators.go:217:43:     from propagation.result := propagation.value[propagation.low:] (assign) at ./iast/propagation/operators.go:218:9
+./iast/propagation/operators.go:217:43:   flow: propagation.~r0 ← propagation.result:
+./iast/propagation/operators.go:217:43:     from return propagation.result (return) at ./iast/propagation/operators.go:220:3
+perfsample/sample.go:45: b does not escape
+perfsample/sample.go:54: sb escapes to heap in BuilderLocal:
+perfsample/sample.go:54:   flow: {heap} ← &sb:
+perfsample/sample.go:54:     from &sb (address-of) at <generated>:1
+perfsample/sample.go:54:     from propagation.BuilderWriteString(&sb, a) (call parameter) at <generated>:1
+perfsample/sample.go:54: sb escapes to heap in BuilderLocal:
+perfsample/sample.go:54:   flow: {heap} ← &sb:
+perfsample/sample.go:54:     from &sb (address-of) at <generated>:1
+perfsample/sample.go:54:     from propagation.BuilderWriteString(&sb, b) (call parameter) at <generated>:1
+perfsample/sample.go:54: sb escapes to heap in BuilderLocal:
+perfsample/sample.go:54:   flow: {heap} ← &sb:
+perfsample/sample.go:54:     from &sb (address-of) at perfsample/sample.go:58
+perfsample/sample.go:54:     from propagation.BuilderString(&sb) (call parameter) at perfsample/sample.go:58
+perfsample/sample.go:53: a does not escape
+perfsample/sample.go:53: b does not escape
+perfsample/sample.go:54: moved to heap: sb
+perfsample/sample.go:64: buf escapes to heap in BufferLocal:
+perfsample/sample.go:64:   flow: {heap} ← &buf:
+perfsample/sample.go:64:     from &buf (address-of) at <generated>:1
+perfsample/sample.go:64:     from propagation.BufferWriteString(&buf, a) (call parameter) at <generated>:1
+perfsample/sample.go:64: buf escapes to heap in BufferLocal:
+perfsample/sample.go:64:   flow: {heap} ← &buf:
+perfsample/sample.go:64:     from &buf (address-of) at <generated>:1
+perfsample/sample.go:64:     from propagation.BufferWriteByte(&buf, byte(120)) (call parameter) at <generated>:1
+perfsample/sample.go:63: a does not escape
+perfsample/sample.go:64: moved to heap: buf
+perfsample/sample.go:73: parameter a leaks to {heap} for JoinLocal with derefs=0:
+perfsample/sample.go:73:   flow: {storage for []string{...}} ← a:
+perfsample/sample.go:73:     from []string{...} (slice-literal-element) at perfsample/sample.go:74
+perfsample/sample.go:73:   flow: {heap} ← {storage for []string{...}}:
+perfsample/sample.go:73:     from []string{...} (spill) at perfsample/sample.go:74
+perfsample/sample.go:73:     from propagation.StringsJoin([]string{...}, ",") (call parameter) at perfsample/sample.go:74
+perfsample/sample.go:73: parameter b leaks to {heap} for JoinLocal with derefs=0:
+perfsample/sample.go:73:   flow: {storage for []string{...}} ← b:
+perfsample/sample.go:73:     from []string{...} (slice-literal-element) at perfsample/sample.go:74
+perfsample/sample.go:73:   flow: {heap} ← {storage for []string{...}}:
+perfsample/sample.go:73:     from []string{...} (spill) at perfsample/sample.go:74
+perfsample/sample.go:73:     from propagation.StringsJoin([]string{...}, ",") (call parameter) at perfsample/sample.go:74
+perfsample/sample.go:73: leaking param: a
+perfsample/sample.go:73: leaking param: b
+perfsample/sample.go:74: []string{...} does not escape
+perfsample/sample.go:81: a escapes to heap in SprintfLocal:
+perfsample/sample.go:81:   flow: {storage for ... argument} ← &{storage for a}:
+perfsample/sample.go:81:     from a (spill) at perfsample/sample.go:81
+perfsample/sample.go:81:     from ... argument (slice-literal-element) at perfsample/sample.go:81
+perfsample/sample.go:81:   flow: {heap} ← {storage for ... argument}:
+perfsample/sample.go:81:     from ... argument (spill) at perfsample/sample.go:81
+perfsample/sample.go:81:     from propagation.FmtSprintf("x=%s", ... argument...) (call parameter) at perfsample/sample.go:81
+perfsample/sample.go:80: parameter a leaks to {storage for a} for SprintfLocal with derefs=0:
+perfsample/sample.go:80:   flow: {storage for a} ← a:
+perfsample/sample.go:80:     from a (interface-converted) at perfsample/sample.go:81
+perfsample/sample.go:80: leaking param: a
+perfsample/sample.go:81: ... argument does not escape
+perfsample/sample.go:81: a escapes to heap
+perfsample/sample.go:87: a does not escape
+perfsample/sample.go:95: a does not escape
+perfsample/sample.go:104: SplitSeqLocal capturing by value: strings.sep (addr=false assign=false width=16)
+perfsample/sample.go:104: SplitSeqLocal capturing by ref: strings.s (addr=false assign=true width=16)
+perfsample/sample.go:104: SplitSeqLocal capturing by value: strings.sepSave (addr=false assign=false width=8)
+perfsample/sample.go:104: SplitSeqLocal capturing by value: propagation.sequence (addr=false assign=false width=8)
+perfsample/sample.go:104: SplitSeqLocal capturing by value: propagation.input (addr=false assign=false width=16)
+./iast/propagation/strings.go:115:3: SplitSeqLocal.StringsSplitSeq.stringWindowSeq.func1 capturing by ref: propagation.inspected (addr=false assign=true width=8)
+perfsample/sample.go:104: SplitSeqLocal capturing by value: propagation.input (addr=false assign=false width=16)
+./iast/propagation/strings.go:114:14: SplitSeqLocal.StringsSplitSeq.stringWindowSeq.func1 capturing by value: propagation.yield (addr=false assign=false width=8)
+./iast/propagation/strings.go:116:17: parameter propagation.value leaks to {heap} for SplitSeqLocal.StringsSplitSeq.stringWindowSeq.func1.1 with derefs=0:
+./iast/propagation/strings.go:116:17:   flow: {heap} ← propagation.value:
+./iast/propagation/strings.go:116:17:     from propagation.yield(propagation.value) (call parameter) at ./iast/propagation/strings.go:121:16
+perfsample/sample.go:102: parameter a leaks to {heap} for SplitSeqLocal with derefs=0:
+perfsample/sample.go:102:   flow: propagation.value ← a:
+perfsample/sample.go:102:     from propagation.value, propagation.separator := a, "," (assign-pair) at perfsample/sample.go:104
+perfsample/sample.go:102:   flow: strings.s ← propagation.value:
+perfsample/sample.go:102:     from strings.s, strings.sep := propagation.value, propagation.separator (assign-pair) at perfsample/sample.go:104
+perfsample/sample.go:102:   flow: strings.s ← strings.s:
+perfsample/sample.go:102:     from strings.s, strings.sep, strings.sepSave := strings.s, strings.sep, 0 (assign-pair) at perfsample/sample.go:104
+perfsample/sample.go:102:   flow: {heap} ← strings.s:
+perfsample/sample.go:102:     from strings.s[:strings.size] (slice) at /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/strings/iter.go:41:16
+perfsample/sample.go:102:     from strings.yield(strings.s[:strings.size]) (call parameter) at /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/strings/iter.go:41:14
+perfsample/sample.go:102: leaking param: a
+/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/strings/iter.go:37:14: yield does not escape
+./iast/propagation/strings.go:114:14: yield does not escape
+./iast/propagation/strings.go:116:17: leaking param: value
+perfsample/sample.go:104: func literal does not escape
+perfsample/sample.go:104: func literal does not escape
+./iast/propagation/strings.go:116:12: func literal does not escape
+perfsample/sample.go:115: FieldsSeqLocal capturing by value: strings.s (addr=false assign=false width=16)
+perfsample/sample.go:115: FieldsSeqLocal capturing by value: propagation.sequence (addr=false assign=false width=8)
+perfsample/sample.go:115: FieldsSeqLocal capturing by value: propagation.input (addr=false assign=false width=16)
+./iast/propagation/strings.go:115:3: FieldsSeqLocal.StringsFieldsSeq.stringWindowSeq.func2 capturing by ref: propagation.inspected (addr=false assign=true width=8)
+perfsample/sample.go:115: FieldsSeqLocal capturing by value: propagation.input (addr=false assign=false width=16)
+./iast/propagation/strings.go:114:14: FieldsSeqLocal.StringsFieldsSeq.stringWindowSeq.func2 capturing by value: propagation.yield (addr=false assign=false width=8)
+./iast/propagation/strings.go:116:17: parameter propagation.value leaks to {heap} for FieldsSeqLocal.StringsFieldsSeq.stringWindowSeq.func2.1 with derefs=0:
+./iast/propagation/strings.go:116:17:   flow: {heap} ← propagation.value:
+./iast/propagation/strings.go:116:17:     from propagation.yield(propagation.value) (call parameter) at ./iast/propagation/strings.go:121:16
+perfsample/sample.go:113: parameter a leaks to {heap} for FieldsSeqLocal with derefs=0:
+perfsample/sample.go:113:   flow: propagation.value ← a:
+perfsample/sample.go:113:     from propagation.value := a (assign-pair) at perfsample/sample.go:115
+perfsample/sample.go:113:   flow: strings.s ← propagation.value:
+perfsample/sample.go:113:     from strings.s := propagation.value (assign-pair) at perfsample/sample.go:115
+perfsample/sample.go:113:   flow: {heap} ← strings.s:
+perfsample/sample.go:113:     from strings.s[strings.start:strings.i] (slice) at /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/strings/iter.go:96:17
+perfsample/sample.go:113:     from strings.yield(strings.s[strings.start:strings.i]) (call parameter) at /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/strings/iter.go:96:15
+perfsample/sample.go:113: leaking param: a
+/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/strings/iter.go:84:14: yield does not escape
+./iast/propagation/strings.go:114:14: yield does not escape
+./iast/propagation/strings.go:116:17: leaking param: value
+perfsample/sample.go:115: func literal does not escape
+perfsample/sample.go:115: func literal does not escape
+./iast/propagation/strings.go:116:12: func literal does not escape
+perfsample/sample.go:124: a does not escape
+perfsample/sample.go:131: a does not escape
+./iast/propagation/operators.go:22:31: parameter propagation.a leaks to {heap} for concat2Result[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:22:31:   flow: {heap} ← propagation.a:
+./iast/propagation/operators.go:22:31:     from propagation.Concat2(string(propagation.a), string(propagation.b), string(propagation.result)) (call parameter) at ./iast/propagation/operators.go:26:27
+./iast/propagation/operators.go:22:34: parameter propagation.b leaks to {heap} for concat2Result[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:22:34:   flow: {heap} ← propagation.b:
+./iast/propagation/operators.go:22:34:     from propagation.Concat2(string(propagation.a), string(propagation.b), string(propagation.result)) (call parameter) at ./iast/propagation/operators.go:26:27
+./iast/propagation/operators.go:22:39: parameter propagation.result leaks to propagation.~r0 for concat2Result[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:22:39:   flow: propagation.~r0 ← propagation.result:
+./iast/propagation/operators.go:22:39:     from return propagation.result (return) at ./iast/propagation/operators.go:24:3
+perfsample/sample.go:138: parameter a leaks to {heap} for ConcatLocal2 with derefs=0:
+perfsample/sample.go:138:   flow: propagation.a ← a:
+perfsample/sample.go:138:     from propagation..dict, propagation.a, propagation.b := &propagation..dict.Concat2[string], a, b (assign-pair) at <generated>:1
+perfsample/sample.go:138:   flow: {heap} ← propagation.a:
+perfsample/sample.go:138:     from propagation.concat2Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.a + propagation.b) (call parameter) at <generated>:1
+perfsample/sample.go:138: parameter b leaks to {heap} for ConcatLocal2 with derefs=0:
+perfsample/sample.go:138:   flow: propagation.b ← b:
+perfsample/sample.go:138:     from propagation..dict, propagation.a, propagation.b := &propagation..dict.Concat2[string], a, b (assign-pair) at <generated>:1
+perfsample/sample.go:138:   flow: {heap} ← propagation.b:
+perfsample/sample.go:138:     from propagation.concat2Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.a + propagation.b) (call parameter) at <generated>:1
+perfsample/sample.go:138: leaking param: a
+perfsample/sample.go:138: leaking param: b
+<generated>:1: propagation.a + propagation.b does not escape
+./iast/propagation/operators.go:46:31: parameter propagation.a leaks to {heap} for concat4Result[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:46:31:   flow: {heap} ← propagation.a:
+./iast/propagation/operators.go:46:31:     from propagation.Concat4(string(propagation.a), string(propagation.b), string(propagation.c), string(propagation.d), string(propagation.result)) (call parameter) at ./iast/propagation/operators.go:50:27
+./iast/propagation/operators.go:46:34: parameter propagation.b leaks to {heap} for concat4Result[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:46:34:   flow: {heap} ← propagation.b:
+./iast/propagation/operators.go:46:34:     from propagation.Concat4(string(propagation.a), string(propagation.b), string(propagation.c), string(propagation.d), string(propagation.result)) (call parameter) at ./iast/propagation/operators.go:50:27
+./iast/propagation/operators.go:46:37: parameter propagation.c leaks to {heap} for concat4Result[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:46:37:   flow: {heap} ← propagation.c:
+./iast/propagation/operators.go:46:37:     from propagation.Concat4(string(propagation.a), string(propagation.b), string(propagation.c), string(propagation.d), string(propagation.result)) (call parameter) at ./iast/propagation/operators.go:50:27
+./iast/propagation/operators.go:46:40: parameter propagation.d leaks to {heap} for concat4Result[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:46:40:   flow: {heap} ← propagation.d:
+./iast/propagation/operators.go:46:40:     from propagation.Concat4(string(propagation.a), string(propagation.b), string(propagation.c), string(propagation.d), string(propagation.result)) (call parameter) at ./iast/propagation/operators.go:50:27
+./iast/propagation/operators.go:46:45: parameter propagation.result leaks to propagation.~r0 for concat4Result[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:46:45:   flow: propagation.~r0 ← propagation.result:
+./iast/propagation/operators.go:46:45:     from return propagation.result (return) at ./iast/propagation/operators.go:48:3
+perfsample/sample.go:143: parameter a leaks to {heap} for ConcatLocal4 with derefs=0:
+perfsample/sample.go:143:   flow: propagation.a ← a:
+perfsample/sample.go:143:     from propagation..dict, propagation.a, propagation.b, propagation.c, propagation.d := &propagation..dict.Concat4[string], a, b, a, b (assign-pair) at <generated>:1
+perfsample/sample.go:143:   flow: {heap} ← propagation.a:
+perfsample/sample.go:143:     from propagation.concat4Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.a + propagation.b + propagation.c + propagation.d) (call parameter) at <generated>:1
+perfsample/sample.go:143: parameter b leaks to {heap} for ConcatLocal4 with derefs=0:
+perfsample/sample.go:143:   flow: propagation.b ← b:
+perfsample/sample.go:143:     from propagation..dict, propagation.a, propagation.b, propagation.c, propagation.d := &propagation..dict.Concat4[string], a, b, a, b (assign-pair) at <generated>:1
+perfsample/sample.go:143:   flow: {heap} ← propagation.b:
+perfsample/sample.go:143:     from propagation.concat4Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.a + propagation.b + propagation.c + propagation.d) (call parameter) at <generated>:1
+perfsample/sample.go:143: leaking param: a
+perfsample/sample.go:143: leaking param: b
+<generated>:1: propagation.a + propagation.b + propagation.c + propagation.d does not escape
+./iast/propagation/operators.go:58:31: parameter propagation.a leaks to {heap} for concat5Result[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:58:31:   flow: {heap} ← propagation.a:
+./iast/propagation/operators.go:58:31:     from propagation.Concat5(string(propagation.a), string(propagation.b), string(propagation.c), string(propagation.d), string(propagation.e), string(propagation.result)) (call parameter) at ./iast/propagation/operators.go:62:27
+./iast/propagation/operators.go:58:34: parameter propagation.b leaks to {heap} for concat5Result[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:58:34:   flow: {heap} ← propagation.b:
+./iast/propagation/operators.go:58:34:     from propagation.Concat5(string(propagation.a), string(propagation.b), string(propagation.c), string(propagation.d), string(propagation.e), string(propagation.result)) (call parameter) at ./iast/propagation/operators.go:62:27
+./iast/propagation/operators.go:58:37: parameter propagation.c leaks to {heap} for concat5Result[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:58:37:   flow: {heap} ← propagation.c:
+./iast/propagation/operators.go:58:37:     from propagation.Concat5(string(propagation.a), string(propagation.b), string(propagation.c), string(propagation.d), string(propagation.e), string(propagation.result)) (call parameter) at ./iast/propagation/operators.go:62:27
+./iast/propagation/operators.go:58:40: parameter propagation.d leaks to {heap} for concat5Result[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:58:40:   flow: {heap} ← propagation.d:
+./iast/propagation/operators.go:58:40:     from propagation.Concat5(string(propagation.a), string(propagation.b), string(propagation.c), string(propagation.d), string(propagation.e), string(propagation.result)) (call parameter) at ./iast/propagation/operators.go:62:27
+./iast/propagation/operators.go:58:43: parameter propagation.e leaks to {heap} for concat5Result[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:58:43:   flow: {heap} ← propagation.e:
+./iast/propagation/operators.go:58:43:     from propagation.Concat5(string(propagation.a), string(propagation.b), string(propagation.c), string(propagation.d), string(propagation.e), string(propagation.result)) (call parameter) at ./iast/propagation/operators.go:62:27
+./iast/propagation/operators.go:58:48: parameter propagation.result leaks to propagation.~r0 for concat5Result[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:58:48:   flow: propagation.~r0 ← propagation.result:
+./iast/propagation/operators.go:58:48:     from return propagation.result (return) at ./iast/propagation/operators.go:60:3
+perfsample/sample.go:145: parameter a leaks to {heap} for ConcatLocal5 with derefs=0:
+perfsample/sample.go:145:   flow: propagation.a ← a:
+perfsample/sample.go:145:     from propagation..dict, propagation.a, propagation.b, propagation.c, propagation.d, propagation.e := &propagation..dict.Concat5[string], a, b, a, b, a (assign-pair) at <generated>:1
+perfsample/sample.go:145:   flow: {heap} ← propagation.a:
+perfsample/sample.go:145:     from propagation.concat5Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.a + propagation.b + propagation.c + propagation.d + propagation.e) (call parameter) at <generated>:1
+perfsample/sample.go:145: parameter b leaks to {heap} for ConcatLocal5 with derefs=0:
+perfsample/sample.go:145:   flow: propagation.b ← b:
+perfsample/sample.go:145:     from propagation..dict, propagation.a, propagation.b, propagation.c, propagation.d, propagation.e := &propagation..dict.Concat5[string], a, b, a, b, a (assign-pair) at <generated>:1
+perfsample/sample.go:145:   flow: {heap} ← propagation.b:
+perfsample/sample.go:145:     from propagation.concat5Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.a + propagation.b + propagation.c + propagation.d + propagation.e) (call parameter) at <generated>:1
+perfsample/sample.go:145: leaking param: a
+perfsample/sample.go:145: leaking param: b
+<generated>:1: propagation.a + propagation.b + propagation.c + propagation.d + propagation.e does not escape
+./iast/propagation/operators.go:94:31: parameter propagation.a leaks to {heap} for concat8Result[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:94:31:   flow: {heap} ← propagation.a:
+./iast/propagation/operators.go:94:31:     from propagation.Concat8(string(propagation.a), string(propagation.b), string(propagation.c), string(propagation.d), string(propagation.e), string(propagation.f), string(propagation.g), string(propagation.h), string(propagation.result)) (call parameter) at ./iast/propagation/operators.go:98:27
+./iast/propagation/operators.go:94:34: parameter propagation.b leaks to {heap} for concat8Result[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:94:34:   flow: {heap} ← propagation.b:
+./iast/propagation/operators.go:94:34:     from propagation.Concat8(string(propagation.a), string(propagation.b), string(propagation.c), string(propagation.d), string(propagation.e), string(propagation.f), string(propagation.g), string(propagation.h), string(propagation.result)) (call parameter) at ./iast/propagation/operators.go:98:27
+./iast/propagation/operators.go:94:37: parameter propagation.c leaks to {heap} for concat8Result[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:94:37:   flow: {heap} ← propagation.c:
+./iast/propagation/operators.go:94:37:     from propagation.Concat8(string(propagation.a), string(propagation.b), string(propagation.c), string(propagation.d), string(propagation.e), string(propagation.f), string(propagation.g), string(propagation.h), string(propagation.result)) (call parameter) at ./iast/propagation/operators.go:98:27
+./iast/propagation/operators.go:94:40: parameter propagation.d leaks to {heap} for concat8Result[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:94:40:   flow: {heap} ← propagation.d:
+./iast/propagation/operators.go:94:40:     from propagation.Concat8(string(propagation.a), string(propagation.b), string(propagation.c), string(propagation.d), string(propagation.e), string(propagation.f), string(propagation.g), string(propagation.h), string(propagation.result)) (call parameter) at ./iast/propagation/operators.go:98:27
+./iast/propagation/operators.go:94:43: parameter propagation.e leaks to {heap} for concat8Result[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:94:43:   flow: {heap} ← propagation.e:
+./iast/propagation/operators.go:94:43:     from propagation.Concat8(string(propagation.a), string(propagation.b), string(propagation.c), string(propagation.d), string(propagation.e), string(propagation.f), string(propagation.g), string(propagation.h), string(propagation.result)) (call parameter) at ./iast/propagation/operators.go:98:27
+./iast/propagation/operators.go:94:46: parameter propagation.f leaks to {heap} for concat8Result[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:94:46:   flow: {heap} ← propagation.f:
+./iast/propagation/operators.go:94:46:     from propagation.Concat8(string(propagation.a), string(propagation.b), string(propagation.c), string(propagation.d), string(propagation.e), string(propagation.f), string(propagation.g), string(propagation.h), string(propagation.result)) (call parameter) at ./iast/propagation/operators.go:98:27
+./iast/propagation/operators.go:94:49: parameter propagation.g leaks to {heap} for concat8Result[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:94:49:   flow: {heap} ← propagation.g:
+./iast/propagation/operators.go:94:49:     from propagation.Concat8(string(propagation.a), string(propagation.b), string(propagation.c), string(propagation.d), string(propagation.e), string(propagation.f), string(propagation.g), string(propagation.h), string(propagation.result)) (call parameter) at ./iast/propagation/operators.go:98:27
+./iast/propagation/operators.go:94:52: parameter propagation.h leaks to {heap} for concat8Result[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:94:52:   flow: {heap} ← propagation.h:
+./iast/propagation/operators.go:94:52:     from propagation.Concat8(string(propagation.a), string(propagation.b), string(propagation.c), string(propagation.d), string(propagation.e), string(propagation.f), string(propagation.g), string(propagation.h), string(propagation.result)) (call parameter) at ./iast/propagation/operators.go:98:27
+./iast/propagation/operators.go:94:57: parameter propagation.result leaks to propagation.~r0 for concat8Result[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:94:57:   flow: propagation.~r0 ← propagation.result:
+./iast/propagation/operators.go:94:57:     from return propagation.result (return) at ./iast/propagation/operators.go:96:3
+./iast/propagation/operators.go:90:25: parameter propagation.a leaks to {heap} for Concat8[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:90:25:   flow: {heap} ← propagation.a:
+./iast/propagation/operators.go:90:25:     from propagation.concat8Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.f, propagation.g, propagation.h, propagation.a + propagation.b + propagation.c + propagation.d + propagation.e + propagation.f + propagation.g + propagation.h) (call parameter) at ./iast/propagation/operators.go:91:22
+./iast/propagation/operators.go:90:28: parameter propagation.b leaks to {heap} for Concat8[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:90:28:   flow: {heap} ← propagation.b:
+./iast/propagation/operators.go:90:28:     from propagation.concat8Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.f, propagation.g, propagation.h, propagation.a + propagation.b + propagation.c + propagation.d + propagation.e + propagation.f + propagation.g + propagation.h) (call parameter) at ./iast/propagation/operators.go:91:22
+./iast/propagation/operators.go:90:31: parameter propagation.c leaks to {heap} for Concat8[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:90:31:   flow: {heap} ← propagation.c:
+./iast/propagation/operators.go:90:31:     from propagation.concat8Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.f, propagation.g, propagation.h, propagation.a + propagation.b + propagation.c + propagation.d + propagation.e + propagation.f + propagation.g + propagation.h) (call parameter) at ./iast/propagation/operators.go:91:22
+./iast/propagation/operators.go:90:34: parameter propagation.d leaks to {heap} for Concat8[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:90:34:   flow: {heap} ← propagation.d:
+./iast/propagation/operators.go:90:34:     from propagation.concat8Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.f, propagation.g, propagation.h, propagation.a + propagation.b + propagation.c + propagation.d + propagation.e + propagation.f + propagation.g + propagation.h) (call parameter) at ./iast/propagation/operators.go:91:22
+./iast/propagation/operators.go:90:37: parameter propagation.e leaks to {heap} for Concat8[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:90:37:   flow: {heap} ← propagation.e:
+./iast/propagation/operators.go:90:37:     from propagation.concat8Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.f, propagation.g, propagation.h, propagation.a + propagation.b + propagation.c + propagation.d + propagation.e + propagation.f + propagation.g + propagation.h) (call parameter) at ./iast/propagation/operators.go:91:22
+./iast/propagation/operators.go:90:40: parameter propagation.f leaks to {heap} for Concat8[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:90:40:   flow: {heap} ← propagation.f:
+./iast/propagation/operators.go:90:40:     from propagation.concat8Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.f, propagation.g, propagation.h, propagation.a + propagation.b + propagation.c + propagation.d + propagation.e + propagation.f + propagation.g + propagation.h) (call parameter) at ./iast/propagation/operators.go:91:22
+./iast/propagation/operators.go:90:43: parameter propagation.g leaks to {heap} for Concat8[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:90:43:   flow: {heap} ← propagation.g:
+./iast/propagation/operators.go:90:43:     from propagation.concat8Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.f, propagation.g, propagation.h, propagation.a + propagation.b + propagation.c + propagation.d + propagation.e + propagation.f + propagation.g + propagation.h) (call parameter) at ./iast/propagation/operators.go:91:22
+./iast/propagation/operators.go:90:46: parameter propagation.h leaks to {heap} for Concat8[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:90:46:   flow: {heap} ← propagation.h:
+./iast/propagation/operators.go:90:46:     from propagation.concat8Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.f, propagation.g, propagation.h, propagation.a + propagation.b + propagation.c + propagation.d + propagation.e + propagation.f + propagation.g + propagation.h) (call parameter) at ./iast/propagation/operators.go:91:22
+./iast/propagation/operators.go:91:60: propagation.a + propagation.b + propagation.c + propagation.d + propagation.e + propagation.f + propagation.g + propagation.h escapes to heap in Concat8[go.shape.string]:
+./iast/propagation/operators.go:91:60:   flow: propagation.~r0 ← &{storage for propagation.a + propagation.b + propagation.c + propagation.d + propagation.e + propagation.f + propagation.g + propagation.h}:
+./iast/propagation/operators.go:91:60:     from propagation.a + propagation.b + propagation.c + propagation.d + propagation.e + propagation.f + propagation.g + propagation.h (spill) at ./iast/propagation/operators.go:91:60
+./iast/propagation/operators.go:91:60:     from propagation.concat8Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.f, propagation.g, propagation.h, propagation.a + propagation.b + propagation.c + propagation.d + propagation.e + propagation.f + propagation.g + propagation.h) (call parameter) at ./iast/propagation/operators.go:91:22
+./iast/propagation/operators.go:91:60:     from return propagation.concat8Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.f, propagation.g, propagation.h, propagation.a + propagation.b + propagation.c + propagation.d + propagation.e + propagation.f + propagation.g + propagation.h) (return) at ./iast/propagation/operators.go:91:2
+./iast/propagation/operators.go:91:60: propagation.a + propagation.b + propagation.c + propagation.d + propagation.e + propagation.f + propagation.g + propagation.h escapes to heap
+perfsample/sample.go:148: parameter a leaks to {heap} for ConcatLocal8 with derefs=0:
+perfsample/sample.go:148:   flow: {heap} ← a:
+perfsample/sample.go:148:     from propagation.Concat8[go.shape.string](&propagation..dict.Concat8[string], a, b, a, b, a, b, a, b) (call parameter) at <generated>:1
+perfsample/sample.go:148: parameter b leaks to {heap} for ConcatLocal8 with derefs=0:
+perfsample/sample.go:148:   flow: {heap} ← b:
+perfsample/sample.go:148:     from propagation.Concat8[go.shape.string](&propagation..dict.Concat8[string], a, b, a, b, a, b, a, b) (call parameter) at <generated>:1
+perfsample/sample.go:148: leaking param: a
+perfsample/sample.go:148: leaking param: b
+./iast/propagation/operators.go:190:32: parameter propagation.a leaks to {heap} for concat16Result[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:190:32:   flow: {heap} ← propagation.a:
+./iast/propagation/operators.go:190:32:     from propagation.Concat16(string(propagation.a), string(propagation.b), string(propagation.c), string(propagation.d), string(propagation.e), string(propagation.f), string(propagation.g), string(propagation.h), string(propagation.i), string(propagation.j), string(propagation.k), string(propagation.l), string(propagation.m), string(propagation.n), string(propagation.o), string(propagation.p), string(propagation.result)) (call parameter) at ./iast/propagation/operators.go:194:28
+./iast/propagation/operators.go:190:35: parameter propagation.b leaks to {heap} for concat16Result[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:190:35:   flow: {heap} ← propagation.b:
+./iast/propagation/operators.go:190:35:     from propagation.Concat16(string(propagation.a), string(propagation.b), string(propagation.c), string(propagation.d), string(propagation.e), string(propagation.f), string(propagation.g), string(propagation.h), string(propagation.i), string(propagation.j), string(propagation.k), string(propagation.l), string(propagation.m), string(propagation.n), string(propagation.o), string(propagation.p), string(propagation.result)) (call parameter) at ./iast/propagation/operators.go:194:28
+./iast/propagation/operators.go:190:38: parameter propagation.c leaks to {heap} for concat16Result[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:190:38:   flow: {heap} ← propagation.c:
+./iast/propagation/operators.go:190:38:     from propagation.Concat16(string(propagation.a), string(propagation.b), string(propagation.c), string(propagation.d), string(propagation.e), string(propagation.f), string(propagation.g), string(propagation.h), string(propagation.i), string(propagation.j), string(propagation.k), string(propagation.l), string(propagation.m), string(propagation.n), string(propagation.o), string(propagation.p), string(propagation.result)) (call parameter) at ./iast/propagation/operators.go:194:28
+./iast/propagation/operators.go:190:41: parameter propagation.d leaks to {heap} for concat16Result[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:190:41:   flow: {heap} ← propagation.d:
+./iast/propagation/operators.go:190:41:     from propagation.Concat16(string(propagation.a), string(propagation.b), string(propagation.c), string(propagation.d), string(propagation.e), string(propagation.f), string(propagation.g), string(propagation.h), string(propagation.i), string(propagation.j), string(propagation.k), string(propagation.l), string(propagation.m), string(propagation.n), string(propagation.o), string(propagation.p), string(propagation.result)) (call parameter) at ./iast/propagation/operators.go:194:28
+./iast/propagation/operators.go:190:44: parameter propagation.e leaks to {heap} for concat16Result[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:190:44:   flow: {heap} ← propagation.e:
+./iast/propagation/operators.go:190:44:     from propagation.Concat16(string(propagation.a), string(propagation.b), string(propagation.c), string(propagation.d), string(propagation.e), string(propagation.f), string(propagation.g), string(propagation.h), string(propagation.i), string(propagation.j), string(propagation.k), string(propagation.l), string(propagation.m), string(propagation.n), string(propagation.o), string(propagation.p), string(propagation.result)) (call parameter) at ./iast/propagation/operators.go:194:28
+./iast/propagation/operators.go:190:47: parameter propagation.f leaks to {heap} for concat16Result[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:190:47:   flow: {heap} ← propagation.f:
+./iast/propagation/operators.go:190:47:     from propagation.Concat16(string(propagation.a), string(propagation.b), string(propagation.c), string(propagation.d), string(propagation.e), string(propagation.f), string(propagation.g), string(propagation.h), string(propagation.i), string(propagation.j), string(propagation.k), string(propagation.l), string(propagation.m), string(propagation.n), string(propagation.o), string(propagation.p), string(propagation.result)) (call parameter) at ./iast/propagation/operators.go:194:28
+./iast/propagation/operators.go:190:50: parameter propagation.g leaks to {heap} for concat16Result[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:190:50:   flow: {heap} ← propagation.g:
+./iast/propagation/operators.go:190:50:     from propagation.Concat16(string(propagation.a), string(propagation.b), string(propagation.c), string(propagation.d), string(propagation.e), string(propagation.f), string(propagation.g), string(propagation.h), string(propagation.i), string(propagation.j), string(propagation.k), string(propagation.l), string(propagation.m), string(propagation.n), string(propagation.o), string(propagation.p), string(propagation.result)) (call parameter) at ./iast/propagation/operators.go:194:28
+./iast/propagation/operators.go:190:53: parameter propagation.h leaks to {heap} for concat16Result[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:190:53:   flow: {heap} ← propagation.h:
+./iast/propagation/operators.go:190:53:     from propagation.Concat16(string(propagation.a), string(propagation.b), string(propagation.c), string(propagation.d), string(propagation.e), string(propagation.f), string(propagation.g), string(propagation.h), string(propagation.i), string(propagation.j), string(propagation.k), string(propagation.l), string(propagation.m), string(propagation.n), string(propagation.o), string(propagation.p), string(propagation.result)) (call parameter) at ./iast/propagation/operators.go:194:28
+./iast/propagation/operators.go:190:56: parameter propagation.i leaks to {heap} for concat16Result[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:190:56:   flow: {heap} ← propagation.i:
+./iast/propagation/operators.go:190:56:     from propagation.Concat16(string(propagation.a), string(propagation.b), string(propagation.c), string(propagation.d), string(propagation.e), string(propagation.f), string(propagation.g), string(propagation.h), string(propagation.i), string(propagation.j), string(propagation.k), string(propagation.l), string(propagation.m), string(propagation.n), string(propagation.o), string(propagation.p), string(propagation.result)) (call parameter) at ./iast/propagation/operators.go:194:28
+./iast/propagation/operators.go:190:59: parameter propagation.j leaks to {heap} for concat16Result[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:190:59:   flow: {heap} ← propagation.j:
+./iast/propagation/operators.go:190:59:     from propagation.Concat16(string(propagation.a), string(propagation.b), string(propagation.c), string(propagation.d), string(propagation.e), string(propagation.f), string(propagation.g), string(propagation.h), string(propagation.i), string(propagation.j), string(propagation.k), string(propagation.l), string(propagation.m), string(propagation.n), string(propagation.o), string(propagation.p), string(propagation.result)) (call parameter) at ./iast/propagation/operators.go:194:28
+./iast/propagation/operators.go:190:62: parameter propagation.k leaks to {heap} for concat16Result[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:190:62:   flow: {heap} ← propagation.k:
+./iast/propagation/operators.go:190:62:     from propagation.Concat16(string(propagation.a), string(propagation.b), string(propagation.c), string(propagation.d), string(propagation.e), string(propagation.f), string(propagation.g), string(propagation.h), string(propagation.i), string(propagation.j), string(propagation.k), string(propagation.l), string(propagation.m), string(propagation.n), string(propagation.o), string(propagation.p), string(propagation.result)) (call parameter) at ./iast/propagation/operators.go:194:28
+./iast/propagation/operators.go:190:65: parameter propagation.l leaks to {heap} for concat16Result[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:190:65:   flow: {heap} ← propagation.l:
+./iast/propagation/operators.go:190:65:     from propagation.Concat16(string(propagation.a), string(propagation.b), string(propagation.c), string(propagation.d), string(propagation.e), string(propagation.f), string(propagation.g), string(propagation.h), string(propagation.i), string(propagation.j), string(propagation.k), string(propagation.l), string(propagation.m), string(propagation.n), string(propagation.o), string(propagation.p), string(propagation.result)) (call parameter) at ./iast/propagation/operators.go:194:28
+./iast/propagation/operators.go:190:68: parameter propagation.m leaks to {heap} for concat16Result[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:190:68:   flow: {heap} ← propagation.m:
+./iast/propagation/operators.go:190:68:     from propagation.Concat16(string(propagation.a), string(propagation.b), string(propagation.c), string(propagation.d), string(propagation.e), string(propagation.f), string(propagation.g), string(propagation.h), string(propagation.i), string(propagation.j), string(propagation.k), string(propagation.l), string(propagation.m), string(propagation.n), string(propagation.o), string(propagation.p), string(propagation.result)) (call parameter) at ./iast/propagation/operators.go:194:28
+./iast/propagation/operators.go:190:71: parameter propagation.n leaks to {heap} for concat16Result[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:190:71:   flow: {heap} ← propagation.n:
+./iast/propagation/operators.go:190:71:     from propagation.Concat16(string(propagation.a), string(propagation.b), string(propagation.c), string(propagation.d), string(propagation.e), string(propagation.f), string(propagation.g), string(propagation.h), string(propagation.i), string(propagation.j), string(propagation.k), string(propagation.l), string(propagation.m), string(propagation.n), string(propagation.o), string(propagation.p), string(propagation.result)) (call parameter) at ./iast/propagation/operators.go:194:28
+./iast/propagation/operators.go:190:74: parameter propagation.o leaks to {heap} for concat16Result[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:190:74:   flow: {heap} ← propagation.o:
+./iast/propagation/operators.go:190:74:     from propagation.Concat16(string(propagation.a), string(propagation.b), string(propagation.c), string(propagation.d), string(propagation.e), string(propagation.f), string(propagation.g), string(propagation.h), string(propagation.i), string(propagation.j), string(propagation.k), string(propagation.l), string(propagation.m), string(propagation.n), string(propagation.o), string(propagation.p), string(propagation.result)) (call parameter) at ./iast/propagation/operators.go:194:28
+./iast/propagation/operators.go:190:77: parameter propagation.p leaks to {heap} for concat16Result[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:190:77:   flow: {heap} ← propagation.p:
+./iast/propagation/operators.go:190:77:     from propagation.Concat16(string(propagation.a), string(propagation.b), string(propagation.c), string(propagation.d), string(propagation.e), string(propagation.f), string(propagation.g), string(propagation.h), string(propagation.i), string(propagation.j), string(propagation.k), string(propagation.l), string(propagation.m), string(propagation.n), string(propagation.o), string(propagation.p), string(propagation.result)) (call parameter) at ./iast/propagation/operators.go:194:28
+./iast/propagation/operators.go:190:82: parameter propagation.result leaks to propagation.~r0 for concat16Result[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:190:82:   flow: propagation.~r0 ← propagation.result:
+./iast/propagation/operators.go:190:82:     from return propagation.result (return) at ./iast/propagation/operators.go:192:3
+./iast/propagation/operators.go:186:26: parameter propagation.a leaks to {heap} for Concat16[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:186:26:   flow: {heap} ← propagation.a:
+./iast/propagation/operators.go:186:26:     from propagation.concat16Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.f, propagation.g, propagation.h, propagation.i, propagation.j, propagation.k, propagation.l, propagation.m, propagation.n, propagation.o, propagation.p, propagation.a + propagation.b + propagation.c + propagation.d + propagation.e + propagation.f + propagation.g + propagation.h + propagation.i + propagation.j + propagation.k + propagation.l + propagation.m + propagation.n + propagation.o + propagation.p) (call parameter) at ./iast/propagation/operators.go:187:23
+./iast/propagation/operators.go:186:29: parameter propagation.b leaks to {heap} for Concat16[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:186:29:   flow: {heap} ← propagation.b:
+./iast/propagation/operators.go:186:29:     from propagation.concat16Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.f, propagation.g, propagation.h, propagation.i, propagation.j, propagation.k, propagation.l, propagation.m, propagation.n, propagation.o, propagation.p, propagation.a + propagation.b + propagation.c + propagation.d + propagation.e + propagation.f + propagation.g + propagation.h + propagation.i + propagation.j + propagation.k + propagation.l + propagation.m + propagation.n + propagation.o + propagation.p) (call parameter) at ./iast/propagation/operators.go:187:23
+./iast/propagation/operators.go:186:32: parameter propagation.c leaks to {heap} for Concat16[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:186:32:   flow: {heap} ← propagation.c:
+./iast/propagation/operators.go:186:32:     from propagation.concat16Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.f, propagation.g, propagation.h, propagation.i, propagation.j, propagation.k, propagation.l, propagation.m, propagation.n, propagation.o, propagation.p, propagation.a + propagation.b + propagation.c + propagation.d + propagation.e + propagation.f + propagation.g + propagation.h + propagation.i + propagation.j + propagation.k + propagation.l + propagation.m + propagation.n + propagation.o + propagation.p) (call parameter) at ./iast/propagation/operators.go:187:23
+./iast/propagation/operators.go:186:35: parameter propagation.d leaks to {heap} for Concat16[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:186:35:   flow: {heap} ← propagation.d:
+./iast/propagation/operators.go:186:35:     from propagation.concat16Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.f, propagation.g, propagation.h, propagation.i, propagation.j, propagation.k, propagation.l, propagation.m, propagation.n, propagation.o, propagation.p, propagation.a + propagation.b + propagation.c + propagation.d + propagation.e + propagation.f + propagation.g + propagation.h + propagation.i + propagation.j + propagation.k + propagation.l + propagation.m + propagation.n + propagation.o + propagation.p) (call parameter) at ./iast/propagation/operators.go:187:23
+./iast/propagation/operators.go:186:38: parameter propagation.e leaks to {heap} for Concat16[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:186:38:   flow: {heap} ← propagation.e:
+./iast/propagation/operators.go:186:38:     from propagation.concat16Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.f, propagation.g, propagation.h, propagation.i, propagation.j, propagation.k, propagation.l, propagation.m, propagation.n, propagation.o, propagation.p, propagation.a + propagation.b + propagation.c + propagation.d + propagation.e + propagation.f + propagation.g + propagation.h + propagation.i + propagation.j + propagation.k + propagation.l + propagation.m + propagation.n + propagation.o + propagation.p) (call parameter) at ./iast/propagation/operators.go:187:23
+./iast/propagation/operators.go:186:41: parameter propagation.f leaks to {heap} for Concat16[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:186:41:   flow: {heap} ← propagation.f:
+./iast/propagation/operators.go:186:41:     from propagation.concat16Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.f, propagation.g, propagation.h, propagation.i, propagation.j, propagation.k, propagation.l, propagation.m, propagation.n, propagation.o, propagation.p, propagation.a + propagation.b + propagation.c + propagation.d + propagation.e + propagation.f + propagation.g + propagation.h + propagation.i + propagation.j + propagation.k + propagation.l + propagation.m + propagation.n + propagation.o + propagation.p) (call parameter) at ./iast/propagation/operators.go:187:23
+./iast/propagation/operators.go:186:44: parameter propagation.g leaks to {heap} for Concat16[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:186:44:   flow: {heap} ← propagation.g:
+./iast/propagation/operators.go:186:44:     from propagation.concat16Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.f, propagation.g, propagation.h, propagation.i, propagation.j, propagation.k, propagation.l, propagation.m, propagation.n, propagation.o, propagation.p, propagation.a + propagation.b + propagation.c + propagation.d + propagation.e + propagation.f + propagation.g + propagation.h + propagation.i + propagation.j + propagation.k + propagation.l + propagation.m + propagation.n + propagation.o + propagation.p) (call parameter) at ./iast/propagation/operators.go:187:23
+./iast/propagation/operators.go:186:47: parameter propagation.h leaks to {heap} for Concat16[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:186:47:   flow: {heap} ← propagation.h:
+./iast/propagation/operators.go:186:47:     from propagation.concat16Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.f, propagation.g, propagation.h, propagation.i, propagation.j, propagation.k, propagation.l, propagation.m, propagation.n, propagation.o, propagation.p, propagation.a + propagation.b + propagation.c + propagation.d + propagation.e + propagation.f + propagation.g + propagation.h + propagation.i + propagation.j + propagation.k + propagation.l + propagation.m + propagation.n + propagation.o + propagation.p) (call parameter) at ./iast/propagation/operators.go:187:23
+./iast/propagation/operators.go:186:50: parameter propagation.i leaks to {heap} for Concat16[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:186:50:   flow: {heap} ← propagation.i:
+./iast/propagation/operators.go:186:50:     from propagation.concat16Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.f, propagation.g, propagation.h, propagation.i, propagation.j, propagation.k, propagation.l, propagation.m, propagation.n, propagation.o, propagation.p, propagation.a + propagation.b + propagation.c + propagation.d + propagation.e + propagation.f + propagation.g + propagation.h + propagation.i + propagation.j + propagation.k + propagation.l + propagation.m + propagation.n + propagation.o + propagation.p) (call parameter) at ./iast/propagation/operators.go:187:23
+./iast/propagation/operators.go:186:53: parameter propagation.j leaks to {heap} for Concat16[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:186:53:   flow: {heap} ← propagation.j:
+./iast/propagation/operators.go:186:53:     from propagation.concat16Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.f, propagation.g, propagation.h, propagation.i, propagation.j, propagation.k, propagation.l, propagation.m, propagation.n, propagation.o, propagation.p, propagation.a + propagation.b + propagation.c + propagation.d + propagation.e + propagation.f + propagation.g + propagation.h + propagation.i + propagation.j + propagation.k + propagation.l + propagation.m + propagation.n + propagation.o + propagation.p) (call parameter) at ./iast/propagation/operators.go:187:23
+./iast/propagation/operators.go:186:56: parameter propagation.k leaks to {heap} for Concat16[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:186:56:   flow: {heap} ← propagation.k:
+./iast/propagation/operators.go:186:56:     from propagation.concat16Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.f, propagation.g, propagation.h, propagation.i, propagation.j, propagation.k, propagation.l, propagation.m, propagation.n, propagation.o, propagation.p, propagation.a + propagation.b + propagation.c + propagation.d + propagation.e + propagation.f + propagation.g + propagation.h + propagation.i + propagation.j + propagation.k + propagation.l + propagation.m + propagation.n + propagation.o + propagation.p) (call parameter) at ./iast/propagation/operators.go:187:23
+./iast/propagation/operators.go:186:59: parameter propagation.l leaks to {heap} for Concat16[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:186:59:   flow: {heap} ← propagation.l:
+./iast/propagation/operators.go:186:59:     from propagation.concat16Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.f, propagation.g, propagation.h, propagation.i, propagation.j, propagation.k, propagation.l, propagation.m, propagation.n, propagation.o, propagation.p, propagation.a + propagation.b + propagation.c + propagation.d + propagation.e + propagation.f + propagation.g + propagation.h + propagation.i + propagation.j + propagation.k + propagation.l + propagation.m + propagation.n + propagation.o + propagation.p) (call parameter) at ./iast/propagation/operators.go:187:23
+./iast/propagation/operators.go:186:62: parameter propagation.m leaks to {heap} for Concat16[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:186:62:   flow: {heap} ← propagation.m:
+./iast/propagation/operators.go:186:62:     from propagation.concat16Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.f, propagation.g, propagation.h, propagation.i, propagation.j, propagation.k, propagation.l, propagation.m, propagation.n, propagation.o, propagation.p, propagation.a + propagation.b + propagation.c + propagation.d + propagation.e + propagation.f + propagation.g + propagation.h + propagation.i + propagation.j + propagation.k + propagation.l + propagation.m + propagation.n + propagation.o + propagation.p) (call parameter) at ./iast/propagation/operators.go:187:23
+./iast/propagation/operators.go:186:65: parameter propagation.n leaks to {heap} for Concat16[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:186:65:   flow: {heap} ← propagation.n:
+./iast/propagation/operators.go:186:65:     from propagation.concat16Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.f, propagation.g, propagation.h, propagation.i, propagation.j, propagation.k, propagation.l, propagation.m, propagation.n, propagation.o, propagation.p, propagation.a + propagation.b + propagation.c + propagation.d + propagation.e + propagation.f + propagation.g + propagation.h + propagation.i + propagation.j + propagation.k + propagation.l + propagation.m + propagation.n + propagation.o + propagation.p) (call parameter) at ./iast/propagation/operators.go:187:23
+./iast/propagation/operators.go:186:68: parameter propagation.o leaks to {heap} for Concat16[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:186:68:   flow: {heap} ← propagation.o:
+./iast/propagation/operators.go:186:68:     from propagation.concat16Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.f, propagation.g, propagation.h, propagation.i, propagation.j, propagation.k, propagation.l, propagation.m, propagation.n, propagation.o, propagation.p, propagation.a + propagation.b + propagation.c + propagation.d + propagation.e + propagation.f + propagation.g + propagation.h + propagation.i + propagation.j + propagation.k + propagation.l + propagation.m + propagation.n + propagation.o + propagation.p) (call parameter) at ./iast/propagation/operators.go:187:23
+./iast/propagation/operators.go:186:71: parameter propagation.p leaks to {heap} for Concat16[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:186:71:   flow: {heap} ← propagation.p:
+./iast/propagation/operators.go:186:71:     from propagation.concat16Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.f, propagation.g, propagation.h, propagation.i, propagation.j, propagation.k, propagation.l, propagation.m, propagation.n, propagation.o, propagation.p, propagation.a + propagation.b + propagation.c + propagation.d + propagation.e + propagation.f + propagation.g + propagation.h + propagation.i + propagation.j + propagation.k + propagation.l + propagation.m + propagation.n + propagation.o + propagation.p) (call parameter) at ./iast/propagation/operators.go:187:23
+./iast/propagation/operators.go:187:101: propagation.a + propagation.b + propagation.c + propagation.d + propagation.e + propagation.f + propagation.g + propagation.h + propagation.i + propagation.j + propagation.k + propagation.l + propagation.m + propagation.n + propagation.o + propagation.p escapes to heap in Concat16[go.shape.string]:
+./iast/propagation/operators.go:187:101:   flow: propagation.~r0 ← &{storage for propagation.a + propagation.b + propagation.c + propagation.d + propagation.e + propagation.f + propagation.g + propagation.h + propagation.i + propagation.j + propagation.k + propagation.l + propagation.m + propagation.n + propagation.o + propagation.p}:
+./iast/propagation/operators.go:187:101:     from propagation.a + propagation.b + propagation.c + propagation.d + propagation.e + propagation.f + propagation.g + propagation.h + propagation.i + propagation.j + propagation.k + propagation.l + propagation.m + propagation.n + propagation.o + propagation.p (spill) at ./iast/propagation/operators.go:187:101
+./iast/propagation/operators.go:187:101:     from propagation.concat16Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.f, propagation.g, propagation.h, propagation.i, propagation.j, propagation.k, propagation.l, propagation.m, propagation.n, propagation.o, propagation.p, propagation.a + propagation.b + propagation.c + propagation.d + propagation.e + propagation.f + propagation.g + propagation.h + propagation.i + propagation.j + propagation.k + propagation.l + propagation.m + propagation.n + propagation.o + propagation.p) (call parameter) at ./iast/propagation/operators.go:187:23
+./iast/propagation/operators.go:187:101:     from return propagation.concat16Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.f, propagation.g, propagation.h, propagation.i, propagation.j, propagation.k, propagation.l, propagation.m, propagation.n, propagation.o, propagation.p, propagation.a + propagation.b + propagation.c + propagation.d + propagation.e + propagation.f + propagation.g + propagation.h + propagation.i + propagation.j + propagation.k + propagation.l + propagation.m + propagation.n + propagation.o + propagation.p) (return) at ./iast/propagation/operators.go:187:2
+./iast/propagation/operators.go:187:101: propagation.a + propagation.b + propagation.c + propagation.d + propagation.e + propagation.f + propagation.g + propagation.h + propagation.i + propagation.j + propagation.k + propagation.l + propagation.m + propagation.n + propagation.o + propagation.p escapes to heap
+perfsample/sample.go:151: parameter a leaks to {heap} for ConcatLocal16 with derefs=0:
+perfsample/sample.go:151:   flow: {heap} ← a:
+perfsample/sample.go:151:     from propagation.Concat16[go.shape.string](&propagation..dict.Concat16[string], a, b, a, b, a, b, a, b, a, b, a, b, a, b, a, b) (call parameter) at <generated>:1
+perfsample/sample.go:151: parameter b leaks to {heap} for ConcatLocal16 with derefs=0:
+perfsample/sample.go:151:   flow: {heap} ← b:
+perfsample/sample.go:151:     from propagation.Concat16[go.shape.string](&propagation..dict.Concat16[string], a, b, a, b, a, b, a, b, a, b, a, b, a, b, a, b) (call parameter) at <generated>:1
+perfsample/sample.go:151: leaking param: a
+perfsample/sample.go:151: leaking param: b
+perfsample/sample.go:159: string(b) escapes to heap in ConcatConvOperand:
+perfsample/sample.go:159:   flow: propagation.a ← &{storage for string(b)}:
+perfsample/sample.go:159:     from string(b) (spill) at perfsample/sample.go:159
+perfsample/sample.go:159:     from propagation..dict, propagation.a, propagation.b := &propagation..dict.Concat2[string], string(b), ":x" (assign-pair) at <generated>:1
+perfsample/sample.go:159:   flow: {heap} ← propagation.a:
+perfsample/sample.go:159:     from propagation.concat2Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.a + propagation.b) (call parameter) at <generated>:1
+perfsample/sample.go:158: b does not escape
+perfsample/sample.go:159: string(b) escapes to heap
+<generated>:1: propagation.a + propagation.b does not escape
+perfsample/sample.go:166: count capturing by ref: #state1 (addr=false assign=true width=8)
+perfsample/sample.go:165: count capturing by ref: n (addr=false assign=true width=8)
+perfsample/sample.go:166: func literal escapes to heap in count:
+perfsample/sample.go:166:   flow: #yield1 ← &{storage for func literal}:
+perfsample/sample.go:166:     from func literal (spill) at perfsample/sample.go:166
+perfsample/sample.go:166:     from #yield1 := func literal (assign) at perfsample/sample.go:166
+perfsample/sample.go:166:   flow: {heap} ← #yield1:
+perfsample/sample.go:166:     from seq(#yield1) (call parameter) at perfsample/sample.go:166
+perfsample/sample.go:166: #state1 escapes to heap in count:
+perfsample/sample.go:166:   flow: {storage for func literal} ← &#state1:
+perfsample/sample.go:166:     from #state1 (captured by a closure) at <unknown line number>
+perfsample/sample.go:166:     from #state1 (reference) at <unknown line number>
+perfsample/sample.go:165: n escapes to heap in count:
+perfsample/sample.go:165:   flow: {storage for func literal} ← &n:
+perfsample/sample.go:165:     from n (captured by a closure) at perfsample/sample.go:167
+perfsample/sample.go:165:     from n (reference) at perfsample/sample.go:167
+perfsample/sample.go:164: seq does not escape
+perfsample/sample.go:166: s does not escape
+perfsample/sample.go:165: moved to heap: n
+perfsample/sample.go:166: moved to heap: #state1
+perfsample/sample.go:166: func literal escapes to heap
+perfsample/sample.go:176: SplitSeqPass capturing by value: strings.sep (addr=false assign=false width=16)
+perfsample/sample.go:176: SplitSeqPass capturing by ref: strings.s (addr=false assign=true width=16)
+perfsample/sample.go:176: SplitSeqPass capturing by value: strings.sepSave (addr=false assign=false width=8)
+perfsample/sample.go:176: SplitSeqPass capturing by value: propagation.sequence (addr=false assign=false width=8)
+perfsample/sample.go:176: SplitSeqPass capturing by value: propagation.input (addr=false assign=false width=16)
+./iast/propagation/strings.go:115:3: SplitSeqPass.StringsSplitSeq.stringWindowSeq.func1 capturing by ref: propagation.inspected (addr=false assign=true width=8)
+perfsample/sample.go:176: SplitSeqPass capturing by value: propagation.input (addr=false assign=false width=16)
+./iast/propagation/strings.go:114:14: SplitSeqPass.StringsSplitSeq.stringWindowSeq.func1 capturing by value: propagation.yield (addr=false assign=false width=8)
+./iast/propagation/strings.go:116:17: parameter propagation.value leaks to {heap} for SplitSeqPass.StringsSplitSeq.stringWindowSeq.func1.1 with derefs=0:
+./iast/propagation/strings.go:116:17:   flow: {heap} ← propagation.value:
+./iast/propagation/strings.go:116:17:     from propagation.yield(propagation.value) (call parameter) at ./iast/propagation/strings.go:121:16
+perfsample/sample.go:175: parameter a leaks to {heap} for SplitSeqPass with derefs=0:
+perfsample/sample.go:175:   flow: propagation.value ← a:
+perfsample/sample.go:175:     from propagation.value, propagation.separator := a, "," (assign-pair) at perfsample/sample.go:176
+perfsample/sample.go:175:   flow: strings.s ← propagation.value:
+perfsample/sample.go:175:     from strings.s, strings.sep := propagation.value, propagation.separator (assign-pair) at perfsample/sample.go:176
+perfsample/sample.go:175:   flow: strings.s ← strings.s:
+perfsample/sample.go:175:     from strings.s, strings.sep, strings.sepSave := strings.s, strings.sep, 0 (assign-pair) at perfsample/sample.go:176
+perfsample/sample.go:175:   flow: {heap} ← strings.s:
+perfsample/sample.go:175:     from strings.s[:strings.size] (slice) at /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/strings/iter.go:41:16
+perfsample/sample.go:175:     from strings.yield(strings.s[:strings.size]) (call parameter) at /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/strings/iter.go:41:14
+perfsample/sample.go:175: leaking param: a
+/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/strings/iter.go:37:14: yield does not escape
+./iast/propagation/strings.go:114:14: yield does not escape
+./iast/propagation/strings.go:116:17: leaking param: value
+perfsample/sample.go:176: func literal does not escape
+perfsample/sample.go:176: func literal does not escape
+./iast/propagation/strings.go:116:12: func literal does not escape
+perfsample/sample.go:182: parameter buf leaks to {heap} for BufferStringLocal with derefs=0:
+perfsample/sample.go:182:   flow: {heap} ← buf:
+perfsample/sample.go:182:     from propagation.BufferString(buf) (call parameter) at <generated>:1
+perfsample/sample.go:182: leaking param: buf
+perfsample/sample.go:190: parameter sb leaks to {heap} for BuilderStringLocal with derefs=0:
+perfsample/sample.go:190:   flow: {heap} ← sb:
+perfsample/sample.go:190:     from propagation.BuilderString(sb) (call parameter) at <generated>:1
+perfsample/sample.go:190: leaking param: sb
+./iast/propagation/operators.go:18:25: parameter propagation.a leaks to {heap} for Concat2[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:18:25:   flow: {heap} ← propagation.a:
+./iast/propagation/operators.go:18:25:     from propagation.concat2Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.a + propagation.b) (call parameter) at ./iast/propagation/operators.go:19:22
+./iast/propagation/operators.go:18:28: parameter propagation.b leaks to {heap} for Concat2[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:18:28:   flow: {heap} ← propagation.b:
+./iast/propagation/operators.go:18:28:     from propagation.concat2Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.a + propagation.b) (call parameter) at ./iast/propagation/operators.go:19:22
+./iast/propagation/operators.go:19:30: propagation.a + propagation.b escapes to heap in Concat2[go.shape.string]:
+./iast/propagation/operators.go:19:30:   flow: propagation.~r0 ← &{storage for propagation.a + propagation.b}:
+./iast/propagation/operators.go:19:30:     from propagation.a + propagation.b (spill) at ./iast/propagation/operators.go:19:30
+./iast/propagation/operators.go:19:30:     from propagation.concat2Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.a + propagation.b) (call parameter) at ./iast/propagation/operators.go:19:22
+./iast/propagation/operators.go:19:30:     from return propagation.concat2Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.a + propagation.b) (return) at ./iast/propagation/operators.go:19:2
+./iast/propagation/operators.go:19:30: propagation.a + propagation.b escapes to heap
+./iast/propagation/operators.go:18:25: parameter propagation.a leaks to {heap} for Concat2[string] with derefs=0:
+./iast/propagation/operators.go:18:25:   flow: propagation.a ← propagation.a:
+./iast/propagation/operators.go:18:25:     from propagation..dict, propagation.a, propagation.b := &propagation..dict.Concat2[string], propagation.a, propagation.b (assign-pair) at ./iast/propagation/operators.go:18:6
+./iast/propagation/operators.go:18:25:   flow: {heap} ← propagation.a:
+./iast/propagation/operators.go:18:25:     from propagation.concat2Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.a + propagation.b) (call parameter) at ./iast/propagation/operators.go:18:6
+./iast/propagation/operators.go:18:28: parameter propagation.b leaks to {heap} for Concat2[string] with derefs=0:
+./iast/propagation/operators.go:18:28:   flow: propagation.b ← propagation.b:
+./iast/propagation/operators.go:18:28:     from propagation..dict, propagation.a, propagation.b := &propagation..dict.Concat2[string], propagation.a, propagation.b (assign-pair) at ./iast/propagation/operators.go:18:6
+./iast/propagation/operators.go:18:28:   flow: {heap} ← propagation.b:
+./iast/propagation/operators.go:18:28:     from propagation.concat2Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.a + propagation.b) (call parameter) at ./iast/propagation/operators.go:18:6
+./iast/propagation/operators.go:18:6: propagation.a + propagation.b escapes to heap in Concat2[string]:
+./iast/propagation/operators.go:18:6:   flow: propagation.~r0 ← &{storage for propagation.a + propagation.b}:
+./iast/propagation/operators.go:18:6:     from propagation.a + propagation.b (spill) at ./iast/propagation/operators.go:18:6
+./iast/propagation/operators.go:18:6:     from propagation.concat2Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.a + propagation.b) (call parameter) at ./iast/propagation/operators.go:18:6
+./iast/propagation/operators.go:18:6:     from propagation.~r0 = propagation.concat2Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.a + propagation.b) (assign-pair) at ./iast/propagation/operators.go:18:6
+./iast/propagation/operators.go:18:6:   flow: propagation.~r0 ← propagation.~r0:
+./iast/propagation/operators.go:18:6:     from return propagation.~r0 (return) at ./iast/propagation/operators.go:18:6
+./iast/propagation/operators.go:18:6: propagation.a + propagation.b escapes to heap
+./iast/propagation/operators.go:186:26: parameter propagation.a leaks to {heap} for Concat16[string] with derefs=0:
+./iast/propagation/operators.go:186:26:   flow: {heap} ← propagation.a:
+./iast/propagation/operators.go:186:26:     from propagation.Concat16[go.shape.string](&propagation..dict.Concat16[string], propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.f, propagation.g, propagation.h, propagation.i, propagation.j, propagation.k, propagation.l, propagation.m, propagation.n, propagation.o, propagation.p) (call parameter) at ./iast/propagation/operators.go:186:6
+./iast/propagation/operators.go:186:29: parameter propagation.b leaks to {heap} for Concat16[string] with derefs=0:
+./iast/propagation/operators.go:186:29:   flow: {heap} ← propagation.b:
+./iast/propagation/operators.go:186:29:     from propagation.Concat16[go.shape.string](&propagation..dict.Concat16[string], propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.f, propagation.g, propagation.h, propagation.i, propagation.j, propagation.k, propagation.l, propagation.m, propagation.n, propagation.o, propagation.p) (call parameter) at ./iast/propagation/operators.go:186:6
+./iast/propagation/operators.go:186:32: parameter propagation.c leaks to {heap} for Concat16[string] with derefs=0:
+./iast/propagation/operators.go:186:32:   flow: {heap} ← propagation.c:
+./iast/propagation/operators.go:186:32:     from propagation.Concat16[go.shape.string](&propagation..dict.Concat16[string], propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.f, propagation.g, propagation.h, propagation.i, propagation.j, propagation.k, propagation.l, propagation.m, propagation.n, propagation.o, propagation.p) (call parameter) at ./iast/propagation/operators.go:186:6
+./iast/propagation/operators.go:186:35: parameter propagation.d leaks to {heap} for Concat16[string] with derefs=0:
+./iast/propagation/operators.go:186:35:   flow: {heap} ← propagation.d:
+./iast/propagation/operators.go:186:35:     from propagation.Concat16[go.shape.string](&propagation..dict.Concat16[string], propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.f, propagation.g, propagation.h, propagation.i, propagation.j, propagation.k, propagation.l, propagation.m, propagation.n, propagation.o, propagation.p) (call parameter) at ./iast/propagation/operators.go:186:6
+./iast/propagation/operators.go:186:38: parameter propagation.e leaks to {heap} for Concat16[string] with derefs=0:
+./iast/propagation/operators.go:186:38:   flow: {heap} ← propagation.e:
+./iast/propagation/operators.go:186:38:     from propagation.Concat16[go.shape.string](&propagation..dict.Concat16[string], propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.f, propagation.g, propagation.h, propagation.i, propagation.j, propagation.k, propagation.l, propagation.m, propagation.n, propagation.o, propagation.p) (call parameter) at ./iast/propagation/operators.go:186:6
+./iast/propagation/operators.go:186:41: parameter propagation.f leaks to {heap} for Concat16[string] with derefs=0:
+./iast/propagation/operators.go:186:41:   flow: {heap} ← propagation.f:
+./iast/propagation/operators.go:186:41:     from propagation.Concat16[go.shape.string](&propagation..dict.Concat16[string], propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.f, propagation.g, propagation.h, propagation.i, propagation.j, propagation.k, propagation.l, propagation.m, propagation.n, propagation.o, propagation.p) (call parameter) at ./iast/propagation/operators.go:186:6
+./iast/propagation/operators.go:186:44: parameter propagation.g leaks to {heap} for Concat16[string] with derefs=0:
+./iast/propagation/operators.go:186:44:   flow: {heap} ← propagation.g:
+./iast/propagation/operators.go:186:44:     from propagation.Concat16[go.shape.string](&propagation..dict.Concat16[string], propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.f, propagation.g, propagation.h, propagation.i, propagation.j, propagation.k, propagation.l, propagation.m, propagation.n, propagation.o, propagation.p) (call parameter) at ./iast/propagation/operators.go:186:6
+./iast/propagation/operators.go:186:47: parameter propagation.h leaks to {heap} for Concat16[string] with derefs=0:
+./iast/propagation/operators.go:186:47:   flow: {heap} ← propagation.h:
+./iast/propagation/operators.go:186:47:     from propagation.Concat16[go.shape.string](&propagation..dict.Concat16[string], propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.f, propagation.g, propagation.h, propagation.i, propagation.j, propagation.k, propagation.l, propagation.m, propagation.n, propagation.o, propagation.p) (call parameter) at ./iast/propagation/operators.go:186:6
+./iast/propagation/operators.go:186:50: parameter propagation.i leaks to {heap} for Concat16[string] with derefs=0:
+./iast/propagation/operators.go:186:50:   flow: {heap} ← propagation.i:
+./iast/propagation/operators.go:186:50:     from propagation.Concat16[go.shape.string](&propagation..dict.Concat16[string], propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.f, propagation.g, propagation.h, propagation.i, propagation.j, propagation.k, propagation.l, propagation.m, propagation.n, propagation.o, propagation.p) (call parameter) at ./iast/propagation/operators.go:186:6
+./iast/propagation/operators.go:186:53: parameter propagation.j leaks to {heap} for Concat16[string] with derefs=0:
+./iast/propagation/operators.go:186:53:   flow: {heap} ← propagation.j:
+./iast/propagation/operators.go:186:53:     from propagation.Concat16[go.shape.string](&propagation..dict.Concat16[string], propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.f, propagation.g, propagation.h, propagation.i, propagation.j, propagation.k, propagation.l, propagation.m, propagation.n, propagation.o, propagation.p) (call parameter) at ./iast/propagation/operators.go:186:6
+./iast/propagation/operators.go:186:56: parameter propagation.k leaks to {heap} for Concat16[string] with derefs=0:
+./iast/propagation/operators.go:186:56:   flow: {heap} ← propagation.k:
+./iast/propagation/operators.go:186:56:     from propagation.Concat16[go.shape.string](&propagation..dict.Concat16[string], propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.f, propagation.g, propagation.h, propagation.i, propagation.j, propagation.k, propagation.l, propagation.m, propagation.n, propagation.o, propagation.p) (call parameter) at ./iast/propagation/operators.go:186:6
+./iast/propagation/operators.go:186:59: parameter propagation.l leaks to {heap} for Concat16[string] with derefs=0:
+./iast/propagation/operators.go:186:59:   flow: {heap} ← propagation.l:
+./iast/propagation/operators.go:186:59:     from propagation.Concat16[go.shape.string](&propagation..dict.Concat16[string], propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.f, propagation.g, propagation.h, propagation.i, propagation.j, propagation.k, propagation.l, propagation.m, propagation.n, propagation.o, propagation.p) (call parameter) at ./iast/propagation/operators.go:186:6
+./iast/propagation/operators.go:186:62: parameter propagation.m leaks to {heap} for Concat16[string] with derefs=0:
+./iast/propagation/operators.go:186:62:   flow: {heap} ← propagation.m:
+./iast/propagation/operators.go:186:62:     from propagation.Concat16[go.shape.string](&propagation..dict.Concat16[string], propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.f, propagation.g, propagation.h, propagation.i, propagation.j, propagation.k, propagation.l, propagation.m, propagation.n, propagation.o, propagation.p) (call parameter) at ./iast/propagation/operators.go:186:6
+./iast/propagation/operators.go:186:65: parameter propagation.n leaks to {heap} for Concat16[string] with derefs=0:
+./iast/propagation/operators.go:186:65:   flow: {heap} ← propagation.n:
+./iast/propagation/operators.go:186:65:     from propagation.Concat16[go.shape.string](&propagation..dict.Concat16[string], propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.f, propagation.g, propagation.h, propagation.i, propagation.j, propagation.k, propagation.l, propagation.m, propagation.n, propagation.o, propagation.p) (call parameter) at ./iast/propagation/operators.go:186:6
+./iast/propagation/operators.go:186:68: parameter propagation.o leaks to {heap} for Concat16[string] with derefs=0:
+./iast/propagation/operators.go:186:68:   flow: {heap} ← propagation.o:
+./iast/propagation/operators.go:186:68:     from propagation.Concat16[go.shape.string](&propagation..dict.Concat16[string], propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.f, propagation.g, propagation.h, propagation.i, propagation.j, propagation.k, propagation.l, propagation.m, propagation.n, propagation.o, propagation.p) (call parameter) at ./iast/propagation/operators.go:186:6
+./iast/propagation/operators.go:186:71: parameter propagation.p leaks to {heap} for Concat16[string] with derefs=0:
+./iast/propagation/operators.go:186:71:   flow: {heap} ← propagation.p:
+./iast/propagation/operators.go:186:71:     from propagation.Concat16[go.shape.string](&propagation..dict.Concat16[string], propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.f, propagation.g, propagation.h, propagation.i, propagation.j, propagation.k, propagation.l, propagation.m, propagation.n, propagation.o, propagation.p) (call parameter) at ./iast/propagation/operators.go:186:6
+./iast/propagation/operators.go:90:25: parameter propagation.a leaks to {heap} for Concat8[string] with derefs=0:
+./iast/propagation/operators.go:90:25:   flow: {heap} ← propagation.a:
+./iast/propagation/operators.go:90:25:     from propagation.Concat8[go.shape.string](&propagation..dict.Concat8[string], propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.f, propagation.g, propagation.h) (call parameter) at ./iast/propagation/operators.go:90:6
+./iast/propagation/operators.go:90:28: parameter propagation.b leaks to {heap} for Concat8[string] with derefs=0:
+./iast/propagation/operators.go:90:28:   flow: {heap} ← propagation.b:
+./iast/propagation/operators.go:90:28:     from propagation.Concat8[go.shape.string](&propagation..dict.Concat8[string], propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.f, propagation.g, propagation.h) (call parameter) at ./iast/propagation/operators.go:90:6
+./iast/propagation/operators.go:90:31: parameter propagation.c leaks to {heap} for Concat8[string] with derefs=0:
+./iast/propagation/operators.go:90:31:   flow: {heap} ← propagation.c:
+./iast/propagation/operators.go:90:31:     from propagation.Concat8[go.shape.string](&propagation..dict.Concat8[string], propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.f, propagation.g, propagation.h) (call parameter) at ./iast/propagation/operators.go:90:6
+./iast/propagation/operators.go:90:34: parameter propagation.d leaks to {heap} for Concat8[string] with derefs=0:
+./iast/propagation/operators.go:90:34:   flow: {heap} ← propagation.d:
+./iast/propagation/operators.go:90:34:     from propagation.Concat8[go.shape.string](&propagation..dict.Concat8[string], propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.f, propagation.g, propagation.h) (call parameter) at ./iast/propagation/operators.go:90:6
+./iast/propagation/operators.go:90:37: parameter propagation.e leaks to {heap} for Concat8[string] with derefs=0:
+./iast/propagation/operators.go:90:37:   flow: {heap} ← propagation.e:
+./iast/propagation/operators.go:90:37:     from propagation.Concat8[go.shape.string](&propagation..dict.Concat8[string], propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.f, propagation.g, propagation.h) (call parameter) at ./iast/propagation/operators.go:90:6
+./iast/propagation/operators.go:90:40: parameter propagation.f leaks to {heap} for Concat8[string] with derefs=0:
+./iast/propagation/operators.go:90:40:   flow: {heap} ← propagation.f:
+./iast/propagation/operators.go:90:40:     from propagation.Concat8[go.shape.string](&propagation..dict.Concat8[string], propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.f, propagation.g, propagation.h) (call parameter) at ./iast/propagation/operators.go:90:6
+./iast/propagation/operators.go:90:43: parameter propagation.g leaks to {heap} for Concat8[string] with derefs=0:
+./iast/propagation/operators.go:90:43:   flow: {heap} ← propagation.g:
+./iast/propagation/operators.go:90:43:     from propagation.Concat8[go.shape.string](&propagation..dict.Concat8[string], propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.f, propagation.g, propagation.h) (call parameter) at ./iast/propagation/operators.go:90:6
+./iast/propagation/operators.go:90:46: parameter propagation.h leaks to {heap} for Concat8[string] with derefs=0:
+./iast/propagation/operators.go:90:46:   flow: {heap} ← propagation.h:
+./iast/propagation/operators.go:90:46:     from propagation.Concat8[go.shape.string](&propagation..dict.Concat8[string], propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.f, propagation.g, propagation.h) (call parameter) at ./iast/propagation/operators.go:90:6
+./iast/propagation/operators.go:54:25: parameter propagation.a leaks to {heap} for Concat5[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:54:25:   flow: {heap} ← propagation.a:
+./iast/propagation/operators.go:54:25:     from propagation.concat5Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.a + propagation.b + propagation.c + propagation.d + propagation.e) (call parameter) at ./iast/propagation/operators.go:55:22
+./iast/propagation/operators.go:54:28: parameter propagation.b leaks to {heap} for Concat5[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:54:28:   flow: {heap} ← propagation.b:
+./iast/propagation/operators.go:54:28:     from propagation.concat5Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.a + propagation.b + propagation.c + propagation.d + propagation.e) (call parameter) at ./iast/propagation/operators.go:55:22
+./iast/propagation/operators.go:54:31: parameter propagation.c leaks to {heap} for Concat5[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:54:31:   flow: {heap} ← propagation.c:
+./iast/propagation/operators.go:54:31:     from propagation.concat5Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.a + propagation.b + propagation.c + propagation.d + propagation.e) (call parameter) at ./iast/propagation/operators.go:55:22
+./iast/propagation/operators.go:54:34: parameter propagation.d leaks to {heap} for Concat5[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:54:34:   flow: {heap} ← propagation.d:
+./iast/propagation/operators.go:54:34:     from propagation.concat5Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.a + propagation.b + propagation.c + propagation.d + propagation.e) (call parameter) at ./iast/propagation/operators.go:55:22
+./iast/propagation/operators.go:54:37: parameter propagation.e leaks to {heap} for Concat5[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:54:37:   flow: {heap} ← propagation.e:
+./iast/propagation/operators.go:54:37:     from propagation.concat5Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.a + propagation.b + propagation.c + propagation.d + propagation.e) (call parameter) at ./iast/propagation/operators.go:55:22
+./iast/propagation/operators.go:55:45: propagation.a + propagation.b + propagation.c + propagation.d + propagation.e escapes to heap in Concat5[go.shape.string]:
+./iast/propagation/operators.go:55:45:   flow: propagation.~r0 ← &{storage for propagation.a + propagation.b + propagation.c + propagation.d + propagation.e}:
+./iast/propagation/operators.go:55:45:     from propagation.a + propagation.b + propagation.c + propagation.d + propagation.e (spill) at ./iast/propagation/operators.go:55:45
+./iast/propagation/operators.go:55:45:     from propagation.concat5Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.a + propagation.b + propagation.c + propagation.d + propagation.e) (call parameter) at ./iast/propagation/operators.go:55:22
+./iast/propagation/operators.go:55:45:     from return propagation.concat5Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.a + propagation.b + propagation.c + propagation.d + propagation.e) (return) at ./iast/propagation/operators.go:55:2
+./iast/propagation/operators.go:55:45: propagation.a + propagation.b + propagation.c + propagation.d + propagation.e escapes to heap
+./iast/propagation/operators.go:54:25: parameter propagation.a leaks to {heap} for Concat5[string] with derefs=0:
+./iast/propagation/operators.go:54:25:   flow: propagation.a ← propagation.a:
+./iast/propagation/operators.go:54:25:     from propagation..dict, propagation.a, propagation.b, propagation.c, propagation.d, propagation.e := &propagation..dict.Concat5[string], propagation.a, propagation.b, propagation.c, propagation.d, propagation.e (assign-pair) at ./iast/propagation/operators.go:54:6
+./iast/propagation/operators.go:54:25:   flow: {heap} ← propagation.a:
+./iast/propagation/operators.go:54:25:     from propagation.concat5Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.a + propagation.b + propagation.c + propagation.d + propagation.e) (call parameter) at ./iast/propagation/operators.go:54:6
+./iast/propagation/operators.go:54:28: parameter propagation.b leaks to {heap} for Concat5[string] with derefs=0:
+./iast/propagation/operators.go:54:28:   flow: propagation.b ← propagation.b:
+./iast/propagation/operators.go:54:28:     from propagation..dict, propagation.a, propagation.b, propagation.c, propagation.d, propagation.e := &propagation..dict.Concat5[string], propagation.a, propagation.b, propagation.c, propagation.d, propagation.e (assign-pair) at ./iast/propagation/operators.go:54:6
+./iast/propagation/operators.go:54:28:   flow: {heap} ← propagation.b:
+./iast/propagation/operators.go:54:28:     from propagation.concat5Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.a + propagation.b + propagation.c + propagation.d + propagation.e) (call parameter) at ./iast/propagation/operators.go:54:6
+./iast/propagation/operators.go:54:31: parameter propagation.c leaks to {heap} for Concat5[string] with derefs=0:
+./iast/propagation/operators.go:54:31:   flow: propagation.c ← propagation.c:
+./iast/propagation/operators.go:54:31:     from propagation..dict, propagation.a, propagation.b, propagation.c, propagation.d, propagation.e := &propagation..dict.Concat5[string], propagation.a, propagation.b, propagation.c, propagation.d, propagation.e (assign-pair) at ./iast/propagation/operators.go:54:6
+./iast/propagation/operators.go:54:31:   flow: {heap} ← propagation.c:
+./iast/propagation/operators.go:54:31:     from propagation.concat5Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.a + propagation.b + propagation.c + propagation.d + propagation.e) (call parameter) at ./iast/propagation/operators.go:54:6
+./iast/propagation/operators.go:54:34: parameter propagation.d leaks to {heap} for Concat5[string] with derefs=0:
+./iast/propagation/operators.go:54:34:   flow: propagation.d ← propagation.d:
+./iast/propagation/operators.go:54:34:     from propagation..dict, propagation.a, propagation.b, propagation.c, propagation.d, propagation.e := &propagation..dict.Concat5[string], propagation.a, propagation.b, propagation.c, propagation.d, propagation.e (assign-pair) at ./iast/propagation/operators.go:54:6
+./iast/propagation/operators.go:54:34:   flow: {heap} ← propagation.d:
+./iast/propagation/operators.go:54:34:     from propagation.concat5Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.a + propagation.b + propagation.c + propagation.d + propagation.e) (call parameter) at ./iast/propagation/operators.go:54:6
+./iast/propagation/operators.go:54:37: parameter propagation.e leaks to {heap} for Concat5[string] with derefs=0:
+./iast/propagation/operators.go:54:37:   flow: propagation.e ← propagation.e:
+./iast/propagation/operators.go:54:37:     from propagation..dict, propagation.a, propagation.b, propagation.c, propagation.d, propagation.e := &propagation..dict.Concat5[string], propagation.a, propagation.b, propagation.c, propagation.d, propagation.e (assign-pair) at ./iast/propagation/operators.go:54:6
+./iast/propagation/operators.go:54:37:   flow: {heap} ← propagation.e:
+./iast/propagation/operators.go:54:37:     from propagation.concat5Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.a + propagation.b + propagation.c + propagation.d + propagation.e) (call parameter) at ./iast/propagation/operators.go:54:6
+./iast/propagation/operators.go:54:6: propagation.a + propagation.b + propagation.c + propagation.d + propagation.e escapes to heap in Concat5[string]:
+./iast/propagation/operators.go:54:6:   flow: propagation.~r0 ← &{storage for propagation.a + propagation.b + propagation.c + propagation.d + propagation.e}:
+./iast/propagation/operators.go:54:6:     from propagation.a + propagation.b + propagation.c + propagation.d + propagation.e (spill) at ./iast/propagation/operators.go:54:6
+./iast/propagation/operators.go:54:6:     from propagation.concat5Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.a + propagation.b + propagation.c + propagation.d + propagation.e) (call parameter) at ./iast/propagation/operators.go:54:6
+./iast/propagation/operators.go:54:6:     from propagation.~r0 = propagation.concat5Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.a + propagation.b + propagation.c + propagation.d + propagation.e) (assign-pair) at ./iast/propagation/operators.go:54:6
+./iast/propagation/operators.go:54:6:   flow: propagation.~r0 ← propagation.~r0:
+./iast/propagation/operators.go:54:6:     from return propagation.~r0 (return) at ./iast/propagation/operators.go:54:6
+./iast/propagation/operators.go:54:6: propagation.a + propagation.b + propagation.c + propagation.d + propagation.e escapes to heap
+./iast/propagation/operators.go:42:25: parameter propagation.a leaks to {heap} for Concat4[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:42:25:   flow: {heap} ← propagation.a:
+./iast/propagation/operators.go:42:25:     from propagation.concat4Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.a + propagation.b + propagation.c + propagation.d) (call parameter) at ./iast/propagation/operators.go:43:22
+./iast/propagation/operators.go:42:28: parameter propagation.b leaks to {heap} for Concat4[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:42:28:   flow: {heap} ← propagation.b:
+./iast/propagation/operators.go:42:28:     from propagation.concat4Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.a + propagation.b + propagation.c + propagation.d) (call parameter) at ./iast/propagation/operators.go:43:22
+./iast/propagation/operators.go:42:31: parameter propagation.c leaks to {heap} for Concat4[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:42:31:   flow: {heap} ← propagation.c:
+./iast/propagation/operators.go:42:31:     from propagation.concat4Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.a + propagation.b + propagation.c + propagation.d) (call parameter) at ./iast/propagation/operators.go:43:22
+./iast/propagation/operators.go:42:34: parameter propagation.d leaks to {heap} for Concat4[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:42:34:   flow: {heap} ← propagation.d:
+./iast/propagation/operators.go:42:34:     from propagation.concat4Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.a + propagation.b + propagation.c + propagation.d) (call parameter) at ./iast/propagation/operators.go:43:22
+./iast/propagation/operators.go:43:40: propagation.a + propagation.b + propagation.c + propagation.d escapes to heap in Concat4[go.shape.string]:
+./iast/propagation/operators.go:43:40:   flow: propagation.~r0 ← &{storage for propagation.a + propagation.b + propagation.c + propagation.d}:
+./iast/propagation/operators.go:43:40:     from propagation.a + propagation.b + propagation.c + propagation.d (spill) at ./iast/propagation/operators.go:43:40
+./iast/propagation/operators.go:43:40:     from propagation.concat4Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.a + propagation.b + propagation.c + propagation.d) (call parameter) at ./iast/propagation/operators.go:43:22
+./iast/propagation/operators.go:43:40:     from return propagation.concat4Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.a + propagation.b + propagation.c + propagation.d) (return) at ./iast/propagation/operators.go:43:2
+./iast/propagation/operators.go:43:40: propagation.a + propagation.b + propagation.c + propagation.d escapes to heap
+./iast/propagation/operators.go:42:25: parameter propagation.a leaks to {heap} for Concat4[string] with derefs=0:
+./iast/propagation/operators.go:42:25:   flow: propagation.a ← propagation.a:
+./iast/propagation/operators.go:42:25:     from propagation..dict, propagation.a, propagation.b, propagation.c, propagation.d := &propagation..dict.Concat4[string], propagation.a, propagation.b, propagation.c, propagation.d (assign-pair) at ./iast/propagation/operators.go:42:6
+./iast/propagation/operators.go:42:25:   flow: {heap} ← propagation.a:
+./iast/propagation/operators.go:42:25:     from propagation.concat4Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.a + propagation.b + propagation.c + propagation.d) (call parameter) at ./iast/propagation/operators.go:42:6
+./iast/propagation/operators.go:42:28: parameter propagation.b leaks to {heap} for Concat4[string] with derefs=0:
+./iast/propagation/operators.go:42:28:   flow: propagation.b ← propagation.b:
+./iast/propagation/operators.go:42:28:     from propagation..dict, propagation.a, propagation.b, propagation.c, propagation.d := &propagation..dict.Concat4[string], propagation.a, propagation.b, propagation.c, propagation.d (assign-pair) at ./iast/propagation/operators.go:42:6
+./iast/propagation/operators.go:42:28:   flow: {heap} ← propagation.b:
+./iast/propagation/operators.go:42:28:     from propagation.concat4Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.a + propagation.b + propagation.c + propagation.d) (call parameter) at ./iast/propagation/operators.go:42:6
+./iast/propagation/operators.go:42:31: parameter propagation.c leaks to {heap} for Concat4[string] with derefs=0:
+./iast/propagation/operators.go:42:31:   flow: propagation.c ← propagation.c:
+./iast/propagation/operators.go:42:31:     from propagation..dict, propagation.a, propagation.b, propagation.c, propagation.d := &propagation..dict.Concat4[string], propagation.a, propagation.b, propagation.c, propagation.d (assign-pair) at ./iast/propagation/operators.go:42:6
+./iast/propagation/operators.go:42:31:   flow: {heap} ← propagation.c:
+./iast/propagation/operators.go:42:31:     from propagation.concat4Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.a + propagation.b + propagation.c + propagation.d) (call parameter) at ./iast/propagation/operators.go:42:6
+./iast/propagation/operators.go:42:34: parameter propagation.d leaks to {heap} for Concat4[string] with derefs=0:
+./iast/propagation/operators.go:42:34:   flow: propagation.d ← propagation.d:
+./iast/propagation/operators.go:42:34:     from propagation..dict, propagation.a, propagation.b, propagation.c, propagation.d := &propagation..dict.Concat4[string], propagation.a, propagation.b, propagation.c, propagation.d (assign-pair) at ./iast/propagation/operators.go:42:6
+./iast/propagation/operators.go:42:34:   flow: {heap} ← propagation.d:
+./iast/propagation/operators.go:42:34:     from propagation.concat4Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.a + propagation.b + propagation.c + propagation.d) (call parameter) at ./iast/propagation/operators.go:42:6
+./iast/propagation/operators.go:42:6: propagation.a + propagation.b + propagation.c + propagation.d escapes to heap in Concat4[string]:
+./iast/propagation/operators.go:42:6:   flow: propagation.~r0 ← &{storage for propagation.a + propagation.b + propagation.c + propagation.d}:
+./iast/propagation/operators.go:42:6:     from propagation.a + propagation.b + propagation.c + propagation.d (spill) at ./iast/propagation/operators.go:42:6
+./iast/propagation/operators.go:42:6:     from propagation.concat4Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.a + propagation.b + propagation.c + propagation.d) (call parameter) at ./iast/propagation/operators.go:42:6
+./iast/propagation/operators.go:42:6:     from propagation.~r0 = propagation.concat4Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.a + propagation.b + propagation.c + propagation.d) (assign-pair) at ./iast/propagation/operators.go:42:6
+./iast/propagation/operators.go:42:6:   flow: propagation.~r0 ← propagation.~r0:
+./iast/propagation/operators.go:42:6:     from return propagation.~r0 (return) at ./iast/propagation/operators.go:42:6
+./iast/propagation/operators.go:42:6: propagation.a + propagation.b + propagation.c + propagation.d escapes to heap
+./iast/propagation/operators.go:217:43: parameter propagation.value leaks to propagation.~r0 for StringSliceLow[string,int] with derefs=0:
+./iast/propagation/operators.go:217:43:   flow: propagation.~r0 ← propagation.value:
+./iast/propagation/operators.go:217:43:     from propagation.StringSliceLow[go.shape.string,go.shape.int](&propagation..dict.StringSliceLow[string,int], propagation.value, propagation.low) (call parameter) at ./iast/propagation/operators.go:217:6
+./iast/propagation/operators.go:217:43:     from return propagation.StringSliceLow[go.shape.string,go.shape.int](&propagation..dict.StringSliceLow[string,int], propagation.value, propagation.low) (return) at ./iast/propagation/operators.go:217:6
+./iast/propagation/operators.go:267:43: parameter propagation.value leaks to propagation.~r0 for BytesSliceHigh[[]uint8,int] with derefs=0:
+./iast/propagation/operators.go:267:43:   flow: propagation.~r0 ← propagation.value:
+./iast/propagation/operators.go:267:43:     from propagation.BytesSliceHigh[go.shape.[]uint8,go.shape.int](&propagation..dict.BytesSliceHigh[[]uint8,int], propagation.value, propagation.high) (call parameter) at ./iast/propagation/operators.go:267:6
+./iast/propagation/operators.go:267:43:     from return propagation.BytesSliceHigh[go.shape.[]uint8,go.shape.int](&propagation..dict.BytesSliceHigh[[]uint8,int], propagation.value, propagation.high) (return) at ./iast/propagation/operators.go:267:6
+./iast/propagation/operators.go:30:25: parameter propagation.a leaks to {heap} for Concat3[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:30:25:   flow: {heap} ← propagation.a:
+./iast/propagation/operators.go:30:25:     from propagation.concat3Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.a + propagation.b + propagation.c) (call parameter) at ./iast/propagation/operators.go:31:22
+./iast/propagation/operators.go:30:28: parameter propagation.b leaks to {heap} for Concat3[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:30:28:   flow: {heap} ← propagation.b:
+./iast/propagation/operators.go:30:28:     from propagation.concat3Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.a + propagation.b + propagation.c) (call parameter) at ./iast/propagation/operators.go:31:22
+./iast/propagation/operators.go:30:31: parameter propagation.c leaks to {heap} for Concat3[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:30:31:   flow: {heap} ← propagation.c:
+./iast/propagation/operators.go:30:31:     from propagation.concat3Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.a + propagation.b + propagation.c) (call parameter) at ./iast/propagation/operators.go:31:22
+./iast/propagation/operators.go:31:35: propagation.a + propagation.b + propagation.c escapes to heap in Concat3[go.shape.string]:
+./iast/propagation/operators.go:31:35:   flow: propagation.~r0 ← &{storage for propagation.a + propagation.b + propagation.c}:
+./iast/propagation/operators.go:31:35:     from propagation.a + propagation.b + propagation.c (spill) at ./iast/propagation/operators.go:31:35
+./iast/propagation/operators.go:31:35:     from propagation.concat3Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.a + propagation.b + propagation.c) (call parameter) at ./iast/propagation/operators.go:31:22
+./iast/propagation/operators.go:31:35:     from return propagation.concat3Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.a + propagation.b + propagation.c) (return) at ./iast/propagation/operators.go:31:2
+./iast/propagation/operators.go:31:35: propagation.a + propagation.b + propagation.c escapes to heap
+./iast/propagation/operators.go:30:25: parameter propagation.a leaks to {heap} for Concat3[string] with derefs=0:
+./iast/propagation/operators.go:30:25:   flow: propagation.a ← propagation.a:
+./iast/propagation/operators.go:30:25:     from propagation..dict, propagation.a, propagation.b, propagation.c := &propagation..dict.Concat3[string], propagation.a, propagation.b, propagation.c (assign-pair) at ./iast/propagation/operators.go:30:6
+./iast/propagation/operators.go:30:25:   flow: {heap} ← propagation.a:
+./iast/propagation/operators.go:30:25:     from propagation.concat3Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.a + propagation.b + propagation.c) (call parameter) at ./iast/propagation/operators.go:30:6
+./iast/propagation/operators.go:30:28: parameter propagation.b leaks to {heap} for Concat3[string] with derefs=0:
+./iast/propagation/operators.go:30:28:   flow: propagation.b ← propagation.b:
+./iast/propagation/operators.go:30:28:     from propagation..dict, propagation.a, propagation.b, propagation.c := &propagation..dict.Concat3[string], propagation.a, propagation.b, propagation.c (assign-pair) at ./iast/propagation/operators.go:30:6
+./iast/propagation/operators.go:30:28:   flow: {heap} ← propagation.b:
+./iast/propagation/operators.go:30:28:     from propagation.concat3Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.a + propagation.b + propagation.c) (call parameter) at ./iast/propagation/operators.go:30:6
+./iast/propagation/operators.go:30:31: parameter propagation.c leaks to {heap} for Concat3[string] with derefs=0:
+./iast/propagation/operators.go:30:31:   flow: propagation.c ← propagation.c:
+./iast/propagation/operators.go:30:31:     from propagation..dict, propagation.a, propagation.b, propagation.c := &propagation..dict.Concat3[string], propagation.a, propagation.b, propagation.c (assign-pair) at ./iast/propagation/operators.go:30:6
+./iast/propagation/operators.go:30:31:   flow: {heap} ← propagation.c:
+./iast/propagation/operators.go:30:31:     from propagation.concat3Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.a + propagation.b + propagation.c) (call parameter) at ./iast/propagation/operators.go:30:6
+./iast/propagation/operators.go:30:6: propagation.a + propagation.b + propagation.c escapes to heap in Concat3[string]:
+./iast/propagation/operators.go:30:6:   flow: propagation.~r0 ← &{storage for propagation.a + propagation.b + propagation.c}:
+./iast/propagation/operators.go:30:6:     from propagation.a + propagation.b + propagation.c (spill) at ./iast/propagation/operators.go:30:6
+./iast/propagation/operators.go:30:6:     from propagation.concat3Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.a + propagation.b + propagation.c) (call parameter) at ./iast/propagation/operators.go:30:6
+./iast/propagation/operators.go:30:6:     from propagation.~r0 = propagation.concat3Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.a + propagation.b + propagation.c) (assign-pair) at ./iast/propagation/operators.go:30:6
+./iast/propagation/operators.go:30:6:   flow: propagation.~r0 ← propagation.~r0:
+./iast/propagation/operators.go:30:6:     from return propagation.~r0 (return) at ./iast/propagation/operators.go:30:6
+./iast/propagation/operators.go:30:6: propagation.a + propagation.b + propagation.c escapes to heap
+perfsample/sample.go:115: index bounds check elided
+/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/strings/iter.go:89:25: index bounds check elided
+        2.64 real         1.90 user         3.63 sys
+            67469312  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              176086  page reclaims
+                1817  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                  36  messages sent
+                  40  messages received
+                7517  signals received
+                9782  voluntary context switches
+               75974  involuntary context switches
+          5081259413  instructions retired
+          3099322809  cycles elapsed
+            47710904  peak memory footprint

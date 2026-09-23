@@ -1,0 +1,70 @@
+=== RUN   TestWeavingAsymmetry
+--- PASS: TestWeavingAsymmetry (0.00s)
+=== RUN   TestDiffRandom
+    diff_test.go:723: window misses recorded=200, still missing in isolation=0
+    diff_test.go:756: B2S            calls=  32542 taintedIn=  24246 taintedOut=  11923 windowMiss=    0 aliasMismatch=  821 panics=    0
+    diff_test.go:756: B2SSlice       calls=  32573 taintedIn=   9581 taintedOut=      0 windowMiss=    0 aliasMismatch=   28 panics=20023
+    diff_test.go:756: Builder        calls=  32481 taintedIn=  16154 taintedOut=   8254 windowMiss=    0 aliasMismatch=    0 panics=10591
+    diff_test.go:756: Clone          calls=  33174 taintedIn=  24686 taintedOut=  11989 windowMiss=    0 aliasMismatch=    0 panics=    0
+    diff_test.go:756: CloneStale     calls=  33119 taintedIn=  24674 taintedOut=      0 windowMiss=    0 aliasMismatch=    0 panics=    0
+    diff_test.go:756: Concat         calls=  32540 taintedIn=  24206 taintedOut=  85177 windowMiss=    0 aliasMismatch=60598 panics=    0
+    diff_test.go:756: Cut            calls=  33162 taintedIn=  24607 taintedOut=   6462 windowMiss=   18 aliasMismatch=    0 panics=    0
+    diff_test.go:756: CutPrefix      calls=  33105 taintedIn=  24612 taintedOut=   6293 windowMiss=    1 aliasMismatch=    0 panics=    0
+    diff_test.go:756: CutSuffix      calls=  33204 taintedIn=  24674 taintedOut=   6342 windowMiss=    1 aliasMismatch=    0 panics=    0
+    diff_test.go:756: Fields         calls=  33209 taintedIn=  24672 taintedOut=  28140 windowMiss=  283 aliasMismatch=    0 panics=    0
+    diff_test.go:756: FieldsFunc     calls=  33141 taintedIn=  24675 taintedOut=  47207 windowMiss=  507 aliasMismatch=    0 panics=    0
+    diff_test.go:756: FieldsFuncSeq  calls=  33168 taintedIn=  24655 taintedOut=  24353 windowMiss=   83 aliasMismatch=    0 panics=    0
+    diff_test.go:756: FieldsSeq      calls=  33154 taintedIn=  24646 taintedOut=  19167 windowMiss=   88 aliasMismatch=    0 panics=    0
+    diff_test.go:756: Join           calls=  33241 taintedIn=  24701 taintedOut=  48166 windowMiss=    0 aliasMismatch=    0 panics=    0
+    diff_test.go:756: JoinMany       calls=  33071 taintedIn=  24616 taintedOut=  18960 windowMiss=    0 aliasMismatch=    0 panics=    0
+    diff_test.go:756: JoinSplit      calls=  33056 taintedIn=  24628 taintedOut=  15954 windowMiss=    0 aliasMismatch= 6621 panics=    0
+    diff_test.go:756: Lines          calls=  33272 taintedIn=  24772 taintedOut=  13900 windowMiss=   19 aliasMismatch=    0 panics=    0
+    diff_test.go:756: Map            calls=  33158 taintedIn=  24669 taintedOut=  11933 windowMiss=    0 aliasMismatch=    0 panics=    0
+    diff_test.go:756: PathEscape     calls=  32593 taintedIn=  24254 taintedOut=  11799 windowMiss=    0 aliasMismatch=    0 panics=    0
+    diff_test.go:756: PathUnescape   calls=  32492 taintedIn=  24209 taintedOut=   9555 windowMiss=    0 aliasMismatch=    0 panics=    0
+    diff_test.go:756: QueryEscape    calls=  32588 taintedIn=  24266 taintedOut=  11802 windowMiss=    0 aliasMismatch=    0 panics=    0
+    diff_test.go:756: QueryUnescape  calls=  32492 taintedIn=  24192 taintedOut=   9516 windowMiss=    0 aliasMismatch=    0 panics=    0
+    diff_test.go:756: Quote          calls=  32555 taintedIn=  24246 taintedOut=  35409 windowMiss=    0 aliasMismatch=    0 panics=    0
+    diff_test.go:756: Repeat         calls=  33113 taintedIn=  23921 taintedOut=  11307 windowMiss=    0 aliasMismatch=    0 panics=  954
+    diff_test.go:756: Replace        calls=  33089 taintedIn=  24643 taintedOut=  30439 windowMiss=    0 aliasMismatch=    0 panics=    0
+    diff_test.go:756: ReplaceAll     calls=  33124 taintedIn=  24703 taintedOut=  30680 windowMiss=    0 aliasMismatch=    0 panics=    0
+    diff_test.go:756: Replacer       calls=  33147 taintedIn=  24683 taintedOut=  11117 windowMiss=    0 aliasMismatch=    0 panics=    0
+    diff_test.go:756: RoundTripURL   calls=  32465 taintedIn=  24166 taintedOut=  23464 windowMiss=    0 aliasMismatch=    0 panics=    0
+    diff_test.go:756: Slice          calls=  32601 taintedIn=   7384 taintedOut=   3500 windowMiss=    2 aliasMismatch=    0 panics=23057
+    diff_test.go:756: SliceLowHigh   calls=  32541 taintedIn=  17754 taintedOut=  18898 windowMiss=   26 aliasMismatch=    0 panics= 9726
+    diff_test.go:756: Split          calls=  33143 taintedIn=  24662 taintedOut=  28000 windowMiss=   59 aliasMismatch=    0 panics=    0
+    diff_test.go:756: SplitAfter     calls=  33045 taintedIn=  24618 taintedOut=  34817 windowMiss=  160 aliasMismatch=    0 panics=    0
+    diff_test.go:756: SplitAfterN    calls=  33208 taintedIn=  24692 taintedOut=  28045 windowMiss=   31 aliasMismatch=    0 panics=    0
+    diff_test.go:756: SplitAfterSeq  calls=  33114 taintedIn=  24662 taintedOut=  18518 windowMiss=   56 aliasMismatch=    0 panics=    0
+    diff_test.go:756: SplitN         calls=  33128 taintedIn=  24627 taintedOut=  21324 windowMiss=   92 aliasMismatch=    0 panics=    0
+    diff_test.go:756: SplitSeq       calls=  33148 taintedIn=  24673 taintedOut=  33834 windowMiss=  180 aliasMismatch=    0 panics=    0
+    diff_test.go:756: Sprint         calls=  33195 taintedIn=  24673 taintedOut=  52466 windowMiss=    0 aliasMismatch=    0 panics=    0
+    diff_test.go:756: SprintMany     calls=  32461 taintedIn=  24161 taintedOut=  55819 windowMiss=    0 aliasMismatch=    0 panics=    0
+    diff_test.go:756: Sprintf        calls=  33188 taintedIn=  24671 taintedOut=  55590 windowMiss=    0 aliasMismatch=    0 panics=    0
+    diff_test.go:756: Sprintln       calls=  33125 taintedIn=  24678 taintedOut=  21523 windowMiss=    0 aliasMismatch=    0 panics=    0
+    diff_test.go:756: ToLower        calls=  33100 taintedIn=  24638 taintedOut=  11809 windowMiss=    0 aliasMismatch=    0 panics=    0
+    diff_test.go:756: ToTitle        calls=  33169 taintedIn=  24683 taintedOut=  11963 windowMiss=    0 aliasMismatch=    0 panics=    0
+    diff_test.go:756: ToUpper        calls=  33225 taintedIn=  24729 taintedOut=  11999 windowMiss=    0 aliasMismatch=    0 panics=    0
+    diff_test.go:756: ToValidUTF8    calls=  33187 taintedIn=  24706 taintedOut=  24646 windowMiss=    0 aliasMismatch=    0 panics=    0
+    diff_test.go:756: Trim           calls=  33144 taintedIn=  24677 taintedOut=   6037 windowMiss=    6 aliasMismatch=    0 panics=    0
+    diff_test.go:756: TrimFunc       calls=  33245 taintedIn=  24716 taintedOut=  11281 windowMiss=    0 aliasMismatch=    0 panics=    0
+    diff_test.go:756: TrimLeft       calls=  33182 taintedIn=  24648 taintedOut=   6002 windowMiss=    7 aliasMismatch=    0 panics=    0
+    diff_test.go:756: TrimLeftFunc   calls=  33180 taintedIn=  24692 taintedOut=  11252 windowMiss=    1 aliasMismatch=    0 panics=    0
+    diff_test.go:756: TrimPrefix     calls=  33202 taintedIn=  24705 taintedOut=   6365 windowMiss=    1 aliasMismatch=    0 panics=    0
+    diff_test.go:756: TrimRight      calls=  33171 taintedIn=  24695 taintedOut=   6052 windowMiss=    1 aliasMismatch=    0 panics=    0
+    diff_test.go:756: TrimRightFunc  calls=  33204 taintedIn=  24734 taintedOut=  11254 windowMiss=    0 aliasMismatch=    0 panics=    0
+    diff_test.go:756: TrimSpace      calls=  33243 taintedIn=  24715 taintedOut=  12044 windowMiss=    0 aliasMismatch=    0 panics=    0
+    diff_test.go:756: TrimSuffix     calls=  33218 taintedIn=  24709 taintedOut=   6314 windowMiss=    2 aliasMismatch=    0 panics=    0
+    diff_test.go:756: Unquote        calls=  32503 taintedIn=  24193 taintedOut=  11901 windowMiss=    0 aliasMismatch=    0 panics=    0
+--- PASS: TestDiffRandom (35.76s)
+=== RUN   TestTargetedEdges
+    extra_test.go:37: Repeat(v,1): alias=true tainted=true
+    extra_test.go:41: Join([v], ","): woven alias=false native alias=true tainted=true
+    extra_test.go:55: Sprintf(%T)                    result="type=string" tainted=true ranges=1
+    extra_test.go:55: Sprintf(%.0s)                  result="xy" tainted=true ranges=1
+    extra_test.go:55: Sprintf(%[2]s)                 result="clean-literal" tainted=true ranges=1
+    extra_test.go:55: Sprint(Stringer named string)  result="constant-red" tainted=true ranges=1
+    extra_test.go:55: Sprintf(%d, len)               result="14" tainted=false ranges=0
+--- PASS: TestTargetedEdges (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/iast/internal/crashdiff	36.291s

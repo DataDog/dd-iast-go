@@ -1,0 +1,51 @@
+base-race raw captured output (relevant terminal output retained)
+
+=== plain root ===
+$ cd /tmp/ddiast-review/wt/base-race && GOTOOLCHAIN=go1.26.6 go test -race -count=3 -shuffle=on -timeout 25m ./...
+ok  	github.com/DataDog/dd-iast-go/iast/bufio	8.251s
+ok  	github.com/DataDog/dd-iast-go/iast/crypto/cipher	2.796s
+ok  	github.com/DataDog/dd-iast-go/iast/crypto/hash	2.597s
+ok  	github.com/DataDog/dd-iast-go/iast/database/sql	2.833s
+ok  	github.com/DataDog/dd-iast-go/iast/encoding/json	3.662s
+ok  	github.com/DataDog/dd-iast-go/iast/io	3.822s
+ok  	github.com/DataDog/dd-iast-go/iast/net/http	3.361s
+ok  	github.com/DataDog/dd-iast-go/iast/os/exec	5.083s
+ok  	github.com/DataDog/dd-iast-go/iast/propagation	5.490s
+ok  	github.com/DataDog/dd-iast-go/internal/taint/propagation	97.433s
+ok  	github.com/DataDog/dd-iast-go/internal/taint/ranges	17.878s
+ok  	github.com/DataDog/dd-iast-go/internal/taint/request	12.010s
+ok  	github.com/DataDog/dd-iast-go/internal/taint/store	422.184s
+ok  	github.com/DataDog/dd-iast-go/internal/vulnerability	12.177s
+ok  	github.com/DataDog/dd-iast-go/taint	7.855s
+[exit code 0]
+
+=== root Orchestrion ===
+$ cd /tmp/ddiast-review/wt/base-race && GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -race -count=2 -shuffle=on -timeout 25m ./...
+ok  	github.com/DataDog/dd-iast-go/iast/bufio	2.164s
+ok  	github.com/DataDog/dd-iast-go/iast/crypto/cipher	9.054s
+ok  	github.com/DataDog/dd-iast-go/iast/crypto/hash	2.185s
+ok  	github.com/DataDog/dd-iast-go/iast/database/sql	1.820s
+ok  	github.com/DataDog/dd-iast-go/iast/encoding/json	3.211s
+ok  	github.com/DataDog/dd-iast-go/iast/propagation	4.555s
+ok  	github.com/DataDog/dd-iast-go/internal/taint/propagation	13.494s
+ok  	github.com/DataDog/dd-iast-go/internal/taint/ranges	4.363s
+ok  	github.com/DataDog/dd-iast-go/internal/taint/request	4.554s
+ok  	github.com/DataDog/dd-iast-go/internal/taint/store	59.964s
+ok  	github.com/DataDog/dd-iast-go/internal/vulnerability	8.397s
+ok  	github.com/DataDog/dd-iast-go/taint	7.293s
+[exit code 0]
+
+=== instrumented testapps ===
+$ cd /tmp/ddiast-review/wt/base-race/iast/integration/testapp && GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -race -count=2 -shuffle=on -timeout 25m ./...
+ok  	github.com/DataDog/dd-iast-go/testapps/integration	241.271s
+?   	github.com/DataDog/dd-iast-go/testapps/integration/cmd/bootstrap	[no test files]
+?   	github.com/DataDog/dd-iast-go/testapps/integration/cmd/bootstrap.test	[no test files]
+
+$ cd /tmp/ddiast-review/wt/base-race/iast/database/sql/testapp && GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -race -count=2 -shuffle=on -timeout 25m ./...
+ok  	github.com/DataDog/dd-iast-go/testapps/database-sql	2.667s
+?   	github.com/DataDog/dd-iast-go/testapps/database-sql/cmd/bootstrap	[no test files]
+
+$ cd /tmp/ddiast-review/wt/base-race/iast/os/exec/testapp && GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -race -count=2 -shuffle=on -timeout 25m ./...
+ok  	github.com/DataDog/dd-iast-go/testapps/os-exec	19.576s
+?   	github.com/DataDog/dd-iast-go/testapps/os-exec/cmd/bootstrap	[no test files]
+[all testapp commands exit code 0]

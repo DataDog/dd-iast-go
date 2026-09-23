@@ -1,0 +1,68 @@
+[
+  {
+    "id": "store-concurrency-F1",
+    "severity": "High",
+    "category": "cross-request",
+    "location": "internal/taint/store/owner.go:20-60,127-129,131-149; binding.go:77-108; writer.go:117-335",
+    "title": "Slot reuse lets a finished request's handle write bindings or writer state into the next request",
+    "claim": "Acquire recycles a Dead slot (generation.Add then state.Store(Active)) without lifecycleMu, and alive() loads generation and state separately. A stale handle can therefore pass beginWrite while the slot is being reused, and BindObject*/UpdateWriter/AdoptBufferWriter/TruncateWriter/ResetWriter, which never re-check, publish the old request's objects and source IDs into the successor. The successor's source table then resolves those IDs, giving the wrong source or a false positive.",
+    "evidence_path": ".omo/review/evidence/store-concurrency/stale-bind-natural.txt",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 REVIEW_STRESS=60s go test -run TestReviewStaleHandleBindAfterSlotReuse -count=1 -v ./internal/taint/store/ (harness: evidence/store-concurrency/zz_review_concurrency_test.go, unmodified code); deterministic consequence: evidence/store-concurrency/stale-handle-seam.txt",
+    "needs_repro": false
+  },
+  {
+    "id": "store-concurrency-F2",
+    "severity": "Low",
+    "category": "race",
+    "location": "internal/taint/store/lookup.go:152-195",
+    "title": "The same load-order gap lets Lookup build an Entry that mixes two owner generations",
+    "claim": "Lookup checks generation and then state under RLock. If Acquire runs between the two loads, the successor's root with the same {rootID,rootGen} is copied and paired with the successor's OwnerID and the old OwnerGen. Entry.Handle and copySources currently reject this Entry.",
+    "evidence_path": null,
+    "repro_command": null,
+    "needs_repro": true
+  },
+  {
+    "id": "store-concurrency-F3",
+    "severity": "Low",
+    "category": "race",
+    "location": "internal/taint/store/value.go:172-185; mutation.go:88-97",
+    "title": "A rebind racing a mutation claim undercounts value counters and can close the != 0 fast gates",
+    "claim": "claimMutation(R1), run between putWindow's reserve on R2 and its release on R1, subtracts the key from values while R2 keeps it uncounted, so values can read 0 with live taint until Finish. This is latent: PublishBytesMutation has no production caller.",
+    "evidence_path": ".omo/review/evidence/store-concurrency/rebind-drift-seam.txt",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 go test -race -run TestReviewSeamRebindMutationDrift -count=1 -v ./internal/taint/store/ (seam copy; diff in evidence)",
+    "needs_repro": false
+  },
+  {
+    "id": "store-concurrency-F4",
+    "severity": "Low",
+    "category": "ci",
+    "location": "internal/taint/store/store.go:63-181; binding.go:38-44; writer.go:36-43",
+    "title": "No +checklocks: field annotations, so the CI checklocks run verifies nothing in the store",
+    "claim": "None of the mutex-guarded fields (roots, rootFree, writers, writerCount, binding table, shard slots, overflow free list) are annotated, so go tool checklocks passes trivially and the +checklocksforce comments are inert.",
+    "evidence_path": ".omo/review/evidence/store-concurrency/existing-race-50-and-static.txt",
+    "repro_command": "grep -c '+checklocks:' internal/taint/store/*.go; go tool checklocks ./internal/taint/store/",
+    "needs_repro": false
+  },
+  {
+    "id": "store-concurrency-F5",
+    "severity": "Info",
+    "category": "race",
+    "location": "internal/taint/store/owner.go:158-163",
+    "title": "Stale Finish has the same check-then-act shape, but no production path reaches it",
+    "claim": "The generation check and the state CAS are not atomic together. In production each *Owner is finished at most once (request/owner.go:269-270 uses Swap(nil)), so a stale Finish cannot reach a reused slot.",
+    "evidence_path": null,
+    "repro_command": null,
+    "needs_repro": true
+  },
+  {
+    "id": "store-concurrency-F6",
+    "severity": "Info",
+    "category": "perf",
+    "location": "internal/taint/store/owner.go:182-203; overflow.go:24",
+    "title": "Finish holds the process-wide overflowMu across its 512-root scan",
+    "claim": "Other requests' blocking freeOverflow calls (rollbackRoot, PublishBytesMutation) wait for the whole scan. The wait is bounded and cannot deadlock, but it goes against the drop-rather-than-block policy.",
+    "evidence_path": null,
+    "repro_command": null,
+    "needs_repro": false
+  }
+]

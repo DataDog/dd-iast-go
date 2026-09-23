@@ -1,0 +1,35 @@
+Review evidence: coverage tooling checks
+
+Private copy:
+  /tmp/ddiast-review/wt/light-ci
+
+Commands and captured results:
+
+  go test -timeout 15m ./.github
+  exit=0
+  ok github.com/DataDog/dd-iast-go/.github (cached)
+
+  In iast/database/sql/testapp, run the workflow's nested-module coverage
+  package construction and:
+  go tool orchestrion go test -timeout 15m -run '^$' -shuffle=on \
+    -covermode=atomic "-coverpkg=$coverage_packages" \
+    -coverprofile=/tmp/light-ci-nested-cover.txt ./...
+  exit=0
+  root coverage packages=30
+  ok github.com/DataDog/dd-iast-go/testapps/database-sql 1.031s \
+    coverage: 1.2% of statements in github.com/DataDog/dd-iast-go/iast/bufio, ...
+  ? github.com/DataDog/dd-iast-go/testapps/database-sql/cmd/bootstrap \
+    [no test files]
+
+The Go tool emitted warnings for root package patterns not imported by this
+test application; the nested command succeeded and included coverage for root
+packages actually linked into its test binaries.
+
+The CI workflow scans for `go.mod`, pruning dot-directories and `vendor`, and
+the repository has the root module plus four nested modules:
+`iast/database/sql/testapp`, `iast/os/exec/testapp`,
+`iast/integration/testapp`, and `benchmarks/overhead`.
+The fuzz targets named in CI exist in the inspected test files:
+`FuzzCanonicalize`, `FuzzSliceAndCopy`,
+`FuzzEngineSequence`, and `FuzzOwnerLifecycle`.
+The four fuzz campaigns themselves were not run for this review.

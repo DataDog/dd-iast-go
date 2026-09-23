@@ -1,0 +1,11 @@
+Command:
+cd /tmp/ddiast-review/wt/fx-sink-redaction-source-F2 && env -u DD_IAST_ENABLED -u DD_IAST_REQUEST_SAMPLING -u DD_IAST_MAX_CONCURRENT_REQUESTS -u DD_IAST_REDACTION_ENABLED -u DD_IAST_REDACTION_NAME_PATTERN -u DD_IAST_REDACTION_VALUE_PATTERN -u DD_IAST_REDACTION_KEYS_REGEXP -u DD_IAST_REDACTION_VALUES_REGEXP GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 go test ./internal/taint/redaction -run '^TestIndependent_HTTPQuerySensitiveKeyLeakedInMsgpack$' -count=1 -v -timeout 15m
+
+Output (expected reproducer failure, exit code 1):
+=== RUN   TestIndependent_HTTPQuerySensitiveKeyLeakedInMsgpack
+    fx_source_name_leak_test.go:29: defaults: redaction=true sampling=30 sensitive_name=true
+    fx_source_name_leak_test.go:85: LEAK: MessagePack payload contains unchanged sensitive HTTP query name: {"sources":[{"origin":"http.request.parameter","name":"token:abcdefghijklm","pattern":"abcdefgh","redacted":true}],"vulnerabilities":[{"type":"SQL_INJECTION","hash":0,"evidence":{"valueParts":[{"pattern":"abcdefgh","redacted":true,"source":0}]}}]}
+--- FAIL: TestIndependent_HTTPQuerySensitiveKeyLeakedInMsgpack (0.00s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/redaction	0.837s
+FAIL

@@ -1,0 +1,10 @@
+$ cd /tmp/ddiast-review/wt/fx-hooks-compile-matrix-F1/appb && export GOFLAGS=-p=4 GOPROXY=off GOTOOLCHAIN=go1.26.6; timeout 600 go mod tidy 2>&1|tail -5; go list -m github.com/DataDog/orchestrion; echo '--- go get orchestrion@v1.13.0 (latest release)'; GOFLAGS=-mod=mod timeout 300 go get github.com/DataDog/orchestrion@v1.13.0 2>&1; go list -m github.com/DataDog/orchestrion; timeout 600 go tool orchestrion go build -o /dev/null . ; echo EXIT=$?
+[rc=0]
+github.com/DataDog/orchestrion v1.12.2-0.20260828141217-23afa71d6dcb
+--- go get orchestrion@v1.13.0 (latest release)
+go: upgraded github.com/DataDog/orchestrion v1.12.2-0.20260828141217-23afa71d6dcb => v1.13.0
+github.com/DataDog/orchestrion v1.13.0
+EXIT=1
+loading injector configuration: in "github.com/DataDog/dd-iast-go" imported from "/private/tmp/ddiast-review/wt/fx-hooks-compile-matrix-F1/appb/orchestrion.tool.go": in "github.com/DataDog/dd-iast-go/iast/propagation" imported from "/tmp/ddiast-review/wt/fx-hooks-compile-matrix-F1/ddiast/orchestrion.tool.go": yaml.Decode "/tmp/ddiast-review/wt/fx-hooks-compile-matrix-F1/ddiast/iast/propagation/orchestrion.yml": unknown injection point type "string-concat"
+go: error obtaining buildID for go tool compile: exit status 255
+exit status 1

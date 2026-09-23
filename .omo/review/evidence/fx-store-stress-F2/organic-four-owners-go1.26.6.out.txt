@@ -1,0 +1,6 @@
+exit=0
+=== RUN   TestReviewOrganicRollingSaturation
+    wedge_review_test.go:242: rolling: steps=200 owners=4 worstOcc=126/128 maxFullShards=0 firstFullStep=-1 wedgedAfterDrain=0 stats={Compactions:7003 CompactAborts:0 OverflowFree:256 Tombstones:2359 MaxTombstones:30 ProbeCount:817990 AverageProbe:5.40663333292583 MaxProbe:64}
+--- PASS: TestReviewOrganicRollingSaturation (0.34s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/store	0.796s

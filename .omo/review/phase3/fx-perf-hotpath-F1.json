@@ -1,0 +1,13 @@
+[
+  {
+    "id": "perf-hotpath-F1",
+    "verdict": "CONFIRMED",
+    "original_severity": "High",
+    "adjusted_severity": "Medium",
+    "reachable_default": true,
+    "documented_limitation": false,
+    "reason": "Independent plain-versus-woven Go 1.26.6 tests reproduce an extra 32 bytes and one allocation for each of five escaping lazy string iterators with default configuration and no active owner. SplitSeq rises from 64 B/2 allocations to 96 B/3 allocations; immediate consumption remains allocation-free and returned values match. This confirms avoidable bounded allocation overhead, not the several-fold slowdown required for High. Go 1.27.0 direct-wrapper measurements agree, but its aggregate woven build is blocked by unrelated encoding/json Decoder-field incompatibility.",
+    "evidence_path": ".omo/review/evidence/fx-perf-hotpath-F1/woven-test-1.26.6.txt",
+    "repro_command": "ROOT='/Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go'; WT='/tmp/ddiast-review/wt/fx-perf-hotpath-F1'; E=\"$ROOT/.omo/review/evidence/fx-perf-hotpath-F1\"; test ! -e \"$WT\" && mkdir -p /tmp/ddiast-review/wt && rsync -a --exclude .git --exclude .omo \"$ROOT/\" \"$WT/\" && mkdir -p \"$WT/iast/seqreview\" && cp \"$E/sequence.go\" \"$E/sequence_test.go\" \"$WT/iast/seqreview/\" && cd \"$WT\" && env -u DD_IAST_ENABLED -u DD_IAST_REQUEST_SAMPLING -u DD_IAST_MAX_CONCURRENT_REQUESTS GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 timeout 900 /usr/bin/time -l go tool orchestrion go test -v -run 'TestNoOwnerAllocationParity|TestSequenceValues' -count=1 -timeout=15m ./iast/seqreview"
+  }
+]

@@ -1,0 +1,36 @@
+$ go test -count=1 -v -run "TestReviewParity" ./iast/io/
+exit=0
+=== RUN   TestReviewParity
+    zz_review_repro_test.go:152: PARITY bind=false n+err len=6 cap=512 nil=false sha=bef57ec7f53a err=custom
+    zz_review_repro_test.go:152: PARITY bind=false n+eof len=6 cap=512 nil=false sha=bef57ec7f53a err=<nil>
+    zz_review_repro_test.go:152: PARITY bind=false onebyte len=18 cap=512 nil=false sha=e1af5d7d1bb0 err=<nil>
+    zz_review_repro_test.go:152: PARITY bind=false big len=102400 cap=106496 nil=false sha=e5a14ed6961c err=<nil>
+    zz_review_repro_test.go:152: PARITY bind=false limit len=70000 cap=73728 nil=false sha=521c44d64afc err=<nil>
+    zz_review_repro_test.go:152: PARITY bind=false limit0 len=0 cap=512 nil=false sha=e3b0c44298fc err=<nil>
+    zz_review_repro_test.go:152: PARITY bind=false limitneg len=0 cap=512 nil=false sha=e3b0c44298fc err=<nil>
+    zz_review_repro_test.go:152: PARITY bind=false multi-nil len=0 cap=512 nil=false sha=e3b0c44298fc err=<nil>
+    zz_review_repro_test.go:152: PARITY bind=false multi len=4 cap=512 nil=false sha=225637ee5f95 err=custom
+    zz_review_repro_test.go:152: PARITY bind=false tee len=7 cap=512 nil=false sha=b590a2232e6b err=<nil>
+    zz_review_repro_test.go:152: PARITY bind=false bufio16 len=102400 cap=106496 nil=false sha=e5a14ed6961c err=<nil>
+    zz_review_repro_test.go:152: PARITY bind=false bufio-self len=4 cap=512 nil=false sha=06c604b332b3 err=<nil>
+    zz_review_repro_test.go:155: PARITY bind=false panic recovered=reader-panic
+    zz_review_repro_test.go:159: PARITY bind=false nilreader recovered=true
+    zz_review_repro_test.go:165: PARITY bind=false peek="lin"/<nil> rs="line1\n"/<nil> peekTainted=false rsTainted=false
+    zz_review_repro_test.go:152: PARITY bind=true n+err len=6 cap=512 nil=false sha=bef57ec7f53a err=custom
+    zz_review_repro_test.go:152: PARITY bind=true n+eof len=6 cap=512 nil=false sha=bef57ec7f53a err=<nil>
+    zz_review_repro_test.go:152: PARITY bind=true onebyte len=18 cap=512 nil=false sha=e1af5d7d1bb0 err=<nil>
+    zz_review_repro_test.go:152: PARITY bind=true big len=102400 cap=106496 nil=false sha=e5a14ed6961c err=<nil>
+    zz_review_repro_test.go:152: PARITY bind=true limit len=70000 cap=73728 nil=false sha=521c44d64afc err=<nil>
+    zz_review_repro_test.go:152: PARITY bind=true limit0 len=0 cap=512 nil=false sha=e3b0c44298fc err=<nil>
+    zz_review_repro_test.go:152: PARITY bind=true limitneg len=0 cap=512 nil=false sha=e3b0c44298fc err=<nil>
+    zz_review_repro_test.go:152: PARITY bind=true multi-nil len=0 cap=512 nil=false sha=e3b0c44298fc err=<nil>
+    zz_review_repro_test.go:152: PARITY bind=true multi len=4 cap=512 nil=false sha=225637ee5f95 err=custom
+    zz_review_repro_test.go:152: PARITY bind=true tee len=7 cap=512 nil=false sha=b590a2232e6b err=<nil>
+    zz_review_repro_test.go:152: PARITY bind=true bufio16 len=102400 cap=106496 nil=false sha=e5a14ed6961c err=<nil>
+    zz_review_repro_test.go:152: PARITY bind=true bufio-self len=4 cap=512 nil=false sha=06c604b332b3 err=<nil>
+    zz_review_repro_test.go:155: PARITY bind=true panic recovered=reader-panic
+    zz_review_repro_test.go:159: PARITY bind=true nilreader recovered=true
+    zz_review_repro_test.go:165: PARITY bind=true peek="lin"/<nil> rs="line1\n"/<nil> peekTainted=false rsTainted=false
+--- PASS: TestReviewParity (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/iast/io	0.475s

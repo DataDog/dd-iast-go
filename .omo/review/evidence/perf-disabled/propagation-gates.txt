@@ -1,0 +1,49 @@
+Disabled command:
+GOTOOLCHAIN=go1.26.6 go test -run '^$' -bench '^BenchmarkDisabledPropagationGates$' -benchmem -benchtime=100000x -cpu=1
+
+goos: darwin
+goarch: arm64
+pkg: github.com/DataDog/dd-iast-go/benchmarks/overhead
+cpu: Apple M4 Max
+BenchmarkDisabledPropagationGates/named-window   100000  7.458 ns/op  0 B/op  0 allocs/op
+BenchmarkDisabledPropagationGates/operator-slice 100000  3.066 ns/op  0 B/op  0 allocs/op
+BenchmarkDisabledPropagationGates/writer-state   100000  2.711 ns/op  0 B/op  0 allocs/op
+PASS
+ok      github.com/DataDog/dd-iast-go/benchmarks/overhead  0.395s
+
+Sampled-out command:
+GOTOOLCHAIN=go1.26.6 go test -run '^$' -bench '^BenchmarkSampledOutPropagationGates$' -benchmem -benchtime=100000x -cpu=1
+
+goos: darwin
+goarch: arm64
+pkg: github.com/DataDog/dd-iast-go/benchmarks/overhead
+cpu: Apple M4 Max
+BenchmarkSampledOutPropagationGates/named-window   100000  7.003 ns/op  0 B/op  0 allocs/op
+BenchmarkSampledOutPropagationGates/operator-slice 100000  4.892 ns/op  0 B/op  0 allocs/op
+BenchmarkSampledOutPropagationGates/writer-state   100000  3.056 ns/op  0 B/op  0 allocs/op
+PASS
+ok      github.com/DataDog/dd-iast-go/benchmarks/overhead  0.412s
+
+Disabled formatter comparison:
+GOTOOLCHAIN=go1.26.6 go test -run '^$' -bench '^BenchmarkDisabledPropagationGates/(format-control|format-hook)$' -benchmem -benchtime=100000x -cpu=1
+
+BenchmarkDisabledPropagationGates/format-control  100000  58.20 ns/op  16 B/op  1 allocs/op
+BenchmarkDisabledPropagationGates/format-hook     100000  58.60 ns/op  16 B/op  1 allocs/op
+
+Disabled lazy-sequence comparison:
+GOTOOLCHAIN=go1.26.6 go test -run '^$' -bench '^BenchmarkDisabledPropagationGates/(sequence-control|sequence-hook)$' -benchmem -benchtime=100000x -cpu=1
+
+BenchmarkDisabledPropagationGates/sequence-control  100000  17.70 ns/op  0 B/op  0 allocs/op
+BenchmarkDisabledPropagationGates/sequence-hook     100000  19.99 ns/op  0 B/op  0 allocs/op
+
+Sampled-out formatter comparison:
+GOTOOLCHAIN=go1.26.6 go test -run '^$' -bench '^BenchmarkSampledOutPropagationGates/(format-control|format-hook)$' -benchmem -benchtime=100000x -cpu=1
+
+BenchmarkSampledOutPropagationGates/format-control  100000  62.43 ns/op  16 B/op  1 allocs/op
+BenchmarkSampledOutPropagationGates/format-hook     100000  53.54 ns/op  16 B/op  1 allocs/op
+
+Sampled-out lazy-sequence comparison:
+GOTOOLCHAIN=go1.26.6 go test -run '^$' -bench '^BenchmarkSampledOutPropagationGates/(sequence-control|sequence-hook)$' -benchmem -benchtime=100000x -cpu=1
+
+BenchmarkSampledOutPropagationGates/sequence-control  100000  11.78 ns/op  0 B/op  0 allocs/op
+BenchmarkSampledOutPropagationGates/sequence-hook     100000  15.46 ns/op  0 B/op  0 allocs/op

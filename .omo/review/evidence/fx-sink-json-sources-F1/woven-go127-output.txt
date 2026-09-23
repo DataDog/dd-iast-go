@@ -1,0 +1,26 @@
+$ env GOFLAGS=-p=4 GOTOOLCHAIN=go1.27.0 /usr/bin/time -l go -C /tmp/ddiast-review/wt/fx-sink-json-sources-F1/review-json-f1 tool orchestrion go build .
+# encoding/json
+$WORK/b002/orchestrion/src/encoding/json/<generated>:2: dec.r undefined (type *Decoder has no field or method r)
+$WORK/b002/orchestrion/src/encoding/json/<generated>:2: dec.d undefined (type *Decoder has no field or method d)
+$WORK/b002/orchestrion/src/encoding/json/<generated>:3: dec.d undefined (type *Decoder has no field or method d)
+exit status 2
+exit status 1
+       12.76 real         1.80 user         5.37 sys
+            61603840  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              116445  page reclaims
+                2075  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                  38  messages sent
+                  41  messages received
+                4198  signals received
+               16114  voluntary context switches
+              101596  involuntary context switches
+          6862026170  instructions retired
+          4767866205  cycles elapsed
+            40796760  peak memory footprint
+WOVEN_127_EXIT=1

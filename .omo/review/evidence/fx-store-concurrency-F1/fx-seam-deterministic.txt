@@ -1,0 +1,10 @@
+=== RUN   TestFxSeamStaleBindIntoSuccessor
+    fx_seam_test.go:53: stale handle gen=1 published fresh object; successor request (gen=2, index=0) now owns the binding
+--- PASS: TestFxSeamStaleBindIntoSuccessor (0.00s)
+=== RUN   TestFxSeamStaleWriterProvenanceIntoSuccessor
+    fx_seam_test.go:106: stale handle gen=1 wrote source 7 into successor gen=2 writer state; successor SnapshotWriter returns it as its own provenance
+--- PASS: TestFxSeamStaleWriterProvenanceIntoSuccessor (0.00s)
+=== RUN   TestFxControlSequentialReuseRejected
+--- PASS: TestFxControlSequentialReuseRejected (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/store	1.179s

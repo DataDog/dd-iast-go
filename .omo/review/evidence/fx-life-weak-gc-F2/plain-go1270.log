@@ -1,0 +1,14 @@
+Command:
+GOFLAGS=-p=4 go test -count=1 -timeout 12m -run 'TestReviewFXLate' -v ./internal/spans/
+
+Exit status: 1
+
+=== RUN   TestReviewFXLateChildDoesNotOccupyFinishedRootSlots
+    review_fx_late_bind_test.go:47: BUG: late child spans recreated 2 annotation slot(s) for finished roots
+    review_fx_late_bind_test.go:59: BUG: stale late-child annotations denied a later active request
+    review_fx_late_bind_test.go:67: BUG: finishing late children left 2 finished-root annotation slot(s)
+--- FAIL: TestReviewFXLateChildDoesNotOccupyFinishedRootSlots
+=== RUN   TestReviewFXLateBindCannotCommitToFinishedRoot
+    review_fx_late_bind_test.go:122: BUG: a late child committed a vulnerability into an open annotation whose root had already finished
+--- FAIL: TestReviewFXLateBindCannotCommitToFinishedRoot
+FAIL

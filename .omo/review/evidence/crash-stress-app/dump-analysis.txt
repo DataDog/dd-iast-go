@@ -1,0 +1,146 @@
+== dumps-race/goroutines-3.txt: reason: no progress for 0s, oldest in-flight 10.630940583s
+ goroutines=1412 states=[('select', 508), ('IO wait', 478), ('sync.Mutex.Lock', 366), ('runnable', 31), ('sync.WaitGroup.Wait', 27), ('running', 1), ('chan receive', 1)]
+ goroutines with dd-iast-go frames: 67
+     48 sync.Mutex.Lock :: top=sync.runtime_SemacquireMutex :: internal/spans.trimStore <- internal/spans.BindScope <- internal/spans.BindScopeFromContext
+      9 runnable :: top=atomic. :: internal/taint/store.writerPresent <- internal/taint/store. <- internal/taint/propagation.invalidateBuffer
+      3 sync.Mutex.Lock :: top=sync.runtime_SemacquireMutex :: internal/spans.trimStore <- internal/spans.NewOrphanTaintedSpan <- internal/vulnerability.selectTaintedAnnotation
+      2 runnable :: top=regexp. :: internal/taint/redaction.sourceSensitive <- internal/taint/redaction.BuildWithSensitive <- internal/vulnerability.ReportTainted
+      1 runnable :: top=bytes. :: internal/spans.encodePayloadEvent <- internal/spans.BuildLimitedPayload <- internal/spans.Finished
+      1 runnable :: top=weak.Pointer[...].Value :: internal/spans.releaseDeadAnnotation <- internal/spans.trimStore <- internal/spans.BindScope
+      1 runnable :: top=sync.runtime_SemacquireMutex :: internal/spans.trimStore <- internal/spans.NewOrphanTaintedSpan <- internal/vulnerability.selectTaintedAnnotation
+      1 runnable :: top=atomic. :: internal/taint/store. <- internal/taint/propagation.stringWindowHit <- internal/taint/propagation.StringWindow
+ example trimStore waiter:
+goroutine 45808 [sync.Mutex.Lock]:
+internal/sync.runtime_SemacquireMutex(0xc0086e52e8?, 0x38?, 0xc0086e5318?)
+	/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/sema.go:95 +0x28
+internal/sync.(*Mutex).lockSlow(0xc0003d1b40)
+	/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/internal/sync/mutex.go:149 +0x1e4
+internal/sync.(*Mutex).Lock(0xc0003d1b40)
+	/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/internal/sync/mutex.go:70 +0x4c
+sync.(*Mutex).Lock(0xc0002b2eff?)
+	/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/sync/mutex.go:46 +0x20
+github.com/puzpuzpuz/xsync/v4.(*Map[...]).DeleteMatching(0x1032fb1e0, 0x1032d3d30)
+	/Users/eliott.bouhana/go/pkg/mod/github.com/puzpuzpuz/xsync/v4@v4.5.0/map.go:1108 +0x100
+github.com/DataDog/dd-iast-go/internal/spans.trimStore()
+	/tmp/ddiast-review/wt/crash-stress-app/internal/spans/annotation.go:234 +0xb8
+github.com/DataDog/dd-iast-go/internal/spans.BindScope(0xc0058c6420, 0xc002a68940)
+	/tmp/ddiast-review/wt/crash-stress-app/internal/spans/annotation.go:199 +0x150
+github.com/DataDog/dd-iast-go/internal/spans.BindScopeFromContext({0x1032e5ad8, 0xc006f3e000})
+	/tmp/ddiast-review/wt/crash-stress-app/internal/spans/annotation.go:165 +0x88
+github.com/DataDog/dd-iast-go/iast/net/http.BindStartSpan({0x1032e5ad8, 0xc006f3e000}, 0xc0058c6420)
+	/tmp/ddiast-review/wt/crash-stress-app/iast/net/http/http.go:23 +0x7c
+main.main.withSpan.func4.3(0xc0058c6420, {0x1032e5ad8, 0xc006f3e000})
+	<generated>:5 +0x3c
+main.main.withSpan.func4({0x1032e3fe8, 0xc002c981e0}, 0xc00964e140)
+	<generated>:6 +0x40c
+net/http.HandlerFunc.ServeHTTP(0xc000112d50, {0x1032e3fe8, 0xc002c981e0}, 0xc00964e140)
+	/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2284 +0x4c
+net/http.(*ServeMux).ServeHTTP(0xc00019c3c0, {0x1032e3fe8, 0xc002c981e0}, 0xc00964e140)
+	/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2826 +0x1ac
+net/http.serverHandler.ServeHTTP({0xc005bf8a40?}, {0x1032e3fe8, 0xc002c981e0}, 0xc00964e000)
+	/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3309 +0x584
+net/http.(*conn).serve(0xc0024739e0, {0x1032e57c0, 0xc0006b1e60})
+	/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2067 +0xa34
+created by net/http.(*Server).Serve in goroutine 57
+	/Users/eliott.bouhana/go/pkg/mod/golang.
+== dumps-race/goroutines-4.txt: reason: no progress for 0s, oldest in-flight 18.821397916s
+ goroutines=1288 states=[('select', 484), ('IO wait', 426), ('sync.Mutex.Lock', 219), ('runnable', 127), ('sync.WaitGroup.Wait', 21), ('sync.Cond.Wait', 5), ('semacquire', 4), ('running', 1), ('sync.RWMutex.Lock', 1)]
+ goroutines with dd-iast-go frames: 46
+     19 runnable :: top=atomic. :: internal/taint/store.writerPresent <- internal/taint/store. <- internal/taint/propagation.invalidateBuffer
+      6 sync.Mutex.Lock :: top=sync.runtime_SemacquireMutex :: internal/spans.trimStore <- internal/spans.BindScope <- internal/spans.BindScopeFromContext
+      2 runnable :: top=syscall.syscalln :: internal/vulnerability.CaptureLocationSkipWhile <- internal/vulnerability.ReportTainted <- iast/database/sql.Report
+      1 runnable :: top=store.writerPresent :: internal/taint/store.writerPresent <- internal/taint/store. <- internal/taint/propagation.invalidateBuffer
+      1 sync.Mutex.Lock :: top=sync.runtime_SemacquireMutex :: internal/spans.Finished
+      1 runnable :: top=sync. :: internal/taint/store. <- internal/taint/store. <- internal/taint/store.
+      1 runnable :: top=sync.runtime_SemacquireMutex :: internal/spans.trimStore <- internal/spans.BindScope <- internal/spans.BindScopeFromContext
+      1 runnable :: top=atomic. :: internal/taint/store.keyHash <- internal/taint/store. <- internal/taint/propagation.StringWindow
+ example trimStore waiter:
+goroutine 56207 [sync.Mutex.Lock]:
+internal/sync.runtime_SemacquireMutex(0xc0027032e8?, 0x38?, 0xc002703318?)
+	/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/sema.go:95 +0x28
+internal/sync.(*Mutex).lockSlow(0xc0003d2100)
+	/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/internal/sync/mutex.go:149 +0x1e4
+internal/sync.(*Mutex).Lock(0xc0003d2100)
+	/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/internal/sync/mutex.go:70 +0x4c
+sync.(*Mutex).Lock(0xc0002b2eff?)
+	/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/sync/mutex.go:46 +0x20
+github.com/puzpuzpuz/xsync/v4.(*Map[...]).DeleteMatching(0x1032fb1e0, 0x1032d3d30)
+	/Users/eliott.bouhana/go/pkg/mod/github.com/puzpuzpuz/xsync/v4@v4.5.0/map.go:1108 +0x100
+github.com/DataDog/dd-iast-go/internal/spans.trimStore()
+	/tmp/ddiast-review/wt/crash-stress-app/internal/spans/annotation.go:234 +0xb8
+github.com/DataDog/dd-iast-go/internal/spans.BindScope(0xc008c6c2c0, 0xc0032c35c0)
+	/tmp/ddiast-review/wt/crash-stress-app/internal/spans/annotation.go:199 +0x150
+github.com/DataDog/dd-iast-go/internal/spans.BindScopeFromContext({0x1032e5ad8, 0xc000ba3140})
+	/tmp/ddiast-review/wt/crash-stress-app/internal/spans/annotation.go:165 +0x88
+github.com/DataDog/dd-iast-go/iast/net/http.BindStartSpan({0x1032e5ad8, 0xc000ba3140}, 0xc008c6c2c0)
+	/tmp/ddiast-review/wt/crash-stress-app/iast/net/http/http.go:23 +0x7c
+main.main.withSpan.func4.3(0xc008c6c2c0, {0x1032e5ad8, 0xc000ba3140})
+	<generated>:5 +0x3c
+main.main.withSpan.func4({0x1032e3fe8, 0xc002340ff0}, 0xc00851d540)
+	<generated>:6 +0x40c
+net/http.HandlerFunc.ServeHTTP(0xc000112d50, {0x1032e3fe8, 0xc002340ff0}, 0xc00851d540)
+	/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2284 +0x4c
+net/http.(*ServeMux).ServeHTTP(0xc00019c3c0, {0x1032e3fe8, 0xc002340ff0}, 0xc00851d540)
+	/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2826 +0x1ac
+net/http.serverHandler.ServeHTTP({0xc0044ebcc0?}, {0x1032e3fe8, 0xc002340ff0}, 0xc00851d2c0)
+	/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3309 +0x584
+net/http.(*conn).serve(0xc000bf3440, {0x1032e57c0, 0xc0006b1e60})
+	/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2067 +0xa34
+created by net/http.(*Server).Serve in goroutine 57
+	/Users/eliott.bouhana/go/pkg/mod/golang.
+== dumps-norace/goroutines-1.txt: reason: no progress for 0s, oldest in-flight 10.343588625s
+ goroutines=1157 states=[('select', 452), ('semacquire', 271), ('IO wait', 259), ('sync.Mutex.Lock', 134), ('runnable', 23), ('sync.Cond.Wait', 13), ('sync.WaitGroup.Wait', 4), ('running', 1)]
+ goroutines with dd-iast-go frames: 29
+     13 semacquire :: top=bytealg.MakeNoZero :: iast/propagation.StringsToLower
+      5 semacquire :: top=propagation.BytesToString[...] :: iast/propagation.BytesToString[...]
+      4 runnable :: top=weak.runtime_makeStrongFromWeak :: internal/spans.bindOwnerSpan <- internal/spans.BindScope <- internal/spans.BindScopeFromContext
+      1 semacquire :: top=propagation.Concat4[...] :: iast/propagation.Concat4[...]
+      1 semacquire :: top=evidence. :: internal/taint/evidence. <- internal/taint/evidence.CollectJoinedStrings <- iast/os/exec.Report
+      1 runnable :: top=stringslite.Clone :: internal/taint/evidence. <- internal/taint/evidence.CollectJoinedStrings <- iast/os/exec.Report
+      1 semacquire :: top=bytealg.MakeNoZero :: internal/taint/redaction.AnalyzeCommand <- iast/os/exec.Report <- internal/taint/commandbridge.Report
+      1 runnable :: top=runtime. :: internal/vulnerability.CaptureLocationSkipWhile <- internal/vulnerability.ReportTainted <- iast/database/sql.Report
+== dumps-norace/goroutines-2.txt: reason: no progress for 0s, oldest in-flight 10.869684625s
+ goroutines=1304 states=[('select', 500), ('IO wait', 328), ('sync.Mutex.Lock', 174), ('semacquire', 173), ('runnable', 107), ('sync.Cond.Wait', 15), ('sync.WaitGroup.Wait', 5), ('running', 1), ('sleep', 1)]
+ goroutines with dd-iast-go frames: 98
+     63 sync.Mutex.Lock :: top=sync.runtime_SemacquireMutex :: internal/spans.trimStore <- internal/spans.BindScope <- internal/spans.BindScopeFromContext
+      8 semacquire :: top=bytealg.MakeNoZero :: iast/propagation.StringsToLower
+      6 semacquire :: top=propagation.Concat2[...] :: iast/propagation.Concat2[...]
+      5 sync.Mutex.Lock :: top=sync.runtime_SemacquireMutex :: internal/spans.BindScope <- internal/spans.BindScopeFromContext <- iast/net/http.BindStartSpan
+      3 runnable :: top=sync.runtime_SemacquireMutex :: internal/spans.BindScope <- internal/spans.BindScopeFromContext <- iast/net/http.BindStartSpan
+      2 sync.Mutex.Lock :: top=sync.runtime_SemacquireMutex :: internal/spans.trimStore <- internal/spans.NewOrphanTaintedSpan <- internal/vulnerability.selectTaintedAnnotation
+      1 semacquire :: top=propagation.BytesToString[...] :: iast/propagation.BytesToString[...]
+      1 semacquire :: top=propagation.Concat4[...] :: iast/propagation.Concat4[...]
+ example trimStore waiter:
+goroutine 204867 [sync.Mutex.Lock]:
+internal/sync.runtime_SemacquireMutex(0x67ee7ac11708?, 0xd4?, 0x67ee75408300?)
+	/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/sema.go:95 +0x28
+internal/sync.(*Mutex).lockSlow(0x67ee73ce1c00)
+	/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/internal/sync/mutex.go:149 +0x170
+internal/sync.(*Mutex).Lock(...)
+	/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/internal/sync/mutex.go:70
+sync.(*Mutex).Lock(...)
+	/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/sync/mutex.go:46
+github.com/puzpuzpuz/xsync/v4.(*Map[...]).DeleteMatching(0x100f71900, 0x100f4d2d8)
+	/Users/eliott.bouhana/go/pkg/mod/github.com/puzpuzpuz/xsync/v4@v4.5.0/map.go:1108 +0xe0
+github.com/DataDog/dd-iast-go/internal/spans.trimStore()
+	/tmp/ddiast-review/wt/crash-stress-app/internal/spans/annotation.go:234 +0xac
+github.com/DataDog/dd-iast-go/internal/spans.BindScope(0x100f5da78?, 0x67ee7e4a54c0)
+	/tmp/ddiast-review/wt/crash-stress-app/internal/spans/annotation.go:199 +0xd4
+github.com/DataDog/dd-iast-go/internal/spans.BindScopeFromContext({0x100f5da78?, 0x67ee7bd3ad40?})
+	/tmp/ddiast-review/wt/crash-stress-app/internal/spans/annotation.go:165 +0x88
+github.com/DataDog/dd-iast-go/iast/net/http.BindStartSpan({0x100f5da78, 0x67ee7bd3ad40}, 0x67ee7d566840)
+	/tmp/ddiast-review/wt/crash-stress-app/iast/net/http/http.go:23 +0x78
+main.main.withSpan.func4.3(0x100f5d760?, {0x100f5da78?, 0x67ee7bd3ad40?})
+	<generated>:5 +0x34
+main.main.withSpan.func4({0x100f5c260, 0x67ee77a3b2c0}, 0x67ee83e37680?)
+	<generated>:6 +0x2d0
+net/http.HandlerFunc.ServeHTTP(0x67ee73e54240?, {0x100f5c260?, 0x67ee77a3b2c0?}, 0x67ee7aad2e40?)
+	/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2284 +0x38
+net/http.(*ServeMux).ServeHTTP(0x100f5d760?, {0x100f5c260, 0x67ee77a3b2c0}, 0x67ee83e37680)
+	/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2826 +0x190
+net/http.serverHandler.ServeHTTP({0x67ee786e0980?}, {0x100f5c260, 0x67ee77a3b2c0}, 0x67ee83e37540)
+	/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3309 +0x24c
+net/http.(*conn).serve(0x67ee84586900, {0x100f5d760, 0x67ee75620660})
+	/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2067 +0x55c
+created by net/http.(*Server).Serve in goroutine 59
+	/Users/eliott.bouhana/g

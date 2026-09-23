@@ -1,0 +1,2 @@
+bound=*ast.BasicLit resolved-type=int constant=1
+bound=*ast.CallExpr resolved-type=int constant=3

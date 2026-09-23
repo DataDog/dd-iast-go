@@ -1,0 +1,49 @@
+=== RUN   TestReviewStoreAddressReuseAfterFinish
+    zz_review_gc_identity_test.go:94: owner live: 50000 same-class allocations after GC, root 0x52e21cf50a40 never reused; weak pointer live=true
+    zz_review_gc_identity_test.go:109: after Finish (request B active): root collected; address 0x52e21cf50a40 reused after 252 allocations; IsTaintedBytes=false IsTaintedString=false
+--- PASS: TestReviewStoreAddressReuseAfterFinish (0.00s)
+=== RUN   TestReviewStoreBytesAddressReuseAfterFinish
+    zz_review_gc_identity_test.go:139: bytes: address 0x52e21cf4b020 reused after 1 allocations after Finish, IsTainted=false
+--- PASS: TestReviewStoreBytesAddressReuseAfterFinish (0.00s)
+=== RUN   TestReviewBuilderStaleViewAfterAddressReuse
+=== RUN   TestReviewBuilderStaleViewAfterAddressReuse/zero-assign
+    zz_review_gc_identity_test.go:193: mode=zero-assign: tracked backing 0x52e21cf44640 (len 10 cap 16) freed and reused by clean write after 11 writes; BuilderString="cleanvalue" tainted=true ranges=[{Start:0 Length:10 Source:{Source:{Origin:http.request.parameter Name:input} Value:attack1234} Marks:{bits:0}}]
+    zz_review_gc_identity_test.go:194: 
+        	Error Trace:	/tmp/ddiast-review/wt/store-identity-gc/iast/propagation/zz_review_gc_identity_test.go:194
+        	Error:      	Should be false
+        	Test:       	TestReviewBuilderStaleViewAfterAddressReuse/zero-assign
+        	Messages:   	STALE TAINT: clean builder content "cleanvalue" reported with source [{Start:0 Length:10 Source:{Source:{Origin:http.request.parameter Name:input} Value:attack1234} Marks:{bits:0}}]
+=== RUN   TestReviewBuilderStaleViewAfterAddressReuse/method-value-reset
+    zz_review_gc_identity_test.go:193: mode=method-value-reset: tracked backing 0x52e21cf44f90 (len 10 cap 16) freed and reused by clean write after 32 writes; BuilderString="cleanvalue" tainted=true ranges=[{Start:0 Length:10 Source:{Source:{Origin:http.request.parameter Name:input} Value:attack1234} Marks:{bits:0}}]
+    zz_review_gc_identity_test.go:194: 
+        	Error Trace:	/tmp/ddiast-review/wt/store-identity-gc/iast/propagation/zz_review_gc_identity_test.go:194
+        	Error:      	Should be false
+        	Test:       	TestReviewBuilderStaleViewAfterAddressReuse/method-value-reset
+        	Messages:   	STALE TAINT: clean builder content "cleanvalue" reported with source [{Start:0 Length:10 Source:{Source:{Origin:http.request.parameter Name:input} Value:attack1234} Marks:{bits:0}}]
+--- FAIL: TestReviewBuilderStaleViewAfterAddressReuse (0.00s)
+    --- FAIL: TestReviewBuilderStaleViewAfterAddressReuse/zero-assign (0.00s)
+    --- FAIL: TestReviewBuilderStaleViewAfterAddressReuse/method-value-reset (0.00s)
+=== RUN   TestReviewBufferAnchorPreventsReuse
+    zz_review_gc_identity_test.go:221: bytes.Buffer: tracked backing 0x52e21cf57440 (cap 64) not reused across 50000 same-class allocations after zero-assign+GC (writer Anchor retains it)
+--- PASS: TestReviewBufferAnchorPreventsReuse (0.00s)
+=== RUN   TestReviewBuilderStaleViewRealistic
+    zz_review_gc_identity_test.go:245: iteration 3: clean query "SELECT 1;x" reported tainted
+    zz_review_gc_identity_test.go:248: iterations=4 falsePositives=1
+    zz_review_gc_identity_test.go:249: 
+        	Error Trace:	/tmp/ddiast-review/wt/store-identity-gc/iast/propagation/zz_review_gc_identity_test.go:249
+        	Error:      	Should be zero, but was 1
+        	Test:       	TestReviewBuilderStaleViewRealistic
+        	Messages:   	stale builder taint on reused backing
+--- FAIL: TestReviewBuilderStaleViewRealistic (0.00s)
+=== RUN   TestReviewBuilderStaleViewCrossRequest
+    zz_review_gc_identity_test.go:286: request B: clean "cleanvalue" after 1 writes carries source [{Start:0 Length:10 Source:{Source:{Origin:http.request.parameter Name:reqA} Value:attack1234} Marks:{bits:0}}] from request A
+    zz_review_gc_identity_test.go:287: 
+        	Error Trace:	/tmp/ddiast-review/wt/store-identity-gc/iast/propagation/zz_review_gc_identity_test.go:287
+        	Error:      	Should be false
+        	Test:       	TestReviewBuilderStaleViewCrossRequest
+        	Messages:   	CROSS-REQUEST STALE TAINT
+--- FAIL: TestReviewBuilderStaleViewCrossRequest (0.00s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/iast/propagation	0.372s
+FAIL
+exit=1

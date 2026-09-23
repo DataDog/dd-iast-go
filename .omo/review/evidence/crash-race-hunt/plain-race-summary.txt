@@ -1,0 +1,29 @@
+crash-race-hunt plain race summary (GOTOOLCHAIN=go1.26.6, GORACE=halt_on_error=0)
+Binaries: go test -race -c per package; run from package dir with -test.timeout=25m.
+Per-package raw output: logs/internal_*.out ("races" = count of "WARNING: DATA RACE").
+
+-test.count=20 -test.cpu=1,4,16 (60 runs each):
+internal/taint/commandbridge   exit=0 secs=5   races=0 PASS
+internal/taint/scopebridge     exit=0 secs=1   races=0 PASS
+internal/taint/sqlbridge       exit=0 secs=4   races=0 PASS
+internal/taint/httpbridge      exit=0 secs=2   races=0 PASS
+internal/taint/iobridge        exit=0 secs=1   races=0 PASS
+internal/taint/urlbridge       exit=0 secs=2   races=0 PASS
+internal/taint/jsonbridge      exit=0 secs=1   races=0 PASS
+internal/taint/writerbridge    exit=0 secs=1   races=0 PASS
+internal/taint/operatorbridge  exit=0 secs=2   races=0 PASS
+internal/taint/evidence        exit=0 secs=1   races=0 PASS
+internal/taint/redaction       exit=0 secs=3   races=0 PASS
+internal/taint/request         exit=0 secs=17  races=0 PASS
+internal/taint/ranges          exit=0 secs=78  races=0 PASS
+internal/spans                 exit=0 secs=36  races=0 PASS
+internal/vulnerability         exit=1 secs=77  races=0 --- FAIL: TestCommitTaintedSkippedDedup (1/60; see F3)
+internal/vulnerability/dedup   exit=0 secs=4   races=0 PASS
+internal/vulnerability/stacktrace exit=0 secs=2 races=0 PASS
+internal/taint/propagation     2 x (-test.count=10 -test.cpu=1,4,16): exit=0 secs=66 races=0; exit=0 secs=136 races=0
+internal/taint/store           -test.short -test.count=20 -test.cpu=1,4,16: exit=0 secs=23 races=0 PASS
+internal/taint/store           full (incl. TestMillionOperationChurn) -test.count=2 -test.cpu=1,4,16: exit=0 secs=228 races=0 PASS
+
+Stress harnesses (reproducers/):
+store_zz_racehunt_store_test.go       -test.count=20 -test.cpu=1,4,16: exit=0 secs=205 races=0 passes=60 (logs/store_racehunt.out)
+vulnerability_zz_racehunt_report_test.go -test.count=20 -test.cpu=1,4,16: exit=0 secs=43 races=0 (logs/vuln_racehunt.out)

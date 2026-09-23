@@ -1,0 +1,46 @@
+[
+  {
+    "id": "life-async-F1",
+    "severity": "High",
+    "category": "false-negative",
+    "location": "internal/taint/request/lazy.go:31-46; internal/taint/request/http.go:74-77",
+    "title": "URL.Query() loses request taint after http.StripPrefix or Request.Clone",
+    "claim": "ManageURLQuery attributes URL.Query results only via the *url.URL object bound by EagerHTTP. http.StripPrefix and Request.Clone forward a copied URL with zero bindings, so URL.Query values come back clean while the context scope is active and RawQuery is still tainted. SQLi from query parameters is silently missed behind standard stdlib middleware.",
+    "evidence_path": ".omo/review/evidence/life-async/final-race.out.txt",
+    "repro_command": "cd iast/integration/testapp && GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go tool orchestrion go test -race -run '^TestReviewMiddlewareURLCopy$' -count=1 -v -timeout 15m . (after copying evidence/life-async/lifeasync_review{,_test}.go into iast/integration/testapp)",
+    "needs_repro": false
+  },
+  {
+    "id": "life-async-F2",
+    "severity": "Medium",
+    "category": "false-negative",
+    "location": "iast/net/http/orchestrion.yml:81-121; internal/taint/request/scope.go:79-104; internal/taint/request/lazy.go:33-35; internal/vulnerability/tainted.go:45-47",
+    "title": "A middleware-detached context makes a nested woven handler open a second scope, which drops reports",
+    "claim": "When middleware forwards r.WithContext(non-derived ctx), the next root handler makes a new sampling decision, takes a second permit and re-runs EagerHTTP. An inactive inner scope (capacity-dropped or sampled-out) makes ReportTainted drop values still tainted by the outer owner (0 of 2 reported). An active inner scope double-binds the URL, so URL.Query is ambiguous and dropped (1 of 2 reported). One request consumes two permits.",
+    "evidence_path": ".omo/review/evidence/life-async/final-race.out.txt",
+    "repro_command": "cd iast/integration/testapp && GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go tool orchestrion go test -race -run '^TestReviewMiddlewareDetachedContext$' -count=1 -v -timeout 15m . (after copying evidence/life-async/lifeasync_review{,_test}.go into iast/integration/testapp)",
+    "needs_repro": false
+  },
+  {
+    "id": "life-async-F3",
+    "severity": "Medium",
+    "category": "false-negative",
+    "location": "internal/vulnerability/tainted.go:45-47",
+    "title": "A sink context that carries a finished request's scope vetoes taint from a live request",
+    "claim": "ReportTainted returns false whenever the sink context holds an inactive scope, regardless of which owner the evidence belongs to. A worker holding context.WithoutCancel of finished request A drops a live request B's tainted query, while the same value via context.Background is reported on B's span.",
+    "evidence_path": ".omo/review/evidence/life-async/final-race.out.txt",
+    "repro_command": "cd iast/integration/testapp && GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go tool orchestrion go test -race -run '^TestReviewWorkerWithFinishedRequestContext$' -count=1 -v -timeout 15m . (after copying evidence/life-async/lifeasync_review{,_test}.go into iast/integration/testapp)",
+    "needs_repro": false
+  },
+  {
+    "id": "life-async-F4",
+    "severity": "Low",
+    "category": "provenance",
+    "location": "internal/vulnerability/tainted.go:110-126; internal/spans/owner.go:76; internal/spans/annotation.go:93",
+    "title": "Reports made after the root span finishes but before owner Finish become orphan traces",
+    "claim": "Between root span Finish and the deferred scope Finish, goroutine sinks still see live taint but both span candidates are closed, so each report creates a ManualKeep orphan vulnerability span detached from the request trace (27-191 orphans per run of 24 requests with dedup off). No report went to a wrong request.",
+    "evidence_path": ".omo/review/evidence/life-async/concurrent-race-x10.out.txt",
+    "repro_command": "cd iast/integration/testapp && GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go tool orchestrion go test -race -run '^TestReviewConcurrentOwnerEndVsSink$' -count=10 -v -timeout 15m . (after copying evidence/life-async/lifeasync_review{,_test}.go into iast/integration/testapp)",
+    "needs_repro": false
+  }
+]

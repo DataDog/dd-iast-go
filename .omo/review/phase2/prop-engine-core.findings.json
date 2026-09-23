@@ -1,0 +1,35 @@
+[
+  {
+    "id": "prop-engine-core-F1",
+    "severity": "High",
+    "category": "false-negative",
+    "location": "internal/taint/propagation/propagation.go:232-254,515-537",
+    "title": "Empty split fields exhaust the derived-window budget",
+    "claim": "StringWindows and ByteWindows stop at 32 output indexes rather than 32 non-empty windows, leaving a supported split's first non-empty field clean after 32 empty fields.",
+    "evidence_path": ".omo/review/evidence/prop-engine-core/window-budget.out.txt",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 go test ./internal/taint/propagation -run '^(TestReview(String|Bytes)Split_retains_last_nonempty_field_after_empty_fields|TestReviewEmptyWindows_do_not_count_as_dropped_provenance)$' -count=1 -timeout=5m -v",
+    "needs_repro": false
+  },
+  {
+    "id": "prop-engine-core-F2",
+    "severity": "Medium",
+    "category": "perf",
+    "location": "internal/taint/propagation/propagation.go:382-422",
+    "title": "Clean derived input triggers an unnecessary clone",
+    "claim": "A zero-range store entry for a clean substring makes coarseStringHit clone a native result despite publishing no taint, adding an allocation to a clean transform.",
+    "evidence_path": ".omo/review/evidence/prop-engine-core/clean-window-clone.out.txt",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 go test ./internal/taint/propagation -run '^TestWindowReviewCleanDerivedWindow_does_not_clone_result$' -count=1 -timeout=5m -v",
+    "needs_repro": false
+  },
+  {
+    "id": "prop-engine-core-F3",
+    "severity": "Low",
+    "category": "quality",
+    "location": "internal/taint/propagation/propagation.go:234-236,517-519",
+    "title": "Empty bounded-out windows increment the drop counter",
+    "claim": "The output-count check records a bounded provenance drop for 33 empty windows even though no non-empty tainted output could be published.",
+    "evidence_path": ".omo/review/evidence/prop-engine-core/window-budget.out.txt",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 go test ./internal/taint/propagation -run '^TestReviewEmptyWindows_do_not_count_as_dropped_provenance$' -count=1 -timeout=5m -v",
+    "needs_repro": false
+  }
+]

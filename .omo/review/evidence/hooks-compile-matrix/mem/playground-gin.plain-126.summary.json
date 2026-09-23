@@ -1,0 +1,99 @@
+{
+ "peak_tree_rss_kb": 1075088,
+ "peak_tree_at_s": 15.6,
+ "peak_tree_top": [
+  [
+   1011584,
+   [
+    "compile",
+    "github.com/ugorji/go/codec"
+   ]
+  ],
+  [
+   60688,
+   [
+    "go",
+    ""
+   ]
+  ],
+  [
+   1584,
+   [
+    "timeout",
+    ""
+   ]
+  ],
+  [
+   1232,
+   [
+    "time",
+    ""
+   ]
+  ]
+ ],
+ "top_process_peaks_kb": [
+  [
+   "compile github.com/ugorji/go/codec",
+   1011584
+  ],
+  [
+   "link ",
+   484960
+  ],
+  [
+   "(compile) ",
+   199360
+  ],
+  [
+   "compile runtime",
+   198048
+  ],
+  [
+   "compile net/http",
+   137184
+  ],
+  [
+   "compile net",
+   133456
+  ],
+  [
+   "compile math/big",
+   123024
+  ],
+  [
+   "compile go.opentelemetry.io/collector/pdata/internal",
+   120912
+  ],
+  [
+   "compile crypto/tls",
+   103232
+  ],
+  [
+   "compile go.mongodb.org/mongo-driver/v2/bson",
+   89344
+  ],
+  [
+   "compile encoding/json",
+   73696
+  ],
+  [
+   "compile github.com/go-playground/validator/v10",
+   64784
+  ],
+  [
+   "go ",
+   60704
+  ],
+  [
+   "compile go.yaml.in/yaml/v3",
+   55760
+  ],
+  [
+   "(clang) ",
+   16352
+  ]
+ ],
+ "samples": 17,
+ "killed_at_limit": false,
+ "duration_s": 19.8
+}

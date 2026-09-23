@@ -1,0 +1,32 @@
+=== RUN   TestReviewFailedRootPublicationsConsumeOwnerSlots
+    zz_review_rollback_test.go:49: after 512 rejected windows: charged=4096 rootCount=512 values=0 next root admitted=false
+    zz_review_rollback_test.go:52: after Finish: processCharged=0
+--- PASS: TestReviewFailedRootPublicationsConsumeOwnerSlots (0.00s)
+=== RUN   TestReviewRollbackContentionLeaksChargeUntilFinish
+    zz_review_root_test.go:61: attempts=121 succeeded=0 leakedRoots=31 leakedCharge=2031616 requestBudget=2097152 contentionDrops=12666
+    zz_review_root_test.go:67: uncontended TaintString(64KiB) after leaks ok=false; TaintString(32KiB) ok=true; charged=2064408
+    zz_review_root_test.go:69: after Finish processCharged=0
+    zz_review_root_test.go:71: REPRO: 2031616 bytes / 31 root slots charged with zero successful roots
+--- FAIL: TestReviewRollbackContentionLeaksChargeUntilFinish (0.00s)
+=== RUN   TestReviewSizeClassMatchesRuntime
+    zz_review_root_test.go:100: n=1025 charged=1088 runtimeClass=1152
+    zz_review_root_test.go:100: n=1088 charged=1088 runtimeClass=1152
+    zz_review_root_test.go:100: n=1089 charged=1152 runtimeClass=1152
+    zz_review_root_test.go:100: n=5376 charged=5392 runtimeClass=5376
+    zz_review_root_test.go:100: n=5377 charged=5392 runtimeClass=6144
+    zz_review_root_test.go:100: n=5392 charged=5392 runtimeClass=6144
+    zz_review_root_test.go:100: n=5393 charged=6144 runtimeClass=6144
+    zz_review_root_test.go:102: sizes 1..65536: undercharged=80 (first=1025 last=5392 worst n=5377 by 752 bytes) overcharged=512
+    zz_review_root_test.go:104: REPRO: 80 sizes undercharged
+--- FAIL: TestReviewSizeClassMatchesRuntime (0.12s)
+=== RUN   TestReviewRollbackLeakNaturalContention
+    zz_review_root_test.go:165: 20 rounds x (60 TaintString + 180 AdoptString on 3 goroutines) with 4 concurrent derivers: leaked root slots=367, charged bytes without a live root=50688
+    zz_review_root_test.go:167: REPRO: rollback contention leaked 367 root reservations
+--- FAIL: TestReviewRollbackLeakNaturalContention (0.01s)
+=== RUN   TestReviewTaintBytesTailAndAliasDiverge
+    zz_review_root_test.go:184: original[:cap]="HEADER-PAYLOAD-TAIL-DATA" managed[:cap]="HEADER\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+    zz_review_root_test.go:186: after append on managed: backing="HEADER-PAYLOAD-TAIL-DATA" (uninstrumented append would write backing[6]='!')
+--- PASS: TestReviewTaintBytesTailAndAliasDiverge (0.00s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/store	0.514s
+FAIL

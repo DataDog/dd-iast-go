@@ -1,0 +1,11 @@
+$ grep -rn InstrumentedSource\|ExecutedSource\|RequestTainted --include=*.go --include=*.yml . (excluding tests/.omo)
+./internal/spans/annotation.go:28:	// touching Event or RequestTainted when Sampled is false.
+./internal/spans/annotation.go:54:	// RequestTainted is the number of tainted elemets at the end of the request.
+./internal/spans/annotation.go:55:	RequestTainted atomic.Uint64
+./internal/spans/annotation.go:220:	client.Count(instrumentation.TelemetryNamespaceIAST, "request.tainted", nil).Submit(float64(a.RequestTainted.Load()))
+./internal/spans/annotation.go:294:		for origin, count := range telemetry.InstrumentedSource {
+./internal/spans/annotation.go:306:		for origin, count := range telemetry.ExecutedSource.Each {
+./internal/instrumentation/telemetry/telemetry.go:24:	// InstrumentedSource is the number of sources instrumented during build.
+./internal/instrumentation/telemetry/telemetry.go:25:	InstrumentedSource = make(map[constants.Origin]uint, constants.OriginCount)
+./internal/instrumentation/telemetry/telemetry.go:37:	// ExecutedSource is the number of instrumented sources that have actually been executed since the last heartbeat.
+./internal/instrumentation/telemetry/telemetry.go:38:	ExecutedSource executedSource

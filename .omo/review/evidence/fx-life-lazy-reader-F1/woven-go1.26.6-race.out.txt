@@ -1,0 +1,870 @@
+# cwd=/tmp/ddiast-review/wt/fx-life-lazy-reader-F1
+# GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 /usr/bin/time -l go tool orchestrion go test -race -timeout 15m -count=1 -run 'TestFx' -v ./iast/net/http
+=== RUN   TestFxRepeatedMultipartParseFanOut
+==================
+WARNING: DATA RACE
+Read at 0x00c000416100 by goroutine 38:
+  github.com/DataDog/dd-iast-go/internal/taint/request.replaceMatchingSuffix()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/internal/taint/request/lazy.go:137 +0x270
+  github.com/DataDog/dd-iast-go/internal/taint/request.ManageMultipart()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/internal/taint/request/lazy.go:125 +0x1c8
+  github.com/DataDog/dd-iast-go/internal/taint/httpbridge.Multipart()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/internal/taint/httpbridge/bridge.go:146 +0x7c
+  net/http.(*Request).ParseMultipartForm.func1()
+      <generated>:4 +0xec
+  runtime.deferreturn()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/panic.go:668 +0x5c
+  github.com/DataDog/dd-iast-go/iast/net/http_test.TestFxRepeatedMultipartParseFanOut.func1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:68 +0x2c
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1.1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:33 +0xbc
+
+Previous write at 0x00c000416100 by goroutine 39:
+  runtime.slicecopy()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/slice.go:392 +0x0
+  github.com/DataDog/dd-iast-go/internal/taint/request.replaceMatchingSuffix()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/internal/taint/request/lazy.go:141 +0x2e8
+  github.com/DataDog/dd-iast-go/internal/taint/request.ManageMultipart()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/internal/taint/request/lazy.go:125 +0x1c8
+  github.com/DataDog/dd-iast-go/internal/taint/httpbridge.Multipart()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/internal/taint/httpbridge/bridge.go:146 +0x7c
+  net/http.(*Request).ParseMultipartForm.func1()
+      <generated>:4 +0xec
+  runtime.deferreturn()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/panic.go:668 +0x5c
+  github.com/DataDog/dd-iast-go/iast/net/http_test.TestFxRepeatedMultipartParseFanOut.func1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:68 +0x2c
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1.1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:33 +0xbc
+
+Goroutine 38 (running) created at:
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:30 +0x44c
+  net/http.HandlerFunc.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2284 +0x48
+  net/http.serverHandler.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3309 +0x580
+  net/http.(*conn).serve()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2067 +0xa30
+  net/http.(*Server).Serve.gowrap3()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3462 +0x40
+
+Goroutine 39 (running) created at:
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:30 +0x44c
+  net/http.HandlerFunc.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2284 +0x48
+  net/http.serverHandler.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3309 +0x580
+  net/http.(*conn).serve()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2067 +0xa30
+  net/http.(*Server).Serve.gowrap3()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3462 +0x40
+==================
+==================
+WARNING: DATA RACE
+Read at 0x00c000416110 by goroutine 37:
+  github.com/DataDog/dd-iast-go/internal/taint/request.replaceMatchingSuffix()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/internal/taint/request/lazy.go:137 +0x380
+  github.com/DataDog/dd-iast-go/internal/taint/request.ManageMultipart()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/internal/taint/request/lazy.go:126 +0x2ec
+  github.com/DataDog/dd-iast-go/internal/taint/httpbridge.Multipart()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/internal/taint/httpbridge/bridge.go:146 +0x7c
+  net/http.(*Request).ParseMultipartForm.func1()
+      <generated>:4 +0xec
+  runtime.deferreturn()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/panic.go:668 +0x5c
+  github.com/DataDog/dd-iast-go/iast/net/http_test.TestFxRepeatedMultipartParseFanOut.func1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:68 +0x2c
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1.1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:33 +0xbc
+
+Previous write at 0x00c000416110 by goroutine 39:
+  runtime.slicecopy()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/slice.go:392 +0x0
+  github.com/DataDog/dd-iast-go/internal/taint/request.replaceMatchingSuffix()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/internal/taint/request/lazy.go:141 +0x3f8
+  github.com/DataDog/dd-iast-go/internal/taint/request.ManageMultipart()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/internal/taint/request/lazy.go:126 +0x2ec
+  github.com/DataDog/dd-iast-go/internal/taint/httpbridge.Multipart()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/internal/taint/httpbridge/bridge.go:146 +0x7c
+  net/http.(*Request).ParseMultipartForm.func1()
+      <generated>:4 +0xec
+  runtime.deferreturn()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/panic.go:668 +0x5c
+  github.com/DataDog/dd-iast-go/iast/net/http_test.TestFxRepeatedMultipartParseFanOut.func1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:68 +0x2c
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1.1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:33 +0xbc
+
+Goroutine 37 (running) created at:
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:30 +0x44c
+  net/http.HandlerFunc.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2284 +0x48
+  net/http.serverHandler.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3309 +0x580
+  net/http.(*conn).serve()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2067 +0xa30
+  net/http.(*Server).Serve.gowrap3()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3462 +0x40
+
+Goroutine 39 (running) created at:
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:30 +0x44c
+  net/http.HandlerFunc.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2284 +0x48
+  net/http.serverHandler.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3309 +0x580
+  net/http.(*conn).serve()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2067 +0xa30
+  net/http.(*Server).Serve.gowrap3()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3462 +0x40
+==================
+==================
+WARNING: DATA RACE
+Write at 0x00c000416090 by goroutine 39:
+  net/http.(*Request).ParseMultipartForm.func1()
+      <generated>:4 +0x10c
+  runtime.deferreturn()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/panic.go:668 +0x5c
+  github.com/DataDog/dd-iast-go/iast/net/http_test.TestFxRepeatedMultipartParseFanOut.func1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:68 +0x2c
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1.1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:33 +0xbc
+
+Previous read at 0x00c000416090 by goroutine 38:
+  net/http.(*Request).ParseMultipartForm.func1()
+      <generated>:6 +0xa4
+  runtime.deferreturn()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/panic.go:668 +0x5c
+  github.com/DataDog/dd-iast-go/iast/net/http_test.TestFxRepeatedMultipartParseFanOut.func1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:68 +0x2c
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1.1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:33 +0xbc
+
+Goroutine 39 (running) created at:
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:30 +0x44c
+  net/http.HandlerFunc.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2284 +0x48
+  net/http.serverHandler.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3309 +0x580
+  net/http.(*conn).serve()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2067 +0xa30
+  net/http.(*Server).Serve.gowrap3()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3462 +0x40
+
+Goroutine 38 (running) created at:
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:30 +0x44c
+  net/http.HandlerFunc.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2284 +0x48
+  net/http.serverHandler.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3309 +0x580
+  net/http.(*conn).serve()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2067 +0xa30
+  net/http.(*Server).Serve.gowrap3()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3462 +0x40
+==================
+==================
+WARNING: DATA RACE
+Write at 0x00c000416090 by goroutine 39:
+  net/http.(*Request).ParseMultipartForm.func1()
+      <generated>:4 +0x10c
+  runtime.deferreturn()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/panic.go:668 +0x5c
+  github.com/DataDog/dd-iast-go/iast/net/http_test.TestFxRepeatedMultipartParseFanOut.func1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:68 +0x2c
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1.1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:33 +0xbc
+
+Previous read at 0x00c000416090 by goroutine 36:
+  net/http.(*Request).FormValue.func1()
+      <generated>:5 +0x74
+  runtime.deferreturn()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/panic.go:668 +0x5c
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1.1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:34 +0xdc
+
+Goroutine 39 (running) created at:
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:30 +0x44c
+  net/http.HandlerFunc.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2284 +0x48
+  net/http.serverHandler.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3309 +0x580
+  net/http.(*conn).serve()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2067 +0xa30
+  net/http.(*Server).Serve.gowrap3()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3462 +0x40
+
+Goroutine 36 (running) created at:
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:30 +0x44c
+  net/http.HandlerFunc.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2284 +0x48
+  net/http.serverHandler.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3309 +0x580
+  net/http.(*conn).serve()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2067 +0xa30
+  net/http.(*Server).Serve.gowrap3()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3462 +0x40
+==================
+==================
+WARNING: DATA RACE
+Write at 0x00c000416090 by goroutine 37:
+  net/http.(*Request).ParseMultipartForm.func1()
+      <generated>:4 +0x10c
+  runtime.deferreturn()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/panic.go:668 +0x5c
+  github.com/DataDog/dd-iast-go/iast/net/http_test.TestFxRepeatedMultipartParseFanOut.func1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:68 +0x2c
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1.1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:33 +0xbc
+
+Previous write at 0x00c000416090 by goroutine 38:
+  net/http.(*Request).ParseMultipartForm.func1()
+      <generated>:4 +0x10c
+  runtime.deferreturn()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/panic.go:668 +0x5c
+  github.com/DataDog/dd-iast-go/iast/net/http_test.TestFxRepeatedMultipartParseFanOut.func1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:68 +0x2c
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1.1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:33 +0xbc
+
+Goroutine 37 (running) created at:
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:30 +0x44c
+  net/http.HandlerFunc.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2284 +0x48
+  net/http.serverHandler.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3309 +0x580
+  net/http.(*conn).serve()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2067 +0xa30
+  net/http.(*Server).Serve.gowrap3()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3462 +0x40
+
+Goroutine 38 (running) created at:
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:30 +0x44c
+  net/http.HandlerFunc.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2284 +0x48
+  net/http.serverHandler.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3309 +0x580
+  net/http.(*conn).serve()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2067 +0xa30
+  net/http.(*Server).Serve.gowrap3()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3462 +0x40
+==================
+==================
+WARNING: DATA RACE
+Write at 0x00c000416100 by goroutine 37:
+  runtime.slicecopy()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/slice.go:392 +0x0
+  github.com/DataDog/dd-iast-go/internal/taint/request.replaceMatchingSuffix()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/internal/taint/request/lazy.go:141 +0x2e8
+  github.com/DataDog/dd-iast-go/internal/taint/request.ManageMultipart()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/internal/taint/request/lazy.go:125 +0x1c8
+  github.com/DataDog/dd-iast-go/internal/taint/httpbridge.Multipart()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/internal/taint/httpbridge/bridge.go:146 +0x7c
+  net/http.(*Request).ParseMultipartForm.func1()
+      <generated>:4 +0xec
+  runtime.deferreturn()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/panic.go:668 +0x5c
+  github.com/DataDog/dd-iast-go/iast/net/http_test.TestFxRepeatedMultipartParseFanOut.func1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:68 +0x2c
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1.1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:33 +0xbc
+
+Previous read at 0x00c000416100 by goroutine 38:
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1.1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:35 +0x134
+
+Goroutine 37 (running) created at:
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:30 +0x44c
+  net/http.HandlerFunc.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2284 +0x48
+  net/http.serverHandler.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3309 +0x580
+  net/http.(*conn).serve()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2067 +0xa30
+  net/http.(*Server).Serve.gowrap3()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3462 +0x40
+
+Goroutine 38 (running) created at:
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:30 +0x44c
+  net/http.HandlerFunc.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2284 +0x48
+  net/http.serverHandler.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3309 +0x580
+  net/http.(*conn).serve()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2067 +0xa30
+  net/http.(*Server).Serve.gowrap3()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3462 +0x40
+==================
+==================
+WARNING: DATA RACE
+Write at 0x00c000416110 by goroutine 39:
+  runtime.slicecopy()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/slice.go:392 +0x0
+  github.com/DataDog/dd-iast-go/internal/taint/request.replaceMatchingSuffix()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/internal/taint/request/lazy.go:141 +0x3f8
+  github.com/DataDog/dd-iast-go/internal/taint/request.ManageMultipart()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/internal/taint/request/lazy.go:126 +0x2ec
+  github.com/DataDog/dd-iast-go/internal/taint/httpbridge.Multipart()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/internal/taint/httpbridge/bridge.go:146 +0x7c
+  net/http.(*Request).ParseMultipartForm.func1()
+      <generated>:4 +0xec
+  runtime.deferreturn()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/panic.go:668 +0x5c
+  github.com/DataDog/dd-iast-go/iast/net/http_test.TestFxRepeatedMultipartParseFanOut.func1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:68 +0x2c
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1.1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:33 +0xbc
+
+Previous read at 0x00c000416110 by goroutine 38:
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1.1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:36 +0x8c
+
+Goroutine 39 (running) created at:
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:30 +0x44c
+  net/http.HandlerFunc.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2284 +0x48
+  net/http.serverHandler.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3309 +0x580
+  net/http.(*conn).serve()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2067 +0xa30
+  net/http.(*Server).Serve.gowrap3()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3462 +0x40
+
+Goroutine 38 (running) created at:
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:30 +0x44c
+  net/http.HandlerFunc.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2284 +0x48
+  net/http.serverHandler.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3309 +0x580
+  net/http.(*conn).serve()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2067 +0xa30
+  net/http.(*Server).Serve.gowrap3()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3462 +0x40
+==================
+==================
+WARNING: DATA RACE
+Write at 0x00c000416100 by goroutine 37:
+  runtime.slicecopy()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/slice.go:392 +0x0
+  github.com/DataDog/dd-iast-go/internal/taint/request.replaceMatchingSuffix()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/internal/taint/request/lazy.go:141 +0x2e8
+  github.com/DataDog/dd-iast-go/internal/taint/request.ManageMultipart()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/internal/taint/request/lazy.go:125 +0x1c8
+  github.com/DataDog/dd-iast-go/internal/taint/httpbridge.Multipart()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/internal/taint/httpbridge/bridge.go:146 +0x7c
+  net/http.(*Request).ParseMultipartForm.func1()
+      <generated>:4 +0xec
+  runtime.deferreturn()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/panic.go:668 +0x5c
+  github.com/DataDog/dd-iast-go/iast/net/http_test.TestFxRepeatedMultipartParseFanOut.func1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:68 +0x2c
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1.1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:33 +0xbc
+
+Previous read at 0x00c000416100 by goroutine 39:
+  net/http.(*Request).FormValue()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/request.go:1424 +0x100
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1.1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:34 +0xdc
+
+Goroutine 37 (running) created at:
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:30 +0x44c
+  net/http.HandlerFunc.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2284 +0x48
+  net/http.serverHandler.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3309 +0x580
+  net/http.(*conn).serve()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2067 +0xa30
+  net/http.(*Server).Serve.gowrap3()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3462 +0x40
+
+Goroutine 39 (running) created at:
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:30 +0x44c
+  net/http.HandlerFunc.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2284 +0x48
+  net/http.serverHandler.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3309 +0x580
+  net/http.(*conn).serve()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2067 +0xa30
+  net/http.(*Server).Serve.gowrap3()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3462 +0x40
+==================
+    zz_fx_repeated_parse_race_test.go:56: WithOrchestrion=true field tainted=true
+    testing.go:1712: race detected during execution of test
+--- FAIL: TestFxRepeatedMultipartParseFanOut (0.02s)
+=== RUN   TestFxRepeatedParseFormFanOut
+==================
+WARNING: DATA RACE
+Write at 0x00c000000310 by goroutine 48:
+  net/http.(*Request).ParseForm.func1()
+      <generated>:4 +0xbc
+  runtime.deferreturn()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/panic.go:668 +0x5c
+  github.com/DataDog/dd-iast-go/iast/net/http_test.TestFxRepeatedParseFormFanOut.func1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:72 +0x28
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1.1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:33 +0xbc
+
+Previous read at 0x00c000000310 by goroutine 50:
+  net/http.(*Request).ParseForm()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/request.go:1337 +0x398
+  github.com/DataDog/dd-iast-go/iast/net/http_test.TestFxRepeatedParseFormFanOut.func1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:72 +0x28
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1.1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:33 +0xbc
+
+Goroutine 48 (running) created at:
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:30 +0x44c
+  net/http.HandlerFunc.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2284 +0x48
+  net/http.serverHandler.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3309 +0x580
+  net/http.(*conn).serve()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2067 +0xa30
+  net/http.(*Server).Serve.gowrap3()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3462 +0x40
+
+Goroutine 50 (running) created at:
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:30 +0x44c
+  net/http.HandlerFunc.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2284 +0x48
+  net/http.serverHandler.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3309 +0x580
+  net/http.(*conn).serve()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2067 +0xa30
+  net/http.(*Server).Serve.gowrap3()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3462 +0x40
+==================
+==================
+WARNING: DATA RACE
+Write at 0x00c000000318 by goroutine 47:
+  net/http.(*Request).ParseForm.func1()
+      <generated>:4 +0xf4
+  runtime.deferreturn()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/panic.go:668 +0x5c
+  github.com/DataDog/dd-iast-go/iast/net/http_test.TestFxRepeatedParseFormFanOut.func1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:72 +0x28
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1.1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:33 +0xbc
+
+Previous read at 0x00c000000318 by goroutine 50:
+  net/http.(*Request).ParseForm()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/request.go:1329 +0x78
+  github.com/DataDog/dd-iast-go/iast/net/http_test.TestFxRepeatedParseFormFanOut.func1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:72 +0x28
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1.1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:33 +0xbc
+
+Goroutine 47 (running) created at:
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:30 +0x44c
+  net/http.HandlerFunc.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2284 +0x48
+  net/http.serverHandler.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3309 +0x580
+  net/http.(*conn).serve()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2067 +0xa30
+  net/http.(*Server).Serve.gowrap3()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3462 +0x40
+
+Goroutine 50 (running) created at:
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:30 +0x44c
+  net/http.HandlerFunc.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2284 +0x48
+  net/http.serverHandler.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3309 +0x580
+  net/http.(*conn).serve()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2067 +0xa30
+  net/http.(*Server).Serve.gowrap3()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3462 +0x40
+==================
+==================
+WARNING: DATA RACE
+Write at 0x00c000000310 by goroutine 49:
+  net/http.(*Request).ParseForm.func1()
+      <generated>:4 +0xbc
+  runtime.deferreturn()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/panic.go:668 +0x5c
+  github.com/DataDog/dd-iast-go/iast/net/http_test.TestFxRepeatedParseFormFanOut.func1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:72 +0x28
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1.1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:33 +0xbc
+
+Previous write at 0x00c000000310 by goroutine 47:
+  net/http.(*Request).ParseForm.func1()
+      <generated>:4 +0xbc
+  runtime.deferreturn()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/panic.go:668 +0x5c
+  github.com/DataDog/dd-iast-go/iast/net/http_test.TestFxRepeatedParseFormFanOut.func1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:72 +0x28
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1.1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:33 +0xbc
+
+Goroutine 49 (running) created at:
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:30 +0x44c
+  net/http.HandlerFunc.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2284 +0x48
+  net/http.serverHandler.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3309 +0x580
+  net/http.(*conn).serve()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2067 +0xa30
+  net/http.(*Server).Serve.gowrap3()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3462 +0x40
+
+Goroutine 47 (running) created at:
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:30 +0x44c
+  net/http.HandlerFunc.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2284 +0x48
+  net/http.serverHandler.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3309 +0x580
+  net/http.(*conn).serve()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2067 +0xa30
+  net/http.(*Server).Serve.gowrap3()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3462 +0x40
+==================
+==================
+WARNING: DATA RACE
+Read at 0x00c000000310 by goroutine 47:
+  net/http.(*Request).FormValue()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/request.go:1420 +0xac
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1.1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:34 +0xdc
+
+Previous write at 0x00c000000310 by goroutine 48:
+  net/http.(*Request).ParseForm.func1()
+      <generated>:4 +0xbc
+  runtime.deferreturn()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/panic.go:668 +0x5c
+  github.com/DataDog/dd-iast-go/iast/net/http_test.TestFxRepeatedParseFormFanOut.func1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:72 +0x28
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1.1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:33 +0xbc
+
+Goroutine 47 (running) created at:
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:30 +0x44c
+  net/http.HandlerFunc.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2284 +0x48
+  net/http.serverHandler.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3309 +0x580
+  net/http.(*conn).serve()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2067 +0xa30
+  net/http.(*Server).Serve.gowrap3()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3462 +0x40
+
+Goroutine 48 (running) created at:
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:30 +0x44c
+  net/http.HandlerFunc.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2284 +0x48
+  net/http.serverHandler.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3309 +0x580
+  net/http.(*conn).serve()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2067 +0xa30
+  net/http.(*Server).Serve.gowrap3()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3462 +0x40
+==================
+==================
+WARNING: DATA RACE
+Write at 0x00c000000318 by goroutine 50:
+  net/http.(*Request).ParseForm.func1()
+      <generated>:4 +0xf4
+  runtime.deferreturn()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/panic.go:668 +0x5c
+  github.com/DataDog/dd-iast-go/iast/net/http_test.TestFxRepeatedParseFormFanOut.func1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:72 +0x28
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1.1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:33 +0xbc
+
+Previous write at 0x00c000000318 by goroutine 48:
+  net/http.(*Request).ParseForm.func1()
+      <generated>:4 +0xf4
+  runtime.deferreturn()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/panic.go:668 +0x5c
+  github.com/DataDog/dd-iast-go/iast/net/http_test.TestFxRepeatedParseFormFanOut.func1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:72 +0x28
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1.1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:33 +0xbc
+
+Goroutine 50 (running) created at:
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:30 +0x44c
+  net/http.HandlerFunc.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2284 +0x48
+  net/http.serverHandler.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3309 +0x580
+  net/http.(*conn).serve()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2067 +0xa30
+  net/http.(*Server).Serve.gowrap3()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3462 +0x40
+
+Goroutine 48 (running) created at:
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:30 +0x44c
+  net/http.HandlerFunc.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2284 +0x48
+  net/http.serverHandler.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3309 +0x580
+  net/http.(*conn).serve()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2067 +0xa30
+  net/http.(*Server).Serve.gowrap3()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3462 +0x40
+==================
+==================
+WARNING: DATA RACE
+Write at 0x00c000000310 by goroutine 49:
+  net/http.(*Request).ParseForm.func1()
+      <generated>:4 +0xbc
+  runtime.deferreturn()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/panic.go:668 +0x5c
+  github.com/DataDog/dd-iast-go/iast/net/http_test.TestFxRepeatedParseFormFanOut.func1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:72 +0x28
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1.1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:33 +0xbc
+
+Previous read at 0x00c000000310 by goroutine 47:
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1.1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:35 +0xfc
+
+Goroutine 49 (running) created at:
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:30 +0x44c
+  net/http.HandlerFunc.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2284 +0x48
+  net/http.serverHandler.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3309 +0x580
+  net/http.(*conn).serve()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2067 +0xa30
+  net/http.(*Server).Serve.gowrap3()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3462 +0x40
+
+Goroutine 47 (running) created at:
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:30 +0x44c
+  net/http.HandlerFunc.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2284 +0x48
+  net/http.serverHandler.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3309 +0x580
+  net/http.(*conn).serve()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2067 +0xa30
+  net/http.(*Server).Serve.gowrap3()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3462 +0x40
+==================
+==================
+WARNING: DATA RACE
+Write at 0x00c000000318 by goroutine 49:
+  net/http.(*Request).ParseForm.func1()
+      <generated>:4 +0xf4
+  runtime.deferreturn()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/panic.go:668 +0x5c
+  github.com/DataDog/dd-iast-go/iast/net/http_test.TestFxRepeatedParseFormFanOut.func1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:72 +0x28
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1.1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:33 +0xbc
+
+Previous read at 0x00c000000318 by goroutine 50:
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1.1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:36 +0x154
+
+Goroutine 49 (running) created at:
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:30 +0x44c
+  net/http.HandlerFunc.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2284 +0x48
+  net/http.serverHandler.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3309 +0x580
+  net/http.(*conn).serve()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2067 +0xa30
+  net/http.(*Server).Serve.gowrap3()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3462 +0x40
+
+Goroutine 50 (running) created at:
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:30 +0x44c
+  net/http.HandlerFunc.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2284 +0x48
+  net/http.serverHandler.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3309 +0x580
+  net/http.(*conn).serve()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2067 +0xa30
+  net/http.(*Server).Serve.gowrap3()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3462 +0x40
+==================
+==================
+WARNING: DATA RACE
+Write at 0x00c000000318 by goroutine 47:
+  net/http.(*Request).ParseForm.func1()
+      <generated>:4 +0xf4
+  runtime.deferreturn()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/panic.go:668 +0x5c
+  github.com/DataDog/dd-iast-go/iast/net/http_test.TestFxRepeatedParseFormFanOut.func1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:72 +0x28
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1.1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:33 +0xbc
+
+Previous read at 0x00c000000318 by goroutine 48:
+  net/http.(*Request).ParseForm.func1()
+      <generated>:7 +0x94
+  runtime.deferreturn()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/panic.go:668 +0x5c
+  github.com/DataDog/dd-iast-go/iast/net/http_test.TestFxRepeatedParseFormFanOut.func1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:72 +0x28
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1.1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:33 +0xbc
+
+Goroutine 47 (running) created at:
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:30 +0x44c
+  net/http.HandlerFunc.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2284 +0x48
+  net/http.serverHandler.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3309 +0x580
+  net/http.(*conn).serve()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2067 +0xa30
+  net/http.(*Server).Serve.gowrap3()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3462 +0x40
+
+Goroutine 48 (running) created at:
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:30 +0x44c
+  net/http.HandlerFunc.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2284 +0x48
+  net/http.serverHandler.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3309 +0x580
+  net/http.(*conn).serve()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2067 +0xa30
+  net/http.(*Server).Serve.gowrap3()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3462 +0x40
+==================
+==================
+WARNING: DATA RACE
+Write at 0x00c000000310 by goroutine 47:
+  net/http.(*Request).ParseForm.func1()
+      <generated>:4 +0xbc
+  runtime.deferreturn()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/panic.go:668 +0x5c
+  github.com/DataDog/dd-iast-go/iast/net/http_test.TestFxRepeatedParseFormFanOut.func1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:72 +0x28
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1.1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:33 +0xbc
+
+Previous read at 0x00c000000310 by goroutine 48:
+  net/http.(*Request).FormValue()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/request.go:1423 +0xc8
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1.1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:34 +0xdc
+
+Goroutine 47 (running) created at:
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:30 +0x44c
+  net/http.HandlerFunc.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2284 +0x48
+  net/http.serverHandler.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3309 +0x580
+  net/http.(*conn).serve()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2067 +0xa30
+  net/http.(*Server).Serve.gowrap3()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3462 +0x40
+
+Goroutine 48 (running) created at:
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:30 +0x44c
+  net/http.HandlerFunc.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2284 +0x48
+  net/http.serverHandler.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3309 +0x580
+  net/http.(*conn).serve()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2067 +0xa30
+  net/http.(*Server).Serve.gowrap3()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3462 +0x40
+==================
+==================
+WARNING: DATA RACE
+Read at 0x00c000000310 by goroutine 49:
+  net/http.(*Request).ParseForm.func1()
+      <generated>:6 +0x7c
+  runtime.deferreturn()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/panic.go:668 +0x5c
+  github.com/DataDog/dd-iast-go/iast/net/http_test.TestFxRepeatedParseFormFanOut.func1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:72 +0x28
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1.1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:33 +0xbc
+
+Previous write at 0x00c000000310 by goroutine 50:
+  net/http.(*Request).ParseForm.func1()
+      <generated>:4 +0xbc
+  runtime.deferreturn()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/panic.go:668 +0x5c
+  github.com/DataDog/dd-iast-go/iast/net/http_test.TestFxRepeatedParseFormFanOut.func1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:72 +0x28
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1.1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:33 +0xbc
+
+Goroutine 49 (running) created at:
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:30 +0x44c
+  net/http.HandlerFunc.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2284 +0x48
+  net/http.serverHandler.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3309 +0x580
+  net/http.(*conn).serve()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2067 +0xa30
+  net/http.(*Server).Serve.gowrap3()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3462 +0x40
+
+Goroutine 50 (running) created at:
+  github.com/DataDog/dd-iast-go/iast/net/http_test.runFanOut.fanOutHandler.func1()
+      /private/tmp/ddiast-review/wt/fx-life-lazy-reader-F1/iast/net/http/zz_fx_repeated_parse_race_test.go:30 +0x44c
+  net/http.HandlerFunc.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2284 +0x48
+  net/http.serverHandler.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3309 +0x580
+  net/http.(*conn).serve()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2067 +0xa30
+  net/http.(*Server).Serve.gowrap3()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3462 +0x40
+==================
+    zz_fx_repeated_parse_race_test.go:56: WithOrchestrion=true field tainted=true
+    testing.go:1712: race detected during execution of test
+--- FAIL: TestFxRepeatedParseFormFanOut (0.03s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/iast/net/http	0.880s
+FAIL
+exit status 1
+      150.31 real       113.84 user        95.59 sys
+           406093824  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+             8360806  page reclaims
+              360832  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+               14914  messages sent
+               16439  messages received
+              128066  signals received
+               58429  voluntary context switches
+             2037149  involuntary context switches
+            19217078  instructions retired
+             9631611  cycles elapsed
+             1212728  peak memory footprint

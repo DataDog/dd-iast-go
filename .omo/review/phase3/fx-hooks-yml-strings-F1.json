@@ -1,0 +1,24 @@
+[
+ {
+  "id": "hooks-yml-strings-F1",
+  "verdict": "CONFIRMED",
+  "original_severity": "Critical",
+  "adjusted_severity": "Critical",
+  "reachable_default": true,
+  "documented_limitation": false,
+  "reason": "Independently reproduced: method expressions in direct call position match the pointer-only method-call join points because methodCall.Matches resolves selector.X via typeInfo.Types without checking TypeAndValue.IsType(); the wrap-expression template then emits the type as receiver and shifts arguments. Valid customer code in the root module fails to compile under Orchestrion while the identical code builds and passes unwoven. Not documented; violates product rule 1. Go 1.27 run blocked by the pre-existing encoding/json break. Confirmed for strings.Builder.WriteString/WriteByte/String and strings.Replacer.Replace, including through an import alias.",
+  "evidence_path": ".omo/review/evidence/fx-hooks-yml-strings-F1/woven-go1.26.6.txt",
+  "repro_command": "install .omo/review/evidence/fx-hooks-yml-strings-F1/zzfx__<pkg>__*.go at iast/integration/testapp/zzfx/<pkg>/ (pkgs: builder, buffer, replacer, control) in a private copy; cd iast/integration/testapp && GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go tool orchestrion go test -timeout 15m -count=1 -v ./zzfx/...  # build failed: \"(*bytes.Buffer) (type) is not an expression\"; unwoven `go test ./zzfx/...` passes"
+ },
+ {
+  "id": "hooks-fidelity-bytes-F1",
+  "verdict": "CONFIRMED",
+  "original_severity": "Critical",
+  "adjusted_severity": "Critical",
+  "reachable_default": true,
+  "documented_limitation": false,
+  "reason": "Duplicate of hooks-yml-strings-F1: same single root cause in orchestrion method_call.go Matches at 23afa71d6dcb, reached by all 16 pointer-only writer aspects. Independently reproduced: method expressions in direct call position match the pointer-only method-call join points because methodCall.Matches resolves selector.X via typeInfo.Types without checking TypeAndValue.IsType(); the wrap-expression template then emits the type as receiver and shifts arguments. Valid customer code in the root module fails to compile under Orchestrion while the identical code builds and passes unwoven. Not documented; violates product rule 1. Go 1.27 run blocked by the pre-existing encoding/json break. Confirmed for bytes.Buffer Grow/WriteString/String; a method expression stored in a variable and direct receiver calls weave correctly (negative control passes).",
+  "evidence_path": ".omo/review/evidence/fx-hooks-yml-strings-F1/woven-go1.26.6.txt",
+  "repro_command": "install .omo/review/evidence/fx-hooks-yml-strings-F1/zzfx__<pkg>__*.go at iast/integration/testapp/zzfx/<pkg>/ (pkgs: builder, buffer, replacer, control) in a private copy; cd iast/integration/testapp && GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go tool orchestrion go test -timeout 15m -count=1 -v ./zzfx/...  # build failed: \"(*bytes.Buffer) (type) is not an expression\"; unwoven `go test ./zzfx/...` passes"
+ }
+]

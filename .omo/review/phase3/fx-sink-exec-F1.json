@@ -1,0 +1,13 @@
+[
+  {
+    "id": "sink-exec-F1",
+    "verdict": "CONFIRMED",
+    "original_severity": "High",
+    "adjusted_severity": "High",
+    "reachable_default": true,
+    "documented_limitation": false,
+    "reason": "Cmd.Start executes lp=c.Path but the woven IIFE forwards only argv to Report; with a tainted Path and clean Args[0] (cmd.Path reassignment or &exec.Cmd literal) a real attacker-chosen binary ran with FINDINGS=0 on Go 1.26.6 and 1.27.0 while the exec.Command(tainted) control reported 1. README claims all Cmd.Start process attempts are covered, so this is a false negative on a supported path (rule 4).",
+    "evidence_path": ".omo/review/evidence/fx-sink-exec-F1/fxf1_repro_test.go",
+    "repro_command": "cp .omo/review/evidence/fx-sink-exec-F1/fxf1_repro_test.go iast/os/exec/testapp/ && cd iast/os/exec/testapp && GOFLAGS='-mod=mod -p=4' GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -timeout 15m -count=1 -v -run 'TestFxF1' . (outputs: .omo/review/evidence/fx-sink-exec-F1/go1.26.6-output.txt, go1.27.0-output.txt)"
+  }
+]

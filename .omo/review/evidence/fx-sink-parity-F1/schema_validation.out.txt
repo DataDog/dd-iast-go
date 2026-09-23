@@ -1,0 +1,4 @@
+span_iast_json_prefix120.json: SCHEMA_VALID parts=[{'value': '<120 chars>'}, {'value': '<4 chars>', 'source': 0}]
+span_iast_json_prefix249.json: SCHEMA_VALID parts=[{'value': '<249 chars>'}, {'value': '<1 chars>', 'truncated': 'right', 'source': 0}]
+span_iast_json_prefix250.json: SCHEMA_INVALID at ['vulnerabilities', 0, 'evidence', 'valueParts', 1]: {'truncated': 'right', 'source': 0} is not valid under any of the given schemas parts=[{'value': '<250 chars>'}, {'truncated': 'right', 'source': 0}]
+VALIDATE_EXIT=1

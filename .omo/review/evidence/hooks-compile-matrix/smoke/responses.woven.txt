@@ -1,0 +1,14 @@
+== GET /products?category=sneaker
+6b4ed328df04e272f9e2f2af932bd6f1
+== GET /products?category=sneaker'%20OR%20'1'='1
+6b4ed328df04e272f9e2f2af932bd6f1
+== GET /products/sneaker
+6b4ed328df04e272f9e2f2af932bd6f1
+== GET /products/x';select%20*%20from%20'user
+6b4ed328df04e272f9e2f2af932bd6f1
+== GET /api/health?extra=%3Becho%20hi
+85871c251df7b932678a38836704c61d
+== GET /register
+5e89e1768ecec0c4dd7881a4dbc448ca
+== GET /test
+aed6c88fda41e59ff2f7ef4a2caf9a41

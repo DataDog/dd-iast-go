@@ -1,0 +1,10 @@
+=== RUN   TestReviewStackMovedDecodeStateLeaksSlots
+    zz_review_json_test.go:62: Decoder.Decode baseline: request-body Decoder value tainted=true occupiedSlots=0
+    zz_review_json_test.go:81: Decoder.Decode: occupied slots before=0 after 400 completed decodes=0 (no decode is running now)
+    zz_review_json_test.go:85: Decoder.Decode after leaks: request-body Decoder value tainted=true occupiedSlots=0
+    zz_review_json_test.go:62: Unmarshal baseline: request-body Decoder value tainted=true occupiedSlots=0
+    zz_review_json_test.go:81: Unmarshal: occupied slots before=0 after 400 completed decodes=0 (no decode is running now)
+    zz_review_json_test.go:85: Unmarshal after leaks: request-body Decoder value tainted=true occupiedSlots=0
+--- PASS: TestReviewStackMovedDecodeStateLeaksSlots (0.91s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/testapps/integration	1.501s

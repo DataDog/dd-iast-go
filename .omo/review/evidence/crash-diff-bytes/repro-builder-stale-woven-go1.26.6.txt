@@ -1,0 +1,21 @@
+=== RUN   TestReproBuilderStaleTaintRealistic
+=== RUN   TestReproBuilderStaleTaintRealistic/16
+    repro_builder_test.go:71: iteration 0: FALSE POSITIVE: clean value "cccccccc"... (len 16, all 'c') tainted with range start=0 len=16 source=http.request.body:body value="abcdefghijklmnop"
+    repro_builder_test.go:77: size=16 iterations=40 backingAddressReused=1 falsePositives=1
+    repro_builder_test.go:79: clean strings.Builder content reported tainted 1/40 times
+=== RUN   TestReproBuilderStaleTaintRealistic/48
+    repro_builder_test.go:71: iteration 0: FALSE POSITIVE: clean value "cccccccc"... (len 48, all 'c') tainted with range start=0 len=48 source=http.request.body:body value="abcdefghijklmnopqrstuvwx..."
+    repro_builder_test.go:77: size=48 iterations=40 backingAddressReused=1 falsePositives=1
+    repro_builder_test.go:79: clean strings.Builder content reported tainted 1/40 times
+=== RUN   TestReproBuilderStaleTaintRealistic/40000
+    repro_builder_test.go:71: iteration 6: FALSE POSITIVE: clean value "cccccccc"... (len 40000, all 'c') tainted with range start=0 len=40000 source=http.request.body:body value="abcdefghijklmnopqrstuvwx..."
+    repro_builder_test.go:77: size=40000 iterations=40 backingAddressReused=4 falsePositives=4
+    repro_builder_test.go:79: clean strings.Builder content reported tainted 4/40 times
+--- FAIL: TestReproBuilderStaleTaintRealistic (4.74s)
+    --- FAIL: TestReproBuilderStaleTaintRealistic/16 (1.65s)
+    --- FAIL: TestReproBuilderStaleTaintRealistic/48 (1.61s)
+    --- FAIL: TestReproBuilderStaleTaintRealistic/40000 (1.48s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/iast/internal/zzdiffbytes	5.283s
+FAIL
+exit status 1

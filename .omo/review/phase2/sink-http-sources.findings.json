@@ -1,0 +1,24 @@
+[
+  {
+    "id": "sink-http-sources-F1",
+    "severity": "Critical",
+    "category": "behavior-change",
+    "location": "iast/net/http/orchestrion.yml:109-119; internal/taint/request/http.go:142-155",
+    "title": "Header map replacement loses caller-visible mutations",
+    "claim": "Eager tainting replaces the request Header map after WithContext clones the request, so handler header mutations no longer reach aliases held by the caller; the plain handler preserves this side effect.",
+    "evidence_path": ".omo/review/evidence/sink-http-sources/review_alias.out.txt",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -timeout 12m -count=1 -run ^TestReview_ -v ./iast/net/http",
+    "needs_repro": false
+  },
+  {
+    "id": "sink-http-sources-F2",
+    "severity": "High",
+    "category": "provenance",
+    "location": "internal/taint/request/lazy.go:28-45; internal/taint/request/http.go:69-75",
+    "title": "Replaced URL query is falsely attributed to the request",
+    "claim": "URL.Query lazily taints all results from the bound URL even after the application replaces RawQuery with a trusted literal, falsely labeling that literal as an HTTP parameter.",
+    "evidence_path": ".omo/review/evidence/sink-http-sources/review_alias.out.txt",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -timeout 12m -count=1 -run ^TestReview_ -v ./iast/net/http",
+    "needs_repro": false
+  }
+]

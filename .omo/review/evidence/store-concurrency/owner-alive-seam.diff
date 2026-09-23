@@ -1,0 +1,24 @@
+--- /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/internal/taint/store/owner.go	2026-09-23 11:18:59
++++ /tmp/ddiast-review/wt/store-concurrency/seam/internal/taint/store/owner.go	2026-09-23 15:02:47
+@@ -124,8 +124,20 @@
+ 	return snapshotDrops(&o.owner.drops)
+ }
+ 
++// reviewAliveHook is a REVIEW-ONLY seam that runs between the two loads that
++// the original expression performs in the same order.
++var reviewAliveHook func()
++
+ func (o *Owner) alive() bool {
+-	return !o.Disabled() && o.gen == o.owner.generation.Load() && ownerState(o.owner.state.Load()) == stateActive
++	if o.Disabled() {
++		return false
++	}
++	generationMatches := o.gen == o.owner.generation.Load()
++	if hook := reviewAliveHook; hook != nil {
++		reviewAliveHook = nil
++		hook()
++	}
++	return generationMatches && ownerState(o.owner.state.Load()) == stateActive
+ }
+ 
+ func (o *Owner) beginWrite() bool {

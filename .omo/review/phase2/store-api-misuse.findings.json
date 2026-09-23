@@ -1,0 +1,24 @@
+[
+  {
+    "id": "store-api-misuse-F1",
+    "severity": "Medium",
+    "category": "perf",
+    "location": "internal/taint/propagation/string_exact.go:24-44",
+    "title": "Unbounded alias scan before the active-store gate",
+    "claim": "JoinString scans every input element for an alias before checking whether any store is active, adding unbounded clean-path work despite a sixteen-input inspection bound.",
+    "evidence_path": null,
+    "repro_command": null,
+    "needs_repro": true
+  },
+  {
+    "id": "store-api-misuse-F2",
+    "severity": "Medium",
+    "category": "quality",
+    "location": "internal/taint/propagation/json.go:42-69",
+    "title": "JSON reports publication after failed store adoption",
+    "claim": "JSONString returns published=true after cloning even if every Owner.AdoptString call fails, causing the JSON callback to replace an untracked result.",
+    "evidence_path": null,
+    "repro_command": null,
+    "needs_repro": true
+  }
+]

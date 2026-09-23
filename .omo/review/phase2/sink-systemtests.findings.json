@@ -1,0 +1,123 @@
+[
+  {
+    "id": "sink-systemtests-F1",
+    "severity": "Medium",
+    "category": "test-gap",
+    "location": ".github/workflows/system-tests.yml:162-170",
+    "title": "system-tests CI never exercises taint tracking (SQLi, CMDi, sources)",
+    "claim": "The weblog only has weak hash/cipher routes, the SQLi/CMDi/source tests are missing_feature, and the CI gate only requires weak hash, weak cipher and dedup, so the branch's taint-tracking pipeline has no cross-tracer e2e coverage.",
+    "evidence_path": ".omo/review/evidence/sink-systemtests/weblog_iast_routes.txt",
+    "repro_command": null,
+    "needs_repro": false
+  },
+  {
+    "id": "sink-systemtests-F2",
+    "severity": "Medium",
+    "category": "quality",
+    "location": "internal/instrumentation/telemetry/telemetry.go:25,38",
+    "title": "instrumented.source / executed.source telemetry never produced",
+    "claim": "InstrumentedSource and ExecutedSource are never incremented by any production code or orchestrion.yml, so every source test_telemetry_metric_* test fails.",
+    "evidence_path": ".omo/review/evidence/sink-systemtests/telemetry_source_grep.txt",
+    "repro_command": "grep -rn 'InstrumentedSource\\|ExecutedSource' --include=*.go --include=*.yml . | grep -v _test.go",
+    "needs_repro": false
+  },
+  {
+    "id": "sink-systemtests-F3",
+    "severity": "Medium",
+    "category": "provenance",
+    "location": "internal/taint/request/http.go:70",
+    "title": "http.request.uri value is origin-form RequestURI, not the absolute URL",
+    "claim": "The URI source value is '/iast/source/uri/test', while TestURI (all languages) expects 'http://host:port/path'. r.URL.String() is untainted, so no Go weblog can satisfy the test.",
+    "evidence_path": ".omo/review/evidence/sink-systemtests/shapes.json",
+    "repro_command": "cd iast/integration/testapp && GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 ST_SHAPES_OUT=shapes.json go tool orchestrion go test -count=1 -run TestZZSystemTestsShapes . && python3 .omo/review/evidence/sink-systemtests/check_shapes.py shapes.json <system-tests>/tests/appsec/iast/vulnerability_schema.json (harness files: .omo/review/evidence/sink-systemtests/zz_systemtests_shape_test.go.txt, zz_systemtests_mux.go.txt, orchestrion.tool.go.txt)",
+    "needs_repro": false
+  },
+  {
+    "id": "sink-systemtests-F4",
+    "severity": "Medium",
+    "category": "ci",
+    "location": "system-tests manifests/golang.yml:201-204 @4dcd3b8",
+    "title": "Manifest enables TestWeakCipher_StackTrace/_ExtendedLocation for all Go weblogs",
+    "claim": "The golang missing_feature entries for these two classes were removed and only TestWeakCipher got a weblog_declaration, so gin/echo/chi/net-http run them and fail.",
+    "evidence_path": ".omo/review/evidence/sink-systemtests/manifest_diff.txt",
+    "repro_command": null,
+    "needs_repro": false
+  },
+  {
+    "id": "sink-systemtests-F5",
+    "severity": "Low",
+    "category": "provenance",
+    "location": "internal/taint/request/http.go:126,136",
+    "title": "Header source names are canonical MIME names",
+    "claim": "Source names are 'Table'/'User' rather than the 'table'/'user' the tests intend. The tests pass only because of a source_name vs source_names typo in system-tests.",
+    "evidence_path": ".omo/review/evidence/sink-systemtests/check_shapes.out.txt",
+    "repro_command": "cd iast/integration/testapp && GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 ST_SHAPES_OUT=shapes.json go tool orchestrion go test -count=1 -run TestZZSystemTestsShapes . && python3 .omo/review/evidence/sink-systemtests/check_shapes.py shapes.json <system-tests>/tests/appsec/iast/vulnerability_schema.json (harness files: .omo/review/evidence/sink-systemtests/zz_systemtests_shape_test.go.txt, zz_systemtests_mux.go.txt, orchestrion.tool.go.txt)",
+    "needs_repro": false
+  },
+  {
+    "id": "sink-systemtests-F6",
+    "severity": "Low",
+    "category": "test-gap",
+    "location": "internal/vulnerability/stacktrace/stacktrace.go:39-42",
+    "title": "Pointer-receiver location class format mismatches system-tests Go matcher",
+    "claim": "dd-iast-go emits class 'pkg.(*T)' while the system-tests Go matcher builds 'pkg.*T', so stack/extended-location tests fail for vulnerabilities in pointer-receiver methods.",
+    "evidence_path": null,
+    "repro_command": null,
+    "needs_repro": true
+  },
+  {
+    "id": "sink-systemtests-F7",
+    "severity": "Low",
+    "category": "quality",
+    "location": "internal/spans/annotation.go:215-221,294-298",
+    "title": "instrumented.* counts resubmitted every heartbeat; request.tainted always 0",
+    "claim": "Build-time totals are submitted as count on every heartbeat (inflation), and RequestTainted is never incremented.",
+    "evidence_path": ".omo/review/evidence/sink-systemtests/telemetry_source_grep.txt",
+    "repro_command": null,
+    "needs_repro": false
+  },
+  {
+    "id": "sink-systemtests-F8",
+    "severity": "Low",
+    "category": "test-gap",
+    "location": "system-tests tests/appsec/iast/test_vulnerability_schema.py:16-19",
+    "title": "TestIastVulnerabilitySchema vacuous for Go; manifest comment stale",
+    "claim": "Only meta _dd.iast.json is validated, while Go uses meta_struct iast whenever the agent supports it. The harness JSON events are all schema-VALID, but the msgpack path is never checked.",
+    "evidence_path": ".omo/review/evidence/sink-systemtests/check_shapes.out.txt",
+    "repro_command": "cd iast/integration/testapp && GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 ST_SHAPES_OUT=shapes.json go tool orchestrion go test -count=1 -run TestZZSystemTestsShapes . && python3 .omo/review/evidence/sink-systemtests/check_shapes.py shapes.json <system-tests>/tests/appsec/iast/vulnerability_schema.json (harness files: .omo/review/evidence/sink-systemtests/zz_systemtests_shape_test.go.txt, zz_systemtests_mux.go.txt, orchestrion.tool.go.txt)",
+    "needs_repro": false
+  },
+  {
+    "id": "sink-systemtests-F9",
+    "severity": "Info",
+    "category": "doc",
+    "location": "internal/taint/request/lazy.go:110-129",
+    "title": "TestMultipart (file part, servlet names) cannot pass",
+    "claim": "File parts are intentionally not sources; keep the test missing_feature/irrelevant for Go.",
+    "evidence_path": ".omo/review/evidence/sink-systemtests/shapes.json",
+    "repro_command": "cd iast/integration/testapp && GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 ST_SHAPES_OUT=shapes.json go tool orchestrion go test -count=1 -run TestZZSystemTestsShapes . && python3 .omo/review/evidence/sink-systemtests/check_shapes.py shapes.json <system-tests>/tests/appsec/iast/vulnerability_schema.json (harness files: .omo/review/evidence/sink-systemtests/zz_systemtests_shape_test.go.txt, zz_systemtests_mux.go.txt, orchestrion.tool.go.txt)",
+    "needs_repro": false
+  },
+  {
+    "id": "sink-systemtests-F10",
+    "severity": "Info",
+    "category": "doc",
+    "location": "iast/propagation/orchestrion.yml:15",
+    "title": "Propagation limited to root-module non-test packages constrains weblog/test authoring",
+    "claim": "Weblog _shared packages are a non-root module, and a concat inside a root-module external _test.go package did not propagate in the harness.",
+    "evidence_path": ".omo/review/evidence/sink-systemtests/shapes.json",
+    "repro_command": "cd iast/integration/testapp && GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 ST_SHAPES_OUT=shapes.json go tool orchestrion go test -count=1 -run TestZZSystemTestsShapes . && python3 .omo/review/evidence/sink-systemtests/check_shapes.py shapes.json <system-tests>/tests/appsec/iast/vulnerability_schema.json (harness files: .omo/review/evidence/sink-systemtests/zz_systemtests_shape_test.go.txt, zz_systemtests_mux.go.txt, orchestrion.tool.go.txt)",
+    "needs_repro": false
+  },
+  {
+    "id": "sink-systemtests-F11",
+    "severity": "Low",
+    "category": "ci",
+    "location": ".github/workflows/system-tests.yml:13,25,50",
+    "title": "CI depends on a mutable unmerged system-tests branch",
+    "claim": "The default ref romain.marcadier/dd-iast-go is a branch name, not a SHA, and its weblog go.mod pins stale versions that the install script overrides.",
+    "evidence_path": null,
+    "repro_command": null,
+    "needs_repro": false
+  }
+]

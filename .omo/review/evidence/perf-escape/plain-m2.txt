@@ -1,0 +1,199 @@
+# github.com/DataDog/dd-iast-go/perfsample
+perfsample/sample.go:15:6: cannot inline ConcatLocal: marked go:noinline
+perfsample/sample.go:23:6: cannot inline ConvLocal: marked go:noinline
+perfsample/sample.go:31:6: cannot inline ByteSliceLocal: marked go:noinline
+perfsample/sample.go:45:6: cannot inline StringSliceLocal: marked go:noinline
+perfsample/sample.go:53:6: cannot inline BuilderLocal: marked go:noinline
+perfsample/sample.go:63:6: cannot inline BufferLocal: marked go:noinline
+perfsample/sample.go:73:6: cannot inline JoinLocal: marked go:noinline
+perfsample/sample.go:80:6: cannot inline SprintfLocal: marked go:noinline
+perfsample/sample.go:87:6: cannot inline CutLocal: marked go:noinline
+perfsample/sample.go:95:6: cannot inline TrimLocal: marked go:noinline
+perfsample/sample.go:102:6: cannot inline SplitSeqLocal: marked go:noinline
+perfsample/sample.go:104:2: can inline SplitSeqLocal-range1 with cost 24 as: func(string) bool { #tmpState := #state1; #state1 = 2; if #tmpState != 1 { runtime.panicrangestate(#tmpState) }; n += len(part); #state1 = 1; return true }
+perfsample/sample.go:113:6: cannot inline FieldsSeqLocal: marked go:noinline
+perfsample/sample.go:115:2: can inline FieldsSeqLocal-range1 with cost 24 as: func(string) bool { #tmpState := #state1; #state1 = 2; if #tmpState != 1 { runtime.panicrangestate(#tmpState) }; n += len(part); #state1 = 1; return true }
+perfsample/sample.go:124:6: cannot inline QuoteLocal: marked go:noinline
+perfsample/sample.go:131:6: cannot inline ToLowerLocal: marked go:noinline
+perfsample/sample.go:138:6: cannot inline ConcatLocal2: marked go:noinline
+perfsample/sample.go:141:6: cannot inline ConcatLocal4: marked go:noinline
+perfsample/sample.go:144:6: cannot inline ConcatLocal5: marked go:noinline
+perfsample/sample.go:147:6: cannot inline ConcatLocal8: marked go:noinline
+perfsample/sample.go:150:6: cannot inline ConcatLocal16: marked go:noinline
+perfsample/sample.go:158:6: cannot inline ConcatConvOperand: marked go:noinline
+perfsample/sample.go:164:6: cannot inline count: marked go:noinline
+perfsample/sample.go:166:2: can inline count-range1 with cost 24 as: func(string) bool { #tmpState := #state1; #state1 = 2; if #tmpState != 1 { runtime.panicrangestate(#tmpState) }; n += len(s); #state1 = 1; return true }
+perfsample/sample.go:175:6: cannot inline SplitSeqPass: marked go:noinline
+perfsample/sample.go:182:6: cannot inline BufferStringLocal: marked go:noinline
+perfsample/sample.go:190:6: cannot inline BuilderStringLocal: marked go:noinline
+perfsample/sample.go:55:16: inlining call to strings.(*Builder).WriteString
+perfsample/sample.go:56:16: inlining call to strings.(*Builder).WriteString
+perfsample/sample.go:57:18: inlining call to strings.(*Builder).String
+perfsample/sample.go:55:16: inlining call to strings.(*Builder).copyCheck
+perfsample/sample.go:56:16: inlining call to strings.(*Builder).copyCheck
+perfsample/sample.go:55:16: inlining call to abi.NoEscape
+perfsample/sample.go:56:16: inlining call to abi.NoEscape
+perfsample/sample.go:67:16: inlining call to bytes.(*Buffer).Len
+perfsample/sample.go:88:33: inlining call to strings.Cut
+perfsample/sample.go:104:36: inlining call to strings.SplitSeq
+perfsample/sample.go:104:36: inlining call to strings.splitSeq
+/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/strings/iter.go:37:9: can inline SplitSeqLocal.SplitSeq.splitSeq.func1 with cost 265 as: func(func(string) bool) { if len(strings.sep) == 0 { for loop; return  }; for loop; strings.yield(strings.s) }
+perfsample/sample.go:104:2: inlining call to SplitSeqLocal.SplitSeq.splitSeq.func1
+perfsample/sample.go:104:2: inlining call to utf8.DecodeRuneInString
+perfsample/sample.go:104:2: inlining call to SplitSeqLocal-range1
+perfsample/sample.go:104:2: inlining call to strings.Index
+perfsample/sample.go:104:2: inlining call to SplitSeqLocal-range1
+perfsample/sample.go:104:2: inlining call to SplitSeqLocal-range1
+perfsample/sample.go:115:37: inlining call to strings.FieldsSeq
+/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/strings/iter.go:84:9: can inline FieldsSeqLocal.FieldsSeq.func1 with cost 264 as: func(func(string) bool) { strings.start := -1; for loop; if strings.start >= 0 { strings.yield(strings.s[strings.start:]) } }
+perfsample/sample.go:115:2: inlining call to FieldsSeqLocal.FieldsSeq.func1
+perfsample/sample.go:115:2: inlining call to utf8.DecodeRuneInString
+perfsample/sample.go:115:2: inlining call to FieldsSeqLocal-range1
+perfsample/sample.go:115:2: inlining call to FieldsSeqLocal-range1
+perfsample/sample.go:125:26: inlining call to strconv.Quote
+perfsample/sample.go:125:26: inlining call to strconv.quoteWith
+perfsample/sample.go:176:31: inlining call to strings.SplitSeq
+perfsample/sample.go:176:31: inlining call to strings.splitSeq
+perfsample/sample.go:183:17: inlining call to bytes.(*Buffer).String
+perfsample/sample.go:191:22: inlining call to strings.(*Builder).String
+perfsample/sample.go:10:27: map[string]int{...} escapes to heap in init:
+perfsample/sample.go:10:27:   flow: {heap} ← &{storage for map[string]int{...}}:
+perfsample/sample.go:10:27:     from map[string]int{...} (spill) at perfsample/sample.go:10:27
+perfsample/sample.go:10:27:     from table = map[string]int{...} (assign) at perfsample/sample.go:10:5
+perfsample/sample.go:10:27: map[string]int{...} escapes to heap
+perfsample/sample.go:15:18: method does not escape
+perfsample/sample.go:15:26: path does not escape
+perfsample/sample.go:16:22: method + ":" + path does not escape
+perfsample/sample.go:23:16: b does not escape
+perfsample/sample.go:24:14: string(b) does not escape
+perfsample/sample.go:31:21: src does not escape
+perfsample/sample.go:32:13: make([]byte, 64) does not escape
+perfsample/sample.go:45:23: b does not escape
+perfsample/sample.go:46:14: string(b) does not escape
+perfsample/sample.go:55:16: "strings: illegal use of non-zero Builder copied by value" escapes to heap in BuilderLocal:
+perfsample/sample.go:55:16:   flow: {heap} ← &{storage for "strings: illegal use of non-zero Builder copied by value"}:
+perfsample/sample.go:55:16:     from "strings: illegal use of non-zero Builder copied by value" (spill) at perfsample/sample.go:55:16
+perfsample/sample.go:55:16:     from panic("strings: illegal use of non-zero Builder copied by value") (call parameter) at perfsample/sample.go:55:16
+perfsample/sample.go:55:16: append(strings.b.buf, strings.s...) escapes to heap in BuilderLocal:
+perfsample/sample.go:55:16:   flow: {heap} ← &{storage for append(strings.b.buf, strings.s...)}:
+perfsample/sample.go:55:16:     from append(strings.b.buf, strings.s...) (spill) at perfsample/sample.go:55:16
+perfsample/sample.go:55:16:     from strings.b.buf = append(strings.b.buf, strings.s...) (assign) at perfsample/sample.go:55:16
+perfsample/sample.go:56:16: "strings: illegal use of non-zero Builder copied by value" escapes to heap in BuilderLocal:
+perfsample/sample.go:56:16:   flow: {heap} ← &{storage for "strings: illegal use of non-zero Builder copied by value"}:
+perfsample/sample.go:56:16:     from "strings: illegal use of non-zero Builder copied by value" (spill) at perfsample/sample.go:56:16
+perfsample/sample.go:56:16:     from panic("strings: illegal use of non-zero Builder copied by value") (call parameter) at perfsample/sample.go:56:16
+perfsample/sample.go:56:16: append(strings.b.buf, strings.s...) escapes to heap in BuilderLocal:
+perfsample/sample.go:56:16:   flow: {heap} ← &{storage for append(strings.b.buf, strings.s...)}:
+perfsample/sample.go:56:16:     from append(strings.b.buf, strings.s...) (spill) at perfsample/sample.go:56:16
+perfsample/sample.go:56:16:     from strings.b.buf = append(strings.b.buf, strings.s...) (assign) at perfsample/sample.go:56:16
+perfsample/sample.go:53:19: a does not escape
+perfsample/sample.go:53:22: b does not escape
+perfsample/sample.go:55:16: "strings: illegal use of non-zero Builder copied by value" escapes to heap
+perfsample/sample.go:55:16: append escapes to heap
+perfsample/sample.go:56:16: "strings: illegal use of non-zero Builder copied by value" escapes to heap
+perfsample/sample.go:56:16: append escapes to heap
+perfsample/sample.go:63:18: a does not escape
+perfsample/sample.go:73:16: a does not escape
+perfsample/sample.go:73:19: b does not escape
+perfsample/sample.go:74:34: []string{...} does not escape
+perfsample/sample.go:81:33: a escapes to heap in SprintfLocal:
+perfsample/sample.go:81:33:   flow: {storage for ... argument} ← &{storage for a}:
+perfsample/sample.go:81:33:     from a (spill) at perfsample/sample.go:81:33
+perfsample/sample.go:81:33:     from ... argument (slice-literal-element) at perfsample/sample.go:81:24
+perfsample/sample.go:81:33:   flow: {heap} ← {storage for ... argument}:
+perfsample/sample.go:81:33:     from ... argument (spill) at perfsample/sample.go:81:24
+perfsample/sample.go:81:33:     from fmt.Sprintf("x=%s", ... argument...) (call parameter) at perfsample/sample.go:81:24
+perfsample/sample.go:80:19: parameter a leaks to {storage for a} for SprintfLocal with derefs=0:
+perfsample/sample.go:80:19:   flow: {storage for a} ← a:
+perfsample/sample.go:80:19:     from a (interface-converted) at perfsample/sample.go:81:33
+perfsample/sample.go:80:19: leaking param: a
+perfsample/sample.go:81:24: ... argument does not escape
+perfsample/sample.go:81:33: a escapes to heap
+perfsample/sample.go:87:15: a does not escape
+perfsample/sample.go:95:16: a does not escape
+perfsample/sample.go:104:36: SplitSeqLocal capturing by value: strings.sep (addr=false assign=false width=16)
+perfsample/sample.go:104:36: SplitSeqLocal capturing by ref: strings.s (addr=false assign=true width=16)
+perfsample/sample.go:104:36: SplitSeqLocal capturing by value: strings.sepSave (addr=false assign=false width=8)
+perfsample/sample.go:102:20: parameter a leaks to {heap} for SplitSeqLocal with derefs=0:
+perfsample/sample.go:102:20:   flow: strings.s ← a:
+perfsample/sample.go:102:20:     from strings.s, strings.sep := a, "," (assign-pair) at perfsample/sample.go:104:36
+perfsample/sample.go:102:20:   flow: strings.s ← strings.s:
+perfsample/sample.go:102:20:     from strings.s, strings.sep, strings.sepSave := strings.s, strings.sep, 0 (assign-pair) at perfsample/sample.go:104:36
+perfsample/sample.go:102:20:   flow: {heap} ← strings.s:
+perfsample/sample.go:102:20:     from strings.s[:strings.size] (slice) at /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/strings/iter.go:41:16
+perfsample/sample.go:102:20:     from strings.yield(strings.s[:strings.size]) (call parameter) at /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/strings/iter.go:41:14
+perfsample/sample.go:102:20: leaking param: a
+/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/strings/iter.go:37:14: yield does not escape
+perfsample/sample.go:104:36: func literal does not escape
+perfsample/sample.go:115:37: FieldsSeqLocal capturing by value: strings.s (addr=false assign=false width=16)
+perfsample/sample.go:113:21: parameter a leaks to {heap} for FieldsSeqLocal with derefs=0:
+perfsample/sample.go:113:21:   flow: strings.s ← a:
+perfsample/sample.go:113:21:     from strings.s := a (assign-pair) at perfsample/sample.go:115:37
+perfsample/sample.go:113:21:   flow: {heap} ← strings.s:
+perfsample/sample.go:113:21:     from strings.s[strings.start:strings.i] (slice) at /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/strings/iter.go:96:17
+perfsample/sample.go:113:21:     from strings.yield(strings.s[strings.start:strings.i]) (call parameter) at /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/strings/iter.go:96:15
+perfsample/sample.go:113:21: leaking param: a
+/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/strings/iter.go:84:14: yield does not escape
+perfsample/sample.go:115:37: func literal does not escape
+perfsample/sample.go:124:17: a does not escape
+perfsample/sample.go:125:26: string(strconv.appendQuotedWith(make([]byte, 0, 3 * len(strconv.s) / 2), strconv.s, strconv.quote, strconv.ASCIIonly, strconv.graphicOnly)) does not escape
+perfsample/sample.go:125:26: make([]byte, 0, 3 * len(strconv.s) / 2) does not escape
+perfsample/sample.go:131:19: a does not escape
+perfsample/sample.go:138:19: a does not escape
+perfsample/sample.go:138:22: b does not escape
+perfsample/sample.go:138:45: a + b does not escape
+perfsample/sample.go:141:19: a does not escape
+perfsample/sample.go:141:22: b does not escape
+perfsample/sample.go:141:53: a + b + a + b does not escape
+perfsample/sample.go:144:19: a does not escape
+perfsample/sample.go:144:22: b does not escape
+perfsample/sample.go:144:57: a + b + a + b + a does not escape
+perfsample/sample.go:147:19: a does not escape
+perfsample/sample.go:147:22: b does not escape
+perfsample/sample.go:147:69: a + b + a + b + a + b + a + b does not escape
+perfsample/sample.go:150:20: a does not escape
+perfsample/sample.go:150:23: b does not escape
+perfsample/sample.go:151:65: a + b + a + b + a + b + a + b + a + b + a + b + a + b + a + b does not escape
+perfsample/sample.go:158:24: b does not escape
+perfsample/sample.go:159:17: string(b) + ":x" does not escape
+perfsample/sample.go:159:14: string(b) does not escape
+perfsample/sample.go:166:2: count capturing by ref: #state1 (addr=false assign=true width=8)
+perfsample/sample.go:165:2: count capturing by ref: n (addr=false assign=true width=8)
+perfsample/sample.go:166:2: func literal escapes to heap in count:
+perfsample/sample.go:166:2:   flow: #yield1 ← &{storage for func literal}:
+perfsample/sample.go:166:2:     from func literal (spill) at perfsample/sample.go:166:2
+perfsample/sample.go:166:2:     from #yield1 := func literal (assign) at perfsample/sample.go:166:2
+perfsample/sample.go:166:2:   flow: {heap} ← #yield1:
+perfsample/sample.go:166:2:     from seq(#yield1) (call parameter) at perfsample/sample.go:166:2
+perfsample/sample.go:166:2: #state1 escapes to heap in count:
+perfsample/sample.go:166:2:   flow: {storage for func literal} ← &#state1:
+perfsample/sample.go:166:2:     from #state1 (captured by a closure) at <unknown line number>
+perfsample/sample.go:166:2:     from #state1 (reference) at <unknown line number>
+perfsample/sample.go:165:2: n escapes to heap in count:
+perfsample/sample.go:165:2:   flow: {storage for func literal} ← &n:
+perfsample/sample.go:165:2:     from n (captured by a closure) at perfsample/sample.go:167:3
+perfsample/sample.go:165:2:     from n (reference) at perfsample/sample.go:167:3
+perfsample/sample.go:164:12: seq does not escape
+perfsample/sample.go:166:6: s does not escape
+perfsample/sample.go:165:2: moved to heap: n
+perfsample/sample.go:166:2: moved to heap: #state1
+perfsample/sample.go:166:2: func literal escapes to heap
+perfsample/sample.go:176:31: SplitSeqPass capturing by value: strings.sep (addr=false assign=false width=16)
+perfsample/sample.go:176:31: SplitSeqPass capturing by ref: strings.s (addr=false assign=true width=16)
+perfsample/sample.go:176:31: SplitSeqPass capturing by value: strings.sepSave (addr=false assign=false width=8)
+perfsample/sample.go:175:19: parameter a leaks to {heap} for SplitSeqPass with derefs=0:
+perfsample/sample.go:175:19:   flow: strings.s ← a:
+perfsample/sample.go:175:19:     from strings.s, strings.sep := a, "," (assign-pair) at perfsample/sample.go:176:31
+perfsample/sample.go:175:19:   flow: strings.s ← strings.s:
+perfsample/sample.go:175:19:     from strings.s, strings.sep, strings.sepSave := strings.s, strings.sep, 0 (assign-pair) at perfsample/sample.go:176:31
+perfsample/sample.go:175:19:   flow: {heap} ← strings.s:
+perfsample/sample.go:175:19:     from strings.s[:strings.size] (slice) at /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/strings/iter.go:41:16
+perfsample/sample.go:175:19:     from strings.yield(strings.s[:strings.size]) (call parameter) at /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/strings/iter.go:41:14
+perfsample/sample.go:175:19: leaking param: a
+/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/strings/iter.go:37:14: yield does not escape
+perfsample/sample.go:176:31: func literal does not escape
+perfsample/sample.go:182:24: buf does not escape
+perfsample/sample.go:183:17: string(bytes.b.buf[bytes.b.off:]) does not escape
+perfsample/sample.go:190:25: sb does not escape
+perfsample/sample.go:115:2: index bounds check elided
+/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/strings/iter.go:89:25: index bounds check elided

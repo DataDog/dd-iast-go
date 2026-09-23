@@ -1,0 +1,13 @@
+[
+  {
+    "id": "prop-string-exact-F1",
+    "severity": "High",
+    "category": "false-negative",
+    "location": "internal/taint/propagation/propagation.go:239-252",
+    "title": "Empty Split results consume the non-empty window budget",
+    "claim": "The StringWindows loop stops after 32 output positions, including empty strings, so the first non-empty tainted Split result at index 32 is never derived and appears clean despite being below the 32 non-empty-window cap.",
+    "evidence_path": ".omo/review/evidence/prop-string-exact/reproducer.out.txt",
+    "repro_command": "Copy .omo/review/evidence/prop-string-exact/zz_review_splitranges_test.go into an isolated copy's iast/propagation/ directory, then run GOTOOLCHAIN=go1.26.6 go test -timeout 5m -count=1 -run '^TestReviewStringsSplitTaintedFirstNonEmptyAfterEmptyPrefix$' -v ./iast/propagation",
+    "needs_repro": false
+  }
+]

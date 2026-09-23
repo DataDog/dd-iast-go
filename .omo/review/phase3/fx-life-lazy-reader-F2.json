@@ -1,0 +1,13 @@
+[
+  {
+    "id": "life-lazy-reader-F2",
+    "verdict": "CONFIRMED",
+    "original_severity": "High",
+    "adjusted_severity": "High",
+    "reachable_default": true,
+    "documented_limitation": false,
+    "reason": "On the supported Go 1.26.6 woven HTTP path, a bound request body combined with an unbound trusted reader through io.MultiReader produces one [0,16) http.request.body range over \"trusted-attacker\". The trusted prefix is therefore falsely attributed to the request body.",
+    "evidence_path": ".omo/review/evidence/fx-life-lazy-reader-F2/go1.26.6.out.txt",
+    "repro_command": "cd /tmp/ddiast-review/wt/fx-life-lazy-reader-F2 && GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 /usr/bin/time -l go tool orchestrion go test -race -timeout 10m -count=1 -run '^TestReviewFXMixedMultiReaderAttributesTrustedPrefixToRequestBody$' -v ./iast/net/http"
+  }
+]

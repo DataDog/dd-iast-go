@@ -1,0 +1,57 @@
+[
+  {
+    "id": "life-cross-request-F1",
+    "severity": "High",
+    "category": "cross-request",
+    "location": "internal/taint/request/reader.go:67-88,119; internal/taint/store/root.go:190-226; internal/taint/store/lookup.go:120-196; internal/taint/propagation/conversion.go:23-45",
+    "title": "A pooled io.ReadAll body slice gives A's body to a concurrent request that refills it",
+    "claim": "ReadAllBytes adopts the application-owned io.ReadAll slice under the exact key (ptr,len). Suppose request A (still active) recycles the slice and a concurrent request B refills it with append (not hooked) to the same length and converts it with string(). BytesToString then matches A's key, Lookup accepts the foreign active owner without checking content, and B's span reports SQL_INJECTION whose source is A's full request body.",
+    "evidence_path": ".omo/review/evidence/life-cross-request/zz_review_crossreq_test.go",
+    "repro_command": "cd iast/integration/testapp && GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -count=3 -timeout 15m -run TestReview -v . (TestReviewPooledReadAllSliceAcrossRequests)",
+    "needs_repro": false
+  },
+  {
+    "id": "life-cross-request-F2",
+    "severity": "High",
+    "category": "cross-request",
+    "location": "iast/propagation/writer.go:202-205; internal/taint/store/writer.go:23-34,448-462; internal/taint/propagation/writer.go:190-237",
+    "title": "A pooled strings.Builder with an un-woven reset inherits A's source after GC address reuse",
+    "claim": "Builder writer views carry no Anchor and Builder has no native invalidation hook. Suppose A's pooled builder is reset outside woven code, the old backing is collected, and B's fmt.Fprintf allocates at the same address with the same len and cap. B's direct String() then matches A's stale view and B's SQL finding lists A's query parameter.",
+    "evidence_path": ".omo/review/evidence/life-cross-request/zz_review_crossreq_test.go",
+    "repro_command": "cd iast/integration/testapp && GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -count=3 -timeout 15m -run TestReview -v . (TestReviewPooledBuilderAcrossRequestsAfterGC)",
+    "needs_repro": false
+  },
+  {
+    "id": "life-cross-request-F3",
+    "severity": "High",
+    "category": "cross-request",
+    "location": "internal/taint/store/writer.go:448-462,233-263; internal/taint/propagation/writer.go:202-237; iast/propagation/writer.go:190-217",
+    "title": "bytes.Buffer view matching across receivers gives A's writer ranges to B's new Buffer over a recycled slice",
+    "claim": "writerViewIndexLocked matches any receiver whose (pointer,len,cap,backing,anchor) equals a tracked view. Suppose A wrote tainted input into bytes.NewBuffer(pooled[:0]) and B refills the pooled slice with append and calls bytes.NewBuffer(b).String(). B's clean string then gets A's ranges and source. This is deterministic and needs no GC.",
+    "evidence_path": ".omo/review/evidence/life-cross-request/zz_review_crossreq_test.go",
+    "repro_command": "cd iast/integration/testapp && GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -count=3 -timeout 15m -run TestReview -v . (TestReviewPooledSliceNewBufferViewAcrossRequests)",
+    "needs_repro": false
+  },
+  {
+    "id": "life-cross-request-F4",
+    "severity": "Medium",
+    "category": "test-gap",
+    "location": "internal/taint/store/lifecycle_test.go; internal/taint/request/owner_test.go; iast/integration/testapp/*_test.go",
+    "title": "No test covers cross-request memory reuse while the originating request is still active",
+    "claim": "Isolation tests only cover reuse after Finish. No test runs two concurrently active requests that share recycled memory, which is where foreign-owner lookup meets stale identity.",
+    "evidence_path": null,
+    "repro_command": null,
+    "needs_repro": false
+  },
+  {
+    "id": "life-cross-request-F5",
+    "severity": "Info",
+    "category": "doc",
+    "location": "internal/taint/store/lookup.go:142-196; internal/vulnerability/tainted.go:110-127",
+    "title": "The documented foreign-owner reporting widens every stale-identity limitation into cross-user attribution",
+    "claim": "Because sinks report taint from any active owner on the sink's span, documented single-request stale-provenance misses are attributed to another user's request and source while the originating request is in flight. The README does not say so.",
+    "evidence_path": null,
+    "repro_command": null,
+    "needs_repro": false
+  }
+]

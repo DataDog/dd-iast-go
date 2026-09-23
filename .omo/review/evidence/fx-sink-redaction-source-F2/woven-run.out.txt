@@ -1,0 +1,16 @@
+Command:
+cd /tmp/ddiast-review/wt/fx-sink-redaction-source-F2/iast/integration/testapp && env -u DD_IAST_REDACTION_ENABLED -u DD_IAST_REDACTION_NAME_PATTERN -u DD_IAST_REDACTION_VALUE_PATTERN -u DD_IAST_REDACTION_KEYS_REGEXP -u DD_IAST_REDACTION_VALUES_REGEXP GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 /usr/bin/time -l go tool orchestrion go test . -run TestFxSensitiveSourceNameLeavesProcessUnredacted -count=1 -timeout 15m -v
+
+Output:
+=== RUN   TestFxSensitiveSourceNameLeavesProcessUnredacted
+    fx_name_leak_test.go:57: LEAK: credential-shaped source name left the process unredacted: {Origin:http.request.parameter Name:token:abcdefghijklm Value: Pattern:abcdefgh Redacted:true Truncated:}
+--- FAIL: TestFxSensitiveSourceNameLeavesProcessUnredacted (0.01s)
+FAIL
+FAIL\tgithub.com/DataDog/dd-iast-go/testapps/integration\t0.796s
+FAIL
+exit status 1
+      145.03 real       129.84 user        96.60 sys
+           366379008  maximum resident set size   (366 MB peak RSS, well under the 4 GB note threshold)
+(exit status 1; the test fails BY DESIGN when it detects the leak: the event captured from the finished
+span's _dd.iast.json tag shows source Name=token:abcdefghijklm serialized verbatim with Redacted=true
+while the value was replaced by pattern "abcdefgh".)

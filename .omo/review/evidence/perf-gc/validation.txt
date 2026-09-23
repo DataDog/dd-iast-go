@@ -1,0 +1,10 @@
+Commands (all from /tmp/ddiast-review/wt/perf-gc with GOTOOLCHAIN=go1.26.6):
+
+go test ./internal/spans -run '^TestPerfGCWeakMakeAndValueDoNotAllocate$' -count=1 -timeout=15m
+ok  	github.com/DataDog/dd-iast-go/internal/spans	0.886s
+
+go tool orchestrion go test ./internal/spans -run '^TestWeakCallsPreserveHTTPDecision$' -count=1 -timeout=15m
+ok  	github.com/DataDog/dd-iast-go/internal/spans	0.907s
+
+go test ./internal/taint/store -run '^(TestFinishDrainsActiveWriterAndReleasesRoots|TestFinishReleasesReaderBindingObjects|TestManySubstringsChargeOneManagedRoot)$' -count=1 -timeout=15m
+ok  	github.com/DataDog/dd-iast-go/internal/taint/store	0.508s

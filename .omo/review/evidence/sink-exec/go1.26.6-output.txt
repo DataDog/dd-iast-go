@@ -1,0 +1,93 @@
+=== RUN   TestCommandInstrumentedCount
+--- PASS: TestCommandInstrumentedCount (0.00s)
+=== RUN   TestCommandExecutionBoundaries
+=== RUN   TestCommandExecutionBoundaries/start
+=== RUN   TestCommandExecutionBoundaries/run
+=== RUN   TestCommandExecutionBoundaries/output
+=== RUN   TestCommandExecutionBoundaries/combined_output
+--- PASS: TestCommandExecutionBoundaries (0.32s)
+    --- PASS: TestCommandExecutionBoundaries/start (0.10s)
+    --- PASS: TestCommandExecutionBoundaries/run (0.05s)
+    --- PASS: TestCommandExecutionBoundaries/output (0.10s)
+    --- PASS: TestCommandExecutionBoundaries/combined_output (0.06s)
+=== RUN   TestCommandWithoutContextUsesOwnerBinding
+--- PASS: TestCommandWithoutContextUsesOwnerBinding (0.07s)
+=== RUN   TestCommandAnalyzerFailureFullyRedacts
+--- PASS: TestCommandAnalyzerFailureFullyRedacts (0.05s)
+=== RUN   TestCommandBeyondCollectionBoundsDrops
+--- PASS: TestCommandBeyondCollectionBoundsDrops (0.01s)
+=== RUN   TestCommandPayloadEncodings
+--- PASS: TestCommandPayloadEncodings (0.06s)
+=== RUN   TestCommandConstructionDoesNotReport
+--- PASS: TestCommandConstructionDoesNotReport (0.01s)
+=== RUN   TestCommandValidationFailureDoesNotReport
+--- PASS: TestCommandValidationFailureDoesNotReport (0.01s)
+=== RUN   TestCommandStartProcessErrorStillReports
+--- PASS: TestCommandStartProcessErrorStillReports (0.01s)
+=== RUN   TestReviewTaintedPathWithCleanArgs
+    review_sinkexec_test.go:56: run err=fork/exec /definitely/not/a/real/attacker-binary: no such file or directory path="/definitely/not/a/real/attacker-binary" args=["ls"]
+    review_sinkexec_test.go:57: FINDINGS=0
+    review_sinkexec_test.go:58: tainted executed path with clean Args[0]: findings=0, want 1 (false negative)
+--- FAIL: TestReviewTaintedPathWithCleanArgs (0.01s)
+=== RUN   TestReviewTaintedPathNilArgs
+    review_sinkexec_test.go:69: run err=fork/exec /definitely/not/a/real/attacker-binary: no such file or directory
+    review_sinkexec_test.go:70: finding[0].part[0] value="/definitely/not/a/real/attacker-binary" pattern="" redacted=false source=0
+    review_sinkexec_test.go:70: source[0] origin=http.request.parameter name="bin" value="/definitely/not/a/real/attacker-binary" redacted=false pattern=""
+    review_sinkexec_test.go:70: FINDINGS=1
+--- PASS: TestReviewTaintedPathNilArgs (0.01s)
+=== RUN   TestReviewStartTwice
+    review_sinkexec_test.go:87: second start err=exec: already started
+    review_sinkexec_test.go:91: finding[0].part[0] value="/var/folders/zb/3gg9brcd3ys4_f10zztf2kq00000gp/T/go-build5079274/b001/os-exec.test " pattern="" redacted=false source=-1
+    review_sinkexec_test.go:91: finding[0].part[1] value="" pattern="*******************************" redacted=true source=-1
+    review_sinkexec_test.go:91: finding[0].part[2] value="" pattern="abcdef" redacted=true source=0
+    review_sinkexec_test.go:91: source[0] origin=http.request.parameter name="argument" value="" redacted=true pattern="abcdef"
+    review_sinkexec_test.go:91: FINDINGS=1
+--- PASS: TestReviewStartTwice (0.08s)
+=== RUN   TestReviewEnvDirNotEvidence
+    review_sinkexec_test.go:105: run err=chdir /definitely/not/a/real/dir: no such file or directory
+    review_sinkexec_test.go:106: FINDINGS=0
+--- PASS: TestReviewEnvDirNotEvidence (0.01s)
+=== RUN   TestReviewJoinedRangeMapping
+    review_sinkexec_test.go:128: finding[0].part[0] value="/var/folders/zb/3gg9brcd3ys4_f10zztf2kq00000gp/T/go-build5079274/b001/os-exec.test -test.run=TestHelperProcess -- x y " pattern="" redacted=false source=-1
+    review_sinkexec_test.go:128: finding[0].part[1] value="AAAA" pattern="" redacted=false source=0
+    review_sinkexec_test.go:128: finding[0].part[2] value="  z " pattern="" redacted=false source=-1
+    review_sinkexec_test.go:128: finding[0].part[3] value="b b" pattern="" redacted=false source=1
+    review_sinkexec_test.go:128: finding[0].part[4] value=" " pattern="" redacted=false source=-1
+    review_sinkexec_test.go:128: finding[0].part[5] value="AAAA" pattern="" redacted=false source=0
+    review_sinkexec_test.go:128: source[0] origin=http.request.parameter name="a" value="AAAA" redacted=false pattern=""
+    review_sinkexec_test.go:128: source[1] origin=http.request.parameter name="b" value="b b" redacted=false pattern=""
+    review_sinkexec_test.go:128: FINDINGS=1
+--- PASS: TestReviewJoinedRangeMapping (0.05s)
+=== RUN   TestReviewLookPathBareTaintedName
+    review_sinkexec_test.go:159: path="/opt/homebrew/opt/coreutils/libexec/gnubin/true" args=["true"] err=<nil>
+    review_sinkexec_test.go:160: finding[0].part[0] value="true" pattern="" redacted=false source=0
+    review_sinkexec_test.go:160: source[0] origin=http.request.parameter name="bin" value="true" redacted=false pattern=""
+    review_sinkexec_test.go:160: FINDINGS=1
+--- PASS: TestReviewLookPathBareTaintedName (0.03s)
+=== RUN   TestReviewCanceledContextNoAttempt
+    review_sinkexec_test.go:174: err=context canceled
+    review_sinkexec_test.go:175: FINDINGS=0
+--- PASS: TestReviewCanceledContextNoAttempt (0.01s)
+=== RUN   TestReviewSudoPreservesTaintedCommand
+    review_sinkexec_test.go:188: err=fork/exec /definitely/not/a/real/sudo: no such file or directory
+    review_sinkexec_test.go:189: finding[0].part[0] value="/definitely/not/a/real/sudo " pattern="" redacted=false source=-1
+    review_sinkexec_test.go:189: finding[0].part[1] value="rmrf" pattern="" redacted=false source=0
+    review_sinkexec_test.go:189: finding[0].part[2] value=" " pattern="" redacted=false source=-1
+    review_sinkexec_test.go:189: finding[0].part[3] value="" pattern="************" redacted=true source=-1
+    review_sinkexec_test.go:189: source[0] origin=http.request.parameter name="cmd" value="rmrf" redacted=false pattern=""
+    review_sinkexec_test.go:189: FINDINGS=1
+--- PASS: TestReviewSudoPreservesTaintedCommand (0.02s)
+=== RUN   TestReviewUnrelatedContextUsesOwner
+    review_sinkexec_test.go:200: err=fork/exec /definitely/not/a/real/x: no such file or directory
+    review_sinkexec_test.go:201: finding[0].part[0] value="/definitely/not/a/real/x " pattern="" redacted=false source=-1
+    review_sinkexec_test.go:201: finding[0].part[1] value="" pattern="abcdef" redacted=true source=0
+    review_sinkexec_test.go:201: source[0] origin=http.request.parameter name="argument" value="" redacted=true pattern="abcdef"
+    review_sinkexec_test.go:201: FINDINGS=1
+--- PASS: TestReviewUnrelatedContextUsesOwner (0.01s)
+=== RUN   TestOSExecStartProcessShape
+--- PASS: TestOSExecStartProcessShape (0.01s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/testapps/os-exec	1.578s
+FAIL
+exit status 1
+exit=1

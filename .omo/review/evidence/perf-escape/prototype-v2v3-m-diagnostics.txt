@@ -1,0 +1,18 @@
+<system-reminder>Detached eval cell toolu_011k3WXkX77kWMf9TdyYuPvp (py) completed.
+./iast/propagation/operators.go:213:6: cannot inline propagation.BytesToString[go.shape.[]uint8]: function too complex: cost 82 exceeds budget 80
+./iast/propagation/operators.go:213:6: can inline propagation.BytesToString[[]uint8] with cost 63 as: func([]byte) string { return propagation.BytesToString[go.shape.[]ui
+
+v3 -m: ./iast/propagation/operators.go:37:30: inlining call to operatorbridge.HasValues
+<generated>:1: inlining call to propagation.BytesToStringValue
+<generated>:1: inlining call to operatorbridge.HasValues
+./iast/propagation/operators.go:293:30: inlining call to operatorbridge.HasValues
+./iast/propagation/operators.go:243:30: inlining call to operatorbridge.HasValues
+<generated>:1: inlining call to propagation.BytesToStringValue
+<generated>:1: inlining call to operatorbridge.HasValues
+./iast/propagation/operators.go:24:30: inlining call to operatorbridge.HasValues
+./iast/propagation/operators.go:50:30: inlining call to operatorbridge.HasValues
+./iast/propagation/operators.go:63:30: inlining call to operatorbridge.HasValues
+./iast/propagation/operators.go:102:30: inlining call to operatorbridge.HasValues
+./iast/propagation/operators.go:206:30: inlining call to operatorbridge.HasValues
+
+rc=0

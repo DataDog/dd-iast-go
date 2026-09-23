@@ -1,0 +1,46 @@
+$ GOTOOLCHAIN=go1.26.6 go run ./cmd/slicepanic
+SAME string[:uint8]         native="runtime error: slice bounds out of range [:200] with length 3" wrapper="runtime error: slice bounds out of range [:200] with length 3"
+SAME string[uint8:]         native="runtime error: slice bounds out of range [200:3]" wrapper="runtime error: slice bounds out of range [200:3]"
+SAME string[:uint16]        native="runtime error: slice bounds out of range [:60000] with length 3" wrapper="runtime error: slice bounds out of range [:60000] with length 3"
+SAME string[:uint32]        native="runtime error: slice bounds out of range [:4000000000] with length 3" wrapper="runtime error: slice bounds out of range [:4000000000] with length 3"
+SAME string[int8:]          native="runtime error: slice bounds out of range [-3:]" wrapper="runtime error: slice bounds out of range [-3:]"
+SAME string[:int16]         native="runtime error: slice bounds out of range [:30000] with length 3" wrapper="runtime error: slice bounds out of range [:30000] with length 3"
+SAME string[:uint]          native="runtime error: slice bounds out of range [:1099511627776] with length 3" wrapper="runtime error: slice bounds out of range [:1099511627776] with length 3"
+SAME string[:int]           native="runtime error: slice bounds out of range [:200] with length 3" wrapper="runtime error: slice bounds out of range [:200] with length 3"
+SAME bytes[:uint8]          native="runtime error: slice bounds out of range [:200] with capacity 3" wrapper="runtime error: slice bounds out of range [:200] with capacity 3"
+SAME bytes[u8:u8:u8]        native="runtime error: slice bounds out of range [::200] with capacity 3" wrapper="runtime error: slice bounds out of range [::200] with capacity 3"
+SAME bytes[:uint16]         native="runtime error: slice bounds out of range [:60000] with capacity 3" wrapper="runtime error: slice bounds out of range [:60000] with capacity 3"
+SAME bytes[int8:]           native="runtime error: slice bounds out of range [-3:]" wrapper="runtime error: slice bounds out of range [-3:]"
+exit=0
+
+$ GOTOOLCHAIN=go1.26.6 go run ./cmd/slicepanic2
+DIFF string[:uint8 const]     native="runtime error: slice bounds out of range [:0] with length 3" wrapper="runtime error: slice bounds out of range [:200] with length 3"
+DIFF string[uint8 const:]     native="runtime error: slice bounds out of range [0:3]" wrapper="runtime error: slice bounds out of range [200:3]"
+DIFF string[:uint16 const]    native="runtime error: slice bounds out of range [:0] with length 3" wrapper="runtime error: slice bounds out of range [:60000] with length 3"
+DIFF bytes[:uint8 const]      native="runtime error: slice bounds out of range [:0] with capacity 3" wrapper="runtime error: slice bounds out of range [:200] with capacity 3"
+DIFF string[int8 const:]      native="runtime error: slice bounds out of range [0:3]" wrapper="runtime error: slice bounds out of range [-3:]"
+exit=0
+
+$ GOTOOLCHAIN=go1.27.0 go run ./cmd/slicepanic
+SAME string[:uint8]         native="runtime error: slice bounds out of range [:200] with length 3" wrapper="runtime error: slice bounds out of range [:200] with length 3"
+SAME string[uint8:]         native="runtime error: slice bounds out of range [200:3]" wrapper="runtime error: slice bounds out of range [200:3]"
+SAME string[:uint16]        native="runtime error: slice bounds out of range [:60000] with length 3" wrapper="runtime error: slice bounds out of range [:60000] with length 3"
+SAME string[:uint32]        native="runtime error: slice bounds out of range [:4000000000] with length 3" wrapper="runtime error: slice bounds out of range [:4000000000] with length 3"
+SAME string[int8:]          native="runtime error: slice bounds out of range [-3:]" wrapper="runtime error: slice bounds out of range [-3:]"
+SAME string[:int16]         native="runtime error: slice bounds out of range [:30000] with length 3" wrapper="runtime error: slice bounds out of range [:30000] with length 3"
+SAME string[:uint]          native="runtime error: slice bounds out of range [:1099511627776] with length 3" wrapper="runtime error: slice bounds out of range [:1099511627776] with length 3"
+SAME string[:int]           native="runtime error: slice bounds out of range [:200] with length 3" wrapper="runtime error: slice bounds out of range [:200] with length 3"
+SAME bytes[:uint8]          native="runtime error: slice bounds out of range [:200] with capacity 3" wrapper="runtime error: slice bounds out of range [:200] with capacity 3"
+SAME bytes[u8:u8:u8]        native="runtime error: slice bounds out of range [::200] with capacity 3" wrapper="runtime error: slice bounds out of range [::200] with capacity 3"
+SAME bytes[:uint16]         native="runtime error: slice bounds out of range [:60000] with capacity 3" wrapper="runtime error: slice bounds out of range [:60000] with capacity 3"
+SAME bytes[int8:]           native="runtime error: slice bounds out of range [-3:]" wrapper="runtime error: slice bounds out of range [-3:]"
+exit=0
+
+$ GOTOOLCHAIN=go1.27.0 go run ./cmd/slicepanic2
+DIFF string[:uint8 const]     native="runtime error: slice bounds out of range [:0] with length 3" wrapper="runtime error: slice bounds out of range [:200] with length 3"
+DIFF string[uint8 const:]     native="runtime error: slice bounds out of range [0:3]" wrapper="runtime error: slice bounds out of range [200:3]"
+DIFF string[:uint16 const]    native="runtime error: slice bounds out of range [:0] with length 3" wrapper="runtime error: slice bounds out of range [:60000] with length 3"
+DIFF bytes[:uint8 const]      native="runtime error: slice bounds out of range [:0] with capacity 3" wrapper="runtime error: slice bounds out of range [:200] with capacity 3"
+DIFF string[int8 const:]      native="runtime error: slice bounds out of range [0:3]" wrapper="runtime error: slice bounds out of range [-3:]"
+exit=0
+

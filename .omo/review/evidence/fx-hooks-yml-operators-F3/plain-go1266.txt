@@ -1,0 +1,3 @@
+Command: cd /tmp/ddiast-review/wt/fx-hooks-yml-operators-F3 && GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go test -timeout 3m -count=1 ./review_f3
+?   	github.com/DataDog/dd-iast-go/review_f3	[no test files]
+PLAIN_EXIT=0

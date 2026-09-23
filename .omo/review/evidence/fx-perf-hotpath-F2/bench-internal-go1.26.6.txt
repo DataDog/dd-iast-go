@@ -1,0 +1,105 @@
+Command: cd <private copy> && uptime && export GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 && go version && go test -run TestF2GatedPreservesProvenance -v -count=1 -timeout=10m ./iast/propagation 2>&1 | tail -5 && go test -run '^$' -bench '^BenchmarkF2Writer$' -benchtime=200ms -count=3 -benchmem -cpu=1 -timeout=15m ./iast/propagation
+
+15:54  up 11 days, 22:33, 5 users, load averages: 50.33 53.22 46.96
+go version go1.26.6 darwin/arm64
+=== RUN   TestF2GatedPreservesProvenance
+    f2_review_test.go:172: gated path kept taint on "SELECT attacker"
+--- PASS: TestF2GatedPreservesProvenance (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/iast/propagation	0.570s
+goos: darwin
+goarch: arm64
+pkg: github.com/DataDog/dd-iast-go/iast/propagation
+cpu: Apple M4 Max
+BenchmarkF2Writer/no-owner/builder/native         	 1000000	       341.8 ns/op	     336 B/op	       3 allocs/op
+BenchmarkF2Writer/no-owner/builder/native         	  242436	       877.8 ns/op	     336 B/op	       3 allocs/op
+BenchmarkF2Writer/no-owner/builder/native         	  702207	       649.5 ns/op	     336 B/op	       3 allocs/op
+BenchmarkF2Writer/no-owner/builder/hook           	  360291	       704.3 ns/op	     368 B/op	       4 allocs/op
+BenchmarkF2Writer/no-owner/builder/hook           	  470733	       649.0 ns/op	     368 B/op	       4 allocs/op
+BenchmarkF2Writer/no-owner/builder/hook           	  833863	       558.4 ns/op	     368 B/op	       4 allocs/op
+BenchmarkF2Writer/no-owner/builder/gated          	 1000000	       565.4 ns/op	     368 B/op	       4 allocs/op
+BenchmarkF2Writer/no-owner/builder/gated          	  552740	       375.1 ns/op	     368 B/op	       4 allocs/op
+BenchmarkF2Writer/no-owner/builder/gated          	 1000000	       543.9 ns/op	     368 B/op	       4 allocs/op
+BenchmarkF2Writer/no-owner/buffer/native          	 1000000	       303.9 ns/op	     112 B/op	       1 allocs/op
+BenchmarkF2Writer/no-owner/buffer/native          	 1000000	       254.9 ns/op	     112 B/op	       1 allocs/op
+BenchmarkF2Writer/no-owner/buffer/native          	 1221934	       315.9 ns/op	     112 B/op	       1 allocs/op
+BenchmarkF2Writer/no-owner/buffer/hook            	 1000000	       411.7 ns/op	     112 B/op	       1 allocs/op
+BenchmarkF2Writer/no-owner/buffer/hook            	 2444052	       121.9 ns/op	     112 B/op	       1 allocs/op
+BenchmarkF2Writer/no-owner/buffer/hook            	 3075626	        78.44 ns/op	     112 B/op	       1 allocs/op
+BenchmarkF2Writer/no-owner/buffer/gated           	 4178463	        58.79 ns/op	     112 B/op	       1 allocs/op
+BenchmarkF2Writer/no-owner/buffer/gated           	 3546070	        90.97 ns/op	     112 B/op	       1 allocs/op
+BenchmarkF2Writer/no-owner/buffer/gated           	 2840184	        90.35 ns/op	     112 B/op	       1 allocs/op
+BenchmarkF2Writer/active-clean-1/builder/native   	 1499019	       155.6 ns/op	     336 B/op	       3 allocs/op
+BenchmarkF2Writer/active-clean-1/builder/native   	 1000000	       313.0 ns/op	     336 B/op	       3 allocs/op
+BenchmarkF2Writer/active-clean-1/builder/native   	 1000000	       632.4 ns/op	     336 B/op	       3 allocs/op
+BenchmarkF2Writer/active-clean-1/builder/hook     	  137528	      6068 ns/op	     368 B/op	       4 allocs/op
+BenchmarkF2Writer/active-clean-1/builder/hook     	   58138	      5849 ns/op	     368 B/op	       4 allocs/op
+BenchmarkF2Writer/active-clean-1/builder/hook     	  142572	      4054 ns/op	     368 B/op	       4 allocs/op
+BenchmarkF2Writer/active-clean-1/builder/gated    	 1000000	       761.3 ns/op	     368 B/op	       4 allocs/op
+BenchmarkF2Writer/active-clean-1/builder/gated    	 1000000	       711.4 ns/op	     368 B/op	       4 allocs/op
+BenchmarkF2Writer/active-clean-1/builder/gated    	 1000000	       682.0 ns/op	     368 B/op	       4 allocs/op
+BenchmarkF2Writer/active-clean-1/buffer/native    	 2781840	       240.5 ns/op	     112 B/op	       1 allocs/op
+BenchmarkF2Writer/active-clean-1/buffer/native    	 1000000	       395.6 ns/op	     112 B/op	       1 allocs/op
+BenchmarkF2Writer/active-clean-1/buffer/native    	 2348385	       142.0 ns/op	     112 B/op	       1 allocs/op
+BenchmarkF2Writer/active-clean-1/buffer/hook      	   77534	      6772 ns/op	     112 B/op	       1 allocs/op
+BenchmarkF2Writer/active-clean-1/buffer/hook      	   31455	      6708 ns/op	     112 B/op	       1 allocs/op
+BenchmarkF2Writer/active-clean-1/buffer/hook      	   30666	     12008 ns/op	     112 B/op	       1 allocs/op
+BenchmarkF2Writer/active-clean-1/buffer/gated     	 1000000	       276.4 ns/op	     112 B/op	       1 allocs/op
+BenchmarkF2Writer/active-clean-1/buffer/gated     	 1000000	       349.2 ns/op	     112 B/op	       1 allocs/op
+BenchmarkF2Writer/active-clean-1/buffer/gated     	 1000000	       378.5 ns/op	     112 B/op	       1 allocs/op
+BenchmarkF2Writer/active-unrelated-taint-1/builder/native         	 1000000	       592.4 ns/op	     336 B/op	       3 allocs/op
+BenchmarkF2Writer/active-unrelated-taint-1/builder/native         	 1000000	       279.6 ns/op	     336 B/op	       3 allocs/op
+BenchmarkF2Writer/active-unrelated-taint-1/builder/native         	 1561796	       150.0 ns/op	     336 B/op	       3 allocs/op
+BenchmarkF2Writer/active-unrelated-taint-1/builder/hook           	  146810	      1958 ns/op	     368 B/op	       4 allocs/op
+BenchmarkF2Writer/active-unrelated-taint-1/builder/hook           	  148812	      4532 ns/op	     368 B/op	       4 allocs/op
+BenchmarkF2Writer/active-unrelated-taint-1/builder/hook           	  146137	      6874 ns/op	     368 B/op	       4 allocs/op
+BenchmarkF2Writer/active-unrelated-taint-1/builder/gated          	  356996	       789.6 ns/op	     368 B/op	       4 allocs/op
+BenchmarkF2Writer/active-unrelated-taint-1/builder/gated          	  565186	       697.7 ns/op	     368 B/op	       4 allocs/op
+BenchmarkF2Writer/active-unrelated-taint-1/builder/gated          	  946651	       614.2 ns/op	     368 B/op	       4 allocs/op
+BenchmarkF2Writer/active-unrelated-taint-1/buffer/native          	 1658046	       183.6 ns/op	     112 B/op	       1 allocs/op
+BenchmarkF2Writer/active-unrelated-taint-1/buffer/native          	 2174107	       128.0 ns/op	     112 B/op	       1 allocs/op
+BenchmarkF2Writer/active-unrelated-taint-1/buffer/native          	 2302786	        89.54 ns/op	     112 B/op	       1 allocs/op
+BenchmarkF2Writer/active-unrelated-taint-1/buffer/hook            	  106380	      6050 ns/op	     112 B/op	       1 allocs/op
+BenchmarkF2Writer/active-unrelated-taint-1/buffer/hook            	   98539	      3960 ns/op	     112 B/op	       1 allocs/op
+BenchmarkF2Writer/active-unrelated-taint-1/buffer/hook            	   64070	      3761 ns/op	     112 B/op	       1 allocs/op
+BenchmarkF2Writer/active-unrelated-taint-1/buffer/gated           	  766107	       272.2 ns/op	     112 B/op	       1 allocs/op
+BenchmarkF2Writer/active-unrelated-taint-1/buffer/gated           	 1000000	       325.4 ns/op	     112 B/op	       1 allocs/op
+BenchmarkF2Writer/active-unrelated-taint-1/buffer/gated           	 1560598	       261.3 ns/op	     112 B/op	       1 allocs/op
+BenchmarkF2Writer/active-clean-2/builder/native                   	 1263866	       180.4 ns/op	     336 B/op	       3 allocs/op
+BenchmarkF2Writer/active-clean-2/builder/native                   	 1000000	       213.4 ns/op	     336 B/op	       3 allocs/op
+BenchmarkF2Writer/active-clean-2/builder/native                   	 1000000	       350.6 ns/op	     336 B/op	       3 allocs/op
+BenchmarkF2Writer/active-clean-2/builder/hook                     	   82930	      5831 ns/op	     368 B/op	       4 allocs/op
+BenchmarkF2Writer/active-clean-2/builder/hook                     	  131650	      2766 ns/op	     368 B/op	       4 allocs/op
+BenchmarkF2Writer/active-clean-2/builder/hook                     	   46183	      4581 ns/op	     368 B/op	       4 allocs/op
+BenchmarkF2Writer/active-clean-2/builder/gated                    	 1000000	       598.8 ns/op	     368 B/op	       4 allocs/op
+BenchmarkF2Writer/active-clean-2/builder/gated                    	 1000000	       744.4 ns/op	     368 B/op	       4 allocs/op
+BenchmarkF2Writer/active-clean-2/builder/gated                    	 1000000	       536.0 ns/op	     368 B/op	       4 allocs/op
+BenchmarkF2Writer/active-clean-2/buffer/native                    	 3793998	        66.00 ns/op	     112 B/op	       1 allocs/op
+BenchmarkF2Writer/active-clean-2/buffer/native                    	 4373150	        53.64 ns/op	     112 B/op	       1 allocs/op
+BenchmarkF2Writer/active-clean-2/buffer/native                    	 4890979	        53.21 ns/op	     112 B/op	       1 allocs/op
+BenchmarkF2Writer/active-clean-2/buffer/hook                      	   88467	      6566 ns/op	     112 B/op	       1 allocs/op
+BenchmarkF2Writer/active-clean-2/buffer/hook                      	   95408	     10347 ns/op	     112 B/op	       1 allocs/op
+BenchmarkF2Writer/active-clean-2/buffer/hook                      	  106017	      7835 ns/op	     112 B/op	       1 allocs/op
+BenchmarkF2Writer/active-clean-2/buffer/gated                     	 1000000	       382.9 ns/op	     112 B/op	       1 allocs/op
+BenchmarkF2Writer/active-clean-2/buffer/gated                     	 2467196	        96.00 ns/op	     112 B/op	       1 allocs/op
+BenchmarkF2Writer/active-clean-2/buffer/gated                     	 2389002	       388.5 ns/op	     112 B/op	       1 allocs/op
+BenchmarkF2Writer/active-tracked-writer-elsewhere/builder/native  	 1000000	       374.3 ns/op	     336 B/op	       3 allocs/op
+BenchmarkF2Writer/active-tracked-writer-elsewhere/builder/native  	 1000000	       795.4 ns/op	     336 B/op	       3 allocs/op
+BenchmarkF2Writer/active-tracked-writer-elsewhere/builder/native  	 1000000	       465.1 ns/op	     336 B/op	       3 allocs/op
+BenchmarkF2Writer/active-tracked-writer-elsewhere/builder/hook    	   46130	      9044 ns/op	     368 B/op	       4 allocs/op
+BenchmarkF2Writer/active-tracked-writer-elsewhere/builder/hook    	   62145	      4534 ns/op	     368 B/op	       4 allocs/op
+BenchmarkF2Writer/active-tracked-writer-elsewhere/builder/hook    	  145887	      2901 ns/op	     368 B/op	       4 allocs/op
+BenchmarkF2Writer/active-tracked-writer-elsewhere/builder/gated   	  155355	      1917 ns/op	     368 B/op	       4 allocs/op
+BenchmarkF2Writer/active-tracked-writer-elsewhere/builder/gated   	   58389	      3935 ns/op	     368 B/op	       4 allocs/op
+BenchmarkF2Writer/active-tracked-writer-elsewhere/builder/gated   	   95293	      3105 ns/op	     368 B/op	       4 allocs/op
+BenchmarkF2Writer/active-tracked-writer-elsewhere/buffer/native   	 4056540	        61.05 ns/op	     112 B/op	       1 allocs/op
+BenchmarkF2Writer/active-tracked-writer-elsewhere/buffer/native   	 3225531	        72.30 ns/op	     112 B/op	       1 allocs/op
+BenchmarkF2Writer/active-tracked-writer-elsewhere/buffer/native   	 2774266	       110.8 ns/op	     112 B/op	       1 allocs/op
+BenchmarkF2Writer/active-tracked-writer-elsewhere/buffer/hook     	   40046	      6584 ns/op	     112 B/op	       1 allocs/op
+BenchmarkF2Writer/active-tracked-writer-elsewhere/buffer/hook     	   78064	      5886 ns/op	     112 B/op	       1 allocs/op
+BenchmarkF2Writer/active-tracked-writer-elsewhere/buffer/hook     	   26904	     20354 ns/op	     112 B/op	       1 allocs/op
+BenchmarkF2Writer/active-tracked-writer-elsewhere/buffer/gated    	   10000	     28192 ns/op	     112 B/op	       1 allocs/op
+BenchmarkF2Writer/active-tracked-writer-elsewhere/buffer/gated    	   54331	     13938 ns/op	     112 B/op	       1 allocs/op
+BenchmarkF2Writer/active-tracked-writer-elsewhere/buffer/gated    	   14865	     22580 ns/op	     112 B/op	       1 allocs/op
+PASS
+ok  	github.com/DataDog/dd-iast-go/iast/propagation	39.834s

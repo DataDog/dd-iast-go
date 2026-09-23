@@ -1,0 +1,39 @@
+File: memprobe-woven
+Type: alloc_space
+Time: 2026-09-23 15:19:09 CEST
+Active filters:
+   focus=iast/database/sql.Report
+Showing nodes accounting for 4.57MB, 16.86% of 27.08MB total
+Dropped 35 nodes (cum <= 0.14MB)
+Showing top 30 nodes out of 53
+      flat  flat%   sum%        cum   cum%
+         0     0%     0%     5.76MB 21.28%  database/sql.(*DB).QueryContext
+         0     0%     0%     5.76MB 21.28%  github.com/DataDog/dd-iast-go/iast/database/sql.Report
+         0     0%     0%     5.76MB 21.28%  github.com/DataDog/dd-iast-go/internal/taint/sqlbridge.Report
+         0     0%     0%     5.76MB 21.28%  main.handleTypical
+         0     0%     0%     5.76MB 21.28%  main.main
+         0     0%     0%     5.76MB 21.28%  main.runQuery
+         0     0%     0%     5.76MB 21.28%  runtime.main
+         0     0%     0%     4.42MB 16.31%  github.com/DataDog/dd-iast-go/internal/vulnerability.ReportTainted
+         0     0%     0%     2.73MB 10.07%  github.com/DataDog/dd-iast-go/internal/vulnerability.CaptureLocationSkipWhile
+    0.01MB 0.054% 0.054%     2.47MB  9.14%  github.com/DataDog/dd-trace-go/v2/instrumentation.(*Instrumentation).CaptureStackTrace
+    0.04MB  0.15%  0.21%     2.45MB  9.06%  github.com/DataDog/dd-trace-go/v2/internal/stacktrace.NewEvent
+         0     0%  0.21%     2.41MB  8.91%  github.com/DataDog/dd-trace-go/v2/internal/stacktrace.SkipAndCaptureWithDepth
+         0     0%  0.21%     1.66MB  6.12%  github.com/DataDog/dd-iast-go/internal/taint/redaction.BuildWithSensitive
+    0.98MB  3.63%  3.84%     1.33MB  4.92%  github.com/DataDog/dd-trace-go/v2/internal/stacktrace.(*framesIterator).capture
+    0.08MB  0.29%  4.13%     1.08MB  3.99%  github.com/DataDog/dd-trace-go/v2/internal/stacktrace.iterator (inline)
+       1MB  3.70%  7.83%        1MB  3.70%  github.com/DataDog/dd-trace-go/v2/internal/stacktrace.newQueue[go.shape.struct { PC uintptr; Func *runtime.Func; Function string; File string; Line int; runtime.startLine int; Entry uintptr; runtime.funcInfo runtime.funcInfo }] (inline)
+    0.94MB  3.48% 11.31%     0.96MB  3.54%  github.com/DataDog/dd-iast-go/internal/taint/redaction.buildParts
+         0     0% 11.31%     0.83MB  3.07%  github.com/DataDog/dd-iast-go/internal/taint/evidence.CollectString
+    0.32MB  1.20% 12.51%     0.74MB  2.72%  github.com/DataDog/dd-iast-go/internal/taint/evidence.(*collector).finish
+    0.24MB  0.87% 13.38%     0.52MB  1.91%  github.com/DataDog/dd-iast-go/internal/taint/redaction.AnalyzeSQL
+    0.40MB  1.49% 14.87%     0.48MB  1.76%  github.com/DataDog/dd-iast-go/internal/taint/redaction.buildWireSources
+         0     0% 14.87%     0.28MB  1.05%  github.com/DataDog/dd-iast-go/internal/taint/evidence.(*Snapshot).canonicalize
+    0.28MB  1.02% 15.88%     0.28MB  1.02%  github.com/DataDog/dd-trace-go/v2/internal/stacktrace.newQueue[go.shape.struct { Text string "msg:\"text,omitempty\""; File string "msg:\"file,omitempty\""; Namespace string "msg:\"namespace,omitempty\""; ClassName string "msg:\"class_name,omitempty\""; Function string "msg:\"function,omitempty\""; Index uint32 "msg:\"id\""; Line uint32 "msg:\"line,omitempty\""; Column uint32 "msg:\"column,omitempty\"" }] (inline)
+         0     0% 15.88%     0.27MB  0.98%  github.com/DataDog/dd-iast-go/internal/taint/redaction.scanSQLSegment
+    0.27MB  0.98% 16.86%     0.27MB  0.98%  github.com/DataDog/go-sqllexer.New
+         0     0% 16.86%     0.22MB  0.82%  github.com/DataDog/dd-iast-go/internal/taint/redaction.sourceSensitive
+         0     0% 16.86%     0.22MB  0.82%  regexp.(*Regexp).MatchString
+         0     0% 16.86%     0.22MB  0.82%  regexp.(*Regexp).backtrack
+         0     0% 16.86%     0.22MB  0.82%  regexp.(*Regexp).doExecute
+         0     0% 16.86%     0.22MB  0.82%  regexp.(*Regexp).doMatch (inline)

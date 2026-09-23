@@ -1,0 +1,2 @@
+ok  	github.com/DataDog/dd-iast-go/reviewf2	0.306s
+plain-exit=0

@@ -1,0 +1,13 @@
+[
+  {
+    "id": "life-cross-request-F3",
+    "verdict": "CONFIRMED",
+    "original_severity": "High",
+    "adjusted_severity": "High",
+    "reachable_default": true,
+    "documented_limitation": false,
+    "reason": "Mechanism verified at HEAD 2e23b46 (writerViewIndexLocked internal/taint/store/writer.go:448-462 matches any receiver by full view equality; publishWriterString adopts into the donor owner) and reproduced end to end with an independently written woven two-request reproducer on Go 1.26.6: request B executing a constant clean query gets an SQL_INJECTION on its span with request A's raw attacker input as source, 3/3 runs, deterministic, no GC or timing needed; sequential control (A finished) is clean 3/3. Ordinary customer code (pooled []byte + bytes.NewBuffer + append refill) triggers it under default config (enabled, 30% sampling, MaxConcurrentRequests=2); README/design-intent document view matching only for same-request Buffer value copies and single-owner stale ranges, never cross-request bleed, so it violates product rule 4. Go 1.27.0 could not be exercised because the woven build fails there for the unrelated pre-existing encoding/json hook incompatibility (base-test-127).",
+    "evidence_path": ".omo/review/evidence/fx-life-cross-request-F3/zz_f3repro_test.go",
+    "repro_command": "cd iast/integration/testapp && GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -count=3 -timeout 15m -run TestF3PooledNewBufferCrossRequest -v ."
+  }
+]

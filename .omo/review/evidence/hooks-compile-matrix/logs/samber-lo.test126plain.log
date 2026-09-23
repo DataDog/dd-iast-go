@@ -1,0 +1,12 @@
+Command: cd samber-lo && GOTOOLCHAIN=go1.26.6 go test -count=1 -timeout 15m ./...
+go version: go version go1.26.6 darwin/arm64
+
+ok  	github.com/samber/lo	1.693s
+?   	github.com/samber/lo/internal/constraints	[no test files]
+?   	github.com/samber/lo/internal/xrand	[no test files]
+?   	github.com/samber/lo/internal/xtime	[no test files]
+ok  	github.com/samber/lo/it	0.703s
+ok  	github.com/samber/lo/mutable	0.924s
+?   	github.com/samber/lo/parallel	[no test files]
+
+Exit status: 0  (elapsed 3s)

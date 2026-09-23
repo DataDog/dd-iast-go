@@ -1,0 +1,43 @@
+goos: darwin
+goarch: arm64
+pkg: github.com/DataDog/dd-iast-go/benchmarks/overhead
+cpu: Apple M4 Max
+BenchmarkBytesBufferCopies/read     	    2000	       653.7 ns/op	      56 B/op	       2 allocs/op
+BenchmarkBytesBufferCopies/write    	    2000	      4108 ns/op	      64 B/op	       2 allocs/op
+BenchmarkBytesBufferCopies/active-unrelated         	    2000	       530.6 ns/op	       0 B/op	       0 allocs/op
+BenchmarkPropagationActiveUntainted/StringWindow    	    2000	        30.19 ns/op	       0 B/op	       0 allocs/op
+BenchmarkPropagationActiveUntainted/StringWindows   	    2000	       141.2 ns/op	      48 B/op	       1 allocs/op
+BenchmarkPropagationActiveUntainted/StringCopy      	    2000	        20.31 ns/op	       8 B/op	       1 allocs/op
+BenchmarkPropagationActiveUntainted/StringCoarse    	    2000	        71.23 ns/op	       8 B/op	       1 allocs/op
+BenchmarkPropagationActiveUntainted/ByteWindow      	    2000	         7.833 ns/op	       0 B/op	       0 allocs/op
+BenchmarkPropagationActiveUntainted/ByteCopy        	    2000	        23.23 ns/op	       8 B/op	       1 allocs/op
+BenchmarkStringsBuilder                             	    2000	        86.96 ns/op	      24 B/op	       2 allocs/op
+BenchmarkBytesBuffer                                	    2000	        62.67 ns/op	      80 B/op	       2 allocs/op
+BenchmarkBytesClone                                 	    2000	        40.94 ns/op	      24 B/op	       1 allocs/op
+BenchmarkBytesTrimSpace                             	    2000	         4.417 ns/op	       0 B/op	       0 allocs/op
+BenchmarkBytesSplit                                 	    2000	        90.54 ns/op	      80 B/op	       1 allocs/op
+BenchmarkBytesJoin                                  	    2000	        59.56 ns/op	      16 B/op	       1 allocs/op
+BenchmarkBytesRepeat                                	    2000	        58.92 ns/op	      16 B/op	       1 allocs/op
+BenchmarkBytesReplaceAll                            	    2000	       291.9 ns/op	      16 B/op	       1 allocs/op
+BenchmarkBytesToLower                               	    2000	        90.92 ns/op	      16 B/op	       1 allocs/op
+BenchmarkBytesMap                                   	    2000	      4944 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStringsClone                               	    2000	        23.42 ns/op	      24 B/op	       1 allocs/op
+BenchmarkStringsTrimSpace                           	    2000	         4.750 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStringsToLower                             	    2000	        77.75 ns/op	      16 B/op	       1 allocs/op
+BenchmarkFmtSprintf                                 	    2000	       104.3 ns/op	      16 B/op	       1 allocs/op
+BenchmarkURLQueryEscape                             	    2000	       110.2 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStrconvQuote                               	    2000	       131.4 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStringsJoin                                	    2000	        77.77 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStringsRepeat                              	    2000	        56.31 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStringsReplaceAll                          	    2000	       102.9 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStringsSplitSeq                            	    2000	        60.42 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStringsSplit                               	    2000	        83.19 ns/op	      48 B/op	       1 allocs/op
+BenchmarkHealth                                     	    2000	      2962 ns/op	    6114 B/op	      19 allocs/op
+BenchmarkRequestProcessing                          	    2000	      7401 ns/op	    8793 B/op	      47 allocs/op
+BenchmarkRequestProcessingParallel                  	    2000	     10524 ns/op	    8792 B/op	      47 allocs/op
+BenchmarkHTTPRoundTrip                              	    2000	    469922 ns/op	   40904 B/op	     510 allocs/op
+BenchmarkWeakHashNoActiveSpan                       	    2000	       285.3 ns/op	     128 B/op	       4 allocs/op
+BenchmarkWeakHashActiveSpan                         	    2000	     18708 ns/op	   19919 B/op	      98 allocs/op
+BenchmarkWeakCipherNoActiveSpan                     	    2000	       881.4 ns/op	     256 B/op	       5 allocs/op
+BenchmarkWeakCipherActiveSpan                       	    2000	     20612 ns/op	   20034 B/op	      99 allocs/op
+PASS

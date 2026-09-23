@@ -1,0 +1,11 @@
+=== RUN   TestReviewCrossOwnerConcatAndReuse
+    zz_review_owner_isolation_test.go:73: both active: [{start:0 length:10 source:alpha-AAAA ownerID:1} {start:10 length:10 source:bravo-BBBB ownerID:2}] (idA=1 idB=2)
+    zz_review_owner_isolation_test.go:83: builder both active: [{start:0 length:10 source:alpha-AAAA ownerID:1} {start:11 length:10 source:bravo-BBBB ownerID:2}]
+    zz_review_owner_isolation_test.go:92: after A finish: [{start:10 length:10 source:bravo-BBBB ownerID:2}]
+    zz_review_owner_isolation_test.go:136: successor C id=3 isolated from stale A/B values
+--- PASS: TestReviewCrossOwnerConcatAndReuse (0.00s)
+=== RUN   TestReviewOwnerEndsDuringPropagationStress
+    zz_review_owner_isolation_test.go:227: cycles=137033 ops=33046841 taintedResults=3291 mismatches=0
+--- PASS: TestReviewOwnerEndsDuringPropagationStress (30.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/iast/propagation	31.399s

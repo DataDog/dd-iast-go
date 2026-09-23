@@ -1,0 +1,100 @@
+$ cd $WT/fx/app
+$ GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4  go tool orchestrion go build -buildmode=plugin -o ../out/pluginnomain.so ./cmd/pluginnomain
+# example.com/app/cmd/pluginnomain
+resolving "github.com/DataDog/dd-iast-go/iast/propagation": /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/internal/model/constants/origin_gen.go:6:2: cannot find package "github.com/tinylib/msgp/msgp" in any of:
+	/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/github.com/tinylib/msgp/msgp (from $GOROOT)
+	/Users/eliott.bouhana/go/src/github.com/tinylib/msgp/msgp (from $GOPATH)
+-: # github.com/DataDog/dd-iast-go/internal/config/parser
+go env GOMOD: in "/var/folders/zb/3gg9brcd3ys4_f10zztf2kq00000gp/T/go-build1371436474/b001/exe": `go env GOMOD` returned a blank string
+-: # github.com/DataDog/dd-iast-go/internal/config/parser
+go env GOMOD: in "/var/folders/zb/3gg9brcd3ys4_f10zztf2kq00000gp/T/go-build1371436474/b001/exe": `go env GOMOD` returned a blank string
+/Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/internal/model/constants/origin_gen.go:6:2: cannot find package "github.com/tinylib/msgp/msgp" in any of:
+	/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/github.com/tinylib/msgp/msgp (from $GOROOT)
+	/Users/eliott.bouhana/go/src/github.com/tinylib/msgp/msgp (from $GOPATH)
+/Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/internal/model/constants/origin_gen.go:6:2: cannot find package "github.com/tinylib/msgp/msgp" in any of:
+	/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/github.com/tinylib/msgp/msgp (from $GOROOT)
+	/Users/eliott.bouhana/go/src/github.com/tinylib/msgp/msgp (from $GOPATH)
+-: # github.com/DataDog/dd-iast-go/internal/taint/writerbridge
+go env GOMOD: in "/var/folders/zb/3gg9brcd3ys4_f10zztf2kq00000gp/T/go-build1371436474/b001/exe": `go env GOMOD` returned a blank string
+-: # github.com/DataDog/dd-iast-go/internal/taint/httpbridge
+go env GOMOD: in "/var/folders/zb/3gg9brcd3ys4_f10zztf2kq00000gp/T/go-build1371436474/b001/exe": `go env GOMOD` returned a blank string
+-: # github.com/DataDog/dd-iast-go/internal/config/parser
+go env GOMOD: in "/var/folders/zb/3gg9brcd3ys4_f10zztf2kq00000gp/T/go-build1371436474/b001/exe": `go env GOMOD` returned a blank string
+-: # github.com/DataDog/dd-iast-go/internal/config/parser
+go env GOMOD: in "/var/folders/zb/3gg9brcd3ys4_f10zztf2kq00000gp/T/go-build1371436474/b001/exe": `go env GOMOD` returned a blank string
+/Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/internal/model/constants/origin_gen.go:6:2: cannot find package "github.com/tinylib/msgp/msgp" in any of:
+	/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/github.com/tinylib/msgp/msgp (from $GOROOT)
+	/Users/eliott.bouhana/go/src/github.com/tinylib/msgp/msgp (from $GOPATH)
+/Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/internal/model/constants/origin_gen.go:6:2: cannot find package "github.com/tinylib/msgp/msgp" in any of:
+	/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/github.com/tinylib/msgp/msgp (from $GOROOT)
+	/Users/eliott.bouhana/go/src/github.com/tinylib/msgp/msgp (from $GOPATH)
+-: # github.com/DataDog/dd-iast-go/internal/taint/writerbridge
+go env GOMOD: in "/var/folders/zb/3gg9brcd3ys4_f10zztf2kq00000gp/T/go-build1371436474/b001/exe": `go env GOMOD` returned a blank string
+/Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/internal/model/constants/origin_gen.go:6:2: cannot find package "github.com/tinylib/msgp/msgp" in any of:
+	/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/github.com/tinylib/msgp/msgp (from $GOROOT)
+	/Users/eliott.bouhana/go/src/github.com/tinylib/msgp/msgp (from $GOPATH)
+-: # github.com/DataDog/dd-iast-go/internal/taint/operatorbridge
+go env GOMOD: in "/var/folders/zb/3gg9brcd3ys4_f10zztf2kq00000gp/T/go-build1371436474/b001/exe": `go env GOMOD` returned a blank string
+-: # github.com/DataDog/dd-iast-go/internal/taint/iobridge
+go env GOMOD: in "/var/folders/zb/3gg9brcd3ys4_f10zztf2kq00000gp/T/go-build1371436474/b001/exe": `go env GOMOD` returned a blank string
+-: # github.com/DataDog/dd-iast-go/internal/taint/urlbridge
+go env GOMOD: in "/var/folders/zb/3gg9brcd3ys4_f10zztf2kq00000gp/T/go-build1371436474/b001/exe": `go env GOMOD` returned a blank string
+-: # github.com/DataDog/dd-iast-go/internal/taint/commandbridge
+go env GOMOD: in "/var/folders/zb/3gg9brcd3ys4_f10zztf2kq00000gp/T/go-build1371436474/b001/exe": `go env GOMOD` returned a blank string
+-: # github.com/DataDog/dd-iast-go/internal/taint/scopebridge
+go env GOMOD: in "/var/folders/zb/3gg9brcd3ys4_f10zztf2kq00000gp/T/go-build1371436474/b001/exe": `go env GOMOD` returned a blank string
+/Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/internal/model/constants/origin_gen.go:6:2: cannot find package "github.com/tinylib/msgp/msgp" in any of:
+	/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/github.com/tinylib/msgp/msgp (from $GOROOT)
+	/Users/eliott.bouhana/go/src/github.com/tinylib/msgp/msgp (from $GOPATH)
+-: # github.com/DataDog/dd-iast-go/internal/taint/jsonbridge
+go env GOMOD: in "/var/folders/zb/3gg9brcd3ys4_f10zztf2kq00000gp/T/go-build1371436474/b001/exe": `go env GOMOD` returned a blank string
+-: # github.com/DataDog/dd-iast-go/internal/taint/sqlbridge
+go env GOMOD: in "/var/folders/zb/3gg9brcd3ys4_f10zztf2kq00000gp/T/go-build1371436474/b001/exe": `go env GOMOD` returned a blank string
+-: # github.com/DataDog/dd-iast-go/internal/config/parser
+go env GOMOD: in "/var/folders/zb/3gg9brcd3ys4_f10zztf2kq00000gp/T/go-build1371436474/b001/exe": `go env GOMOD` returned a blank string
+-: # github.com/DataDog/dd-iast-go/internal/config/parser
+go env GOMOD: in "/var/folders/zb/3gg9brcd3ys4_f10zztf2kq00000gp/T/go-build1371436474/b001/exe": `go env GOMOD` returned a blank string
+/Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/internal/model/constants/origin_gen.go:6:2: cannot find package "github.com/tinylib/msgp/msgp" in any of:
+	/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/github.com/tinylib/msgp/msgp (from $GOROOT)
+	/Users/eliott.bouhana/go/src/github.com/tinylib/msgp/msgp (from $GOPATH)
+/Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/internal/model/constants/origin_gen.go:6:2: cannot find package "github.com/tinylib/msgp/msgp" in any of:
+	/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/github.com/tinylib/msgp/msgp (from $GOROOT)
+	/Users/eliott.bouhana/go/src/github.com/tinylib/msgp/msgp (from $GOPATH)
+-: # github.com/DataDog/dd-iast-go/internal/config/parser
+go env GOMOD: in "/var/folders/zb/3gg9brcd3ys4_f10zztf2kq00000gp/T/go-build1371436474/b001/exe": `go env GOMOD` returned a blank string
+-: # github.com/DataDog/dd-iast-go/internal/config/parser
+go env GOMOD: in "/var/folders/zb/3gg9brcd3ys4_f10zztf2kq00000gp/T/go-build1371436474/b001/exe": `go env GOMOD` returned a blank string
+/Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/internal/model/constants/origin_gen.go:6:2: cannot find package "github.com/tinylib/msgp/msgp" in any of:
+	/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/github.com/tinylib/msgp/msgp (from $GOROOT)
+	/Users/eliott.bouhana/go/src/github.com/tinylib/msgp/msgp (from $GOPATH)
+/Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/internal/model/constants/origin_gen.go:6:2: cannot find package "github.com/tinylib/msgp/msgp" in any of:
+	/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/github.com/tinylib/msgp/msgp (from $GOROOT)
+	/Users/eliott.bouhana/go/src/github.com/tinylib/msgp/msgp (from $GOPATH)
+/Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/internal/model/constants/origin_gen.go:6:2: cannot find package "github.com/tinylib/msgp/msgp" in any of:
+	/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/github.com/tinylib/msgp/msgp (from $GOROOT)
+	/Users/eliott.bouhana/go/src/github.com/tinylib/msgp/msgp (from $GOPATH)
+-: # github.com/DataDog/dd-iast-go/internal/taint/operatorbridge
+go env GOMOD: in "/var/folders/zb/3gg9brcd3ys4_f10zztf2kq00000gp/T/go-build1371436474/b001/exe": `go env GOMOD` returned a blank string
+-: # github.com/DataDog/dd-iast-go/internal/taint/writerbridge
+go env GOMOD: in "/var/folders/zb/3gg9brcd3ys4_f10zztf2kq00000gp/T/go-build1371436474/b001/exe": `go env GOMOD` returned a blank string
+exit status 1
+        3.52 real         1.99 user         3.61 sys
+            99205120  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              165454  page reclaims
+                5475  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                 104  messages sent
+                  94  messages received
+                3424  signals received
+                1138  voluntary context switches
+               49472  involuntary context switches
+          4493704083  instructions retired
+          2825881653  cycles elapsed
+            79463096  peak memory footprint
+
+exit status: 1

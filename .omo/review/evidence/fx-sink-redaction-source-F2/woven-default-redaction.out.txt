@@ -1,0 +1,39 @@
+=== RUN   TestReviewF2QueryKeyNameAndValuePattern
+    review_f2_source_name_test.go:65: query-key token: event: {"sources":[{"origin":"http.request.parameter.name","name":"token:abcdefghijklm","pattern":"abcdefghijklmnopqrs","redacted":true}],"vulnerabilities":[{"type":"SQL_INJECTION","hash":698859685,"evidence":{"valueParts":[{"pattern":"abcdefghijklmnopqrs","redacted":true,"source":0}]},"location":{"spanId":9197873193848216432,"path":"/tmp/ddiast-review/wt/fx-sink-redaction-source-F2/iast/integration/testapp/review_f2_source_name_test.go","line":41,"method":"github.com/DataDog/dd-iast-go/testapps/integration_test.TestReviewF2QueryKeyNameAndValuePattern.queryKeysToSQL.func1","stackId":"c5543cc7-d06d-4d4e-a81f-09882f697584"}}]}
+    review_f2_source_name_test.go:65: LEAK[query-key token:]: source redacted (redacted=true) but secret "token:abcdefghijklm" still serialized
+--- FAIL: TestReviewF2QueryKeyNameAndValuePattern (0.01s)
+=== RUN   TestReviewF2QueryKeyValuePatternOnly
+    review_f2_source_name_test.go:78: query-key ghp_ event: {"sources":[{"origin":"http.request.parameter.name","name":"ghp_AbCdEfGhIjKlMnOpQrStUvWxYz0123456789","pattern":"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMN","redacted":true}],"vulnerabilities":[{"type":"SQL_INJECTION","hash":698859685,"evidence":{"valueParts":[{"pattern":"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMN","redacted":true,"source":0}]},"location":{"spanId":7279251930834730839,"path":"/tmp/ddiast-review/wt/fx-sink-redaction-source-F2/iast/integration/testapp/review_f2_source_name_test.go","line":41,"method":"github.com/DataDog/dd-iast-go/testapps/integration_test.TestReviewF2QueryKeyValuePatternOnly.queryKeysToSQL.func1","stackId":"eab39081-1f25-443d-abae-c7277ee254e8"}}]}
+    review_f2_source_name_test.go:78: LEAK[query-key ghp_]: source redacted (redacted=true) but secret "ghp_AbCdEfGhIjKlMnOpQrStUvWxYz0123456789" still serialized
+--- FAIL: TestReviewF2QueryKeyValuePatternOnly (0.01s)
+=== RUN   TestReviewF2HeaderNameValuePattern
+    review_f2_source_name_test.go:100: header-name jwt event: {"sources":[{"origin":"http.request.header.name","name":"Eyjhbgcioijiuzi1nij9.eyjzdwiioiixin0.c2ln","pattern":"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNO","redacted":true}],"vulnerabilities":[{"type":"SQL_INJECTION","hash":2028268116,"evidence":{"valueParts":[{"pattern":"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNO","redacted":true,"source":0}]},"location":{"spanId":8073333523856577852,"path":"/tmp/ddiast-review/wt/fx-sink-redaction-source-F2/iast/integration/testapp/review_f2_source_name_test.go","line":96,"method":"github.com/DataDog/dd-iast-go/testapps/integration_test.TestReviewF2HeaderNameValuePattern.func1","stackId":"e13259ba-2513-405f-8659-119d5c17d4bd"}}]}
+    review_f2_source_name_test.go:100: LEAK[header-name jwt]: source redacted (redacted=true) but secret "Eyjhbgcioijiuzi1nij9.eyjzdwiioiixin0.c2ln" still serialized
+--- FAIL: TestReviewF2HeaderNameValuePattern (0.01s)
+=== RUN   TestReviewF2NameOnlyControl
+    review_f2_source_name_test.go:113: name-only password event: {"sources":[{"origin":"http.request.parameter","name":"password","pattern":"abcdefghijklmn","redacted":true}],"vulnerabilities":[{"type":"SQL_INJECTION","hash":1058965659,"evidence":{"valueParts":[{"pattern":"abcdefghijklmn","redacted":true,"source":0}]},"location":{"spanId":8763975327766472622,"path":"/tmp/ddiast-review/wt/fx-sink-redaction-source-F2/iast/integration/testapp/review_f2_source_name_test.go","line":111,"method":"github.com/DataDog/dd-iast-go/testapps/integration_test.TestReviewF2NameOnlyControl.func1","stackId":"ebea6da5-1872-45bf-b60e-6938a91eb043"}}]}
+    review_f2_source_name_test.go:113: NO-LEAK[name-only password]: "hunter2hunter2" absent from event
+--- PASS: TestReviewF2NameOnlyControl (0.01s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/testapps/integration	0.647s
+FAIL
+exit status 1
+       42.23 real        78.58 user        52.87 sys
+           365166592  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+             8812272  page reclaims
+              344285  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+               11955  messages sent
+               12526  messages received
+              107885  signals received
+               62320  voluntary context switches
+             1721931  involuntary context switches
+          5514652473  instructions retired
+          3217110264  cycles elapsed
+            37929704  peak memory footprint
+EXIT=1

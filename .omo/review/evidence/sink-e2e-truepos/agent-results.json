@@ -1,0 +1,2164 @@
+[
+  {
+    "case": "sql-sprintf",
+    "url": "http://127.0.0.1:60876/sql/sprintf?col=name%3B+DROP+TABLE+users",
+    "status": 200,
+    "sink_file": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+    "sink_line": "100",
+    "iast_enabled": 1,
+    "manual_keep": 2,
+    "channel": "meta_struct.iast",
+    "event": {
+      "sources": [
+        {
+          "name": "col",
+          "origin": "http.request.parameter",
+          "value": "name; DROP TABLE users"
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "evidence": {
+            "valueParts": [
+              {
+                "source": 0,
+                "value": "SELECT id FROM users ORDER BY name; DROP TABLE users"
+              }
+            ]
+          },
+          "hash": -1482493563,
+          "location": {
+            "line": 100,
+            "method": "main.sqlSprintf",
+            "path": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+            "spanId": 6030748886457760000,
+            "stackId": "ca1529e4-137a-45a8-8984-40b6707b5398"
+          },
+          "type": "SQL_INJECTION"
+        }
+      ]
+    },
+    "verdict": [
+      "evidence: [SELECT id FROM users ORDER BY name; DROP TABLE users#0]",
+      "source: origin=http.request.parameter name=col value=name; DROP TABLE users pattern=\u003cnil\u003e redacted=\u003cnil\u003e"
+    ]
+  },
+  {
+    "case": "sql-sprintf-literal",
+    "url": "http://127.0.0.1:60876/sql/sprintf-literal?name=x%27+OR+%271%27%3D%271",
+    "status": 200,
+    "sink_file": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+    "sink_line": "108",
+    "iast_enabled": 1,
+    "manual_keep": 2,
+    "channel": "meta_struct.iast",
+    "event": {
+      "sources": [
+        {
+          "name": "name",
+          "origin": "http.request.parameter",
+          "pattern": "abcdefghijkl",
+          "redacted": true
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "evidence": {
+            "valueParts": [
+              {
+                "pattern": "************************************************",
+                "redacted": true,
+                "source": 0
+              }
+            ]
+          },
+          "hash": -348148211,
+          "location": {
+            "line": 108,
+            "method": "main.sqlSprintfLiteral",
+            "path": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+            "spanId": 3084377288225921000,
+            "stackId": "f5c31962-bf97-457b-aaf5-9e6677077413"
+          },
+          "type": "SQL_INJECTION"
+        }
+      ]
+    },
+    "verdict": [
+      "evidence: [************************************************#0]",
+      "source: origin=http.request.parameter name=name value=\u003cnil\u003e pattern=abcdefghijkl redacted=true"
+    ]
+  },
+  {
+    "case": "sql-concat",
+    "url": "http://127.0.0.1:60876/sql/concat?col=name%3B+DROP+TABLE+users",
+    "status": 200,
+    "sink_file": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+    "sink_line": "116",
+    "iast_enabled": 1,
+    "manual_keep": 2,
+    "channel": "meta_struct.iast",
+    "event": {
+      "sources": [
+        {
+          "name": "col",
+          "origin": "http.request.parameter",
+          "value": "name; DROP TABLE users"
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "evidence": {
+            "valueParts": [
+              {
+                "value": "SELECT id FROM users ORDER BY "
+              },
+              {
+                "source": 0,
+                "value": "name; DROP TABLE users"
+              },
+              {
+                "value": " LIMIT "
+              },
+              {
+                "pattern": "**",
+                "redacted": true
+              }
+            ]
+          },
+          "hash": 2090978901,
+          "location": {
+            "line": 116,
+            "method": "main.sqlConcat",
+            "path": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+            "spanId": 1676853910933780200,
+            "stackId": "38354523-4e38-4740-9dae-78edff2b2b54"
+          },
+          "type": "SQL_INJECTION"
+        }
+      ]
+    },
+    "verdict": [
+      "evidence: SELECT id FROM users ORDER BY [name; DROP TABLE users#0] LIMIT **",
+      "source: origin=http.request.parameter name=col value=name; DROP TABLE users pattern=\u003cnil\u003e redacted=\u003cnil\u003e"
+    ]
+  },
+  {
+    "case": "sql-concat-literal",
+    "url": "http://127.0.0.1:60876/sql/concat-literal?name=x%27+OR+%271%27%3D%271",
+    "status": 200,
+    "sink_file": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+    "sink_line": "124",
+    "iast_enabled": 1,
+    "manual_keep": 2,
+    "channel": "meta_struct.iast",
+    "event": {
+      "sources": [
+        {
+          "name": "name",
+          "origin": "http.request.parameter",
+          "pattern": "abcdefghijkl",
+          "redacted": true
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "evidence": {
+            "valueParts": [
+              {
+                "value": "SELECT id FROM users WHERE name = '"
+              },
+              {
+                "pattern": "abcdefghijkl",
+                "redacted": true,
+                "source": 0
+              },
+              {
+                "value": "' AND active = "
+              },
+              {
+                "pattern": "*",
+                "redacted": true
+              }
+            ]
+          },
+          "hash": 9708893,
+          "location": {
+            "line": 124,
+            "method": "main.sqlConcatLiteral",
+            "path": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+            "spanId": 8498666407800444000,
+            "stackId": "1af686ce-b4cc-49f2-81df-178b92a64d21"
+          },
+          "type": "SQL_INJECTION"
+        }
+      ]
+    },
+    "verdict": [
+      "evidence: SELECT id FROM users WHERE name = '[abcdefghijkl#0]' AND active = *",
+      "source: origin=http.request.parameter name=name value=\u003cnil\u003e pattern=abcdefghijkl redacted=true"
+    ]
+  },
+  {
+    "case": "sql-builder",
+    "url": "http://127.0.0.1:60876/sql/builder?col=name%3B+DROP+TABLE+users",
+    "status": 200,
+    "sink_file": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+    "sink_line": "136",
+    "iast_enabled": 1,
+    "manual_keep": 2,
+    "channel": "meta_struct.iast",
+    "event": {
+      "sources": [
+        {
+          "name": "col",
+          "origin": "http.request.parameter",
+          "value": "name; DROP TABLE users"
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "evidence": {
+            "valueParts": [
+              {
+                "value": "SELECT id FROM users ORDER BY "
+              },
+              {
+                "source": 0,
+                "value": "name; DROP TABLE users"
+              },
+              {
+                "value": " DESC"
+              }
+            ]
+          },
+          "hash": 464345785,
+          "location": {
+            "line": 136,
+            "method": "main.sqlBuilder",
+            "path": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+            "spanId": 3914622210371915300,
+            "stackId": "213b3ad7-f14e-471b-9db3-cfcee642a0ee"
+          },
+          "type": "SQL_INJECTION"
+        }
+      ]
+    },
+    "verdict": [
+      "evidence: SELECT id FROM users ORDER BY [name; DROP TABLE users#0] DESC",
+      "source: origin=http.request.parameter name=col value=name; DROP TABLE users pattern=\u003cnil\u003e redacted=\u003cnil\u003e"
+    ]
+  },
+  {
+    "case": "sql-json-decoder",
+    "url": "http://127.0.0.1:60876/sql/json-decoder",
+    "status": 200,
+    "sink_file": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+    "sink_line": "152",
+    "iast_enabled": 1,
+    "manual_keep": 2,
+    "channel": "meta_struct.iast",
+    "event": {
+      "sources": [
+        {
+          "origin": "http.request.body",
+          "value": "{\"col\":\"name; DROP TABLE users\"}"
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "evidence": {
+            "valueParts": [
+              {
+                "value": "SELECT id FROM users ORDER BY "
+              },
+              {
+                "source": 0,
+                "value": "name; DROP TABLE users"
+              }
+            ]
+          },
+          "hash": -787295223,
+          "location": {
+            "line": 152,
+            "method": "main.sqlJSONDecoder",
+            "path": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+            "spanId": 4187697597278547500,
+            "stackId": "81c6160e-a884-40ba-a15e-c98c2dc7c32d"
+          },
+          "type": "SQL_INJECTION"
+        }
+      ]
+    },
+    "verdict": [
+      "evidence: SELECT id FROM users ORDER BY [name; DROP TABLE users#0]",
+      "source: origin=http.request.body name=\u003cnil\u003e value={\"col\":\"name; DROP TABLE users\"} pattern=\u003cnil\u003e redacted=\u003cnil\u003e"
+    ]
+  },
+  {
+    "case": "sql-json-unmarshal",
+    "url": "http://127.0.0.1:60876/sql/json-unmarshal",
+    "status": 200,
+    "sink_file": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+    "sink_line": "169",
+    "iast_enabled": 1,
+    "manual_keep": 2,
+    "channel": "meta_struct.iast",
+    "event": {
+      "sources": [
+        {
+          "origin": "http.request.body",
+          "value": "{\"col\":\"name; DROP TABLE users\"}"
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "evidence": {
+            "valueParts": [
+              {
+                "value": "SELECT id FROM users ORDER BY "
+              },
+              {
+                "source": 0,
+                "value": "name; DROP TABLE users"
+              }
+            ]
+          },
+          "hash": -1228470964,
+          "location": {
+            "line": 169,
+            "method": "main.sqlJSONUnmarshal",
+            "path": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+            "spanId": 2620060412002184000,
+            "stackId": "382f6378-b24f-4ca8-a787-2fbc45510f16"
+          },
+          "type": "SQL_INJECTION"
+        }
+      ]
+    },
+    "verdict": [
+      "evidence: SELECT id FROM users ORDER BY [name; DROP TABLE users#0]",
+      "source: origin=http.request.body name=\u003cnil\u003e value={\"col\":\"name; DROP TABLE users\"} pattern=\u003cnil\u003e redacted=\u003cnil\u003e"
+    ]
+  },
+  {
+    "case": "sql-header",
+    "url": "http://127.0.0.1:60876/sql/header",
+    "status": 200,
+    "sink_file": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+    "sink_line": "177",
+    "iast_enabled": 1,
+    "manual_keep": 2,
+    "channel": "meta_struct.iast",
+    "event": {
+      "sources": [
+        {
+          "name": "X-Sort",
+          "origin": "http.request.header",
+          "value": "name; DROP TABLE users"
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "evidence": {
+            "valueParts": [
+              {
+                "value": "SELECT id FROM users ORDER BY "
+              },
+              {
+                "source": 0,
+                "value": "name; DROP TABLE users"
+              }
+            ]
+          },
+          "hash": -729251212,
+          "location": {
+            "line": 177,
+            "method": "main.sqlHeader",
+            "path": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+            "spanId": 432293997498162050,
+            "stackId": "5662f891-8fb1-4e0c-9523-56edba820d36"
+          },
+          "type": "SQL_INJECTION"
+        }
+      ]
+    },
+    "verdict": [
+      "evidence: SELECT id FROM users ORDER BY [name; DROP TABLE users#0]",
+      "source: origin=http.request.header name=X-Sort value=name; DROP TABLE users pattern=\u003cnil\u003e redacted=\u003cnil\u003e"
+    ]
+  },
+  {
+    "case": "sql-cookie",
+    "url": "http://127.0.0.1:60876/sql/cookie",
+    "status": 200,
+    "sink_file": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+    "sink_line": "189",
+    "iast_enabled": 1,
+    "manual_keep": 2,
+    "channel": "meta_struct.iast",
+    "event": {
+      "sources": [
+        {
+          "name": "sort",
+          "origin": "http.request.cookie.value",
+          "value": "name--x"
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "evidence": {
+            "valueParts": [
+              {
+                "value": "SELECT id FROM users ORDER BY "
+              },
+              {
+                "source": 0,
+                "value": "name--x"
+              }
+            ]
+          },
+          "hash": -672185024,
+          "location": {
+            "line": 189,
+            "method": "main.sqlCookie",
+            "path": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+            "spanId": 7816069528486231000,
+            "stackId": "6f1e6a22-4b44-4a37-aaef-1fdd52611bf2"
+          },
+          "type": "SQL_INJECTION"
+        }
+      ]
+    },
+    "verdict": [
+      "evidence: SELECT id FROM users ORDER BY [name--x#0]",
+      "source: origin=http.request.cookie.value name=sort value=name--x pattern=\u003cnil\u003e redacted=\u003cnil\u003e"
+    ]
+  },
+  {
+    "case": "sql-form",
+    "url": "http://127.0.0.1:60876/sql/form",
+    "status": 200,
+    "sink_file": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+    "sink_line": "197",
+    "iast_enabled": 1,
+    "manual_keep": 2,
+    "channel": "meta_struct.iast",
+    "event": {
+      "sources": [
+        {
+          "name": "col",
+          "origin": "http.request.parameter",
+          "value": "name; DROP TABLE users"
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "evidence": {
+            "valueParts": [
+              {
+                "value": "SELECT id FROM users ORDER BY "
+              },
+              {
+                "source": 0,
+                "value": "name; DROP TABLE users"
+              }
+            ]
+          },
+          "hash": 302243688,
+          "location": {
+            "line": 197,
+            "method": "main.sqlForm",
+            "path": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+            "spanId": 7211305455659300000,
+            "stackId": "77ca1cac-83e7-4e7b-a156-d0eb91687b96"
+          },
+          "type": "SQL_INJECTION"
+        }
+      ]
+    },
+    "verdict": [
+      "evidence: SELECT id FROM users ORDER BY [name; DROP TABLE users#0]",
+      "source: origin=http.request.parameter name=col value=name; DROP TABLE users pattern=\u003cnil\u003e redacted=\u003cnil\u003e"
+    ]
+  },
+  {
+    "case": "sql-path",
+    "url": "http://127.0.0.1:60876/sql/path/name--x",
+    "status": 200,
+    "sink_file": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+    "sink_line": "205",
+    "iast_enabled": 1,
+    "manual_keep": 2,
+    "channel": "meta_struct.iast",
+    "event": {
+      "sources": [
+        {
+          "name": "col",
+          "origin": "http.request.path.parameter",
+          "value": "name--x"
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "evidence": {
+            "valueParts": [
+              {
+                "value": "SELECT id FROM users ORDER BY "
+              },
+              {
+                "source": 0,
+                "value": "name--x"
+              }
+            ]
+          },
+          "hash": -1931329776,
+          "location": {
+            "line": 205,
+            "method": "main.sqlPath",
+            "path": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+            "spanId": 5497305933602494000,
+            "stackId": "ac80a6eb-ccc6-43d8-9eb9-0a24558c189e"
+          },
+          "type": "SQL_INJECTION"
+        }
+      ]
+    },
+    "verdict": [
+      "evidence: SELECT id FROM users ORDER BY [name--x#0]",
+      "source: origin=http.request.path.parameter name=col value=name--x pattern=\u003cnil\u003e redacted=\u003cnil\u003e"
+    ]
+  },
+  {
+    "case": "sql-two-sources",
+    "url": "http://127.0.0.1:60876/sql/two-sources?col=secret_col\u0026table=users_tbl",
+    "status": 200,
+    "sink_file": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+    "sink_line": "213",
+    "iast_enabled": 1,
+    "manual_keep": 2,
+    "channel": "meta_struct.iast",
+    "event": {
+      "sources": [
+        {
+          "name": "col",
+          "origin": "http.request.parameter",
+          "value": "secret_col"
+        },
+        {
+          "name": "table",
+          "origin": "http.request.parameter",
+          "value": "users_tbl"
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "evidence": {
+            "valueParts": [
+              {
+                "value": "SELECT "
+              },
+              {
+                "source": 0,
+                "value": "secret_col"
+              },
+              {
+                "value": " FROM "
+              },
+              {
+                "source": 1,
+                "value": "users_tbl"
+              }
+            ]
+          },
+          "hash": 1691002104,
+          "location": {
+            "line": 213,
+            "method": "main.sqlTwoSources",
+            "path": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+            "spanId": 4006838249144229400,
+            "stackId": "a9947458-3ac2-4672-855d-a787820aa79f"
+          },
+          "type": "SQL_INJECTION"
+        }
+      ]
+    },
+    "verdict": [
+      "evidence: SELECT [secret_col#0] FROM [users_tbl#1]",
+      "source: origin=http.request.parameter name=col value=secret_col pattern=\u003cnil\u003e redacted=\u003cnil\u003e",
+      "source: origin=http.request.parameter name=table value=users_tbl pattern=\u003cnil\u003e redacted=\u003cnil\u003e"
+    ]
+  },
+  {
+    "case": "sql-prepare",
+    "url": "http://127.0.0.1:60876/sql/prepare?col=name%3B+DROP+TABLE+users",
+    "status": 200,
+    "sink_file": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+    "sink_line": "221",
+    "iast_enabled": 1,
+    "manual_keep": 2,
+    "channel": "meta_struct.iast",
+    "event": {
+      "sources": [
+        {
+          "name": "col",
+          "origin": "http.request.parameter",
+          "value": "name; DROP TABLE users"
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "evidence": {
+            "valueParts": [
+              {
+                "value": "SELECT id FROM users ORDER BY "
+              },
+              {
+                "source": 0,
+                "value": "name; DROP TABLE users"
+              }
+            ]
+          },
+          "hash": 1146437536,
+          "location": {
+            "line": 221,
+            "method": "main.sqlPrepare",
+            "path": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+            "spanId": 8830867467741799000,
+            "stackId": "e2c2093b-59d7-497f-a97a-eb0ae01aa2c6"
+          },
+          "type": "SQL_INJECTION"
+        },
+        {
+          "evidence": {
+            "valueParts": [
+              {
+                "value": "SELECT id FROM users ORDER BY "
+              },
+              {
+                "source": 0,
+                "value": "name; DROP TABLE users"
+              }
+            ]
+          },
+          "hash": -1077433785,
+          "location": {
+            "line": 226,
+            "method": "main.sqlPrepare",
+            "path": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+            "spanId": 8830867467741799000,
+            "stackId": "6be26414-8577-4e0f-8980-3f51fc6b6b22"
+          },
+          "type": "SQL_INJECTION"
+        }
+      ]
+    },
+    "verdict": [
+      "evidence: SELECT id FROM users ORDER BY [name; DROP TABLE users#0]",
+      "evidence: SELECT id FROM users ORDER BY [name; DROP TABLE users#0]",
+      "source: origin=http.request.parameter name=col value=name; DROP TABLE users pattern=\u003cnil\u003e redacted=\u003cnil\u003e"
+    ]
+  },
+  {
+    "case": "sql-redact-name",
+    "url": "http://127.0.0.1:60876/sql/redact-name?password=hunter2hunter2",
+    "status": 200,
+    "sink_file": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+    "sink_line": "233",
+    "iast_enabled": 1,
+    "manual_keep": 2,
+    "channel": "meta_struct.iast",
+    "event": {
+      "sources": [
+        {
+          "name": "password",
+          "origin": "http.request.parameter",
+          "pattern": "abcdefghijklmn",
+          "redacted": true
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "evidence": {
+            "valueParts": [
+              {
+                "value": "SELECT id FROM users ORDER BY "
+              },
+              {
+                "pattern": "abcdefghijklmn",
+                "redacted": true,
+                "source": 0
+              }
+            ]
+          },
+          "hash": 1016574860,
+          "location": {
+            "line": 233,
+            "method": "main.sqlRedactName",
+            "path": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+            "spanId": 2180961871499240200,
+            "stackId": "4ea5df1c-df2e-4a3f-be8f-a3fd19d5572b"
+          },
+          "type": "SQL_INJECTION"
+        }
+      ]
+    },
+    "verdict": [
+      "evidence: SELECT id FROM users ORDER BY [abcdefghijklmn#0]",
+      "source: origin=http.request.parameter name=password value=\u003cnil\u003e pattern=abcdefghijklmn redacted=true"
+    ]
+  },
+  {
+    "case": "sql-comment",
+    "url": "http://127.0.0.1:60876/sql/comment?col=name+%2F%2A+token%3Dghp_TAINTEDSECRETINCOMMENT+%2A%2F",
+    "status": 200,
+    "sink_file": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+    "sink_line": "241",
+    "iast_enabled": 1,
+    "manual_keep": 2,
+    "channel": "meta_struct.iast",
+    "event": {
+      "sources": [
+        {
+          "name": "col",
+          "origin": "http.request.parameter",
+          "value": "name /* token=ghp_TAINTEDSECRETINCOMMENT */"
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "evidence": {
+            "valueParts": [
+              {
+                "value": "SELECT id FROM users /* api_key=sk_live_CLEANCOMMENT */ ORDER BY "
+              },
+              {
+                "source": 0,
+                "value": "name /* token=ghp_TAINTEDSECRETINCOMMENT */"
+              }
+            ]
+          },
+          "hash": 573903028,
+          "location": {
+            "line": 241,
+            "method": "main.sqlComment",
+            "path": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+            "spanId": 516425635674540700,
+            "stackId": "90cbe9a1-817e-473b-8a64-dcc2b90cea9b"
+          },
+          "type": "SQL_INJECTION"
+        }
+      ]
+    },
+    "verdict": [
+      "evidence: SELECT id FROM users /* api_key=sk_live_CLEANCOMMENT */ ORDER BY [name /* token=ghp_TAINTEDSECRETINCOMMENT */#0]",
+      "source: origin=http.request.parameter name=col value=name /* token=ghp_TAINTEDSECRETINCOMMENT */ pattern=\u003cnil\u003e redacted=\u003cnil\u003e"
+    ]
+  },
+  {
+    "case": "sql-literal-func",
+    "url": "http://127.0.0.1:60876/sql/literal-func?col=name%3B+DROP+TABLE+users",
+    "status": 200,
+    "sink_file": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+    "sink_line": "44",
+    "iast_enabled": 1,
+    "manual_keep": 2,
+    "channel": "meta_struct.iast",
+    "event": {
+      "sources": [
+        {
+          "name": "col",
+          "origin": "http.request.parameter",
+          "value": "name; DROP TABLE users"
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "evidence": {
+            "valueParts": [
+              {
+                "value": "SELECT id FROM users ORDER BY "
+              },
+              {
+                "source": 0,
+                "value": "name; DROP TABLE users"
+              }
+            ]
+          },
+          "hash": 1068914893,
+          "location": {
+            "line": 44,
+            "method": "main.registerHandlers.func1",
+            "path": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+            "spanId": 2315242667451965000,
+            "stackId": "293f25bf-7ba3-4dae-a391-09f53fea4eb1"
+          },
+          "type": "SQL_INJECTION"
+        }
+      ]
+    },
+    "verdict": [
+      "evidence: SELECT id FROM users ORDER BY [name; DROP TABLE users#0]",
+      "source: origin=http.request.parameter name=col value=name; DROP TABLE users pattern=\u003cnil\u003e redacted=\u003cnil\u003e"
+    ]
+  },
+  {
+    "case": "sql-inline-concat",
+    "url": "http://127.0.0.1:60876/sql/inline-concat?col=name%3B+DROP+TABLE+users",
+    "status": 200,
+    "sink_file": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+    "sink_line": "320",
+    "iast_enabled": 1,
+    "manual_keep": 2,
+    "channel": "meta_struct.iast",
+    "event": {
+      "sources": [
+        {
+          "name": "col",
+          "origin": "http.request.parameter",
+          "value": "name; DROP TABLE users"
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "evidence": {
+            "valueParts": [
+              {
+                "value": "SELECT id FROM users ORDER BY "
+              },
+              {
+                "source": 0,
+                "value": "name; DROP TABLE users"
+              }
+            ]
+          },
+          "hash": 801880246,
+          "location": {
+            "line": 320,
+            "method": "main.sqlInlineConcat",
+            "path": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+            "spanId": 277208454283884480,
+            "stackId": "eeb8fe4c-9d94-403d-923a-688e9a185adb"
+          },
+          "type": "SQL_INJECTION"
+        }
+      ]
+    },
+    "verdict": [
+      "evidence: SELECT id FROM users ORDER BY [name; DROP TABLE users#0]",
+      "source: origin=http.request.parameter name=col value=name; DROP TABLE users pattern=\u003cnil\u003e redacted=\u003cnil\u003e"
+    ]
+  },
+  {
+    "case": "sql-inline-sprintf",
+    "url": "http://127.0.0.1:60876/sql/inline-sprintf?col=name%3B+DROP+TABLE+users",
+    "status": 200,
+    "sink_file": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+    "sink_line": "327",
+    "iast_enabled": 1,
+    "manual_keep": 2,
+    "channel": "meta_struct.iast",
+    "event": {
+      "sources": [
+        {
+          "name": "col",
+          "origin": "http.request.parameter",
+          "value": "name; DROP TABLE users"
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "evidence": {
+            "valueParts": [
+              {
+                "source": 0,
+                "value": "SELECT id FROM users ORDER BY name; DROP TABLE users"
+              }
+            ]
+          },
+          "hash": -1322113391,
+          "location": {
+            "line": 327,
+            "method": "main.sqlInlineSprintf",
+            "path": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+            "spanId": 38741408566383630,
+            "stackId": "f4d45e87-e8de-4df8-b363-c10aef6b1401"
+          },
+          "type": "SQL_INJECTION"
+        }
+      ]
+    },
+    "verdict": [
+      "evidence: [SELECT id FROM users ORDER BY name; DROP TABLE users#0]",
+      "source: origin=http.request.parameter name=col value=name; DROP TABLE users pattern=\u003cnil\u003e redacted=\u003cnil\u003e"
+    ]
+  },
+  {
+    "case": "doc-fn-sql-plus-assign",
+    "url": "http://127.0.0.1:60876/sql/plus-assign?col=name%3B+DROP+TABLE+users",
+    "status": 200,
+    "sink_file": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+    "sink_line": "336",
+    "iast_enabled": 1,
+    "manual_keep": 1,
+    "channel": "none",
+    "event": null,
+    "verdict": null
+  },
+  {
+    "case": "sql-noctx",
+    "url": "http://127.0.0.1:60876/sql/noctx?col=name%3B+DROP+TABLE+users",
+    "status": 200,
+    "sink_file": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+    "sink_line": "344",
+    "iast_enabled": 1,
+    "manual_keep": 2,
+    "channel": "meta_struct.iast",
+    "event": {
+      "sources": [
+        {
+          "name": "col",
+          "origin": "http.request.parameter",
+          "value": "name; DROP TABLE users"
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "evidence": {
+            "valueParts": [
+              {
+                "value": "SELECT id FROM users ORDER BY "
+              },
+              {
+                "source": 0,
+                "value": "name; DROP TABLE users"
+              }
+            ]
+          },
+          "hash": -2100084978,
+          "location": {
+            "line": 344,
+            "method": "main.sqlNoCtx",
+            "path": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+            "spanId": 407109836977901250,
+            "stackId": "6a6d5bcf-1f75-431c-a178-dbd26588550f"
+          },
+          "type": "SQL_INJECTION"
+        }
+      ]
+    },
+    "verdict": [
+      "evidence: SELECT id FROM users ORDER BY [name; DROP TABLE users#0]",
+      "source: origin=http.request.parameter name=col value=name; DROP TABLE users pattern=\u003cnil\u003e redacted=\u003cnil\u003e"
+    ]
+  },
+  {
+    "case": "sql-body-string",
+    "url": "http://127.0.0.1:60876/sql/body-string",
+    "status": 200,
+    "sink_file": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+    "sink_line": "356",
+    "iast_enabled": 1,
+    "manual_keep": 2,
+    "channel": "meta_struct.iast",
+    "event": {
+      "sources": [
+        {
+          "origin": "http.request.body",
+          "value": "name; DROP TABLE users"
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "evidence": {
+            "valueParts": [
+              {
+                "value": "SELECT id FROM users ORDER BY "
+              },
+              {
+                "source": 0,
+                "value": "name; DROP TABLE users"
+              }
+            ]
+          },
+          "hash": 2146939770,
+          "location": {
+            "line": 356,
+            "method": "main.sqlBodyString",
+            "path": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+            "spanId": 6258660661241935000,
+            "stackId": "ef3c0545-7d6c-4875-8024-e997c919d80c"
+          },
+          "type": "SQL_INJECTION"
+        }
+      ]
+    },
+    "verdict": [
+      "evidence: SELECT id FROM users ORDER BY [name; DROP TABLE users#0]",
+      "source: origin=http.request.body name=\u003cnil\u003e value=name; DROP TABLE users pattern=\u003cnil\u003e redacted=\u003cnil\u003e"
+    ]
+  },
+  {
+    "case": "sql-multipart",
+    "url": "http://127.0.0.1:60876/sql/multipart",
+    "status": 200,
+    "sink_file": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+    "sink_line": "364",
+    "iast_enabled": 1,
+    "manual_keep": 2,
+    "channel": "meta_struct.iast",
+    "event": {
+      "sources": [
+        {
+          "name": "col",
+          "origin": "http.request.multipart.parameter",
+          "value": "name; DROP TABLE users"
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "evidence": {
+            "valueParts": [
+              {
+                "value": "SELECT id FROM users ORDER BY "
+              },
+              {
+                "source": 0,
+                "value": "name; DROP TABLE users"
+              }
+            ]
+          },
+          "hash": -1857081982,
+          "location": {
+            "line": 364,
+            "method": "main.sqlMultipart",
+            "path": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+            "spanId": 1461468899705734100,
+            "stackId": "ab4223ff-72e2-449c-b869-0cb4117c4c28"
+          },
+          "type": "SQL_INJECTION"
+        }
+      ]
+    },
+    "verdict": [
+      "evidence: SELECT id FROM users ORDER BY [name; DROP TABLE users#0]",
+      "source: origin=http.request.multipart.parameter name=col value=name; DROP TABLE users pattern=\u003cnil\u003e redacted=\u003cnil\u003e"
+    ]
+  },
+  {
+    "case": "sql-method-handler",
+    "url": "http://127.0.0.1:60876/sql/method?col=name%3B+DROP+TABLE+users",
+    "status": 200,
+    "sink_file": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+    "sink_line": "374",
+    "iast_enabled": 1,
+    "manual_keep": 2,
+    "channel": "meta_struct.iast",
+    "event": {
+      "sources": [
+        {
+          "name": "col",
+          "origin": "http.request.parameter",
+          "value": "name; DROP TABLE users"
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "evidence": {
+            "valueParts": [
+              {
+                "value": "SELECT id FROM users ORDER BY "
+              },
+              {
+                "source": 0,
+                "value": "name; DROP TABLE users"
+              }
+            ]
+          },
+          "hash": -1331848464,
+          "location": {
+            "class": "main.(*server)",
+            "line": 374,
+            "method": "ServeHTTP",
+            "path": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+            "spanId": 7209370037139587000,
+            "stackId": "b4d37506-dac3-4f18-b586-c9e88ea3541d"
+          },
+          "type": "SQL_INJECTION"
+        }
+      ]
+    },
+    "verdict": [
+      "evidence: SELECT id FROM users ORDER BY [name; DROP TABLE users#0]",
+      "source: origin=http.request.parameter name=col value=name; DROP TABLE users pattern=\u003cnil\u003e redacted=\u003cnil\u003e"
+    ]
+  },
+  {
+    "case": "sql-transform",
+    "url": "http://127.0.0.1:60876/sql/transform?col=++NAME%3B+DROP+TABLE+users++",
+    "status": 200,
+    "sink_file": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+    "sink_line": "382",
+    "iast_enabled": 1,
+    "manual_keep": 2,
+    "channel": "meta_struct.iast",
+    "event": {
+      "sources": [
+        {
+          "name": "col",
+          "origin": "http.request.parameter",
+          "value": "  NAME; DROP TABLE users  "
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "evidence": {
+            "valueParts": [
+              {
+                "value": "SELECT id FROM users ORDER BY "
+              },
+              {
+                "source": 0,
+                "value": "name; drop table users"
+              }
+            ]
+          },
+          "hash": 340520248,
+          "location": {
+            "line": 382,
+            "method": "main.sqlTransform",
+            "path": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+            "spanId": 857738471224762600,
+            "stackId": "a10a555d-c94c-474f-87d3-ab9ff37092cd"
+          },
+          "type": "SQL_INJECTION"
+        }
+      ]
+    },
+    "verdict": [
+      "evidence: SELECT id FROM users ORDER BY [name; drop table users#0]",
+      "source: origin=http.request.parameter name=col value=  NAME; DROP TABLE users   pattern=\u003cnil\u003e redacted=\u003cnil\u003e"
+    ]
+  },
+  {
+    "case": "sql-query-index",
+    "url": "http://127.0.0.1:60876/sql/query-index?col=name%3B+DROP+TABLE+users",
+    "status": 200,
+    "sink_file": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+    "sink_line": "390",
+    "iast_enabled": 1,
+    "manual_keep": 2,
+    "channel": "meta_struct.iast",
+    "event": {
+      "sources": [
+        {
+          "name": "col",
+          "origin": "http.request.parameter",
+          "value": "name; DROP TABLE users"
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "evidence": {
+            "valueParts": [
+              {
+                "value": "SELECT id FROM users ORDER BY "
+              },
+              {
+                "source": 0,
+                "value": "name; DROP TABLE users"
+              }
+            ]
+          },
+          "hash": 1545972928,
+          "location": {
+            "line": 390,
+            "method": "main.sqlQueryIndex",
+            "path": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+            "spanId": 6871438382978844000,
+            "stackId": "e48de278-3416-4019-ac95-00f1bfed24da"
+          },
+          "type": "SQL_INJECTION"
+        }
+      ]
+    },
+    "verdict": [
+      "evidence: SELECT id FROM users ORDER BY [name; DROP TABLE users#0]",
+      "source: origin=http.request.parameter name=col value=name; DROP TABLE users pattern=\u003cnil\u003e redacted=\u003cnil\u003e"
+    ]
+  },
+  {
+    "case": "sql-json-map",
+    "url": "http://127.0.0.1:60876/sql/json-map",
+    "status": 200,
+    "sink_file": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+    "sink_line": "401",
+    "iast_enabled": 1,
+    "manual_keep": 2,
+    "channel": "meta_struct.iast",
+    "event": {
+      "sources": [
+        {
+          "origin": "http.request.body",
+          "value": "{\"col\":\"name; DROP TABLE users\"}"
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "evidence": {
+            "valueParts": [
+              {
+                "value": "SELECT id FROM users ORDER BY "
+              },
+              {
+                "source": 0,
+                "value": "name; DROP TABLE users"
+              }
+            ]
+          },
+          "hash": -547756417,
+          "location": {
+            "line": 401,
+            "method": "main.sqlJSONMap",
+            "path": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+            "spanId": 5672275462539863000,
+            "stackId": "3c0c346a-c967-4e00-8cd2-756d10377b2a"
+          },
+          "type": "SQL_INJECTION"
+        }
+      ]
+    },
+    "verdict": [
+      "evidence: SELECT id FROM users ORDER BY [name; DROP TABLE users#0]",
+      "source: origin=http.request.body name=\u003cnil\u003e value={\"col\":\"name; DROP TABLE users\"} pattern=\u003cnil\u003e redacted=\u003cnil\u003e"
+    ]
+  },
+  {
+    "case": "sql-validated-string",
+    "url": "http://127.0.0.1:60876/sql/validated-string?id=42",
+    "status": 200,
+    "sink_file": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+    "sink_line": "413",
+    "iast_enabled": 1,
+    "manual_keep": 2,
+    "channel": "meta_struct.iast",
+    "event": {
+      "sources": [
+        {
+          "name": "id",
+          "origin": "http.request.parameter",
+          "pattern": "ab",
+          "redacted": true
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "evidence": {
+            "valueParts": [
+              {
+                "value": "SELECT name FROM users WHERE id = "
+              },
+              {
+                "pattern": "ab",
+                "redacted": true,
+                "source": 0
+              }
+            ]
+          },
+          "hash": -588895973,
+          "location": {
+            "line": 413,
+            "method": "main.sqlValidatedString",
+            "path": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+            "spanId": 3066124066251500000,
+            "stackId": "eff796ec-f101-4dad-a222-751dc9f7bd41"
+          },
+          "type": "SQL_INJECTION"
+        }
+      ]
+    },
+    "verdict": [
+      "evidence: SELECT name FROM users WHERE id = [ab#0]",
+      "source: origin=http.request.parameter name=id value=\u003cnil\u003e pattern=ab redacted=true"
+    ]
+  },
+  {
+    "case": "sql-goroutine",
+    "url": "http://127.0.0.1:60876/sql/goroutine?col=name%3B+DROP+TABLE+users",
+    "status": 200,
+    "iast_enabled": 1,
+    "manual_keep": 2,
+    "channel": "meta_struct.iast",
+    "event": {
+      "sources": [
+        {
+          "name": "col",
+          "origin": "http.request.parameter",
+          "value": "name; DROP TABLE users"
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "evidence": {
+            "valueParts": [
+              {
+                "value": "SELECT id FROM users ORDER BY "
+              },
+              {
+                "source": 0,
+                "value": "name; DROP TABLE users"
+              }
+            ]
+          },
+          "hash": 251521438,
+          "location": {
+            "line": 424,
+            "method": "main.sqlGoroutine.func1",
+            "path": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+            "spanId": 8453422784884336000,
+            "stackId": "f34a90de-ec4b-4e6d-9180-7a8990808868"
+          },
+          "type": "SQL_INJECTION"
+        }
+      ]
+    },
+    "verdict": [
+      "evidence: SELECT id FROM users ORDER BY [name; DROP TABLE users#0]",
+      "source: origin=http.request.parameter name=col value=name; DROP TABLE users pattern=\u003cnil\u003e redacted=\u003cnil\u003e"
+    ]
+  },
+  {
+    "case": "neg-sql-allowlist",
+    "url": "http://127.0.0.1:60876/sql/allowlist?col=name",
+    "status": 200,
+    "iast_enabled": 1,
+    "manual_keep": 1,
+    "channel": "none",
+    "event": null,
+    "verdict": null
+  },
+  {
+    "case": "neg-sql-branch",
+    "url": "http://127.0.0.1:60876/sql/branch?col=name",
+    "status": 200,
+    "iast_enabled": 1,
+    "manual_keep": 1,
+    "channel": "none",
+    "event": null,
+    "verdict": null
+  },
+  {
+    "case": "cmd-inline-concat",
+    "url": "http://127.0.0.1:60876/cmd/inline-concat?dir=%2Ftmp%3B+id",
+    "status": 200,
+    "sink_file": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+    "sink_line": "455",
+    "iast_enabled": 1,
+    "manual_keep": 2,
+    "channel": "meta_struct.iast",
+    "event": {
+      "sources": [
+        {
+          "name": "dir",
+          "origin": "http.request.parameter",
+          "pattern": "abcdefgh",
+          "redacted": true
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "evidence": {
+            "valueParts": [
+              {
+                "value": "sh "
+              },
+              {
+                "pattern": "*********",
+                "redacted": true
+              },
+              {
+                "pattern": "abcdefgh",
+                "redacted": true,
+                "source": 0
+              }
+            ]
+          },
+          "hash": 457701244,
+          "location": {
+            "line": 455,
+            "method": "main.cmdInlineConcat",
+            "path": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+            "spanId": 3178204713701322000,
+            "stackId": "211a1c23-80dd-4892-a270-37122c8a9c4c"
+          },
+          "type": "COMMAND_INJECTION"
+        }
+      ]
+    },
+    "verdict": [
+      "evidence: sh *********[abcdefgh#0]",
+      "source: origin=http.request.parameter name=dir value=\u003cnil\u003e pattern=abcdefgh redacted=true"
+    ]
+  },
+  {
+    "case": "cmd-join",
+    "url": "http://127.0.0.1:60876/cmd/join?dir=%2Ftmp%3B+id",
+    "status": 200,
+    "sink_file": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+    "sink_line": "462",
+    "iast_enabled": 1,
+    "manual_keep": 2,
+    "channel": "meta_struct.iast",
+    "event": {
+      "sources": [
+        {
+          "name": "dir",
+          "origin": "http.request.parameter",
+          "pattern": "abcdefgh",
+          "redacted": true
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "evidence": {
+            "valueParts": [
+              {
+                "value": "sh "
+              },
+              {
+                "pattern": "*********",
+                "redacted": true
+              },
+              {
+                "pattern": "abcdefgh",
+                "redacted": true,
+                "source": 0
+              }
+            ]
+          },
+          "hash": -484551659,
+          "location": {
+            "line": 462,
+            "method": "main.cmdJoin",
+            "path": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+            "spanId": 580171081896787700,
+            "stackId": "9aed319a-0d70-4c10-9071-6d00656d9fc0"
+          },
+          "type": "COMMAND_INJECTION"
+        }
+      ]
+    },
+    "verdict": [
+      "evidence: sh *********[abcdefgh#0]",
+      "source: origin=http.request.parameter name=dir value=\u003cnil\u003e pattern=abcdefgh redacted=true"
+    ]
+  },
+  {
+    "case": "neg-fp-builder-reset",
+    "url": "http://127.0.0.1:60876/fp/builder-reset?col=name%3B+DROP+TABLE+users",
+    "status": 200,
+    "iast_enabled": 1,
+    "manual_keep": 1,
+    "channel": "none",
+    "event": null,
+    "verdict": null
+  },
+  {
+    "case": "sql-buffer-shared-a",
+    "url": "http://127.0.0.1:60876/fp/buffer-shared-a?col=name%3B+DROP+TABLE+users",
+    "status": 200,
+    "sink_file": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+    "sink_line": "493",
+    "iast_enabled": 1,
+    "manual_keep": 2,
+    "channel": "meta_struct.iast",
+    "event": {
+      "sources": [
+        {
+          "name": "col",
+          "origin": "http.request.parameter",
+          "value": "name; DROP TABLE users"
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "evidence": {
+            "valueParts": [
+              {
+                "value": "SELECT id FROM users ORDER BY "
+              },
+              {
+                "source": 0,
+                "value": "name; DROP TABLE users"
+              }
+            ]
+          },
+          "hash": -1717766037,
+          "location": {
+            "line": 493,
+            "method": "main.fpBufferSharedA",
+            "path": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+            "spanId": 3705909340553442000,
+            "stackId": "474780fb-abc5-46c5-b2d0-176aa408ea5c"
+          },
+          "type": "SQL_INJECTION"
+        }
+      ]
+    },
+    "verdict": [
+      "evidence: SELECT id FROM users ORDER BY [name; DROP TABLE users#0]",
+      "source: origin=http.request.parameter name=col value=name; DROP TABLE users pattern=\u003cnil\u003e redacted=\u003cnil\u003e"
+    ]
+  },
+  {
+    "case": "neg-fp-buffer-shared-b",
+    "url": "http://127.0.0.1:60876/fp/buffer-shared-b",
+    "status": 200,
+    "iast_enabled": 1,
+    "manual_keep": 1,
+    "channel": "none",
+    "event": null,
+    "verdict": null
+  },
+  {
+    "case": "neg-fp-json-clean-doc",
+    "url": "http://127.0.0.1:60876/fp/json-clean-doc",
+    "status": 200,
+    "iast_enabled": 1,
+    "manual_keep": 1,
+    "channel": "none",
+    "event": null,
+    "verdict": null
+  },
+  {
+    "case": "neg-fp-query-set",
+    "url": "http://127.0.0.1:60876/fp/query-set?col=name%3B+DROP+TABLE+users",
+    "status": 200,
+    "iast_enabled": 1,
+    "manual_keep": 1,
+    "channel": "none",
+    "event": null,
+    "verdict": null
+  },
+  {
+    "case": "neg-fp-header-set",
+    "url": "http://127.0.0.1:60876/fp/header-set",
+    "status": 200,
+    "iast_enabled": 1,
+    "manual_keep": 1,
+    "channel": "none",
+    "event": null,
+    "verdict": null
+  },
+  {
+    "case": "neg-fp-replace-all",
+    "url": "http://127.0.0.1:60876/fp/replace-all?col=name%3B+DROP+TABLE+users",
+    "status": 200,
+    "iast_enabled": 1,
+    "manual_keep": 1,
+    "channel": "none",
+    "event": null,
+    "verdict": null
+  },
+  {
+    "case": "obs-fp-sprintf-hex",
+    "url": "http://127.0.0.1:60876/fp/sprintf-hex?name=x%27+OR+%271%27%3D%271",
+    "status": 200,
+    "iast_enabled": 1,
+    "manual_keep": 2,
+    "channel": "meta_struct.iast",
+    "event": {
+      "sources": [
+        {
+          "name": "name",
+          "origin": "http.request.parameter",
+          "pattern": "abcdefghijkl",
+          "redacted": true
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "evidence": {
+            "valueParts": [
+              {
+                "pattern": "*************************************************************",
+                "redacted": true,
+                "source": 0
+              }
+            ]
+          },
+          "hash": 1570413401,
+          "location": {
+            "line": 546,
+            "method": "main.fpSprintfHex",
+            "path": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+            "spanId": 596381727289222700,
+            "stackId": "ba857bf0-a31a-495e-94c5-7b2ab6a5bcda"
+          },
+          "type": "SQL_INJECTION"
+        }
+      ]
+    },
+    "verdict": [
+      "evidence: [*************************************************************#0]",
+      "source: origin=http.request.parameter name=name value=\u003cnil\u003e pattern=abcdefghijkl redacted=true",
+      "FAIL: types map[SQL_INJECTION:1] want map[]"
+    ]
+  },
+  {
+    "case": "neg-fp-sprintf-type",
+    "url": "http://127.0.0.1:60876/fp/sprintf-type?name=x%27+OR+%271%27%3D%271",
+    "status": 200,
+    "iast_enabled": 1,
+    "manual_keep": 2,
+    "channel": "meta_struct.iast",
+    "event": {
+      "sources": [
+        {
+          "name": "name",
+          "origin": "http.request.parameter",
+          "value": "x' OR '1'='1"
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "evidence": {
+            "valueParts": [
+              {
+                "source": 0,
+                "value": "SELECT id FROM users /* string */"
+              }
+            ]
+          },
+          "hash": 1250681838,
+          "location": {
+            "line": 553,
+            "method": "main.fpSprintfType",
+            "path": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+            "spanId": 8938247392286504000,
+            "stackId": "413139eb-6468-4f67-bbf5-474c85a8c826"
+          },
+          "type": "SQL_INJECTION"
+        }
+      ]
+    },
+    "verdict": [
+      "evidence: [SELECT id FROM users /* string */#0]",
+      "source: origin=http.request.parameter name=name value=x' OR '1'='1 pattern=\u003cnil\u003e redacted=\u003cnil\u003e",
+      "FAIL: types map[SQL_INJECTION:1] want map[]"
+    ]
+  },
+  {
+    "case": "neg-fp-sprintf-len",
+    "url": "http://127.0.0.1:60876/fp/sprintf-len?name=x%27+OR+%271%27%3D%271",
+    "status": 200,
+    "iast_enabled": 1,
+    "manual_keep": 1,
+    "channel": "none",
+    "event": null,
+    "verdict": null
+  },
+  {
+    "case": "doc-fp-body-overwrite",
+    "url": "http://127.0.0.1:60876/fp/body-overwrite",
+    "status": 200,
+    "iast_enabled": 1,
+    "manual_keep": 2,
+    "channel": "meta_struct.iast",
+    "event": {
+      "sources": [
+        {
+          "origin": "http.request.body",
+          "value": "name; DROP TABLE users; -------xxx"
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "evidence": {
+            "valueParts": [
+              {
+                "source": 0,
+                "value": "SELECT id FROM users ORDER BY name"
+              }
+            ]
+          },
+          "hash": 209353323,
+          "location": {
+            "line": 572,
+            "method": "main.fpBodyOverwrite",
+            "path": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+            "spanId": 902833130333064400,
+            "stackId": "cf0325cc-0386-47df-80e0-88a727918f21"
+          },
+          "type": "SQL_INJECTION"
+        }
+      ]
+    },
+    "verdict": [
+      "evidence: [SELECT id FROM users ORDER BY name#0]",
+      "source: origin=http.request.body name=\u003cnil\u003e value=name; DROP TABLE users; -------xxx pattern=\u003cnil\u003e redacted=\u003cnil\u003e",
+      "FAIL: types map[SQL_INJECTION:1] want map[]"
+    ]
+  },
+  {
+    "case": "sql-urlpath",
+    "url": "http://127.0.0.1:60876/sql/urlpath/name--x",
+    "status": 200,
+    "sink_file": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+    "sink_line": "582",
+    "iast_enabled": 1,
+    "manual_keep": 2,
+    "channel": "meta_struct.iast",
+    "event": {
+      "sources": [
+        {
+          "origin": "http.request.path",
+          "value": "/sql/urlpath/name--x"
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "evidence": {
+            "valueParts": [
+              {
+                "value": "SELECT id FROM users ORDER BY "
+              },
+              {
+                "source": 0,
+                "value": "name--x"
+              }
+            ]
+          },
+          "hash": -812213395,
+          "location": {
+            "line": 582,
+            "method": "main.sqlURLPath",
+            "path": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+            "spanId": 6977156004547753000,
+            "stackId": "a3e0d917-f18b-4bc7-85c5-93534afd9893"
+          },
+          "type": "SQL_INJECTION"
+        }
+      ]
+    },
+    "verdict": [
+      "evidence: SELECT id FROM users ORDER BY [name--x#0]",
+      "source: origin=http.request.path name=\u003cnil\u003e value=/sql/urlpath/name--x pattern=\u003cnil\u003e redacted=\u003cnil\u003e"
+    ]
+  },
+  {
+    "case": "sql-rawquery",
+    "url": "http://127.0.0.1:60876/sql/rawquery?a=1+OR+1%3D1",
+    "status": 200,
+    "sink_file": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+    "sink_line": "589",
+    "iast_enabled": 1,
+    "manual_keep": 2,
+    "channel": "meta_struct.iast",
+    "event": {
+      "sources": [
+        {
+          "origin": "http.request.query",
+          "pattern": "abcdefghijkl",
+          "redacted": true
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "evidence": {
+            "valueParts": [
+              {
+                "value": "SELECT id FROM users WHERE "
+              },
+              {
+                "pattern": "abcdefghijkl",
+                "redacted": true,
+                "source": 0
+              }
+            ]
+          },
+          "hash": -1680229454,
+          "location": {
+            "line": 589,
+            "method": "main.sqlRawQuery",
+            "path": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+            "spanId": 6849946789697920000,
+            "stackId": "dab3865e-a4be-4864-a88b-ffcae2059b05"
+          },
+          "type": "SQL_INJECTION"
+        }
+      ]
+    },
+    "verdict": [
+      "evidence: SELECT id FROM users WHERE [abcdefghijkl#0]",
+      "source: origin=http.request.query name=\u003cnil\u003e value=\u003cnil\u003e pattern=abcdefghijkl redacted=true"
+    ]
+  },
+  {
+    "case": "sql-header-index",
+    "url": "http://127.0.0.1:60876/sql/header-index",
+    "status": 200,
+    "sink_file": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+    "sink_line": "597",
+    "iast_enabled": 1,
+    "manual_keep": 2,
+    "channel": "meta_struct.iast",
+    "event": {
+      "sources": [
+        {
+          "name": "X-Sort",
+          "origin": "http.request.header",
+          "value": "name; DROP TABLE users"
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "evidence": {
+            "valueParts": [
+              {
+                "value": "SELECT id FROM users ORDER BY "
+              },
+              {
+                "source": 0,
+                "value": "name; DROP TABLE users"
+              }
+            ]
+          },
+          "hash": 219820410,
+          "location": {
+            "line": 597,
+            "method": "main.sqlHeaderIndex",
+            "path": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+            "spanId": 3296210686116118500,
+            "stackId": "2fe36aea-e30e-423f-aa9d-0a1341c9c10a"
+          },
+          "type": "SQL_INJECTION"
+        }
+      ]
+    },
+    "verdict": [
+      "evidence: SELECT id FROM users ORDER BY [name; DROP TABLE users#0]",
+      "source: origin=http.request.header name=X-Sort value=name; DROP TABLE users pattern=\u003cnil\u003e redacted=\u003cnil\u003e"
+    ]
+  },
+  {
+    "case": "sql-auth-header",
+    "url": "http://127.0.0.1:60876/sql/auth-header",
+    "status": 200,
+    "sink_file": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+    "sink_line": "605",
+    "iast_enabled": 1,
+    "manual_keep": 2,
+    "channel": "meta_struct.iast",
+    "event": {
+      "sources": [
+        {
+          "name": "Authorization",
+          "origin": "http.request.header",
+          "pattern": "abcdefghijklmnopqr",
+          "redacted": true
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "evidence": {
+            "valueParts": [
+              {
+                "value": "SELECT id FROM sessions WHERE token = "
+              },
+              {
+                "pattern": "hijklmnopqr",
+                "redacted": true,
+                "source": 0
+              }
+            ]
+          },
+          "hash": 510765954,
+          "location": {
+            "line": 605,
+            "method": "main.sqlAuthHeader",
+            "path": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+            "spanId": 3384277940833931300,
+            "stackId": "94189ee8-8f1c-478d-acfe-7547edf36210"
+          },
+          "type": "SQL_INJECTION"
+        }
+      ]
+    },
+    "verdict": [
+      "evidence: SELECT id FROM sessions WHERE token = [hijklmnopqr#0]",
+      "source: origin=http.request.header name=Authorization value=\u003cnil\u003e pattern=abcdefghijklmnopqr redacted=true"
+    ]
+  },
+  {
+    "case": "sql-login-control",
+    "url": "http://127.0.0.1:60876/sql/login?user=alice",
+    "status": 200,
+    "sink_file": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+    "sink_line": "642",
+    "iast_enabled": 1,
+    "manual_keep": 2,
+    "channel": "meta_struct.iast",
+    "event": {
+      "sources": [
+        {
+          "name": "user",
+          "origin": "http.request.parameter",
+          "pattern": "abcde",
+          "redacted": true
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "evidence": {
+            "valueParts": [
+              {
+                "value": "SELECT id FROM users WHERE name = '"
+              },
+              {
+                "pattern": "abcde",
+                "redacted": true,
+                "source": 0
+              },
+              {
+                "value": "' AND pw_hash = '"
+              },
+              {
+                "pattern": "***********************",
+                "redacted": true
+              },
+              {
+                "value": "' AND tenant = "
+              },
+              {
+                "pattern": "**",
+                "redacted": true
+              }
+            ]
+          },
+          "hash": 63569785,
+          "location": {
+            "line": 642,
+            "method": "main.sqlLogin",
+            "path": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+            "spanId": 192822922048040600,
+            "stackId": "745bccc2-da23-480c-a069-815b5ac9c05a"
+          },
+          "type": "SQL_INJECTION"
+        }
+      ]
+    },
+    "verdict": [
+      "evidence: SELECT id FROM users WHERE name = '[abcde#0]' AND pw_hash = '***********************' AND tenant = **",
+      "source: origin=http.request.parameter name=user value=\u003cnil\u003e pattern=abcde redacted=true"
+    ]
+  },
+  {
+    "case": "sql-login-comment-injection",
+    "url": "http://127.0.0.1:60876/sql/login?user=admin%27+--",
+    "status": 200,
+    "sink_file": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+    "sink_line": "642",
+    "iast_enabled": 1,
+    "manual_keep": 1,
+    "channel": "none",
+    "event": null,
+    "verdict": [
+      "FAIL: types map[] want map[SQL_INJECTION:1]",
+      "FAIL: missing source http.request.parameter|user"
+    ]
+  },
+  {
+    "case": "sql-login-block-comment-injection",
+    "url": "http://127.0.0.1:60876/sql/login?user=admin%27+%2F%2A",
+    "status": 200,
+    "sink_file": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+    "sink_line": "642",
+    "iast_enabled": 1,
+    "manual_keep": 1,
+    "channel": "none",
+    "event": null,
+    "verdict": [
+      "FAIL: types map[] want map[SQL_INJECTION:1]",
+      "FAIL: missing source http.request.parameter|user"
+    ]
+  },
+  {
+    "case": "neg-sql-safe-param",
+    "url": "http://127.0.0.1:60876/sql/safe-param?name=x%27+OR+%271%27%3D%271",
+    "status": 200,
+    "iast_enabled": 1,
+    "manual_keep": 1,
+    "channel": "none",
+    "event": null,
+    "verdict": null
+  },
+  {
+    "case": "neg-sql-atoi",
+    "url": "http://127.0.0.1:60876/sql/atoi?id=42",
+    "status": 200,
+    "iast_enabled": 1,
+    "manual_keep": 1,
+    "channel": "none",
+    "event": null,
+    "verdict": null
+  },
+  {
+    "case": "neg-sql-clean-literal",
+    "url": "http://127.0.0.1:60876/sql/clean-literal?col=name",
+    "status": 200,
+    "iast_enabled": 1,
+    "manual_keep": 1,
+    "channel": "none",
+    "event": null,
+    "verdict": null
+  },
+  {
+    "case": "neg-leak-set",
+    "url": "http://127.0.0.1:60876/sql/leak-set?col=name%3B+DROP+TABLE+users",
+    "status": 200,
+    "iast_enabled": 1,
+    "manual_keep": 1,
+    "channel": "none",
+    "event": null,
+    "verdict": null
+  },
+  {
+    "case": "neg-leak-use",
+    "url": "http://127.0.0.1:60876/sql/leak-use",
+    "status": 200,
+    "iast_enabled": 1,
+    "manual_keep": 1,
+    "channel": "none",
+    "event": null,
+    "verdict": null
+  },
+  {
+    "case": "cmd-shell",
+    "url": "http://127.0.0.1:60876/cmd/shell?cmd=echo+ddiast-%24%28%2840%2B2%29%29",
+    "status": 200,
+    "sink_file": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+    "sink_line": "288",
+    "x_out": "ddiast-42",
+    "iast_enabled": 1,
+    "manual_keep": 2,
+    "channel": "meta_struct.iast",
+    "event": {
+      "sources": [
+        {
+          "name": "cmd",
+          "origin": "http.request.parameter",
+          "pattern": "abcdefghijklmnopqrstu",
+          "redacted": true
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "evidence": {
+            "valueParts": [
+              {
+                "value": "sh "
+              },
+              {
+                "pattern": "***",
+                "redacted": true
+              },
+              {
+                "pattern": "abcdefghijklmnopqrstu",
+                "redacted": true,
+                "source": 0
+              }
+            ]
+          },
+          "hash": -450510845,
+          "location": {
+            "line": 288,
+            "method": "main.cmdShell",
+            "path": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+            "spanId": 7432362401153179000,
+            "stackId": "d13288c8-6fb3-4a52-b1b8-593b3507679c"
+          },
+          "type": "COMMAND_INJECTION"
+        }
+      ]
+    },
+    "verdict": [
+      "evidence: sh ***[abcdefghijklmnopqrstu#0]",
+      "source: origin=http.request.parameter name=cmd value=\u003cnil\u003e pattern=abcdefghijklmnopqrstu redacted=true"
+    ]
+  },
+  {
+    "case": "cmd-arg",
+    "url": "http://127.0.0.1:60876/cmd/arg?file=%2Ftmp%3B+id",
+    "status": 200,
+    "sink_file": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+    "sink_line": "297",
+    "iast_enabled": 1,
+    "manual_keep": 2,
+    "channel": "meta_struct.iast",
+    "event": {
+      "sources": [
+        {
+          "name": "file",
+          "origin": "http.request.parameter",
+          "pattern": "abcdefgh",
+          "redacted": true
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "evidence": {
+            "valueParts": [
+              {
+                "value": "ls "
+              },
+              {
+                "pattern": "***",
+                "redacted": true
+              },
+              {
+                "pattern": "abcdefgh",
+                "redacted": true,
+                "source": 0
+              }
+            ]
+          },
+          "hash": 707572130,
+          "location": {
+            "line": 297,
+            "method": "main.cmdArg",
+            "path": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+            "spanId": 4036423631326338600,
+            "stackId": "33ca25c0-5a55-4d27-b249-574a5f1a4383"
+          },
+          "type": "COMMAND_INJECTION"
+        }
+      ]
+    },
+    "verdict": [
+      "evidence: ls ***[abcdefgh#0]",
+      "source: origin=http.request.parameter name=file value=\u003cnil\u003e pattern=abcdefgh redacted=true"
+    ]
+  },
+  {
+    "case": "neg-cmd-safe",
+    "url": "http://127.0.0.1:60876/cmd/safe?cmd=echo+pwned",
+    "status": 200,
+    "x_out": "constant",
+    "iast_enabled": 1,
+    "manual_keep": 1,
+    "channel": "none",
+    "event": null,
+    "verdict": null
+  },
+  {
+    "case": "neg-cmd-atoi",
+    "url": "http://127.0.0.1:60876/cmd/atoi?n=7",
+    "status": 200,
+    "iast_enabled": 1,
+    "manual_keep": 1,
+    "channel": "none",
+    "event": null,
+    "verdict": null
+  }
+]

@@ -1,0 +1,13 @@
+[
+  {
+    "id": "hooks-yml-operators-F3",
+    "verdict": "CONFIRMED",
+    "original_severity": "Critical",
+    "adjusted_severity": "Critical",
+    "reachable_default": true,
+    "documented_limitation": false,
+    "reason": "A valid import-free root package containing a single string concatenation passes plain Go 1.26.6 tests but reproducibly panics in pinned Orchestrion OnCompile when a synthetic propagation import is assigned to its nil PackageFile map; adding a real import makes the woven build pass. Go 1.27.0 stops earlier on a separate encoding/json advice error.",
+    "evidence_path": ".omo/review/evidence/fx-hooks-yml-operators-F3/woven-go1266.txt",
+    "repro_command": "mkdir -p /tmp/ddiast-review/wt/fx-hooks-yml-operators-F3/reviewfximportless && rsync -a --exclude .git --exclude .omo ./ /tmp/ddiast-review/wt/fx-hooks-yml-operators-F3/ && cp .omo/review/evidence/fx-hooks-yml-operators-F3/reviewfximportless/*.go /tmp/ddiast-review/wt/fx-hooks-yml-operators-F3/reviewfximportless/ && (cd /tmp/ddiast-review/wt/fx-hooks-yml-operators-F3 && /usr/bin/time -l env -u DD_IAST_ENABLED GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go tool orchestrion go test -timeout 3m -count=1 ./reviewfximportless)"
+  }
+]

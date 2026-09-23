@@ -1,0 +1,10 @@
+Mutation checks (each applied alone in the private copy, then reverted); REVIEW_ITER=20000 seed=1
+('internal/taint/propagation/bytes_exact.go', '\t\t_, width := utf8.DecodeRune(input[index:])\n\t\tif width > 2 ', '--- FAIL: TestReviewUnicodeDifferential (1.10s)\n    zz_review_unicode_test.go:615: seed=1 cases=440000 failures=9520\nFAIL\nFAIL\tgithub.com/DataDog/dd-iast-go/internal/taint/propagation\t1.587s\nFAIL')
+('internal/taint/propagation/string_coarse.go', 'exact := len(input) == len(result)', '--- FAIL: TestReviewUnicodeDifferential (1.14s)\n    zz_review_unicode_test.go:615: seed=1 cases=440000 failures=5678\nFAIL\nFAIL\tgithub.com/DataDog/dd-iast-go/internal/taint/propagation\t1.702s\nFAIL')
+('internal/taint/propagation/string_exact.go', '\t\t\twidth := 1', 'FAIL\tgithub.com/DataDog/dd-iast-go/internal/taint/propagation [build failed]\nFAIL')
+('internal/taint/propagation/bytes_exact.go', '\tif len(old) == 0 && count > 1000 {\n\t\tfor position := 0; rem', '--- FAIL: TestReviewUnicodeDifferential (1.18s)\n    zz_review_unicode_test.go:615: seed=1 cases=440000 failures=2270\nFAIL\nFAIL\tgithub.com/DataDog/dd-iast-go/internal/taint/propagation\t2.339s\nFAIL')
+string_exact width=1 mutation:     zz_review_unicode_test.go:229: strings.Replace(old="",new="?",n=3) input="'ẞ\xe2\x82"
+    zz_review_unicode_test.go:229: strings.Replace(old="",new="\r",n=40) input="abcɑSELECTɐ"
+    zz_review_unicode_test.go:229: strings.Replace(old="",new="\\",n=2) input="ɑ?%\xff&ABCSELECT"
+    zz_review_unicode_test.go:229: strings.Replace(old="",new="Ɑ",n=-1) input="\n\xed\xa0\x80abcⱭ"
+

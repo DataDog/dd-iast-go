@@ -1,0 +1,10 @@
+goos: darwin
+goarch: arm64
+pkg: github.com/DataDog/dd-iast-go/testapps/integration
+cpu: Apple M4 Max
+BenchmarkJSONUnmarshalClean-16          	    2000	      1012 ns/op	     377 B/op	      12 allocs/op
+BenchmarkJSONUnmarshalActiveClean-16    	    2000	       938.9 ns/op	     376 B/op	      12 allocs/op
+PASS
+ok  	github.com/DataDog/dd-iast-go/testapps/integration	0.766s
+?   	github.com/DataDog/dd-iast-go/testapps/integration/cmd/bootstrap	[no test files]
+?   	github.com/DataDog/dd-iast-go/testapps/integration/cmd/bootstrap.test	[no test files]

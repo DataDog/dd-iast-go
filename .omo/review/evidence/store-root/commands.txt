@@ -1,0 +1,13 @@
+# All run in the private copy /tmp/ddiast-review/wt/store-root (rsync of HEAD 2e23b46 working tree)
+# Test files copied here: zz_review_root_test.go (this node), zz_review_rollback_test.go (leftover from an earlier
+# attempt of this node in the same private dir; deterministic root-count variant of F1).
+export GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6
+cp zz_review_*_test.go internal/taint/store/
+go test -count=1 -timeout 10m -run 'TestReview' -v ./internal/taint/store/        # -> review-run.txt
+go test -race -count=1 -timeout 10m -run 'TestReviewRollbackLeakNaturalContention' -v ./internal/taint/store/  # -> review-run-race.txt
+go test -race -count=1 -timeout 10m ./internal/taint/store/
+#   whole package under -race: no DATA RACE; the only FAIL lines are the TestReview* reproducers
+#   (TestReviewRollbackContentionLeaksChargeUntilFinish, TestReviewSizeClassMatchesRuntime,
+#    TestReviewRollbackLeakNaturalContention). All pre-existing store tests pass.
+# Runtime size-class table compared: go1.26.6 and go1.27.0 internal/runtime/gc SizeClassToSize are identical
+#   and contain ...1024, 1152... and ...4864, 5376, 6144...; limits.go has 1088 and 5392.

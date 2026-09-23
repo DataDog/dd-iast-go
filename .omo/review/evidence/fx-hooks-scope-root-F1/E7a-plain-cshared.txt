@@ -1,0 +1,22 @@
+$ cd $WT/fx/sqlonly
+$ GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4  go build -buildmode=c-shared -o ../out/plain-cshared.dylib ./cmd/cshared
+        7.49 real         6.55 user         1.98 sys
+           334020608  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              259057  page reclaims
+                4566  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                1165  signals received
+                 859  voluntary context switches
+               41354  involuntary context switches
+          1786362189  instructions retired
+          1140412996  cycles elapsed
+            13943456  peak memory footprint
+
+exit status: 0

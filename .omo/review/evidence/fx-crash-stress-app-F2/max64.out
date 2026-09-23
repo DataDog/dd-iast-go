@@ -1,0 +1,10 @@
+$ cd /tmp/ddiast-review/wt/fx-crash-stress-app-F2/iast/integration/testapp && GOMAXPROCS=2 DD_IAST_REQUEST_SAMPLING=100 DD_IAST_MAX_CONCURRENT_REQUESTS=64 ./fxwriter 64
+# Go 1.26.6 woven binary; only the reproducer's output lines are shown (tracer diagnostics omitted).
+woven=true sampling=100 maxConcurrent=64 requestedOwners=64
+no_request owners=0 writerActive=false ns_per_clean_WriteByte=5 samples=[5 5 5]
+request_without_writer owners=1 writerActive=false ns_per_clean_WriteByte=5 samples=[5 5 6]
+one_tracked_writer owners=1 writerActive=true ns_per_clean_WriteByte=173 samples=[173 173 185]
+many_tracked_writers owners=64 writerActive=true ns_per_clean_WriteByte=1838 samples=[1610 1838 8428]
+after_finish owners=0 writerActive=false ns_per_clean_WriteByte=5 samples=[5 5 5]
+ratios one/baseline=34.60 many/baseline=367.60 after/baseline=1.00
+# exit=0

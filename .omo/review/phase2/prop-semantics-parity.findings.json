@@ -1,0 +1,35 @@
+[
+  {
+    "id": "prop-semantics-parity-F1",
+    "severity": "High",
+    "category": "false-negative",
+    "location": "internal/taint/propagation/string_coarse.go:115-145,203-219",
+    "title": "fmt.Sprintf misses tainted Stringer struct fields",
+    "claim": "A direct fmt.Sprintf call that formats a tainted Stringer struct field produces SQL with no taint because only top-level string and byte-slice arguments are inspected.",
+    "evidence_path": ".omo/review/evidence/prop-semantics-parity/parity_repro_test.go",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -timeout 8m -count=1 -run '^TestParity' -v ./iast/propagation",
+    "needs_repro": false
+  },
+  {
+    "id": "prop-semantics-parity-F2",
+    "severity": "High",
+    "category": "false-positive",
+    "location": "internal/taint/propagation/string_coarse.go:115-130,175-197",
+    "title": "fmt.Sprintf taints an argument that emitted no bytes",
+    "claim": "A zero-precision string directive emits no user bytes but the resulting clean SQL query is marked tainted and collected as unsafe SQL evidence.",
+    "evidence_path": ".omo/review/evidence/prop-semantics-parity/parity_repro_test.go",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -timeout 8m -count=1 -run '^TestParity' -v ./iast/propagation",
+    "needs_repro": false
+  },
+  {
+    "id": "prop-semantics-parity-F3",
+    "severity": "High",
+    "category": "false-positive",
+    "location": "iast/propagation/coarse.go:36-38; internal/taint/propagation/propagation.go:326-425",
+    "title": "strings.Map retains taint after deleting all tainted runes",
+    "claim": "Deleting every tainted rune with strings.Map yields constant SQL text that remains fully tainted and is collected as unsafe SQL evidence.",
+    "evidence_path": ".omo/review/evidence/prop-semantics-parity/parity_repro_test.go",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -timeout 8m -count=1 -run '^TestParity' -v ./iast/propagation",
+    "needs_repro": false
+  }
+]

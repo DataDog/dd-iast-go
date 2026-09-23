@@ -1,0 +1,4 @@
+      8 _dd.iast.enabled
+      3 _dd.iast.json
+      1 "type":"COMMAND_INJECTION"
+      2 "type":"SQL_INJECTION"

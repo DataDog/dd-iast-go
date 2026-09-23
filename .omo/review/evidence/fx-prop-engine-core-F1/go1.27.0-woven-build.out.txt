@@ -1,0 +1,11 @@
+Command:
+GOWORK=off GOTOOLCHAIN=go1.27.0 GOFLAGS='-p=4' /usr/bin/time -l go -C /tmp/ddiast-review/wt/fx-prop-engine-core-F1 tool orchestrion go test ./iast/propagation -run '^TestReviewFxSplitKeepsFirstNonEmptyAfterEmptyPrefix$' -count=1 -timeout=5m -v
+
+Key output:
+# encoding/json
+$WORK/b104/orchestrion/src/encoding/json/<generated>:2: dec.r undefined (type *Decoder has no field or method r)
+$WORK/b104/orchestrion/src/encoding/json/<generated>:2: dec.d undefined (type *Decoder has no field or method d)
+$WORK/b104/orchestrion/src/encoding/json/<generated>:3: dec.d undefined (type *Decoder has no field or method d)
+exit status 2
+
+The pinned Orchestrion advice therefore did not produce a Go 1.27.0 woven binary; this is not used as evidence for the split-window verdict.

@@ -1,0 +1,35 @@
+[
+  {
+    "id": "crash-race-hunt-F1",
+    "severity": "Critical",
+    "category": "race",
+    "location": "iast/net/http/orchestrion.yml:152-162",
+    "title": "ParseForm advice writes Request.Form/PostForm on every call, racing with concurrent form readers (even with IAST disabled)",
+    "claim": "The woven deferred closure unconditionally re-assigns r.Form and r.PostForm on every ParseForm call, including the read-only no-op re-parse of an already-parsed request. In plain Go a defensive re-parse concurrent with FormValue/PostFormValue/r.Form reads is race-free; woven, it is a data race (reproduced with IAST enabled and with config.Enabled=false). Independent evidence for the secondary remark in life-lazy-reader-F1; distinct write site.",
+    "evidence_path": ".omo/review/evidence/crash-race-hunt/reproducers/integration_testapp_zz_parseform_race_test.go",
+    "repro_command": "cd iast/integration/testapp && GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -race -run '^TestRaceHuntParseFormReparse' -count=3 -v .  # woven: 3 DATA RACE (logs/woven_parseform_woven.out, logs/woven_parseform_disabled.out); plain control: RACEHUNT_PLAIN=1 go test -race -run TestRaceHunt -count=3 -cpu=4,16 . -> races=0 (logs/plain_integ_control.out)",
+    "needs_repro": false
+  },
+  {
+    "id": "crash-race-hunt-F2",
+    "severity": "Low",
+    "category": "false-negative",
+    "location": "internal/taint/store/owner.go:24-27",
+    "title": "Store owner acquisition drops most concurrent request begins on ownerMu.TryLock contention even when permits and owner slots are free",
+    "claim": "Manager.Acquire wins a permit, then store.Acquire fails on global ownerMu.TryLock contention and the request becomes DecisionCapacityDropped despite free capacity; 16 concurrent Begin/Finish loops (cap 64) lose 39-80% of begins, all attributable to store acquire drops.",
+    "evidence_path": ".omo/review/evidence/crash-race-hunt/reproducers/request_zz_racehunt_acquire_test.go",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 go test -run TestRaceHuntBeginContentionDrops -count=3 -cpu=4,16 -v ./internal/taint/request  # logs/begin_contention.out",
+    "needs_repro": false
+  },
+  {
+    "id": "crash-race-hunt-F3",
+    "severity": "Low",
+    "category": "test-gap",
+    "location": "internal/vulnerability/tainted_dedup_test.go:138-151",
+    "title": "TestCommitTaintedSkippedDedup is flaky under repeated runs",
+    "claim": "The test asserts 2 distinct aggregated telemetry log records; aggregation depends on heartbeat/flush timing, so 1 of 60 runs saw 3 distinct records with the correct total count of 3.",
+    "evidence_path": ".omo/review/evidence/crash-race-hunt/vulnerability-flake-TestCommitTaintedSkippedDedup.out",
+    "repro_command": "cd internal/vulnerability && go test -race -c -o v.test . && ./v.test -test.count=20 -test.cpu=1,4,16",
+    "needs_repro": false
+  }
+]

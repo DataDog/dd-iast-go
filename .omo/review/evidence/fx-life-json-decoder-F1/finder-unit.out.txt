@@ -1,0 +1,10 @@
+# GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 go test -count=1 -run TestReviewNestedBind -v ./internal/taint/jsonbridge/  (private copy at HEAD 2e23b46 + finder's zz_review_dup_slot_test.go/zz_review_debug.go)
+=== RUN   TestReviewNestedBindCreatesDuplicateSlotAndDropsDocument
+    zz_review_dup_slot_test.go:42: occupied=2 pointers=[0x4e203cfd400 0x4e203cfd400] depths=[1 1] (ours=0x4e203cfd400)
+    zz_review_dup_slot_test.go:47: literal callback document is clone: false (document=0x4e203c90558 clone=0x4e203c90540 data=0x4e203c90558); occupied after both unbinds=0
+    zz_review_dup_slot_test.go:49: BUG: nested Bind claimed a freed earlier probe instead of the existing slot; Literal lost the decoder document mapping
+--- FAIL: TestReviewNestedBindCreatesDuplicateSlotAndDropsDocument (0.00s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/jsonbridge	0.402s
+FAIL
+exit=1

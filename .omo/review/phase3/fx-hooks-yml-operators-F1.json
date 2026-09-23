@@ -1,0 +1,13 @@
+[
+  {
+    "id": "hooks-yml-operators-F1",
+    "verdict": "CONFIRMED",
+    "original_severity": "Critical",
+    "adjusted_severity": "Critical",
+    "reachable_default": true,
+    "documented_limitation": false,
+    "reason": "With IAST explicitly disabled, plain Go 1.26.6 passes while weaving adds slice-bounds panics in len/range and makes a valid constant array length non-constant; the same behavior reproduces on Go 1.27.0 with propagation-only instrumentation.",
+    "evidence_path": ".omo/review/evidence/fx-hooks-yml-operators-F1/go1266-woven-runtime.txt",
+    "repro_command": "cd /tmp/ddiast-review/wt/fx-hooks-yml-operators-F1 && GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=2 DD_IAST_ENABLED=false REVIEW_WOVEN=1 go tool orchestrion go test -work -timeout 3m -count=1 -v ./reviewfxoperators; GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=2 DD_IAST_ENABLED=false REVIEW_WOVEN=1 go tool orchestrion go test -work -timeout 3m -count=1 -v ./reviewfxoperators/constantlen"
+  }
+]

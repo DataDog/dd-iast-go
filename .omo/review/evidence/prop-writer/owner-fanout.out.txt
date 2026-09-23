@@ -1,0 +1,12 @@
+Command: cd /tmp/ddiast-review/wt/prop-writer && GOTOOLCHAIN=go1.26.6 go test -timeout 10m -count=1 -run "^TestReviewWriterOwnerFanoutBound$" -v ./internal/taint/propagation
+Exit status: 1 (expected failing reproducer)
+=== RUN   TestReviewWriterOwnerFanoutBound
+    zz_review_writer_test.go:27: writer records=60, process charged bytes=1966560
+    zz_review_writer_test.go:28:
+        	Error Trace:	/tmp/ddiast-review/wt/prop-writer/internal/taint/propagation/zz_review_writer_test.go:28
+        	Error:      	"60" is not less than or equal to "4"
+        	Test:       	TestReviewWriterOwnerFanoutBound
+        	Messages:   	a single builder admitted writer records from 60 separate owners
+--- FAIL: TestReviewWriterOwnerFanoutBound (0.00s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/propagation	0.487s

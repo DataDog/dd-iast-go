@@ -1,0 +1,57 @@
+[
+  {
+    "id": "sink-exec-F1",
+    "severity": "High",
+    "category": "false-negative",
+    "location": "iast/os/exec/orchestrion.yml:59-78; iast/os/exec/exec.go:42-60",
+    "title": "A tainted Cmd.Path is not evidence when it differs from Args[0]",
+    "claim": "Only argv reaches the command sink callback. os.StartProcess executes lp/c.Path, so a tainted cmd.Path with a clean Args[0] runs an attacker-chosen binary without a report.",
+    "evidence_path": ".omo/review/evidence/sink-exec/review_sinkexec_test.go",
+    "repro_command": "cp .omo/review/evidence/sink-exec/review_sinkexec_test.go iast/os/exec/testapp/ && cd iast/os/exec/testapp && GOTOOLCHAIN=go1.26.6 GOFLAGS=-mod=mod go tool orchestrion go test -count=1 -v -run 'TestReview' . (output: .omo/review/evidence/sink-exec/go1.26.6-output.txt, .omo/review/evidence/sink-exec/go1.27.0-output.txt)",
+    "needs_repro": false
+  },
+  {
+    "id": "sink-exec-F2",
+    "severity": "Medium",
+    "category": "false-negative",
+    "location": "iast/os/exec/orchestrion.yml:59-78; iast/os/exec/exec.go:42",
+    "title": "Windows SysProcAttr.CmdLine bypasses the argv evidence",
+    "claim": "On Windows a non-empty attr.Sys.CmdLine replaces argv as the executed command line, but the sink inspects only argv, so a tainted CmdLine is not reported.",
+    "evidence_path": null,
+    "repro_command": null,
+    "needs_repro": true
+  },
+  {
+    "id": "sink-exec-F3",
+    "severity": "Low",
+    "category": "test-gap",
+    "location": "iast/os/exec/testapp/exec_test.go",
+    "title": "Existing tests miss the risky exec boundary cases",
+    "claim": "No committed tests cover Path divergence, nil Args, Start twice, tainted Env/Dir, a canceled context, or multi-argument offset mapping.",
+    "evidence_path": ".omo/review/evidence/sink-exec/review_sinkexec_test.go",
+    "repro_command": "cp .omo/review/evidence/sink-exec/review_sinkexec_test.go iast/os/exec/testapp/ && cd iast/os/exec/testapp && GOTOOLCHAIN=go1.26.6 GOFLAGS=-mod=mod go tool orchestrion go test -count=1 -v -run 'TestReview' .",
+    "needs_repro": false
+  },
+  {
+    "id": "sink-exec-F4",
+    "severity": "Info",
+    "category": "quality",
+    "location": "iast/os/exec/exec.go:52-56; internal/taint/redaction/command.go:25",
+    "title": "Joined evidence does not show argument boundaries",
+    "claim": "Argv is space-joined without quoting, so different argv shapes produce the same evidence. This matches other tracers.",
+    "evidence_path": ".omo/review/evidence/sink-exec/go1.26.6-output.txt",
+    "repro_command": "cp .omo/review/evidence/sink-exec/review_sinkexec_test.go iast/os/exec/testapp/ && cd iast/os/exec/testapp && GOTOOLCHAIN=go1.26.6 GOFLAGS=-mod=mod go tool orchestrion go test -count=1 -v -run 'TestReview' .",
+    "needs_repro": false
+  },
+  {
+    "id": "sink-exec-F5",
+    "severity": "Info",
+    "category": "redaction",
+    "location": "internal/taint/redaction/command.go:27-33; internal/taint/redaction/source.go:62-66",
+    "title": "A tainted argv[0], or the command after sudo/doas, is emitted with its full source value",
+    "claim": "The preserved command bytes are not sensitive, so a tainted executable and its whole source value are sent in clear unless the redaction patterns match. This is intended and matches Java.",
+    "evidence_path": ".omo/review/evidence/sink-exec/go1.26.6-output.txt",
+    "repro_command": "cp .omo/review/evidence/sink-exec/review_sinkexec_test.go iast/os/exec/testapp/ && cd iast/os/exec/testapp && GOTOOLCHAIN=go1.26.6 GOFLAGS=-mod=mod go tool orchestrion go test -count=1 -v -run 'TestReview' .",
+    "needs_repro": false
+  }
+]

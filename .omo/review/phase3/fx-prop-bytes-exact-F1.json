@@ -1,0 +1,13 @@
+[
+ {
+  "id": "prop-bytes-exact-F1",
+  "verdict": "CONFIRMED",
+  "original_severity": "High",
+  "adjusted_severity": "High",
+  "reachable_default": true,
+  "documented_limitation": false,
+  "reason": "bytesAlias (propagation.go:53-60) bounds result end by len(input) instead of cap(input), so ByteWindow drops valid beyond-length/within-capacity 2- and 3-index reslices. Independently reproduced through the internal API (Go 1.26.6 and 1.27.0) and through a woven io.ReadAll body source with a customer lexer growing a token (tok=tok[:len(tok)+1]): bytes, assigned string conversion, and SQL-style query are all untainted, while the in-length control stays tainted. The feature is advertised as supported in README:33/44-45, so this violates product rule 4. A one-line cap-bound fix restores exact ranges, and the existing suites stay green.",
+  "evidence_path": ".omo/review/evidence/fx-prop-bytes-exact-F1/woven-repro-go1.26.6.txt",
+  "repro_command": "cd /tmp/ddiast-review/wt/fx-prop-bytes-exact-F1 && GOFLAGS=-p=4 GOMAXPROCS=4 GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -p=4 -count=1 -timeout=5m -run '^TestFx' -v ./iast/io  (after copying evidence/fx-prop-bytes-exact-F1/zz_fx_reslice_woven_test.go into iast/io/; internal variant: zz_fx_reslice_test.go into internal/taint/propagation/)"
+ }
+]

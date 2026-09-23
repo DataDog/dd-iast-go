@@ -1,0 +1,13 @@
+[
+ {
+  "id": "prop-owner-isolation-F1",
+  "verdict": "CONFIRMED",
+  "original_severity": "Critical",
+  "adjusted_severity": "Critical",
+  "reachable_default": true,
+  "documented_limitation": false,
+  "reason": "Plain write of analysisSlot.index at owner.go:82 on every permit Acquire races with the plain read at http.go:33 from a request goroutine that is not joined. Reproduced independently with a woven net/http server under default config (a handler with a fire-and-forget r.URL.Query() goroutine) and through the internal API on Go 1.26.6 and 1.27.0. It only affects -race builds (same value, no wrong result), but it is a data race in production code per the brief's scale. The ReadAllBytes/CloneReaderBytes paths are mostly masked by the sourceMu happens-before edge and race only in a narrow window. Fix: initialize index once in NewManager (verified).",
+  "evidence_path": ".omo/review/evidence/fx-prop-owner-isolation-F1/woven-detached-query-race-go1.26.6.out.txt",
+  "repro_command": "mkdir zzfxrepro && cp .omo/review/evidence/fx-prop-owner-isolation-F1/zzfxrepro_repro_test.go zzfxrepro/repro_test.go && GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -race -run '^TestFxWovenDetachedQuery$' -count=1 -v ./zzfxrepro"
+ }
+]

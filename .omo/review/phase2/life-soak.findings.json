@@ -1,0 +1,35 @@
+[
+  {
+    "id": "life-soak-F1",
+    "severity": "Info",
+    "category": "memory-bound",
+    "location": "internal/taint/request/scope.go:47-59",
+    "title": "Enabled-IAST steady-state footprint is ~14 MB live and ~31 MB peak HeapSys over baseline (bounded)",
+    "claim": "Same woven binary: post-GC HeapAlloc 2.0 MB IAST off vs 16.4 MB on (+14.3 MB, one-time at first sampled request, flat thereafter); peak HeapSys 53 vs 84.5 MiB; both plateau; within the documented 24 MiB envelope.",
+    "evidence_path": ".omo/review/evidence/life-soak/soak-mock.csv",
+    "repro_command": "see .omo/review/evidence/life-soak/README.txt (soak-mock vs soak-disabled)",
+    "needs_repro": false
+  },
+  {
+    "id": "life-soak-F2",
+    "severity": "Info",
+    "category": "false-negative",
+    "location": "internal/taint/store/owner.go:24-27",
+    "title": "Soak run corroborates perf-contention-F1: owner-lock contention drops ~0.9% of sampled requests while permits are free",
+    "claim": "acquireDrops grew to 1384 over 320k requests (16 clients, 8 permits) while quiescent permits_used stayed 0; not a leak; duplicate of perf-contention-F1, not re-rated.",
+    "evidence_path": ".omo/review/evidence/life-soak/soak-mock.csv",
+    "repro_command": "see .omo/review/evidence/life-soak/README.txt (soak-mock)",
+    "needs_repro": false
+  },
+  {
+    "id": "life-soak-F3",
+    "severity": "Low",
+    "category": "test-gap",
+    "location": "iast/integration/testapp/e2e_test.go:1",
+    "title": "No lifecycle soak or leak regression exists in the repository",
+    "claim": "Integration tests drive one request each; nothing asserts that permits/store values/annotations/event-source bytes/owner bindings return to zero or that heap/goroutines plateau across many woven requests with panics, early returns and late goroutines.",
+    "evidence_path": ".omo/review/evidence/life-soak/soak_main.go",
+    "repro_command": null,
+    "needs_repro": false
+  }
+]

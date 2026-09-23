@@ -1,0 +1,18 @@
+Command, from the private copy, with TMPDIR, GOTMPDIR, and GOCACHE under that
+copy:
+GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=2 DD_IAST_ENABLED=false REVIEW_WOVEN=1 go tool orchestrion go test -work -timeout 3m -count=1 -v ./reviewfxoperators
+
+Captured output:
+go version go1.26.6 darwin/arm64
+=== RUN   TestLenDoesNotEvaluateArrayElement
+    operators_test.go:10: len evaluated the array element: runtime error: slice bounds out of range [:99] with length 3
+--- FAIL: TestLenDoesNotEvaluateArrayElement (0.00s)
+=== RUN   TestRangeDoesNotEvaluateArrayElement
+    operators_test.go:25: range evaluated the array element: runtime error: slice bounds out of range [:99] with length 3
+--- FAIL: TestRangeDoesNotEvaluateArrayElement (0.00s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/reviewfxoperators	0.326s
+FAIL
+WOVEN_RUNTIME_EXIT=1
+104.89 real 106.14 user 58.10 sys
+944947200 maximum resident set size

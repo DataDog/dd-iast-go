@@ -1,0 +1,13 @@
+[
+ {
+  "id": "sink-http-sources-F2",
+  "verdict": "CONFIRMED",
+  "original_severity": "High",
+  "adjusted_severity": "High",
+  "reachable_default": true,
+  "documented_limitation": false,
+  "reason": "Woven go1.26.6 server test: after the handler rewrites req.URL.RawQuery (literal replacement or default injection), URL.Query().Get and FormValue return the app literal 'created_at' tainted with origin http.request.parameter, and concatenated SQL is tainted. Plain run is clean. ManageURLQuery gates only on URL object binding (lazy.go:31-45), and ManageForm/ManageParameter only on context, never on value content. The FormValue/ParseForm sibling shares the root cause. Go 1.27.0 untestable due to the known encoding/json weave compile break.",
+  "evidence_path": ".omo/review/evidence/fx-sink-http-sources-F2/fx_f2_review.out.txt",
+  "repro_command": "GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -timeout 12m -count=1 -run '^TestFxF2_' -v ./iast/net/http"
+ }
+]

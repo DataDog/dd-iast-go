@@ -1,0 +1,754 @@
+[
+  {
+    "case": "conc-tainted-00",
+    "url": "http://127.0.0.1:60900/conc?col=c00%3B+DROP+TABLE+t00\u0026i=0\u0026kind=tainted",
+    "status": 200,
+    "iast_enabled": 1,
+    "manual_keep": 2,
+    "channel": "meta_struct.iast",
+    "event": {
+      "sources": [
+        {
+          "name": "col",
+          "origin": "http.request.parameter",
+          "value": "c00; DROP TABLE t00"
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "evidence": {
+            "valueParts": [
+              {
+                "value": "SELECT id FROM users ORDER BY "
+              },
+              {
+                "source": 0,
+                "value": "c00; DROP TABLE t00"
+              }
+            ]
+          },
+          "hash": 1497016510,
+          "location": {
+            "line": 633,
+            "method": "main.concHandler",
+            "path": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+            "spanId": 4954429474297450000,
+            "stackId": "f00e5f5f-6745-44be-9c35-726fc3d1939d"
+          },
+          "type": "SQL_INJECTION"
+        }
+      ]
+    },
+    "verdict": [
+      "evidence: SELECT id FROM users ORDER BY [c00; DROP TABLE t00#0]",
+      "source: origin=http.request.parameter name=col value=c00; DROP TABLE t00 pattern=\u003cnil\u003e redacted=\u003cnil\u003e"
+    ]
+  },
+  {
+    "case": "conc-clean-01",
+    "url": "http://127.0.0.1:60900/conc?col=name\u0026i=1\u0026kind=clean",
+    "status": 200,
+    "iast_enabled": 1,
+    "manual_keep": 1,
+    "channel": "none",
+    "event": null,
+    "verdict": null
+  },
+  {
+    "case": "conc-tainted-02",
+    "url": "http://127.0.0.1:60900/conc?col=c02%3B+DROP+TABLE+t02\u0026i=2\u0026kind=tainted",
+    "status": 200,
+    "iast_enabled": 1,
+    "manual_keep": 2,
+    "channel": "meta_struct.iast",
+    "event": {
+      "sources": [
+        {
+          "name": "col",
+          "origin": "http.request.parameter",
+          "value": "c02; DROP TABLE t02"
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "evidence": {
+            "valueParts": [
+              {
+                "value": "SELECT id FROM users ORDER BY "
+              },
+              {
+                "source": 0,
+                "value": "c02; DROP TABLE t02"
+              }
+            ]
+          },
+          "hash": 1497016510,
+          "location": {
+            "line": 633,
+            "method": "main.concHandler",
+            "path": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+            "spanId": 8460135762480102000,
+            "stackId": "cc7c396d-1fd2-4a29-b398-be892c28342d"
+          },
+          "type": "SQL_INJECTION"
+        }
+      ]
+    },
+    "verdict": [
+      "evidence: SELECT id FROM users ORDER BY [c02; DROP TABLE t02#0]",
+      "source: origin=http.request.parameter name=col value=c02; DROP TABLE t02 pattern=\u003cnil\u003e redacted=\u003cnil\u003e"
+    ]
+  },
+  {
+    "case": "conc-clean-03",
+    "url": "http://127.0.0.1:60900/conc?col=name\u0026i=3\u0026kind=clean",
+    "status": 200,
+    "iast_enabled": 0,
+    "manual_keep": 1,
+    "channel": "none",
+    "event": null,
+    "verdict": [
+      "SKIP: not analyzed (admission)"
+    ]
+  },
+  {
+    "case": "conc-tainted-04",
+    "url": "http://127.0.0.1:60900/conc?col=c04%3B+DROP+TABLE+t04\u0026i=4\u0026kind=tainted",
+    "status": 200,
+    "iast_enabled": 1,
+    "manual_keep": 2,
+    "channel": "meta_struct.iast",
+    "event": {
+      "sources": [
+        {
+          "name": "col",
+          "origin": "http.request.parameter",
+          "value": "c04; DROP TABLE t04"
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "evidence": {
+            "valueParts": [
+              {
+                "value": "SELECT id FROM users ORDER BY "
+              },
+              {
+                "source": 0,
+                "value": "c04; DROP TABLE t04"
+              }
+            ]
+          },
+          "hash": 1497016510,
+          "location": {
+            "line": 633,
+            "method": "main.concHandler",
+            "path": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+            "spanId": 4527312920187389400,
+            "stackId": "2e844346-a1ad-4ebf-b38e-767dbc7a8bfd"
+          },
+          "type": "SQL_INJECTION"
+        }
+      ]
+    },
+    "verdict": [
+      "evidence: SELECT id FROM users ORDER BY [c04; DROP TABLE t04#0]",
+      "source: origin=http.request.parameter name=col value=c04; DROP TABLE t04 pattern=\u003cnil\u003e redacted=\u003cnil\u003e"
+    ]
+  },
+  {
+    "case": "conc-clean-05",
+    "url": "http://127.0.0.1:60900/conc?col=name\u0026i=5\u0026kind=clean",
+    "status": 200,
+    "iast_enabled": 1,
+    "manual_keep": 1,
+    "channel": "none",
+    "event": null,
+    "verdict": null
+  },
+  {
+    "case": "conc-tainted-06",
+    "url": "http://127.0.0.1:60900/conc?col=c06%3B+DROP+TABLE+t06\u0026i=6\u0026kind=tainted",
+    "status": 200,
+    "iast_enabled": 0,
+    "manual_keep": 1,
+    "channel": "none",
+    "event": null,
+    "verdict": [
+      "SKIP: not analyzed (admission)"
+    ]
+  },
+  {
+    "case": "conc-clean-07",
+    "url": "http://127.0.0.1:60900/conc?col=name\u0026i=7\u0026kind=clean",
+    "status": 200,
+    "iast_enabled": 1,
+    "manual_keep": 1,
+    "channel": "none",
+    "event": null,
+    "verdict": null
+  },
+  {
+    "case": "conc-tainted-08",
+    "url": "http://127.0.0.1:60900/conc?col=c08%3B+DROP+TABLE+t08\u0026i=8\u0026kind=tainted",
+    "status": 200,
+    "iast_enabled": 1,
+    "manual_keep": 2,
+    "channel": "meta_struct.iast",
+    "event": {
+      "sources": [
+        {
+          "name": "col",
+          "origin": "http.request.parameter",
+          "value": "c08; DROP TABLE t08"
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "evidence": {
+            "valueParts": [
+              {
+                "value": "SELECT id FROM users ORDER BY "
+              },
+              {
+                "source": 0,
+                "value": "c08; DROP TABLE t08"
+              }
+            ]
+          },
+          "hash": 1497016510,
+          "location": {
+            "line": 633,
+            "method": "main.concHandler",
+            "path": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+            "spanId": 6930360696965283000,
+            "stackId": "e57a2ab9-1466-467d-ae30-85ff6acaa6aa"
+          },
+          "type": "SQL_INJECTION"
+        }
+      ]
+    },
+    "verdict": [
+      "evidence: SELECT id FROM users ORDER BY [c08; DROP TABLE t08#0]",
+      "source: origin=http.request.parameter name=col value=c08; DROP TABLE t08 pattern=\u003cnil\u003e redacted=\u003cnil\u003e"
+    ]
+  },
+  {
+    "case": "conc-clean-09",
+    "url": "http://127.0.0.1:60900/conc?col=name\u0026i=9\u0026kind=clean",
+    "status": 200,
+    "iast_enabled": 1,
+    "manual_keep": 1,
+    "channel": "none",
+    "event": null,
+    "verdict": null
+  },
+  {
+    "case": "conc-tainted-10",
+    "url": "http://127.0.0.1:60900/conc?col=c10%3B+DROP+TABLE+t10\u0026i=10\u0026kind=tainted",
+    "status": 200,
+    "iast_enabled": 0,
+    "manual_keep": 1,
+    "channel": "none",
+    "event": null,
+    "verdict": [
+      "SKIP: not analyzed (admission)"
+    ]
+  },
+  {
+    "case": "conc-clean-11",
+    "url": "http://127.0.0.1:60900/conc?col=name\u0026i=11\u0026kind=clean",
+    "status": 200,
+    "iast_enabled": 1,
+    "manual_keep": 1,
+    "channel": "none",
+    "event": null,
+    "verdict": null
+  },
+  {
+    "case": "conc-tainted-12",
+    "url": "http://127.0.0.1:60900/conc?col=c12%3B+DROP+TABLE+t12\u0026i=12\u0026kind=tainted",
+    "status": 200,
+    "iast_enabled": 1,
+    "manual_keep": 2,
+    "channel": "meta_struct.iast",
+    "event": {
+      "sources": [
+        {
+          "name": "col",
+          "origin": "http.request.parameter",
+          "value": "c12; DROP TABLE t12"
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "evidence": {
+            "valueParts": [
+              {
+                "value": "SELECT id FROM users ORDER BY "
+              },
+              {
+                "source": 0,
+                "value": "c12; DROP TABLE t12"
+              }
+            ]
+          },
+          "hash": 1497016510,
+          "location": {
+            "line": 633,
+            "method": "main.concHandler",
+            "path": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+            "spanId": 755493870461477100,
+            "stackId": "fd5fbc47-9af7-404f-9601-991dbc966098"
+          },
+          "type": "SQL_INJECTION"
+        }
+      ]
+    },
+    "verdict": [
+      "evidence: SELECT id FROM users ORDER BY [c12; DROP TABLE t12#0]",
+      "source: origin=http.request.parameter name=col value=c12; DROP TABLE t12 pattern=\u003cnil\u003e redacted=\u003cnil\u003e"
+    ]
+  },
+  {
+    "case": "conc-clean-13",
+    "url": "http://127.0.0.1:60900/conc?col=name\u0026i=13\u0026kind=clean",
+    "status": 200,
+    "iast_enabled": 1,
+    "manual_keep": 1,
+    "channel": "none",
+    "event": null,
+    "verdict": null
+  },
+  {
+    "case": "conc-tainted-14",
+    "url": "http://127.0.0.1:60900/conc?col=c14%3B+DROP+TABLE+t14\u0026i=14\u0026kind=tainted",
+    "status": 200,
+    "iast_enabled": 1,
+    "manual_keep": 2,
+    "channel": "meta_struct.iast",
+    "event": {
+      "sources": [
+        {
+          "name": "col",
+          "origin": "http.request.parameter",
+          "value": "c14; DROP TABLE t14"
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "evidence": {
+            "valueParts": [
+              {
+                "value": "SELECT id FROM users ORDER BY "
+              },
+              {
+                "source": 0,
+                "value": "c14; DROP TABLE t14"
+              }
+            ]
+          },
+          "hash": 1497016510,
+          "location": {
+            "line": 633,
+            "method": "main.concHandler",
+            "path": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+            "spanId": 4247992455418282500,
+            "stackId": "c2849566-fecf-4616-b701-3aa17edf13fb"
+          },
+          "type": "SQL_INJECTION"
+        }
+      ]
+    },
+    "verdict": [
+      "evidence: SELECT id FROM users ORDER BY [c14; DROP TABLE t14#0]",
+      "source: origin=http.request.parameter name=col value=c14; DROP TABLE t14 pattern=\u003cnil\u003e redacted=\u003cnil\u003e"
+    ]
+  },
+  {
+    "case": "conc-clean-15",
+    "url": "http://127.0.0.1:60900/conc?col=name\u0026i=15\u0026kind=clean",
+    "status": 200,
+    "iast_enabled": 1,
+    "manual_keep": 1,
+    "channel": "none",
+    "event": null,
+    "verdict": null
+  },
+  {
+    "case": "conc-tainted-16",
+    "url": "http://127.0.0.1:60900/conc?col=c16%3B+DROP+TABLE+t16\u0026i=16\u0026kind=tainted",
+    "status": 200,
+    "iast_enabled": 0,
+    "manual_keep": 1,
+    "channel": "none",
+    "event": null,
+    "verdict": [
+      "SKIP: not analyzed (admission)"
+    ]
+  },
+  {
+    "case": "conc-clean-17",
+    "url": "http://127.0.0.1:60900/conc?col=name\u0026i=17\u0026kind=clean",
+    "status": 200,
+    "iast_enabled": 1,
+    "manual_keep": 1,
+    "channel": "none",
+    "event": null,
+    "verdict": null
+  },
+  {
+    "case": "conc-tainted-18",
+    "url": "http://127.0.0.1:60900/conc?col=c18%3B+DROP+TABLE+t18\u0026i=18\u0026kind=tainted",
+    "status": 200,
+    "iast_enabled": 1,
+    "manual_keep": 2,
+    "channel": "meta_struct.iast",
+    "event": {
+      "sources": [
+        {
+          "name": "col",
+          "origin": "http.request.parameter",
+          "value": "c18; DROP TABLE t18"
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "evidence": {
+            "valueParts": [
+              {
+                "value": "SELECT id FROM users ORDER BY "
+              },
+              {
+                "source": 0,
+                "value": "c18; DROP TABLE t18"
+              }
+            ]
+          },
+          "hash": 1497016510,
+          "location": {
+            "line": 633,
+            "method": "main.concHandler",
+            "path": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+            "spanId": 4477078081385363500,
+            "stackId": "5f399fb9-f6aa-40ba-975d-f7175a79c43b"
+          },
+          "type": "SQL_INJECTION"
+        }
+      ]
+    },
+    "verdict": [
+      "evidence: SELECT id FROM users ORDER BY [c18; DROP TABLE t18#0]",
+      "source: origin=http.request.parameter name=col value=c18; DROP TABLE t18 pattern=\u003cnil\u003e redacted=\u003cnil\u003e"
+    ]
+  },
+  {
+    "case": "conc-clean-19",
+    "url": "http://127.0.0.1:60900/conc?col=name\u0026i=19\u0026kind=clean",
+    "status": 200,
+    "iast_enabled": 1,
+    "manual_keep": 1,
+    "channel": "none",
+    "event": null,
+    "verdict": null
+  },
+  {
+    "case": "conc-tainted-20",
+    "url": "http://127.0.0.1:60900/conc?col=c20%3B+DROP+TABLE+t20\u0026i=20\u0026kind=tainted",
+    "status": 200,
+    "iast_enabled": 1,
+    "manual_keep": 2,
+    "channel": "meta_struct.iast",
+    "event": {
+      "sources": [
+        {
+          "name": "col",
+          "origin": "http.request.parameter",
+          "value": "c20; DROP TABLE t20"
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "evidence": {
+            "valueParts": [
+              {
+                "value": "SELECT id FROM users ORDER BY "
+              },
+              {
+                "source": 0,
+                "value": "c20; DROP TABLE t20"
+              }
+            ]
+          },
+          "hash": 1497016510,
+          "location": {
+            "line": 633,
+            "method": "main.concHandler",
+            "path": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+            "spanId": 3071323606793583600,
+            "stackId": "4786ff7e-5f09-4c5a-8fb8-7a9acacd10fb"
+          },
+          "type": "SQL_INJECTION"
+        }
+      ]
+    },
+    "verdict": [
+      "evidence: SELECT id FROM users ORDER BY [c20; DROP TABLE t20#0]",
+      "source: origin=http.request.parameter name=col value=c20; DROP TABLE t20 pattern=\u003cnil\u003e redacted=\u003cnil\u003e"
+    ]
+  },
+  {
+    "case": "conc-clean-21",
+    "url": "http://127.0.0.1:60900/conc?col=name\u0026i=21\u0026kind=clean",
+    "status": 200,
+    "iast_enabled": 0,
+    "manual_keep": 1,
+    "channel": "none",
+    "event": null,
+    "verdict": [
+      "SKIP: not analyzed (admission)"
+    ]
+  },
+  {
+    "case": "conc-tainted-22",
+    "url": "http://127.0.0.1:60900/conc?col=c22%3B+DROP+TABLE+t22\u0026i=22\u0026kind=tainted",
+    "status": 200,
+    "iast_enabled": 1,
+    "manual_keep": 2,
+    "channel": "meta_struct.iast",
+    "event": {
+      "sources": [
+        {
+          "name": "col",
+          "origin": "http.request.parameter",
+          "value": "c22; DROP TABLE t22"
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "evidence": {
+            "valueParts": [
+              {
+                "value": "SELECT id FROM users ORDER BY "
+              },
+              {
+                "source": 0,
+                "value": "c22; DROP TABLE t22"
+              }
+            ]
+          },
+          "hash": 1497016510,
+          "location": {
+            "line": 633,
+            "method": "main.concHandler",
+            "path": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+            "spanId": 1972078360071806500,
+            "stackId": "c017d598-5ba9-45eb-8793-74d994a96ed5"
+          },
+          "type": "SQL_INJECTION"
+        }
+      ]
+    },
+    "verdict": [
+      "evidence: SELECT id FROM users ORDER BY [c22; DROP TABLE t22#0]",
+      "source: origin=http.request.parameter name=col value=c22; DROP TABLE t22 pattern=\u003cnil\u003e redacted=\u003cnil\u003e"
+    ]
+  },
+  {
+    "case": "conc-clean-23",
+    "url": "http://127.0.0.1:60900/conc?col=name\u0026i=23\u0026kind=clean",
+    "status": 200,
+    "iast_enabled": 1,
+    "manual_keep": 1,
+    "channel": "none",
+    "event": null,
+    "verdict": null
+  },
+  {
+    "case": "conc-tainted-24",
+    "url": "http://127.0.0.1:60900/conc?col=c24%3B+DROP+TABLE+t24\u0026i=24\u0026kind=tainted",
+    "status": 200,
+    "iast_enabled": 0,
+    "manual_keep": 1,
+    "channel": "none",
+    "event": null,
+    "verdict": [
+      "SKIP: not analyzed (admission)"
+    ]
+  },
+  {
+    "case": "conc-clean-25",
+    "url": "http://127.0.0.1:60900/conc?col=name\u0026i=25\u0026kind=clean",
+    "status": 200,
+    "iast_enabled": 1,
+    "manual_keep": 1,
+    "channel": "none",
+    "event": null,
+    "verdict": null
+  },
+  {
+    "case": "conc-tainted-26",
+    "url": "http://127.0.0.1:60900/conc?col=c26%3B+DROP+TABLE+t26\u0026i=26\u0026kind=tainted",
+    "status": 200,
+    "iast_enabled": 1,
+    "manual_keep": 2,
+    "channel": "meta_struct.iast",
+    "event": {
+      "sources": [
+        {
+          "name": "col",
+          "origin": "http.request.parameter",
+          "value": "c26; DROP TABLE t26"
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "evidence": {
+            "valueParts": [
+              {
+                "value": "SELECT id FROM users ORDER BY "
+              },
+              {
+                "source": 0,
+                "value": "c26; DROP TABLE t26"
+              }
+            ]
+          },
+          "hash": 1497016510,
+          "location": {
+            "line": 633,
+            "method": "main.concHandler",
+            "path": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+            "spanId": 7295449804140912000,
+            "stackId": "8f8944e5-b502-4783-9e57-e889040b9c25"
+          },
+          "type": "SQL_INJECTION"
+        }
+      ]
+    },
+    "verdict": [
+      "evidence: SELECT id FROM users ORDER BY [c26; DROP TABLE t26#0]",
+      "source: origin=http.request.parameter name=col value=c26; DROP TABLE t26 pattern=\u003cnil\u003e redacted=\u003cnil\u003e"
+    ]
+  },
+  {
+    "case": "conc-clean-27",
+    "url": "http://127.0.0.1:60900/conc?col=name\u0026i=27\u0026kind=clean",
+    "status": 200,
+    "iast_enabled": 1,
+    "manual_keep": 1,
+    "channel": "none",
+    "event": null,
+    "verdict": null
+  },
+  {
+    "case": "conc-tainted-28",
+    "url": "http://127.0.0.1:60900/conc?col=c28%3B+DROP+TABLE+t28\u0026i=28\u0026kind=tainted",
+    "status": 200,
+    "iast_enabled": 1,
+    "manual_keep": 2,
+    "channel": "meta_struct.iast",
+    "event": {
+      "sources": [
+        {
+          "name": "col",
+          "origin": "http.request.parameter",
+          "value": "c28; DROP TABLE t28"
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "evidence": {
+            "valueParts": [
+              {
+                "value": "SELECT id FROM users ORDER BY "
+              },
+              {
+                "source": 0,
+                "value": "c28; DROP TABLE t28"
+              }
+            ]
+          },
+          "hash": 1497016510,
+          "location": {
+            "line": 633,
+            "method": "main.concHandler",
+            "path": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+            "spanId": 8687555095425085000,
+            "stackId": "9cdb16bc-2100-442a-9e93-fe0c1eafc694"
+          },
+          "type": "SQL_INJECTION"
+        }
+      ]
+    },
+    "verdict": [
+      "evidence: SELECT id FROM users ORDER BY [c28; DROP TABLE t28#0]",
+      "source: origin=http.request.parameter name=col value=c28; DROP TABLE t28 pattern=\u003cnil\u003e redacted=\u003cnil\u003e"
+    ]
+  },
+  {
+    "case": "conc-clean-29",
+    "url": "http://127.0.0.1:60900/conc?col=name\u0026i=29\u0026kind=clean",
+    "status": 200,
+    "iast_enabled": 1,
+    "manual_keep": 1,
+    "channel": "none",
+    "event": null,
+    "verdict": null
+  },
+  {
+    "case": "conc-tainted-30",
+    "url": "http://127.0.0.1:60900/conc?col=c30%3B+DROP+TABLE+t30\u0026i=30\u0026kind=tainted",
+    "status": 200,
+    "iast_enabled": 1,
+    "manual_keep": 2,
+    "channel": "meta_struct.iast",
+    "event": {
+      "sources": [
+        {
+          "name": "col",
+          "origin": "http.request.parameter",
+          "value": "c30; DROP TABLE t30"
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "evidence": {
+            "valueParts": [
+              {
+                "value": "SELECT id FROM users ORDER BY "
+              },
+              {
+                "source": 0,
+                "value": "c30; DROP TABLE t30"
+              }
+            ]
+          },
+          "hash": 1497016510,
+          "location": {
+            "line": 633,
+            "method": "main.concHandler",
+            "path": "/tmp/ddiast-review/wt/sink-e2e-truepos/demoapp/handlers.go",
+            "spanId": 4198603626737387500,
+            "stackId": "8feda861-5b69-4004-b921-8afff6c6d9b3"
+          },
+          "type": "SQL_INJECTION"
+        }
+      ]
+    },
+    "verdict": [
+      "evidence: SELECT id FROM users ORDER BY [c30; DROP TABLE t30#0]",
+      "source: origin=http.request.parameter name=col value=c30; DROP TABLE t30 pattern=\u003cnil\u003e redacted=\u003cnil\u003e"
+    ]
+  },
+  {
+    "case": "conc-clean-31",
+    "url": "http://127.0.0.1:60900/conc?col=name\u0026i=31\u0026kind=clean",
+    "status": 200,
+    "iast_enabled": 1,
+    "manual_keep": 1,
+    "channel": "none",
+    "event": null,
+    "verdict": null
+  }
+]

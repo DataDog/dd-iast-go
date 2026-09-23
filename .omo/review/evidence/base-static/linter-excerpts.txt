@@ -1,0 +1,14 @@
+Static checker evidence for base-static
+Repository HEAD: 2e23b4614320defd0d32177a69888dcab73f4d11
+
+Command (run from the private copy with GOTOOLCHAIN=go1.26.6):
+golangci-lint run ./... --enable=gosec,errorlint,bodyclose,nilerr,unparam,gocritic,prealloc,unconvert,wastedassign
+
+Captured output:
+internal/taint/store/root.go:323:71: (*Owner).publishRoot - charge is unused (unparam)
+internal/taint/store/writer.go:498:47: (*Owner).removeWriterLocked - release always receives true (unparam)
+
+Triage:
+- publishRoot does not read charge. Its callers retain charge for reservation and rollback outside publishRoot, so this is an inert argument rather than an accounting failure.
+- All removeWriterLocked call sites pass true. The release=false branch is unreachable through current callers and the parameter can be removed without changing behavior.
+- The requested linter configuration completed analysis and returned diagnostics (exit code 1); its flags were accepted, so the defaults fallback was not applicable.

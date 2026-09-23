@@ -1,0 +1,35 @@
+[
+  {
+    "id": "hooks-panic-safety-F1",
+    "severity": "Critical",
+    "category": "crash",
+    "location": "internal/taint/iobridge/bridge.go:30-42",
+    "title": "Reader advice leaks an internal panic into host code",
+    "claim": "The woven io.LimitReader advice invokes an unshielded IAST callback; fault injection proves its panic escapes into an otherwise valid host call. Other unshielded source and propagation advice shares this boundary weakness.",
+    "evidence_path": ".omo/review/evidence/hooks-panic-safety/io_reader_repro_test.go",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -timeout 10m -count=1 -run TestReview_InternalReaderCallbackCannotPanicHost ./iast/io -v",
+    "needs_repro": false
+  },
+  {
+    "id": "hooks-panic-safety-F2",
+    "severity": "Critical",
+    "category": "behavior-change",
+    "location": "internal/taint/writerbridge/bridge.go:75-95",
+    "title": "Native Buffer invalidation can abort the original write",
+    "claim": "The native bytes.Buffer prepend advice invokes an unshielded IAST invalidation callback before WriteString; fault injection proves an internal panic aborts the host method.",
+    "evidence_path": ".omo/review/evidence/hooks-panic-safety/propagation_repro_test.go",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -timeout 10m -count=1 -run TestReview_InternalBufferInvalidation ./iast/propagation -v",
+    "needs_repro": false
+  },
+  {
+    "id": "hooks-panic-safety-F3",
+    "severity": "Critical",
+    "category": "behavior-change",
+    "location": "iast/net/http/orchestrion.yml:131-158",
+    "title": "Deferred HTTP advice replaces the host's original panic",
+    "claim": "While a native Request.ParseForm reader panic unwinds, an unshielded deferred IAST Form callback can panic and replace the original host panic value; the woven fault-injection test demonstrates exact identity loss.",
+    "evidence_path": ".omo/review/evidence/hooks-panic-safety/http_defer_repro_test.go",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -timeout 10m -count=1 -run TestReview_DeferredSource ./iast/net/http -v",
+    "needs_repro": false
+  }
+]

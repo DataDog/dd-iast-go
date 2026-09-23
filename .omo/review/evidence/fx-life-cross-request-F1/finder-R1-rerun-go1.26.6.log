@@ -1,0 +1,22 @@
+=== RUN   TestReviewPooledReadAllSliceAcrossRequests
+=== RUN   TestReviewPooledReadAllSliceAcrossRequests/concurrent-same-length
+    zz_review_crossreq_test.go:247: B: query="SELECT id FROM customers" tainted=true ranges=[[0,+24) origin=http.request.body name="" value="x' OR '1'='1' --comment!"]
+    zz_review_crossreq_test.go:231: span review.b: _dd.iast.enabled=1 _dd.iast.json={"sources":[{"origin":"http.request.body","value":"x' OR '1'='1' --comment!"}],"vulnerabilities":[{"type":"SQL_INJECTION","hash":-1774480859,"evidence":{"valueParts":[{"value":"SELECT id FROM customers","source":0}]},"location":{"spanId":8557486647329516367,"path":"/tmp/ddiast-review/wt/fx-life-cross-request-F1/iast/integration/testapp/zz_review_crossreq_test.go","line":201,"method":"github.com/DataDog/dd-iast-go/testapps/integration_test.reviewExec","stackId":"08c38cb3-9dbd-4305-a113-323ec276f43a"}}]}
+    zz_review_crossreq_test.go:231: span review.a: _dd.iast.enabled=1 _dd.iast.json=
+    zz_review_crossreq_test.go:252: CROSS-REQUEST BLEED (concurrent-same-length): request B executed the constant query "SELECT id FROM customers" but its span reports 1 vulnerabilities with sources [http.request.body:="x' OR '1'='1' --comment!"]
+=== RUN   TestReviewPooledReadAllSliceAcrossRequests/concurrent-different-length
+    zz_review_crossreq_test.go:247: B: query="SELECT id FROM customers " tainted=false ranges=[]
+    zz_review_crossreq_test.go:231: span review.b: _dd.iast.enabled=1 _dd.iast.json=
+    zz_review_crossreq_test.go:231: span review.a: _dd.iast.enabled=1 _dd.iast.json=
+=== RUN   TestReviewPooledReadAllSliceAcrossRequests/sequential-A-finished
+    zz_review_crossreq_test.go:247: B: query="SELECT id FROM customers" tainted=false ranges=[]
+    zz_review_crossreq_test.go:231: span review.a: _dd.iast.enabled=1 _dd.iast.json=
+    zz_review_crossreq_test.go:231: span review.b: _dd.iast.enabled=1 _dd.iast.json=
+--- FAIL: TestReviewPooledReadAllSliceAcrossRequests (0.04s)
+    --- FAIL: TestReviewPooledReadAllSliceAcrossRequests/concurrent-same-length (0.01s)
+    --- PASS: TestReviewPooledReadAllSliceAcrossRequests/concurrent-different-length (0.01s)
+    --- PASS: TestReviewPooledReadAllSliceAcrossRequests/sequential-A-finished (0.01s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/testapps/integration	0.648s
+FAIL
+exit status 1

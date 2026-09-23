@@ -1,0 +1,27 @@
+File: wh2.test
+Type: alloc_objects
+Time: 2026-09-23 15:34:31 CEST
+Showing nodes accounting for 147255, 99.17% of 148489 total
+Dropped 38 nodes (cum <= 742)
+Showing top 20 nodes out of 37
+      flat  flat%   sum%        cum   cum%
+     65538 44.14% 44.14%      65538 44.14%  github.com/DataDog/dd-trace-go/v2/ddtrace/tracer.Tag (inline)
+     65537 44.14% 88.27%      65537 44.14%  github.com/DataDog/dd-trace-go/v2/internal/orchestrion.WrapContext (inline)
+     10923  7.36% 95.63%      10923  7.36%  go.yaml.in/yaml/v3.init.0
+      2185  1.47% 97.10%       2185  1.47%  github.com/DataDog/go-sqllexer.addToTrie
+      2048  1.38% 98.48%       2048  1.38%  github.com/DataDog/dd-trace-go/v2/internal/telemetry/internal.(*RingQueue[go.shape.func(go.shape.6214016a37f6ddad9a936553114146176e5418cdd1dcb51e2dd0b61921ebcecb)]).resizeLocked
+      1024  0.69% 99.17%       1024  0.69%  bytes.growSlice
+         0     0% 99.17%       1024  0.69%  bytes.(*Buffer).ReadFrom
+         0     0% 99.17%       1024  0.69%  bytes.(*Buffer).grow
+         0     0% 99.17%     131075 88.27%  crypto/md5.Sum
+         0     0% 99.17%     131075 88.27%  github.com/DataDog/dd-iast-go/benchmarks/overhead_test.BenchmarkWeakHashNoActiveSpan
+         0     0% 99.17%     131075 88.27%  github.com/DataDog/dd-iast-go/iast/crypto/hash.ReportWeakHash
+         0     0% 99.17%       2048  1.38%  github.com/DataDog/dd-iast-go/internal/config.Observe
+         0     0% 99.17%      65538 44.14%  github.com/DataDog/dd-iast-go/internal/spans.NewOrphanVulnerabilitySpan
+         0     0% 99.17%       2048  1.38%  github.com/DataDog/dd-iast-go/internal/spans.init.0
+         0     0% 99.17%       2048  1.38%  github.com/DataDog/dd-iast-go/internal/spans.init.0.func2
+         0     0% 99.17%     131075 88.27%  github.com/DataDog/dd-iast-go/internal/vulnerability.Report
+         0     0% 99.17%      65537 44.14%  github.com/DataDog/dd-trace-go/v2/ddtrace/tracer.SpanFromContext
+         0     0% 99.17%      10923  7.36%  github.com/DataDog/dd-trace-go/v2/ddtrace/tracer.SpanType (inline)
+         0     0% 99.17%       2048  1.38%  github.com/DataDog/dd-trace-go/v2/instrumentation.(*Instrumentation).TelemetryRegisterAppConfig
+         0     0% 99.17%       2048  1.38%  github.com/DataDog/dd-trace-go/v2/internal/telemetry.RegisterAppConfig (inline)

@@ -1,0 +1,24 @@
+[
+  {
+    "id": "store-binding-F1",
+    "severity": "High",
+    "category": "false-negative",
+    "location": "internal/taint/store/binding.go:167-202",
+    "title": "Reader binding replaces URL binding at an aliased address",
+    "claim": "The per-owner binding index keys only on pointer, so binding a body reader with an embedded first-field URL replaces the active URL binding and makes the supported URL.Query result clean.",
+    "evidence_path": ".omo/review/evidence/store-binding/url-reader-collision.out.txt",
+    "repro_command": "In /tmp/ddiast-review/wt/store-binding with evidence/store-binding/store_binding_review_test.go installed as internal/taint/request/store_binding_review_test.go: GOTOOLCHAIN=go1.26.6 go test -run TestReviewURLBindingSurvivesReaderAtSameAddress -count=1 -v -timeout=2m ./internal/taint/request",
+    "needs_repro": false
+  },
+  {
+    "id": "store-binding-F2",
+    "severity": "Low",
+    "category": "quality",
+    "location": "internal/taint/store/owner.go:72-75,94-124",
+    "title": "Stale owner handle exposes and charges a successor",
+    "claim": "A stale owner handle reads the next owner's ID and can increment its bytes-drop counter after slot reuse because these accessors lack a generation check.",
+    "evidence_path": ".omo/review/evidence/store-binding/stale-owner-handle.out.txt",
+    "repro_command": "In /tmp/ddiast-review/wt/store-binding with evidence/store-binding/store_binding_stale_review_test.go installed as internal/taint/store/store_binding_stale_review_test.go: GOTOOLCHAIN=go1.26.6 go test -run TestReviewStaleOwnerCannotMisidentifyAndChargeReusedSlot -count=1 -v -timeout=2m ./internal/taint/store",
+    "needs_repro": false
+  }
+]

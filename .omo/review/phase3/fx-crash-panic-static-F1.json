@@ -1,0 +1,13 @@
+[
+  {
+    "id": "crash-panic-static-F1",
+    "verdict": "CONFIRMED",
+    "original_severity": "Critical",
+    "adjusted_severity": "Critical",
+    "reachable_default": true,
+    "documented_limitation": false,
+    "reason": "Mechanism verified at HEAD 2e23b46: the linkname-injected crypto hooks (hash and cipher orchestrion.yml) call vulnerability.Report from woven stdlib bodies whose init graph never imports vulnerability/spans/tracer. With config.Enabled defaulting to true, an application package that hashes with sha1/md5 (or uses des/rc4) during its own init lands in the window between internal/config init and tracer/spans init; tracer.StartSpan's nil-global-tracer type assertion (dd-trace-go ddtrace/internal/globaltracer.go:43) panics with no recover and the process dies before main. Independently reproduced with my own woven reproducer (sha1.New() in an init() of a regexp-importing package: EXIT=2, panic in fp.init.0) under default config on go1.26.6; DD_IAST_ENABLED=false exits 0; a control layout where the hashing package initializes before internal/config does not crash, confirming the claimed window boundaries. Not documented in README or phase-1 design intent; breaks product rule #1. Severity stays Critical: crash reachable from ordinary customer code (or third-party dependencies) under default configuration.",
+    "evidence_path": ".omo/review/evidence/fx-crash-panic-static-F1/initcrash2-default.out.txt",
+    "repro_command": "cd <copy>/_repro/initcrash2 && GOFLAGS='-p=4 -mod=mod' GOTOOLCHAIN=go1.26.6 GOPROXY=off go tool orchestrion go build -o initcrash2 . && ./initcrash2"
+  }
+]

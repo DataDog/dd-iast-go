@@ -1,0 +1,33 @@
+$ cd <private copy> && GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go test -count=1 -run TestRepro -v ./internal/vulnerability/
+=== RUN   TestReproLocationlessHashCollision
+    repro_internal_test.go:17: location-less hashes: a=1491529353 b=1491529353 equal=true
+    repro_internal_test.go:21: process dedup Check(b) after committing a: 2 (2 == CheckPresent)
+--- PASS: TestReproLocationlessHashCollision (0.00s)
+=== RUN   TestReproWeakHashOrphanPerCallNoProcessDedup
+    repro_external_test.go:50: sampling=100%: 1000 identical weak-hash calls -> 1000 orphan spans started, 1000 sampled vulnerability events (executed=1000)
+    repro_external_test.go:50: sampling=30%: 1000 identical weak-hash calls -> 1000 orphan spans started, 314 sampled vulnerability events (executed=314)
+    repro_external_test.go:61: allocations per instrumented md5 call (sampled): 85
+--- PASS: TestReproWeakHashOrphanPerCallNoProcessDedup (0.07s)
+=== RUN   TestReproDeferredSinkPanicLocation
+    repro_external_test.go:75: normal   path=/tmp/ddiast-review/wt/sink-vuln-report/internal/vulnerability/repro_external_test.go line=70 method=github.com/DataDog/dd-iast-go/internal/vulnerability_test.TestReproDeferredSinkPanicLocation hash=234001428
+    repro_external_test.go:75: panicA   path=/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/panic.go line=860 method=runtime.gopanic hash=-1603347292
+    repro_external_test.go:75: panicB   path=/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/panic.go line=860 method=runtime.gopanic hash=-1603347292
+    repro_external_test.go:81: DISTINCT customer call sites share one hash -> process dedup suppresses the second for 1h
+--- PASS: TestReproDeferredSinkPanicLocation (0.01s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/vulnerability	1.030s
+
+
+$ go test -count=1 -race ./internal/vulnerability/...
+ok  	github.com/DataDog/dd-iast-go/internal/vulnerability	4.317s
+ok  	github.com/DataDog/dd-iast-go/internal/vulnerability/dedup	2.744s
+?   	github.com/DataDog/dd-iast-go/internal/vulnerability/reprosink	[no test files]
+ok  	github.com/DataDog/dd-iast-go/internal/vulnerability/stacktrace	1.499s
+
+
+$ GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go test -count=1 -gcflags='all=-N -l' -run TestReproDeferredSinkPanicLocation -v ./internal/vulnerability/
+    repro_external_test.go:75: normal   path=/tmp/ddiast-review/wt/sink-vuln-report/internal/vulnerability/repro_external_test.go line=70 method=github.com/DataDog/dd-iast-go/internal/vulnerability_test.TestReproDeferredSinkPanicLocation hash=234001428
+    repro_external_test.go:75: panicA   path=.../go1.26.6.darwin-arm64/src/runtime/panic.go line=860 method=runtime.gopanic hash=-1603347292
+    repro_external_test.go:75: panicB   path=.../go1.26.6.darwin-arm64/src/runtime/panic.go line=860 method=runtime.gopanic hash=-1603347292
+--- PASS: TestReproDeferredSinkPanicLocation (0.01s)
+(conclusion: unoptimized builds do NOT add a runtime.deferreturn frame; only the panic path is affected)

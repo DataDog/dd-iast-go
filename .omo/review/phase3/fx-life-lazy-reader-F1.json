@@ -1,0 +1,13 @@
+[
+ {
+  "id": "life-lazy-reader-F1",
+  "verdict": "CONFIRMED",
+  "original_severity": "Critical",
+  "adjusted_severity": "Critical",
+  "reachable_default": true,
+  "documented_limitation": false,
+  "reason": "Confirmed through a real woven httptest.Server under Go 1.26.6 -race. A repeated ParseMultipartForm/ParseForm is read-only in stdlib, but the woven advice writes Form/PostForm slice elements (lazy.go:141) and reassigns req.Form/PostForm and req.MultipartForm.Value (orchestrion.yml:152-159,179-186). Concurrent form readers race with these writes (1-2 races per subtest); the unwoven control has 0 races. The field-write races also fire for sampled-out requests. The written values are identical (practically benign), but this is a production data race and a behavior change under rule 1. Needs concurrent reads of a shared *Request plus a re-parse, which is uncommon. Go 1.27.0 could not be tested because the woven encoding/json build fails (separate issue); the stdlib code is identical.",
+  "evidence_path": ".omo/review/evidence/fx-life-lazy-reader-F1/repeated-parse-race-go1.26.6.out.txt",
+  "repro_command": "cp .omo/review/evidence/fx-life-lazy-reader-F1/zz_fx_repeated_parse_test.go <copy>/iast/net/http/ && cd <copy> && GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -race -count=1 -timeout 15m -run '^TestFxRepeatedParse$' -v ./iast/net/http"
+ }
+]

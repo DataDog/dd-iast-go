@@ -1,0 +1,112 @@
+{
+ "peak_tree_rss_kb": 1067616,
+ "peak_tree_at_s": 15.9,
+ "peak_tree_top": [
+  [
+   62624,
+   [
+    "orchestrion:tool orchestrion",
+    ""
+   ]
+  ],
+  [
+   43792,
+   [
+    "orchestrion:go build",
+    ""
+   ]
+  ],
+  [
+   39552,
+   [
+    "orchestrion-toolexec/compile",
+    "internal/asan"
+   ]
+  ],
+  [
+   39472,
+   [
+    "orchestrion:",
+    ""
+   ]
+  ],
+  [
+   38736,
+   [
+    "orchestrion:",
+    ""
+   ]
+  ],
+  [
+   38656,
+   [
+    "orchestrion-toolexec/compile",
+    "internal/goarch"
+   ]
+  ]
+ ],
+ "top_process_peaks_kb": [
+  [
+   "compile github.com/nats-io/nats-server/v2/server",
+   884816
+  ],
+  [
+   "(compile) ",
+   317264
+  ],
+  [
+   "compile go.opentelemetry.io/collector/pdata/internal",
+   242224
+  ],
+  [
+   "compile net/http",
+   203552
+  ],
+  [
+   "orchestrion-toolexec/compile runtime",
+   201808
+  ],
+  [
+   "compile google.golang.org/protobuf/internal/impl",
+   156016
+  ],
+  [
+   "compile crypto/tls",
+   146608
+  ],
+  [
+   "compile github.com/DataDog/dd-trace-go/v2/ddtrace/tracer",
+   116560
+  ],
+  [
+   "orchestrion-toolexec/compile github.com/samber/lo",
+   105424
+  ],
+  [
+   "compile go/types",
+   92816
+  ],
+  [
+   "compile github.com/minio/simdjson-go",
+   80688
+  ],
+  [
+   "orchestrion-toolexec/compile github.com/samber/lo/it",
+   66864
+  ],
+  [
+   "orchestrion:tool orchestrion ",
+   62624
+  ],
+  [
+   "orchestrion: ",
+   54256
+  ],
+  [
+   "orchestrion-toolexec/compile bytes",
+   44672
+  ]
+ ],
+ "samples": 31,
+ "duration_s": 34.2
+}

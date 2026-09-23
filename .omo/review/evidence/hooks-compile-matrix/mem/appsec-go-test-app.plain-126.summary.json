@@ -1,0 +1,113 @@
+{
+ "peak_tree_rss_kb": 924864,
+ "peak_tree_at_s": 8.3,
+ "peak_tree_top": [
+  [
+   120592,
+   [
+    "(compile)",
+    ""
+   ]
+  ],
+  [
+   117408,
+   [
+    "(compile)",
+    ""
+   ]
+  ],
+  [
+   114192,
+   [
+    "compile",
+    "google.golang.org/protobuf/internal/impl"
+   ]
+  ],
+  [
+   112688,
+   [
+    "(compile)",
+    ""
+   ]
+  ],
+  [
+   97104,
+   [
+    "compile",
+    "github.com/klauspost/compress/zstd"
+   ]
+  ],
+  [
+   96864,
+   [
+    "(compile)",
+    ""
+   ]
+  ]
+ ],
+ "top_process_peaks_kb": [
+  [
+   "compile modernc.org/sqlite/lib",
+   595456
+  ],
+  [
+   "link ",
+   580320
+  ],
+  [
+   "compile runtime",
+   287760
+  ],
+  [
+   "dsymutil ",
+   213280
+  ],
+  [
+   "(compile) ",
+   120592
+  ],
+  [
+   "compile github.com/json-iterator/go",
+   117424
+  ],
+  [
+   "compile google.golang.org/protobuf/internal/impl",
+   114192
+  ],
+  [
+   "compile github.com/klauspost/compress/zstd",
+   97104
+  ],
+  [
+   "compile net/http",
+   95072
+  ],
+  [
+   "compile reflect",
+   87728
+  ],
+  [
+   "compile github.com/DataDog/datadog-agent/pkg/proto/pbgo/trace",
+   85904
+  ],
+  [
+   "go ",
+   59968
+  ],
+  [
+   "compile github.com/DataDog/dd-trace-go/contrib/google.golang.org/grpc/v2",
+   46976
+  ],
+  [
+   "compile net",
+   39184
+  ],
+  [
+   "compile google.golang.org/grpc/internal/transport",
+   27568
+  ]
+ ],
+ "samples": 15,
+ "killed_at_limit": false,
+ "duration_s": 17.3
+}

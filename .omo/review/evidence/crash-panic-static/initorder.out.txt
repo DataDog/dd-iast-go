@@ -1,0 +1,50 @@
+$ cd _repro/initorder && GOFLAGS='-p=4 -mod=mod' GOTOOLCHAIN=go1.26.6 GOPROXY=off /usr/bin/time -l go tool orchestrion go build -o initorder .
+       69.59 real        92.99 user        38.67 sys
+           423231488  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+             4643758  page reclaims
+              196244  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                7094  messages sent
+                7139  messages received
+               36207  signals received
+               17047  voluntary context switche
+$ ./initorder   # default env: DD_IAST_ENABLED unset => config.Enabled=true
+EXIT=2
+panic: interface conversion: interface {} is nil, not *tracer.Tracer
+
+goroutine 1 [running]:
+github.com/DataDog/dd-trace-go/v2/ddtrace/internal.GetGlobalTracer[...](...)
+	/Users/eliott.bouhana/go/pkg/mod/github.com/!data!dog/dd-trace-go/v2@v2.11.0-rc.1/ddtrace/internal/globaltracer.go:43
+github.com/DataDog/dd-trace-go/v2/ddtrace/tracer.getGlobalTracer(...)
+	/Users/eliott.bouhana/go/pkg/mod/github.com/!data!dog/dd-trace-go/v2@v2.11.0-rc.1/ddtrace/tracer/globaltracer.go:22
+github.com/DataDog/dd-trace-go/v2/ddtrace/tracer.StartSpan({0x102627c47?, 0x102ca84a0?}, {0x18461f616520?, 0x1025d5184?, 0x18461f3cfbf8?})
+	/Users/eliott.bouhana/go/pkg/mod/github.com/!data!dog/dd-trace-go/v2@v2.11.0-rc.1/ddtrace/tracer/tracer.go:468 +0xb8
+github.com/DataDog/dd-iast-go/internal/spans.NewOrphanVulnerabilitySpan()
+	/tmp/ddiast-review/wt/crash-panic-static/internal/spans/vulnerability.go:18 +0xf0
+github.com/DataDog/dd-iast-go/internal/vulnerability.Report({0x0?, 0x0?}, 0x20, {0x102621f4c, 0x3}, 0x102eeb118, {{0x102622f1a, 0x6}, {0x10266d2f8, 0x0}, ...})
+	/tmp/ddiast-review/wt/crash-panic-static/internal/vulnerability/report.go:47 +0xa0
+github.com/DataDog/dd-iast-go/iast/crypto/hash.ReportWeakHash({0x0, 0x0}, 0x18461f3cfdc8?)
+	/tmp/ddiast-review/wt/crash-panic-static/iast/crypto/hash/hash.go:19 +0x78
+crypto/md5.Sum({0x18461f3cfe04, 0x4, 0x4})
+	<generated>:2 +0x3c
+github.com/zzz/initorder/hasher.init()
+	/tmp/ddiast-review/wt/crash-panic-static/_repro/initorder/hasher/hasher.go:13 +0x68
+
+$ DD_IAST_ENABLED=false ./initorder
+started ok, seed=fe4c0f30 valid=false
+EXIT=0
+2026/09/23 15:50:25 Datadog Tracer v2.11.0-rc.1 WARN: DIAGNOSTICS Unable to reach agent intake: Post "http://localhost:8126/v0.4/traces": dial tcp 127.0.0.1:8126: connect: connection refused
+2026/09/23 15:50:25 Datadog Tracer v2.11.0-rc.1 INFO: DATADOG TR
+...
+$ GODEBUG=inittrace=1 ./initorder 2>&1 | grep -nE 'init (dd-iast-go|zzz|tracer|xsync)'
+73:init github.com/puzpuzpuz/xsync/v4 @3.0 ms, 0.001 ms clock, 0 bytes, 0 allocs
+75:init github.com/DataDog/dd-iast-go/internal/instrumentation/telemetry @3.1 ms, 0.004 ms clock, 1904 bytes, 8 allocs
+122:init github.com/DataDog/dd-iast-go/internal/config @43 ms, 0.17 ms clock, 73952 bytes, 444 allocs
+123:init github.com/DataDog/dd-iast-go/internal/taint/request @43 ms, 0.005 ms clock, 168 bytes, 6 allocs
+
+129

@@ -1,0 +1,57 @@
+[
+  {
+    "id": "life-json-decoder-F1",
+    "severity": "High",
+    "category": "false-negative",
+    "location": "internal/taint/jsonbridge/bridge.go:210-224",
+    "title": "Nested Bind creates a duplicate slot and drops the Decoder document, so request-body taint is lost",
+    "claim": "addDecoderState claims the first free probe before checking later probes for the existing entry; the unmarshal-level Bind(nil,d) after Decode Bind lands on a freed earlier slot with no document, so Literal publishes against the uncloned buffer and admitted Decoder.Decode results lose taint under ordinary concurrency (8/32 and 10/16 tainted; 32/32 and 16/16 with fix).",
+    "evidence_path": ".omo/review/evidence/life-json-decoder/zz_review_dup_slot_test.go",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 go test -run TestReviewNestedBind -v ./internal/taint/jsonbridge/ ; REVIEW_SERIAL=1 REVIEW_COUNT=40 GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -run TestReviewConcurrentHeapDecodersHashCapacity -v . (in iast/integration/testapp)",
+    "needs_repro": false
+  },
+  {
+    "id": "life-json-decoder-F2",
+    "severity": "Medium",
+    "category": "memory-bound",
+    "location": "internal/taint/jsonbridge/bridge.go:210",
+    "title": "The (ptr>>3)%64 hash maps real Decoders to 8 buckets, so effective capacity is 32, not the documented 64",
+    "claim": "json.Decoder is size class 320 with d at offset 40, so (&dec.d>>3)%64 takes only 8 values; with 4 disjoint probes at most 32 Decoders are ever admitted process-wide. The capacity test uses ideally distributed uint64 pointers.",
+    "evidence_path": ".omo/review/evidence/life-json-decoder/more.out.txt",
+    "repro_command": "REVIEW_COUNT=40 GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -run TestReviewConcurrentHeapDecodersHashCapacity -v . (in iast/integration/testapp)",
+    "needs_repro": false
+  },
+  {
+    "id": "life-json-decoder-F3",
+    "severity": "Medium",
+    "category": "false-negative",
+    "location": "internal/taint/jsonbridge/bridge.go:60-72",
+    "title": "Slot admission is not gated on relevance, so every process-wide Decode/Unmarshal competes for the 32 usable slots",
+    "claim": "Bind only checks that any owner is active; unsampled, outbound and background decodes occupy slots and pay reflect/CAS/allocation work, and can deny admission to sampled request decoders.",
+    "evidence_path": null,
+    "repro_command": null,
+    "needs_repro": false
+  },
+  {
+    "id": "life-json-decoder-F4",
+    "severity": "Low",
+    "category": "provenance",
+    "location": "internal/taint/jsonbridge/bridge.go:103-122",
+    "title": "Streaming Decoder sources include inter-document whitespace",
+    "claim": "readValue n includes leading whitespace, so later documents in a stream are published as sources with a leading newline (18 bytes for a 17-byte document).",
+    "evidence_path": ".omo/review/evidence/life-json-decoder/more.out.txt",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -run TestReviewStreamingDecoderMultipleDecodes -v . (in iast/integration/testapp)",
+    "needs_repro": false
+  },
+  {
+    "id": "life-json-decoder-F5",
+    "severity": "Info",
+    "category": "test-gap",
+    "location": "internal/taint/jsonbridge/bridge.go:193-240",
+    "title": "Address-keyed slots rely on decodeState/Decoder escaping to the heap",
+    "claim": "uintptr keys would leak permanently if the state were stack-allocated and the stack moved mid-decode; today both escape (verified with -m) and no leak occurs, but no test pins this.",
+    "evidence_path": ".omo/review/evidence/life-json-decoder/escape.out.txt",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -run TestReviewStackMovedDecodeStateLeaksSlots -v . (in iast/integration/testapp)",
+    "needs_repro": false
+  }
+]

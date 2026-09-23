@@ -1,0 +1,13 @@
+[
+  {
+    "id": "sink-json-sources-F1",
+    "verdict": "CONFIRMED",
+    "original_severity": "Critical",
+    "adjusted_severity": "Critical",
+    "reachable_default": true,
+    "documented_limitation": false,
+    "reason": "On default Go 1.27.0, JSONv2's Decoder has no r or d field. The independent woven Decoder build fails with dec.r/dec.d undefined; plain Go 1.27.0 and woven Go 1.26.6 or Go 1.27.0 with JSONv2 disabled succeed. README limits JSON propagation coverage to Go 1.26, but does not document or permit a valid customer build to fail.",
+    "evidence_path": ".omo/review/evidence/fx-sink-json-sources-F1/woven-go127-output.txt",
+    "repro_command": "env GOFLAGS=-p=4 GOTOOLCHAIN=go1.27.0 /usr/bin/time -l go -C /tmp/ddiast-review/wt/fx-sink-json-sources-F1/review-json-f1 tool orchestrion go build ."
+  }
+]

@@ -1,0 +1,78 @@
+Environment: darwin/arm64; GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=2; working directory was /tmp/ddiast-review/wt/hooks-orchestrion-dep; commands ran in the foreground with -timeout 4m and -count=1.
+Each source file in this directory is copied from the private test copy. Place zz_review_* in iast/propagation/, noimports.go in review_operator_noimports/, and arraylength_test.go in review_operator_arraylength/; native_provenance_test.go and the existing fixture helpers are already present in iast/propagation/.
+
+1. Evidence: arraylength_test.go
+go test -timeout 4m -count=1 -run '^TestArrayLengthLeavesSliceUnevaluated$' -v ./review_operator_arraylength
+=== RUN   TestArrayLengthLeavesSliceUnevaluated
+--- PASS: TestArrayLengthLeavesSliceUnevaluated (0.00s)
+PASS
+exit 0
+go tool orchestrion go test -timeout 4m -count=1 -run '^TestArrayLengthLeavesSliceUnevaluated$' -v ./review_operator_arraylength
+=== RUN   TestArrayLengthLeavesSliceUnevaluated
+--- FAIL: TestArrayLengthLeavesSliceUnevaluated (0.00s)
+panic: runtime error: slice bounds out of range [99:3] [recovered, repanicked]
+github.com/DataDog/dd-iast-go/iast/propagation.StringSliceLow[...](...)
+	/private/tmp/ddiast-review/wt/hooks-orchestrion-dep/iast/propagation/operators.go:218 +0x8c
+github.com/DataDog/dd-iast-go/review_operator_arraylength.TestArrayLengthLeavesSliceUnevaluated(...)
+	<generated>:1 +0x34
+FAIL	github.com/DataDog/dd-iast-go/review_operator_arraylength	0.385s
+exit 1
+
+2. Evidence: zz_review_floatbounds_test.go
+go test -timeout 4m -count=1 -run '^TestReviewIntegralUntypedFloatBound$' -v ./iast/propagation
+=== RUN   TestReviewIntegralUntypedFloatBound
+--- PASS: TestReviewIntegralUntypedFloatBound (0.00s)
+PASS
+exit 0
+go tool orchestrion go test -timeout 4m -count=1 -run '^TestReviewIntegralUntypedFloatBound$' -v ./iast/propagation
+FAIL	github.com/DataDog/dd-iast-go/iast/propagation [build failed]
+# github.com/DataDog/dd-iast-go/iast/propagation_test [github.com/DataDog/dd-iast-go/iast/propagation.test]
+<generated>:1: float64 does not satisfy "github.com/DataDog/dd-iast-go/iast/propagation".integer (float64 missing in ~int | ~int8 | ~int16 | ~int32 | ~int64 | ~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64 | ~uintptr)
+exit status 2
+exit status 1
+
+3. Evidence: noimports.go
+go test -timeout 4m -count=1 ./review_operator_noimports
+?   	github.com/DataDog/dd-iast-go/review_operator_noimports	[no test files]
+exit 0
+go tool orchestrion go test -timeout 4m -count=1 ./review_operator_noimports
+FAIL	github.com/DataDog/dd-iast-go/review_operator_noimports [build failed]
+panic: assignment to entry in nil map
+github.com/DataDog/orchestrion/internal/toolexec/aspect.Weaver.OnCompile(...)
+	/Users/eliott.bouhana/go/pkg/mod/github.com/!data!dog/orchestrion@v1.12.2-0.20260828141217-23afa71d6dcb/internal/toolexec/aspect/oncompile.go:195 +0x17ac
+exit status 1
+exit 1
+
+4. Evidence: zz_review_coretype_test.go
+go tool orchestrion go test -timeout 4m -count=1 -run '^TestReviewIntersectionCoreTypeRetainsProvenance$' -v ./iast/propagation
+=== RUN   TestReviewIntersectionCoreTypeRetainsProvenance
+=== RUN   TestReviewIntersectionCoreTypeRetainsProvenance/string_concat
+    zz_review_coretype_test.go:46:
+        	Error:      	Not equal:
+        	            	expected: true
+        	            	actual  : false
+=== RUN   TestReviewIntersectionCoreTypeRetainsProvenance/string_slice
+    zz_review_coretype_test.go:55:
+        	Error:      	Not equal:
+        	            	expected: true
+        	            	actual  : false
+=== RUN   TestReviewIntersectionCoreTypeRetainsProvenance/byte_slice
+    zz_review_coretype_test.go:66:
+        	Error:      	Not equal:
+        	            	expected: true
+        	            	actual  : false
+--- FAIL: TestReviewIntersectionCoreTypeRetainsProvenance (0.00s)
+    --- FAIL: TestReviewIntersectionCoreTypeRetainsProvenance/string_concat (0.00s)
+    --- FAIL: TestReviewIntersectionCoreTypeRetainsProvenance/string_slice (0.00s)
+    --- FAIL: TestReviewIntersectionCoreTypeRetainsProvenance/byte_slice (0.00s)
+FAIL	github.com/DataDog/dd-iast-go/iast/propagation	0.674s
+exit 1
+The woven fixture checks built.WithOrchestrion, both exact result values and the full taint range/source identity. The existing TestOperatorConcatAndSlices uses the same native_* fixture helpers and passes for ordinary generic constraints, confirming the expected supported behavior.
+
+5. Upstream PR metadata and local refs at review time (September 23, 2026)
+gh pr view 881 -R DataDog/orchestrion --json state,reviewDecision,headRefOid,mergedAt,url --jq '{state,reviewDecision,headRefOid,mergedAt,url}'
+{"headRefOid":"23afa71d6dcb13cc221c6461745229779e7674b4","mergedAt":null,"reviewDecision":"CHANGES_REQUESTED","state":"OPEN","url":"https://github.com/DataDog/orchestrion/pull/881"}
+git -C /Users/eliott.bouhana/go/src/github.com/DataDog/orchestrion branch -r --contains 23afa71
+  origin/romain.marcadier/iast-operator-join-points
+git -C /Users/eliott.bouhana/go/src/github.com/DataDog/orchestrion merge-base --is-ancestor 23afa71 main
+exit 1

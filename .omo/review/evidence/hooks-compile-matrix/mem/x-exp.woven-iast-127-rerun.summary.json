@@ -1,0 +1,113 @@
+{
+ "peak_tree_rss_kb": 23410976,
+ "peak_tree_at_s": 49.5,
+ "peak_tree_top": [
+  [
+   23313584,
+   [
+    "orchestrion:go build",
+    ""
+   ]
+  ],
+  [
+   25840,
+   [
+    "orchestrion:tool orchestrion",
+    ""
+   ]
+  ],
+  [
+   23712,
+   [
+    "orchestrion-toolexec/compile",
+    "main"
+   ]
+  ],
+  [
+   23488,
+   [
+    "orchestrion:build -toolexec",
+    ""
+   ]
+  ],
+  [
+   23152,
+   [
+    "orchestrion-toolexec/compile",
+    "main"
+   ]
+  ],
+  [
+   688,
+   [
+    "orchestrion:1320 go",
+    ""
+   ]
+  ]
+ ],
+ "top_process_peaks_kb": [
+  [
+   "orchestrion:go build ",
+   23313584
+  ],
+  [
+   "compile github.com/nats-io/nats-server/v2/server",
+   758176
+  ],
+  [
+   "orchestrion-toolexec/compile runtime",
+   238352
+  ],
+  [
+   "(compile) ",
+   213600
+  ],
+  [
+   "compile go/types",
+   162368
+  ],
+  [
+   "compile google.golang.org/protobuf/internal/impl",
+   145536
+  ],
+  [
+   "compile github.com/DataDog/datadog-agent/pkg/proto/pbgo/trace",
+   138416
+  ],
+  [
+   "orchestrion-toolexec/compile go/types",
+   127696
+  ],
+  [
+   "orchestrion-toolexec/compile golang.org/x/tools/internal/stdlib",
+   123152
+  ],
+  [
+   "compile github.com/nats-io/nats.go",
+   113792
+  ],
+  [
+   "orchestrion: ",
+   109376
+  ],
+  [
+   "compile runtime",
+   78416
+  ],
+  [
+   "compile github.com/DataDog/dd-trace-go/v2/ddtrace/tracer",
+   76688
+  ],
+  [
+   "compile github.com/klauspost/compress/zstd",
+   73280
+  ],
+  [
+   "compile golang.org/x/tools/internal/stdlib",
+   72336
+  ]
+ ],
+ "samples": 42,
+ "killed_at_limit": true,
+ "duration_s": 50.5
+}

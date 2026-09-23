@@ -1,0 +1,14 @@
+$ cd <private copy> && GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go test -race -run TestReviewFullSurfaceRace -count=50 -v ./internal/taint/store/ | sort | uniq -c
+
+     16 --- PASS: TestReviewFullSurfaceRace (0.30s)
+     15 --- PASS: TestReviewFullSurfaceRace (0.31s)
+      7 --- PASS: TestReviewFullSurfaceRace (0.32s)
+      4 --- PASS: TestReviewFullSurfaceRace (0.33s)
+      1 --- PASS: TestReviewFullSurfaceRace (0.34s)
+      1 --- PASS: TestReviewFullSurfaceRace (0.35s)
+      1 --- PASS: TestReviewFullSurfaceRace (0.36s)
+      2 --- PASS: TestReviewFullSurfaceRace (0.38s)
+      2 --- PASS: TestReviewFullSurfaceRace (0.39s)
+      1 --- PASS: TestReviewFullSurfaceRace (0.44s)
+      1 ok  	github.com/DataDog/dd-iast-go/internal/taint/store	17.799s
+      1 PASS

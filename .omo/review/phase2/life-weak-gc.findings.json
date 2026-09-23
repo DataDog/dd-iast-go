@@ -1,0 +1,90 @@
+[
+  {
+    "id": "life-weak-gc-F1",
+    "severity": "High",
+    "category": "false-negative",
+    "location": "internal/spans/annotation.go:198-212",
+    "title": "Sampled-out requests fill the annotation store and starve admitted active requests",
+    "claim": "BindScope stores Sampled:false annotations for sampled-out/capacity-dropped scopes; store capacity is MaxConcurrentRequests (default 2) and trimStore only evicts dead keys, so an admitted active request gets no annotation, no owner binding, and no orphan capacity; 30-70% of active requests lose all findings at 3-16 in-flight requests with default config.",
+    "evidence_path": ".omo/review/evidence/life-weak-gc/review_gc_internal_test.go",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go test -count=1 -timeout 12m -run 'TestReviewSampledOutRequestsStarveActiveRequest|TestReviewSampledOutStarvationRate' -v ./internal/spans/ (after copying evidence test files into internal/spans/ of a private copy)",
+    "needs_repro": false
+  },
+  {
+    "id": "life-weak-gc-F2",
+    "severity": "High",
+    "category": "false-negative",
+    "location": "internal/spans/orchestrion.go:28",
+    "title": "Spans created after root Finish resurrect an annotation keyed on the finished root, leaking a slot and silently discarding findings",
+    "claim": "Finished deletes without a tombstone; later BindScope/AnnotationFor via child spans (woven StartSpanFromContext) or weak-crypto Report re-create a never-finished entry keyed on the finished root, occupying a store slot while the trace is reachable (blocks new requests at default capacity 2) and accepting commits (plus dedup hash) that are never emitted.",
+    "evidence_path": ".omo/review/evidence/life-weak-gc/review_gc_internal_test.go",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go test -count=1 -timeout 12m -run 'TestReviewLateBindAfterRootFinishLeaksSlot|TestReviewLateBindActiveScopeSilentlyDropsCommittedFinding' -v ./internal/spans/ (after copying evidence test files into internal/spans/ of a private copy)",
+    "needs_repro": false
+  },
+  {
+    "id": "life-weak-gc-F3",
+    "severity": "High",
+    "category": "cross-request",
+    "location": "internal/spans/annotation.go:190-197",
+    "title": "With dd-trace-go span pool, a recycled root inherits another trace's annotation (cross-trace bleed or false negative)",
+    "claim": "The store key is only weak.Pointer[tracer.Span]; with DD_TRACER_EXPERIMENTAL_SPAN_POOL_ENABLED/WithSpanPool the same object is reused for a new trace root, whose BindScope returns the stale annotation carrying foreign findings, or a stale negative decision that disables an admitted active request.",
+    "evidence_path": ".omo/review/evidence/life-weak-gc/review_pool_internal_test.go",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go test -count=1 -timeout 5m -run 'TestReviewSpanPool' -v ./internal/spans/",
+    "needs_repro": false
+  },
+  {
+    "id": "life-weak-gc-F4",
+    "severity": "Medium",
+    "category": "perf",
+    "location": "internal/spans/orchestrion.go:27-31",
+    "title": "Finished runs weak.Make on every finished span in the process, even with IAST disabled",
+    "claim": "The woven Span.Finish hook calls weak.Make for every span, allocating a weak handle and runtime special (1 alloc/op measured) even with config.Enabled=false and an empty store.",
+    "evidence_path": ".omo/review/evidence/life-weak-gc/review_gc_internal_test.go",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go test -count=1 -timeout 12m -run 'TestReviewFinishedAllocatesPerSpan' -v ./internal/spans/ (after copying evidence test files into internal/spans/ of a private copy)",
+    "needs_repro": false
+  },
+  {
+    "id": "life-weak-gc-F5",
+    "severity": "Medium",
+    "category": "false-negative",
+    "location": "internal/taint/store/owner.go:24-27",
+    "title": "Request admission drops up to about 30% of scopes under plain concurrency with free capacity",
+    "claim": "Store.Acquire returns disabled on ownerMu.TryLock failure (and skips writersMu-contended slots); 8 concurrent Begin calls with 64 free slots dropped 0-387 of 1200 admissions.",
+    "evidence_path": ".omo/review/evidence/life-weak-gc/review_gc_internal_test.go",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go test -count=1 -timeout 12m -run 'TestReviewAdmissionDropsUnderConcurrency' -v ./internal/spans/ (after copying evidence test files into internal/spans/ of a private copy)",
+    "needs_repro": false
+  },
+  {
+    "id": "life-weak-gc-F6",
+    "severity": "Medium",
+    "category": "test-gap",
+    "location": "internal/spans/owner_internal_test.go:19-116",
+    "title": "No test exercises GC, recycling, or post-finish binding on the span association",
+    "claim": "Existing tests keep spans strongly reachable, never force GC or observe weak collection/trim, and never bind after root finish or with span pooling; F1-F3 are invisible to the suite.",
+    "evidence_path": ".omo/review/evidence/life-weak-gc/review_gc_internal_test.go",
+    "repro_command": null,
+    "needs_repro": false
+  },
+  {
+    "id": "life-weak-gc-F7",
+    "severity": "Low",
+    "category": "memory-bound",
+    "location": "internal/spans/annotation.go:227-249",
+    "title": "Dead-annotation release and its source-byte charge depend on an unrelated later bind",
+    "claim": "A collected never-finished root keeps its processEventSourceBytes charge until some later trimStore call; bounded but can make other commits fail meanwhile.",
+    "evidence_path": ".omo/review/evidence/life-weak-gc/review_gc_internal_test.go",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go test -count=1 -timeout 12m -run 'TestReviewAbandonedSpanReclaimed' -v ./internal/spans/ (after copying evidence test files into internal/spans/ of a private copy)",
+    "needs_repro": false
+  },
+  {
+    "id": "life-weak-gc-F8",
+    "severity": "Info",
+    "category": "memory-bound",
+    "location": "internal/spans/owner.go:18-23",
+    "title": "Owner binding keeps a closed annotation (with its Event) alive after the root finishes",
+    "claim": "ownerSpanBinding holds a strong *Annotation until scope finish or dead-root lookup; bounded by 64 slots.",
+    "evidence_path": null,
+    "repro_command": null,
+    "needs_repro": false
+  }
+]

@@ -1,0 +1,10 @@
+--- a/iast/internal/propagationtest/bytes.go
++++ b/iast/internal/propagationtest/bytes.go
+@@
+ import "bytes"
+ 
++type NamedBytes []byte
++
++func NamedBytesTrimSpace(v NamedBytes) []byte { return bytes.TrimSpace(v) }
++
+ func BytesClone(v []byte) []byte                            { return bytes.Clone(v) }

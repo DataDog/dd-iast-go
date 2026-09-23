@@ -1,0 +1,24 @@
+[
+  {
+    "id": "hooks-scope-root-F1",
+    "severity": "Critical",
+    "category": "compile-break",
+    "location": "iast/database/sql/orchestrion.yml:16-31",
+    "title": "Root-module plugins match sink bootstrap and cannot compile",
+    "claim": "The SQL, command, and JSON bootstrap selectors match a root-module package main with test-main false but do not exclude -buildmode=plugin. The full configured integration set therefore attempts to inject SQL bootstrap into a plugin, contradicting README.md:88-90, and the valid plugin build fails while resolving github.com/DataDog/dd-iast-go/iast/database/sql with a NATS maximum-payload error; the paired plain Go plugin build succeeds.",
+    "evidence_path": ".omo/review/evidence/hooks-scope-root/plugin-compile-break.md",
+    "repro_command": "cd /tmp/ddiast-review/wt/hooks-scope-root/scopefixtures/workspace/app && GOTOOLCHAIN=go1.26.6 go tool orchestrion go build -buildmode=plugin -gcflags=all=-l -o ../app-plugin.so ./cmd/plugin",
+    "needs_repro": false
+  },
+  {
+    "id": "hooks-scope-root-F2",
+    "severity": "Medium",
+    "category": "doc",
+    "location": "README.md:38-39",
+    "title": "README leaves the module boundary of application root ambiguous",
+    "claim": "Direct propagation is scoped to the single Go module resolved from Orchestrion's current working directory, not an entire go.work workspace. A sibling workspace module selected by replace remains uninstrumented for direct propagation, and vendoring preserves that boundary, while README describes only an application root.",
+    "evidence_path": ".omo/review/evidence/hooks-scope-root/scope-matrix.md",
+    "repro_command": "cd /tmp/ddiast-review/wt/hooks-scope-root/scopefixtures/workspace/app && GOTOOLCHAIN=go1.26.6 go tool orchestrion go build -gcflags=all=-l -o ../app-from-member ./cmd/app && go tool objdump -s example.com/dep.Upper ../app-from-member",
+    "needs_repro": false
+  }
+]

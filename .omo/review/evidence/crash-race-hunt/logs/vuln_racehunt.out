@@ -1,0 +1,181 @@
+=== RUN   TestRaceHuntConcurrentRequestsReport
+    zz_racehunt_report_test.go:138: reports committed: 1444
+--- PASS: TestRaceHuntConcurrentRequestsReport (2.51s)
+=== RUN   TestRaceHuntConcurrentRequestsReport
+    zz_racehunt_report_test.go:138: reports committed: 1461
+--- PASS: TestRaceHuntConcurrentRequestsReport (1.90s)
+=== RUN   TestRaceHuntConcurrentRequestsReport
+    zz_racehunt_report_test.go:138: reports committed: 1476
+--- PASS: TestRaceHuntConcurrentRequestsReport (2.16s)
+=== RUN   TestRaceHuntConcurrentRequestsReport
+    zz_racehunt_report_test.go:138: reports committed: 1
+--- PASS: TestRaceHuntConcurrentRequestsReport (1.60s)
+=== RUN   TestRaceHuntConcurrentRequestsReport
+    zz_racehunt_report_test.go:138: reports committed: 1401
+--- PASS: TestRaceHuntConcurrentRequestsReport (2.40s)
+=== RUN   TestRaceHuntConcurrentRequestsReport
+    zz_racehunt_report_test.go:138: reports committed: 1443
+--- PASS: TestRaceHuntConcurrentRequestsReport (2.13s)
+=== RUN   TestRaceHuntConcurrentRequestsReport
+    zz_racehunt_report_test.go:138: reports committed: 1485
+--- PASS: TestRaceHuntConcurrentRequestsReport (1.21s)
+=== RUN   TestRaceHuntConcurrentRequestsReport
+    zz_racehunt_report_test.go:138: reports committed: 1491
+--- PASS: TestRaceHuntConcurrentRequestsReport (1.13s)
+=== RUN   TestRaceHuntConcurrentRequestsReport
+    zz_racehunt_report_test.go:138: reports committed: 1440
+--- PASS: TestRaceHuntConcurrentRequestsReport (1.98s)
+=== RUN   TestRaceHuntConcurrentRequestsReport
+    zz_racehunt_report_test.go:138: reports committed: 1440
+--- PASS: TestRaceHuntConcurrentRequestsReport (1.22s)
+=== RUN   TestRaceHuntConcurrentRequestsReport
+    zz_racehunt_report_test.go:138: reports committed: 0
+--- PASS: TestRaceHuntConcurrentRequestsReport (1.37s)
+=== RUN   TestRaceHuntConcurrentRequestsReport
+    zz_racehunt_report_test.go:138: reports committed: 1392
+--- PASS: TestRaceHuntConcurrentRequestsReport (1.47s)
+=== RUN   TestRaceHuntConcurrentRequestsReport
+    zz_racehunt_report_test.go:138: reports committed: 1527
+--- PASS: TestRaceHuntConcurrentRequestsReport (1.37s)
+=== RUN   TestRaceHuntConcurrentRequestsReport
+    zz_racehunt_report_test.go:138: reports committed: 1446
+--- PASS: TestRaceHuntConcurrentRequestsReport (1.14s)
+=== RUN   TestRaceHuntConcurrentRequestsReport
+    zz_racehunt_report_test.go:138: reports committed: 0
+--- PASS: TestRaceHuntConcurrentRequestsReport (0.90s)
+=== RUN   TestRaceHuntConcurrentRequestsReport
+    zz_racehunt_report_test.go:138: reports committed: 0
+--- PASS: TestRaceHuntConcurrentRequestsReport (0.92s)
+=== RUN   TestRaceHuntConcurrentRequestsReport
+    zz_racehunt_report_test.go:138: reports committed: 1452
+--- PASS: TestRaceHuntConcurrentRequestsReport (1.05s)
+=== RUN   TestRaceHuntConcurrentRequestsReport
+    zz_racehunt_report_test.go:138: reports committed: 1425
+--- PASS: TestRaceHuntConcurrentRequestsReport (1.05s)
+=== RUN   TestRaceHuntConcurrentRequestsReport
+    zz_racehunt_report_test.go:138: reports committed: 1482
+--- PASS: TestRaceHuntConcurrentRequestsReport (1.13s)
+=== RUN   TestRaceHuntConcurrentRequestsReport
+    zz_racehunt_report_test.go:138: reports committed: 0
+--- PASS: TestRaceHuntConcurrentRequestsReport (1.02s)
+=== RUN   TestRaceHuntConcurrentRequestsReport
+    zz_racehunt_report_test.go:138: reports committed: 6
+--- PASS: TestRaceHuntConcurrentRequestsReport (0.25s)
+=== RUN   TestRaceHuntConcurrentRequestsReport
+    zz_racehunt_report_test.go:138: reports committed: 1348
+--- PASS: TestRaceHuntConcurrentRequestsReport (0.29s)
+=== RUN   TestRaceHuntConcurrentRequestsReport
+    zz_racehunt_report_test.go:138: reports committed: 5
+--- PASS: TestRaceHuntConcurrentRequestsReport (0.30s)
+=== RUN   TestRaceHuntConcurrentRequestsReport
+    zz_racehunt_report_test.go:138: reports committed: 6
+--- PASS: TestRaceHuntConcurrentRequestsReport (0.32s)
+=== RUN   TestRaceHuntConcurrentRequestsReport
+    zz_racehunt_report_test.go:138: reports committed: 1332
+--- PASS: TestRaceHuntConcurrentRequestsReport (0.38s)
+=== RUN   TestRaceHuntConcurrentRequestsReport
+    zz_racehunt_report_test.go:138: reports committed: 10
+--- PASS: TestRaceHuntConcurrentRequestsReport (0.37s)
+=== RUN   TestRaceHuntConcurrentRequestsReport
+    zz_racehunt_report_test.go:138: reports committed: 5
+--- PASS: TestRaceHuntConcurrentRequestsReport (0.36s)
+=== RUN   TestRaceHuntConcurrentRequestsReport
+    zz_racehunt_report_test.go:138: reports committed: 6
+--- PASS: TestRaceHuntConcurrentRequestsReport (0.32s)
+=== RUN   TestRaceHuntConcurrentRequestsReport
+    zz_racehunt_report_test.go:138: reports committed: 1342
+--- PASS: TestRaceHuntConcurrentRequestsReport (0.39s)
+=== RUN   TestRaceHuntConcurrentRequestsReport
+    zz_racehunt_report_test.go:138: reports committed: 10
+--- PASS: TestRaceHuntConcurrentRequestsReport (0.33s)
+=== RUN   TestRaceHuntConcurrentRequestsReport
+    zz_racehunt_report_test.go:138: reports committed: 1364
+--- PASS: TestRaceHuntConcurrentRequestsReport (0.36s)
+=== RUN   TestRaceHuntConcurrentRequestsReport
+    zz_racehunt_report_test.go:138: reports committed: 1320
+--- PASS: TestRaceHuntConcurrentRequestsReport (0.35s)
+=== RUN   TestRaceHuntConcurrentRequestsReport
+    zz_racehunt_report_test.go:138: reports committed: 1337
+--- PASS: TestRaceHuntConcurrentRequestsReport (0.36s)
+=== RUN   TestRaceHuntConcurrentRequestsReport
+    zz_racehunt_report_test.go:138: reports committed: 1391
+--- PASS: TestRaceHuntConcurrentRequestsReport (0.35s)
+=== RUN   TestRaceHuntConcurrentRequestsReport
+    zz_racehunt_report_test.go:138: reports committed: 9
+--- PASS: TestRaceHuntConcurrentRequestsReport (0.33s)
+=== RUN   TestRaceHuntConcurrentRequestsReport
+    zz_racehunt_report_test.go:138: reports committed: 8
+--- PASS: TestRaceHuntConcurrentRequestsReport (0.33s)
+=== RUN   TestRaceHuntConcurrentRequestsReport
+    zz_racehunt_report_test.go:138: reports committed: 4
+--- PASS: TestRaceHuntConcurrentRequestsReport (0.34s)
+=== RUN   TestRaceHuntConcurrentRequestsReport
+    zz_racehunt_report_test.go:138: reports committed: 10
+--- PASS: TestRaceHuntConcurrentRequestsReport (0.32s)
+=== RUN   TestRaceHuntConcurrentRequestsReport
+    zz_racehunt_report_test.go:138: reports committed: 4
+--- PASS: TestRaceHuntConcurrentRequestsReport (0.35s)
+=== RUN   TestRaceHuntConcurrentRequestsReport
+    zz_racehunt_report_test.go:138: reports committed: 4
+--- PASS: TestRaceHuntConcurrentRequestsReport (0.34s)
+=== RUN   TestRaceHuntConcurrentRequestsReport
+    zz_racehunt_report_test.go:138: reports committed: 998
+--- PASS: TestRaceHuntConcurrentRequestsReport (0.23s)
+=== RUN   TestRaceHuntConcurrentRequestsReport
+    zz_racehunt_report_test.go:138: reports committed: 1002
+--- PASS: TestRaceHuntConcurrentRequestsReport (0.25s)
+=== RUN   TestRaceHuntConcurrentRequestsReport
+    zz_racehunt_report_test.go:138: reports committed: 829
+--- PASS: TestRaceHuntConcurrentRequestsReport (0.24s)
+=== RUN   TestRaceHuntConcurrentRequestsReport
+    zz_racehunt_report_test.go:138: reports committed: 16
+--- PASS: TestRaceHuntConcurrentRequestsReport (0.24s)
+=== RUN   TestRaceHuntConcurrentRequestsReport
+    zz_racehunt_report_test.go:138: reports committed: 999
+--- PASS: TestRaceHuntConcurrentRequestsReport (0.25s)
+=== RUN   TestRaceHuntConcurrentRequestsReport
+    zz_racehunt_report_test.go:138: reports committed: 923
+--- PASS: TestRaceHuntConcurrentRequestsReport (0.28s)
+=== RUN   TestRaceHuntConcurrentRequestsReport
+    zz_racehunt_report_test.go:138: reports committed: 12
+--- PASS: TestRaceHuntConcurrentRequestsReport (0.23s)
+=== RUN   TestRaceHuntConcurrentRequestsReport
+    zz_racehunt_report_test.go:138: reports committed: 20
+--- PASS: TestRaceHuntConcurrentRequestsReport (0.20s)
+=== RUN   TestRaceHuntConcurrentRequestsReport
+    zz_racehunt_report_test.go:138: reports committed: 936
+--- PASS: TestRaceHuntConcurrentRequestsReport (0.30s)
+=== RUN   TestRaceHuntConcurrentRequestsReport
+    zz_racehunt_report_test.go:138: reports committed: 895
+--- PASS: TestRaceHuntConcurrentRequestsReport (0.25s)
+=== RUN   TestRaceHuntConcurrentRequestsReport
+    zz_racehunt_report_test.go:138: reports committed: 11
+--- PASS: TestRaceHuntConcurrentRequestsReport (0.20s)
+=== RUN   TestRaceHuntConcurrentRequestsReport
+    zz_racehunt_report_test.go:138: reports committed: 9
+--- PASS: TestRaceHuntConcurrentRequestsReport (0.21s)
+=== RUN   TestRaceHuntConcurrentRequestsReport
+    zz_racehunt_report_test.go:138: reports committed: 11
+--- PASS: TestRaceHuntConcurrentRequestsReport (0.21s)
+=== RUN   TestRaceHuntConcurrentRequestsReport
+    zz_racehunt_report_test.go:138: reports committed: 973
+--- PASS: TestRaceHuntConcurrentRequestsReport (0.23s)
+=== RUN   TestRaceHuntConcurrentRequestsReport
+    zz_racehunt_report_test.go:138: reports committed: 893
+--- PASS: TestRaceHuntConcurrentRequestsReport (0.28s)
+=== RUN   TestRaceHuntConcurrentRequestsReport
+    zz_racehunt_report_test.go:138: reports committed: 21
+--- PASS: TestRaceHuntConcurrentRequestsReport (0.22s)
+=== RUN   TestRaceHuntConcurrentRequestsReport
+    zz_racehunt_report_test.go:138: reports committed: 12
+--- PASS: TestRaceHuntConcurrentRequestsReport (0.24s)
+=== RUN   TestRaceHuntConcurrentRequestsReport
+    zz_racehunt_report_test.go:138: reports committed: 894
+--- PASS: TestRaceHuntConcurrentRequestsReport (0.24s)
+=== RUN   TestRaceHuntConcurrentRequestsReport
+    zz_racehunt_report_test.go:138: reports committed: 16
+--- PASS: TestRaceHuntConcurrentRequestsReport (0.20s)
+=== RUN   TestRaceHuntConcurrentRequestsReport
+    zz_racehunt_report_test.go:138: reports committed: 11
+--- PASS: TestRaceHuntConcurrentRequestsReport (0.20s)
+PASS

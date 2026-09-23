@@ -1,0 +1,33 @@
+Independent ancestry reproduction, 2026-09-23.
+Run from /tmp/ddiast-review/wt/fx-light-deps-license-F1 after copying the
+repository there according to .omo/review/BRIEF.md. Orchestrion clone is read-only.
+
+pin=$(GOWORK=off GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go list -m -f '{{.Version}}' github.com/DataDog/orchestrion)
+rev=${pin##*-}
+printf 'private_version=%s\n' "$pin"
+printf 'resolved_revision='
+git -C /Users/eliott.bouhana/go/src/github.com/DataDog/orchestrion rev-parse "$rev"
+git -C /Users/eliott.bouhana/go/src/github.com/DataDog/orchestrion show -s --format='commit=%H subject=%s' "$rev"
+if git -C /Users/eliott.bouhana/go/src/github.com/DataDog/orchestrion merge-base --is-ancestor "$rev" origin/main; then
+  printf 'on_origin_main=yes\n'
+else
+  status=$?
+  printf 'on_origin_main=no exit=%s\n' "$status"
+  test "$status" -eq 1 || exit "$status"
+fi
+git -C /Users/eliott.bouhana/go/src/github.com/DataDog/orchestrion branch -r --contains "$rev"
+printf 'tags_containing_pin_begin\n'
+git -C /Users/eliott.bouhana/go/src/github.com/DataDog/orchestrion tag --contains "$rev"
+printf 'tags_containing_pin_end\n'
+GIT_TERMINAL_PROMPT=0 git -C /Users/eliott.bouhana/go/src/github.com/DataDog/orchestrion ls-remote origin refs/heads/main refs/heads/romain.marcadier/iast-operator-join-points
+
+Captured output (ancestor_exit=1; no containing local tag):
+private_version=v1.12.2-0.20260828141217-23afa71d6dcb
+resolved_revision=23afa71d6dcb13cc221c6461745229779e7674b4
+commit=23afa71d6dcb13cc221c6461745229779e7674b4 subject=fix(join): exclude noninteger slice constants
+on_origin_main=no exit=1
+  origin/romain.marcadier/iast-operator-join-points
+tags_containing_pin_begin
+tags_containing_pin_end
+5c24783fcd76f00cd1ff21c418a6662785d6c811	refs/heads/main
+23afa71d6dcb13cc221c6461745229779e7674b4	refs/heads/romain.marcadier/iast-operator-join-points

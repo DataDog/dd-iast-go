@@ -1,0 +1,63 @@
+=== PASS conc-tainted-00 (http 200, channel=meta_struct.iast, enabled=1, keep=2)
+    evidence: SELECT id FROM users ORDER BY [c00; DROP TABLE t00#0]
+    source: origin=http.request.parameter name=col value=c00; DROP TABLE t00 pattern=<nil> redacted=<nil>
+=== PASS conc-clean-01 (http 200, channel=none, enabled=1, keep=1)
+=== PASS conc-tainted-02 (http 200, channel=meta_struct.iast, enabled=1, keep=2)
+    evidence: SELECT id FROM users ORDER BY [c02; DROP TABLE t02#0]
+    source: origin=http.request.parameter name=col value=c02; DROP TABLE t02 pattern=<nil> redacted=<nil>
+=== PASS conc-clean-03 (http 200, channel=none, enabled=0, keep=1)
+    SKIP: not analyzed (admission)
+=== PASS conc-tainted-04 (http 200, channel=meta_struct.iast, enabled=1, keep=2)
+    evidence: SELECT id FROM users ORDER BY [c04; DROP TABLE t04#0]
+    source: origin=http.request.parameter name=col value=c04; DROP TABLE t04 pattern=<nil> redacted=<nil>
+=== PASS conc-clean-05 (http 200, channel=none, enabled=1, keep=1)
+=== PASS conc-tainted-06 (http 200, channel=none, enabled=0, keep=1)
+    SKIP: not analyzed (admission)
+=== PASS conc-clean-07 (http 200, channel=none, enabled=1, keep=1)
+=== PASS conc-tainted-08 (http 200, channel=meta_struct.iast, enabled=1, keep=2)
+    evidence: SELECT id FROM users ORDER BY [c08; DROP TABLE t08#0]
+    source: origin=http.request.parameter name=col value=c08; DROP TABLE t08 pattern=<nil> redacted=<nil>
+=== PASS conc-clean-09 (http 200, channel=none, enabled=1, keep=1)
+=== PASS conc-tainted-10 (http 200, channel=none, enabled=0, keep=1)
+    SKIP: not analyzed (admission)
+=== PASS conc-clean-11 (http 200, channel=none, enabled=1, keep=1)
+=== PASS conc-tainted-12 (http 200, channel=meta_struct.iast, enabled=1, keep=2)
+    evidence: SELECT id FROM users ORDER BY [c12; DROP TABLE t12#0]
+    source: origin=http.request.parameter name=col value=c12; DROP TABLE t12 pattern=<nil> redacted=<nil>
+=== PASS conc-clean-13 (http 200, channel=none, enabled=1, keep=1)
+=== PASS conc-tainted-14 (http 200, channel=meta_struct.iast, enabled=1, keep=2)
+    evidence: SELECT id FROM users ORDER BY [c14; DROP TABLE t14#0]
+    source: origin=http.request.parameter name=col value=c14; DROP TABLE t14 pattern=<nil> redacted=<nil>
+=== PASS conc-clean-15 (http 200, channel=none, enabled=1, keep=1)
+=== PASS conc-tainted-16 (http 200, channel=none, enabled=0, keep=1)
+    SKIP: not analyzed (admission)
+=== PASS conc-clean-17 (http 200, channel=none, enabled=1, keep=1)
+=== PASS conc-tainted-18 (http 200, channel=meta_struct.iast, enabled=1, keep=2)
+    evidence: SELECT id FROM users ORDER BY [c18; DROP TABLE t18#0]
+    source: origin=http.request.parameter name=col value=c18; DROP TABLE t18 pattern=<nil> redacted=<nil>
+=== PASS conc-clean-19 (http 200, channel=none, enabled=1, keep=1)
+=== PASS conc-tainted-20 (http 200, channel=meta_struct.iast, enabled=1, keep=2)
+    evidence: SELECT id FROM users ORDER BY [c20; DROP TABLE t20#0]
+    source: origin=http.request.parameter name=col value=c20; DROP TABLE t20 pattern=<nil> redacted=<nil>
+=== PASS conc-clean-21 (http 200, channel=none, enabled=0, keep=1)
+    SKIP: not analyzed (admission)
+=== PASS conc-tainted-22 (http 200, channel=meta_struct.iast, enabled=1, keep=2)
+    evidence: SELECT id FROM users ORDER BY [c22; DROP TABLE t22#0]
+    source: origin=http.request.parameter name=col value=c22; DROP TABLE t22 pattern=<nil> redacted=<nil>
+=== PASS conc-clean-23 (http 200, channel=none, enabled=1, keep=1)
+=== PASS conc-tainted-24 (http 200, channel=none, enabled=0, keep=1)
+    SKIP: not analyzed (admission)
+=== PASS conc-clean-25 (http 200, channel=none, enabled=1, keep=1)
+=== PASS conc-tainted-26 (http 200, channel=meta_struct.iast, enabled=1, keep=2)
+    evidence: SELECT id FROM users ORDER BY [c26; DROP TABLE t26#0]
+    source: origin=http.request.parameter name=col value=c26; DROP TABLE t26 pattern=<nil> redacted=<nil>
+=== PASS conc-clean-27 (http 200, channel=none, enabled=1, keep=1)
+=== PASS conc-tainted-28 (http 200, channel=meta_struct.iast, enabled=1, keep=2)
+    evidence: SELECT id FROM users ORDER BY [c28; DROP TABLE t28#0]
+    source: origin=http.request.parameter name=col value=c28; DROP TABLE t28 pattern=<nil> redacted=<nil>
+=== PASS conc-clean-29 (http 200, channel=none, enabled=1, keep=1)
+=== PASS conc-tainted-30 (http 200, channel=meta_struct.iast, enabled=1, keep=2)
+    evidence: SELECT id FROM users ORDER BY [c30; DROP TABLE t30#0]
+    source: origin=http.request.parameter name=col value=c30; DROP TABLE t30 pattern=<nil> redacted=<nil>
+=== PASS conc-clean-31 (http 200, channel=none, enabled=1, keep=1)
+TOTAL FAILS=0 cases=32 mode=agent

@@ -1,0 +1,14 @@
+=== RUN   TestForms
+    forms_test.go:21: woven=true
+    forms_test.go:47: builder result tainted=true buffer result tainted=false
+    forms_test.go:51: TRANSCRIPT-BEGIN
+        active=false builder="a tt=cké By=tes !é|a tt=cké |a tt=cké a tt=cké a tt=cké +a tt=cké a tt=cké a tt=cké By=tes !é|a tt=cké |a tt=cké a tt=cké a tt=cké +a tt=cké a tt=cké x~#[deferred]a tt=cké " len=189 cap=256 log=[idx arg]
+        active=false buffer=" ttail" st=["a" "<nil>" "<nil>" "By=tes "] log=[recv arg]
+        active=false bytes=["By" "tes " "T" "By=tes" "By=tes " "By" "tes " "BY=TES " "By=tes" "By=tes ,By=tes "]
+        active=true builder="a tt=cké By=tes !é|a tt=cké |a tt=cké a tt=cké a tt=cké +a tt=cké a tt=cké a tt=cké By=tes !é|a tt=cké |a tt=cké a tt=cké a tt=cké +a tt=cké a tt=cké x~#[deferred]a tt=cké " len=189 cap=256 log=[idx arg]
+        active=true buffer=" ttail" st=["a" "<nil>" "<nil>" "By=tes "] log=[recv arg]
+        active=true bytes=["By" "tes " "T" "By=tes" "By=tes " "By" "tes " "BY=TES " "By=tes" "By=tes ,By=tes "]
+        TRANSCRIPT-END
+--- PASS: TestForms (0.01s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/iast/internal/zzfid/forms	0.474s

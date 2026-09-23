@@ -1,0 +1,6 @@
+$ go tool orchestrion go build -gcflags=-m=2 ./perfsample
+# github.com/DataDog/dd-iast-go/perfsample
+invalid boolean value "2" for -m: parse error
+Usage of compile version go1.26:
+  -%	debug non-static initializers
+rc=0

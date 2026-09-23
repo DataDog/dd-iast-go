@@ -1,0 +1,9 @@
+--- go.mod key lines
+go 1.26.6
+replace github.com/DataDog/dd-iast-go => /tmp/ddiast-review/wt/hooks-compile-matrix/dd-iast-go
+	github.com/DataDog/dd-iast-go v0.0.0-00010101000000-000000000000
+	github.com/DataDog/orchestrion v1.12.2-0.20260828141217-23afa71d6dcb
+	github.com/DataDog/dd-trace-go/v2 v2.11.0-rc.1 // indirect
+--- tool.go
+	_ "github.com/DataDog/dd-iast-go" // integration
+	_ "github.com/DataDog/orchestrion" // integration

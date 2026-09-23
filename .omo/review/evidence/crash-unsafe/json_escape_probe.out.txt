@@ -1,0 +1,3 @@
+$ env GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 GOCACHE=/tmp/ddiast-review/wt/crash-unsafe/.gocache GOTMPDIR=/tmp/ddiast-review/wt/crash-unsafe/.gotmp go tool orchestrion go build -o /tmp/ddiast-review/wt/crash-unsafe/repro-bin/jsonescape -gcflags=encoding/json=-m ./reprojsonescape
+EXIT=0
+/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/encoding/json/decode.go:106: moved to heap: d

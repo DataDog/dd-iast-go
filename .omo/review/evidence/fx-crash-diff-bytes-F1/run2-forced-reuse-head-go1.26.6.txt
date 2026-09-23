@@ -1,0 +1,45 @@
+=== RUN   TestFxBuilderABA
+=== RUN   TestFxBuilderABA/zero-assign+io.WriteString/24
+    builder_aba_test.go:100: request 0: FALSE POSITIVE clean "cccccccc" tainted: start=0 len=24 origin=http.request.query name=q (backing 0x59d1ce4d8030 reused)
+    builder_aba_test.go:107: RESULT variant=zero-assign+io.WriteString size=24 requests=20 addressReused=20 falsePositiveWhenReused=20 falsePositiveWithoutReuse=0
+=== RUN   TestFxBuilderABA/zero-assign+io.WriteString/200
+    builder_aba_test.go:100: request 0: FALSE POSITIVE clean "cccccccc" tainted: start=0 len=200 origin=http.request.query name=q (backing 0x59d1cd6e4340 reused)
+    builder_aba_test.go:107: RESULT variant=zero-assign+io.WriteString size=200 requests=20 addressReused=20 falsePositiveWhenReused=20 falsePositiveWithoutReuse=0
+=== RUN   TestFxBuilderABA/methodvalue-Reset+fmt.Fprint/24
+    builder_aba_test.go:100: request 0: FALSE POSITIVE clean "cccccccc" tainted: start=0 len=24 origin=http.request.query name=q (backing 0x59d1cd6d42d0 reused)
+    builder_aba_test.go:107: RESULT variant=methodvalue-Reset+fmt.Fprint size=24 requests=20 addressReused=20 falsePositiveWhenReused=20 falsePositiveWithoutReuse=0
+=== RUN   TestFxBuilderABA/methodvalue-Reset+fmt.Fprint/200
+    builder_aba_test.go:100: request 0: FALSE POSITIVE clean "cccccccc" tainted: start=0 len=200 origin=http.request.query name=q (backing 0x59d1cd6e4340 reused)
+    builder_aba_test.go:107: RESULT variant=methodvalue-Reset+fmt.Fprint size=200 requests=20 addressReused=19 falsePositiveWhenReused=19 falsePositiveWithoutReuse=0
+=== RUN   TestFxBuilderABA/CONTROL-direct-Reset+io.WriteString/24
+    builder_aba_test.go:107: RESULT variant=CONTROL-direct-Reset+io.WriteString size=24 requests=20 addressReused=20 falsePositiveWhenReused=0 falsePositiveWithoutReuse=0
+=== RUN   TestFxBuilderABA/CONTROL-direct-Reset+io.WriteString/200
+    builder_aba_test.go:107: RESULT variant=CONTROL-direct-Reset+io.WriteString size=200 requests=20 addressReused=20 falsePositiveWhenReused=0 falsePositiveWithoutReuse=0
+--- PASS: TestFxBuilderABA (0.10s)
+    --- PASS: TestFxBuilderABA/zero-assign+io.WriteString/24 (0.02s)
+    --- PASS: TestFxBuilderABA/zero-assign+io.WriteString/200 (0.01s)
+    --- PASS: TestFxBuilderABA/methodvalue-Reset+fmt.Fprint/24 (0.02s)
+    --- PASS: TestFxBuilderABA/methodvalue-Reset+fmt.Fprint/200 (0.02s)
+    --- PASS: TestFxBuilderABA/CONTROL-direct-Reset+io.WriteString/24 (0.02s)
+    --- PASS: TestFxBuilderABA/CONTROL-direct-Reset+io.WriteString/200 (0.01s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/iast/internal/zzfx	0.564s
+       23.77 real         3.86 user         8.23 sys
+           104284160  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              258337  page reclaims
+                9938  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                 374  messages sent
+                 383  messages received
+                7038  signals received
+                5384  voluntary context switches
+              216076  involuntary context switches
+          5819535927  instructions retired
+          3975873140  cycles elapsed
+            39191248  peak memory footprint
+EXIT=0

@@ -1,0 +1,9 @@
+Command:
+GOTOOLCHAIN=go1.27.0 GOFLAGS=-p=4 /usr/bin/time -l go tool orchestrion go test -timeout 10m -count=1 -run '^Test_RequestParseForm_preserves_body_panic_when_deferred_IAST_callback_fails$' ./iast/net/http -v
+
+Output:
+# encoding/json
+$WORK/b104/orchestrion/src/encoding/json/<generated>:2: dec.r undefined (type *Decoder has no field or method r)
+$WORK/b104/orchestrion/src/encoding/json/<generated>:2: dec.d undefined (type *Decoder has no field or method d)
+$WORK/b104/orchestrion/src/encoding/json/<generated>:3: dec.d undefined (type *Decoder has no field or method d)
+FAIL	github.com/DataDog/dd-iast-go/iast/net/http [build failed]

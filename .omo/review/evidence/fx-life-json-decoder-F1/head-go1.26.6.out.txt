@@ -1,0 +1,29 @@
+=== RUN   TestFxF1NestedBindConcurrentRequests
+    zz_fx_f1_test.go:139: collide=false sample: B bucket=61 B value tainted=true
+    zz_fx_f1_test.go:142: collide=false: request-B Decoder results tainted 20/20
+    zz_fx_f1_test.go:139: collide=true sample: B bucket=29 B value tainted=false
+    zz_fx_f1_test.go:142: collide=true: request-B Decoder results tainted 0/20
+    zz_fx_f1_test.go:144: BUG: request-B lost body taint in 20/20 colliding runs (A finished while B blocked in Read)
+--- FAIL: TestFxF1NestedBindConcurrentRequests (0.03s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/testapps/integration	0.857s
+FAIL
+exit status 1
+       61.18 real       123.20 user        80.15 sys
+           354074624  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+             8854579  page reclaims
+              344819  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+               13321  messages sent
+               12783  messages received
+               95341  signals received
+               50464  voluntary context switches
+             1904300  involuntary context switches
+            21130663  instructions retired
+            11850492  cycles elapsed
+             1212728  peak memory footprint

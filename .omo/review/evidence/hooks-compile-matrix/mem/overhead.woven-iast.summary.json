@@ -1,0 +1,112 @@
+{
+ "peak_tree_rss_kb": 1133632,
+ "peak_tree_at_s": 9.4,
+ "peak_tree_top": [
+  [
+   195648,
+   [
+    "(compile)",
+    ""
+   ]
+  ],
+  [
+   120864,
+   [
+    "(compile)",
+    ""
+   ]
+  ],
+  [
+   120048,
+   [
+    "(compile)",
+    ""
+   ]
+  ],
+  [
+   102304,
+   [
+    "compile",
+    "go.opentelemetry.io/collector/pdata/internal"
+   ]
+  ],
+  [
+   93456,
+   [
+    "compile",
+    "crypto/tls"
+   ]
+  ],
+  [
+   87632,
+   [
+    "(compile)",
+    ""
+   ]
+  ]
+ ],
+ "top_process_peaks_kb": [
+  [
+   "compile github.com/nats-io/nats-server/v2/server",
+   753808
+  ],
+  [
+   "link ",
+   556864
+  ],
+  [
+   "orchestrion-toolexec/compile runtime",
+   222336
+  ],
+  [
+   "(dsymutil) ",
+   198016
+  ],
+  [
+   "(compile) ",
+   195648
+  ],
+  [
+   "orchestrion-toolexec/compile net/http",
+   154880
+  ],
+  [
+   "orchestrion-toolexec/compile go.opentelemetry.io/collector/pdata/internal",
+   138688
+  ],
+  [
+   "orchestrion-toolexec/compile github.com/DataDog/dd-trace-go/v2/ddtrace/tracer",
+   138336
+  ],
+  [
+   "orchestrion:-demangle -lto_library ",
+   124240
+  ],
+  [
+   "compile github.com/DataDog/dd-trace-go/v2/ddtrace/tracer",
+   120816
+  ],
+  [
+   "compile go.opentelemetry.io/collector/pdata/internal",
+   102304
+  ],
+  [
+   "compile google.golang.org/protobuf/internal/impl",
+   101680
+  ],
+  [
+   "compile crypto/tls",
+   93456
+  ],
+  [
+   "compile net",
+   86496
+  ],
+  [
+   "compile github.com/xeipuuv/gojsonschema",
+   69920
+  ]
+ ],
+ "samples": 46,
+ "duration_s": 55.8
+}

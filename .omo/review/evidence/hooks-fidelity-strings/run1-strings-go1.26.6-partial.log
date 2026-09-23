@@ -1,0 +1,14 @@
+=== RUN   TestFidelityInactiveAllocations
+    zz_fidelity_alloc_test.go:41: ALLOCS native string(b)     0.0
+    zz_fidelity_alloc_test.go:41: ALLOCS BytesToString(b)     1.0
+    zz_fidelity_alloc_test.go:41: ALLOCS native a+b           0.0
+    zz_fidelity_alloc_test.go:41: ALLOCS Concat2(a,b)         0.0
+--- PASS: TestFidelityInactiveAllocations (0.00s)
+=== RUN   TestFidelityInactiveAllocationsProposedFix
+    zz_fidelity_allocfix_test.go:41: ALLOCS fixed BytesToString  0.0
+    zz_fidelity_allocfix_test.go:42: ALLOCS fixed Concat2        1.0
+--- PASS: TestFidelityInactiveAllocationsProposedFix (0.00s)
+=== RUN   TestFidelityDifferentialStrings
+    zz_fidelity_diff_test.go:685: string ops: 42 ops x 6 modes, 422352 differential cases
+--- PASS: TestFidelityDifferentialStrings (103.26s)
+=== RUN   TestFidelityDifferentialFmt

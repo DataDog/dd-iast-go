@@ -1,0 +1,14 @@
+=== RUN   TestRaceHuntConcurrentWovenRequests
+    zz_racehunt_test.go:98: goroutine sinks=1920 spans=496 spansWithIAST=466
+--- PASS: TestRaceHuntConcurrentWovenRequests (30.69s)
+=== RUN   TestRaceHuntConcurrentWovenRequests
+    zz_racehunt_test.go:98: goroutine sinks=1920 spans=493 spansWithIAST=456
+--- PASS: TestRaceHuntConcurrentWovenRequests (19.87s)
+=== RUN   TestRaceHuntConcurrentWovenRequests
+    zz_racehunt_test.go:98: goroutine sinks=1920 spans=501 spansWithIAST=426
+--- PASS: TestRaceHuntConcurrentWovenRequests (7.78s)
+=== RUN   TestRaceHuntConcurrentWovenRequests
+    zz_racehunt_test.go:98: goroutine sinks=1920 spans=497 spansWithIAST=414
+--- PASS: TestRaceHuntConcurrentWovenRequests (6.42s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/testapps/integration	67.258s

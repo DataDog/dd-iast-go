@@ -1,0 +1,13 @@
+The first full-config Go 1.27.0 woven attempt, before switching the private
+orchestrion.tool.go to the propagation-only fixture, stopped in the independent
+encoding/json aspect:
+
+# encoding/json
+$WORK/b104/orchestrion/src/encoding/json/<generated>:2: dec.r undefined (type *Decoder has no field or method r)
+$WORK/b104/orchestrion/src/encoding/json/<generated>:2: dec.d undefined (type *Decoder has no field or method d)
+$WORK/b104/orchestrion/src/encoding/json/<generated>:3: dec.d undefined (type *Decoder has no field or method d)
+resolving woven dependency on github.com/DataDog/dd-iast-go/iast/propagation: -: # encoding/json
+FAIL	github.com/DataDog/dd-iast-go/reviewfxoperators [build failed]
+GO1270_WOVEN_RUNTIME_EXIT=1
+60.60 real 85.89 user 30.95 sys
+915472384 maximum resident set size

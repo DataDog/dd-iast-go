@@ -1,0 +1,5 @@
+Command: cd appsec-go-test-app && GOTOOLCHAIN=go1.26.6 go tool orchestrion go vet ./...
+go version: go version go1.26.6 darwin/arm64
+
+
+Exit status: 0  (elapsed 4s)

@@ -1,0 +1,59 @@
+=== RUN   TestHeaderMapAliases
+=== RUN   TestHeaderMapAliases/empty
+    header_alias_test.go:41: woven=true request_copied=true source_tainted=false handler="visible" caller="visible"
+=== RUN   TestHeaderMapAliases/eligible
+    header_alias_test.go:41: woven=true request_copied=true source_tainted=true handler="visible" caller=""
+    header_alias_test.go:45: 
+        	Error Trace:	/tmp/ddiast-review/wt/fx-sink-http-sources-F1/reviewhttp/header_alias_test.go:45
+        	Error:      	Not equal: 
+        	            	expected: "visible"
+        	            	actual  : ""
+        	            	
+        	            	Diff:
+        	            	--- Expected
+        	            	+++ Actual
+        	            	@@ -1 +1 @@
+        	            	-visible
+        	            	+
+        	Test:       	TestHeaderMapAliases/eligible
+--- FAIL: TestHeaderMapAliases (0.01s)
+    --- PASS: TestHeaderMapAliases/empty (0.00s)
+    --- FAIL: TestHeaderMapAliases/eligible (0.00s)
+=== RUN   TestHeaderValueSliceAliases
+    header_alias_test.go:65: woven=true handler="changed" caller_slice="external-value"
+    header_alias_test.go:66: 
+        	Error Trace:	/tmp/ddiast-review/wt/fx-sink-http-sources-F1/reviewhttp/header_alias_test.go:66
+        	Error:      	Not equal: 
+        	            	expected: "changed"
+        	            	actual  : "external-value"
+        	            	
+        	            	Diff:
+        	            	--- Expected
+        	            	+++ Actual
+        	            	@@ -1 +1 @@
+        	            	-changed
+        	            	+external-value
+        	Test:       	TestHeaderValueSliceAliases
+--- FAIL: TestHeaderValueSliceAliases (0.00s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/reviewhttp	0.950s
+FAIL
+exit status 1
+      104.29 real       149.48 user       100.28 sys
+           341393408  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+             8422629  page reclaims
+              336293  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+               14563  messages sent
+               16030  messages received
+               92776  signals received
+               36172  voluntary context switches
+             2064008  involuntary context switches
+          5735499654  instructions retired
+          3312247889  cycles elapsed
+            38683368  peak memory footprint

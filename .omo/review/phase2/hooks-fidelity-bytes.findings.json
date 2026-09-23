@@ -1,0 +1,35 @@
+[
+  {
+    "id": "hooks-fidelity-bytes-F1",
+    "severity": "Critical",
+    "category": "compile-break",
+    "location": "iast/propagation/orchestrion.yml:1057-1507 (all pointer-only strings.Builder/bytes.Buffer method-call aspects); orchestrion internal/injector/aspect/join/method_call.go Matches @23afa71d6dcb",
+    "title": "Writer advice breaks compilation of method-expression calls such as (*bytes.Buffer).WriteString(&b, s)",
+    "claim": "method-call Matches resolves selector.X via typeInfo.Types, which also records type expressions. A method expression (*bytes.Buffer).WriteString(&b, s) matches pointer-only, and the template emits BufferWriteString((*bytes.Buffer), &b), which passes a type as a value and drops an argument. Valid customer code in the root module then fails to build under Orchestrion. The strings.Replacer.Replace.pointer aspect shares the matcher (static).",
+    "evidence_path": ".omo/review/evidence/hooks-fidelity-bytes/woven-methodexpr-go1.26.6.txt",
+    "repro_command": "install iast__internal__zzfid__methodexpr__methodexpr{,_test}.go at iast/internal/zzfid/methodexpr/ in a private copy; GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -count=1 ./iast/internal/zzfid/methodexpr  # build failed: (*bytes.Buffer) (type) is not an expression; unwoven go test passes",
+    "needs_repro": false
+  },
+  {
+    "id": "hooks-fidelity-bytes-F2",
+    "severity": "Low",
+    "category": "perf",
+    "location": "internal/taint/propagation/writer.go:190-200,222-225; iast/propagation/writer.go:278-284",
+    "title": "Wrapped strings.Builder.String clones tainted results instead of returning the builder-aliasing string",
+    "claim": "When the builder carries writer state, the wrapper returns strings.Clone(result), up to 64 KiB per call. Native String is O(1) and allocation-free. Content is identical, and only unsafe identity and allocation differ. This is documented design, but loops that call String() become O(n^2) copying, and saturated requests still pay the clone.",
+    "evidence_path": ".omo/review/evidence/hooks-fidelity-bytes/plain-diff-go1.26.6.txt",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 go test -count=1 -run '^TestFidelityBuilderStringIdentityAndAllocs$' -v ./iast/propagation  # allocs/op native=0.0 wrapped=1.0",
+    "needs_repro": false
+  },
+  {
+    "id": "hooks-fidelity-bytes-F3",
+    "severity": "Low",
+    "category": "doc",
+    "location": "README.md:30,33; iast/propagation/orchestrion.yml:832-857",
+    "title": "Go 1.27 bytes.CutLast/strings.CutLast are unhooked although README advertises Cut* windows",
+    "claim": "Go 1.27.0 adds CutLast (window-returning) to bytes and strings. No aspect wraps it, so results lose taint on Go 1.27 (safe miss), which contradicts the README's Cut* support claim.",
+    "evidence_path": null,
+    "repro_command": "grep -c CutLast iast/propagation/orchestrion.yml  # 0; grep -n '^func CutLast' $(GOTOOLCHAIN=go1.27.0 go env GOROOT)/src/{bytes/bytes.go,strings/strings.go}",
+    "needs_repro": false
+  }
+]

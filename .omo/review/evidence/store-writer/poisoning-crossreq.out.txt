@@ -1,0 +1,13 @@
+=== RUN   TestReviewCrossRequestWriterPoisoning
+    zz_review_writer_crossreq_test.go:59: B builder checks=400 lost-taint=399; A clean buffer writes=15190
+    zz_review_writer_crossreq_test.go:61: BUG: request B lost builder taint 399/400 times due to request A's unrelated buffer writes
+--- FAIL: TestReviewCrossRequestWriterPoisoning (0.01s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/iast/propagation	0.382s
+FAIL
+--- control REVIEW_NO_A=1
+=== RUN   TestReviewCrossRequestWriterPoisoning
+    zz_review_writer_crossreq_test.go:59: B builder checks=400 lost-taint=0; A clean buffer writes=0
+--- PASS: TestReviewCrossRequestWriterPoisoning (0.02s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/iast/propagation	0.269s

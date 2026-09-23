@@ -1,0 +1,2 @@
+default-quota: median_ms={'mp_40_parts': (142.3, 'HTTP/1.1 204 No Content'), 'hdr_32x30k': (6.5, 'HTTP/1.1 204 No Content'), 'readall_64k': (26.3, 'HTTP/1.1 204 No Content')} tainted_sinks=217/819 max_vulns_per_event=1
+plain-quota: median_ms={'mp_40_parts': (5.9, 'HTTP/1.1 204 No Content'), 'hdr_32x30k': (8.0, 'HTTP/1.1 204 No Content'), 'readall_64k': (2.0, 'HTTP/1.1 204 No Content')} tainted_sinks=0/819 max_vulns_per_event=0

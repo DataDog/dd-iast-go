@@ -1,0 +1,9 @@
+$ env GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 GOCACHE=/tmp/ddiast-review/wt/crash-unsafe/.gocache GOTMPDIR=/tmp/ddiast-review/wt/crash-unsafe/.gotmp go test -count=1 -v -run TestReproFinishedRootAcceptsReplacementFromLiveChild -timeout=5m ./internal/spans
+EXIT=1
+=== RUN   TestReproFinishedRootAcceptsReplacementFromLiveChild
+    finished_root_repro_test.go:58: live child recreated an open annotation for an already-finished root
+    finished_root_repro_test.go:70: post-child-finish root-key replacement retained=true closed=false
+--- FAIL: TestReproFinishedRootAcceptsReplacementFromLiveChild (0.01s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/internal/spans	0.916s
+FAIL

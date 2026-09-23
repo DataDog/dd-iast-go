@@ -1,0 +1,7 @@
+    zz_racehunt_acquire_test.go:45: workers=16 (cap 64) begins=32000 active=11817 capacityDropped=20183 (63.1%) storeAcquireDrops=20183
+    zz_racehunt_acquire_test.go:45: workers=16 (cap 64) begins=32000 active=13138 capacityDropped=18862 (58.9%) storeAcquireDrops=39045
+    zz_racehunt_acquire_test.go:45: workers=16 (cap 64) begins=32000 active=12314 capacityDropped=19686 (61.5%) storeAcquireDrops=58731
+    zz_racehunt_acquire_test.go:45: workers=16 (cap 64) begins=32000 active=19512 capacityDropped=12488 (39.0%) storeAcquireDrops=71219
+    zz_racehunt_acquire_test.go:45: workers=16 (cap 64) begins=32000 active=6380 capacityDropped=25620 (80.1%) storeAcquireDrops=96839
+    zz_racehunt_acquire_test.go:45: workers=16 (cap 64) begins=32000 active=13106 capacityDropped=18894 (59.0%) storeAcquireDrops=115733
+ok  	github.com/DataDog/dd-iast-go/internal/taint/request	0.772s

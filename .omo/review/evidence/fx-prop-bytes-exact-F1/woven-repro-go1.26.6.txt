@@ -1,0 +1,34 @@
+# command: cd /tmp/ddiast-review/wt/fx-prop-bytes-exact-F1 && GOFLAGS=-p=4 GOMAXPROCS=4 GOTOOLCHAIN=go1.26.6 /usr/bin/time -l go tool orchestrion go test -p=4 -count=1 -timeout=5m -run '^TestFx' -v ./iast/io
+# exit: 1
+=== RUN   TestFxWovenReadAllGrowingToken
+    zz_fx_reslice_woven_test.go:31: body="name=alice'--OR-1=1 tail" len=24 cap=512 tainted=true
+    zz_fx_reslice_woven_test.go:39: control value="alice'--OR-1=" bytes=true name=true query=true
+    zz_fx_reslice_woven_test.go:46: lexed tok="alice'--OR-1=1" len=14 cap=507 bytes=false name=false query=false
+    zz_fx_reslice_woven_test.go:48: 
+        	Error Trace:	/tmp/ddiast-review/wt/fx-prop-bytes-exact-F1/iast/io/zz_fx_reslice_woven_test.go:48
+        	Error:      	Should be true
+        	Test:       	TestFxWovenReadAllGrowingToken
+        	Messages:   	FX-REPRO: grown token lost provenance
+--- FAIL: TestFxWovenReadAllGrowingToken (0.00s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/iast/io	0.520s
+FAIL
+exit status 1
+        4.93 real         2.78 user         3.69 sys
+           338214912  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              400076  page reclaims
+               21316  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                3162  messages sent
+                3519  messages received
+                2920  signals received
+                2439  voluntary context switches
+              104182  involuntary context switches
+            19374677  instructions retired
+             9833461  cycles elapsed
+             1212728  peak memory footprint

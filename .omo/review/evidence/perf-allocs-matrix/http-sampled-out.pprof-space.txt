@@ -1,0 +1,67 @@
+File: http0.test
+Type: alloc_space
+Time: 2026-09-23 15:46:34 CEST
+Showing nodes accounting for 173.44MB, 93.26% of 185.98MB total
+Dropped 85 nodes (cum <= 0.93MB)
+Showing top 60 nodes out of 178
+      flat  flat%   sum%        cum   cum%
+   20.02MB 10.76% 10.76%    20.02MB 10.76%  github.com/DataDog/dd-trace-go/v2/ddtrace/tracer.(*Span).AsMap-range1 (inline)
+   17.01MB  9.15% 19.91%    37.03MB 19.91%  github.com/DataDog/dd-trace-go/v2/ddtrace/tracer.(*Span).AsMap
+   15.05MB  8.09% 28.00%    15.05MB  8.09%  github.com/DataDog/dd-iast-go/internal/spans.BindScope.func1
+    9.80MB  5.27% 33.27%     9.80MB  5.27%  net/http.init.func16
+       7MB  3.77% 37.04%     7.50MB  4.03%  net/textproto.readMIMEHeader
+       6MB  3.23% 40.26%     6.50MB  3.50%  net/textproto.MIMEHeader.Set (inline)
+       4MB  2.15% 42.41%        4MB  2.15%  net/url.parseQuery
+    3.53MB  1.90% 44.31%     3.53MB  1.90%  io.init.func1
+    3.51MB  1.89% 46.20%     3.51MB  1.89%  runtime.mallocgc
+    3.50MB  1.88% 48.08%     5.50MB  2.96%  github.com/DataDog/dd-trace-go/v2/ddtrace/tracer.newSpanContext
+    3.50MB  1.88% 49.96%     3.50MB  1.88%  github.com/DataDog/dd-trace-go/v2/ddtrace/tracer.newTrace (inline)
+    3.50MB  1.88% 51.85%     3.50MB  1.88%  github.com/DataDog/dd-trace-go/v2/ddtrace/tracer.Tag (inline)
+    3.01MB  1.62% 53.46%     3.01MB  1.62%  sync.(*Pool).pinSlow
+       3MB  1.61% 55.08%        6MB  3.23%  github.com/DataDog/dd-trace-go/v2/ddtrace/tracer/internal.(*SpanMeta).Set
+       3MB  1.61% 56.69%     3.50MB  1.88%  github.com/DataDog/dd-trace-go/v2/instrumentation/httptrace.startRequestSpan.func3
+       3MB  1.61% 58.30%        3MB  1.61%  github.com/DataDog/dd-trace-go/v2/ddtrace/tracer.acquireSpan
+       3MB  1.61% 59.92%        3MB  1.61%  net/http.(*Request).WithContext (inline)
+       3MB  1.61% 61.53%     4.50MB  2.42%  github.com/DataDog/dd-trace-go/v2/ddtrace/tracer.(*trace).copyOnWriteSet
+       3MB  1.61% 63.14%        3MB  1.61%  github.com/DataDog/dd-trace-go/v2/ddtrace/tracer/internal.(*SpanMeta).initMap (inline)
+       3MB  1.61% 64.76%        3MB  1.61%  github.com/DataDog/dd-trace-go/v2/ddtrace/tracer.(*Span).setMetricLocked
+    2.50MB  1.34% 66.10%     5.50MB  2.96%  github.com/DataDog/dd-trace-go/v2/ddtrace/tracer.(*propagator).extractTextMap
+    2.50MB  1.34% 67.45%     2.50MB  1.34%  net/http.newTransferWriter
+    2.50MB  1.34% 68.79%     2.50MB  1.34%  net/http.copyValues (inline)
+    2.50MB  1.34% 70.14%     2.50MB  1.34%  github.com/DataDog/dd-trace-go/v2/ddtrace/tracer.getPropagators
+       2MB  1.08% 71.21%        2MB  1.08%  net/http.setupRewindBody (inline)
+       2MB  1.08% 72.29%        2MB  1.08%  github.com/DataDog/dd-trace-go/contrib/net/http/v2/internal/wrap.ObserveRoundTrip.SpanType.Tag.func11
+       2MB  1.08% 73.36%        2MB  1.08%  net/http.Header.Clone (inline)
+       2MB  1.08% 74.44%        2MB  1.08%  net/http.(*Transport).getConn
+       2MB  1.08% 75.51%    85.57MB 46.01%  github.com/DataDog/dd-trace-go/contrib/net/http/v2/internal/wrap.Handler.func1
+       2MB  1.08% 76.59%     4.50MB  2.42%  github.com/DataDog/dd-trace-go/v2/ddtrace/tracer.NewPropagator
+       2MB  1.08% 77.66%        2MB  1.08%  context.withCancel (inline)
+    1.50MB  0.81% 78.47%     1.50MB  0.81%  io.ReadAll
+    1.50MB  0.81% 79.28%     1.50MB  0.81%  maps.Copy[go.shape.map[string]string,go.shape.map[string]string,go.shape.string,go.shape.string] (inline)
+    1.50MB  0.81% 80.08%     1.50MB  0.81%  maps.clone
+    1.50MB  0.81% 80.89%    16.50MB  8.87%  github.com/DataDog/dd-trace-go/v2/ddtrace/mocktracer.(*mocktracer).Extract
+    1.50MB  0.81% 81.70%     1.50MB  0.81%  net/http.cloneURL (inline)
+    1.50MB  0.81% 82.50%     1.50MB  0.81%  github.com/DataDog/dd-trace-go/v2/instrumentation/httptrace.urlFromRequest
+    1.50MB  0.81% 83.31%     1.50MB  0.81%  strings.genSplit
+       1MB  0.54% 83.85%     4.50MB  2.42%  net/http.(*Request).Clone
+       1MB  0.54% 84.39%        1MB  0.54%  net/http.NewRequestWithContext
+       1MB  0.54% 84.92%        1MB  0.54%  github.com/DataDog/dd-trace-go/v2/ddtrace/tracer.parsePropagatableTraceTags
+       1MB  0.54% 85.46%     6.50MB  3.50%  github.com/DataDog/dd-trace-go/v2/ddtrace/mocktracer.(*mocktracer).Inject
+       1MB  0.54% 86.00%        4MB  2.15%  github.com/DataDog/dd-trace-go/v2/ddtrace/tracer.(*propagatorW3c).extractTextMap
+       1MB  0.54% 86.54%        1MB  0.54%  net/url.parse
+       1MB  0.54% 87.08%        1MB  0.54%  internal/bytealg.MakeNoZero
+       1MB  0.54% 87.61%    40.52MB 21.79%  github.com/DataDog/dd-trace-go/v2/ddtrace/mocktracer.(*mocktracer).StartSpan
+       1MB  0.54% 88.15%        1MB  0.54%  net.(*conn).Read
+       1MB  0.54% 88.69%    53.06MB 28.53%  github.com/DataDog/dd-trace-go/v2/instrumentation/httptrace.startRequestSpan
+       1MB  0.54% 89.23%        1MB  0.54%  net/http.readTransfer
+       1MB  0.54% 89.76%        1MB  0.54%  net/textproto.NewReader (inline)
+       1MB  0.54% 90.30%     1.50MB  0.81%  fmt.Sprintf
+       1MB  0.54% 90.84%        1MB  0.54%  net/textproto.canonicalMIMEHeaderKey
+       1MB  0.54% 91.38%        1MB  0.54%  github.com/DataDog/dd-trace-go/contrib/net/http/v2/internal/orchestrion.resourceNamer
+    0.50MB  0.27% 91.65%       11MB  5.92%  net/http.(*conn).readRequest
+    0.50MB  0.27% 91.92%        3MB  1.61%  net/http.(*persistConn).readLoop
+    0.50MB  0.27% 92.18%    37.51MB 20.17%  github.com/DataDog/dd-trace-go/contrib/net/http/v2/internal/wrap.ObserveRoundTrip
+    0.50MB  0.27% 92.45%     2.50MB  1.34%  net/http.(*persistConn).roundTrip
+    0.50MB  0.27% 92.72%       15MB  8.07%  github.com/DataDog/dd-trace-go/v2/ddtrace/tracer.spanStart
+    0.50MB  0.27% 92.99%     8.50MB  4.57%  net/http.(*Transport).roundTrip
+    0.50MB  0.27% 93.26%       12MB  6.45%  github.com/DataDog/dd-iast-go/benchmarks/overhead_test.BenchmarkHTTPRoundTrip.requestHandler.func1

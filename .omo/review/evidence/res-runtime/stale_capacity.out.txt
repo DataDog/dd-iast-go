@@ -1,0 +1,10 @@
+$ cd research && GOFLAGS=-mod=mod go test -count=1 -run Test_ReviewStaleCapacityTaint -v ./runtime/taint/
+=== RUN   Test_ReviewStaleCapacityTaint
+    zz_review_stale_test.go:19: after source write ranges = []taint.Range{taint.Range{Start:0, End:12, SourceID:0x1}}
+    zz_review_stale_test.go:28: vacated-capacity ranges (b.Bytes()[:12]) = []taint.Range{taint.Range{Start:10, End:12, SourceID:0x1}}
+    zz_review_stale_test.go:34: value="cleancleanxy" ranges=[]taint.Range{taint.Range{Start:10, End:12, SourceID:0x1}}
+    zz_review_stale_test.go:36: clean data reported tainted: "cleancleanxy" ranges=[]taint.Range{taint.Range{Start:10, End:12, SourceID:0x1}}
+--- FAIL: Test_ReviewStaleCapacityTaint (0.00s)
+FAIL
+FAIL	github.com/DataDog/orchestrion/runtime/taint	0.843s
+FAIL

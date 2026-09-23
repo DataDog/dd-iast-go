@@ -1,0 +1,8 @@
+goos: darwin
+goarch: arm64
+pkg: github.com/DataDog/dd-iast-go/benchmarks/overhead
+cpu: Apple M4 Max
+BenchmarkHealth            	    2000	      4389 ns/op	    6114 B/op	      19 allocs/op
+BenchmarkRequestProcessing 	    2000	      8901 ns/op	    8794 B/op	      47 allocs/op
+BenchmarkHTTPRoundTrip     	    2000	    938996 ns/op	   34001 B/op	     414 allocs/op
+PASS

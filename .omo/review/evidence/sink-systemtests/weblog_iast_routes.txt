@@ -1,0 +1,31 @@
+$ grep -n "/iast/" net-http-orchestrion/main.go @4dcd3b8
+106:	mux.HandleFunc("GET /iast/insecure_hashing/deduplicate", func(w http.ResponseWriter, _ *http.Request) {
+114:	mux.HandleFunc("GET /iast/insecure_hashing/multiple_hash", func(w http.ResponseWriter, _ *http.Request) {
+120:	mux.HandleFunc("GET /iast/insecure_hashing/test_secure_algorithm", func(w http.ResponseWriter, _ *http.Request) {
+125:	mux.HandleFunc("GET /iast/insecure_hashing/test_md5_algorithm", func(w http.ResponseWriter, _ *http.Request) {
+130:	mux.HandleFunc("GET /iast/insecure_cipher/test_insecure_algorithm", func(w http.ResponseWriter, _ *http.Request) {
+142:	mux.HandleFunc("GET /iast/insecure_cipher/test_secure_algorithm", func(w http.ResponseWriter, _ *http.Request) {
+
+$ grep appsec/iast/(sink/test_sql|sink/test_command|source/) manifests/golang.yml
+127:  tests/appsec/iast/sink/test_command_injection.py::TestCommandInjection: missing_feature
+128:  tests/appsec/iast/sink/test_command_injection.py::TestCommandInjection_ExtendedLocation: missing_feature
+129:  tests/appsec/iast/sink/test_command_injection.py::TestCommandInjection_StackTrace: missing_feature
+177:  tests/appsec/iast/sink/test_sql_injection.py::TestSqlInjection: missing_feature
+178:  tests/appsec/iast/sink/test_sql_injection.py::TestSqlInjection_ExtendedLocation: missing_feature
+179:  tests/appsec/iast/sink/test_sql_injection.py::TestSqlInjection_StackTrace: missing_feature
+223:  tests/appsec/iast/source/test_body.py::TestRequestBody: missing_feature
+224:  tests/appsec/iast/source/test_cookie_name.py::TestCookieName: missing_feature
+225:  tests/appsec/iast/source/test_cookie_value.py::TestCookieValue: missing_feature
+226:  tests/appsec/iast/source/test_graphql_resolver.py::TestGraphqlResolverArgument: missing_feature
+227:  tests/appsec/iast/source/test_header_name.py::TestHeaderName: missing_feature
+228:  tests/appsec/iast/source/test_header_value.py::TestHeaderValue: missing_feature
+229:  tests/appsec/iast/source/test_kafka_key.py::TestKafkaKey: missing_feature
+230:  tests/appsec/iast/source/test_kafka_value.py::TestKafkaValue: missing_feature
+231:  tests/appsec/iast/source/test_multipart.py::TestMultipart: missing_feature
+232:  tests/appsec/iast/source/test_parameter_name.py::TestParameterName: missing_feature
+233:  tests/appsec/iast/source/test_parameter_value.py::TestParameterValue: missing_feature
+234:  tests/appsec/iast/source/test_parameter_value.py::TestParameterValue::test_source_reported: irrelevant
+235:  tests/appsec/iast/source/test_path.py::TestPath: missing_feature
+236:  tests/appsec/iast/source/test_path_parameter.py::TestPathParameter: missing_feature
+237:  tests/appsec/iast/source/test_sql_row.py::TestSqlRow: missing_feature
+238:  tests/appsec/iast/source/test_uri.py::TestURI: missing_feature

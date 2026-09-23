@@ -1,0 +1,57 @@
+[
+  {
+    "id": "res-runtime-F1",
+    "severity": "Info",
+    "category": "provenance",
+    "location": "orchestrion eliottness/iast-testing runtime/taint/buffer.go:143-157",
+    "title": "Stale taint in buffer spare capacity resurfaces on clean data (research)",
+    "claim": "Clean overwrites erase ranges only over [start,start+len); ranges in [len,cap) survive. After bytes.Buffer.Read's internal Reset and a shorter clean write, BufferReadFrom from an arbitrary reader republishes the old range over clean bytes via postRanges.",
+    "evidence_path": ".omo/review/evidence/res-runtime/zz_review_stale_test.go",
+    "repro_command": "GOFLAGS=-mod=mod go test -count=1 -run Test_ReviewStaleCapacityTaint -v ./runtime/taint/ (in a git-archive copy of the research branch; see evidence README.md)",
+    "needs_repro": false
+  },
+  {
+    "id": "res-runtime-F2",
+    "severity": "Info",
+    "category": "memory-bound",
+    "location": "orchestrion runtime/taint/registry.go:121,127,145,167",
+    "title": "Exact provenance bought by pinning every tainted backing array (unbounded memory)",
+    "claim": "Owner maps hold strong references keyed by address, preventing GC and address reuse; memory grows per distinct tainted value until generation eviction. Documented in README:76-86 and case_104.",
+    "evidence_path": null,
+    "repro_command": null,
+    "needs_repro": false
+  },
+  {
+    "id": "res-runtime-F3",
+    "severity": "Info",
+    "category": "false-positive",
+    "location": "orchestrion runtime/taint/lifecycle.go:30-40",
+    "title": "Generation eviction latches permanent unknown reports on every clean sink",
+    "claim": "historyDiscarded (and stateSaturated) permanently make every range-free sink value report State=unknown; pinned by lifecycle_test.go:131-179.",
+    "evidence_path": null,
+    "repro_command": null,
+    "needs_repro": false
+  },
+  {
+    "id": "res-runtime-F4",
+    "severity": "Info",
+    "category": "perf",
+    "location": "orchestrion runtime/taint/range.go:23-41",
+    "title": "Every propagation scans all stored ranges under a blocking global lock with no cheap gate",
+    "claim": "Lookups iterate and allocate over all intervals per generation even for clean values; overlapping writes rebuild and re-sort the full slice under a write Mutex.",
+    "evidence_path": null,
+    "repro_command": null,
+    "needs_repro": false
+  },
+  {
+    "id": "res-runtime-F5",
+    "severity": "Info",
+    "category": "cross-request",
+    "location": "orchestrion runtime/taint/lifecycle.go:15-40",
+    "title": "Request boundary is process-global; concurrent requests evict each other's metadata",
+    "claim": "StartRequest rotates one global registry list with a single retired slot; concurrent requests drop a live request's generation and taint is never owner-attributed.",
+    "evidence_path": null,
+    "repro_command": null,
+    "needs_repro": false
+  }
+]

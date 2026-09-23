@@ -1,0 +1,36 @@
+=== RUN   TestReviewBuilderABAFalseSQLi
+=== RUN   TestReviewBuilderABAFalseSQLi/zero-value-reset/gc-each-row
+    zz_review_builder_aba_test.go:94: mode=zero-value-reset/gc-each-row attempts=2000 backingAddressReused=0 staleTaintedClean=0 staleWithoutReuse=0 SQLiReports=0
+=== RUN   TestReviewBuilderABAFalseSQLi/zero-value-reset/collect-rows
+    zz_review_builder_aba_test.go:94: mode=zero-value-reset/collect-rows attempts=2000 backingAddressReused=0 staleTaintedClean=0 staleWithoutReuse=0 SQLiReports=0
+=== RUN   TestReviewBuilderABAFalseSQLi/control-woven-Reset/collect-rows
+    zz_review_builder_aba_test.go:94: mode=control-woven-Reset/collect-rows attempts=2000 backingAddressReused=0 staleTaintedClean=0 staleWithoutReuse=0 SQLiReports=0
+--- PASS: TestReviewBuilderABAFalseSQLi (0.83s)
+    --- PASS: TestReviewBuilderABAFalseSQLi/zero-value-reset/gc-each-row (0.81s)
+    --- PASS: TestReviewBuilderABAFalseSQLi/zero-value-reset/collect-rows (0.01s)
+    --- PASS: TestReviewBuilderABAFalseSQLi/control-woven-Reset/collect-rows (0.01s)
+=== RUN   TestReviewBuilderABAFalseSQLi
+=== RUN   TestReviewBuilderABAFalseSQLi/zero-value-reset/gc-each-row
+    zz_review_builder_aba_test.go:94: mode=zero-value-reset/gc-each-row attempts=2000 backingAddressReused=0 staleTaintedClean=0 staleWithoutReuse=0 SQLiReports=0
+=== RUN   TestReviewBuilderABAFalseSQLi/zero-value-reset/collect-rows
+    zz_review_builder_aba_test.go:94: mode=zero-value-reset/collect-rows attempts=2000 backingAddressReused=0 staleTaintedClean=0 staleWithoutReuse=0 SQLiReports=0
+=== RUN   TestReviewBuilderABAFalseSQLi/control-woven-Reset/collect-rows
+    zz_review_builder_aba_test.go:94: mode=control-woven-Reset/collect-rows attempts=2000 backingAddressReused=1 staleTaintedClean=0 staleWithoutReuse=0 SQLiReports=0
+--- PASS: TestReviewBuilderABAFalseSQLi (0.73s)
+    --- PASS: TestReviewBuilderABAFalseSQLi/zero-value-reset/gc-each-row (0.71s)
+    --- PASS: TestReviewBuilderABAFalseSQLi/zero-value-reset/collect-rows (0.01s)
+    --- PASS: TestReviewBuilderABAFalseSQLi/control-woven-Reset/collect-rows (0.01s)
+=== RUN   TestReviewBuilderABAFalseSQLi
+=== RUN   TestReviewBuilderABAFalseSQLi/zero-value-reset/gc-each-row
+    zz_review_builder_aba_test.go:94: mode=zero-value-reset/gc-each-row attempts=2000 backingAddressReused=0 staleTaintedClean=0 staleWithoutReuse=0 SQLiReports=0
+=== RUN   TestReviewBuilderABAFalseSQLi/zero-value-reset/collect-rows
+    zz_review_builder_aba_test.go:94: mode=zero-value-reset/collect-rows attempts=2000 backingAddressReused=0 staleTaintedClean=0 staleWithoutReuse=0 SQLiReports=0
+=== RUN   TestReviewBuilderABAFalseSQLi/control-woven-Reset/collect-rows
+    zz_review_builder_aba_test.go:94: mode=control-woven-Reset/collect-rows attempts=2000 backingAddressReused=1 staleTaintedClean=0 staleWithoutReuse=0 SQLiReports=0
+--- PASS: TestReviewBuilderABAFalseSQLi (0.67s)
+    --- PASS: TestReviewBuilderABAFalseSQLi/zero-value-reset/gc-each-row (0.65s)
+    --- PASS: TestReviewBuilderABAFalseSQLi/zero-value-reset/collect-rows (0.01s)
+    --- PASS: TestReviewBuilderABAFalseSQLi/control-woven-Reset/collect-rows (0.01s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/testapps/integration	2.993s
+EXIT=0

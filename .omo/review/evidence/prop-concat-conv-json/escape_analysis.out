@@ -1,0 +1,37 @@
+$ go build -gcflags='-m=2' ./internal/taint/propagation/ | grep ...
+$ go test -c -gcflags='-m=2' ./iast/propagation/ | grep operators.go:198-199
+internal/taint/propagation/conversion.go:15:34: parameter result leaks to {heap} for BytesToString with derefs=0:
+internal/taint/propagation/conversion.go:15:34:   flow: {heap} ← result:
+internal/taint/propagation/conversion.go:15:34:     from (*store.Owner).AdoptString(owner, result, &copied) (call parameter) at internal/taint/propagation/conversion.go:42:32
+internal/taint/propagation/conversion.go:15:34: parameter result leaks to ~r0 for BytesToString with derefs=0:
+internal/taint/propagation/conversion.go:15:34:   flow: ~r0 ← result:
+internal/taint/propagation/conversion.go:15:34:     from return result (return) at internal/taint/propagation/conversion.go:17:3
+internal/taint/propagation/conversion.go:15:34: leaking param: result
+internal/taint/propagation/string_exact.go:50:36: parameter elements leaks to {heap} for joinStringHit with derefs=1:
+internal/taint/propagation/string_exact.go:50:36:   flow: {heap} ← *elements:
+internal/taint/propagation/string_exact.go:50:36:     from elements[:inputCount] (slice) at internal/taint/propagation/string_exact.go:56:36
+internal/taint/propagation/string_exact.go:50:36:     from copy(inputs[:inputCount], elements[:inputCount]) (call parameter) at internal/taint/propagation/string_exact.go:56:6
+internal/taint/propagation/string_exact.go:50:36:     from copy(inputs[:inputCount], elements[:inputCount]) (copied slice) at internal/taint/propagation/string_exact.go:56:6
+internal/taint/propagation/string_exact.go:50:36: leaking param content: elements
+internal/taint/propagation/string_exact.go:21:17: parameter elements leaks to {heap} for JoinString with derefs=1:
+internal/taint/propagation/string_exact.go:21:17:   flow: {heap} ← *elements:
+internal/taint/propagation/string_exact.go:21:17:     from joinStringHit(s, elements, separator, result) (call parameter) at internal/taint/propagation/string_exact.go:46:22
+internal/taint/propagation/string_exact.go:21:17: leaking param content: elements
+internal/taint/propagation/operator_concat.go:9:14: parameter a leaks to {heap} for Concat2 with derefs=0:
+internal/taint/propagation/operator_concat.go:9:14:   flow: {storage for []string{...}} ← a:
+internal/taint/propagation/operator_concat.go:9:14:     from []string{...} (slice-literal-element) at internal/taint/propagation/operator_concat.go:9:84
+internal/taint/propagation/operator_concat.go:9:14:   flow: {heap} ← {storage for []string{...}}:
+internal/taint/propagation/operator_concat.go:9:14:     from []string{...} (spill) at internal/taint/propagation/operator_concat.go:9:84
+internal/taint/propagation/operator_concat.go:9:14:     from JoinString([]string{...}, "", result) (call parameter) at internal/taint/propagation/operator_concat.go:9:75
+internal/taint/propagation/operator_concat.go:9:24: parameter b leaks to {heap} for Concat2 with derefs=0:
+internal/taint/propagation/operator_concat.go:9:24:   flow: {storage for []string{...}} ← b:
+internal/taint/propagation/operator_concat.go:9:24:     from []string{...} (slice-literal-element) at internal/taint/propagation/operator_concat.go:9:84
+internal/taint/propagation/operator_concat.go:9:24:   flow: {heap} ← {storage for []string{...}}:
+internal/taint/propagation/operator_concat.go:9:24:     from []string{...} (spill) at internal/taint/propagation/operator_concat.go:9:84
+internal/taint/propagation/operator_concat.go:9:24:     from JoinString([]string{...}, "", result) (call parameter) at internal/taint/propagation/operator_concat.go:9:75
+internal/taint/propagation/operator_concat.go:9:14: leaking param: a
+internal/taint/propagation/operator_concat.go:9:24: leaking param: b
+iast/propagation/operators.go:198:6: cannot inline propagation.BytesToString[go.shape.[]uint8]: function too complex: cost 131 exceeds budget 80
+iast/propagation/operators.go:198:6: can inline propagation.BytesToString[[]uint8] with cost 63 as: func([]byte) string { return propagation.BytesToString[go.shape.[]uint8](&propagation..dict.BytesToString[[]uint8], propagation.value) }
+iast/propagation/operators.go:199:19: string(propagation.value) escapes to heap in BytesToString[go.shape.[]uint8]:
+iast/propagation/operators.go:199:19: string(propagation.value) escapes to heap

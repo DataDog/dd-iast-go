@@ -1,0 +1,5 @@
+$ GOOS=linux GOARCH=386 go vet ./internal/taint/store/
+exit=0
+$ go test -count=1 -short -gcflags=all=-d=checkptr -skip TestReviewTombstoned ./internal/taint/store/
+ok  	github.com/DataDog/dd-iast-go/internal/taint/store	0.675s
+exit=0

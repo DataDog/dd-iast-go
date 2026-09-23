@@ -1,0 +1,14 @@
+Command: cd /tmp/ddiast-review/wt/fx-prop-semantics-parity-F3 && env GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 DD_IAST_REQUEST_SAMPLING=100 go run ./cmd/f3verify
+
+status: completed exit_code: 0
+runtime=go1.26.6 woven=false enabled=true sampling=100 redaction=true dedup=true
+mapped="SELECT 42" calls=13 native_calls=13 empty="" empty_tainted=false
+control=literal tainted=false sql_collection=0
+driver_query="SELECT 42"
+control=native_map tainted=false sql_collection=0
+driver_query="SELECT 42"
+control=exact_replace tainted=false sql_collection=0
+driver_query="SELECT 42"
+driver_query="SELECT 42"
+mapped_tainted=false sql_collection=0 control_reports=0 map_reports=0
+PASS: constant SQL has no deleted-source provenance

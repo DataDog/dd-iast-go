@@ -1,0 +1,112 @@
+{
+ "peak_tree_rss_kb": 1227648,
+ "peak_tree_at_s": 10.1,
+ "peak_tree_top": [
+  [
+   149920,
+   [
+    "(compile)",
+    ""
+   ]
+  ],
+  [
+   148000,
+   [
+    "compile",
+    "go.opentelemetry.io/collector/pdata/internal"
+   ]
+  ],
+  [
+   133920,
+   [
+    "compile",
+    "crypto/tls"
+   ]
+  ],
+  [
+   121936,
+   [
+    "(compile)",
+    ""
+   ]
+  ],
+  [
+   118768,
+   [
+    "(compile)",
+    ""
+   ]
+  ],
+  [
+   115088,
+   [
+    "compile",
+    "google.golang.org/protobuf/internal/impl"
+   ]
+  ]
+ ],
+ "top_process_peaks_kb": [
+  [
+   "compile github.com/nats-io/nats-server/v2/server",
+   901584
+  ],
+  [
+   "clang ",
+   716064
+  ],
+  [
+   "compile runtime",
+   319520
+  ],
+  [
+   "orchestrion-toolexec/compile runtime",
+   284736
+  ],
+  [
+   "compile net/http",
+   203632
+  ],
+  [
+   "(compile) ",
+   187088
+  ],
+  [
+   "link ",
+   148864
+  ],
+  [
+   "compile go.opentelemetry.io/collector/pdata/internal",
+   148000
+  ],
+  [
+   "compile crypto/tls",
+   133920
+  ],
+  [
+   "compile net",
+   126544
+  ],
+  [
+   "compile google.golang.org/protobuf/internal/impl",
+   115088
+  ],
+  [
+   "orchestrion-toolexec/compile github.com/mattn/go-sqlite3",
+   112096
+  ],
+  [
+   "compile encoding/json",
+   110016
+  ],
+  [
+   "compile google.golang.org/protobuf/reflect/protoreflect",
+   81504
+  ],
+  [
+   "orchestrion:tool orchestrion ",
+   63696
+  ]
+ ],
+ "samples": 60,
+ "duration_s": 69.2
+}

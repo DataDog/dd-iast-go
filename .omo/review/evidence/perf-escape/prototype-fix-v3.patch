@@ -1,0 +1,176 @@
+diff --git i/iast/propagation/operators.go w/iast/propagation/operators.go
+index 218c7f7..1eeea0e 100644
+--- i/iast/propagation/operators.go
++++ w/iast/propagation/operators.go
+@@ -19,6 +19,7 @@ func Concat2[T ~string](a, b T) T {
+ 	return concat2Result(a, b, a+b)
+ }
+ 
++//go:noinline
+ func concat2Result[T ~string](a, b T, result T) T {
+ 	if !operatorbridge.HasValues() {
+ 		return result
+@@ -31,6 +32,7 @@ func Concat3[T ~string](a, b, c T) T {
+ 	return concat3Result(a, b, c, a+b+c)
+ }
+ 
++//go:noinline
+ func concat3Result[T ~string](a, b, c T, result T) T {
+ 	if !operatorbridge.HasValues() {
+ 		return result
+@@ -43,6 +45,7 @@ func Concat4[T ~string](a, b, c, d T) T {
+ 	return concat4Result(a, b, c, d, a+b+c+d)
+ }
+ 
++//go:noinline
+ func concat4Result[T ~string](a, b, c, d T, result T) T {
+ 	if !operatorbridge.HasValues() {
+ 		return result
+@@ -55,6 +58,7 @@ func Concat5[T ~string](a, b, c, d, e T) T {
+ 	return concat5Result(a, b, c, d, e, a+b+c+d+e)
+ }
+ 
++//go:noinline
+ func concat5Result[T ~string](a, b, c, d, e T, result T) T {
+ 	if !operatorbridge.HasValues() {
+ 		return result
+@@ -67,6 +71,7 @@ func Concat6[T ~string](a, b, c, d, e, f T) T {
+ 	return concat6Result(a, b, c, d, e, f, a+b+c+d+e+f)
+ }
+ 
++//go:noinline
+ func concat6Result[T ~string](a, b, c, d, e, f T, result T) T {
+ 	if !operatorbridge.HasValues() {
+ 		return result
+@@ -79,6 +84,7 @@ func Concat7[T ~string](a, b, c, d, e, f, g T) T {
+ 	return concat7Result(a, b, c, d, e, f, g, a+b+c+d+e+f+g)
+ }
+ 
++//go:noinline
+ func concat7Result[T ~string](a, b, c, d, e, f, g T, result T) T {
+ 	if !operatorbridge.HasValues() {
+ 		return result
+@@ -91,6 +97,7 @@ func Concat8[T ~string](a, b, c, d, e, f, g, h T) T {
+ 	return concat8Result(a, b, c, d, e, f, g, h, a+b+c+d+e+f+g+h)
+ }
+ 
++//go:noinline
+ func concat8Result[T ~string](a, b, c, d, e, f, g, h T, result T) T {
+ 	if !operatorbridge.HasValues() {
+ 		return result
+@@ -103,6 +110,7 @@ func Concat9[T ~string](a, b, c, d, e, f, g, h, i T) T {
+ 	return concat9Result(a, b, c, d, e, f, g, h, i, a+b+c+d+e+f+g+h+i)
+ }
+ 
++//go:noinline
+ func concat9Result[T ~string](a, b, c, d, e, f, g, h, i T, result T) T {
+ 	if !operatorbridge.HasValues() {
+ 		return result
+@@ -115,6 +123,7 @@ func Concat10[T ~string](a, b, c, d, e, f, g, h, i, j T) T {
+ 	return concat10Result(a, b, c, d, e, f, g, h, i, j, a+b+c+d+e+f+g+h+i+j)
+ }
+ 
++//go:noinline
+ func concat10Result[T ~string](a, b, c, d, e, f, g, h, i, j T, result T) T {
+ 	if !operatorbridge.HasValues() {
+ 		return result
+@@ -127,6 +136,7 @@ func Concat11[T ~string](a, b, c, d, e, f, g, h, i, j, k T) T {
+ 	return concat11Result(a, b, c, d, e, f, g, h, i, j, k, a+b+c+d+e+f+g+h+i+j+k)
+ }
+ 
++//go:noinline
+ func concat11Result[T ~string](a, b, c, d, e, f, g, h, i, j, k T, result T) T {
+ 	if !operatorbridge.HasValues() {
+ 		return result
+@@ -139,6 +149,7 @@ func Concat12[T ~string](a, b, c, d, e, f, g, h, i, j, k, l T) T {
+ 	return concat12Result(a, b, c, d, e, f, g, h, i, j, k, l, a+b+c+d+e+f+g+h+i+j+k+l)
+ }
+ 
++//go:noinline
+ func concat12Result[T ~string](a, b, c, d, e, f, g, h, i, j, k, l T, result T) T {
+ 	if !operatorbridge.HasValues() {
+ 		return result
+@@ -151,6 +162,7 @@ func Concat13[T ~string](a, b, c, d, e, f, g, h, i, j, k, l, m T) T {
+ 	return concat13Result(a, b, c, d, e, f, g, h, i, j, k, l, m, a+b+c+d+e+f+g+h+i+j+k+l+m)
+ }
+ 
++//go:noinline
+ func concat13Result[T ~string](a, b, c, d, e, f, g, h, i, j, k, l, m T, result T) T {
+ 	if !operatorbridge.HasValues() {
+ 		return result
+@@ -163,6 +175,7 @@ func Concat14[T ~string](a, b, c, d, e, f, g, h, i, j, k, l, m, n T) T {
+ 	return concat14Result(a, b, c, d, e, f, g, h, i, j, k, l, m, n, a+b+c+d+e+f+g+h+i+j+k+l+m+n)
+ }
+ 
++//go:noinline
+ func concat14Result[T ~string](a, b, c, d, e, f, g, h, i, j, k, l, m, n T, result T) T {
+ 	if !operatorbridge.HasValues() {
+ 		return result
+@@ -175,6 +188,7 @@ func Concat15[T ~string](a, b, c, d, e, f, g, h, i, j, k, l, m, n, o T) T {
+ 	return concat15Result(a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, a+b+c+d+e+f+g+h+i+j+k+l+m+n+o)
+ }
+ 
++//go:noinline
+ func concat15Result[T ~string](a, b, c, d, e, f, g, h, i, j, k, l, m, n, o T, result T) T {
+ 	if !operatorbridge.HasValues() {
+ 		return result
+@@ -187,6 +201,7 @@ func Concat16[T ~string](a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p T) T {
+ 	return concat16Result(a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, a+b+c+d+e+f+g+h+i+j+k+l+m+n+o+p)
+ }
+ 
++//go:noinline
+ func concat16Result[T ~string](a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p T, result T) T {
+ 	if !operatorbridge.HasValues() {
+ 		return result
+@@ -196,11 +211,20 @@ func concat16Result[T ~string](a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p T,
+ 
+ // BytesToString converts bytes and preserves exact taint ranges on the managed string result.
+ func BytesToString[T ~[]byte](value T) string {
+-	result := string(value)
++	return BytesToStringValue([]byte(value))
++}
++
++// BytesToStringValue is non-generic so the gate inlines transitively into callers.
++func BytesToStringValue(value []byte) string {
+ 	if !operatorbridge.HasValues() {
+-		return result
++		return string(value)
+ 	}
+-	return internal.BytesToString([]byte(value), result)
++	return bytesToStringSlow(value)
++}
++
++//go:noinline
++func bytesToStringSlow(value []byte) string {
++	return internal.BytesToString(value, string(value))
+ }
+ 
+ // StringSliceAll performs a full string slice and derives its managed window.
+diff --git i/iast/propagation/orchestrion.yml w/iast/propagation/orchestrion.yml
+index e9ee953..86af8ce 100644
+--- i/iast/propagation/orchestrion.yml
++++ w/iast/propagation/orchestrion.yml
+@@ -338,7 +338,7 @@ aspects:
+       - wrap-expression:
+           imports:
+             iastprop: github.com/DataDog/dd-iast-go/iast/propagation
+-          template: '{{ .AST.Fun }}(iastprop.BytesToString({{ index .AST.Args 0 }}))'
++          template: '{{ .AST.Fun }}(iastprop.BytesToStringValue([]byte({{ index .AST.Args 0 }})))'
+ 
+   - id: operator string slice
+     join-point:
+diff --git i/internal/taint/propagation/string_exact.go w/internal/taint/propagation/string_exact.go
+index d0ea50b..44aefa7 100644
+--- i/internal/taint/propagation/string_exact.go
++++ w/internal/taint/propagation/string_exact.go
+@@ -53,7 +53,9 @@ func joinStringHit(s *store.Store, elements []string, separator, result string)
+ 	if len(elements) > maxInputs {
+ 		inputCount = maxInputs - 1 // Reserve one coarse-input slot for separator provenance.
+ 	}
+-	copy(inputs[:inputCount], elements[:inputCount])
++	for i := 0; i < inputCount; i++ {
++		inputs[i] = elements[i]
++	}
+ 	inputs[inputCount] = separator
+ 	var owners [store.MaxSnapshotOwners]store.Entry
+ 	ownerCount := collectStringOwners(s, inputs[:inputCount+1], &owners)

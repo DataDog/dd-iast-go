@@ -1,0 +1,68 @@
+COMMAND
+cd /tmp/ddiast-review/wt/store-memory-bounds && env GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 DD_IAST_REQUEST_SAMPLING=100 DD_IAST_MAX_CONCURRENT_REQUESTS=64 DD_IAST_MAX_RANGE_COUNT=64 timeout 900 go test -count=1 -timeout 12m -v -run 'TestBounds|TestReviewStoreSaturation|TestReviewManagerSourcesSaturation|TestRequestRootByteLimit|TestProcessRootByteLimit|TestRootCountLimit|TestRequestAndProcessValueLimits|TestProbeBoundDropsCollisionOverflow' ./internal/taint/store ./internal/taint/request
+
+CAPTURED OUTPUT
+status: completed exit_code: 0
+=== RUN   TestProbeBoundDropsCollisionOverflow
+--- PASS: TestProbeBoundDropsCollisionOverflow (0.00s)
+=== RUN   TestRequestRootByteLimit
+--- PASS: TestRequestRootByteLimit (0.00s)
+=== RUN   TestProcessRootByteLimit
+--- PASS: TestProcessRootByteLimit (0.00s)
+=== RUN   TestRootCountLimit
+--- PASS: TestRootCountLimit (0.00s)
+=== RUN   TestRequestAndProcessValueLimits
+--- PASS: TestRequestAndProcessValueLimits (0.01s)
+=== RUN   TestBoundsFixedLayout
+    zz_review_bounds_layout_test.go:20: Range=24 Set=1544 valueSlot=32 rootRecord=320 binding=32 bindingTable=9248 WriterView=32 writerRecord=1616 owner=187440 shard=4152 overflowBlock=1296 Store=13391448 Snapshot=6312 Owner=40
+    zz_review_bounds_layout_test.go:26: fixed components shards=1062912 owners=11996160 overflow=331776 overflowFree=512 other=88
+    zz_review_bounds_layout_test.go:33: fixed heap before=1302528 after=14639104 delta=13336576
+--- PASS: TestBoundsFixedLayout (0.01s)
+=== RUN   TestBoundsAllOwnerTables
+    zz_review_bounds_layout_test.go:81: full tables owners=64 roots=32768 bindings=16384 readers=512 writers=512 overflowFree=0 charged=4259840 values=64 heapBefore=14639104 heapAfter=14819328 delta=180224
+    zz_review_bounds_layout_test.go:91: finished heap=14655488 charged=0 values=0 overflowFree=256
+--- PASS: TestBoundsAllOwnerTables (0.03s)
+=== RUN   TestBoundsOverflowRanges
+    zz_review_bounds_layout_test.go:119: overflow roots=257 fullRangeRoots=256 excessRootRanges=10 free=0 rangeDrops=1
+--- PASS: TestBoundsOverflowRanges (0.00s)
+=== RUN   TestReviewStoreSaturation
+    zz_memory_bounds_review_test.go:59: store sizeof=13391448 owners=64 roots=2048 values=16384 charged=8388608 baseline=14630912 saturated=28770304 delta=14139392 overflowFree=256
+    zz_memory_bounds_review_test.go:68: store finished heapInuse=14630912 released=14139392 charged=0 values=0
+--- PASS: TestReviewStoreSaturation (0.02s)
+=== RUN   TestReviewManagerSourcesSaturation
+    zz_memory_bounds_review_test.go:98: manager sizeof=857104 analyses=64 sources=16384 charged=393216 values=16384 baseline=15499264 saturated=16285696 delta=786432
+    zz_memory_bounds_review_test.go:105: manager finished heapInuse=15499264 released=786432 charged=0 values=0
+--- PASS: TestReviewManagerSourcesSaturation (0.02s)
+=== RUN   TestBoundsRetainedAnchors
+=== RUN   TestBoundsRetainedAnchors/reader/1
+    zz_review_anchor_test.go:69: kind=reader payload=33554432 baseline=15458304 control=15458304 retained=49012736 delta=33554432 incrementalCharge=0
+    zz_review_anchor_test.go:79: kind=reader finish=15458304 released=33554432 charged=0
+=== RUN   TestBoundsRetainedAnchors/reader/3
+    zz_review_anchor_test.go:69: kind=reader payload=100663296 baseline=15458304 control=15458304 retained=116121600 delta=100663296 incrementalCharge=0
+    zz_review_anchor_test.go:79: kind=reader finish=15458304 released=100663296 charged=0
+=== RUN   TestBoundsRetainedAnchors/buffer/1
+    zz_review_anchor_test.go:69: kind=buffer payload=33554432 baseline=15458304 control=15458304 retained=49012736 delta=33554432 incrementalCharge=64
+    zz_review_anchor_test.go:79: kind=buffer finish=15458304 released=33554432 charged=0
+=== RUN   TestBoundsRetainedAnchors/buffer/3
+    zz_review_anchor_test.go:69: kind=buffer payload=100663296 baseline=15458304 control=15458304 retained=116121600 delta=100663296 incrementalCharge=64
+    zz_review_anchor_test.go:79: kind=buffer finish=15458304 released=100663296 charged=0
+--- PASS: TestBoundsRetainedAnchors (0.09s)
+    --- PASS: TestBoundsRetainedAnchors/reader/1 (0.02s)
+    --- PASS: TestBoundsRetainedAnchors/reader/3 (0.03s)
+    --- PASS: TestBoundsRetainedAnchors/buffer/1 (0.01s)
+    --- PASS: TestBoundsRetainedAnchors/buffer/3 (0.03s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/store	0.683s
+=== RUN   TestBoundsManagerLayout
+    zz_review_bounds_layout_test.go:13: Source=48 Table=13336 analysisSlot=13384 Manager=857104 Analysis=32 Scope=64 fixedAndRoots=22637160
+    zz_review_bounds_layout_test.go:28: requested=0 admitted=0
+    zz_review_bounds_layout_test.go:28: requested=1 admitted=1
+    zz_review_bounds_layout_test.go:28: requested=2 admitted=2
+    zz_review_bounds_layout_test.go:28: requested=64 admitted=64
+    zz_review_bounds_layout_test.go:28: requested=65 admitted=64
+--- PASS: TestBoundsManagerLayout (0.01s)
+=== RUN   TestBoundsMutableSourceCharge
+    zz_review_bounds_layout_test.go:44: sourceBytes cap=65536 name=65536 immutableCopy=65536 charge=196608
+--- PASS: TestBoundsMutableSourceCharge (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/request	0.876s

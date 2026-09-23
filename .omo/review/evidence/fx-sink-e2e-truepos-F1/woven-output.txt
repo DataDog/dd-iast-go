@@ -1,0 +1,19 @@
+Command: cd <copy>/fxrepro && GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 /usr/bin/time -l go tool orchestrion go build -o ../fxdemo . && cd .. && env -u DD_IAST_REDACTION_{ENABLED,NAME_PATTERN,VALUE_PATTERN,KEYS_REGEXP,VALUES_REGEXP} DD_IAST_ENABLED=true DD_IAST_REQUEST_SAMPLING=100 DD_IAST_DEDUPLICATION_ENABLED=false ./fxdemo
+(woven build 265s wall under shared load, max RSS 0.46 GB; see woven-build.log; tracer agent-connection warnings in woven-output-full.txt)
+
+span name=http.request resource=GET /login _dd.iast.enabled=<nil>
+span name=http.request resource=GET /login _dd.iast.enabled=1
+  _dd.iast.json={"sources":[{"origin":"http.request.parameter","name":"user","pattern":"abcde","redacted":true}],"vulnerabilities":[{"type":"SQL_INJECTION","hash":-1254217817,"evidence":{"valueParts":[{"value":"SELECT id FROM users WHERE name = '"},{"pattern":"abcde","redacted":true,"source":0},{"value":"' AND pw_hash = '"},{"pattern":"***********************","redacted":true},{"value":"' AND tenant = "},{"pattern":"**","redacted":true}]},"location":{"spanId":5773333047199073795,"path":"/tmp/ddiast-review/wt/fx-sink-e2e-truepos-F1/fxrepro/main.go","line":29,"method":"main.main.func1","stackId":"877792c0-638a-4e39-b265-4a0d3fa65f09"}}]}
+span name=http.request resource=GET /login _dd.iast.enabled=<nil>
+span name=http.request resource=GET /login _dd.iast.enabled=1
+  _dd.iast.json={"sources":[{"origin":"http.request.parameter","name":"user","pattern":"abcdefghi","redacted":true}],"vulnerabilities":[{"type":"SQL_INJECTION","hash":-1254217817,"evidence":{"valueParts":[{"value":"SELECT id FROM users WHERE name = '"},{"pattern":"abcdefghi","redacted":true,"source":0},{"value":"' AND pw_hash = 'app-secret-literal-7f3a' AND tenant = 42"}]},"location":{"spanId":8183860650738879445,"path":"/tmp/ddiast-review/wt/fx-sink-e2e-truepos-F1/fxrepro/main.go","line":29,"method":"main.main.func1","stackId":"21cf2242-59a2-4e03-b133-b65f829af66c"}}]}
+span name=http.request resource=GET /note _dd.iast.enabled=<nil>
+span name=http.request resource=GET /note _dd.iast.enabled=1
+  _dd.iast.json={"sources":[{"origin":"http.request.parameter","name":"note","value":"hunter2-customer-note"}],"vulnerabilities":[{"type":"SQL_INJECTION","hash":1813651844,"evidence":{"valueParts":[{"value":"SELECT id FROM users ORDER BY name -- "},{"value":"hunter2-customer-note","source":0}]},"location":{"spanId":4693721818088302593,"path":"/tmp/ddiast-review/wt/fx-sink-e2e-truepos-F1/fxrepro/main.go","line":38,"method":"main.main.func2","stackId":"d4251dcd-32f9-4464-981e-35db5e982c8a"}}]}
+span name=http.request resource=GET /sort _dd.iast.enabled=<nil>
+span name=http.request resource=GET /sort _dd.iast.enabled=1
+  _dd.iast.json={"sources":[{"origin":"http.request.parameter","name":"col","value":"name"}],"vulnerabilities":[{"type":"SQL_INJECTION","hash":1880038844,"evidence":{"valueParts":[{"value":"SELECT id FROM users /* api_key=sk_live_CLEANCOMMENT */ ORDER BY "},{"value":"name","source":0}]},"location":{"spanId":6849334280523371037,"path":"/tmp/ddiast-review/wt/fx-sink-e2e-truepos-F1/fxrepro/main.go","line":46,"method":"main.main.func3","stackId":"113bf69c-e757-4734-8571-e62b7d9e3832"}}]}
+driver received: SELECT id FROM users WHERE name = 'alice' AND pw_hash = 'app-secret-literal-7f3a' AND tenant = 42
+driver received: SELECT id FROM users WHERE name = 'admin' --' AND pw_hash = 'app-secret-literal-7f3a' AND tenant = 42
+driver received: SELECT id FROM users ORDER BY name -- hunter2-customer-note
+driver received: SELECT id FROM users /* api_key=sk_live_CLEANCOMMENT */ ORDER BY name

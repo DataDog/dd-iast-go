@@ -1,0 +1,28 @@
+$ cd iast/integration/testapp && GOFLAGS=-p=4 /usr/bin/time -l go tool orchestrion go test -count=1 -timeout 10m -run 'TestReviewF3WovenSpanPool' -v .
+# encoding/json
+$WORK/b104/orchestrion/src/encoding/json/<generated>:2: dec.r undefined (type *Decoder has no field or method r)
+$WORK/b104/orchestrion/src/encoding/json/<generated>:2: dec.d undefined (type *Decoder has no field or method d)
+$WORK/b104/orchestrion/src/encoding/json/<generated>:3: dec.d undefined (type *Decoder has no field or method d)
+exit status 2
+FAIL	github.com/DataDog/dd-iast-go/testapps/integration [build failed]
+FAIL
+exit status 1
+       16.51 real        49.24 user        38.94 sys
+           284819456  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+             6587099  page reclaims
+              244686  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                6962  messages sent
+                7377  messages received
+               91505  signals received
+               66610  voluntary context switches
+             1090658  involuntary context switches
+          5993490353  instructions retired
+          4348743663  cycles elapsed
+            41337408  peak memory footprint
+go version go1.27.0 darwin/arm64

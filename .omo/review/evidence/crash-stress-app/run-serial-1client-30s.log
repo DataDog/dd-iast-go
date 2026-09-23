@@ -1,0 +1,25 @@
+# cmd: /tmp/ddiast-review/wt/crash-stress-app/stress-norace -duration 30s -clients 1 -dumpdir /tmp/ddiast-review/wt/crash-stress-app/dumps-serial -agent 127.0.0.1:18129
+# env: DD_IAST_REQUEST_SAMPLING=100 DD_IAST_MAX_CONCURRENT_REQUESTS=64 DD_IAST_DEDUPLICATION_ENABLED=false DD_IAST_VULNERABILITIES_PER_REQUEST=8 GOTRACEBACK=all
+13:18:00.323957 woven=true go=go1.26.6 clients=1 duration=30s GOMAXPROCS=16 env: sampling=100 maxconc=64 dedup=false vulns=8
+13:18:16.324705 t= 16s done=4962 rps=310 analyzed=4930 sinkT=4787 sinkU=5997 sql=10795 exec=256 err=0 canc=114 oldest=2ms gor=35 heap=25MiB storeValues=654 storeCharged=16168 falseTaint=0 bleed=0/896 poolBleed=0 agentSQL=4597 agentCMD=136
+13:18:30.309329 load phase finished: 8826 requests in 30s
+13:18:32.308155 t= 32s done=8826 rps=276 analyzed=8763 sinkT=8383 sinkU=10659 sql=19134 exec=445 err=0 canc=198 oldest=0s gor=22 heap=27MiB storeValues=0 storeCharged=0 falseTaint=0 bleed=0/2499 poolBleed=0 agentSQL=8173 agentCMD=238
+13:18:32.312762 quiescent store: values=0 charged=0 acquireDrops=0
+13:18:32.327426 serial verification (T=tainted, A=active untainted, N=not analyzed): TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
+13:18:36.328203 SUMMARY requests=8826 analyzed=8763 sinkTainted=8383 sinkUntaintedActive=10659 sqlCalls=19134 execCalls=445 clientErrors=0 cancelled=198 intendedPanics=691 lateDone=689 stalls=0 falseTaint=0 bleed=0 (checks=2499) poolBleed=0 heapAfterGC=21MiB goroutines=24 agentPayloads=16 agentBytes=22369094 agentSQL=8173 agentCMD=238
+13:18:36.328388 flow q       n=696     avg=1.57ms     max=69.136ms   (vlen at max=62045) activeSinks tainted=1376 untainted=6
+13:18:36.328410 flow h       n=710     avg=1.623ms    max=168.913ms  (vlen at max=9) activeSinks tainted=706 untainted=0
+13:18:36.328421 flow form    n=678     avg=1.295ms    max=28.297ms   (vlen at max=64) activeSinks tainted=1344 untainted=4
+13:18:36.328437 flow json    n=646     avg=4.018ms    max=72.902ms   (vlen at max=54784) activeSinks tainted=592 untainted=10
+13:18:36.328450 flow body    n=661     avg=870µs      max=16.665ms   (vlen at max=18) activeSinks tainted=0 untainted=658
+13:18:36.328464 flow cookie  n=643     avg=1.088ms    max=95.008ms   (vlen at max=60) activeSinks tainted=642 untainted=0
+13:18:36.328473 flow p       n=716     avg=2.505ms    max=75.868ms   (vlen at max=10) activeSinks tainted=802 untainted=1
+13:18:36.328488 flow buf     n=657     avg=869µs      max=42.722ms   (vlen at max=21) activeSinks tainted=0 untainted=655
+13:18:36.328502 flow fan     n=705     avg=1.832ms    max=42.633ms   (vlen at max=43) activeSinks tainted=293 untainted=5347
+13:18:36.328516 flow late    n=690     avg=1.043ms    max=36.183ms   (vlen at max=45) activeSinks tainted=687 untainted=2
+13:18:36.328532 flow abort   n=693     avg=1.381ms    max=39.741ms   (vlen at max=38) activeSinks tainted=691 untainted=0
+13:18:36.328613 flow big     n=683     avg=9.605ms    max=81.673ms   (vlen at max=10) activeSinks tainted=0 untainted=802
+13:18:36.328643 flow derive  n=648     avg=9.733ms    max=178.556ms  (vlen at max=35557) activeSinks tainted=1250 untainted=3174
+13:18:36.328653 RESULT: PASS
+2026/09/23 13:18:36 Datadog Tracer v2.11.0-rc.1 ERROR: loading features: Get "http://127.0.0.1:18129/info": dial tcp 127.0.0.1:18129: connect: connection refused (occurred: 23 Sep 26 13:17 CEST)
+# exit=0 wall=38s

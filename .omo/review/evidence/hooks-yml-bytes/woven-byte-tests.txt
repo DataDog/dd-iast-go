@@ -1,0 +1,19 @@
+Working directory: /tmp/ddiast-review/wt/hooks-yml-bytes
+Command: GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -timeout 15m -run 'Test(ByteWindowOperations|ByteWindowOperationsPreservePartialRangesAndMarks|AllocatingByteOperations|AllocatingByteOperationsUseBoundedCoarseProvenance|ByteCaseAndValidUTF8BranchesPreserveProvenance|ReviewByteWindowAliasesAndNamedType)$' -count=1 -v ./iast/propagation
+
+Selected captured output lines:
+--- PASS: TestAllocatingByteOperations (0.00s)
+--- PASS: TestAllocatingByteOperationsUseBoundedCoarseProvenance (0.00s)
+--- PASS: TestByteWindowOperationsPreservePartialRangesAndMarks (0.00s)
+--- PASS: TestByteCaseAndValidUTF8BranchesPreserveProvenance (0.00s)
+--- PASS: TestByteWindowOperations (0.00s)
+=== RUN   TestReviewByteWindowAliasesAndNamedType
+--- PASS: TestReviewByteWindowAliasesAndNamedType (0.00s)
+    --- PASS: TestReviewByteWindowAliasesAndNamedType/TrimSpace (0.00s)
+    --- PASS: TestReviewByteWindowAliasesAndNamedType/Fields (0.00s)
+    --- PASS: TestReviewByteWindowAliasesAndNamedType/Split (0.00s)
+    --- PASS: TestReviewByteWindowAliasesAndNamedType/Cut (0.00s)
+    --- PASS: TestReviewByteWindowAliasesAndNamedType/NamedBytesTrimSpace (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/iast/propagation	1.798s
+Exit code: 0

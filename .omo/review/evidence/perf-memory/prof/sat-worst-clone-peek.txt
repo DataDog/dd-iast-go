@@ -1,0 +1,16 @@
+File: memprobe-woven
+Type: alloc_space
+Time: 2026-09-23 15:19:13 CEST
+Showing nodes accounting for 379329160B, 100% of 379329160B total
+----------------------------------------------------------+-------------
+      flat  flat%   sum%        cum   cum%   calls calls% + context 	 	 
+----------------------------------------------------------+-------------
+                                        132710400B 93.07% |   github.com/DataDog/dd-iast-go/internal/taint/propagation.repeatStringHit (inline)
+                                          2861568B  2.01% |   github.com/DataDog/dd-iast-go/internal/taint/evidence.(*collector).finish (inline)
+                                          2861568B  2.01% |   github.com/DataDog/dd-iast-go/internal/taint/propagation.joinStringHit (inline)
+                                          2696448B  1.89% |   github.com/DataDog/dd-iast-go/internal/taint/evidence.(*collector).sourceIndex (inline)
+                                          1016576B  0.71% |   github.com/DataDog/dd-iast-go/internal/taint/store.(*Owner).TaintSourceString (inline)
+                                           442368B  0.31% |   github.com/DataDog/dd-iast-go/internal/taint/propagation.publishWriterString (inline)
+         0     0%     0% 142588928B 37.59%                | strings.Clone
+                                        142588928B   100% |   internal/stringslite.Clone (inline)
+----------------------------------------------------------+-------------

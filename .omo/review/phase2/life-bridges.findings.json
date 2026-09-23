@@ -1,0 +1,57 @@
+[
+  {
+    "id": "life-bridges-F1",
+    "severity": "Medium",
+    "category": "crash",
+    "location": "internal/taint/httpbridge/bridge.go:73-156; internal/taint/iobridge/bridge.go:29-43; internal/taint/urlbridge/bridge.go:24-31; internal/taint/writerbridge/bridge.go:77-91; internal/taint/scopebridge/bridge.go:24-30",
+    "title": "Source, reader, URL, writer and scope bridges do not shield callback panics",
+    "claim": "sqlbridge, commandbridge and jsonbridge recover callback panics. The http, io, url, writer and scope bridges call their callbacks directly. Those callbacks are request.EagerHTTP/Manage*, PropagateReader, ReadAllBytes, ManageURLQuery, propagation.invalidateBuffer and spans.finishOwnerSpan, and none of them contains a recover. The bridges run inside net/http serverHandler.ServeHTTP, inside deferred closures in io.ReadAll/LimitReader/TeeReader/MultiReader, http.MaxBytesReader and url.URL.Query, and inside bytes.Buffer methods. Any panic in the large request/store/propagation code therefore reaches the host, where it can turn a successful io.ReadAll or URL.Query into a panic, or replace a host panic value such as http.ErrAbortHandler. I did not find a concrete panicking input in the real callbacks.",
+    "evidence_path": ".omo/review/evidence/life-bridges/review_tests.out.txt",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 go test -race -count=1 -run TestReview -v ./internal/taint/{sqlbridge,jsonbridge,urlbridge,iobridge,scopebridge,writerbridge,httpbridge} (copy the *_zz_review_test.go files from the evidence dir into their packages as zz_review_test.go first)",
+    "needs_repro": true
+  },
+  {
+    "id": "life-bridges-F2",
+    "severity": "Low",
+    "category": "quality",
+    "location": "internal/taint/jsonbridge/bridge.go:52-55",
+    "title": "jsonbridge.Register accepts nil callbacks",
+    "claim": "Every other Register ignores nil functions. jsonbridge.Register instead stores a holder with nil document/literal funcs, so every Document/Literal call on an active request panics on the nil call and relies on shield() to recover it. The panic is contained, but each call pays the panic and recover cost, and a later partial registration is silently accepted.",
+    "evidence_path": ".omo/review/evidence/life-bridges/jsonbridge_zz_review_test.go",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 go test -race -count=1 -run TestReview -v ./internal/taint/{sqlbridge,jsonbridge,urlbridge,iobridge,scopebridge,writerbridge,httpbridge} (copy the *_zz_review_test.go files from the evidence dir into their packages as zz_review_test.go first)",
+    "needs_repro": false
+  },
+  {
+    "id": "life-bridges-F3",
+    "severity": "Low",
+    "category": "quality",
+    "location": "internal/taint/sqlbridge/bridge.go:60; internal/taint/commandbridge/bridge.go:51; internal/taint/jsonbridge/bridge.go:241",
+    "title": "Recovered callback panics are silently discarded",
+    "claim": "The shields use `_ = recover()` with no telemetry or log. A bug in evidence collection, redaction or reporting then becomes a silent false negative. If the panic happens while a blocking lock is held further down the stack (for example Annotation.RWMutex in spans), the lock is never released and later reports can block. This is static reasoning only.",
+    "evidence_path": null,
+    "repro_command": null,
+    "needs_repro": false
+  },
+  {
+    "id": "life-bridges-F4",
+    "severity": "Info",
+    "category": "config",
+    "location": "iast/database/sql/orchestrion.yml:16-31; iast/os/exec/orchestrion.yml:15-30; iast/encoding/json/orchestrion.yml:12-25",
+    "title": "Sink and JSON callbacks exist only in woven executables with a root main",
+    "claim": "sqlbridge, commandbridge and jsonbridge callbacks are registered only through the `_ = pkg.Report/Activate` bootstrap in root `main` (test-main: false), or when another linked package imports the provider. In woven `go test` binaries and library/plugin builds the bridges stay registered-nil and silently no-op. The bridge is safe in that state, because Report returns early. The yml comments state this intent, but the README does not, so users may see no findings in tests.",
+    "evidence_path": null,
+    "repro_command": null,
+    "needs_repro": false
+  },
+  {
+    "id": "life-bridges-F5",
+    "severity": "Low",
+    "category": "test-gap",
+    "location": "internal/taint/writerbridge/bridge_test.go:15-117; internal/taint/httpbridge/bridge_test.go:16-56",
+    "title": "Bridge tests leave fake callbacks registered and never cover concurrent registration",
+    "claim": "The writerbridge and httpbridge tests Register fakes without restoring the previous holder. The sql, command and json tests do restore theirs. No existing test runs Register concurrently with invocation, or checks that a host panic survives a deferred bridge call. My reproducers show both behaviors are correct today, but no test prevents a regression.",
+    "evidence_path": ".omo/review/evidence/life-bridges/sqlbridge_zz_review_test.go",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 go test -race -count=1 -run TestReview -v ./internal/taint/{sqlbridge,jsonbridge,urlbridge,iobridge,scopebridge,writerbridge,httpbridge} (copy the *_zz_review_test.go files from the evidence dir into their packages as zz_review_test.go first)",
+    "needs_repro": false
+  }
+]

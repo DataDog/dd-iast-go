@@ -1,0 +1,3 @@
+ok  	github.com/DataDog/dd-iast-go/iast/propagation	0.456s
+ok  	github.com/DataDog/dd-iast-go/internal/taint/store	1.621s
+ok  	github.com/DataDog/dd-iast-go/internal/taint/propagation	0.878s

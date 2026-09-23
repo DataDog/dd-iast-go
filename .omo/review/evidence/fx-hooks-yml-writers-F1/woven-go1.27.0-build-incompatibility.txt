@@ -1,0 +1,14 @@
+Command:
+cd /tmp/ddiast-review/wt/fx-hooks-yml-writers-F1 &&
+/usr/bin/time -l env GOFLAGS=-p=4 GOTOOLCHAIN=go1.27.0 go tool orchestrion go test \
+  -count=1 -timeout=12m ./iast/propagation \
+  -run TestReviewIndependentWovenBufferAnchorRetainsLargeBacking -v
+
+Captured output before the test ran:
+# encoding/json
+$WORK/b104/orchestrion/src/encoding/json/<generated>:2: dec.r undefined (type *Decoder has no field or method r)
+$WORK/b104/orchestrion/src/encoding/json/<generated>:2: dec.d undefined (type *Decoder has no field or method d)
+$WORK/b104/orchestrion/src/encoding/json/<generated>:3: dec.d undefined (type *Decoder has no field or method d)
+FAIL	github.com/DataDog/dd-iast-go/iast/propagation [build failed]
+exit status 1
+           307150848  maximum resident set size

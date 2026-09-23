@@ -1,0 +1,5 @@
+=== RUN   TestReproAnnotationSize
+    zz_size_test.go:12: sizeof(Annotation)=3200 bytes sizeof(model.Event)=48 bytes
+--- PASS: TestReproAnnotationSize (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/spans	0.795s

@@ -1,0 +1,6 @@
+Command: cd go-sqlite3 && GOTOOLCHAIN=go1.26.6 GOCACHE=/tmp/ddiast-review/wt/hooks-compile-matrix/gocache-cur /usr/bin/time -l timeout 1320 go tool orchestrion go build ./...
+go version: go version go1.26.6 darwin/arm64
+start: Wed Sep 23 14:05:23 CEST 2026
+14:05  up 11 days, 20:43, 4 users, load averages: 46.07 46.39 84.59
+Exit status: 0
+end: Wed Sep 23 14:06:33 CEST 2026

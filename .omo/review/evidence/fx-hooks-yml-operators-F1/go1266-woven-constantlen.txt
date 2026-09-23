@@ -1,0 +1,13 @@
+Command, from the private copy, with TMPDIR, GOTMPDIR, and GOCACHE under that
+copy:
+GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=2 DD_IAST_ENABLED=false REVIEW_WOVEN=1 go tool orchestrion go test -work -timeout 3m -count=1 -v ./reviewfxoperators/constantlen
+
+Captured output:
+go version go1.26.6 darwin/arm64
+# github.com/DataDog/dd-iast-go/reviewfxoperators/constantlen
+reviewfxoperators/constantlen/constant.go:7: len([1]string{…}) (value of type int) is not constant
+exit status 2
+FAIL	github.com/DataDog/dd-iast-go/reviewfxoperators/constantlen [build failed]
+WOVEN_CONST_TYPED_EXIT=1
+30.87 real 2.87 user 5.80 sys
+75333632 maximum resident set size

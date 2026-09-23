@@ -1,0 +1,18 @@
+GOTOOLCHAIN=local go list -f '{{join .GoFiles ","}}|{{join .IgnoredGoFiles ","}}' encoding/json
+selected Go files include:
+v2_decode.go,v2_encode.go,v2_indent.go,v2_inject.go,v2_options.go,v2_scanner.go,v2_stream.go
+
+GOTOOLCHAIN=go1.26.6 go list -f '{{join .GoFiles ","}}|{{join .IgnoredGoFiles ","}}' encoding/json
+selected Go files include:
+decode.go,encode.go,fold.go,indent.go,scanner.go,stream.go,tables.go,tags.go
+
+Go 1.27.0 src/encoding/json/v2_stream.go:
+//go:build goexperiment.jsonv2
+
+type Decoder struct {
+	dec  *jsontext.Decoder
+	opts jsonv2.Options
+	err  error
+}
+
+The v2 Decoder has no r or d fields, and v2_stream.go does not use decodeState.

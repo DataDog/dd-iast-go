@@ -1,0 +1,13 @@
+[
+  {
+    "id": "hooks-yml-operators-F4",
+    "verdict": "CONFIRMED",
+    "original_severity": "High",
+    "adjusted_severity": "High",
+    "reachable_default": true,
+    "documented_limitation": false,
+    "reason": "Independent Go 1.26.6 woven reproduction measures one allocation per operation for concat-in-len, concat-in-comparison, and a local byte-to-string conversion used by len, while uninstrumented controls measure zero. The allocation occurs before the inactive HasValues gate, is reachable with DD_IAST_ENABLED unset, and conflicts with the Phase 6 disabled-path allocation-parity requirement.",
+    "evidence_path": ".omo/review/evidence/fx-hooks-yml-operators-F4/woven-go1266.txt",
+    "repro_command": "cd /tmp/ddiast-review/wt/fx-hooks-yml-operators-F4 && GOFLAGS=-p=4 REVIEW_WOVEN=1 GOTOOLCHAIN=go1.26.6 DD_IAST_ENABLED=false /usr/bin/time -l go tool orchestrion go test -timeout 3m -count=1 -v ./reviewf4"
+  }
+]

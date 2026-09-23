@@ -1,0 +1,18 @@
+diff --git 1/Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/iast/propagation/writer.go 2/iast/propagation/writer.go
+index d1405fc..59d0310 100644
+--- 1/Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/iast/propagation/writer.go
++++ 2/iast/propagation/writer.go
+@@ -201,7 +201,12 @@ func BufferString(buffer *bytes.Buffer) string {
+ 
+ func builderView(builder *strings.Builder) store.WriterView {
+ 	value := builder.String()
+-	return writerView(stringPointer(value), builder.Len(), builder.Cap())
++	view := writerView(stringPointer(value), builder.Len(), builder.Cap())
++	if len(value) > 0 {
++		view.Anchor = unsafe.StringData(value)
++		view.Backing = uintptr(unsafe.Pointer(view.Anchor))
++	}
++	return view
+ }
+ 
+ func bufferView(buffer *bytes.Buffer) store.WriterView {

@@ -1,0 +1,13 @@
+[
+ {
+  "id": "store-writer-F1",
+  "verdict": "CONFIRMED",
+  "original_severity": "High",
+  "adjusted_severity": "High",
+  "reachable_default": true,
+  "documented_limitation": false,
+  "reason": "Mechanism verified at HEAD 2e23b46: writerPresent (internal/taint/store/writer.go:412-433) returns a conservative match whenever writerVersion is odd, so LookupWriterValue (:87-96) and InvalidateBuffer (:373-386) mark an unrelated owner writerDirty on TryLock failure and clearDirtyWritersLocked wipes all its writer entries. Independently reproduced at three surfaces: store-level deterministic (writerDirty=true, snapshot=false, writerCount=0; 7500/20000 concurrent losses), public wrappers (225/300, 175/300; control 0/300), and woven orchestrion build with plain stdlib customer code (220/300 lost; control 0/300). Finder's own reproducer rerun: 400/400 lost. Direct strings.Builder/bytes.Buffer writes are a README-supported path and nothing documents cross-request writer wipes, so this breaks the no-lost-taint product rule under default concurrency (MaxConcurrentRequests=2).",
+  "evidence_path": ".omo/review/evidence/fx-store-writer-F1/",
+  "repro_command": "cd /tmp/ddiast-review/wt/fx-store-writer-F1 && GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go tool orchestrion go test -count=1 -timeout 15m -run TestFxF1WovenBuilderTaintWipedByUnrelatedBuffer -v ./iast/propagation/  (plain-go variants: go test -run 'TestFxF1' -v ./internal/taint/store/ and ./iast/propagation/)"
+ }
+]

@@ -1,0 +1,45 @@
+$ go test -race -skip TestReview -count=50 ./internal/taint/store/ ; go tool checklocks ./internal/taint/store/ ; go vet ./internal/taint/store/ ; grep -c '+checklocks:' internal/taint/store/*.go (non-zero only)
+
+ok  	github.com/DataDog/dd-iast-go/internal/taint/store	830.688s
+EXIT=$?
+CHECKLOCKS_EXIT=$?
+VET_EXIT=$?
+ANNOT_DONE
+
+# Re-run with captured exit codes (the $? above was not expanded):
+go tool checklocks ./internal/taint/store/ -> exit 0
+
+go vet ./internal/taint/store/ -> exit 0
+
+grep -c '+checklocks:' internal/taint/store/*.go:
+internal/taint/store/limits.go:0
+internal/taint/store/mutation_behavior_test.go:0
+internal/taint/store/admission_behavior_test.go:0
+internal/taint/store/store_test.go:0
+internal/taint/store/race_test.go:0
+internal/taint/store/writer_test.go:0
+internal/taint/store/store.go:0
+internal/taint/store/owner.go:0
+internal/taint/store/overflow.go:0
+internal/taint/store/identity_test.go:0
+internal/taint/store/source_test.go:0
+internal/taint/store/handle_test.go:0
+internal/taint/store/lookup_contention_test.go:0
+internal/taint/store/compaction_test.go:0
+internal/taint/store/generation_test.go:0
+internal/taint/store/lookup.go:0
+internal/taint/store/mutation_test.go:0
+internal/taint/store/binding_behavior_test.go:0
+internal/taint/store/mutation.go:0
+internal/taint/store/writer.go:0
+internal/taint/store/zz_review_concurrency_test.go:0
+internal/taint/store/memory_test.go:0
+internal/taint/store/writer_behavior_test.go:0
+internal/taint/store/saturation_test.go:0
+internal/taint/store/lifecycle_test.go:0
+internal/taint/store/binding.go:0
+internal/taint/store/binding_lifecycle_test.go:0
+internal/taint/store/churn_test.go:0
+internal/taint/store/defensive_test.go:0
+internal/taint/store/root.go:0
+internal/taint/store/value.go:0

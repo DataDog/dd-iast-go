@@ -1,0 +1,63 @@
+{
+ "peak_tree_rss_kb": 328704,
+ "peak_tree_at_s": 1.2,
+ "peak_tree_top": [
+  [
+   295200,
+   [
+    "compile",
+    "runtime"
+   ]
+  ],
+  [
+   30688,
+   [
+    "go",
+    ""
+   ]
+  ],
+  [
+   1584,
+   [
+    "timeout",
+    ""
+   ]
+  ],
+  [
+   1232,
+   [
+    "time",
+    ""
+   ]
+  ]
+ ],
+ "top_process_peaks_kb": [
+  [
+   "compile runtime",
+   295200
+  ],
+  [
+   "(compile) ",
+   118464
+  ],
+  [
+   "go ",
+   30704
+  ],
+  [
+   "timeout ",
+   1584
+  ],
+  [
+   "time ",
+   1232
+  ],
+  [
+   "compile sync/atomic",
+   32
+  ]
+ ],
+ "samples": 3,
+ "killed_at_limit": false,
+ "duration_s": 3.3
+}

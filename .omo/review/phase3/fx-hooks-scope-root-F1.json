@@ -1,0 +1,13 @@
+[
+ {
+  "id": "hooks-scope-root-F1",
+  "verdict": "CONFIRMED",
+  "original_severity": "Critical",
+  "adjusted_severity": "Critical",
+  "reachable_default": true,
+  "documented_limitation": false,
+  "reason": "Reproduced on Go 1.26.6: a valid root-module plugin fails under go tool orchestrion (full set: nats max payload / GOPATH-mode resolution errors), while plain go build succeeds. The bootstrap selectors do match plugin main (sql-only: plugin with main fails, without main builds), contradicting README.md:88-90. The root cause is misattributed: Orchestrion OnLink resolves link deps from os.Getwd(), which cmd/go sets to $WORK/b001/exe for plugin/c-shared. So the full set fails even for plugins without func main, c-shared also fails, and dd-trace-go's own main aspect fails the same way. Excluding plugins from the bootstraps is insufficient.",
+  "evidence_path": ".omo/review/evidence/fx-hooks-scope-root-F1/summary.md",
+  "repro_command": "cd $WT/fx/sqlonly && GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go tool orchestrion go build -buildmode=plugin -o ../out/s1.so ./cmd/pluginmain  # full script: .omo/review/evidence/fx-hooks-scope-root-F1/repro.sh"
+ }
+]

@@ -1,0 +1,13 @@
+[
+  {
+    "id": "store-stress-F2",
+    "verdict": "CONFIRMED",
+    "original_severity": "High",
+    "adjusted_severity": "High",
+    "reachable_default": true,
+    "documented_limitation": false,
+    "reason": "A supported store workload can fill a shard, and after its owners finish putWindow turns stale entries into tombstones but cannot insert or compact without a zero slot. The resulting false-negative state persists for that shard until process restart. Default-configuration organic stress reached 116/128 slots without completing saturation, so the trigger is collision-heavy but needs no non-default setting.",
+    "evidence_path": ".omo/review/evidence/fx-store-stress-F2/independent-go1.26.6.out.txt",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go test -timeout 10m -run '^TestIndependentShardWedge$' -count=1 -v ./internal/taint/store (test file: .omo/review/evidence/fx-store-stress-F2/wedge_independent_test.go)"
+  }
+]

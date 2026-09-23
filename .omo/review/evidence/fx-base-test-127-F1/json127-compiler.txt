@@ -1,0 +1,10 @@
+Command: cd /tmp/ddiast-review/wt/fx-base-test-127-F1 && GOTOOLCHAIN=local GOFLAGS=-p=1 /usr/bin/time -l timeout 120 go tool orchestrion go build encoding/json
+Exit status: 1.
+# encoding/json
+$WORK/b001/orchestrion/src/encoding/json/<generated>:2: dec.r undefined (type *Decoder has no field or method r)
+$WORK/b001/orchestrion/src/encoding/json/<generated>:2: dec.d undefined (type *Decoder has no field or method d)
+$WORK/b001/orchestrion/src/encoding/json/<generated>:3: dec.d undefined (type *Decoder has no field or method d)
+exit status 2
+exit status 1
+        6.21 real         2.55 user         6.76 sys
+            61784064  maximum resident set size

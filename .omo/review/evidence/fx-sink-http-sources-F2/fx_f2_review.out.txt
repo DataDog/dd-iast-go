@@ -1,0 +1,59 @@
+Reproducer placement: copy fx_f2_review_test.go to iast/net/http/ in a private copy of HEAD 2e23b46; run from that copy.
+Commands were run sequentially with GOFLAGS=-p=4. Woven go1.26.6 build: 36.5s real, max RSS 363 MB (below the 4 GB threshold).
+
+$ GOTOOLCHAIN=go1.26.6 go test -timeout 12m -count=1 -run '^TestFxF2_' -v ./iast/net/http
+=== RUN   TestFxF2_ReplacedQueryAttribution
+    fx_f2_review_test.go:83: /items?mode=literal&sort=attacker_col => sort="created_at" origin="" ranges=0 statement_tainted=false | FormValue="created_at" origin="" ranges=0
+    fx_f2_review_test.go:83: /items?mode=default => sort="created_at" origin="" ranges=0 statement_tainted=false | FormValue="created_at" origin="" ranges=0
+    fx_f2_review_test.go:83: /items?mode=default&sort=attacker_col => sort="attacker_col" origin="" ranges=0 statement_tainted=false | FormValue="attacker_col" origin="" ranges=0
+--- PASS: TestFxF2_ReplacedQueryAttribution (0.01s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/iast/net/http	0.569s
+exit code: 0
+
+$ GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -timeout 12m -count=1 -run '^TestFxF2_' -v ./iast/net/http
+=== RUN   TestFxF2_ReplacedQueryAttribution
+    fx_f2_review_test.go:82: /items?mode=literal&sort=attacker_col => sort="created_at" origin="http.request.parameter" ranges=1 statement_tainted=true | FormValue="created_at" origin="http.request.parameter" ranges=1
+    fx_f2_review_test.go:86: FALSE PROVENANCE: application literal "created_at" attributed to "http.request.parameter" via URL.Query
+    fx_f2_review_test.go:89: FALSE PROVENANCE: application literal "created_at" attributed to "http.request.parameter" via FormValue
+    fx_f2_review_test.go:82: /items?mode=default => sort="created_at" origin="http.request.parameter" ranges=1 statement_tainted=true | FormValue="created_at" origin="http.request.parameter" ranges=1
+    fx_f2_review_test.go:86: FALSE PROVENANCE: application literal "created_at" attributed to "http.request.parameter" via URL.Query
+    fx_f2_review_test.go:89: FALSE PROVENANCE: application literal "created_at" attributed to "http.request.parameter" via FormValue
+    fx_f2_review_test.go:82: /items?mode=default&sort=attacker_col => sort="attacker_col" origin="http.request.parameter" ranges=1 statement_tainted=true | FormValue="attacker_col" origin="http.request.parameter" ranges=1
+--- FAIL: TestFxF2_ReplacedQueryAttribution (0.01s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/iast/net/http	0.567s
+FAIL
+exit status 1
+exit code: 1
+
+$ GOTOOLCHAIN=go1.27.0 go tool orchestrion go test -timeout 12m -count=1 -run '^TestFxF2_' -v ./iast/net/http
+FAIL	github.com/DataDog/dd-iast-go/iast/net/http [build failed]
+FAIL
+# encoding/json
+$WORK/b104/orchestrion/src/encoding/json/<generated>:2: dec.r undefined (type *Decoder has no field or method r)
+$WORK/b104/orchestrion/src/encoding/json/<generated>:2: dec.d undefined (type *Decoder has no field or method d)
+$WORK/b104/orchestrion/src/encoding/json/<generated>:3: dec.d undefined (type *Decoder has no field or method d)
+exit status 2
+# crypto/sha1
+resolving woven dependency on github.com/DataDog/dd-iast-go/internal/instrumentation/telemetry: -: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+# crypto/md5
+resolving woven dependency on github.com/DataDog/dd-iast-go/internal/instrumentation/telemetry: -: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+# crypto/des
+resolving woven dependency on github.com/DataDog/dd-iast-go/internal/instrumentation/telemetry: -: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+# crypto/rc4
+resolving woven dependency on github.com/DataDog/dd-iast-go/internal/instrumentation/telemetry: -: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+exit status 1
+exit code: 1

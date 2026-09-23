@@ -1,0 +1,7 @@
+=== RUN   TestReviewRepeatedBuilderStringBurnsRootBudget
+    zz_review_builder_budget_test.go:24: unchanged builder: first untainted String() result at call #511 of 700
+    zz_review_builder_budget_test.go:26: BUG: repeated String() on an unchanged builder exhausted the request root budget at call 511
+--- FAIL: TestReviewRepeatedBuilderStringBurnsRootBudget (0.00s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/iast/propagation	0.251s
+FAIL

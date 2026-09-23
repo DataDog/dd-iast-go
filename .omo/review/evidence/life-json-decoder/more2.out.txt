@@ -1,0 +1,17 @@
+0
+=== RUN   TestReviewUnmarshalPanicCleanup
+    zz_review_json_test.go:267: recovered=review panic occupiedAfterPanic=0 nextErr=<nil> next="q" tainted=false
+--- PASS: TestReviewUnmarshalPanicCleanup (0.01s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/testapps/integration	0.751s
+===40serial
+    zz_review_json_test.go:121: sizeof(json.Decoder)=304 offset(d)=40
+    zz_review_json_test.go:176: decoders=40 distinctStartBuckets=8 buckets=map[5:5 13:5 21:5 29:5 37:5 45:5 53:5 61:5] occupiedWhileBlocked=32 taintedResults=8
+--- PASS: TestReviewConcurrentHeapDecodersHashCapacity (0.01s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/testapps/integration	0.373s
+===40concurrent-again
+    zz_review_json_test.go:176: decoders=40 distinctStartBuckets=8 buckets=map[5:5 13:5 21:5 29:5 37:5 45:5 53:5 61:5] occupiedWhileBlocked=32 taintedResults=9
+--- PASS: TestReviewConcurrentHeapDecodersHashCapacity (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/testapps/integration	1.162s

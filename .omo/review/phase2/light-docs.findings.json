@@ -1,0 +1,57 @@
+[
+  {
+    "id": "light-docs-F1",
+    "severity": "Medium",
+    "category": "config",
+    "location": "README.md:125",
+    "title": "README advertises a database-row setting that has no implementation",
+    "claim": "DD_IAST_DB_ROWS_TO_TAINT is documented as tainting database rows, but production code only parses it and the parent plan says row taint is deferred.",
+    "evidence_path": null,
+    "repro_command": null,
+    "needs_repro": true
+  },
+  {
+    "id": "light-docs-F2",
+    "severity": "Medium",
+    "category": "config",
+    "location": "README.md:117",
+    "title": "Runtime configuration omits the enforced vulnerability ceiling",
+    "claim": "The README permits every integer >=1 for DD_IAST_VULNERABILITIES_PER_REQUEST, while code clamps values to the undocumented hard range 1..64.",
+    "evidence_path": null,
+    "repro_command": null,
+    "needs_repro": true
+  },
+  {
+    "id": "light-docs-F3",
+    "severity": "Medium",
+    "category": "doc",
+    "location": "_docs/plans/taint-tracking-net-http-sqli-cmdi-phase-7a.md:5",
+    "title": "Completed plans remain and the phase record is internally contradictory",
+    "claim": "Eleven plan artifacts remain despite AGENTS.md deletion policy; phase 7a still says draft although the parent says all implementation phases are complete.",
+    "evidence_path": null,
+    "repro_command": null,
+    "needs_repro": true
+  },
+  {
+    "id": "light-docs-F4",
+    "severity": "Low",
+    "category": "quality",
+    "location": ".DS_Store",
+    "title": "Finder metadata is committed at repository root",
+    "claim": "The root .DS_Store is tracked, while _docs/.DS_Store is neither tracked nor present.",
+    "evidence_path": null,
+    "repro_command": null,
+    "needs_repro": false
+  },
+  {
+    "id": "light-docs-F5",
+    "severity": "Low",
+    "category": "doc",
+    "location": "_docs/sources-and-sinks/README.md (deleted in a5923cc)",
+    "title": "Removing the sources-and-sinks directory discarded useful future-integration research",
+    "claim": "The 1,131-line deleted framework catalog contained reusable source, sink, binder, and zero-copy lifetime research with no maintained in-tree successor.",
+    "evidence_path": null,
+    "repro_command": null,
+    "needs_repro": true
+  }
+]

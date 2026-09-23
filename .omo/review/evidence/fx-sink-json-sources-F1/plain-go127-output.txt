@@ -1,0 +1,3 @@
+$ env GOFLAGS=-p=4 GOTOOLCHAIN=go1.27.0 go -C /tmp/ddiast-review/wt/fx-sink-json-sources-F1/review-json-f1 run .
+independent-f1
+exit status: 0

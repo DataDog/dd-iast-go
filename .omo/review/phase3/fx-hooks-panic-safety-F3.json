@@ -1,0 +1,13 @@
+[
+  {
+    "id": "hooks-panic-safety-F3",
+    "verdict": "CONFIRMED",
+    "original_severity": "Critical",
+    "adjusted_severity": "Medium",
+    "reachable_default": false,
+    "documented_limitation": false,
+    "reason": "The woven ParseForm defer calls httpbridge.Form while a customer Body.Read panic is unwinding, and an injected Form callback panic replaces that exact panic. The compound failure requires an IAST-internal callback panic; ordinary customer code cannot register the internal callback and no natural trigger was reproduced.",
+    "evidence_path": ".omo/review/evidence/fx-hooks-panic-safety-F3/independent_deferred_panic_test.go",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go tool orchestrion go test -timeout 10m -count=1 -run '^Test_RequestParseForm_preserves_body_panic_when_deferred_IAST_callback_fails$' ./iast/net/http -v"
+  }
+]

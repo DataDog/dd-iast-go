@@ -1,0 +1,35 @@
+[
+  {
+    "id": "sink-redaction-source-F1",
+    "severity": "Critical",
+    "category": "redaction",
+    "location": "internal/taint/redaction/source.go:110-115,213-214,299-303",
+    "title": "Deterministic redaction pattern can equal the secret",
+    "claim": "The fixed alphanumeric redaction pattern can serialize the exact password/source value, such as abc, in both model.Source.Pattern and evidence part Pattern.",
+    "evidence_path": ".omo/review/evidence/sink-redaction-source/default-redaction-leaks.out.txt",
+    "repro_command": "cd /tmp/ddiast-review/wt/sink-redaction-source && env -u DD_IAST_REDACTION_ENABLED -u DD_IAST_REDACTION_NAME_PATTERN -u DD_IAST_REDACTION_VALUE_PATTERN -u DD_IAST_REDACTION_KEYS_REGEXP -u DD_IAST_REDACTION_VALUES_REGEXP GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 go test ./internal/taint/redaction -run TestReview -count=1 -timeout 15m",
+    "needs_repro": false
+  },
+  {
+    "id": "sink-redaction-source-F2",
+    "severity": "Critical",
+    "category": "redaction",
+    "location": "internal/taint/redaction/source.go:107-115; internal/model/source.go:33-40",
+    "title": "Sensitive source names are serialized unchanged",
+    "claim": "A source classified sensitive because of its name retains that entire unredacted name in the serialized model.Source.Name field.",
+    "evidence_path": ".omo/review/evidence/sink-redaction-source/default-redaction-leaks.out.txt",
+    "repro_command": "cd /tmp/ddiast-review/wt/sink-redaction-source && env -u DD_IAST_REDACTION_ENABLED -u DD_IAST_REDACTION_NAME_PATTERN -u DD_IAST_REDACTION_VALUE_PATTERN -u DD_IAST_REDACTION_KEYS_REGEXP -u DD_IAST_REDACTION_VALUES_REGEXP GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 go test ./internal/taint/redaction -run TestReview -count=1 -timeout 15m",
+    "needs_repro": false
+  },
+  {
+    "id": "sink-redaction-source-F3",
+    "severity": "Critical",
+    "category": "redaction",
+    "location": "internal/taint/redaction/sql.go:82-100; internal/taint/redaction/analyzer_test.go:30",
+    "title": "SQL comments bypass vulnerability-specific redaction",
+    "claim": "A tainted secret in a SQL line or block comment is not marked sensitive by AnalyzeSQL and is serialized raw when it does not match the default source patterns.",
+    "evidence_path": ".omo/review/evidence/sink-redaction-source/default-redaction-leaks.out.txt",
+    "repro_command": "cd /tmp/ddiast-review/wt/sink-redaction-source && env -u DD_IAST_REDACTION_ENABLED -u DD_IAST_REDACTION_NAME_PATTERN -u DD_IAST_REDACTION_VALUE_PATTERN -u DD_IAST_REDACTION_KEYS_REGEXP -u DD_IAST_REDACTION_VALUES_REGEXP GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 go test ./internal/taint/redaction -run TestReview -count=1 -timeout 15m",
+    "needs_repro": false
+  }
+]

@@ -1,0 +1,30 @@
+All commands were run from /tmp/ddiast-review/wt/fx-hooks-yml-operators-F3.
+Go 1.26.6 plain:
+GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go test -timeout 3m -count=1 ./reviewfximportless ./reviewfximported
+Captured output:
+ok  	github.com/DataDog/dd-iast-go/reviewfximportless	0.611s
+?   	github.com/DataDog/dd-iast-go/reviewfximported	[no test files]
+
+Go 1.26.6 woven after adding one real import to the control package; Prefix has the same concatenation:
+/usr/bin/time -l env -u DD_IAST_ENABLED GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go tool orchestrion go test -timeout 3m -count=1 ./reviewfximported
+Captured output (time output abbreviated):
+?   	github.com/DataDog/dd-iast-go/reviewfximported	[no test files]
+            59523072  maximum resident set size
+
+Go 1.27.0 plain:
+GOTOOLCHAIN=go1.27.0 GOFLAGS=-p=4 go test -timeout 3m -count=1 ./reviewfximportless
+Captured output:
+ok  	github.com/DataDog/dd-iast-go/reviewfximportless	0.489s
+
+Go 1.27.0 woven:
+/usr/bin/time -l env -u DD_IAST_ENABLED GOTOOLCHAIN=go1.27.0 GOFLAGS=-p=4 go tool orchestrion go test -timeout 3m -count=1 ./reviewfximportless
+Captured output (repetitive dependency errors and time output abbreviated):
+# encoding/json
+$WORK/b104/orchestrion/src/encoding/json/<generated>:2: dec.r undefined (type *Decoder has no field or method r)
+$WORK/b104/orchestrion/src/encoding/json/<generated>:2: dec.d undefined (type *Decoder has no field or method d)
+$WORK/b104/orchestrion/src/encoding/json/<generated>:3: dec.d undefined (type *Decoder has no field or method d)
+# github.com/DataDog/dd-iast-go/reviewfximportless
+resolving woven dependency on github.com/DataDog/dd-iast-go/iast/propagation: -: # encoding/json
+FAIL	github.com/DataDog/dd-iast-go/reviewfximportless [build failed]
+exit status 1
+           121536512  maximum resident set size

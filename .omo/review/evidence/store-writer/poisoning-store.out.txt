@@ -1,0 +1,18 @@
+=== RUN   TestReviewUnrelatedInvalidationPoisonsOwner
+    zz_review_writer_test.go:39: B.writerDirty after unrelated invalidation = true, B contention drops = 0
+    zz_review_writer_test.go:42: B.SnapshotWriter(tracked builder) = false (want true), writerCount after = 0
+    zz_review_writer_test.go:44: BUG: unrelated buffer invalidation from another request wiped owner B's writer provenance
+--- FAIL: TestReviewUnrelatedInvalidationPoisonsOwner (0.00s)
+=== RUN   TestReviewUnrelatedInvalidationRate
+    zz_review_writer_test.go:111: ops=200000 unrelated invalidations=2443257 provenance losses=192491 seedRetries=0 contention drops=1063
+    zz_review_writer_test.go:113: BUG: 192491/200000 writer states wiped by unrelated concurrent invalidation
+--- FAIL: TestReviewUnrelatedInvalidationRate (0.42s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/store	0.784s
+FAIL
+--- control REVIEW_NO_INVALIDATOR=1
+=== RUN   TestReviewUnrelatedInvalidationRate
+    zz_review_writer_test.go:111: ops=200000 unrelated invalidations=0 provenance losses=0 seedRetries=0 contention drops=0
+--- PASS: TestReviewUnrelatedInvalidationRate (0.07s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/store	0.334s

@@ -1,0 +1,35 @@
+[
+ {
+  "id": "life-spans-F4",
+  "verdict": "CONFIRMED",
+  "original_severity": "High",
+  "adjusted_severity": "High",
+  "reachable_default": true,
+  "documented_limitation": false,
+  "reason": "Woven md5/sha1 outside any span: 1000 calls -> 1000 'vulnerability' spans at every sampling rate (including 0). At default 30%, 287 of them force-kept, carrying only 2 distinct findings. Real tracer +41 allocs/call (29 at sampling 0) vs 0 with IAST disabled. Report has no process dedup; the README orphan note covers tainted reports only.",
+  "evidence_path": ".omo/review/evidence/fx-life-spans-F4/fx-woven-own.out.txt",
+  "repro_command": "cd benchmarks/overhead (private copy, test file from .omo/review/evidence/fx-life-spans-F4/zz_fx_life_spans_f4_test.go) && GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go tool orchestrion go test -c -o fx.test . && for e in '' DD_IAST_REQUEST_SAMPLING=100 DD_IAST_REQUEST_SAMPLING=0 DD_IAST_ENABLED=false; do env $e ./fx.test -test.run TestFx -test.v; done"
+ },
+ {
+  "id": "sink-vuln-report-F1",
+  "verdict": "CONFIRMED",
+  "original_severity": "High",
+  "adjusted_severity": "High",
+  "reachable_default": true,
+  "documented_limitation": false,
+  "reason": "Exact duplicate of life-spans-F4 (same root cause at report.go:45-54 plus no dedup.Set in Report). Observed 287/1000 sampled and force-kept at default settings, and 1000/1000 at 100%, with each identical finding re-emitted 500 times. Allocation claim confirmed: 97 (mocktracer) / 68 (real tracer) per sampled call.",
+  "evidence_path": ".omo/review/evidence/fx-life-spans-F4/fx-woven-own.out.txt",
+  "repro_command": "cd benchmarks/overhead (private copy, test file from .omo/review/evidence/fx-life-spans-F4/zz_fx_life_spans_f4_test.go) && GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go tool orchestrion go test -c -o fx.test . && for e in '' DD_IAST_REQUEST_SAMPLING=100 DD_IAST_REQUEST_SAMPLING=0 DD_IAST_ENABLED=false; do env $e ./fx.test -test.run TestFx -test.v; done"
+ },
+ {
+  "id": "perf-allocs-matrix-F1",
+  "verdict": "CONFIRMED",
+  "original_severity": "High",
+  "adjusted_severity": "High",
+  "reachable_default": true,
+  "documented_limitation": false,
+  "reason": "Same root cause, in-span symptom: in one woven sampled HTTP request, 1002 md5.Sum calls publish 2 findings (quota 2), yet each already-recorded call still costs 28 allocs (UUID, stack capture, model build before CanAddVulnerability), vs 0 disabled. Limited to sampled requests with no trace-volume impact, so it is the weakest of the three. The per-drop telemetry log is only at Warn for quota drops (dedup drops log at Debug).",
+  "evidence_path": ".omo/review/evidence/fx-life-spans-F4/fx-woven-own.out.txt",
+  "repro_command": "cd benchmarks/overhead (private copy, test file from .omo/review/evidence/fx-life-spans-F4/zz_fx_life_spans_f4_test.go) && GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go tool orchestrion go test -c -o fx.test . && for e in '' DD_IAST_REQUEST_SAMPLING=100 DD_IAST_REQUEST_SAMPLING=0 DD_IAST_ENABLED=false; do env $e ./fx.test -test.run TestFx -test.v; done"
+ }
+]

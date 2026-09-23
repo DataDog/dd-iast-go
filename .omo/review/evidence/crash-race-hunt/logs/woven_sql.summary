@@ -1,0 +1,7 @@
+=== iast/database/sql/testapp: go tool orchestrion go test -race -count=5 -cpu=1,4,16 -timeout 24m ./...
+exit=0 secs=103
+races=/tmp/ddiast-review/wt/crash-race-hunt/_logs/woven_sql.out:0,/tmp/ddiast-review/wt/crash-race-hunt/_logs/woven_sql.time:0
+checkptr=/tmp/ddiast-review/wt/crash-race-hunt/_logs/woven_sql.out:0,/tmp/ddiast-review/wt/crash-race-hunt/_logs/woven_sql.time:0
+      1 ok  	github.com/DataDog/dd-iast-go/testapps/database-sql	6.065s
+           375799808  maximum resident set size
+            38699704  peak memory footprint

@@ -1,0 +1,23 @@
+COMMAND
+cd /tmp/ddiast-review/wt/store-memory-bounds && env GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 timeout 900 go test -count=1 -timeout 12m -v -run '^Test(RootAdmissionRollbackOnValueTableContention|DerivedWindowBoundsQuotaAndGeneration|ExistingWindowTransfersRootReservation|SourceAdmissionsObserveRootByteQuota|OversizedStringAdmissionDoesNotReserveRoot|OverflowExhaustionAndRecovery|ByteRootDefensiveBoundaries|RootAPIDefensiveBoundaries)$' ./internal/taint/store
+
+CAPTURED OUTPUT
+status: completed exit_code: 0
+=== RUN   TestRootAdmissionRollbackOnValueTableContention
+--- PASS: TestRootAdmissionRollbackOnValueTableContention (0.02s)
+=== RUN   TestDerivedWindowBoundsQuotaAndGeneration
+--- PASS: TestDerivedWindowBoundsQuotaAndGeneration (0.03s)
+=== RUN   TestExistingWindowTransfersRootReservation
+--- PASS: TestExistingWindowTransfersRootReservation (0.01s)
+=== RUN   TestSourceAdmissionsObserveRootByteQuota
+--- PASS: TestSourceAdmissionsObserveRootByteQuota (0.05s)
+=== RUN   TestOversizedStringAdmissionDoesNotReserveRoot
+--- PASS: TestOversizedStringAdmissionDoesNotReserveRoot (0.00s)
+=== RUN   TestOverflowExhaustionAndRecovery
+--- PASS: TestOverflowExhaustionAndRecovery (0.00s)
+=== RUN   TestByteRootDefensiveBoundaries
+--- PASS: TestByteRootDefensiveBoundaries (0.00s)
+=== RUN   TestRootAPIDefensiveBoundaries
+--- PASS: TestRootAPIDefensiveBoundaries (0.01s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/store	1.066s

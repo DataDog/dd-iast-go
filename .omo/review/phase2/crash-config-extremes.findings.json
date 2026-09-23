@@ -1,0 +1,13 @@
+[
+  {
+    "id": "crash-config-extremes-F1",
+    "severity": "Medium",
+    "category": "doc",
+    "location": "README.md:117",
+    "title": "DD_IAST_VULNERABILITIES_PER_REQUEST's hard upper bound of 64 is undocumented",
+    "claim": "README.md:117 documents DD_IAST_VULNERABILITIES_PER_REQUEST as \"Integer greater than or equal to 1\" with no stated upper bound, but internal/config/config.go:34,75 clamps it to [1, MaxVulnerabilitiesPerRequest] where MaxVulnerabilitiesPerRequest = 64. Setting it to 1000000 silently resolves to 64 with a warning; this hard cap is never mentioned in the README, contrary to internal/config/AGENTS.md's requirement that the documentation accurately describe every environment variable's accepted values.",
+    "evidence_path": ".omo/review/evidence/crash-config-extremes/configdump_matrix_results.json",
+    "repro_command": "cd /tmp/ddiast-review/wt/crash-config-extremes && GOTOOLCHAIN=go1.26.6 go build -o /tmp/ddiast-review/configdump ./cmd/configdump && DD_IAST_VULNERABILITIES_PER_REQUEST=1000000 /tmp/ddiast-review/configdump",
+    "needs_repro": false
+  }
+]

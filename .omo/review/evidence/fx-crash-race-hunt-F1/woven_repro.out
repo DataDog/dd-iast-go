@@ -1,0 +1,102 @@
+=== RUN   TestFxParseFormReparseRace
+    repro_test.go:22: woven=true
+==================
+WARNING: DATA RACE
+Write at 0x00c000000450 by goroutine 9:
+  net/http.(*Request).ParseForm.func1()
+      <generated>:4 +0xbc
+  runtime.deferreturn()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/panic.go:668 +0x5c
+  example.com/fxrepro.TestFxParseFormReparseRace.func1()
+      /tmp/ddiast-review/wt/fx-crash-race-hunt-F1/zzrepro/repro_test.go:34 +0x88
+
+Previous read at 0x00c000000450 by goroutine 10:
+  example.com/fxrepro.TestFxParseFormReparseRace.func2()
+      /tmp/ddiast-review/wt/fx-crash-race-hunt-F1/zzrepro/repro_test.go:41 +0xb0
+
+Goroutine 9 (running) created at:
+  example.com/fxrepro.TestFxParseFormReparseRace()
+      /tmp/ddiast-review/wt/fx-crash-race-hunt-F1/zzrepro/repro_test.go:31 +0x330
+  testing.tRunner()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.(*T).Run.gowrap1()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/testing/testing.go:2101 +0x34
+
+Goroutine 10 (finished) created at:
+  example.com/fxrepro.TestFxParseFormReparseRace()
+      /tmp/ddiast-review/wt/fx-crash-race-hunt-F1/zzrepro/repro_test.go:38 +0x438
+  testing.tRunner()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.(*T).Run.gowrap1()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/testing/testing.go:2101 +0x34
+==================
+==================
+WARNING: DATA RACE
+Write at 0x00c000000458 by goroutine 9:
+  net/http.(*Request).ParseForm.func1()
+      <generated>:4 +0xf4
+  runtime.deferreturn()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/panic.go:668 +0x5c
+  example.com/fxrepro.TestFxParseFormReparseRace.func1()
+      /tmp/ddiast-review/wt/fx-crash-race-hunt-F1/zzrepro/repro_test.go:34 +0x88
+
+Previous read at 0x00c000000458 by goroutine 10:
+  example.com/fxrepro.TestFxParseFormReparseRace.func2()
+      /tmp/ddiast-review/wt/fx-crash-race-hunt-F1/zzrepro/repro_test.go:41 +0xf4
+
+Goroutine 9 (running) created at:
+  example.com/fxrepro.TestFxParseFormReparseRace()
+      /tmp/ddiast-review/wt/fx-crash-race-hunt-F1/zzrepro/repro_test.go:31 +0x330
+  testing.tRunner()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.(*T).Run.gowrap1()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/testing/testing.go:2101 +0x34
+
+Goroutine 10 (finished) created at:
+  example.com/fxrepro.TestFxParseFormReparseRace()
+      /tmp/ddiast-review/wt/fx-crash-race-hunt-F1/zzrepro/repro_test.go:38 +0x438
+  testing.tRunner()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.(*T).Run.gowrap1()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/testing/testing.go:2101 +0x34
+==================
+    testing.go:1712: race detected during execution of test
+--- FAIL: TestFxParseFormReparseRace (0.00s)
+=== RUN   TestFxParseFormReparseRace
+    repro_test.go:22: woven=true
+--- PASS: TestFxParseFormReparseRace (0.00s)
+=== RUN   TestFxParseFormReparseRace
+    repro_test.go:22: woven=true
+--- PASS: TestFxParseFormReparseRace (0.00s)
+=== RUN   TestFxParseFormReparseRace
+    repro_test.go:22: woven=true
+--- PASS: TestFxParseFormReparseRace (0.00s)
+=== RUN   TestFxParseFormReparseRace
+    repro_test.go:22: woven=true
+--- PASS: TestFxParseFormReparseRace (0.00s)
+=== RUN   TestFxParseFormReparseRace
+    repro_test.go:22: woven=true
+--- PASS: TestFxParseFormReparseRace (0.00s)
+FAIL
+FAIL	example.com/fxrepro	0.381s
+FAIL
+exit status 1
+       16.18 real        30.04 user        16.23 sys
+           279592960  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+             3193098  page reclaims
+              139918  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                3007  messages sent
+                3231  messages received
+               23107  signals received
+               16030  voluntary context switches
+              452635  involuntary context switches
+            19282976  instructions retired
+             9111421  cycles elapsed
+             1212728  peak memory footprint
+rc=1

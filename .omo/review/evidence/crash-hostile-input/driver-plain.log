@@ -1,0 +1,59 @@
+baseline {"goroutines": 5, "heap_alloc": 1278768, "heap_inuse": 2514944, "heap_objects": 6699, "maxrss": 19202048, "observed": 0, "sinks": 0, "sys": 14321928, "tainted_sinks": 0, "total_alloc": 1769032} rss_kb 18784
+case hdr_1mb_single           bytes=  1040056 status='HTTP/1.1 204 No Content' t=0.01s heap_inuse=2531328 heap_objects=6766 rss_kb=24944 maxrss=25542656 gor=5 tainted_sinks=0/8
+case hdr_1mb_invalid_utf8     bytes=  1040056 status='HTTP/1.1 204 No Content' t=0.01s heap_inuse=2523136 heap_objects=6803 rss_kb=25184 maxrss=25788416 gor=5 tainted_sinks=0/16
+case hdr_32x30k               bytes=   930988 status='HTTP/1.1 204 No Content' t=0.01s heap_inuse=2523136 heap_objects=6839 rss_kb=25520 maxrss=26132480 gor=5 tainted_sinks=0/86
+case hdr_64k_edge             bytes=    65620 status='HTTP/1.1 204 No Content' t=0.00s heap_inuse=2523136 heap_objects=6871 rss_kb=25520 maxrss=26132480 gor=5 tainted_sinks=0/96
+case hdr_64k_plus1            bytes=    65593 status='HTTP/1.1 204 No Content' t=0.00s heap_inuse=2523136 heap_objects=6900 rss_kb=25520 maxrss=26132480 gor=5 tainted_sinks=0/104
+case hdr_2000_names           bytes=    59827 status='HTTP/1.1 204 No Content' t=0.00s heap_inuse=2547712 heap_objects=6930 rss_kb=25520 maxrss=26132480 gor=5 tainted_sinks=0/268
+case hdr_secret_small         bytes=      190 status='HTTP/1.1 204 No Content' t=0.00s heap_inuse=2547712 heap_objects=6958 rss_kb=25616 maxrss=26230784 gor=5 tainted_sinks=0/280
+case hdr_invalid_name_utf8    bytes=       56 status='HTTP/1.1 400 Bad Request' t=0.00s heap_inuse=2547712 heap_objects=6958 rss_kb=25632 maxrss=26247168 gor=5 tainted_sinks=0/280
+case q_10k_params             bytes=   177853 status='HTTP/1.1 204 No Content' t=0.00s heap_inuse=2547712 heap_objects=6991 rss_kb=25632 maxrss=26247168 gor=5 tainted_sinks=0/284
+case q_20k_params             bytes=   257827 status='HTTP/1.1 204 No Content' t=0.00s heap_inuse=2547712 heap_objects=7019 rss_kb=25632 maxrss=26247168 gor=5 tainted_sinks=0/288
+case q_invalid_raw_bytes      bytes=      231 status='HTTP/1.1 204 No Content' t=0.00s heap_inuse=2547712 heap_objects=7049 rss_kb=25632 maxrss=26247168 gor=5 tainted_sinks=0/294
+case q_40_params_utf8         bytes=      579 status='HTTP/1.1 204 No Content' t=0.00s heap_inuse=2547712 heap_objects=7079 rss_kb=25632 maxrss=26247168 gor=5 tainted_sinks=0/340
+case q_huge_value             bytes=  1000050 status='HTTP/1.1 204 No Content' t=0.01s heap_inuse=2539520 heap_objects=7114 rss_kb=25712 maxrss=26329088 gor=5 tainted_sinks=0/345
+case q_60k_value              bytes=    60050 status='HTTP/1.1 204 No Content' t=0.00s heap_inuse=2547712 heap_objects=7144 rss_kb=25712 maxrss=26329088 gor=5 tainted_sinks=0/350
+case q_bad_escapes            bytes=       77 status='HTTP/1.1 204 No Content' t=0.00s heap_inuse=2547712 heap_objects=7173 rss_kb=25712 maxrss=26329088 gor=5 tainted_sinks=0/355
+case form_10k                 bytes=   147910 status='HTTP/1.1 204 No Content' t=0.00s heap_inuse=2547712 heap_objects=7204 rss_kb=25712 maxrss=26329088 gor=5 tainted_sinks=0/357
+case form_40_invalid          bytes=    15629 status='HTTP/1.1 204 No Content' t=0.00s heap_inuse=2547712 heap_objects=7232 rss_kb=25712 maxrss=26329088 gor=5 tainted_sinks=0/401
+case form_9mb                 bytes=  9000127 status='HTTP/1.1 204 No Content' t=0.03s heap_inuse=2547712 heap_objects=7260 rss_kb=59392 maxrss=60817408 gor=5 tainted_sinks=0/404
+case mp_5k_parts              bytes=   424125 status="ERR ConnectionResetError(54, 'Connection reset by peer')" t=0.00s heap_inuse=2596864 heap_objects=7310 rss_kb=59456 maxrss=60882944 gor=5 tainted_sinks=0/406
+case mp_900_parts             bytes=    75724 status='HTTP/1.1 204 No Content' t=0.00s heap_inuse=2654208 heap_objects=7341 rss_kb=59472 maxrss=60899328 gor=5 tainted_sinks=0/508
+case mp_40_parts              bytes=  1203426 status='HTTP/1.1 204 No Content' t=0.00s heap_inuse=2646016 heap_objects=7370 rss_kb=59520 maxrss=60948480 gor=5 tainted_sinks=0/551
+case mp_huge_filenames        bytes=  5002876 status='HTTP/1.1 204 No Content' t=0.04s heap_inuse=2646016 heap_objects=7405 rss_kb=59600 maxrss=61030400 gor=5 tainted_sinks=0/579
+case mp_900_files             bytes=  2004426 status='HTTP/1.1 204 No Content' t=0.02s heap_inuse=2686976 heap_objects=7435 rss_kb=59776 maxrss=61210624 gor=5 tainted_sinks=0/682
+case mp_malformed             bytes=      173 status='HTTP/1.1 204 No Content' t=0.00s heap_inuse=2670592 heap_objects=7465 rss_kb=59792 maxrss=61227008 gor=5 tainted_sinks=0/684
+case readall_50mb             bytes= 50000080 status='HTTP/1.1 204 No Content' t=0.05s heap_inuse=2662400 heap_objects=7494 rss_kb=185136 maxrss=189579264 gor=5 tainted_sinks=0/688
+case readall_64k              bytes=    64087 status='HTTP/1.1 204 No Content' t=0.00s heap_inuse=2662400 heap_objects=7523 rss_kb=185168 maxrss=189612032 gor=5 tainted_sinks=0/692
+case readall_invalid          bytes=     1676 status='HTTP/1.1 204 No Content' t=0.00s heap_inuse=2670592 heap_objects=7552 rss_kb=185168 maxrss=189612032 gor=5 tainted_sinks=0/696
+case json_deep9990            bytes=    20100 status='HTTP/1.1 204 No Content' t=0.00s heap_inuse=2670592 heap_objects=7604 rss_kb=185168 maxrss=189612032 gor=5 tainted_sinks=0/697
+case jsonu_deep9990           bytes=    20101 status='HTTP/1.1 204 No Content' t=0.01s heap_inuse=2686976 heap_objects=7632 rss_kb=185168 maxrss=189612032 gor=5 tainted_sinks=0/698
+case json_deep12000           bytes=    24120 status="ERR ConnectionResetError(54, 'Connection reset by peer')" t=0.00s heap_inuse=2686976 heap_objects=7661 rss_kb=185168 maxrss=189612032 gor=5 tainted_sinks=0/699
+case jsonu_deep12000          bytes=    24121 status='HTTP/1.1 204 No Content' t=0.00s heap_inuse=2703360 heap_objects=7692 rss_kb=185168 maxrss=189612032 gor=5 tainted_sinks=0/700
+case json_deepobj             bytes=    60061 status='HTTP/1.1 204 No Content' t=0.01s heap_inuse=2719744 heap_objects=7720 rss_kb=185168 maxrss=189612032 gor=5 tainted_sinks=0/701
+case jsonu_deepobj            bytes=    60062 status='HTTP/1.1 204 No Content' t=0.01s heap_inuse=2736128 heap_objects=7750 rss_kb=185184 maxrss=189628416 gor=5 tainted_sinks=0/702
+case json_escapes             bytes=   640124 status='HTTP/1.1 204 No Content' t=0.01s heap_inuse=2736128 heap_objects=7779 rss_kb=185184 maxrss=189628416 gor=5 tainted_sinks=0/704
+case jsonu_escapes            bytes=   640125 status='HTTP/1.1 204 No Content' t=0.01s heap_inuse=2752512 heap_objects=7808 rss_kb=185184 maxrss=189628416 gor=5 tainted_sinks=0/706
+case json_escapes_small       bytes=    30140 status='HTTP/1.1 204 No Content' t=0.00s heap_inuse=2744320 heap_objects=7837 rss_kb=185184 maxrss=189628416 gor=5 tainted_sinks=0/708
+case jsonu_escapes_small      bytes=    30141 status='HTTP/1.1 204 No Content' t=0.00s heap_inuse=2752512 heap_objects=7868 rss_kb=185184 maxrss=189628416 gor=5 tainted_sinks=0/710
+case json_many                bytes=   296798 status='HTTP/1.1 204 No Content' t=0.01s heap_inuse=2768896 heap_objects=7896 rss_kb=185216 maxrss=189661184 gor=5 tainted_sinks=0/811
+case jsonu_many               bytes=   296799 status='HTTP/1.1 204 No Content' t=0.02s heap_inuse=2801664 heap_objects=7924 rss_kb=185216 maxrss=189661184 gor=5 tainted_sinks=0/912
+case json_huge_str            bytes=  5000116 status='HTTP/1.1 204 No Content' t=0.04s heap_inuse=2801664 heap_objects=7952 rss_kb=185216 maxrss=189661184 gor=5 tainted_sinks=0/913
+case jsonu_huge_str           bytes=  5000117 status='HTTP/1.1 204 No Content' t=0.09s heap_inuse=2793472 heap_objects=7989 rss_kb=185216 maxrss=189661184 gor=5 tainted_sinks=0/914
+case json_invalid_utf8        bytes=     1727 status='HTTP/1.1 204 No Content' t=0.00s heap_inuse=2793472 heap_objects=8020 rss_kb=185216 maxrss=189661184 gor=5 tainted_sinks=0/916
+case jsonu_invalid_utf8       bytes=     1728 status='HTTP/1.1 204 No Content' t=0.00s heap_inuse=2793472 heap_objects=8051 rss_kb=185216 maxrss=189661184 gor=5 tainted_sinks=0/918
+case cookie_odd               bytes=      160 status='HTTP/1.1 400 Bad Request' t=0.00s heap_inuse=2785280 heap_objects=8053 rss_kb=185216 maxrss=189661184 gor=5 tainted_sinks=0/918
+case cookie_odd_noctl         bytes=      174 status='HTTP/1.1 204 No Content' t=0.02s heap_inuse=2793472 heap_objects=8085 rss_kb=185248 maxrss=189693952 gor=5 tainted_sinks=0/941
+case cookie_5k                bytes=    62848 status='HTTP/1.1 204 No Content' t=0.00s heap_inuse=2793472 heap_objects=8113 rss_kb=185248 maxrss=189693952 gor=5 tainted_sinks=0/941
+case cookie_900k_value        bytes=   900064 status='HTTP/1.1 204 No Content' t=0.01s heap_inuse=2777088 heap_objects=8142 rss_kb=185296 maxrss=189743104 gor=5 tainted_sinks=0/945
+case cookie_multi_header      bytes=    14942 status='HTTP/1.1 204 No Content' t=0.00s heap_inuse=2777088 heap_objects=8174 rss_kb=185296 maxrss=189743104 gor=5 tainted_sinks=0/2146
+case prop_16                  bytes=       79 status='HTTP/1.1 204 No Content' t=0.00s heap_inuse=2785280 heap_objects=8205 rss_kb=185296 maxrss=189743104 gor=5 tainted_sinks=0/2174
+case prop_1024                bytes=     1080 status='HTTP/1.1 204 No Content' t=0.01s heap_inuse=2793472 heap_objects=8234 rss_kb=185296 maxrss=189743104 gor=5 tainted_sinks=0/2356
+case prop_8192                bytes=     8256 status='HTTP/1.1 204 No Content' t=0.05s heap_inuse=2793472 heap_objects=8267 rss_kb=185344 maxrss=189792256 gor=5 tainted_sinks=0/2578
+case prop_hdr_invalid         bytes=      866 status='HTTP/1.1 204 No Content' t=0.01s heap_inuse=2785280 heap_objects=8297 rss_kb=185344 maxrss=189792256 gor=5 tainted_sinks=0/2607
+case exploit_sqli             bytes=       80 status='HTTP/1.1 204 No Content' t=0.00s heap_inuse=2793472 heap_objects=8330 rss_kb=185344 maxrss=189792256 gor=5 tainted_sinks=0/2609
+case exploit_sqli_num         bytes=       74 status='HTTP/1.1 204 No Content' t=0.00s heap_inuse=2793472 heap_objects=8359 rss_kb=185344 maxrss=189792256 gor=5 tainted_sinks=0/2611
+spans 52 with_json 0
+round 0 t=0.2s heap_inuse=2793472 heap_objects=6972 rss_kb=278000 maxrss=284672000 gor=5 bad=[('mp_5k_parts', "ERR ConnectionResetError(54, 'Connection reset by peer')"), ('json_deep12000', "ERR ConnectionResetError(54, 'Connection reset by peer')")]
+round 1 t=0.3s heap_inuse=2793472 heap_objects=7004 rss_kb=278160 maxrss=284835840 gor=5 bad=[('mp_5k_parts', "ERR ConnectionResetError(54, 'Connection reset by peer')"), ('json_deep12000', "ERR ConnectionResetError(54, 'Connection reset by peer')")]
+round 2 t=0.3s heap_inuse=2809856 heap_objects=7042 rss_kb=285328 maxrss=292175872 gor=5 bad=[('mp_5k_parts', "ERR ConnectionResetError(54, 'Connection reset by peer')"), ('json_deep12000', "ERR ConnectionResetError(54, 'Connection reset by peer')")]

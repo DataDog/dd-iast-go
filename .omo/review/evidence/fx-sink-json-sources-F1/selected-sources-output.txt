@@ -1,0 +1,6 @@
+$ env GOFLAGS=-p=4 GOTOOLCHAIN=go1.27.0 go -C /tmp/ddiast-review/wt/fx-sink-json-sources-F1/review-json-f1 list -f '{{.GoFiles}}' encoding/json
+[v2_decode.go v2_encode.go v2_indent.go v2_inject.go v2_options.go v2_scanner.go v2_stream.go]
+$ env GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 go -C /tmp/ddiast-review/wt/fx-sink-json-sources-F1/review-json-f1 list -f '{{.GoFiles}}' encoding/json
+[decode.go encode.go fold.go indent.go scanner.go stream.go tables.go tags.go]
+$ env GOFLAGS=-p=4 GOTOOLCHAIN=go1.27.0 GOEXPERIMENT=nojsonv2 go -C /tmp/ddiast-review/wt/fx-sink-json-sources-F1/review-json-f1 list -f '{{.GoFiles}}' encoding/json
+[decode.go encode.go fold.go indent.go scanner.go stream.go tables.go tags.go]

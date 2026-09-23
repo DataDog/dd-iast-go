@@ -1,0 +1,9 @@
+# example.com/shop/internal/bconv
+panic: assignment to entry in nil map
+
+goroutine 1 [running]:
+github.com/DataDog/orchestrion/internal/toolexec/aspect.Weaver.OnCompile({{0x6739fcd40414?, 0x2?}, {0x0?, 0x10334b60c?}}, {0x1044f66a8, 0x6739fd1b5420}, 0x6739fd078780)
+	/Users/eliott.bouhana/go/pkg/mod/github.com/!data!dog/orchestrion@v1.12.2-0.20260828141217-23afa71d6dcb/internal/toolexec/aspect/oncompile.go:195 +0x17ac
+github.com/DataDog/orchestrion/internal/toolexec/proxy.ProcessCommand[...](...)
+	/Users/eliott.bouhana/go/pkg/mod/github.com/!data!dog/orchestrion@v1.12.2-0.20260828141217-23afa71d6dcb/internal/toolexec/proxy/proxy.go:78
+exit=141

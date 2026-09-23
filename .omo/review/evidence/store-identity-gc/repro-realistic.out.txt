@@ -1,0 +1,25 @@
+--- run 1
+    zz_review_gc_identity_test.go:248: iterations=20000 falsePositives=0
+ok  	github.com/DataDog/dd-iast-go/iast/propagation	0.292s
+--- run 2
+    zz_review_gc_identity_test.go:248: iterations=20000 falsePositives=0
+ok  	github.com/DataDog/dd-iast-go/iast/propagation	0.274s
+--- run 3
+    zz_review_gc_identity_test.go:248: iterations=20000 falsePositives=0
+ok  	github.com/DataDog/dd-iast-go/iast/propagation	0.273s
+--- run 4
+    zz_review_gc_identity_test.go:248: iterations=20000 falsePositives=0
+ok  	github.com/DataDog/dd-iast-go/iast/propagation	0.285s
+--- run 5
+    zz_review_gc_identity_test.go:248: iterations=20000 falsePositives=0
+ok  	github.com/DataDog/dd-iast-go/iast/propagation	0.337s
+--- run 6
+    zz_review_gc_identity_test.go:248: iterations=20000 falsePositives=0
+ok  	github.com/DataDog/dd-iast-go/iast/propagation	0.299s
+--- run 7
+    zz_review_gc_identity_test.go:248: iterations=20000 falsePositives=0
+ok  	github.com/DataDog/dd-iast-go/iast/propagation	0.263s
+--- run 8
+    zz_review_gc_identity_test.go:245: iteration 156: clean query "SELECT 1;x" reported tainted
+    zz_review_gc_identity_test.go:248: iterations=157 falsePositives=1
+FAIL

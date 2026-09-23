@@ -1,0 +1,164 @@
+NODE_ID=base-test-127
+Toolchain under test: go version go1.27.0 darwin/arm64
+Working copy: /tmp/ddiast-review/wt/base-test-127
+
+=== root plain ===
+$ GOTOOLCHAIN=local go test ./...
+exit=1
+ok  	github.com/DataDog/dd-iast-go/iast/bufio	0.593s
+ok  	github.com/DataDog/dd-iast-go/iast/crypto/cipher	0.844s
+ok  	github.com/DataDog/dd-iast-go/iast/crypto/hash	2.763s
+ok  	github.com/DataDog/dd-iast-go/iast/database/sql	6.932s
+--- FAIL: TestSourceShape (0.03s)
+    json_test.go:90: missing encoding/json instrumentation target decodeState.init
+    json_test.go:90: missing encoding/json instrumentation target decodeState.literalStore
+    json_test.go:90: missing encoding/json instrumentation target decodeState.unmarshal
+    json_test.go:90: missing encoding/json instrumentation target decodeState.valueQuoted
+    json_test.go:95: encoding/json field Decoder.r has type "", want "io.Reader"
+    json_test.go:95: encoding/json field Decoder.d has type "", want "decodeState"
+    json_test.go:95: encoding/json field decodeState.data has type "", want "[]byte"
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/iast/encoding/json	3.696s
+?   	github.com/DataDog/dd-iast-go/iast/internal/propagationtest	[no test files]
+ok  	github.com/DataDog/dd-iast-go/iast/io	1.681s
+ok  	github.com/DataDog/dd-iast-go/iast/net/http	3.343s
+?   	github.com/DataDog/dd-iast-go/iast/net/url	[no test files]
+ok  	github.com/DataDog/dd-iast-go/iast/os/exec	2.353s
+ok  	github.com/DataDog/dd-iast-go/iast/propagation	5.865s
+ok  	github.com/DataDog/dd-iast-go/internal/config	4.075s
+ok  	github.com/DataDog/dd-iast-go/internal/config/loader	4.516s
+ok  	github.com/DataDog/dd-iast-go/internal/config/parser	6.286s
+?   	github.com/DataDog/dd-iast-go/internal/instrumentation	[no test files]
+ok  	github.com/DataDog/dd-iast-go/internal/instrumentation/telemetry	5.003s
+ok  	github.com/DataDog/dd-iast-go/internal/model	1.320s
+ok  	github.com/DataDog/dd-iast-go/internal/model/constants	5.321s
+ok  	github.com/DataDog/dd-iast-go/internal/model/truncation	6.754s
+ok  	github.com/DataDog/dd-iast-go/internal/spans	7.666s
+ok  	github.com/DataDog/dd-iast-go/internal/taint/commandbridge	7.469s
+ok  	github.com/DataDog/dd-iast-go/internal/taint/evidence	7.284s
+ok  	github.com/DataDog/dd-iast-go/internal/taint/httpbridge	7.300s
+ok  	github.com/DataDog/dd-iast-go/internal/taint/iobridge	7.300s
+ok  	github.com/DataDog/dd-iast-go/internal/taint/jsonbridge	7.043s
+ok  	github.com/DataDog/dd-iast-go/internal/taint/operatorbridge	6.961s
+ok  	github.com/DataDog/dd-iast-go/internal/taint/propagation	7.791s
+ok  	github.com/DataDog/dd-iast-go/internal/taint/ranges	7.753s
+ok  	github.com/DataDog/dd-iast-go/internal/taint/redaction	7.370s
+ok  	github.com/DataDog/dd-iast-go/internal/taint/request	7.383s
+ok  	github.com/DataDog/dd-iast-go/internal/taint/scopebridge	7.216s
+ok  	github.com/DataDog/dd-iast-go/internal/taint/sqlbridge	7.158s
+ok  	github.com/DataDog/dd-iast-go/internal/taint/store	10.067s
+ok  	github.com/DataDog/dd-iast-go/internal/taint/urlbridge	7.345s
+ok  	github.com/DataDog/dd-iast-go/internal/taint/writerbridge	7.695s
+ok  	github.com/DataDog/dd-iast-go/internal/vulnerability	7.683s
+ok  	github.com/DataDog/dd-iast-go/internal/vulnerability/dedup	7.311s
+ok  	github.com/DataDog/dd-iast-go/internal/vulnerability/stacktrace	7.445s
+ok  	github.com/DataDog/dd-iast-go/taint	7.608s
+FAIL
+
+=== root orchestrion ===
+$ GOTOOLCHAIN=local go tool orchestrion go test -shuffle=on -timeout 20m ./...
+exit=1
+# encoding/json
+$WORK/b104/orchestrion/src/encoding/json/<generated>:2: dec.r undefined (type *Decoder has no field or method r)
+$WORK/b104/orchestrion/src/encoding/json/<generated>:2: dec.d undefined (type *Decoder has no field or method d)
+$WORK/b104/orchestrion/src/encoding/json/<generated>:3: dec.d undefined (type *Decoder has no field or method d)
+exit status 2
+FAIL	github.com/DataDog/dd-iast-go/iast/bufio [build failed]
+FAIL	github.com/DataDog/dd-iast-go/iast/crypto/cipher [build failed]
+FAIL	github.com/DataDog/dd-iast-go/iast/crypto/hash [build failed]
+FAIL	github.com/DataDog/dd-iast-go/iast/database/sql [build failed]
+FAIL	github.com/DataDog/dd-iast-go/iast/encoding/json [build failed]
+FAIL	github.com/DataDog/dd-iast-go/iast/internal/propagationtest [build failed]
+FAIL	github.com/DataDog/dd-iast-go/iast/io [build failed]
+FAIL	github.com/DataDog/dd-iast-go/iast/net/http [build failed]
+?   	github.com/DataDog/dd-iast-go/iast/net/url	[no test files]
+FAIL	github.com/DataDog/dd-iast-go/iast/os/exec [build failed]
+FAIL	github.com/DataDog/dd-iast-go/iast/propagation [build failed]
+FAIL	github.com/DataDog/dd-iast-go/internal/config [build failed]
+FAIL	github.com/DataDog/dd-iast-go/internal/config/loader [build failed]
+FAIL	github.com/DataDog/dd-iast-go/internal/config/parser [build failed]
+FAIL	github.com/DataDog/dd-iast-go/internal/instrumentation [build failed]
+FAIL	github.com/DataDog/dd-iast-go/internal/instrumentation/telemetry [build failed]
+FAIL	github.com/DataDog/dd-iast-go/internal/model [build failed]
+FAIL	github.com/DataDog/dd-iast-go/internal/model/constants [build failed]
+FAIL	github.com/DataDog/dd-iast-go/internal/model/truncation [build failed]
+FAIL	github.com/DataDog/dd-iast-go/internal/spans [build failed]
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/commandbridge [build failed]
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/evidence [build failed]
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/httpbridge [build failed]
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/iobridge [build failed]
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/jsonbridge [build failed]
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/operatorbridge [build failed]
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/propagation [build failed]
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/ranges [build failed]
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/redaction [build failed]
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/request [build failed]
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/scopebridge [build failed]
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/sqlbridge [build failed]
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/store [build failed]
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/urlbridge [build failed]
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/writerbridge [build failed]
+FAIL	github.com/DataDog/dd-iast-go/internal/vulnerability [build failed]
+FAIL	github.com/DataDog/dd-iast-go/internal/vulnerability/dedup [build failed]
+FAIL	github.com/DataDog/dd-iast-go/internal/vulnerability/stacktrace [build failed]
+FAIL	github.com/DataDog/dd-iast-go/taint [build failed]
+FAIL
+
+=== nested orchestrion matrix ===
+$ cd iast/database/sql/testapp && GOTOOLCHAIN=local go tool orchestrion go test -timeout 20m ./...
+exit=0
+ok  	github.com/DataDog/dd-iast-go/testapps/database-sql	1.091s
+?   	github.com/DataDog/dd-iast-go/testapps/database-sql/cmd/bootstrap	[no test files]
+$ cd iast/database/sql/testapp && GOTOOLCHAIN=local go tool orchestrion go build ./cmd/bootstrap
+exit=0
+
+$ cd iast/os/exec/testapp && GOTOOLCHAIN=local go tool orchestrion go test -timeout 20m ./...
+exit=0
+ok  	github.com/DataDog/dd-iast-go/testapps/os-exec	1.382s
+?   	github.com/DataDog/dd-iast-go/testapps/os-exec/cmd/bootstrap	[no test files]
+$ cd iast/os/exec/testapp && GOTOOLCHAIN=local go tool orchestrion go build ./cmd/bootstrap
+exit=0
+
+$ cd iast/integration/testapp && GOTOOLCHAIN=local go tool orchestrion go test -timeout 20m ./...
+exit=1
+# encoding/json
+$WORK/b104/orchestrion/src/encoding/json/<generated>:2: dec.r undefined (type *Decoder has no field or method r)
+$WORK/b104/orchestrion/src/encoding/json/<generated>:2: dec.d undefined (type *Decoder has no field or method d)
+$WORK/b104/orchestrion/src/encoding/json/<generated>:3: dec.d undefined (type *Decoder has no field or method d)
+exit status 2
+FAIL	github.com/DataDog/dd-iast-go/testapps/integration [build failed]
+FAIL	github.com/DataDog/dd-iast-go/testapps/integration/cmd/bootstrap [build failed]
+FAIL	github.com/DataDog/dd-iast-go/testapps/integration/cmd/bootstrap.test [build failed]
+FAIL
+$ cd iast/integration/testapp && GOTOOLCHAIN=local go tool orchestrion go build ./cmd/bootstrap
+exit=1
+# github.com/DataDog/dd-iast-go/testapps/integration/cmd/bootstrap
+resolving woven dependency on github.com/DataDog/dd-iast-go/iast/database/sql: internal error: nats: maximum payload exceeded
+exit status 1
+
+$ cd benchmarks/overhead && GOTOOLCHAIN=local go tool orchestrion go test -timeout 20m ./...
+exit=1
+# encoding/json
+$WORK/b104/orchestrion/src/encoding/json/<generated>:2: dec.r undefined (type *Decoder has no field or method r)
+$WORK/b104/orchestrion/src/encoding/json/<generated>:2: dec.d undefined (type *Decoder has no field or method d)
+$WORK/b104/orchestrion/src/encoding/json/<generated>:3: dec.d undefined (type *Decoder has no field or method d)
+exit status 2
+FAIL	github.com/DataDog/dd-iast-go/benchmarks/overhead [build failed]
+FAIL	github.com/DataDog/dd-iast-go/benchmarks/overhead/runner [build failed]
+FAIL
+
+=== Go 1.25.x check ===
+$ cd iast/integration/testapp && GOTOOLCHAIN=go1.25.9 go tool orchestrion go build ./cmd/bootstrap
+exit=1
+go: go.mod requires go >= 1.26.6 (running go 1.25.9; GOTOOLCHAIN=go1.25.9)
+
+=== Go 1.26.6 comparison ===
+$ cd iast/integration/testapp && GOTOOLCHAIN=go1.26.6 go tool orchestrion go build ./cmd/bootstrap
+exit=0
+
+=== integration fresh-cache retry ===
+$ cd iast/integration/testapp && GOTOOLCHAIN=local GOCACHE=/tmp/ddiast-review/wt/base-test-127/.gocache-integration-127 go tool orchestrion go build ./cmd/bootstrap
+exit=1
+# github.com/DataDog/dd-iast-go/testapps/integration/cmd/bootstrap
+resolving woven dependency on github.com/DataDog/dd-iast-go/iast/database/sql: internal error: nats: maximum payload exceeded
+exit status 1

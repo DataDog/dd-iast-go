@@ -1,0 +1,47 @@
+Command: cd /tmp/ddiast-review/wt/fx-prop-semantics-parity-F3 && /usr/bin/time -l env GOFLAGS=-p=4 GOTOOLCHAIN=go1.27.0 DD_IAST_REQUEST_SAMPLING=100 go tool orchestrion go run ./cmd/f3verify
+
+status: exited_1 exit_code: 1
+# encoding/json
+$WORK/b104/orchestrion/src/encoding/json/<generated>:2: dec.r undefined (type *Decoder has no field or method r)
+$WORK/b104/orchestrion/src/encoding/json/<generated>:2: dec.d undefined (type *Decoder has no field or method d)
+$WORK/b104/orchestrion/src/encoding/json/<generated>:3: dec.d undefined (type *Decoder has no field or method d)
+exit status 2
+# crypto/des
+resolving woven dependency on github.com/DataDog/dd-iast-go/internal/instrumentation/telemetry: -: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+# crypto/md5
+resolving woven dependency on github.com/DataDog/dd-iast-go/internal/instrumentation/telemetry: -: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+# crypto/sha1
+resolving woven dependency on github.com/DataDog/dd-iast-go/internal/instrumentation/telemetry: -: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+# crypto/rc4
+resolving woven dependency on github.com/DataDog/dd-iast-go/internal/model/constants: -: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+exit status 1
+       51.80 real        68.19 user        40.47 sys
+           297828352  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+             4680165  page reclaims
+              140354  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                8118  messages sent
+                8882  messages received
+               45639  signals received
+               16280  voluntary context switches
+             1023080  involuntary context switches
+          5851450510  instructions retired
+          3680096470  cycles elapsed
+            42828352  peak memory footprint

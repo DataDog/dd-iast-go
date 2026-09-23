@@ -1,0 +1,19 @@
+Command: cd x-exp && GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -count=1 -timeout 15m ./slices/... ./maps/... ./constraints/... ./slog/...
+go version: go version go1.26.6 darwin/arm64
+
+ok  	golang.org/x/exp/slices	0.501s
+ok  	golang.org/x/exp/maps	0.694s
+ok  	golang.org/x/exp/constraints	1.187s
+--- FAIL: TestTextHandlerAlloc (0.00s)
+    text_handler_test.go:151: got 11 allocs, want at most 0
+FAIL
+FAIL	golang.org/x/exp/slog	0.723s
+ok  	golang.org/x/exp/slog/benchmarks	0.791s
+?   	golang.org/x/exp/slog/internal	[no test files]
+ok  	golang.org/x/exp/slog/internal/buffer	1.084s
+?   	golang.org/x/exp/slog/internal/testutil	[no test files]
+ok  	golang.org/x/exp/slog/slogtest	1.428s
+FAIL
+exit status 1
+
+Exit status: 1  (elapsed 44s)

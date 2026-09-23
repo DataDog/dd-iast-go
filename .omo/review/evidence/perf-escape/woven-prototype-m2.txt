@@ -1,0 +1,425 @@
+# github.com/DataDog/dd-iast-go/perfsample
+perfsample/gate.go:6:6: cannot inline Gate: marked go:noinline
+./iast/propagation/operators.go:34:6: can inline propagation.concat3Result[go.shape.string] with cost 80 as: func(*[3]uintptr, go.shape.string, go.shape.string, go.shape.string, go.shape.string) go.shape.string { if !operatorbridge.HasValues() { return propagation.result }; return go.shape.string(propagation.Concat3(string(propagation.a), string(propagation.b), string(propagation.c), string(propagation.result))) }
+./iast/propagation/operators.go:30:6: cannot inline propagation.Concat3[go.shape.string]: function too complex: cost 94 exceeds budget 80
+perfsample/sample.go:15: cannot inline ConcatLocal: marked go:noinline
+./iast/propagation/operators.go:201:6: can inline propagation.BytesToString[go.shape.[]uint8] with cost 78 as: func(*[3]uintptr, go.shape.[]uint8) string { if !operatorbridge.HasValues() { return string(propagation.value) }; return propagation.bytesToStringSlow(([]byte)(propagation.value)) }
+perfsample/sample.go:23: cannot inline ConvLocal: marked go:noinline
+./iast/propagation/operators.go:274:6: cannot inline propagation.BytesSliceHigh[go.shape.[]uint8,go.shape.int]: function too complex: cost 86 exceeds budget 80
+perfsample/sample.go:31: cannot inline ByteSliceLocal: marked go:noinline
+./iast/propagation/operators.go:224:6: cannot inline propagation.StringSliceLow[go.shape.string,go.shape.int]: function too complex: cost 86 exceeds budget 80
+perfsample/sample.go:45: cannot inline StringSliceLocal: marked go:noinline
+perfsample/sample.go:53: cannot inline BuilderLocal: marked go:noinline
+perfsample/sample.go:63: cannot inline BufferLocal: marked go:noinline
+perfsample/sample.go:73: cannot inline JoinLocal: marked go:noinline
+perfsample/sample.go:80: cannot inline SprintfLocal: marked go:noinline
+perfsample/sample.go:87: cannot inline CutLocal: marked go:noinline
+perfsample/sample.go:95: cannot inline TrimLocal: marked go:noinline
+perfsample/sample.go:102: cannot inline SplitSeqLocal: marked go:noinline
+perfsample/sample.go:104: can inline SplitSeqLocal-range1 with cost 24 as: func(string) bool { #tmpState := #state1; #state1 = 2; if #tmpState != 1 { runtime.panicrangestate(#tmpState) }; n += len(part); #state1 = 1; return true }
+perfsample/sample.go:113: cannot inline FieldsSeqLocal: marked go:noinline
+perfsample/sample.go:115: can inline FieldsSeqLocal-range1 with cost 24 as: func(string) bool { #tmpState := #state1; #state1 = 2; if #tmpState != 1 { runtime.panicrangestate(#tmpState) }; n += len(part); #state1 = 1; return true }
+perfsample/sample.go:124: cannot inline QuoteLocal: marked go:noinline
+perfsample/sample.go:131: cannot inline ToLowerLocal: marked go:noinline
+./iast/propagation/operators.go:22:6: can inline propagation.concat2Result[go.shape.string] with cost 79 as: func(*[3]uintptr, go.shape.string, go.shape.string, go.shape.string) go.shape.string { if !operatorbridge.HasValues() { return propagation.result }; return go.shape.string(propagation.Concat2(string(propagation.a), string(propagation.b), string(propagation.result))) }
+./iast/propagation/operators.go:18:6: cannot inline propagation.Concat2[go.shape.string]: function too complex: cost 91 exceeds budget 80
+perfsample/sample.go:138: cannot inline ConcatLocal2: marked go:noinline
+./iast/propagation/operators.go:46:6: cannot inline propagation.concat4Result[go.shape.string]: function too complex: cost 81 exceeds budget 80
+./iast/propagation/operators.go:42:6: can inline propagation.Concat4[go.shape.string] with cost 73 as: func(*[2]uintptr, go.shape.string, go.shape.string, go.shape.string, go.shape.string) go.shape.string { return propagation.concat4Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.a + propagation.b + propagation.c + propagation.d) }
+perfsample/sample.go:143: cannot inline ConcatLocal4: marked go:noinline
+./iast/propagation/operators.go:58:6: cannot inline propagation.concat5Result[go.shape.string]: function too complex: cost 82 exceeds budget 80
+./iast/propagation/operators.go:54:6: can inline propagation.Concat5[go.shape.string] with cost 75 as: func(*[2]uintptr, go.shape.string, go.shape.string, go.shape.string, go.shape.string, go.shape.string) go.shape.string { return propagation.concat5Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.a + propagation.b + propagation.c + propagation.d + propagation.e) }
+perfsample/sample.go:145: cannot inline ConcatLocal5: marked go:noinline
+./iast/propagation/operators.go:97:6: cannot inline propagation.concat8Result[go.shape.string]: function too complex: cost 85 exceeds budget 80
+./iast/propagation/operators.go:90:6: cannot inline propagation.Concat8[go.shape.string]: function too complex: cost 105 exceeds budget 80
+perfsample/sample.go:148: cannot inline ConcatLocal8: marked go:noinline
+./iast/propagation/operators.go:193:6: cannot inline propagation.concat16Result[go.shape.string]: function too complex: cost 93 exceeds budget 80
+./iast/propagation/operators.go:189:6: cannot inline propagation.Concat16[go.shape.string]: function too complex: cost 97 exceeds budget 80
+perfsample/sample.go:151: cannot inline ConcatLocal16: marked go:noinline
+perfsample/sample.go:158: cannot inline ConcatConvOperand: marked go:noinline
+perfsample/sample.go:164: cannot inline count: marked go:noinline
+perfsample/sample.go:166: can inline count-range1 with cost 24 as: func(string) bool { #tmpState := #state1; #state1 = 2; if #tmpState != 1 { runtime.panicrangestate(#tmpState) }; n += len(s); #state1 = 1; return true }
+perfsample/sample.go:175: cannot inline SplitSeqPass: marked go:noinline
+perfsample/sample.go:182: cannot inline BufferStringLocal: marked go:noinline
+perfsample/sample.go:190: cannot inline BuilderStringLocal: marked go:noinline
+./iast/propagation/operators.go:18:6: can inline propagation.Concat2[string] with cost 64 as: func(string, string) string { return propagation.Concat2[go.shape.string](&propagation..dict.Concat2[string], propagation.a, propagation.b) }
+./iast/propagation/operators.go:189:6: can inline propagation.Concat16[string] with cost 78 as: func(string, string, string, string, string, string, string, string, string, string, string, string, string, string, string, string) string { return propagation.Concat16[go.shape.string](&propagation..dict.Concat16[string], propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.f, propagation.g, propagation.h, propagation.i, propagation.j, propagation.k, propagation.l, propagation.m, propagation.n, propagation.o, propagation.p) }
+./iast/propagation/operators.go:90:6: can inline propagation.Concat8[string] with cost 70 as: func(string, string, string, string, string, string, string, string) string { return propagation.Concat8[go.shape.string](&propagation..dict.Concat8[string], propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.f, propagation.g, propagation.h) }
+./iast/propagation/operators.go:54:6: cannot inline propagation.Concat5[string]: function too complex: cost 85 exceeds budget 80
+./iast/propagation/operators.go:42:6: cannot inline propagation.Concat4[string]: function too complex: cost 82 exceeds budget 80
+./iast/propagation/operators.go:224:6: can inline propagation.StringSliceLow[string,int] with cost 64 as: func(string, int) string { return propagation.StringSliceLow[go.shape.string,go.shape.int](&propagation..dict.StringSliceLow[string,int], propagation.value, propagation.low) }
+./iast/propagation/operators.go:201:6: cannot inline propagation.BytesToString[[]uint8]: function too complex: cost 84 exceeds budget 80
+./iast/propagation/operators.go:274:6: can inline propagation.BytesSliceHigh[[]uint8,int] with cost 64 as: func([]byte, int) []byte { return propagation.BytesSliceHigh[go.shape.[]uint8,go.shape.int](&propagation..dict.BytesSliceHigh[[]uint8,int], propagation.value, propagation.high) }
+./iast/propagation/operators.go:30:6: can inline propagation.Concat3[string] with cost 65 as: func(string, string, string) string { return propagation.Concat3[go.shape.string](&propagation..dict.Concat3[string], propagation.a, propagation.b, propagation.c) }
+perfsample/gate.go:6:51: inlining call to operatorbridge.HasValues
+perfsample/gate.go:6:51: inlining call to atomic.(*Int32).Load
+./iast/propagation/operators.go:35:30: inlining call to operatorbridge.HasValues
+./iast/propagation/operators.go:35:30: inlining call to atomic.(*Int32).Load
+./iast/propagation/operators.go:31:22: inlining call to propagation.concat3Result[go.shape.string]
+./iast/propagation/operators.go:31:22: inlining call to operatorbridge.HasValues
+./iast/propagation/operators.go:31:22: inlining call to atomic.(*Int32).Load
+./iast/propagation/operators.go:202:30: inlining call to operatorbridge.HasValues
+./iast/propagation/operators.go:202:30: inlining call to atomic.(*Int32).Load
+<generated>:1: inlining call to propagation.BytesToString[go.shape.[]uint8]
+<generated>:1: inlining call to operatorbridge.HasValues
+<generated>:1: inlining call to atomic.(*Int32).Load
+./iast/propagation/operators.go:276:30: inlining call to operatorbridge.HasValues
+./iast/propagation/operators.go:276:30: inlining call to atomic.(*Int32).Load
+./iast/propagation/operators.go:226:30: inlining call to operatorbridge.HasValues
+./iast/propagation/operators.go:226:30: inlining call to atomic.(*Int32).Load
+<generated>:1: inlining call to propagation.BytesToString[go.shape.[]uint8]
+<generated>:1: inlining call to operatorbridge.HasValues
+<generated>:1: inlining call to atomic.(*Int32).Load
+perfsample/sample.go:67: inlining call to bytes.(*Buffer).Len
+perfsample/sample.go:104: inlining call to propagation.StringsSplitSeq
+perfsample/sample.go:104: inlining call to strings.SplitSeq
+perfsample/sample.go:104: inlining call to propagation.stringWindowSeq
+perfsample/sample.go:104: inlining call to strings.splitSeq
+./iast/propagation/strings.go:114:9: can inline SplitSeqLocal.StringsSplitSeq.stringWindowSeq.func1 with cost 40 as: func(func(string) bool) { propagation.inspected := 0; propagation.sequence(func literal) }
+perfsample/sample.go:104: inlining call to SplitSeqLocal.StringsSplitSeq.stringWindowSeq.func1
+/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/strings/iter.go:37:9: can inline SplitSeqLocal.StringsSplitSeq.SplitSeq.splitSeq.func2 with cost 265 as: func(func(string) bool) { if len(strings.sep) == 0 { for loop; return  }; for loop; strings.yield(strings.s) }
+perfsample/sample.go:104: inlining call to SplitSeqLocal.StringsSplitSeq.SplitSeq.splitSeq.func2
+perfsample/sample.go:104: inlining call to utf8.DecodeRuneInString
+./iast/propagation/strings.go:116:12: can inline SplitSeqLocal.SplitSeqLocal.StringsSplitSeq.stringWindowSeq.func1.func3 with cost 89 as: func(string) bool { if propagation.inspected < 32 { propagation.StringWindow(propagation.input, propagation.value) }; propagation.inspected++; return propagation.yield(propagation.value) }
+perfsample/sample.go:104: inlining call to SplitSeqLocal.SplitSeqLocal.StringsSplitSeq.stringWindowSeq.func1.func3
+perfsample/sample.go:104: inlining call to strings.Index
+perfsample/sample.go:104: inlining call to SplitSeqLocal.SplitSeqLocal.StringsSplitSeq.stringWindowSeq.func1.func3
+perfsample/sample.go:104: inlining call to SplitSeqLocal.SplitSeqLocal.StringsSplitSeq.stringWindowSeq.func1.func3
+perfsample/sample.go:104: inlining call to SplitSeqLocal-range1
+perfsample/sample.go:104: inlining call to SplitSeqLocal-range1
+perfsample/sample.go:104: inlining call to SplitSeqLocal-range1
+perfsample/sample.go:115: inlining call to propagation.StringsFieldsSeq
+perfsample/sample.go:115: inlining call to strings.FieldsSeq
+perfsample/sample.go:115: inlining call to propagation.stringWindowSeq
+./iast/propagation/strings.go:114:9: can inline FieldsSeqLocal.StringsFieldsSeq.stringWindowSeq.func2 with cost 40 as: func(func(string) bool) { propagation.inspected := 0; propagation.sequence(func literal) }
+perfsample/sample.go:115: inlining call to FieldsSeqLocal.StringsFieldsSeq.stringWindowSeq.func2
+/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/strings/iter.go:84:9: can inline FieldsSeqLocal.StringsFieldsSeq.FieldsSeq.func1 with cost 264 as: func(func(string) bool) { strings.start := -1; for loop; if strings.start >= 0 { strings.yield(strings.s[strings.start:]) } }
+perfsample/sample.go:115: inlining call to FieldsSeqLocal.StringsFieldsSeq.FieldsSeq.func1
+perfsample/sample.go:115: inlining call to utf8.DecodeRuneInString
+./iast/propagation/strings.go:116:12: can inline FieldsSeqLocal.FieldsSeqLocal.StringsFieldsSeq.stringWindowSeq.func2.func3 with cost 89 as: func(string) bool { if propagation.inspected < 32 { propagation.StringWindow(propagation.input, propagation.value) }; propagation.inspected++; return propagation.yield(propagation.value) }
+perfsample/sample.go:115: inlining call to FieldsSeqLocal.FieldsSeqLocal.StringsFieldsSeq.stringWindowSeq.func2.func3
+perfsample/sample.go:115: inlining call to FieldsSeqLocal.FieldsSeqLocal.StringsFieldsSeq.stringWindowSeq.func2.func3
+perfsample/sample.go:115: inlining call to FieldsSeqLocal-range1
+perfsample/sample.go:115: inlining call to FieldsSeqLocal-range1
+./iast/propagation/operators.go:23:30: inlining call to operatorbridge.HasValues
+./iast/propagation/operators.go:23:30: inlining call to atomic.(*Int32).Load
+./iast/propagation/operators.go:19:22: inlining call to propagation.concat2Result[go.shape.string]
+./iast/propagation/operators.go:19:22: inlining call to operatorbridge.HasValues
+./iast/propagation/operators.go:19:22: inlining call to atomic.(*Int32).Load
+./iast/propagation/operators.go:47:30: inlining call to operatorbridge.HasValues
+./iast/propagation/operators.go:47:30: inlining call to atomic.(*Int32).Load
+<generated>:1: inlining call to propagation.Concat4[go.shape.string]
+./iast/propagation/operators.go:59:30: inlining call to operatorbridge.HasValues
+./iast/propagation/operators.go:59:30: inlining call to atomic.(*Int32).Load
+<generated>:1: inlining call to propagation.Concat5[go.shape.string]
+./iast/propagation/operators.go:98:30: inlining call to operatorbridge.HasValues
+./iast/propagation/operators.go:98:30: inlining call to atomic.(*Int32).Load
+./iast/propagation/operators.go:91:30: inlining call to operatorbridge.HasValues
+./iast/propagation/operators.go:91:30: inlining call to atomic.(*Int32).Load
+./iast/propagation/operators.go:194:30: inlining call to operatorbridge.HasValues
+./iast/propagation/operators.go:194:30: inlining call to atomic.(*Int32).Load
+perfsample/sample.go:176: inlining call to propagation.StringsSplitSeq
+perfsample/sample.go:176: inlining call to strings.SplitSeq
+perfsample/sample.go:176: inlining call to propagation.stringWindowSeq
+perfsample/sample.go:176: inlining call to strings.splitSeq
+./iast/propagation/operators.go:54:6: inlining call to propagation.Concat5[go.shape.string]
+./iast/propagation/operators.go:42:6: inlining call to propagation.Concat4[go.shape.string]
+./iast/propagation/operators.go:201:6: inlining call to propagation.BytesToString[go.shape.[]uint8]
+./iast/propagation/operators.go:201:6: inlining call to operatorbridge.HasValues
+./iast/propagation/operators.go:201:6: inlining call to atomic.(*Int32).Load
+perfsample/sample.go:10: map[string]int{...} escapes to heap in init:
+perfsample/sample.go:10:   flow: {heap} ← &{storage for map[string]int{...}}:
+perfsample/sample.go:10:     from map[string]int{...} (spill) at perfsample/sample.go:10
+perfsample/sample.go:10:     from table = map[string]int{...} (assign) at perfsample/sample.go:10
+perfsample/sample.go:10: map[string]int{...} escapes to heap
+./iast/propagation/operators.go:31:35: propagation.a + propagation.b + propagation.c escapes to heap in Concat3[go.shape.string]:
+./iast/propagation/operators.go:31:35:   flow: propagation.result ← &{storage for propagation.a + propagation.b + propagation.c}:
+./iast/propagation/operators.go:31:35:     from propagation.a + propagation.b + propagation.c (spill) at ./iast/propagation/operators.go:31:35
+./iast/propagation/operators.go:31:35:     from propagation..dict, propagation.a, propagation.b, propagation.c, propagation.result := (*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.a + propagation.b + propagation.c (assign-pair) at ./iast/propagation/operators.go:31:22
+./iast/propagation/operators.go:31:35:   flow: propagation.~r0 ← propagation.result:
+./iast/propagation/operators.go:31:35:     from propagation.~r0 = propagation.result (assign-pair) at ./iast/propagation/operators.go:31:22
+./iast/propagation/operators.go:31:35:   flow: propagation.~r0 ← propagation.~r0:
+./iast/propagation/operators.go:31:35:     from return propagation.~r0 (return) at ./iast/propagation/operators.go:31:2
+./iast/propagation/operators.go:31:35: propagation.a + propagation.b + propagation.c escapes to heap
+perfsample/sample.go:15: method does not escape
+perfsample/sample.go:15: path does not escape
+perfsample/sample.go:23: b does not escape
+<generated>:1: string(propagation.value) does not escape
+./iast/propagation/operators.go:274:43: parameter propagation.value leaks to propagation.~r0 for BytesSliceHigh[go.shape.[]uint8,go.shape.int] with derefs=0:
+./iast/propagation/operators.go:274:43:   flow: propagation.result ← propagation.value:
+./iast/propagation/operators.go:274:43:     from propagation.value[:propagation.high] (slice) at ./iast/propagation/operators.go:275:17
+./iast/propagation/operators.go:274:43:     from propagation.result := propagation.value[:propagation.high] (assign) at ./iast/propagation/operators.go:275:9
+./iast/propagation/operators.go:274:43:   flow: propagation.~r0 ← propagation.result:
+./iast/propagation/operators.go:274:43:     from return propagation.result (return) at ./iast/propagation/operators.go:277:3
+perfsample/sample.go:31: src does not escape
+perfsample/sample.go:32: make([]byte, 64) does not escape
+./iast/propagation/operators.go:224:43: parameter propagation.value leaks to propagation.~r0 for StringSliceLow[go.shape.string,go.shape.int] with derefs=0:
+./iast/propagation/operators.go:224:43:   flow: propagation.result ← propagation.value:
+./iast/propagation/operators.go:224:43:     from propagation.value[propagation.low:] (slice) at ./iast/propagation/operators.go:225:17
+./iast/propagation/operators.go:224:43:     from propagation.result := propagation.value[propagation.low:] (assign) at ./iast/propagation/operators.go:225:9
+./iast/propagation/operators.go:224:43:   flow: propagation.~r0 ← propagation.result:
+./iast/propagation/operators.go:224:43:     from return propagation.result (return) at ./iast/propagation/operators.go:227:3
+perfsample/sample.go:45: b does not escape
+<generated>:1: string(propagation.value) does not escape
+perfsample/sample.go:54: sb escapes to heap in BuilderLocal:
+perfsample/sample.go:54:   flow: {heap} ← &sb:
+perfsample/sample.go:54:     from &sb (address-of) at <generated>:1
+perfsample/sample.go:54:     from propagation.BuilderWriteString(&sb, a) (call parameter) at <generated>:1
+perfsample/sample.go:54: sb escapes to heap in BuilderLocal:
+perfsample/sample.go:54:   flow: {heap} ← &sb:
+perfsample/sample.go:54:     from &sb (address-of) at <generated>:1
+perfsample/sample.go:54:     from propagation.BuilderWriteString(&sb, b) (call parameter) at <generated>:1
+perfsample/sample.go:54: sb escapes to heap in BuilderLocal:
+perfsample/sample.go:54:   flow: {heap} ← &sb:
+perfsample/sample.go:54:     from &sb (address-of) at perfsample/sample.go:58
+perfsample/sample.go:54:     from propagation.BuilderString(&sb) (call parameter) at perfsample/sample.go:58
+perfsample/sample.go:53: a does not escape
+perfsample/sample.go:53: b does not escape
+perfsample/sample.go:54: moved to heap: sb
+perfsample/sample.go:64: buf escapes to heap in BufferLocal:
+perfsample/sample.go:64:   flow: {heap} ← &buf:
+perfsample/sample.go:64:     from &buf (address-of) at <generated>:1
+perfsample/sample.go:64:     from propagation.BufferWriteString(&buf, a) (call parameter) at <generated>:1
+perfsample/sample.go:64: buf escapes to heap in BufferLocal:
+perfsample/sample.go:64:   flow: {heap} ← &buf:
+perfsample/sample.go:64:     from &buf (address-of) at <generated>:1
+perfsample/sample.go:64:     from propagation.BufferWriteByte(&buf, byte(120)) (call parameter) at <generated>:1
+perfsample/sample.go:63: a does not escape
+perfsample/sample.go:64: moved to heap: buf
+perfsample/sample.go:73: a does not escape
+perfsample/sample.go:73: b does not escape
+perfsample/sample.go:74: []string{...} does not escape
+perfsample/sample.go:81: a escapes to heap in SprintfLocal:
+perfsample/sample.go:81:   flow: {storage for ... argument} ← &{storage for a}:
+perfsample/sample.go:81:     from a (spill) at perfsample/sample.go:81
+perfsample/sample.go:81:     from ... argument (slice-literal-element) at perfsample/sample.go:81
+perfsample/sample.go:81:   flow: {heap} ← {storage for ... argument}:
+perfsample/sample.go:81:     from ... argument (spill) at perfsample/sample.go:81
+perfsample/sample.go:81:     from propagation.FmtSprintf("x=%s", ... argument...) (call parameter) at perfsample/sample.go:81
+perfsample/sample.go:80: parameter a leaks to {storage for a} for SprintfLocal with derefs=0:
+perfsample/sample.go:80:   flow: {storage for a} ← a:
+perfsample/sample.go:80:     from a (interface-converted) at perfsample/sample.go:81
+perfsample/sample.go:80: leaking param: a
+perfsample/sample.go:81: ... argument does not escape
+perfsample/sample.go:81: a escapes to heap
+perfsample/sample.go:87: a does not escape
+perfsample/sample.go:95: a does not escape
+perfsample/sample.go:104: SplitSeqLocal capturing by value: strings.sep (addr=false assign=false width=16)
+perfsample/sample.go:104: SplitSeqLocal capturing by ref: strings.s (addr=false assign=true width=16)
+perfsample/sample.go:104: SplitSeqLocal capturing by value: strings.sepSave (addr=false assign=false width=8)
+perfsample/sample.go:104: SplitSeqLocal capturing by value: propagation.sequence (addr=false assign=false width=8)
+perfsample/sample.go:104: SplitSeqLocal capturing by value: propagation.input (addr=false assign=false width=16)
+./iast/propagation/strings.go:115:3: SplitSeqLocal.StringsSplitSeq.stringWindowSeq.func1 capturing by ref: propagation.inspected (addr=false assign=true width=8)
+perfsample/sample.go:104: SplitSeqLocal capturing by value: propagation.input (addr=false assign=false width=16)
+./iast/propagation/strings.go:114:14: SplitSeqLocal.StringsSplitSeq.stringWindowSeq.func1 capturing by value: propagation.yield (addr=false assign=false width=8)
+./iast/propagation/strings.go:116:17: parameter propagation.value leaks to {heap} for SplitSeqLocal.StringsSplitSeq.stringWindowSeq.func1.1 with derefs=0:
+./iast/propagation/strings.go:116:17:   flow: {heap} ← propagation.value:
+./iast/propagation/strings.go:116:17:     from propagation.yield(propagation.value) (call parameter) at ./iast/propagation/strings.go:121:16
+perfsample/sample.go:102: parameter a leaks to {heap} for SplitSeqLocal with derefs=0:
+perfsample/sample.go:102:   flow: propagation.value ← a:
+perfsample/sample.go:102:     from propagation.value, propagation.separator := a, "," (assign-pair) at perfsample/sample.go:104
+perfsample/sample.go:102:   flow: strings.s ← propagation.value:
+perfsample/sample.go:102:     from strings.s, strings.sep := propagation.value, propagation.separator (assign-pair) at perfsample/sample.go:104
+perfsample/sample.go:102:   flow: strings.s ← strings.s:
+perfsample/sample.go:102:     from strings.s, strings.sep, strings.sepSave := strings.s, strings.sep, 0 (assign-pair) at perfsample/sample.go:104
+perfsample/sample.go:102:   flow: {heap} ← strings.s:
+perfsample/sample.go:102:     from strings.s[:strings.size] (slice) at /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/strings/iter.go:41:16
+perfsample/sample.go:102:     from strings.yield(strings.s[:strings.size]) (call parameter) at /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/strings/iter.go:41:14
+perfsample/sample.go:102: leaking param: a
+/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/strings/iter.go:37:14: yield does not escape
+./iast/propagation/strings.go:114:14: yield does not escape
+./iast/propagation/strings.go:116:17: leaking param: value
+perfsample/sample.go:104: func literal does not escape
+perfsample/sample.go:104: func literal does not escape
+./iast/propagation/strings.go:116:12: func literal does not escape
+perfsample/sample.go:115: FieldsSeqLocal capturing by value: strings.s (addr=false assign=false width=16)
+perfsample/sample.go:115: FieldsSeqLocal capturing by value: propagation.sequence (addr=false assign=false width=8)
+perfsample/sample.go:115: FieldsSeqLocal capturing by value: propagation.input (addr=false assign=false width=16)
+./iast/propagation/strings.go:115:3: FieldsSeqLocal.StringsFieldsSeq.stringWindowSeq.func2 capturing by ref: propagation.inspected (addr=false assign=true width=8)
+perfsample/sample.go:115: FieldsSeqLocal capturing by value: propagation.input (addr=false assign=false width=16)
+./iast/propagation/strings.go:114:14: FieldsSeqLocal.StringsFieldsSeq.stringWindowSeq.func2 capturing by value: propagation.yield (addr=false assign=false width=8)
+./iast/propagation/strings.go:116:17: parameter propagation.value leaks to {heap} for FieldsSeqLocal.StringsFieldsSeq.stringWindowSeq.func2.1 with derefs=0:
+./iast/propagation/strings.go:116:17:   flow: {heap} ← propagation.value:
+./iast/propagation/strings.go:116:17:     from propagation.yield(propagation.value) (call parameter) at ./iast/propagation/strings.go:121:16
+perfsample/sample.go:113: parameter a leaks to {heap} for FieldsSeqLocal with derefs=0:
+perfsample/sample.go:113:   flow: propagation.value ← a:
+perfsample/sample.go:113:     from propagation.value := a (assign-pair) at perfsample/sample.go:115
+perfsample/sample.go:113:   flow: strings.s ← propagation.value:
+perfsample/sample.go:113:     from strings.s := propagation.value (assign-pair) at perfsample/sample.go:115
+perfsample/sample.go:113:   flow: {heap} ← strings.s:
+perfsample/sample.go:113:     from strings.s[strings.start:strings.i] (slice) at /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/strings/iter.go:96:17
+perfsample/sample.go:113:     from strings.yield(strings.s[strings.start:strings.i]) (call parameter) at /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/strings/iter.go:96:15
+perfsample/sample.go:113: leaking param: a
+/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/strings/iter.go:84:14: yield does not escape
+./iast/propagation/strings.go:114:14: yield does not escape
+./iast/propagation/strings.go:116:17: leaking param: value
+perfsample/sample.go:115: func literal does not escape
+perfsample/sample.go:115: func literal does not escape
+./iast/propagation/strings.go:116:12: func literal does not escape
+perfsample/sample.go:124: a does not escape
+perfsample/sample.go:131: a does not escape
+./iast/propagation/operators.go:19:30: propagation.a + propagation.b escapes to heap in Concat2[go.shape.string]:
+./iast/propagation/operators.go:19:30:   flow: propagation.result ← &{storage for propagation.a + propagation.b}:
+./iast/propagation/operators.go:19:30:     from propagation.a + propagation.b (spill) at ./iast/propagation/operators.go:19:30
+./iast/propagation/operators.go:19:30:     from propagation..dict, propagation.a, propagation.b, propagation.result := (*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.a + propagation.b (assign-pair) at ./iast/propagation/operators.go:19:22
+./iast/propagation/operators.go:19:30:   flow: propagation.~r0 ← propagation.result:
+./iast/propagation/operators.go:19:30:     from propagation.~r0 = propagation.result (assign-pair) at ./iast/propagation/operators.go:19:22
+./iast/propagation/operators.go:19:30:   flow: propagation.~r0 ← propagation.~r0:
+./iast/propagation/operators.go:19:30:     from return propagation.~r0 (return) at ./iast/propagation/operators.go:19:2
+./iast/propagation/operators.go:19:30: propagation.a + propagation.b escapes to heap
+perfsample/sample.go:138: a does not escape
+perfsample/sample.go:138: b does not escape
+./iast/propagation/operators.go:46:45: parameter propagation.result leaks to propagation.~r0 for concat4Result[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:46:45:   flow: propagation.~r0 ← propagation.result:
+./iast/propagation/operators.go:46:45:     from return propagation.result (return) at ./iast/propagation/operators.go:48:3
+perfsample/sample.go:143: a does not escape
+perfsample/sample.go:143: b does not escape
+<generated>:1: propagation.a + propagation.b + propagation.c + propagation.d does not escape
+./iast/propagation/operators.go:58:48: parameter propagation.result leaks to propagation.~r0 for concat5Result[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:58:48:   flow: propagation.~r0 ← propagation.result:
+./iast/propagation/operators.go:58:48:     from return propagation.result (return) at ./iast/propagation/operators.go:60:3
+perfsample/sample.go:145: a does not escape
+perfsample/sample.go:145: b does not escape
+<generated>:1: propagation.a + propagation.b + propagation.c + propagation.d + propagation.e does not escape
+./iast/propagation/operators.go:97:57: parameter propagation.result leaks to propagation.~r0 for concat8Result[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:97:57:   flow: propagation.~r0 ← propagation.result:
+./iast/propagation/operators.go:97:57:     from return propagation.result (return) at ./iast/propagation/operators.go:99:3
+./iast/propagation/operators.go:92:36: propagation.a + propagation.b + propagation.c + propagation.d + propagation.e + propagation.f + propagation.g + propagation.h escapes to heap in Concat8[go.shape.string]:
+./iast/propagation/operators.go:92:36:   flow: propagation.~r0 ← &{storage for propagation.a + propagation.b + propagation.c + propagation.d + propagation.e + propagation.f + propagation.g + propagation.h}:
+./iast/propagation/operators.go:92:36:     from propagation.a + propagation.b + propagation.c + propagation.d + propagation.e + propagation.f + propagation.g + propagation.h (spill) at ./iast/propagation/operators.go:92:36
+./iast/propagation/operators.go:92:36:     from return propagation.a + propagation.b + propagation.c + propagation.d + propagation.e + propagation.f + propagation.g + propagation.h (return) at ./iast/propagation/operators.go:92:3
+./iast/propagation/operators.go:94:60: propagation.a + propagation.b + propagation.c + propagation.d + propagation.e + propagation.f + propagation.g + propagation.h escapes to heap in Concat8[go.shape.string]:
+./iast/propagation/operators.go:94:60:   flow: propagation.~r0 ← &{storage for propagation.a + propagation.b + propagation.c + propagation.d + propagation.e + propagation.f + propagation.g + propagation.h}:
+./iast/propagation/operators.go:94:60:     from propagation.a + propagation.b + propagation.c + propagation.d + propagation.e + propagation.f + propagation.g + propagation.h (spill) at ./iast/propagation/operators.go:94:60
+./iast/propagation/operators.go:94:60:     from propagation.concat8Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.f, propagation.g, propagation.h, propagation.a + propagation.b + propagation.c + propagation.d + propagation.e + propagation.f + propagation.g + propagation.h) (call parameter) at ./iast/propagation/operators.go:94:22
+./iast/propagation/operators.go:94:60:     from return propagation.concat8Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.f, propagation.g, propagation.h, propagation.a + propagation.b + propagation.c + propagation.d + propagation.e + propagation.f + propagation.g + propagation.h) (return) at ./iast/propagation/operators.go:94:2
+./iast/propagation/operators.go:92:36: propagation.a + propagation.b + propagation.c + propagation.d + propagation.e + propagation.f + propagation.g + propagation.h escapes to heap
+./iast/propagation/operators.go:94:60: propagation.a + propagation.b + propagation.c + propagation.d + propagation.e + propagation.f + propagation.g + propagation.h escapes to heap
+perfsample/sample.go:148: a does not escape
+perfsample/sample.go:148: b does not escape
+./iast/propagation/operators.go:193:82: parameter propagation.result leaks to propagation.~r0 for concat16Result[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:193:82:   flow: propagation.~r0 ← propagation.result:
+./iast/propagation/operators.go:193:82:     from return propagation.result (return) at ./iast/propagation/operators.go:195:3
+./iast/propagation/operators.go:190:101: propagation.a + propagation.b + propagation.c + propagation.d + propagation.e + propagation.f + propagation.g + propagation.h + propagation.i + propagation.j + propagation.k + propagation.l + propagation.m + propagation.n + propagation.o + propagation.p escapes to heap in Concat16[go.shape.string]:
+./iast/propagation/operators.go:190:101:   flow: propagation.~r0 ← &{storage for propagation.a + propagation.b + propagation.c + propagation.d + propagation.e + propagation.f + propagation.g + propagation.h + propagation.i + propagation.j + propagation.k + propagation.l + propagation.m + propagation.n + propagation.o + propagation.p}:
+./iast/propagation/operators.go:190:101:     from propagation.a + propagation.b + propagation.c + propagation.d + propagation.e + propagation.f + propagation.g + propagation.h + propagation.i + propagation.j + propagation.k + propagation.l + propagation.m + propagation.n + propagation.o + propagation.p (spill) at ./iast/propagation/operators.go:190:101
+./iast/propagation/operators.go:190:101:     from propagation.concat16Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.f, propagation.g, propagation.h, propagation.i, propagation.j, propagation.k, propagation.l, propagation.m, propagation.n, propagation.o, propagation.p, propagation.a + propagation.b + propagation.c + propagation.d + propagation.e + propagation.f + propagation.g + propagation.h + propagation.i + propagation.j + propagation.k + propagation.l + propagation.m + propagation.n + propagation.o + propagation.p) (call parameter) at ./iast/propagation/operators.go:190:23
+./iast/propagation/operators.go:190:101:     from return propagation.concat16Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.f, propagation.g, propagation.h, propagation.i, propagation.j, propagation.k, propagation.l, propagation.m, propagation.n, propagation.o, propagation.p, propagation.a + propagation.b + propagation.c + propagation.d + propagation.e + propagation.f + propagation.g + propagation.h + propagation.i + propagation.j + propagation.k + propagation.l + propagation.m + propagation.n + propagation.o + propagation.p) (return) at ./iast/propagation/operators.go:190:2
+./iast/propagation/operators.go:190:101: propagation.a + propagation.b + propagation.c + propagation.d + propagation.e + propagation.f + propagation.g + propagation.h + propagation.i + propagation.j + propagation.k + propagation.l + propagation.m + propagation.n + propagation.o + propagation.p escapes to heap
+perfsample/sample.go:151: a does not escape
+perfsample/sample.go:151: b does not escape
+perfsample/sample.go:158: b does not escape
+perfsample/sample.go:159: string(b) does not escape
+perfsample/sample.go:166: count capturing by ref: #state1 (addr=false assign=true width=8)
+perfsample/sample.go:165: count capturing by ref: n (addr=false assign=true width=8)
+perfsample/sample.go:166: func literal escapes to heap in count:
+perfsample/sample.go:166:   flow: #yield1 ← &{storage for func literal}:
+perfsample/sample.go:166:     from func literal (spill) at perfsample/sample.go:166
+perfsample/sample.go:166:     from #yield1 := func literal (assign) at perfsample/sample.go:166
+perfsample/sample.go:166:   flow: {heap} ← #yield1:
+perfsample/sample.go:166:     from seq(#yield1) (call parameter) at perfsample/sample.go:166
+perfsample/sample.go:166: #state1 escapes to heap in count:
+perfsample/sample.go:166:   flow: {storage for func literal} ← &#state1:
+perfsample/sample.go:166:     from #state1 (captured by a closure) at <unknown line number>
+perfsample/sample.go:166:     from #state1 (reference) at <unknown line number>
+perfsample/sample.go:165: n escapes to heap in count:
+perfsample/sample.go:165:   flow: {storage for func literal} ← &n:
+perfsample/sample.go:165:     from n (captured by a closure) at perfsample/sample.go:167
+perfsample/sample.go:165:     from n (reference) at perfsample/sample.go:167
+perfsample/sample.go:164: seq does not escape
+perfsample/sample.go:166: s does not escape
+perfsample/sample.go:165: moved to heap: n
+perfsample/sample.go:166: moved to heap: #state1
+perfsample/sample.go:166: func literal escapes to heap
+perfsample/sample.go:176: SplitSeqPass capturing by value: strings.sep (addr=false assign=false width=16)
+perfsample/sample.go:176: SplitSeqPass capturing by ref: strings.s (addr=false assign=true width=16)
+perfsample/sample.go:176: SplitSeqPass capturing by value: strings.sepSave (addr=false assign=false width=8)
+perfsample/sample.go:176: SplitSeqPass capturing by value: propagation.sequence (addr=false assign=false width=8)
+perfsample/sample.go:176: SplitSeqPass capturing by value: propagation.input (addr=false assign=false width=16)
+./iast/propagation/strings.go:115:3: SplitSeqPass.StringsSplitSeq.stringWindowSeq.func1 capturing by ref: propagation.inspected (addr=false assign=true width=8)
+perfsample/sample.go:176: SplitSeqPass capturing by value: propagation.input (addr=false assign=false width=16)
+./iast/propagation/strings.go:114:14: SplitSeqPass.StringsSplitSeq.stringWindowSeq.func1 capturing by value: propagation.yield (addr=false assign=false width=8)
+./iast/propagation/strings.go:116:17: parameter propagation.value leaks to {heap} for SplitSeqPass.StringsSplitSeq.stringWindowSeq.func1.1 with derefs=0:
+./iast/propagation/strings.go:116:17:   flow: {heap} ← propagation.value:
+./iast/propagation/strings.go:116:17:     from propagation.yield(propagation.value) (call parameter) at ./iast/propagation/strings.go:121:16
+perfsample/sample.go:175: parameter a leaks to {heap} for SplitSeqPass with derefs=0:
+perfsample/sample.go:175:   flow: propagation.value ← a:
+perfsample/sample.go:175:     from propagation.value, propagation.separator := a, "," (assign-pair) at perfsample/sample.go:176
+perfsample/sample.go:175:   flow: strings.s ← propagation.value:
+perfsample/sample.go:175:     from strings.s, strings.sep := propagation.value, propagation.separator (assign-pair) at perfsample/sample.go:176
+perfsample/sample.go:175:   flow: strings.s ← strings.s:
+perfsample/sample.go:175:     from strings.s, strings.sep, strings.sepSave := strings.s, strings.sep, 0 (assign-pair) at perfsample/sample.go:176
+perfsample/sample.go:175:   flow: {heap} ← strings.s:
+perfsample/sample.go:175:     from strings.s[:strings.size] (slice) at /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/strings/iter.go:41:16
+perfsample/sample.go:175:     from strings.yield(strings.s[:strings.size]) (call parameter) at /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/strings/iter.go:41:14
+perfsample/sample.go:175: leaking param: a
+/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/strings/iter.go:37:14: yield does not escape
+./iast/propagation/strings.go:114:14: yield does not escape
+./iast/propagation/strings.go:116:17: leaking param: value
+perfsample/sample.go:176: func literal does not escape
+perfsample/sample.go:176: func literal does not escape
+./iast/propagation/strings.go:116:12: func literal does not escape
+perfsample/sample.go:182: parameter buf leaks to {heap} for BufferStringLocal with derefs=0:
+perfsample/sample.go:182:   flow: {heap} ← buf:
+perfsample/sample.go:182:     from propagation.BufferString(buf) (call parameter) at <generated>:1
+perfsample/sample.go:182: leaking param: buf
+perfsample/sample.go:190: parameter sb leaks to {heap} for BuilderStringLocal with derefs=0:
+perfsample/sample.go:190:   flow: {heap} ← sb:
+perfsample/sample.go:190:     from propagation.BuilderString(sb) (call parameter) at <generated>:1
+perfsample/sample.go:190: leaking param: sb
+./iast/propagation/operators.go:22:39: parameter propagation.result leaks to propagation.~r0 for concat2Result[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:22:39:   flow: propagation.~r0 ← propagation.result:
+./iast/propagation/operators.go:22:39:     from return propagation.result (return) at ./iast/propagation/operators.go:24:3
+./iast/propagation/operators.go:55:45: propagation.a + propagation.b + propagation.c + propagation.d + propagation.e escapes to heap in Concat5[go.shape.string]:
+./iast/propagation/operators.go:55:45:   flow: propagation.~r0 ← &{storage for propagation.a + propagation.b + propagation.c + propagation.d + propagation.e}:
+./iast/propagation/operators.go:55:45:     from propagation.a + propagation.b + propagation.c + propagation.d + propagation.e (spill) at ./iast/propagation/operators.go:55:45
+./iast/propagation/operators.go:55:45:     from propagation.concat5Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.a + propagation.b + propagation.c + propagation.d + propagation.e) (call parameter) at ./iast/propagation/operators.go:55:22
+./iast/propagation/operators.go:55:45:     from return propagation.concat5Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.a + propagation.b + propagation.c + propagation.d + propagation.e) (return) at ./iast/propagation/operators.go:55:2
+./iast/propagation/operators.go:55:45: propagation.a + propagation.b + propagation.c + propagation.d + propagation.e escapes to heap
+./iast/propagation/operators.go:54:6: propagation.a + propagation.b + propagation.c + propagation.d + propagation.e escapes to heap in Concat5[string]:
+./iast/propagation/operators.go:54:6:   flow: propagation.~r0 ← &{storage for propagation.a + propagation.b + propagation.c + propagation.d + propagation.e}:
+./iast/propagation/operators.go:54:6:     from propagation.a + propagation.b + propagation.c + propagation.d + propagation.e (spill) at ./iast/propagation/operators.go:54:6
+./iast/propagation/operators.go:54:6:     from propagation.concat5Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.a + propagation.b + propagation.c + propagation.d + propagation.e) (call parameter) at ./iast/propagation/operators.go:54:6
+./iast/propagation/operators.go:54:6:     from propagation.~r0 = propagation.concat5Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.e, propagation.a + propagation.b + propagation.c + propagation.d + propagation.e) (assign-pair) at ./iast/propagation/operators.go:54:6
+./iast/propagation/operators.go:54:6:   flow: propagation.~r0 ← propagation.~r0:
+./iast/propagation/operators.go:54:6:     from return propagation.~r0 (return) at ./iast/propagation/operators.go:54:6
+./iast/propagation/operators.go:54:6: propagation.a + propagation.b + propagation.c + propagation.d + propagation.e escapes to heap
+./iast/propagation/operators.go:43:40: propagation.a + propagation.b + propagation.c + propagation.d escapes to heap in Concat4[go.shape.string]:
+./iast/propagation/operators.go:43:40:   flow: propagation.~r0 ← &{storage for propagation.a + propagation.b + propagation.c + propagation.d}:
+./iast/propagation/operators.go:43:40:     from propagation.a + propagation.b + propagation.c + propagation.d (spill) at ./iast/propagation/operators.go:43:40
+./iast/propagation/operators.go:43:40:     from propagation.concat4Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.a + propagation.b + propagation.c + propagation.d) (call parameter) at ./iast/propagation/operators.go:43:22
+./iast/propagation/operators.go:43:40:     from return propagation.concat4Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.a + propagation.b + propagation.c + propagation.d) (return) at ./iast/propagation/operators.go:43:2
+./iast/propagation/operators.go:43:40: propagation.a + propagation.b + propagation.c + propagation.d escapes to heap
+./iast/propagation/operators.go:42:6: propagation.a + propagation.b + propagation.c + propagation.d escapes to heap in Concat4[string]:
+./iast/propagation/operators.go:42:6:   flow: propagation.~r0 ← &{storage for propagation.a + propagation.b + propagation.c + propagation.d}:
+./iast/propagation/operators.go:42:6:     from propagation.a + propagation.b + propagation.c + propagation.d (spill) at ./iast/propagation/operators.go:42:6
+./iast/propagation/operators.go:42:6:     from propagation.concat4Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.a + propagation.b + propagation.c + propagation.d) (call parameter) at ./iast/propagation/operators.go:42:6
+./iast/propagation/operators.go:42:6:     from propagation.~r0 = propagation.concat4Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.c, propagation.d, propagation.a + propagation.b + propagation.c + propagation.d) (assign-pair) at ./iast/propagation/operators.go:42:6
+./iast/propagation/operators.go:42:6:   flow: propagation.~r0 ← propagation.~r0:
+./iast/propagation/operators.go:42:6:     from return propagation.~r0 (return) at ./iast/propagation/operators.go:42:6
+./iast/propagation/operators.go:42:6: propagation.a + propagation.b + propagation.c + propagation.d escapes to heap
+./iast/propagation/operators.go:224:43: parameter propagation.value leaks to propagation.~r0 for StringSliceLow[string,int] with derefs=0:
+./iast/propagation/operators.go:224:43:   flow: propagation.~r0 ← propagation.value:
+./iast/propagation/operators.go:224:43:     from propagation.StringSliceLow[go.shape.string,go.shape.int](&propagation..dict.StringSliceLow[string,int], propagation.value, propagation.low) (call parameter) at ./iast/propagation/operators.go:224:6
+./iast/propagation/operators.go:224:43:     from return propagation.StringSliceLow[go.shape.string,go.shape.int](&propagation..dict.StringSliceLow[string,int], propagation.value, propagation.low) (return) at ./iast/propagation/operators.go:224:6
+./iast/propagation/operators.go:203:17: string(propagation.value) escapes to heap in BytesToString[go.shape.[]uint8]:
+./iast/propagation/operators.go:203:17:   flow: propagation.~r0 ← &{storage for string(propagation.value)}:
+./iast/propagation/operators.go:203:17:     from string(propagation.value) (spill) at ./iast/propagation/operators.go:203:17
+./iast/propagation/operators.go:203:17:     from return string(propagation.value) (return) at ./iast/propagation/operators.go:203:3
+./iast/propagation/operators.go:203:17: string(propagation.value) escapes to heap
+./iast/propagation/operators.go:201:6: string(propagation.value) escapes to heap in BytesToString[[]uint8]:
+./iast/propagation/operators.go:201:6:   flow: propagation.~r0 ← &{storage for string(propagation.value)}:
+./iast/propagation/operators.go:201:6:     from string(propagation.value) (spill) at ./iast/propagation/operators.go:201:6
+./iast/propagation/operators.go:201:6:     from propagation.~r0 = string(propagation.value) (assign-pair) at ./iast/propagation/operators.go:201:6
+./iast/propagation/operators.go:201:6:   flow: propagation.~r0 ← propagation.~r0:
+./iast/propagation/operators.go:201:6:     from return propagation.~r0 (return) at ./iast/propagation/operators.go:201:6
+./iast/propagation/operators.go:201:6: string(propagation.value) escapes to heap
+./iast/propagation/operators.go:274:43: parameter propagation.value leaks to propagation.~r0 for BytesSliceHigh[[]uint8,int] with derefs=0:
+./iast/propagation/operators.go:274:43:   flow: propagation.~r0 ← propagation.value:
+./iast/propagation/operators.go:274:43:     from propagation.BytesSliceHigh[go.shape.[]uint8,go.shape.int](&propagation..dict.BytesSliceHigh[[]uint8,int], propagation.value, propagation.high) (call parameter) at ./iast/propagation/operators.go:274:6
+./iast/propagation/operators.go:274:43:     from return propagation.BytesSliceHigh[go.shape.[]uint8,go.shape.int](&propagation..dict.BytesSliceHigh[[]uint8,int], propagation.value, propagation.high) (return) at ./iast/propagation/operators.go:274:6
+./iast/propagation/operators.go:34:42: parameter propagation.result leaks to propagation.~r0 for concat3Result[go.shape.string] with derefs=0:
+./iast/propagation/operators.go:34:42:   flow: propagation.~r0 ← propagation.result:
+./iast/propagation/operators.go:34:42:     from return propagation.result (return) at ./iast/propagation/operators.go:36:3
+perfsample/sample.go:115: index bounds check elided
+/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/strings/iter.go:89:25: index bounds check elided

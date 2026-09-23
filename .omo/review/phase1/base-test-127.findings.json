@@ -1,0 +1,24 @@
+[
+  {
+    "id": "base-test-127-F1",
+    "severity": "Critical",
+    "category": "compile-break",
+    "location": "iast/encoding/json/orchestrion.yml:28-117",
+    "title": "Go 1.27 JSON v2 instrumentation prevents customer builds",
+    "claim": "Under Go 1.27.0, encoding/json selects its jsonv2 implementation, whose Decoder has dec and opts fields and no decodeState methods. The unconditional advice still injects references to Decoder.r and Decoder.d, so Orchestrion-generated encoding/json code does not compile. This blocks instrumented customer builds.",
+    "evidence_path": ".omo/review/evidence/base-test-127/go127-jsonv2-compile-break.txt",
+    "repro_command": "cd /tmp/ddiast-review/wt/base-test-127 && GOTOOLCHAIN=local go tool orchestrion go test -shuffle=on -timeout 20m ./...",
+    "needs_repro": false
+  },
+  {
+    "id": "base-test-127-F2",
+    "severity": "Info",
+    "category": "config",
+    "location": "go.mod:3",
+    "title": "Go 1.25.9 is rejected by the declared minimum Go version",
+    "claim": "The integration test application declares go 1.26.6, so GOTOOLCHAIN=go1.25.9 rejects the module before Orchestrion runs. There is no separate source-level toolchain guard; the module directive is the effective unsupported-toolchain guard.",
+    "evidence_path": ".omo/review/evidence/base-test-127/go125-bootstrap.txt",
+    "repro_command": "cd /tmp/ddiast-review/wt/base-test-127/iast/integration/testapp && GOTOOLCHAIN=go1.25.9 go tool orchestrion go build ./cmd/bootstrap",
+    "needs_repro": false
+  }
+]

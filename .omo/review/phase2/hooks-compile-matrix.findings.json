@@ -1,0 +1,68 @@
+[
+  {
+    "id": "hooks-compile-matrix-F6",
+    "severity": "Critical",
+    "category": "memory-bound",
+    "location": "iast/encoding/json/orchestrion.yml:28-47; orchestrion@23afa71 internal/jobserver/nbt/nbt.go:161-162,252-253; internal/toolexec/aspect/oncompile.go:174; internal/jobserver/server.go:109",
+    "title": "On Go 1.27 the JSON advice failure makes the Orchestrion job server grow to 17-22+ GiB RSS (host / CI OOM)",
+    "claim": "A woven go build ./... of golang.org/x/exp on go1.27.0, run alone with a fresh cache, hits the woven encoding/json compile error (F2). The orchestrion go build job-server process then grows from 1.6 GiB to 17 GiB in about 20 s (/usr/bin/time max RSS 18,301,534,208 B) and the build aborts with nats: maximum payload exceeded. A rerun reached 22.3 GiB at 49.5 s before a 20 GiB kill-switch stopped it. A plain build peaks at 0.27 GiB, so the inflation is 62x. The nojsonv2 woven control peaks at 0.83 GiB and all Go 1.26.6 woven builds stay at or below 1.33 GiB. This is the likely source of the ~40 GB orchestrion process the user saw.",
+    "evidence_path": ".omo/review/evidence/hooks-compile-matrix/mem/x-exp.woven-iast-127.time",
+    "repro_command": "cd x-exp && GOTOOLCHAIN=local GOCACHE=<fresh> /usr/bin/time -l timeout 1320 go tool orchestrion go build ./...",
+    "needs_repro": false
+  },
+  {
+    "id": "hooks-compile-matrix-F1",
+    "severity": "Critical",
+    "category": "compile-break",
+    "location": "go.mod:14; iast/propagation/orchestrion.yml:21",
+    "title": "A released Orchestrion (e.g. from dd-trace-go orchestrion/all v2.11.0-rc.1) cannot load dd-iast-go aspects",
+    "claim": "The pinned Orchestrion pseudo-version v1.12.2-0.20260828141217-23afa71d6dcb is a prerelease of v1.12.2, so under MVS it loses to every released v1.12.2+ Orchestrion, none of which contain the operator join points. dd-trace-go orchestrion/all/v2 v2.11.0-rc.1 requires orchestrion v1.13.0, so the canonical Orchestrion weblog fails with: unknown injection point type \"string-concat\". The only workaround downgrades orchestrion/all to v2.11.0-dev.1.",
+    "evidence_path": ".omo/review/evidence/hooks-compile-matrix/logs/st-golang-app_net-http-orchestrion.build126.log",
+    "repro_command": "cd st-golang-app/net-http-orchestrion (go.mod with dd-trace-go/orchestrion/all/v2 v2.11.0-rc.1 + dd-iast-go replace) && GOTOOLCHAIN=go1.26.6 go tool orchestrion go build ./...",
+    "needs_repro": false
+  },
+  {
+    "id": "hooks-compile-matrix-F2",
+    "severity": "Critical",
+    "category": "compile-break",
+    "location": "iast/encoding/json/orchestrion.yml:28-47",
+    "title": "Every real-world target fails to build on Go 1.27.0, including targets that never import encoding/json",
+    "claim": "This confirms base-test-127-F1 and sink-json-sources-F1 on 7/7 real codebases: the woven encoding/json advice references dec.r/dec.d, which do not exist in Go 1.27 JSON-v2. Because the woven dependency closure always includes encoding/json, libraries such as samber/lo and go-sqlite3 fail as well. With GOEXPERIMENT=nojsonv2 every target builds, so this is the only Go 1.27 blocker found.",
+    "evidence_path": ".omo/review/evidence/hooks-compile-matrix/logs/samber-lo.build127.log",
+    "repro_command": "cd <target> && GOTOOLCHAIN=local go tool orchestrion go build ./...  (control: GOEXPERIMENT=nojsonv2)",
+    "needs_repro": false
+  },
+  {
+    "id": "hooks-compile-matrix-F3",
+    "severity": "Critical",
+    "category": "compile-break",
+    "location": "iast/propagation/orchestrion.yml:13-31; orchestrion@23afa71 internal/toolexec/aspect/oncompile.go:195",
+    "title": "Import-free packages crash the weaver (confirmed with realistic generic/named-type/slicing helper packages)",
+    "claim": "This confirms hooks-yml-operators-F3: four realistic import-free packages that contain concat, slicing or conversions make the weaver panic with \"assignment to entry in nil map\". Adding one import fixes all four, and they then compile and behave identically to plain Go.",
+    "evidence_path": ".omo/review/evidence/hooks-compile-matrix/logs/idioms.build126.log",
+    "repro_command": "cd idioms && for p in $(go list ./...); do GOTOOLCHAIN=go1.26.6 go tool orchestrion go build -o /dev/null $p; done",
+    "needs_repro": false
+  },
+  {
+    "id": "hooks-compile-matrix-F4",
+    "severity": "Medium",
+    "category": "perf",
+    "location": "iast/propagation/orchestrion.yml:12-31; internal/taint/propagation/operator_concat.go:9-79",
+    "title": "Weaving makes x/exp/slog's own zero-allocation test fail with IAST inactive",
+    "claim": "This is real-code confirmation of hooks-yml-operators-F4 and prop-concat-conv-json-F2: woven x/exp/slog TestTextHandlerAlloc measures 11 allocations per Handle instead of 0 with no active request. The allocations come from handler.go:480 string(*s.prefix)+key being wrapped in Concat2, which forces the concat result to escape. Customer AllocsPerRun tests fail under weaving.",
+    "evidence_path": ".omo/review/evidence/hooks-compile-matrix/logs/x-exp.slogalloc-woven.log",
+    "repro_command": "cd x-exp && GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -count=1 -run Alloc -v ./slog/",
+    "needs_repro": false
+  },
+  {
+    "id": "hooks-compile-matrix-F5",
+    "severity": "Info",
+    "category": "config",
+    "location": "orchestrion.tool.go:26",
+    "title": "The aggregate import silently turns on dd-trace-go tracer auto-start",
+    "claim": "Importing only github.com/DataDog/dd-iast-go also weaves the dd-trace-go tracer integration, so the woven binary starts the tracer in main and contacts the agent. The README does not document this.",
+    "evidence_path": ".omo/review/evidence/hooks-compile-matrix/idioms/idioms2.plain-vs-woven.diff",
+    "repro_command": null,
+    "needs_repro": false
+  }
+]

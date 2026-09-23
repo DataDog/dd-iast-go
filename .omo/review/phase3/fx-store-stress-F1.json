@@ -1,0 +1,13 @@
+[
+ {
+  "id": "store-stress-F1",
+  "verdict": "CONFIRMED",
+  "original_severity": "High",
+  "adjusted_severity": "High",
+  "reachable_default": true,
+  "documented_limitation": false,
+  "reason": "Mechanism verified at HEAD 2e23b46 and reproduced with my own independent store-level reproducer (raw *Owner handle, no slot pre-filling): iteration 1390, object bound only through finished request A (gen 2781) is bound to new request B (gen 2782) in 46s. Finder's reproducer re-run in my copy also fails as claimed under -race (writer state with A's owner-local SourceID=7 charged to B). Production paths exist and are structurally unblocked (request-package raw-owner holders; Handle()->beginWrite in propagation/writer.go:110-132 and request/reader.go:30-38), and slot-0 reuse is the common case under the default 2-concurrent-request config; but 2x300s of realistic-surface attempts through the exact woven-hook entry functions (request.Begin/BindReader/PropagateReader/Analysis.TaintString/propagation.UpdateStringWriter, 32 spinners) did not hit, so the per-operation probability through full entry points is low (~1000x less exposure than the tight-loop repro). Not documented anywhere; it contradicts the architecture map's stated invariant.",
+  "evidence_path": ".omo/review/evidence/fx-store-stress-F1/fx-min-store-level.out.txt",
+  "repro_command": "FX_BUDGET=60s GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go test -run 'TestFXStaleOwnerPublishesIntoReusedSlot' -count=1 -v -timeout 8m ./internal/taint/store  (test file: .omo/review/evidence/fx-store-stress-F1/fx_stale_min_test.go)"
+ }
+]

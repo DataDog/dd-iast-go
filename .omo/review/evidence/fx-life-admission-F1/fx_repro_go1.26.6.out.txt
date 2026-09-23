@@ -1,0 +1,29 @@
+=== RUN   TestFxDisconnectSlotRetention
+=== RUN   TestFxDisconnectSlotRetention/HTTP1-raw-socket-disconnect
+    zz_fx_life_admission_test.go:128: CONFIRM-SIGNAL: after raw-socket disconnect was observed server-side, scope still Active (holds the only slot)
+    zz_fx_life_admission_test.go:133: probe decision after disconnect = 2 (Disabled=0 SampledOut=1 CapacityDropped=2 Active=3)
+    zz_fx_life_admission_test.go:136: FAIL-SIGNAL: disconnected request retains the slot; subsequent request capacity-dropped (got 2, want 3)
+=== RUN   TestFxDisconnectSlotRetention/HTTP2-cancel
+    zz_fx_life_admission_test.go:150: client.Do error (expected on cancel): Get "https://127.0.0.1:56465/held": context canceled
+    zz_fx_life_admission_test.go:174: CONFIRM-SIGNAL: after client cancel (HTTP/2), scope still Active
+    zz_fx_life_admission_test.go:179: probe decision after cancel = 2
+    zz_fx_life_admission_test.go:181: FAIL-SIGNAL: disconnected request retains the slot; subsequent request capacity-dropped (got 2, want 3)
+--- FAIL: TestFxDisconnectSlotRetention (1.52s)
+    --- FAIL: TestFxDisconnectSlotRetention/HTTP1-raw-socket-disconnect (1.01s)
+    --- FAIL: TestFxDisconnectSlotRetention/HTTP2-cancel (0.51s)
+=== RUN   TestLifeAdmissionDisconnect
+=== RUN   TestLifeAdmissionDisconnect/HTTP1
+    zz_life_admission_finder_test.go:81: disconnected request still owns the single IAST slot
+    zz_life_admission_finder_test.go:106: after disconnect: subsequent request decision=2 (Active=3, CapacityDropped=2)
+    zz_life_admission_finder_test.go:108: disconnected request blocks IAST admission for all subsequent requests: got 2, want 3
+=== RUN   TestLifeAdmissionDisconnect/HTTP2
+    zz_life_admission_finder_test.go:81: disconnected request still owns the single IAST slot
+    zz_life_admission_finder_test.go:106: after disconnect: subsequent request decision=2 (Active=3, CapacityDropped=2)
+    zz_life_admission_finder_test.go:108: disconnected request blocks IAST admission for all subsequent requests: got 2, want 3
+--- FAIL: TestLifeAdmissionDisconnect (0.01s)
+    --- FAIL: TestLifeAdmissionDisconnect/HTTP1 (0.00s)
+    --- FAIL: TestLifeAdmissionDisconnect/HTTP2 (0.01s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/iast/net/http	2.235s
+FAIL
+exit status 1

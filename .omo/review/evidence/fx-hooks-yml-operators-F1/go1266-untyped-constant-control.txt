@@ -1,0 +1,8 @@
+An initial fixture used `const text = "abcd"` as the slice operand. The
+propagation-only woven command completed without rewriting that untyped
+string-constant slice:
+go version go1.26.6 darwin/arm64
+?   	github.com/DataDog/dd-iast-go/reviewfxoperators/constantlen	[no test files]
+WOVEN_CONST_EXIT=0
+
+This control motivated the final fixture's typed `var text string`.

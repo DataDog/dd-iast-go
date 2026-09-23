@@ -1,0 +1,28 @@
+Command: cd <private copy> && export GOFLAGS=-p=4 GOTOOLCHAIN=local && go version && go test -run '^$' -bench '^BenchmarkF2Writer/(no-owner|active-clean-1)/' -benchtime=200ms -count=2 -benchmem -cpu=1 -timeout=10m ./iast/propagation 2>&1 | grep -E 'go version|Benchmark|ok|FAIL'
+
+go version go1.27.0 darwin/arm64
+BenchmarkF2Writer/no-owner/builder/native         	 2920276	        80.81 ns/op	     336 B/op	       3 allocs/op
+BenchmarkF2Writer/no-owner/builder/native         	 3015462	        79.42 ns/op	     336 B/op	       3 allocs/op
+BenchmarkF2Writer/no-owner/builder/hook           	 2353944	       103.2 ns/op	     368 B/op	       4 allocs/op
+BenchmarkF2Writer/no-owner/builder/hook           	 2314856	       103.2 ns/op	     368 B/op	       4 allocs/op
+BenchmarkF2Writer/no-owner/builder/gated          	 2366241	       102.4 ns/op	     368 B/op	       4 allocs/op
+BenchmarkF2Writer/no-owner/builder/gated          	 2186408	       106.7 ns/op	     368 B/op	       4 allocs/op
+BenchmarkF2Writer/no-owner/buffer/native          	 7246594	        33.13 ns/op	     112 B/op	       1 allocs/op
+BenchmarkF2Writer/no-owner/buffer/native          	 7141527	        33.48 ns/op	     112 B/op	       1 allocs/op
+BenchmarkF2Writer/no-owner/buffer/hook            	 5856621	        40.76 ns/op	     112 B/op	       1 allocs/op
+BenchmarkF2Writer/no-owner/buffer/hook            	 5929891	        40.42 ns/op	     112 B/op	       1 allocs/op
+BenchmarkF2Writer/no-owner/buffer/gated           	 6356548	        36.86 ns/op	     112 B/op	       1 allocs/op
+BenchmarkF2Writer/no-owner/buffer/gated           	 6395736	        38.87 ns/op	     112 B/op	       1 allocs/op
+BenchmarkF2Writer/active-clean-1/builder/native   	 2684648	        87.32 ns/op	     336 B/op	       3 allocs/op
+BenchmarkF2Writer/active-clean-1/builder/native   	 2828152	        83.21 ns/op	     336 B/op	       3 allocs/op
+BenchmarkF2Writer/active-clean-1/builder/hook     	  235150	      1023 ns/op	     368 B/op	       4 allocs/op
+BenchmarkF2Writer/active-clean-1/builder/hook     	  232563	      1030 ns/op	     368 B/op	       4 allocs/op
+BenchmarkF2Writer/active-clean-1/builder/gated    	 1998981	       119.5 ns/op	     368 B/op	       4 allocs/op
+BenchmarkF2Writer/active-clean-1/builder/gated    	 2198775	       114.7 ns/op	     368 B/op	       4 allocs/op
+BenchmarkF2Writer/active-clean-1/buffer/native    	 7508680	        32.85 ns/op	     112 B/op	       1 allocs/op
+BenchmarkF2Writer/active-clean-1/buffer/native    	 8276384	        31.58 ns/op	     112 B/op	       1 allocs/op
+BenchmarkF2Writer/active-clean-1/buffer/hook      	  183771	      1430 ns/op	     112 B/op	       1 allocs/op
+BenchmarkF2Writer/active-clean-1/buffer/hook      	  161902	      1518 ns/op	     112 B/op	       1 allocs/op
+BenchmarkF2Writer/active-clean-1/buffer/gated     	 3868762	        65.13 ns/op	     112 B/op	       1 allocs/op
+BenchmarkF2Writer/active-clean-1/buffer/gated     	 3699547	        66.19 ns/op	     112 B/op	       1 allocs/op
+ok  	github.com/DataDog/dd-iast-go/iast/propagation	6.317s

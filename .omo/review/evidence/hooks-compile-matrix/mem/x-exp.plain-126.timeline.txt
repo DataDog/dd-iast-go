@@ -1,0 +1,6 @@
+0.1s tree=31MB top=[(28, ('go', '')), (1, ('timeout', '')), (1, ('time', ''))]
+1.1s tree=184MB top=[(144, ('compile', 'runtime')), (37, ('go', '')), (1, ('timeout', ''))]
+2.3s tree=56MB top=[(37, ('go', '')), (16, ('(clang)', '')), (1, ('timeout', ''))]
+3.7s tree=489MB top=[(124, ('compile', 'net')), (116, ('(compile)', '')), (61, ('compile', 'golang.org/x/tools/internal/stdlib'))]
+4.8s tree=90MB top=[(38, ('go', '')), (26, ('(compile)', '')), (12, ('(compile)', ''))]
+5.8s tree=144MB top=[(101, ('link', '')), (39, ('go', '')), (1, ('timeout', ''))]

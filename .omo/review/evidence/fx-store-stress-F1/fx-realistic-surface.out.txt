@@ -1,0 +1,32 @@
+$ cd /tmp/ddiast-review/wt/fx-store-stress-F1   (private copy of HEAD 2e23b46; test package internal/taint/fxstale)
+$ FX_BUDGET=300s FX_SPINNERS=32 GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 timeout 900 go test -run 'TestFXLate' -count=1 -v -timeout 14m ./internal/taint/fxstale
+=== RUN   TestFXLateReaderBindBleedsIntoNextRequest
+    fx_stale_test.go:164: no cross-request reader binding bleed observed within budget
+--- PASS: TestFXLateReaderBindBleedsIntoNextRequest (300.01s)
+=== RUN   TestFXLateWriterUpdateBleedsIntoNextRequest
+    fx_stale_test.go:270: no cross-request writer state bleed observed within budget
+--- PASS: TestFXLateWriterUpdateBleedsIntoNextRequest (300.04s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/fxstale	600.479s
+
+(fx-store-stress-F1 verifier: MY OWN realistic-surface reproducer. It drives
+the exact internal API functions that woven orchestrion hooks call:
+request.Begin / Scope.Finish (woven net/http advice), request.BindReader /
+request.PropagateReader (registered into iobridge; woven io/bufio hooks),
+Analysis.TaintString (woven HTTP source hooks) and
+propagation.UpdateStringWriter (woven strings.Builder write hook), with the
+default-like config (enabled, 100% sampling, MaxConcurrentRequests=2, so
+request B deterministically reuses store owner slot 0 after request A
+finishes). 32 spinner goroutines of the finished request keep performing
+reader propagation / builder-write recording across the Finish+reuse
+boundary. NO bleed observed in 2x300s.
+
+Interpretation: this bounds the production event rate, it does NOT refute the
+finding. The torn window (alive()'s two atomic loads in beginWrite,
+internal/taint/store/owner.go:127-149) is on this exact path, but a full
+woven-entry operation spends only a ~2ns slice of a ~microsecond call inside
+that window, roughly 1000x less exposure than the tight-loop store-level
+reproducer (which hits in seconds-to-tens-of-seconds). A production hit
+requires an application goroutine still executing taint operations
+concurrently with its own request's scope Finish, a preemption landing inside
+that nanosecond gap, and slot reuse during the stall.)

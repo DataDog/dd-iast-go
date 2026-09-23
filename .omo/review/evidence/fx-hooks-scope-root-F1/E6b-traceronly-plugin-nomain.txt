@@ -1,0 +1,22 @@
+$ cd $WT/fx/traceronly
+$ GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4  go tool orchestrion go build -buildmode=plugin -o ../out/traceronly-pluginnomain.so ./cmd/pluginnomain
+        3.29 real         1.71 user         2.49 sys
+            78888960  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              109656  page reclaims
+                3767  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                  24  messages sent
+                  22  messages received
+                2336  signals received
+                4185  voluntary context switches
+               35019  involuntary context switches
+          4641514170  instructions retired
+          2860346623  cycles elapsed
+            59130624  peak memory footprint
+
+exit status: 0

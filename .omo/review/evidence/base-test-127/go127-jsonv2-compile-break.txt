@@ -1,0 +1,23 @@
+Command:
+  cd /tmp/ddiast-review/wt/base-test-127
+  GOTOOLCHAIN=local go tool orchestrion go test -shuffle=on -timeout 20m ./...
+
+Exit status: 1
+
+# encoding/json
+$WORK/b104/orchestrion/src/encoding/json/<generated>:2: dec.r undefined (type *Decoder has no field or method r)
+$WORK/b104/orchestrion/src/encoding/json/<generated>:2: dec.d undefined (type *Decoder has no field or method d)
+$WORK/b104/orchestrion/src/encoding/json/<generated>:3: dec.d undefined (type *Decoder has no field or method d)
+exit status 2
+
+Command:
+  cd /tmp/ddiast-review/wt/base-test-127/iast/integration/testapp
+  GOTOOLCHAIN=local go tool orchestrion go test -timeout 20m ./...
+
+Exit status: 1
+
+# encoding/json
+$WORK/b104/orchestrion/src/encoding/json/<generated>:2: dec.r undefined (type *Decoder has no field or method r)
+$WORK/b104/orchestrion/src/encoding/json/<generated>:2: dec.d undefined (type *Decoder has no field or method d)
+$WORK/b104/orchestrion/src/encoding/json/<generated>:3: dec.d undefined (type *Decoder has no field or method d)
+exit status 2

@@ -1,0 +1,46 @@
+[
+  {
+    "id": "hooks-yml-operators-F1",
+    "severity": "Critical",
+    "category": "behavior-change",
+    "location": "iast/propagation/orchestrion.yml:12-31,343-370; orchestrion@23afa71 internal/injector/aspect/join/string_concat.go:83-95 and slice_expression.go:63-94",
+    "title": "Hooks evaluate array operands that Go leaves unevaluated",
+    "claim": "Wrapping concat or slicing inside constant len/cap or an unevaluated array range inserts a function call that changes Go's evaluation decision. Valid const and array-length expressions stop compiling, while len([1]string{s[:high]}) and for range [1]string{s[:high]} newly panic for an out-of-range high even with IAST disabled.",
+    "evidence_path": ".omo/review/evidence/hooks-yml-operators/isolated-woven-go1266.txt",
+    "repro_command": "cd /tmp/ddiast-review/wt/hooks-yml-operators && REVIEW_WOVEN=1 GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=2 DD_IAST_ENABLED=false go tool orchestrion go test -work -timeout 3m -count=1 -v ./reviewoperators ./reviewoperators/constantlen ./reviewoperators/floatbounds ./reviewoperators/noimports",
+    "needs_repro": false
+  },
+  {
+    "id": "hooks-yml-operators-F2",
+    "severity": "Critical",
+    "category": "compile-break",
+    "location": "iast/propagation/orchestrion.yml:360,389; iast/propagation/operators.go:13-15,237,287; orchestrion@23afa71 internal/injector/aspect/join/slice_expression.go:69-77",
+    "title": "Integral floating-point and complex slice bounds stop compiling",
+    "claim": "Valid slice bounds 1.0, 3.0, and complex(1, 0) become float64 or complex128 generic arguments and fail the integer constraint. The matcher's untyped exclusion is ineffective because go/types has already assigned int to the original index expressions. Both string and full byte slicing fail.",
+    "evidence_path": ".omo/review/evidence/hooks-yml-operators/isolated-woven-go1266.txt",
+    "repro_command": "cd /tmp/ddiast-review/wt/hooks-yml-operators && GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -timeout 3m -count=1 ./reviewoperators/floatbounds",
+    "needs_repro": false
+  },
+  {
+    "id": "hooks-yml-operators-F3",
+    "severity": "Critical",
+    "category": "compile-break",
+    "location": "iast/propagation/orchestrion.yml:13-31; orchestrion@23afa71 internal/toolexec/aspect/oncompile.go:195 and internal/toolexec/importcfg/importcfg.go:52-81",
+    "title": "Operator instrumentation crashes the weaver on import-free packages",
+    "claim": "The operator aspects add propagation imports to previously import-free root packages. The pinned weaver leaves PackageFile nil when parsing an empty importcfg, then assigns the injected dependency into it at oncompile.go:195. An ordinary string-helper package fails to build with panic: assignment to entry in nil map.",
+    "evidence_path": ".omo/review/evidence/hooks-yml-operators/isolated-woven-go1266.txt",
+    "repro_command": "cd /tmp/ddiast-review/wt/hooks-yml-operators && GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -timeout 3m -count=1 ./reviewoperators/noimports",
+    "needs_repro": false
+  },
+  {
+    "id": "hooks-yml-operators-F4",
+    "severity": "High",
+    "category": "perf",
+    "location": "iast/propagation/operators.go:18-26,198-204; iast/propagation/orchestrion.yml:23-31,337-341",
+    "title": "Disabled operator wrappers force avoidable heap allocations",
+    "claim": "With DD_IAST_ENABLED=false and HasValues false, len(a+b), a+b comparison, and a locally assigned string(byteSlice) used only by len each allocate once per operation after weaving versus zero natively. Retaining propagation-capable helper calls change escape behavior before the activity gate can avoid the allocation. Direct comparison and map-key conversion controls stay allocation-free.",
+    "evidence_path": ".omo/review/evidence/hooks-yml-operators/isolated-woven-go1266.txt",
+    "repro_command": "cd /tmp/ddiast-review/wt/hooks-yml-operators && REVIEW_WOVEN=1 GOTOOLCHAIN=go1.26.6 DD_IAST_ENABLED=false go tool orchestrion go test -timeout 3m -count=1 -v -run 'Test(WeavingPreflight|InactiveAllocations)' ./reviewoperators",
+    "needs_repro": false
+  }
+]

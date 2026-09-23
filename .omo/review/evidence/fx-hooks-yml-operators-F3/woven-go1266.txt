@@ -1,0 +1,24 @@
+Independent fixture: reviewfximportless/prefix.go has no imports and only one nonconstant string concatenation. Go 1.26.6, pinned Orchestrion v1.12.2-0.20260828141217-23afa71d6dcb, default DD_IAST_ENABLED (unset).
+
+Command (in /tmp/ddiast-review/wt/fx-hooks-yml-operators-F3):
+/usr/bin/time -l env -u DD_IAST_ENABLED GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go tool orchestrion go test -timeout 3m -count=1 ./reviewfximportless
+
+Captured output (stack and time output abbreviated, lines copied verbatim):
+# github.com/DataDog/dd-iast-go/reviewfximportless
+panic: assignment to entry in nil map
+
+goroutine 1 [running]:
+github.com/DataDog/orchestrion/internal/toolexec/aspect.Weaver.OnCompile({{0x7e00bc87e294?, 0x2?}, {0x0?, 0x10315b60c?}}, {0x1043066a8, 0x7e00bccf7440}, 0x7e00bcbca780)
+	/Users/eliott.bouhana/go/pkg/mod/github.com/!data!dog/orchestrion@v1.12.2-0.20260828141217-23afa71d6dcb/internal/toolexec/aspect/oncompile.go:195 +0x17ac
+FAIL	github.com/DataDog/dd-iast-go/reviewfximportless [build failed]
+FAIL
+exit status 1
+           122191872  maximum resident set size
+Command exited with code 1
+
+Second independent run of the same command (captured output):
+panic: assignment to entry in nil map
+	/Users/eliott.bouhana/go/pkg/mod/github.com/!data!dog/orchestrion@v1.12.2-0.20260828141217-23afa71d6dcb/internal/toolexec/aspect/oncompile.go:195 +0x17ac
+FAIL	github.com/DataDog/dd-iast-go/reviewfximportless [build failed]
+exit status 1
+            59441152  maximum resident set size

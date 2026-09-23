@@ -1,0 +1,24 @@
+[
+  {
+    "id": "life-table-lookup-F1",
+    "severity": "High",
+    "category": "perf",
+    "location": "internal/taint/request/table.go:130-151,208-220",
+    "title": "Embedded NULs force a full source-index probe chain",
+    "claim": "Moving an embedded NUL between source name and value leaves the hashed bytes identical for 256 distinct source tuples regardless of the randomized seed; source admission requires 32,896 probes in one request instead of a short low-load probe sequence.",
+    "evidence_path": ".omo/review/evidence/life-table-lookup/collision-race.out.txt",
+    "repro_command": "cd /tmp/ddiast-review/wt/life-table-lookup && GOTOOLCHAIN=go1.26.6 go test -race -count=1 -run ^TestReview -v -timeout=5m ./internal/taint/request (first restore .omo/review/evidence/life-table-lookup/zz_review_collision_test.go to internal/taint/request/zz_review_collision_test.go in a fresh private copy)",
+    "needs_repro": false
+  },
+  {
+    "id": "life-table-lookup-F2",
+    "severity": "Medium",
+    "category": "perf",
+    "location": "internal/taint/request/owner.go:146,180,213",
+    "title": "Oversized sources are fully hashed before the root limit is checked",
+    "claim": "Live source admission hashes entire strings or byte slices before the store rejects inputs longer than its 64 KiB root limit, paying linear work for guaranteed drops.",
+    "evidence_path": null,
+    "repro_command": null,
+    "needs_repro": true
+  }
+]

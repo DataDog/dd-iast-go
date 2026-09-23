@@ -1,0 +1,14 @@
+$ GOTOOLCHAIN=go1.26.6 go test -run=NONE -bench='BenchmarkConcat4' -benchmem -benchtime=200000x ./internal/taint/propagation/...
+goos: darwin
+goarch: arm64
+pkg: github.com/DataDog/dd-iast-go/internal/taint/propagation
+cpu: Apple M4 Max
+BenchmarkConcat4Untainted-16    	  200000	        91.14 ns/op	       0 B/op	       0 allocs/op
+BenchmarkConcat4Tainted-16      	  200000	     39284 ns/op	      24 B/op	       1 allocs/op
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/propagation	9.273s
+
+Note: machine is shared with other review agents (per BRIEF.md); absolute ns/op is
+noisy, but the qualitative gap (untainted MayContain-miss vs tainted MayContain-hit
+being orders of magnitude apart) is the load-bearing observation, and it reproduces
+across three independently-authored reproducers (SQL, exec, this one).

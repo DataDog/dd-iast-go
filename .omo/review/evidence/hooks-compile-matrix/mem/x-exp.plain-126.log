@@ -1,0 +1,6 @@
+Command: cd x-exp && GOTOOLCHAIN=go1.26.6 GOCACHE=/tmp/ddiast-review/wt/hooks-compile-matrix/gocache-cur /usr/bin/time -l timeout 1320 go build ./...
+go version: go version go1.26.6 darwin/arm64
+start: Wed Sep 23 14:18:06 CEST 2026
+14:18  up 11 days, 20:56, 4 users, load averages: 23.90 34.75 57.02
+Exit status: 0
+end: Wed Sep 23 14:18:14 CEST 2026

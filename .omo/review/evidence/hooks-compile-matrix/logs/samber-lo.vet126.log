@@ -1,0 +1,11 @@
+Command: cd samber-lo && GOTOOLCHAIN=go1.26.6 go vet ./...
+go version: go version go1.26.6 darwin/arm64
+
+# github.com/samber/lo
+# [github.com/samber/lo]
+vet: ./lo_example_test.go:617:32: undefined: foo
+# github.com/samber/lo/it
+# [github.com/samber/lo/it]
+vet: it/intersect_example_test.go:16:11: undefined: values
+
+Exit status: 1  (elapsed 5s)

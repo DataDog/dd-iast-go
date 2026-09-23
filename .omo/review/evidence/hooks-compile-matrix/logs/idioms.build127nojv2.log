@@ -1,0 +1,78 @@
+Command: cd idioms && GOTOOLCHAIN=local go tool orchestrion go build ./...
+go version: go version go1.27.0 darwin/arm64
+
+# example.com/idioms/pnamed
+panic: assignment to entry in nil map
+
+goroutine 1 [running]:
+github.com/DataDog/orchestrion/internal/toolexec/aspect.Weaver.OnCompile({{0x6f47205f0494?, 0x2?}, {0x0?, 0x10168ad84?}}, {0x10280ee08, 0x6f4720796cc0}, 0x6f47208213b0)
+	/Users/eliott.bouhana/go/pkg/mod/github.com/!data!dog/orchestrion@v1.12.2-0.20260828141217-23afa71d6dcb/internal/toolexec/aspect/oncompile.go:195 +0x173c
+github.com/DataDog/orchestrion/internal/toolexec/proxy.ProcessCommand[...](...)
+	/Users/eliott.bouhana/go/pkg/mod/github.com/!data!dog/orchestrion@v1.12.2-0.20260828141217-23afa71d6dcb/internal/toolexec/proxy/proxy.go:78
+github.com/DataDog/orchestrion/internal/cmd.init.func8(0x6f4720857540)
+	/Users/eliott.bouhana/go/pkg/mod/github.com/!data!dog/orchestrion@v1.12.2-0.20260828141217-23afa71d6dcb/internal/cmd/toolexec.go:93 +0x4cc
+github.com/urfave/cli/v2.(*Command).Run(0x1029ac188, 0x6f4720857540, {0x6f47208406e0, 0x15, 0x15})
+	/Users/eliott.bouhana/go/pkg/mod/github.com/urfave/cli/v2@v2.27.7/command.go:276 +0x590
+github.com/urfave/cli/v2.(*Command).Run(0x6f47208402c0, 0x6f47208572c0, {0x6f47205ea160, 0x16, 0x16})
+	/Users/eliott.bouhana/go/pkg/mod/github.com/urfave/cli/v2@v2.27.7/command.go:269 +0x78c
+github.com/urfave/cli/v2.(*App).RunContext(0x6f4720858400, {0x10280eb30, 0x1029f6580}, {0x6f47205ea160, 0x16, 0x16})
+	/Users/eliott.bouhana/go/pkg/mod/github.com/urfave/cli/v2@v2.27.7/app.go:333 +0x514
+main.main()
+	/Users/eliott.bouhana/go/pkg/mod/github.com/!data!dog/orchestrion@v1.12.2-0.20260828141217-23afa71d6dcb/main.go:218 +0xedc
+# example.com/idioms/pnoimport
+panic: assignment to entry in nil map
+
+goroutine 1 [running]:
+github.com/DataDog/orchestrion/internal/toolexec/aspect.Weaver.OnCompile({{0xdcb6e816494?, 0x2?}, {0x0?, 0x1012b2d84?}}, {0x102436e08, 0xdcb6ed8e8e0}, 0xdcb6edb80f0)
+	/Users/eliott.bouhana/go/pkg/mod/github.com/!data!dog/orchestrion@v1.12.2-0.20260828141217-23afa71d6dcb/internal/toolexec/aspect/oncompile.go:195 +0x173c
+github.com/DataDog/orchestrion/internal/toolexec/proxy.ProcessCommand[...](...)
+	/Users/eliott.bouhana/go/pkg/mod/github.com/!data!dog/orchestrion@v1.12.2-0.20260828141217-23afa71d6dcb/internal/toolexec/proxy/proxy.go:78
+github.com/DataDog/orchestrion/internal/cmd.init.func8(0xdcb6edb6780)
+	/Users/eliott.bouhana/go/pkg/mod/github.com/!data!dog/orchestrion@v1.12.2-0.20260828141217-23afa71d6dcb/internal/cmd/toolexec.go:93 +0x4cc
+github.com/urfave/cli/v2.(*Command).Run(0x1025d4188, 0xdcb6edb6780, {0xdcb6edde580, 0x15, 0x15})
+	/Users/eliott.bouhana/go/pkg/mod/github.com/urfave/cli/v2@v2.27.7/command.go:276 +0x590
+github.com/urfave/cli/v2.(*Command).Run(0xdcb6edde160, 0xdcb6edb6500, {0xdcb6e962000, 0x16, 0x16})
+	/Users/eliott.bouhana/go/pkg/mod/github.com/urfave/cli/v2@v2.27.7/command.go:269 +0x78c
+github.com/urfave/cli/v2.(*App).RunContext(0xdcb6edb2400, {0x102436b30, 0x10261e580}, {0xdcb6e962000, 0x16, 0x16})
+	/Users/eliott.bouhana/go/pkg/mod/github.com/urfave/cli/v2@v2.27.7/app.go:333 +0x514
+main.main()
+	/Users/eliott.bouhana/go/pkg/mod/github.com/!data!dog/orchestrion@v1.12.2-0.20260828141217-23afa71d6dcb/main.go:218 +0xedc
+# example.com/idioms/pgeneric
+panic: assignment to entry in nil map
+
+goroutine 1 [running]:
+github.com/DataDog/orchestrion/internal/toolexec/aspect.Weaver.OnCompile({{0x2474b4210494?, 0x2?}, {0x0?, 0x103486d84?}}, {0x10460ae08, 0x2474b4568180}, 0x2474b4423590)
+	/Users/eliott.bouhana/go/pkg/mod/github.com/!data!dog/orchestrion@v1.12.2-0.20260828141217-23afa71d6dcb/internal/toolexec/aspect/oncompile.go:195 +0x173c
+github.com/DataDog/orchestrion/internal/toolexec/proxy.ProcessCommand[...](...)
+	/Users/eliott.bouhana/go/pkg/mod/github.com/!data!dog/orchestrion@v1.12.2-0.20260828141217-23afa71d6dcb/internal/toolexec/proxy/proxy.go:78
+github.com/DataDog/orchestrion/internal/cmd.init.func8(0x2474b4553c00)
+	/Users/eliott.bouhana/go/pkg/mod/github.com/!data!dog/orchestrion@v1.12.2-0.20260828141217-23afa71d6dcb/internal/cmd/toolexec.go:93 +0x4cc
+github.com/urfave/cli/v2.(*Command).Run(0x1047a8188, 0x2474b4553c00, {0x2474b444a6e0, 0x15, 0x15})
+	/Users/eliott.bouhana/go/pkg/mod/github.com/urfave/cli/v2@v2.27.7/command.go:276 +0x590
+github.com/urfave/cli/v2.(*Command).Run(0x2474b444a2c0, 0x2474b4553980, {0x2474b43be000, 0x16, 0x16})
+	/Users/eliott.bouhana/go/pkg/mod/github.com/urfave/cli/v2@v2.27.7/command.go:269 +0x78c
+github.com/urfave/cli/v2.(*App).RunContext(0x2474b4504800, {0x10460ab30, 0x1047f2580}, {0x2474b43be000, 0x16, 0x16})
+	/Users/eliott.bouhana/go/pkg/mod/github.com/urfave/cli/v2@v2.27.7/app.go:333 +0x514
+main.main()
+	/Users/eliott.bouhana/go/pkg/mod/github.com/!data!dog/orchestrion@v1.12.2-0.20260828141217-23afa71d6dcb/main.go:218 +0xedc
+# example.com/idioms/pslice
+panic: assignment to entry in nil map
+
+goroutine 1 [running]:
+github.com/DataDog/orchestrion/internal/toolexec/aspect.Weaver.OnCompile({{0xb98c2354494?, 0x2?}, {0x0?, 0x100ed2d84?}}, {0x102056e08, 0xb98c251d460}, 0xb98c255ba40)
+	/Users/eliott.bouhana/go/pkg/mod/github.com/!data!dog/orchestrion@v1.12.2-0.20260828141217-23afa71d6dcb/internal/toolexec/aspect/oncompile.go:195 +0x173c
+github.com/DataDog/orchestrion/internal/toolexec/proxy.ProcessCommand[...](...)
+	/Users/eliott.bouhana/go/pkg/mod/github.com/!data!dog/orchestrion@v1.12.2-0.20260828141217-23afa71d6dcb/internal/toolexec/proxy/proxy.go:78
+github.com/DataDog/orchestrion/internal/cmd.init.func8(0xb98c289e200)
+	/Users/eliott.bouhana/go/pkg/mod/github.com/!data!dog/orchestrion@v1.12.2-0.20260828141217-23afa71d6dcb/internal/cmd/toolexec.go:93 +0x4cc
+github.com/urfave/cli/v2.(*Command).Run(0x1021f4188, 0xb98c289e200, {0xb98c234eb00, 0x15, 0x15})
+	/Users/eliott.bouhana/go/pkg/mod/github.com/urfave/cli/v2@v2.27.7/command.go:276 +0x590
+github.com/urfave/cli/v2.(*Command).Run(0xb98c234e6e0, 0xb98c2513e00, {0xb98c234e160, 0x16, 0x16})
+	/Users/eliott.bouhana/go/pkg/mod/github.com/urfave/cli/v2@v2.27.7/command.go:269 +0x78c
+github.com/urfave/cli/v2.(*App).RunContext(0xb98c264e800, {0x102056b30, 0x10223e580}, {0xb98c234e160, 0x16, 0x16})
+	/Users/eliott.bouhana/go/pkg/mod/github.com/urfave/cli/v2@v2.27.7/app.go:333 +0x514
+main.main()
+	/Users/eliott.bouhana/go/pkg/mod/github.com/!data!dog/orchestrion@v1.12.2-0.20260828141217-23afa71d6dcb/main.go:218 +0xedc
+exit status 1
+
+Exit status: 1  (elapsed 200s)

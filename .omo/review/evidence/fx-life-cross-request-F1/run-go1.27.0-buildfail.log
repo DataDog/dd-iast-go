@@ -1,0 +1,26 @@
+# encoding/json
+$WORK/b104/orchestrion/src/encoding/json/<generated>:2: dec.r undefined (type *Decoder has no field or method r)
+$WORK/b104/orchestrion/src/encoding/json/<generated>:2: dec.d undefined (type *Decoder has no field or method d)
+$WORK/b104/orchestrion/src/encoding/json/<generated>:3: dec.d undefined (type *Decoder has no field or method d)
+exit status 2
+FAIL	github.com/DataDog/dd-iast-go/testapps/integration [build failed]
+FAIL
+exit status 1
+       31.25 real        59.92 user        67.65 sys
+           298942464  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+             6626936  page reclaims
+              244199  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                6963  messages sent
+                7394  messages received
+               82857  signals received
+               41704  voluntary context switches
+             1455710  involuntary context switches
+          5939095751  instructions retired
+          3819460668  cycles elapsed
+            38011432  peak memory footprint

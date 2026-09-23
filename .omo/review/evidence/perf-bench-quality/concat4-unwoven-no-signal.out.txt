@@ -1,0 +1,23 @@
+$ GOTOOLCHAIN=go1.26.6 go test -run=NONE -bench='BenchmarkOperatorConcat4' -benchmem -benchtime=200000x ./iast/propagation/...
+(plain `go test`, NOT `go tool orchestrion go test` -- this is how a developer
+running `go test ./...` from the repo root, or CI's non-instrumented lane, executes it)
+goos: darwin
+goarch: arm64
+pkg: github.com/DataDog/dd-iast-go/iast/propagation
+cpu: Apple M4 Max
+BenchmarkOperatorConcat4Inactive-16       	  200000	        38.76 ns/op	      24 B/op	       1 allocs/op
+BenchmarkOperatorConcat4ActiveClean-16    	  200000	        38.17 ns/op	      24 B/op	       1 allocs/op
+PASS
+ok  	github.com/DataDog/dd-iast-go/iast/propagation	0.716s
+
+Observation: without Orchestrion weaving, the `+` operator in both benchmarks is
+plain Go string concatenation. config.Enabled/request.Begin have no effect because
+the operator advice that would call into internal/taint/propagation was never woven
+in. Inactive and ActiveClean measure the same 38ns/24B/1alloc (the cost of a plain
+4-operand string concat), not "IAST overhead when active vs inactive" as the names
+imply. BenchmarkOperatorConversionsInactive/BenchmarkOperatorSlicesInactive have the
+same structural dependency on weaving. Unlike TestOperatorEvaluationAndPanicSemantics
+in the same file, which calls `built.WithOrchestrion` and skips when unwoven, these
+benchmarks have no such guard: plain `go test -bench=. ./...` from repo root silently
+"passes" and reports a near-zero number that looks like a legitimate low-overhead
+result.

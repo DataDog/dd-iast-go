@@ -1,0 +1,13 @@
+[
+  {
+    "id": "perf-disabled-F1",
+    "severity": "Info",
+    "category": "perf",
+    "location": "internal/taint/request/scope.go:73-103; iast/net/http/orchestrion.yml:17-45,79-109",
+    "title": "Sampled-out HTTP boundaries still allocate request state",
+    "claim": "With DD_IAST_ENABLED=true and DD_IAST_REQUEST_SAMPLING=0, request.begin still creates a sampled-out Scope and a context.WithValue context. The woven HTTP boundaries therefore clone the request and run the inactive eager path: 432 B/3 allocs for the server-hook reproduction and 112 B/2 allocs for the application-hook reproduction. The documented design intent records this sampled-out bootstrap cost as accepted.",
+    "evidence_path": ".omo/review/evidence/perf-disabled/direct-entry-hooks.txt",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 go test -run '^$' -bench '^Benchmark(Disabled|SampledOut)(Server|Application)Hook$' -benchmem -benchtime=100000x -cpu=1",
+    "needs_repro": false
+  }
+]

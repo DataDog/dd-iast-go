@@ -1,0 +1,26 @@
+=== RUN   TestFxSQLCommentTokensAreNotSensitive
+--- PASS: TestFxSQLCommentTokensAreNotSensitive (0.00s)
+=== RUN   TestFxSQLCommentBodiesAreRedacted
+=== RUN   TestFxSQLCommentBodiesAreRedacted/exploit_line_comment
+    fx_comment_leak_test.go:69: masked evidence: "SELECT * FROM Users WHERE email = '' OR ? --' AND password = '81dc9bdb52d04dc20036dbd8313ed055' AND deletedAt IS NULL"
+    fx_comment_leak_test.go:71: comment-body secret "81dc9bdb52d04dc20036dbd8313ed055" appears in clear in the evidence value; intervals=[]redaction.Interval{redaction.Interval{Start:0x28, Length:0x4}}
+    fx_comment_leak_test.go:88: secret at byte offset 65 is not covered by any sensitive interval
+=== RUN   TestFxSQLCommentBodiesAreRedacted/plain_line_comment
+    fx_comment_leak_test.go:69: masked evidence: "SELECT col -- 81dc9bdb52d04dc20036dbd8313ed055"
+    fx_comment_leak_test.go:71: comment-body secret "81dc9bdb52d04dc20036dbd8313ed055" appears in clear in the evidence value; intervals=[]redaction.Interval(nil)
+    fx_comment_leak_test.go:88: secret at byte offset 14 is not covered by any sensitive interval
+=== RUN   TestFxSQLCommentBodiesAreRedacted/block_comment
+    fx_comment_leak_test.go:69: masked evidence: "SELECT ? /* token=81dc9bdb52d04dc20036dbd8313ed055 */"
+    fx_comment_leak_test.go:71: comment-body secret "81dc9bdb52d04dc20036dbd8313ed055" appears in clear in the evidence value; intervals=[]redaction.Interval{redaction.Interval{Start:0x7, Length:0x1}}
+    fx_comment_leak_test.go:88: secret at byte offset 18 is not covered by any sensitive interval
+=== RUN   TestFxSQLCommentBodiesAreRedacted/hash_line_comment
+    fx_comment_leak_test.go:69: masked evidence: "SELECT col # ?dc9bdb52d04dc20036dbd8313ed055"
+    fx_comment_leak_test.go:88: secret at byte offset 13 is not covered by any sensitive interval
+--- FAIL: TestFxSQLCommentBodiesAreRedacted (0.00s)
+    --- FAIL: TestFxSQLCommentBodiesAreRedacted/exploit_line_comment (0.00s)
+    --- FAIL: TestFxSQLCommentBodiesAreRedacted/plain_line_comment (0.00s)
+    --- FAIL: TestFxSQLCommentBodiesAreRedacted/block_comment (0.00s)
+    --- FAIL: TestFxSQLCommentBodiesAreRedacted/hash_line_comment (0.00s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/redaction	0.847s
+FAIL

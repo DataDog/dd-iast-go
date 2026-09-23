@@ -1,0 +1,13 @@
+[
+  {
+    "id": "hooks-yml-strings-F1",
+    "severity": "Critical",
+    "category": "compile-break",
+    "location": "iast/propagation/orchestrion.yml:1089-1103,1521-1535",
+    "title": "Method expressions match direct method-call advice and fail to compile",
+    "claim": "The pinned method-call matcher accepts method expressions with a receiver type as selector.X. The strings.Builder.WriteString and strings.Replacer.Replace pointer advice then substitutes that type as a runtime receiver, causing valid woven customer code to fail compilation.",
+    "evidence_path": ".omo/review/evidence/hooks-yml-strings/method-expressions.out.txt",
+    "repro_command": "Place .omo/review/evidence/hooks-yml-strings/zz_review_strings.go in iast/internal/propagationtest/ and zz_review_strings_test.go in iast/propagation/ of the private copy; from its root run GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -timeout 15m -count=1 -run TestReviewReplacerReceiverAndArgumentEvaluateOnce -v ./iast/propagation",
+    "needs_repro": false
+  }
+]

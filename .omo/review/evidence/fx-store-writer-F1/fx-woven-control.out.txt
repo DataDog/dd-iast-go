@@ -1,0 +1,25 @@
+=== RUN   TestFxF1WovenBuilderTaintWipedByUnrelatedBuffer
+    zz_fx_f1_woven_test.go:86: FX-F1-WOVEN: ops=300 lost-taint=0 A-unrelated-buffer-writes=0
+--- PASS: TestFxF1WovenBuilderTaintWipedByUnrelatedBuffer (0.01s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/iast/propagation	0.743s
+
+---STDERR(time)---
+       19.28 real         6.29 user         9.91 sys
+           345899008  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              338966  page reclaims
+               28702  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                3104  messages sent
+                3445  messages received
+                8757  signals received
+               11192  voluntary context switches
+              236096  involuntary context switches
+          4860909589  instructions retired
+          2801434336  cycles elapsed
+            53412584  peak memory footprint

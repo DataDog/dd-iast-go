@@ -1,0 +1,2 @@
+# github.com/DataDog/dd-iast-go/nilinfer
+nilinfer/main.go:8:26: in call to taint.IsTaintedBytes, cannot infer T (declared at ./taint/taint.go:163:21)

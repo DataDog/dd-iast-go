@@ -1,0 +1,32 @@
+=== RUN   TestFxWeakHashWovenOutsideSpan
+    fx_weakhash_woven_test.go:44: sampling=100 outside-span: 200 md5.Sum calls -> 200 finished vulnerability spans, 200 with IAST payload, 200 WEAK_HASH findings total
+--- PASS: TestFxWeakHashWovenOutsideSpan (0.02s)
+=== RUN   TestFxWeakHashWovenInsideSpan
+    fx_weakhash_woven_test.go:65: sampling=100 inside-span: 1000 md5.Sum calls -> 0 finished vulnerability spans, 1 spans with IAST payload, 1 WEAK_HASH findings total
+--- PASS: TestFxWeakHashWovenInsideSpan (0.03s)
+goos: darwin
+goarch: arm64
+pkg: github.com/DataDog/dd-iast-go/benchmarks/overhead
+cpu: Apple M4 Max
+BenchmarkFxWeakHashOutsideSpan
+BenchmarkFxWeakHashOutsideSpan-16    	   20000	     27780 ns/op	   20070 B/op	      97 allocs/op
+PASS
+ok  	github.com/DataDog/dd-iast-go/benchmarks/overhead	1.597s
+      238.16 real       140.19 user        98.41 sys
+           369655808  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+             9016876  page reclaims
+              364267  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+               16699  messages sent
+               19119  messages received
+              111908  signals received
+               65713  voluntary context switches
+             2543498  involuntary context switches
+          5716975128  instructions retired
+          3537246565  cycles elapsed
+            47465192  peak memory footprint

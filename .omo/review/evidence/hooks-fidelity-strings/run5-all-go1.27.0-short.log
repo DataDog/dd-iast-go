@@ -1,0 +1,46 @@
+=== RUN   TestFidelityInactiveAllocations
+    zz_fidelity_alloc_test.go:41: ALLOCS Concat2(a,b)         0.0
+    zz_fidelity_alloc_test.go:41: ALLOCS native string(b)     0.0
+    zz_fidelity_alloc_test.go:41: ALLOCS BytesToString(b)     1.0
+    zz_fidelity_alloc_test.go:41: ALLOCS native a+b           0.0
+--- PASS: TestFidelityInactiveAllocations (0.01s)
+=== RUN   TestFidelityInactiveAllocationsProposedFix
+    zz_fidelity_allocfix_test.go:41: ALLOCS fixed BytesToString  0.0
+    zz_fidelity_allocfix_test.go:42: ALLOCS fixed Concat2        1.0
+--- PASS: TestFidelityInactiveAllocationsProposedFix (0.00s)
+=== RUN   TestFidelityDifferentialStrings
+    zz_fidelity_diff_test.go:686: string ops: 42 ops x 6 modes, 82152 differential cases
+--- PASS: TestFidelityDifferentialStrings (12.91s)
+=== RUN   TestFidelityDifferentialFmt
+    zz_fidelity_diff_test.go:774: fmt: 5400 differential cases
+--- PASS: TestFidelityDifferentialFmt (37.12s)
+=== RUN   TestFidelityDifferentialConcat
+--- PASS: TestFidelityDifferentialConcat (2.61s)
+=== RUN   TestFidelityDifferentialSlicing
+--- PASS: TestFidelityDifferentialSlicing (1.70s)
+=== RUN   TestFidelityAllocations
+--- PASS: TestFidelityAllocations (0.16s)
+=== RUN   TestFidelityAliasIdentity
+    zz_fidelity_diff_test.go:1089: ALIAS-DIFF [tainted] Join one               equal=true stdAliasesInput=true wrapAliasesInput=false
+    zz_fidelity_diff_test.go:1089: ALIAS-DIFF [tainted-window] Join one               equal=true stdAliasesInput=true wrapAliasesInput=false
+--- PASS: TestFidelityAliasIdentity (0.00s)
+=== RUN   TestFidelityNilPanics
+    zz_fidelity_diff_test.go:1120: ok [inactive] nil Replacer panicked=true runtime error: invalid memory address or nil pointer dereference
+    zz_fidelity_diff_test.go:1120: ok [inactive] nil TrimFunc pred panicked=true runtime error: invalid memory address or nil pointer dereference
+    zz_fidelity_diff_test.go:1120: ok [inactive] nil FieldsFunc pred panicked=true runtime error: invalid memory address or nil pointer dereference
+    zz_fidelity_diff_test.go:1120: ok [inactive] nil Map panicked=true runtime error: invalid memory address or nil pointer dereference
+    zz_fidelity_diff_test.go:1120: ok [inactive] nil FieldsFuncSeq pred panicked=true runtime error: invalid memory address or nil pointer dereference
+    zz_fidelity_diff_test.go:1120: ok [inactive] Repeat -1 panicked=true strings: negative Repeat count
+    zz_fidelity_diff_test.go:1120: ok [inactive] Repeat overflow panicked=true strings: Repeat output length overflow
+    zz_fidelity_diff_test.go:1120: ok [inactive] Sprintf nil-receiver Stringer panicked=false 
+    zz_fidelity_diff_test.go:1120: ok [tainted] nil Replacer panicked=true runtime error: invalid memory address or nil pointer dereference
+    zz_fidelity_diff_test.go:1120: ok [tainted] nil TrimFunc pred panicked=true runtime error: invalid memory address or nil pointer dereference
+    zz_fidelity_diff_test.go:1120: ok [tainted] nil FieldsFunc pred panicked=true runtime error: invalid memory address or nil pointer dereference
+    zz_fidelity_diff_test.go:1120: ok [tainted] nil Map panicked=true runtime error: invalid memory address or nil pointer dereference
+    zz_fidelity_diff_test.go:1120: ok [tainted] nil FieldsFuncSeq pred panicked=true runtime error: invalid memory address or nil pointer dereference
+    zz_fidelity_diff_test.go:1120: ok [tainted] Repeat -1 panicked=true strings: negative Repeat count
+    zz_fidelity_diff_test.go:1120: ok [tainted] Repeat overflow panicked=true strings: Repeat output length overflow
+    zz_fidelity_diff_test.go:1120: ok [tainted] Sprintf nil-receiver Stringer panicked=false 
+--- PASS: TestFidelityNilPanics (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/iast/propagation	55.276s

@@ -1,0 +1,17 @@
+Command:
+
+GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -run TestBootstrapProductionPackageEndingInTest -count=1 -timeout 15m .
+
+Working directory:
+
+/tmp/ddiast-review/wt/hooks-scope-root/iast/integration/testapp
+
+Captured output:
+
+ok  	github.com/DataDog/dd-iast-go/testapps/integration	11.162s
+
+This test from commit 24c35ec builds an ordinary production `package main`
+whose import-path segment ends in `.test`, verifies the SQL/command/JSON
+bootstrap symbols with `go tool nm`, and executes the binary. It confirms
+that `test-main: false` distinguishes Orchestrion's synthetic Go test main
+from package-name text.

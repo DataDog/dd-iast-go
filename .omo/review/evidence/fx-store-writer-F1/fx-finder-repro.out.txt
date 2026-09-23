@@ -1,0 +1,9 @@
+=== RUN   TestReviewCrossRequestWriterPoisoning
+    zz_finder_repro_test.go:59: B builder checks=400 lost-taint=400; A clean buffer writes=12635
+    zz_finder_repro_test.go:61: BUG: request B lost builder taint 400/400 times due to request A's unrelated buffer writes
+--- FAIL: TestReviewCrossRequestWriterPoisoning (0.01s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/iast/propagation	0.402s
+FAIL
+
+---STDERR---

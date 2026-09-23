@@ -1,0 +1,113 @@
+{
+ "peak_tree_rss_kb": 1271312,
+ "peak_tree_at_s": 28.1,
+ "peak_tree_top": [
+  [
+   136752,
+   [
+    "(compile)",
+    ""
+   ]
+  ],
+  [
+   132112,
+   [
+    "(compile)",
+    ""
+   ]
+  ],
+  [
+   122576,
+   [
+    "orchestrion:",
+    ""
+   ]
+  ],
+  [
+   75520,
+   [
+    "(compile)",
+    ""
+   ]
+  ],
+  [
+   67472,
+   [
+    "orchestrion:build -toolexec",
+    ""
+   ]
+  ],
+  [
+   62896,
+   [
+    "orchestrion:tool orchestrion",
+    ""
+   ]
+  ]
+ ],
+ "top_process_peaks_kb": [
+  [
+   "compile github.com/nats-io/nats-server/v2/server",
+   750800
+  ],
+  [
+   "orchestrion-toolexec/compile runtime",
+   239072
+  ],
+  [
+   "(compile) ",
+   189584
+  ],
+  [
+   "compile go.opentelemetry.io/collector/pdata/internal",
+   170000
+  ],
+  [
+   "compile google.golang.org/protobuf/internal/impl",
+   150512
+  ],
+  [
+   "compile runtime",
+   141040
+  ],
+  [
+   "orchestrion: ",
+   122576
+  ],
+  [
+   "compile github.com/DataDog/dd-trace-go/v2/ddtrace/tracer",
+   104800
+  ],
+  [
+   "compile go/types",
+   88032
+  ],
+  [
+   "orchestrion:build -toolexec ",
+   68400
+  ],
+  [
+   "compile net",
+   68080
+  ],
+  [
+   "orchestrion:tool orchestrion ",
+   62896
+  ],
+  [
+   "compile github.com/klauspost/compress/zstd",
+   51392
+  ],
+  [
+   "orchestrion:go build ",
+   45584
+  ],
+  [
+   "compile go.yaml.in/yaml/v3",
+   42208
+  ]
+ ],
+ "samples": 26,
+ "killed_at_limit": false,
+ "duration_s": 33.3
+}

@@ -1,0 +1,46 @@
+$ cd /tmp/ddiast-review/wt/prop-string-coarse && GOTOOLCHAIN=go1.26.6 go test -count=1 -run 'TestReview' -v ./internal/taint/propagation/
+(file placed at internal/taint/propagation/zz_review_coarse_test.go in a private copy of HEAD 2e23b46; go1.26.6)
+
+=== RUN   TestReviewCoarseFormatTaintsUnprintedStringKindArguments
+    zz_review_coarse_test.go:51: Stringer allowlist output="SELECT * FROM t ORDER BY id" containsAttack=false ranges=[{Start:0 Length:27 SourceID:0 Marks:0}]
+    zz_review_coarse_test.go:53: FALSE POSITIVE (Stringer allowlist): output "SELECT * FROM t ORDER BY id" does not contain tainted bytes but is tainted [{Start:0 Length:27 SourceID:0 Marks:0}]
+    zz_review_coarse_test.go:51: Error method       output="failure: bad request" containsAttack=false ranges=[{Start:0 Length:20 SourceID:0 Marks:0}]
+    zz_review_coarse_test.go:53: FALSE POSITIVE (Error method): output "failure: bad request" does not contain tainted bytes but is tainted [{Start:0 Length:20 SourceID:0 Marks:0}]
+    zz_review_coarse_test.go:51: %T verb            output="SELECT string FROM t" containsAttack=false ranges=[{Start:0 Length:20 SourceID:0 Marks:0}]
+    zz_review_coarse_test.go:53: FALSE POSITIVE (%T verb): output "SELECT string FROM t" does not contain tainted bytes but is tainted [{Start:0 Length:20 SourceID:0 Marks:0}]
+    zz_review_coarse_test.go:51: %.0s verb          output="SELECT * FROM t" containsAttack=false ranges=[{Start:0 Length:15 SourceID:0 Marks:0}]
+    zz_review_coarse_test.go:53: FALSE POSITIVE (%.0s verb): output "SELECT * FROM t" does not contain tainted bytes but is tainted [{Start:0 Length:15 SourceID:0 Marks:0}]
+--- FAIL: TestReviewCoarseFormatTaintsUnprintedStringKindArguments (0.00s)
+=== RUN   TestReviewCoarseSourceIsNotTheUnsanitizedContributor
+    zz_review_coarse_test.go:67: output="SELECT * FROM t WHERE a='sanitized' AND b='' OR 1=1 --'" ranges=[{Start:0 Length:55 SourceID:11 Marks:0}]
+    zz_review_coarse_test.go:69: MISATTRIBUTION: unsafe coarse range (marks=0) reports source 11 (fully sanitized); unsanitized source 12 is dropped
+--- FAIL: TestReviewCoarseSourceIsNotTheUnsanitizedContributor (0.00s)
+=== RUN   TestReviewCoarseFormatMissesIndirectArguments
+    zz_review_coarse_test.go:87: []string     output="SELECT * FROM t WHERE a IN ([' OR 1=1 --])" containsAttack=true ranges=[]
+    zz_review_coarse_test.go:89: FALSE NEGATIVE ([]string): output contains tainted bytes but is untainted
+    zz_review_coarse_test.go:87: struct field output="SELECT * FROM t WHERE a='{' OR 1=1 --}'" containsAttack=true ranges=[]
+    zz_review_coarse_test.go:89: FALSE NEGATIVE (struct field): output contains tainted bytes but is untainted
+    zz_review_coarse_test.go:87: errors.New   output="SELECT * FROM t WHERE a='' OR 1=1 --'" containsAttack=true ranges=[]
+    zz_review_coarse_test.go:89: FALSE NEGATIVE (errors.New): output contains tainted bytes but is untainted
+--- FAIL: TestReviewCoarseFormatMissesIndirectArguments (0.00s)
+=== RUN   TestReviewToValidUTF8IdentityGuardIsRequired
+    zz_review_coarse_test.go:101: wrapper (guarded): "clean valid value" ranges=[]
+    zz_review_coarse_test.go:106: without guard     : "clean valid value" ranges=[{Start:0 Length:17 SourceID:0 Marks:0}]
+    zz_review_coarse_test.go:114: tainted no-repair : "abc-def-ghi" ranges=[{Start:4 Length:3 SourceID:5 Marks:0}]
+--- PASS: TestReviewToValidUTF8IdentityGuardIsRequired (0.00s)
+=== RUN   TestReviewCaseStringCoarseWidensPartialTaint
+    zz_review_coarse_test.go:125: non-ASCII upper: "SELECT 'CAFÉ' WHERE X='ABC'" ranges=[{Start:0 Length:28 SourceID:2 Marks:4}] (input range covered 3 bytes)
+    zz_review_coarse_test.go:128: ASCII upper    : "SELECT X='ABC'" ranges=[{Start:10 Length:3 SourceID:2 Marks:4}]
+    zz_review_coarse_test.go:130: ASCII lower(unchanged-prefix, alias?) "select x='abc'" ranges=[{Start:10 Length:3 SourceID:2 Marks:4}]
+--- PASS: TestReviewCaseStringCoarseWidensPartialTaint (0.00s)
+=== RUN   TestReviewStringerAllowlistReachesSQLSinkAsUnsafe
+    zz_review_coarse_test.go:150: query="SELECT * FROM users ORDER BY id" containsParam=false status=1 (StatusCollected=1)
+    zz_review_coarse_test.go:155:   part 0 source=0 value="SELECT * FROM users ORDER BY id"
+    zz_review_coarse_test.go:159:   source 0 origin=http.request.parameter name="sort" value="name; DROP TABLE users"
+    zz_review_coarse_test.go:161: FALSE POSITIVE: SQL sink would report injection for a query without request data
+--- FAIL: TestReviewStringerAllowlistReachesSQLSinkAsUnsafe (0.00s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/propagation	0.316s
+FAIL
+
+exit=1

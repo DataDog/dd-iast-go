@@ -1,0 +1,29 @@
+Command: cd <copy> && cp <evidence>/zz_fx3_test.go <evidence of crash-fuzz-redaction>/zz_review_oracle_desync_test.go internal/taint/redaction/ && env GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 go test -count=1 -timeout=15m ./internal/taint/redaction -run 'TestFx3|TestReviewOracleQuoteDesync' -v
+
+=== RUN   TestFx3OracleQuoteDesync
+    zz_fx3_test.go:48: COVERED in-list              status=0 qspans=[] exposed=0/9 sensitive=[{37 1} {41 1} {45 1} {62 9}]
+    zz_fx3_test.go:48: COVERED insert               status=0 qspans=[] exposed=0/9 sensitive=[{47 1} {51 1} {55 9}]
+    zz_fx3_test.go:48: COVERED lower                status=0 qspans=[] exposed=0/9 sensitive=[{16 3} {24 1} {30 9} {50 1}]
+    zz_fx3_test.go:48: LEAK inner-q              status=0 qspans=["q'[?]'"] exposed=9/9 sensitive=[{8 1} {12 1}]
+    zz_fx3_test.go:48: COVERED control-P            status=0 qspans=[] exposed=0/9 sensitive=[{37 1} {41 1} {45 1} {62 9}]
+    zz_fx3_test.go:48: COVERED control-real-qquote  status=0 qspans=["q'[x]'"] exposed=0/9 sensitive=[{10 1} {17 9}]
+--- PASS: TestFx3OracleQuoteDesync (0.00s)
+=== RUN   TestFx3OracleQuoteDesyncBuild
+    zz_fx3_test.go:66: prefix="INSERT INTO users(kind,role,password) VALUES ('Q','u','" evidence="INSERT INTO users(kind,role,password) VALUES ('*','*','*********')" sourceRedacted=true sourceValue=""
+    zz_fx3_test.go:66: prefix="INSERT INTO users(kind,role,password) VALUES ('P','u','" evidence="INSERT INTO users(kind,role,password) VALUES ('*','*','*********')" sourceRedacted=true sourceValue=""
+--- PASS: TestFx3OracleQuoteDesyncBuild (0.00s)
+=== RUN   TestReviewOracleQuoteDesyncLeaksLiteral
+    zz_review_oracle_desync_test.go:37: query="SELECT * FROM jobs WHERE status IN ('Q','R','') AND token = 'hunter2'" status=0 sensitive=[{40 3} {46 14}] exposedSecretBytes="hunter2"
+    zz_review_oracle_desync_test.go:37: query="SELECT * FROM t WHERE a = 'Q' OR b IN (',','') AND pwd='hunter2'" status=0 sensitive=[{27 1} {40 1} {56 7}] exposedSecretBytes=""
+    zz_review_oracle_desync_test.go:37: query="SELECT * FROM t WHERE c IN ('q','x','-') AND pwd='hunter2'" status=0 sensitive=[{32 3} {39 10}] exposedSecretBytes="hunter2"
+    zz_review_oracle_desync_test.go:37: query="SELECT * FROM jobs WHERE status IN ('P','R','') AND token = 'hunter2'" status=0 sensitive=[{37 1} {41 1} {61 7}] exposedSecretBytes=""
+    zz_review_oracle_desync_test.go:43: 2 queries leak the literal 'hunter2' unredacted
+--- FAIL: TestReviewOracleQuoteDesyncLeaksLiteral (0.00s)
+=== RUN   TestReviewOracleQuoteDesyncLeaksTaintedLiteralEndToEnd
+    zz_review_oracle_desync_test.go:95: status=Q evidence="SELECT * FROM jobs WHERE status IN ('Q',***,''*************'userSecret42'" sourceRedacted=false sourceValue="userSecret42"
+    zz_review_oracle_desync_test.go:97: status=Q: tainted literal leaked raw: source value "userSecret42", evidence "SELECT * FROM jobs WHERE status IN ('Q',***,''*************'userSecret42'"
+    zz_review_oracle_desync_test.go:95: status=P evidence="SELECT * FROM jobs WHERE status IN ('*','*','') AND note = '************'" sourceRedacted=true sourceValue=""
+--- FAIL: TestReviewOracleQuoteDesyncLeaksTaintedLiteralEndToEnd (0.00s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/redaction	0.547s
+FAIL

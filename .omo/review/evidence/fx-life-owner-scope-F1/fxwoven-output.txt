@@ -1,0 +1,10 @@
+Command: cd /tmp/ddiast-review/wt/fx-life-owner-scope-F1 && GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 DD_IAST_REQUEST_SAMPLING=100 /usr/bin/time -l go tool orchestrion go test -run '^TestFXWovenRedispatchOfStoredRequestLosesSourceTaint$' -count=1 -timeout 10m ./fxwoven
+Test: fxwoven/fxwoven_test.go; peak RSS 348 MB; build+test 252s
+--- FAIL: TestFXWovenRedispatchOfStoredRequestLosesSourceTaint (0.01s)
+    fxwoven_test.go:55: re-dispatched request: status 417; expected 200 (entry advice should have created a fresh scope and tainted the URI)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/fxwoven	0.781s
+FAIL
+exit status 1
+
+(417 on the re-dispatched stored request: the woven application.http.Handler advice reused the finished scope, created=false, EagerHTTP skipped, URI untainted. The first fresh request through the woven serverHandler.ServeHTTP advice returned 200.)

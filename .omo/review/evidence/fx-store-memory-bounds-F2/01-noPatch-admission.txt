@@ -1,0 +1,82 @@
+### default-C2-sampling30
+COMMAND
+cd /tmp/ddiast-review/wt/fx-store-memory-bounds-F2 && env GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4  timeout 900 go test -count=1 -timeout 12m -v  -run '^TestFxF2AdmissionNoPatch$' ./internal/spans
+
+OUTPUT
+=== RUN   TestFxF2AdmissionNoPatch
+=== RUN   TestFxF2AdmissionNoPatch/BindScopeFromContext/inflight=256
+    zz_fx_f2_admission_test.go:96: GOMAXPROCS=16 configured=2 inflight=256 trials=40 maxRetained=11 ratio=5.5x meanRetained=3.4 meanSampled=0.3 worstHeapDelta=425984
+=== RUN   TestFxF2AdmissionNoPatch/BindScopeFromContext/inflight=4096
+    zz_fx_f2_admission_test.go:96: GOMAXPROCS=16 configured=2 inflight=4096 trials=40 maxRetained=4 ratio=2.0x meanRetained=2.4 meanSampled=0.0 worstHeapDelta=2531328
+=== RUN   TestFxF2AdmissionNoPatch/AnnotationFor/inflight=256
+    zz_fx_f2_admission_test.go:96: GOMAXPROCS=16 configured=2 inflight=256 trials=40 maxRetained=5 ratio=2.5x meanRetained=3.2 meanSampled=0.8 worstHeapDelta=163840
+=== RUN   TestFxF2AdmissionNoPatch/AnnotationFor/inflight=4096
+    zz_fx_f2_admission_test.go:96: GOMAXPROCS=16 configured=2 inflight=4096 trials=40 maxRetained=4 ratio=2.0x meanRetained=2.4 meanSampled=0.7 worstHeapDelta=311296
+--- PASS: TestFxF2AdmissionNoPatch (2.99s)
+    --- PASS: TestFxF2AdmissionNoPatch/BindScopeFromContext/inflight=256 (0.11s)
+    --- PASS: TestFxF2AdmissionNoPatch/BindScopeFromContext/inflight=4096 (1.16s)
+    --- PASS: TestFxF2AdmissionNoPatch/AnnotationFor/inflight=256 (0.20s)
+    --- PASS: TestFxF2AdmissionNoPatch/AnnotationFor/inflight=4096 (1.52s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/spans	3.713s
+
+
+### C64-sampling100
+COMMAND
+cd /tmp/ddiast-review/wt/fx-store-memory-bounds-F2 && env GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 DD_IAST_REQUEST_SAMPLING=100 DD_IAST_MAX_CONCURRENT_REQUESTS=64 timeout 900 go test -count=1 -timeout 12m -v -cpu 16,256 -run '^TestFxF2AdmissionNoPatch$' ./internal/spans
+
+OUTPUT
+=== RUN   TestFxF2AdmissionNoPatch
+=== RUN   TestFxF2AdmissionNoPatch/BindScopeFromContext/inflight=256
+    zz_fx_f2_admission_test.go:96: GOMAXPROCS=16 configured=64 inflight=256 trials=40 maxRetained=67 ratio=1.0x meanRetained=64.6 meanSampled=13.6 worstHeapDelta=393216
+=== RUN   TestFxF2AdmissionNoPatch/BindScopeFromContext/inflight=4096
+    zz_fx_f2_admission_test.go:96: GOMAXPROCS=16 configured=64 inflight=4096 trials=40 maxRetained=67 ratio=1.0x meanRetained=64.6 meanSampled=0.1 worstHeapDelta=344064
+=== RUN   TestFxF2AdmissionNoPatch/AnnotationFor/inflight=256
+    zz_fx_f2_admission_test.go:96: GOMAXPROCS=16 configured=64 inflight=256 trials=40 maxRetained=67 ratio=1.0x meanRetained=64.5 meanSampled=64.5 worstHeapDelta=327680
+=== RUN   TestFxF2AdmissionNoPatch/AnnotationFor/inflight=4096
+    zz_fx_f2_admission_test.go:96: GOMAXPROCS=16 configured=64 inflight=4096 trials=40 maxRetained=67 ratio=1.0x meanRetained=64.8 meanSampled=64.8 worstHeapDelta=245760
+--- PASS: TestFxF2AdmissionNoPatch (4.98s)
+    --- PASS: TestFxF2AdmissionNoPatch/BindScopeFromContext/inflight=256 (0.21s)
+    --- PASS: TestFxF2AdmissionNoPatch/BindScopeFromContext/inflight=4096 (1.71s)
+    --- PASS: TestFxF2AdmissionNoPatch/AnnotationFor/inflight=256 (0.65s)
+    --- PASS: TestFxF2AdmissionNoPatch/AnnotationFor/inflight=4096 (2.41s)
+=== RUN   TestFxF2AdmissionNoPatch
+=== RUN   TestFxF2AdmissionNoPatch/BindScopeFromContext/inflight=256
+    zz_fx_f2_admission_test.go:96: GOMAXPROCS=256 configured=64 inflight=256 trials=40 maxRetained=68 ratio=1.1x meanRetained=64.8 meanSampled=11.1 worstHeapDelta=262144
+=== RUN   TestFxF2AdmissionNoPatch/BindScopeFromContext/inflight=4096
+    zz_fx_f2_admission_test.go:96: GOMAXPROCS=256 configured=64 inflight=4096 trials=40 maxRetained=67 ratio=1.0x meanRetained=64.7 meanSampled=0.1 worstHeapDelta=450560
+=== RUN   TestFxF2AdmissionNoPatch/AnnotationFor/inflight=256
+    zz_fx_f2_admission_test.go:96: GOMAXPROCS=256 configured=64 inflight=256 trials=40 maxRetained=70 ratio=1.1x meanRetained=65.3 meanSampled=65.3 worstHeapDelta=385024
+=== RUN   TestFxF2AdmissionNoPatch/AnnotationFor/inflight=4096
+    zz_fx_f2_admission_test.go:96: GOMAXPROCS=256 configured=64 inflight=4096 trials=40 maxRetained=69 ratio=1.1x meanRetained=65.6 meanSampled=65.6 worstHeapDelta=-212992
+--- PASS: TestFxF2AdmissionNoPatch (4.68s)
+    --- PASS: TestFxF2AdmissionNoPatch/BindScopeFromContext/inflight=256 (0.42s)
+    --- PASS: TestFxF2AdmissionNoPatch/BindScopeFromContext/inflight=4096 (1.85s)
+    --- PASS: TestFxF2AdmissionNoPatch/AnnotationFor/inflight=256 (0.47s)
+    --- PASS: TestFxF2AdmissionNoPatch/AnnotationFor/inflight=4096 (1.94s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/spans	10.332s
+
+
+### default-C2 under -race
+COMMAND
+cd /tmp/ddiast-review/wt/fx-store-memory-bounds-F2 && env GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 timeout 900 go test -race -count=1 -timeout 12m -v -run '^TestFxF2AdmissionNoPatch$' ./internal/spans
+
+OUTPUT
+=== RUN   TestFxF2AdmissionNoPatch
+=== RUN   TestFxF2AdmissionNoPatch/BindScopeFromContext/inflight=256
+    zz_fx_f2_admission_test.go:96: GOMAXPROCS=16 configured=2 inflight=256 trials=40 maxRetained=4 ratio=2.0x meanRetained=2.4 meanSampled=0.3 worstHeapDelta=90112
+=== RUN   TestFxF2AdmissionNoPatch/BindScopeFromContext/inflight=4096
+    zz_fx_f2_admission_test.go:96: GOMAXPROCS=16 configured=2 inflight=4096 trials=40 maxRetained=4 ratio=2.0x meanRetained=2.5 meanSampled=0.1 worstHeapDelta=73728
+=== RUN   TestFxF2AdmissionNoPatch/AnnotationFor/inflight=256
+    zz_fx_f2_admission_test.go:96: GOMAXPROCS=16 configured=2 inflight=256 trials=40 maxRetained=6 ratio=3.0x meanRetained=3.4 meanSampled=1.0 worstHeapDelta=90112
+=== RUN   TestFxF2AdmissionNoPatch/AnnotationFor/inflight=4096
+    zz_fx_f2_admission_test.go:96: GOMAXPROCS=16 configured=2 inflight=4096 trials=40 maxRetained=5 ratio=2.5x meanRetained=2.5 meanSampled=0.8 worstHeapDelta=-24576
+--- PASS: TestFxF2AdmissionNoPatch (26.25s)
+    --- PASS: TestFxF2AdmissionNoPatch/BindScopeFromContext/inflight=256 (1.04s)
+    --- PASS: TestFxF2AdmissionNoPatch/BindScopeFromContext/inflight=4096 (8.13s)
+    --- PASS: TestFxF2AdmissionNoPatch/AnnotationFor/inflight=256 (0.55s)
+    --- PASS: TestFxF2AdmissionNoPatch/AnnotationFor/inflight=4096 (16.52s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/spans	28.281s
+

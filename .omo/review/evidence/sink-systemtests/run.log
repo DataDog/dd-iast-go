@@ -1,0 +1,23 @@
+=== RUN   TestZZSystemTestsShapes
+    zz_systemtests_shape_test.go:181: wrote 23 cases to /tmp/ddiast-review/wt/sink-systemtests/shapes.json
+--- PASS: TestZZSystemTestsShapes (0.28s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/testapps/integration	1.109s
+       11.47 real         7.30 user        13.42 sys
+           360398848  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              480899  page reclaims
+               33669  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                3410  messages sent
+                3810  messages received
+               17711  signals received
+               18011  voluntary context switches
+              247686  involuntary context switches
+          4810103691  instructions retired
+          6422436460  cycles elapsed
+            50496208  peak memory footprint

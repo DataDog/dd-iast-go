@@ -1,0 +1,10 @@
+# github.com/DataDog/dd-iast-go/reviewf2 [github.com/DataDog/dd-iast-go/reviewf2.test]
+reviewf2/limits.go:10: float64 does not satisfy "github.com/DataDog/dd-iast-go/iast/propagation".integer (float64 missing in ~int | ~int8 | ~int16 | ~int32 | ~int64 | ~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64 | ~uintptr)
+reviewf2/limits.go:17: float64 does not satisfy "github.com/DataDog/dd-iast-go/iast/propagation".integer (float64 missing in ~int | ~int8 | ~int16 | ~int32 | ~int64 | ~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64 | ~uintptr)
+reviewf2/limits.go:21: complex128 does not satisfy "github.com/DataDog/dd-iast-go/iast/propagation".integer (complex128 missing in ~int | ~int8 | ~int16 | ~int32 | ~int64 | ~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64 | ~uintptr)
+reviewf2/limits.go:24: float64 does not satisfy "github.com/DataDog/dd-iast-go/iast/propagation".integer (float64 missing in ~int | ~int8 | ~int16 | ~int32 | ~int64 | ~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64 | ~uintptr)
+exit status 2
+FAIL	github.com/DataDog/dd-iast-go/reviewf2 [build failed]
+FAIL
+exit status 1
+woven-exit=1

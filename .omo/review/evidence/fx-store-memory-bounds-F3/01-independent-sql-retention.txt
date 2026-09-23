@@ -1,0 +1,14 @@
+REPRO COMMAND
+cd /tmp/ddiast-review/wt/fx-store-memory-bounds-F3 && env GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 DD_IAST_REQUEST_SAMPLING=100 DD_IAST_MAX_CONCURRENT_REQUESTS=64 DD_IAST_MAX_RANGE_COUNT=64 DD_IAST_VULNERABILITIES_PER_REQUEST=64 DD_IAST_REDACTION_ENABLED=true DD_IAST_TRUNCATION_MAX_VALUE=250 timeout 900 go test -count=1 -timeout 12m -v -run '^TestIndependentF3SQLSnapshotRetention$' ./internal/taint/store
+
+CAPTURED OUTPUT
+    zz_review_f3_independent_test.go:121: events=64 activeRequests=64 vulnerabilities=4096 queryBytes=32768 defaultTruncationCharacters=250 identityBytes=640 heapBefore=19062784 heapAfter=156958720 delta=137895936 wholeFeatureCeiling=25165824 ratio=5.48 pinnedPerEvent=2097152
+    zz_review_f3_independent_test.go:127: eventSources=1 eventVulnerabilities=64 wireBytes=24863 fallback=false
+    zz_review_f3_independent_test.go:134: finishedHeap=17096704 released=139862016
+--- PASS: TestIndependentF3SQLSnapshotRetention (0.07s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/store	0.705s
+
+The monitor reported watcher completed with exit code 0. These are the
+matching output lines captured from the test; the reproducer source is
+repro/zz_review_f3_independent_test.go.

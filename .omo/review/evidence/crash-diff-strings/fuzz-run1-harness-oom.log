@@ -1,0 +1,41 @@
+fuzz: elapsed: 0s, gathering baseline coverage: 0/24 completed
+fuzz: elapsed: 0s, gathering baseline coverage: 24/24 completed, now fuzzing with 2 workers
+fuzz: elapsed: 3s, execs: 8916 (2970/sec), new interesting: 14 (total: 38)
+fuzz: elapsed: 6s, execs: 8916 (0/sec), new interesting: 14 (total: 38)
+fuzz: elapsed: 9s, execs: 37954 (9675/sec), new interesting: 31 (total: 55)
+fuzz: elapsed: 12s, execs: 55709 (5920/sec), new interesting: 71 (total: 95)
+fuzz: elapsed: 15s, execs: 66590 (3628/sec), new interesting: 139 (total: 163)
+fuzz: elapsed: 18s, execs: 66590 (0/sec), new interesting: 139 (total: 163)
+fuzz: elapsed: 21s, execs: 74283 (2566/sec), new interesting: 150 (total: 174)
+fuzz: elapsed: 24s, execs: 76844 (853/sec), new interesting: 152 (total: 176)
+fuzz: elapsed: 27s, execs: 76844 (0/sec), new interesting: 152 (total: 176)
+fuzz: elapsed: 30s, execs: 76844 (0/sec), new interesting: 152 (total: 176)
+fuzz: elapsed: 33s, execs: 76844 (0/sec), new interesting: 152 (total: 176)
+fuzz: elapsed: 35s, execs: 76845 (0/sec), new interesting: 152 (total: 176)
+--- FAIL: FuzzStringsDiff (35.09s)
+    fuzzing process hung or terminated unexpectedly: exit status 2
+    Failing input written to testdata/fuzz/FuzzStringsDiff/1d1f06febe25adb8
+    To re-run:
+    go test -run=FuzzStringsDiff/1d1f06febe25adb8
+FAIL
+exit status 1
+FAIL	github.com/DataDog/dd-iast-go/iast/internal/crashdiff	35.530s
+exit status 1
+       53.73 real        92.45 user        45.09 sys
+         25993887744  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+             7003585  page reclaims
+               91551  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                3381  messages sent
+                3688  messages received
+              520378  signals received
+               32029  voluntary context switches
+             1135254  involuntary context switches
+          5554711402  instructions retired
+          3228245459  cycles elapsed
+            40518352  peak memory footprint

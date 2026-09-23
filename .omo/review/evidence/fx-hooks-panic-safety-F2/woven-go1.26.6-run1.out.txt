@@ -1,0 +1,38 @@
+=== RUN   TestFX_F2_Control
+    zz_fx_f2_test.go:47: control: out="SELECT * FROM t WHERE a='attack'" caught=<nil> tainted=true
+--- PASS: TestFX_F2_Control (0.00s)
+=== RUN   TestFX_F2_FaultBeforeLocks
+    zz_fx_f2_test.go:66: mode=1: out="" caught=*struct { origin string } &{injected fault inside Store.InvalidateBuffer} identical=true
+    zz_fx_f2_test.go:72: mode=1: scope.Finish returned
+    zz_fx_f2_test.go:77: mode=1: IAST-internal panic escaped customer bytes.Buffer.WriteString (write aborted, out="")
+--- FAIL: TestFX_F2_FaultBeforeLocks (0.00s)
+=== RUN   TestFX_F2_FaultInsideLocks
+    zz_fx_f2_test.go:66: mode=2: out="SELECT * FROM t WHERE a='attack'" caught=<nil> <nil> identical=false
+    zz_fx_f2_test.go:72: mode=2: scope.Finish returned
+--- PASS: TestFX_F2_FaultInsideLocks (0.00s)
+=== RUN   TestFX_F2_NaturalStress
+    zz_fx_f2_test.go:158: natural stress: goroutines=16 iterations=300 panics=0
+--- PASS: TestFX_F2_NaturalStress (0.41s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/iast/propagation	1.219s
+FAIL
+exit status 1
+      259.39 real       141.48 user       159.88 sys
+           362119168  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+             6708034  page reclaims
+              237837  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+               13451  messages sent
+               14808  messages received
+              111369  signals received
+               45911  voluntary context switches
+             2330512  involuntary context switches
+            19974029  instructions retired
+            10899727  cycles elapsed
+             1212728  peak memory footprint
+EXIT=1

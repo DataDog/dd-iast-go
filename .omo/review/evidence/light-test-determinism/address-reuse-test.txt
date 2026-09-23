@@ -1,0 +1,36 @@
+Static source evidence from HEAD 2e23b46, copied from
+internal/taint/store/identity_test.go:
+
+    35 func TestAddressReuseDoesNotReviveFinishedOwner(t *testing.T) {
+    36     store := New()
+    37     first := store.Acquire()
+    38     managed, _, ok := first.TaintString(strings.Repeat("a", 64), 0)
+    39     require.True(t, ok)
+    40     oldKey, _ := StringKey(managed)
+    41     first.Finish()
+    42     managed = ""
+    43     runtime.GC()
+    44
+    45     second := store.Acquire()
+    46     var reused string
+    47     for i := 0; i < MaxRootsPerOwner; i++ {
+    48         candidate, _, tainted := second.TaintString(strings.Repeat(string(rune('b'+i%20)), 64), 1)
+    49         require.True(t, tainted)
+    50         key, _ := StringKey(candidate)
+    51         if key.Pointer == oldKey.Pointer {
+    52             reused = candidate
+    53             break
+    54         }
+    55     }
+    56     if reused == "" {
+    57         second.Finish()
+    58         t.Skip("allocator did not reuse the address within the bounded attempt")
+    59     }
+    60     key, _ := StringKey(reused)
+    61     var snapshot Snapshot
+    62     require.True(t, store.Lookup(key, &snapshot))
+
+Review observation: the stale-slot assertion after this branch runs only if the
+allocator happens to reuse the address within MaxRootsPerOwner attempts.
+Otherwise the test reports skip, so this invocation does not exercise the
+assertion. The outcome depends on allocator behavior, not elapsed-time polling.

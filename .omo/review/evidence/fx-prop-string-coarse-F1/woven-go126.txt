@@ -1,0 +1,102 @@
+Independent executable output; original stdout and stderr are preserved separately per invocation.
+GOTOOLCHAIN=go1.26.6 binary; runtime env DD_TRACE_STARTUP_LOGS=false (startup logging only).
+
+MODE=stringer
+COMMAND=DD_TRACE_STARTUP_LOGS=false timeout 30 /tmp/ddiast-review/wt/fx-prop-string-coarse-F1/fx-coarse-126 stringer
+STDOUT:
+CONFIG enabled=true sampling=30 concurrent=2 vulnerabilities=2 dedup=true redaction=true
+{"Mode":"stringer","InputTainted":true,"Query":"SELECT id FROM accounts","Ranges":[{"Start":0,"Length":23,"Source":{"Origin":"http.request.parameter","Name":"sort","Value":"untrusted_sort_marker"},"Marks":{}}],"Calls":1,"Event":{"sources":[{"origin":"http.request.parameter","name":"sort","value":"untrusted_sort_marker"}],"vulnerabilities":[{"type":"SQL_INJECTION","hash":-229141342,"evidence":{"valueParts":[{"value":"SELECT id FROM accounts","source":0}]},"location":{"spanId":3610820032129688358,"path":"/tmp/ddiast-review/wt/fx-prop-string-coarse-F1/iast/integration/testapp/cmd/fx-coarse/main.go","line":176,"method":"main.run.func1","stackId":"2399e248-c3e2-448b-a3db-5957c219eb23"}}]}}
+STDERR:
+2026/09/23 15:00:46 Datadog Tracer v2.11.0-rc.1 WARN: appsec: error while flushing SCA Security Data: Post "http://localhost:8126/telemetry/proxy/api/v2/apmtelemetry": dial tcp 127.0.0.1:8126: connect: connection refused
+ASSERTION FAILED: constant-only SQL must have no taint and no SQL_INJECTION event
+EXIT=1
+
+MODE=error
+COMMAND=DD_TRACE_STARTUP_LOGS=false timeout 30 /tmp/ddiast-review/wt/fx-prop-string-coarse-F1/fx-coarse-126 error
+STDOUT:
+CONFIG enabled=true sampling=30 concurrent=2 vulnerabilities=2 dedup=true redaction=true
+{"Mode":"error","InputTainted":true,"Query":"SELECT id FROM accounts","Ranges":[{"Start":0,"Length":23,"Source":{"Origin":"http.request.parameter","Name":"sort","Value":"untrusted_sort_marker"},"Marks":{}}],"Calls":1,"Event":{"sources":[{"origin":"http.request.parameter","name":"sort","value":"untrusted_sort_marker"}],"vulnerabilities":[{"type":"SQL_INJECTION","hash":-229141342,"evidence":{"valueParts":[{"value":"SELECT id FROM accounts","source":0}]},"location":{"spanId":7251329702511205521,"path":"/tmp/ddiast-review/wt/fx-prop-string-coarse-F1/iast/integration/testapp/cmd/fx-coarse/main.go","line":176,"method":"main.run.func1","stackId":"478a0ce9-2350-48cf-96b6-1c5cfbe1a95f"}}]}}
+STDERR:
+2026/09/23 15:00:46 Datadog Tracer v2.11.0-rc.1 WARN: appsec: error while flushing SCA Security Data: Post "http://localhost:8126/telemetry/proxy/api/v2/apmtelemetry": dial tcp 127.0.0.1:8126: connect: connection refused
+ASSERTION FAILED: constant-only SQL must have no taint and no SQL_INJECTION event
+EXIT=1
+
+MODE=formatter
+COMMAND=DD_TRACE_STARTUP_LOGS=false timeout 30 /tmp/ddiast-review/wt/fx-prop-string-coarse-F1/fx-coarse-126 formatter
+STDOUT:
+CONFIG enabled=true sampling=30 concurrent=2 vulnerabilities=2 dedup=true redaction=true
+{"Mode":"formatter","InputTainted":true,"Query":"SELECT id FROM accounts","Ranges":[{"Start":0,"Length":23,"Source":{"Origin":"http.request.parameter","Name":"sort","Value":"untrusted_sort_marker"},"Marks":{}}],"Calls":1,"Event":{"sources":[{"origin":"http.request.parameter","name":"sort","value":"untrusted_sort_marker"}],"vulnerabilities":[{"type":"SQL_INJECTION","hash":-229141342,"evidence":{"valueParts":[{"value":"SELECT id FROM accounts","source":0}]},"location":{"spanId":4735545646826687583,"path":"/tmp/ddiast-review/wt/fx-prop-string-coarse-F1/iast/integration/testapp/cmd/fx-coarse/main.go","line":176,"method":"main.run.func1","stackId":"e3107e83-a3de-4ce2-a5e5-e19d4fcad7b1"}}]}}
+STDERR:
+2026/09/23 15:00:47 Datadog Tracer v2.11.0-rc.1 WARN: appsec: error while flushing SCA Security Data: Post "http://localhost:8126/telemetry/proxy/api/v2/apmtelemetry": dial tcp 127.0.0.1:8126: connect: connection refused
+ASSERTION FAILED: constant-only SQL must have no taint and no SQL_INJECTION event
+EXIT=1
+
+MODE=gostring
+COMMAND=DD_TRACE_STARTUP_LOGS=false timeout 30 /tmp/ddiast-review/wt/fx-prop-string-coarse-F1/fx-coarse-126 gostring
+STDOUT:
+CONFIG enabled=true sampling=30 concurrent=2 vulnerabilities=2 dedup=true redaction=true
+{"Mode":"gostring","InputTainted":true,"Query":"SELECT id FROM accounts","Ranges":[{"Start":0,"Length":23,"Source":{"Origin":"http.request.parameter","Name":"sort","Value":"untrusted_sort_marker"},"Marks":{}}],"Calls":1,"Event":{"sources":[{"origin":"http.request.parameter","name":"sort","value":"untrusted_sort_marker"}],"vulnerabilities":[{"type":"SQL_INJECTION","hash":-229141342,"evidence":{"valueParts":[{"value":"SELECT id FROM accounts","source":0}]},"location":{"spanId":5229418078695441280,"path":"/tmp/ddiast-review/wt/fx-prop-string-coarse-F1/iast/integration/testapp/cmd/fx-coarse/main.go","line":176,"method":"main.run.func1","stackId":"607cf272-2d58-48a5-be90-414da5047109"}}]}}
+STDERR:
+2026/09/23 15:00:47 Datadog Tracer v2.11.0-rc.1 WARN: appsec: error while flushing SCA Security Data: Post "http://localhost:8126/telemetry/proxy/api/v2/apmtelemetry": dial tcp 127.0.0.1:8126: connect: connection refused
+ASSERTION FAILED: constant-only SQL must have no taint and no SQL_INJECTION event
+EXIT=1
+
+MODE=sprint
+COMMAND=DD_TRACE_STARTUP_LOGS=false timeout 30 /tmp/ddiast-review/wt/fx-prop-string-coarse-F1/fx-coarse-126 sprint
+STDOUT:
+CONFIG enabled=true sampling=30 concurrent=2 vulnerabilities=2 dedup=true redaction=true
+{"Mode":"sprint","InputTainted":true,"Query":"SELECT id FROM accounts","Ranges":[{"Start":0,"Length":23,"Source":{"Origin":"http.request.parameter","Name":"sort","Value":"untrusted_sort_marker"},"Marks":{}}],"Calls":1,"Event":{"sources":[{"origin":"http.request.parameter","name":"sort","value":"untrusted_sort_marker"}],"vulnerabilities":[{"type":"SQL_INJECTION","hash":-229141342,"evidence":{"valueParts":[{"value":"SELECT id FROM accounts","source":0}]},"location":{"spanId":5632205583355989406,"path":"/tmp/ddiast-review/wt/fx-prop-string-coarse-F1/iast/integration/testapp/cmd/fx-coarse/main.go","line":176,"method":"main.run.func1","stackId":"1af54f8e-7cf6-42cb-bf1f-b169dc7b99b5"}}]}}
+STDERR:
+2026/09/23 15:00:48 Datadog Tracer v2.11.0-rc.1 WARN: appsec: error while flushing SCA Security Data: Post "http://localhost:8126/telemetry/proxy/api/v2/apmtelemetry": dial tcp 127.0.0.1:8126: connect: connection refused
+ASSERTION FAILED: constant-only SQL must have no taint and no SQL_INJECTION event
+EXIT=1
+
+MODE=sprintln
+COMMAND=DD_TRACE_STARTUP_LOGS=false timeout 30 /tmp/ddiast-review/wt/fx-prop-string-coarse-F1/fx-coarse-126 sprintln
+STDOUT:
+CONFIG enabled=true sampling=30 concurrent=2 vulnerabilities=2 dedup=true redaction=true
+{"Mode":"sprintln","InputTainted":true,"Query":"SELECT id FROM accounts\n","Ranges":[{"Start":0,"Length":24,"Source":{"Origin":"http.request.parameter","Name":"sort","Value":"untrusted_sort_marker"},"Marks":{}}],"Calls":1,"Event":{"sources":[{"origin":"http.request.parameter","name":"sort","value":"untrusted_sort_marker"}],"vulnerabilities":[{"type":"SQL_INJECTION","hash":-229141342,"evidence":{"valueParts":[{"value":"SELECT id FROM accounts\n","source":0}]},"location":{"spanId":4575894110891388095,"path":"/tmp/ddiast-review/wt/fx-prop-string-coarse-F1/iast/integration/testapp/cmd/fx-coarse/main.go","line":176,"method":"main.run.func1","stackId":"857985ba-8036-4119-944c-e0f3c8e47108"}}]}}
+STDERR:
+2026/09/23 15:00:48 Datadog Tracer v2.11.0-rc.1 WARN: appsec: error while flushing SCA Security Data: Post "http://localhost:8126/telemetry/proxy/api/v2/apmtelemetry": dial tcp 127.0.0.1:8126: connect: connection refused
+ASSERTION FAILED: constant-only SQL must have no taint and no SQL_INJECTION event
+EXIT=1
+
+MODE=bytes
+COMMAND=DD_TRACE_STARTUP_LOGS=false timeout 30 /tmp/ddiast-review/wt/fx-prop-string-coarse-F1/fx-coarse-126 bytes
+STDOUT:
+CONFIG enabled=true sampling=30 concurrent=2 vulnerabilities=2 dedup=true redaction=true
+{"Mode":"bytes","InputTainted":true,"Query":"SELECT id FROM accounts","Ranges":[{"Start":0,"Length":23,"Source":{"Origin":"http.request.body","Name":"","Value":"untrusted_sort_marker"},"Marks":{}}],"Calls":1,"Event":{"sources":[{"origin":"http.request.body","value":"untrusted_sort_marker"}],"vulnerabilities":[{"type":"SQL_INJECTION","hash":-229141342,"evidence":{"valueParts":[{"value":"SELECT id FROM accounts","source":0}]},"location":{"spanId":2961627635474323599,"path":"/tmp/ddiast-review/wt/fx-prop-string-coarse-F1/iast/integration/testapp/cmd/fx-coarse/main.go","line":176,"method":"main.run.func1","stackId":"36169a23-a843-4905-96d9-0a86a767a96a"}}]}}
+STDERR:
+2026/09/23 15:00:49 Datadog Tracer v2.11.0-rc.1 WARN: appsec: error while flushing SCA Security Data: Post "http://localhost:8126/telemetry/proxy/api/v2/apmtelemetry": dial tcp 127.0.0.1:8126: connect: connection refused
+ASSERTION FAILED: constant-only SQL must have no taint and no SQL_INJECTION event
+EXIT=1
+
+MODE=explicit
+COMMAND=DD_TRACE_STARTUP_LOGS=false timeout 30 /tmp/ddiast-review/wt/fx-prop-string-coarse-F1/fx-coarse-126 explicit
+STDOUT:
+CONFIG enabled=true sampling=30 concurrent=2 vulnerabilities=2 dedup=true redaction=true
+{"Mode":"explicit","InputTainted":true,"Query":"SELECT id FROM accounts","Ranges":null,"Calls":1,"Event":{"vulnerabilities":null}}
+STDERR:
+2026/09/23 15:00:49 Datadog Tracer v2.11.0-rc.1 WARN: appsec: error while flushing SCA Security Data: Post "http://localhost:8126/telemetry/proxy/api/v2/apmtelemetry": dial tcp 127.0.0.1:8126: connect: connection refused
+2026/09/23 15:00:49 Datadog Tracer v2.11.0-rc.1 ERROR: loading features: Get "http://localhost:8126/info": dial tcp 127.0.0.1:8126: connect: connection refused (occurred: 23 Sep 26 15:00 CEST)
+EXIT=0
+
+MODE=clean
+COMMAND=DD_TRACE_STARTUP_LOGS=false timeout 30 /tmp/ddiast-review/wt/fx-prop-string-coarse-F1/fx-coarse-126 clean
+STDOUT:
+CONFIG enabled=true sampling=30 concurrent=2 vulnerabilities=2 dedup=true redaction=true
+{"Mode":"clean","InputTainted":true,"Query":"SELECT id FROM accounts","Ranges":null,"Calls":1,"Event":{"vulnerabilities":null}}
+STDERR:
+2026/09/23 15:00:49 Datadog Tracer v2.11.0-rc.1 WARN: appsec: error while flushing SCA Security Data: Post "http://localhost:8126/telemetry/proxy/api/v2/apmtelemetry": dial tcp 127.0.0.1:8126: connect: connection refused
+2026/09/23 15:00:50 Datadog Tracer v2.11.0-rc.1 ERROR: loading features: Get "http://localhost:8126/info": dial tcp 127.0.0.1:8126: connect: connection refused (occurred: 23 Sep 26 15:00 CEST)
+EXIT=0
+
+MODE=direct
+COMMAND=DD_TRACE_STARTUP_LOGS=false timeout 30 /tmp/ddiast-review/wt/fx-prop-string-coarse-F1/fx-coarse-126 direct
+STDOUT:
+CONFIG enabled=true sampling=30 concurrent=2 vulnerabilities=2 dedup=true redaction=true
+{"Mode":"direct","InputTainted":true,"Query":"SELECT untrusted_sort_marker FROM accounts","Ranges":[{"Start":0,"Length":42,"Source":{"Origin":"http.request.parameter","Name":"sort","Value":"untrusted_sort_marker"},"Marks":{}}],"Calls":0,"Event":{"sources":[{"origin":"http.request.parameter","name":"sort","value":"untrusted_sort_marker"}],"vulnerabilities":[{"type":"SQL_INJECTION","hash":-229141342,"evidence":{"valueParts":[{"value":"SELECT untrusted_sort_marker FROM accounts","source":0}]},"location":{"spanId":55165084935346246,"path":"/tmp/ddiast-review/wt/fx-prop-string-coarse-F1/iast/integration/testapp/cmd/fx-coarse/main.go","line":176,"method":"main.run.func1","stackId":"2a516c0c-177d-4cef-a20e-df695d200fcf"}}]}}
+STDERR:
+2026/09/23 15:00:50 Datadog Tracer v2.11.0-rc.1 WARN: appsec: error while flushing SCA Security Data: Post "http://localhost:8126/telemetry/proxy/api/v2/apmtelemetry": dial tcp 127.0.0.1:8126: connect: connection refused
+2026/09/23 15:00:50 Datadog Tracer v2.11.0-rc.1 ERROR: loading features: Get "http://localhost:8126/info": dial tcp 127.0.0.1:8126: connect: connection refused (occurred: 23 Sep 26 15:00 CEST)
+EXIT=0

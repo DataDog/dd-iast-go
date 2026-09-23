@@ -1,0 +1,35 @@
+[
+  {
+    "id": "store-fuzz-F1",
+    "severity": "Low",
+    "category": "false-negative",
+    "location": "internal/taint/store/lookup.go:125-139",
+    "title": "Stale same-key slots consume Lookup's 4-owner fanout and hide a live owner",
+    "claim": "Lookup caps matching slots at MaxSnapshotOwners before validating owner generation/state, so a finished owner's slot occupies a window; with >4 owners ever sharing a key, a remaining live owner (<=4 live) is omitted until an insertion reclaims the stale slot.",
+    "evidence_path": ".omo/review/evidence/store-fuzz/review_fanout_test.go",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 go test -v -run TestReviewStaleSlotsConsumeLookupFanout ./internal/taint/store/",
+    "needs_repro": false
+  },
+  {
+    "id": "store-fuzz-F2",
+    "severity": "Low",
+    "category": "perf",
+    "location": "internal/taint/store/lookup.go:182-195",
+    "title": "Lookup returns zero-range entries; propagation publishes zero-provenance roots for them",
+    "claim": "A window inside an untainted gap yields an Entry with Ranges.Len()==0. Reporting skips it (no false taint), but propagation gates on snapshot.Len() and clones/adopts an empty-set root, spending root/byte/value budgets and allocations with no provenance.",
+    "evidence_path": ".omo/review/evidence/store-fuzz/reviews.out",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 go test -v -run TestReviewEmptyRangeEntry ./internal/taint/store/",
+    "needs_repro": false
+  },
+  {
+    "id": "store-fuzz-F3",
+    "severity": "Info",
+    "category": "test-gap",
+    "location": "internal/taint/store/value.go:185-188",
+    "title": "Probe-exhaustion drop path is unreachable at design load",
+    "claim": "At the 16,384-value process limit with churn and 240 compactions the max probe was 37/64; the probe-bound drop is only exercised through forceCollision unit tests.",
+    "evidence_path": ".omo/review/evidence/store-fuzz/seeds.out",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 go test -v -run TestStoreSequenceFlood ./internal/taint/store/",
+    "needs_repro": false
+  }
+]

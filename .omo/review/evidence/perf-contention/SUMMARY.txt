@@ -1,0 +1,103 @@
+# perf-contention summary
+Toolchain: GOTOOLCHAIN=go1.26.6, darwin/arm64 Apple M4 Max (16 cores), shared with ~15 other agents -> wall-clock
+numbers are noisy (serial BenchmarkPCWorkUnit, pure CPU, varied 4.4us..38us across runs). Rates (miss/fail per op)
+are the robust signal; ns/op scaling ratios are indicative only.
+Commands (run in private copy /tmp/ddiast-review/wt/perf-contention, files copied here):
+  go test -run '^$' -bench PC -benchtime=200ms -count=3 -cpu=1,4,8,16 -mutexprofile=store.mutex.pprof -blockprofile=store.block.pprof ./internal/taint/store
+  go test -run '^$' -bench PC -benchtime=200ms -count=3 -cpu=1,4,8,16 -mutexprofile=request.mutex.pprof -blockprofile=request.block.pprof ./internal/taint/request
+  go test -run '^$' -bench 'PCBeginRequestFinish|PCIntraRequestVisitOnly' -benchtime=200ms -count=3 -cpu=1,2,4,8,16 ./internal/taint/request   (request2)
+  go test -run '^$' -bench 'PCRequestLifecycle|PCAcquireFinishSerial|PCFinishSerial|PCWorkUnit' -benchtime=200ms -count=3 -cpu=1,4,8,16 -mutexprofile=store2.mutex.pprof ./internal/taint/store (store2)
+  go test -run TestPC -v ./internal/taint/store ./internal/taint/request   (mechanism.test.txt)
+Note: store.bench.txt PCRequestLifecycle* rows are from the first version without simulated handler work (failed attempts retried immediately);
+store2.bench.txt has the corrected version (pcWork on every op). BenchmarkPCDeriveOwnOwner/MixedReadWrite are in store.bench.txt.
+## store.bench.txt (median of 3; scale = ns/op@cpu1 / ns/op@cpuN)
+BenchmarkPCMayContainHit                 cpu= 1      91.2ns/op  scale=  1.00  miss/op=0
+BenchmarkPCMayContainHit                 cpu= 4      36.5ns/op  scale=  2.50  miss/op=0
+BenchmarkPCMayContainHit                 cpu= 8      23.4ns/op  scale=  3.89  miss/op=0
+BenchmarkPCMayContainHit                 cpu=16      30.7ns/op  scale=  2.97  miss/op=0
+BenchmarkPCLookupHit                     cpu= 1    1459.0ns/op  scale=  1.00  miss/op=0
+BenchmarkPCLookupHit                     cpu= 4     413.1ns/op  scale=  3.53  miss/op=0
+BenchmarkPCLookupHit                     cpu= 8     398.8ns/op  scale=  3.66  miss/op=0
+BenchmarkPCLookupHit                     cpu=16     372.0ns/op  scale=  3.92  miss/op=0
+BenchmarkPCLookupSameKey                 cpu= 1    1568.0ns/op  scale=  1.00  miss/op=0
+BenchmarkPCLookupSameKey                 cpu= 4     569.6ns/op  scale=  2.75  miss/op=0
+BenchmarkPCLookupSameKey                 cpu= 8     387.6ns/op  scale=  4.05  miss/op=0
+BenchmarkPCLookupSameKey                 cpu=16     370.4ns/op  scale=  4.23  miss/op=0
+BenchmarkPCDeriveOwnOwner                cpu= 1      78.2ns/op  scale=  1.00  contention/op=0 fail/op=0
+BenchmarkPCDeriveOwnOwner                cpu= 4      44.4ns/op  scale=  1.76  contention/op=0.01138 fail/op=0.01138
+BenchmarkPCDeriveOwnOwner                cpu= 8      26.4ns/op  scale=  2.96  contention/op=0.0197 fail/op=0.0197
+BenchmarkPCDeriveOwnOwner                cpu=16      27.0ns/op  scale=  2.90  contention/op=0.0398 fail/op=0.0398
+BenchmarkPCMixedReadWrite                cpu= 1     578.4ns/op  scale=  1.00  readmiss/read=0 writefail/op=0
+BenchmarkPCMixedReadWrite                cpu= 4     198.4ns/op  scale=  2.92  readmiss/read=0.0007757 writefail/op=0.0007101
+BenchmarkPCMixedReadWrite                cpu= 8     105.0ns/op  scale=  5.51  readmiss/read=0.001575 writefail/op=0.00313
+BenchmarkPCMixedReadWrite                cpu=16     113.1ns/op  scale=  5.11  readmiss/read=0.001713 writefail/op=0.007203
+BenchmarkPCRequestLifecycle              cpu= 1   34238.0ns/op  scale=  1.00  acqfail/op=0 contention/op=0 derivefail/op=0 lookupmiss/op=0 rangetrunc/op=0 srcfail/op=0
+BenchmarkPCRequestLifecycle              cpu= 4    1735.0ns/op  scale= 19.73  acqfail/op=0.8771 contention/op=0.003991 derivefail/op=0.002035 lookupmiss/op=0.002098 rangetrunc/op=0 srcfail/op=0.001956
+BenchmarkPCRequestLifecycle              cpu= 8     646.4ns/op  scale= 52.97  acqfail/op=0.9353 contention/op=0.004679 derivefail/op=0.002403 lookupmiss/op=0.002463 rangetrunc/op=0 srcfail/op=0.002276
+BenchmarkPCRequestLifecycle              cpu=16     492.2ns/op  scale= 69.56  acqfail/op=0.9494 contention/op=0.005524 derivefail/op=0.002752 lookupmiss/op=0.002799 rangetrunc/op=0 srcfail/op=0.002772
+BenchmarkPCRequestLifecycleOverflow      cpu= 1   20433.0ns/op  scale=  1.00  acqfail/op=0 contention/op=0 derivefail/op=0 lookupmiss/op=0 rangetrunc/op=0 srcfail/op=0
+BenchmarkPCRequestLifecycleOverflow      cpu= 4    4358.0ns/op  scale=  4.69  acqfail/op=0.7725 contention/op=0.004359 derivefail/op=0.002297 lookupmiss/op=0.002341 rangetrunc/op=0.09941 srcfail/op=0.002062
+BenchmarkPCRequestLifecycleOverflow      cpu= 8    4136.0ns/op  scale=  4.94  acqfail/op=0.7532 contention/op=0.004174 derivefail/op=0.001993 lookupmiss/op=0.002042 rangetrunc/op=0.143 srcfail/op=0.002181
+BenchmarkPCRequestLifecycleOverflow      cpu=16     872.2ns/op  scale= 23.43  acqfail/op=0.9391 contention/op=0.001145 derivefail/op=0.0005533 lookupmiss/op=0.0005533 rangetrunc/op=0.03592 srcfail/op=0.0005914
+BenchmarkPCFinishSerial                  cpu= 1    2785.0ns/op  scale=  1.00  
+BenchmarkPCFinishSerial                  cpu= 4    1975.0ns/op  scale=  1.41  
+BenchmarkPCFinishSerial                  cpu= 8    7099.0ns/op  scale=  0.39  
+BenchmarkPCFinishSerial                  cpu=16   10200.0ns/op  scale=  0.27  
+## request.bench.txt (median of 3; scale = ns/op@cpu1 / ns/op@cpuN)
+BenchmarkPCAdmissionMax64                cpu= 1   19293.0ns/op  scale=  1.00  fail/op=0 storeacqdrop/op=0
+BenchmarkPCAdmissionMax64                cpu= 4    2805.0ns/op  scale=  6.88  fail/op=0.7832 storeacqdrop/op=0.7832
+BenchmarkPCAdmissionMax64                cpu= 8    1306.0ns/op  scale= 14.77  fail/op=0.8011 storeacqdrop/op=0.8011
+BenchmarkPCAdmissionMax64                cpu=16    1321.0ns/op  scale= 14.60  fail/op=0.7274 storeacqdrop/op=0.7274
+BenchmarkPCAdmissionMax16                cpu= 1   13609.0ns/op  scale=  1.00  fail/op=0 storeacqdrop/op=0
+BenchmarkPCAdmissionMax16                cpu= 4    1704.0ns/op  scale=  7.99  fail/op=0.7528 storeacqdrop/op=0.7528
+BenchmarkPCAdmissionMax16                cpu= 8     972.0ns/op  scale= 14.00  fail/op=0.8244 storeacqdrop/op=0.8244
+BenchmarkPCAdmissionMax16                cpu=16     988.2ns/op  scale= 13.77  fail/op=0.8601 storeacqdrop/op=0.8601
+BenchmarkPCAdmissionMax2                 cpu= 1    9845.0ns/op  scale=  1.00  fail/op=0 storeacqdrop/op=0
+BenchmarkPCAdmissionMax2                 cpu= 4      15.3ns/op  scale=645.15  fail/op=0.9968 storeacqdrop/op=0.002898
+BenchmarkPCAdmissionMax2                 cpu= 8      12.9ns/op  scale=761.41  fail/op=0.9984 storeacqdrop/op=0.0007168
+BenchmarkPCAdmissionMax2                 cpu=16       8.5ns/op  scale=1157.83  fail/op=0.9994 storeacqdrop/op=0.0001804
+BenchmarkPCBeginRequestFinish            cpu= 1  156189.0ns/op  scale=  1.00  capdrop/op=0 storeacqdrop/op=0 taintfail/op=0 visitmiss/visit=0
+BenchmarkPCBeginRequestFinish            cpu= 4   23392.0ns/op  scale=  6.68  capdrop/op=0.6218 storeacqdrop/op=0.6218 taintfail/op=0.002208 visitmiss/visit=0.0001245
+BenchmarkPCBeginRequestFinish            cpu= 8   17400.0ns/op  scale=  8.98  capdrop/op=0.5427 storeacqdrop/op=0.5427 taintfail/op=0.005706 visitmiss/visit=0.0003128
+BenchmarkPCBeginRequestFinish            cpu=16    6132.0ns/op  scale= 25.47  capdrop/op=0.806 storeacqdrop/op=0.806 taintfail/op=0.003899 visitmiss/visit=0.0004859
+BenchmarkPCIntraRequestSourceVsVisit     cpu= 1   10894.0ns/op  scale=  1.00  addfail/add=0 visitmiss/visit=0
+BenchmarkPCIntraRequestSourceVsVisit     cpu= 4     186.5ns/op  scale= 58.41  addfail/add=0.8331 visitmiss/visit=0.9138
+BenchmarkPCIntraRequestSourceVsVisit     cpu= 8      41.5ns/op  scale=262.19  addfail/add=0.9456 visitmiss/visit=0.9911
+BenchmarkPCIntraRequestSourceVsVisit     cpu=16      27.1ns/op  scale=401.70  addfail/add=0.966 visitmiss/visit=0.9628
+## request2.bench.txt (median of 3; scale = ns/op@cpu1 / ns/op@cpuN)
+BenchmarkPCBeginRequestFinish            cpu= 1   24221.0ns/op  scale=  1.00  capdrop/op=0 storeacqdrop/op=0 storedrop/permitted=0 taintfail/op=0 visitmiss/visit=0
+BenchmarkPCBeginRequestFinish            cpu= 2   15867.0ns/op  scale=  1.53  capdrop/op=0.3876 storeacqdrop/op=0.3876 storedrop/permitted=0.3876 taintfail/op=0.0016 visitmiss/visit=0.0001463
+BenchmarkPCBeginRequestFinish            cpu= 4    9817.0ns/op  scale=  2.47  capdrop/op=0.6097 storeacqdrop/op=0.6097 storedrop/permitted=0.6097 taintfail/op=0.004587 visitmiss/visit=0.0003269
+BenchmarkPCBeginRequestFinish            cpu= 8    4505.0ns/op  scale=  5.38  capdrop/op=0.7051 storeacqdrop/op=0.7051 storedrop/permitted=0.7051 taintfail/op=0.004629 visitmiss/visit=0.0005057
+BenchmarkPCBeginRequestFinish            cpu=16    2851.0ns/op  scale=  8.50  capdrop/op=0.7033 storeacqdrop/op=0.7033 storedrop/permitted=0.7033 taintfail/op=0.004306 visitmiss/visit=0.0006511
+BenchmarkPCBeginRequestFinishDefault2    cpu= 1   58577.0ns/op  scale=  1.00  capdrop/op=0 storeacqdrop/op=0 storedrop/permitted=0 taintfail/op=0 visitmiss/visit=0
+BenchmarkPCBeginRequestFinishDefault2    cpu= 2    9055.0ns/op  scale=  6.47  capdrop/op=0.1768 storeacqdrop/op=0.1768 storedrop/permitted=0.1768 taintfail/op=0.003036 visitmiss/visit=0.0002783
+BenchmarkPCBeginRequestFinishDefault2    cpu= 4     135.5ns/op  scale=432.30  capdrop/op=0.99 storeacqdrop/op=0.001891 storedrop/permitted=0.1521 taintfail/op=4.43e-05 visitmiss/visit=0.0002318
+BenchmarkPCBeginRequestFinishDefault2    cpu= 8     111.0ns/op  scale=527.72  capdrop/op=0.9928 storeacqdrop/op=0.004924 storedrop/permitted=0.4055 taintfail/op=2.22e-05 visitmiss/visit=0.0001861
+BenchmarkPCBeginRequestFinishDefault2    cpu=16      95.4ns/op  scale=614.21  capdrop/op=0.9947 storeacqdrop/op=0.001356 storedrop/permitted=0.2025 taintfail/op=5.7e-06 visitmiss/visit=6.46e-05
+BenchmarkPCIntraRequestVisitOnly         cpu= 1     772.9ns/op  scale=  1.00  visitmiss/visit=0
+BenchmarkPCIntraRequestVisitOnly         cpu= 2     544.5ns/op  scale=  1.42  visitmiss/visit=0.0007191
+BenchmarkPCIntraRequestVisitOnly         cpu= 4     372.6ns/op  scale=  2.07  visitmiss/visit=0.0448
+BenchmarkPCIntraRequestVisitOnly         cpu= 8     444.6ns/op  scale=  1.74  visitmiss/visit=0.06167
+BenchmarkPCIntraRequestVisitOnly         cpu=16     417.1ns/op  scale=  1.85  visitmiss/visit=0.1978
+## store2.bench.txt (median of 3; scale = ns/op@cpu1 / ns/op@cpuN)
+BenchmarkPCRequestLifecycle              cpu= 1   11740.0ns/op  scale=  1.00  acqfail/op=0 contention/op=0 derivefail/op=0 lookupmiss/op=0 rangetrunc/op=0 srcfail/op=0
+BenchmarkPCRequestLifecycle              cpu= 4    7662.0ns/op  scale=  1.53  acqfail/op=0.1228 contention/op=0.0276 derivefail/op=0.0141 lookupmiss/op=0.01451 rangetrunc/op=0 srcfail/op=0.0135
+BenchmarkPCRequestLifecycle              cpu= 8    5149.0ns/op  scale=  2.28  acqfail/op=0.3851 contention/op=0.04161 derivefail/op=0.02047 lookupmiss/op=0.02094 rangetrunc/op=0 srcfail/op=0.02114
+BenchmarkPCRequestLifecycle              cpu=16    2867.0ns/op  scale=  4.09  acqfail/op=0.7452 contention/op=0.01813 derivefail/op=0.009281 lookupmiss/op=0.009468 rangetrunc/op=0 srcfail/op=0.008849
+BenchmarkPCRequestLifecycleOverflow      cpu= 1   13072.0ns/op  scale=  1.00  acqfail/op=0 contention/op=0 derivefail/op=0 lookupmiss/op=0 rangetrunc/op=0 srcfail/op=0
+BenchmarkPCRequestLifecycleOverflow      cpu= 4   15061.0ns/op  scale=  0.87  acqfail/op=0.1471 contention/op=0.01511 derivefail/op=0.007269 lookupmiss/op=0.007585 rangetrunc/op=0.8363 srcfail/op=0.007613
+BenchmarkPCRequestLifecycleOverflow      cpu= 8   11023.0ns/op  scale=  1.19  acqfail/op=0.1682 contention/op=0.01567 derivefail/op=0.007041 lookupmiss/op=0.007347 rangetrunc/op=0.8847 srcfail/op=0.008632
+BenchmarkPCRequestLifecycleOverflow      cpu=16    8571.0ns/op  scale=  1.53  acqfail/op=0.1995 contention/op=0.01646 derivefail/op=0.007319 lookupmiss/op=0.007367 rangetrunc/op=1.089 srcfail/op=0.009137
+BenchmarkPCFinishSerial                  cpu= 1    3208.0ns/op  scale=  1.00  
+BenchmarkPCFinishSerial                  cpu= 4    1823.0ns/op  scale=  1.76  
+BenchmarkPCFinishSerial                  cpu= 8    1757.0ns/op  scale=  1.83  
+BenchmarkPCFinishSerial                  cpu=16    1485.0ns/op  scale=  2.16  
+BenchmarkPCAcquireFinishSerial           cpu= 1    1232.0ns/op  scale=  1.00  
+BenchmarkPCAcquireFinishSerial           cpu= 4    1132.0ns/op  scale=  1.09  
+BenchmarkPCAcquireFinishSerial           cpu= 8    1421.0ns/op  scale=  0.87  
+BenchmarkPCAcquireFinishSerial           cpu=16    1343.0ns/op  scale=  0.92  
+BenchmarkPCWorkUnit                      cpu= 1    4413.0ns/op  scale=  1.00  
+BenchmarkPCWorkUnit                      cpu= 4    7156.0ns/op  scale=  0.62  
+BenchmarkPCWorkUnit                      cpu= 8    8479.0ns/op  scale=  0.52  
+BenchmarkPCWorkUnit                      cpu=16    6669.0ns/op  scale=  0.66  

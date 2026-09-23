@@ -1,0 +1,11 @@
+Command (from /tmp/ddiast-review/wt/store-binding):
+GOTOOLCHAIN=go1.26.6 go test -run TestReviewURLBindingSurvivesReaderAtSameAddress -count=1 -v -timeout=2m ./internal/taint/request
+
+=== RUN   TestReviewURLBindingSurvivesReaderAtSameAddress
+    store_binding_review_test.go:55: URL bindings=0 reader bindings=1 query tainted=false query="attack"
+    store_binding_review_test.go:59: URL.Query source lost when reader shares the URL's address
+--- FAIL: TestReviewURLBindingSurvivesReaderAtSameAddress (0.00s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/request	0.574s
+FAIL
+Command exited with code 1

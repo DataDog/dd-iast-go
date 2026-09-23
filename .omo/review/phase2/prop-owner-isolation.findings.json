@@ -1,0 +1,57 @@
+[
+  {
+    "id": "prop-owner-isolation-F1",
+    "severity": "Critical",
+    "category": "race",
+    "location": "internal/taint/request/owner.go:82; internal/taint/request/http.go:33",
+    "title": "Unsynchronized write of analysisSlot.index in Manager.Acquire races with analysisForOwner",
+    "claim": "Manager.Acquire does a plain store of slot.index on every permit acquisition, while analysisForOwner (reached from ManageURLQuery, CloneReaderBytes, and ReadAllBytes on any goroutine) does a plain read of it. The value is always identical, so builds without -race behave correctly. It is still a data race under the Go memory model, and customer -race runs of woven code fail when a detached goroutine calls URL.Query()/io.ReadAll while its request finishes and another request reuses the permit.",
+    "evidence_path": ".omo/review/evidence/prop-owner-isolation/slotindex-race.out.txt",
+    "repro_command": "cp .omo/review/evidence/prop-owner-isolation/request_zz_review_owner_isolation_test.go internal/taint/request/ && GOTOOLCHAIN=go1.26.6 go test -race -run '^TestReviewAnalysisSlotIndexRace$' -count=1 -v ./internal/taint/request",
+    "needs_repro": false
+  },
+  {
+    "id": "prop-owner-isolation-F2",
+    "severity": "Medium",
+    "category": "false-negative",
+    "location": "internal/taint/propagation/writer.go:123-133; internal/taint/store/writer.go:209-217; internal/taint/propagation/propagation.go:177-193,403-419",
+    "title": "Foreign/unsampled traffic propagating an owner's value consumes that owner's bounded budgets and drops its own provenance",
+    "claim": "Propagation of a live owner A's tainted value by other requests, including unsampled ones with no scope, publishes writer, value, and root state charged to A and strongly anchors the foreign objects until A finishes. Eight foreign builders exhaust A's MaxWriters, and A's own supported strings.Builder propagation is then dropped (false negative).",
+    "evidence_path": ".omo/review/evidence/prop-owner-isolation/budget.out.txt",
+    "repro_command": "cp .omo/review/evidence/prop-owner-isolation/iast_propagation_zz_review_owner_isolation_test.go iast/propagation/ && GOTOOLCHAIN=go1.26.6 go test -run '^TestReviewForeignTrafficExhaustsOwnerBudget$' -count=1 -v ./iast/propagation",
+    "needs_repro": false
+  },
+  {
+    "id": "prop-owner-isolation-F3",
+    "severity": "Low",
+    "category": "race",
+    "location": "internal/taint/store/lookup.go:152,183-191; internal/taint/store/lookup.go:40; internal/taint/store/binding.go:60; internal/taint/store/writer.go:84-93",
+    "title": "Read-side generation/state checks are two loads against lock-free Acquire; a torn Lookup can build a hybrid Entry",
+    "claim": "Same root cause as store-stress-F1, at the read sites. Lookup can pair a finished owner's generation with the successor's stateActive and root (rootID/rootGen restart at 0/1), returning an Entry with the stale OwnerGen and the successor's OwnerID and ranges. All current consumers reject it through (index, gen, ID) triple validation, so there is no provenance impact today.",
+    "evidence_path": ".omo/review/evidence/prop-owner-isolation/lookup-torn.out.txt",
+    "repro_command": "cp .omo/review/evidence/prop-owner-isolation/store_zz_review_lookup_torn_test.go internal/taint/store/ && REVIEW_BUDGET=40s GOTOOLCHAIN=go1.26.6 go test -run '^TestReviewLookupTornHybridEntry$' -count=1 -v ./internal/taint/store",
+    "needs_repro": false
+  },
+  {
+    "id": "prop-owner-isolation-F4",
+    "severity": "Info",
+    "category": "cross-request",
+    "location": "internal/vulnerability/tainted.go:45,110-127",
+    "title": "Context-less sinks attribute foreign-owner taint to the foreign owner's span and bypass the sampled-out guard",
+    "claim": "The sampled-out/finished guard needs a scope in the sink ctx. A context-less sink (db.Exec, a background worker) in another request that uses a live owner's tainted value falls back to ExistingForOwner and commits the vulnerability to that foreign request's root span, with the other request's stack.",
+    "evidence_path": null,
+    "repro_command": null,
+    "needs_repro": false
+  },
+  {
+    "id": "prop-owner-isolation-F5",
+    "severity": "Info",
+    "category": "race",
+    "location": "internal/taint/request/owner.go:259-273",
+    "title": "Analysis.Finish uses check-then-CAS like Owner.Finish but is unreachable in production",
+    "claim": "A stale second Analysis.Finish racing permit reuse could finish the successor analysis. The only production caller, Scope.Finish, zeroes its handle under s.mu first, so each analysis is finished at most once.",
+    "evidence_path": null,
+    "repro_command": null,
+    "needs_repro": false
+  }
+]

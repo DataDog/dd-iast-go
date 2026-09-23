@@ -1,0 +1,9 @@
+Independent phase-3 reproducer for life-spans-F2 and life-spans-F3 (HEAD 2e23b46), woven build.
+Place zz_fx_life_spans_f2_test.go in iast/integration/testapp/ of a private copy, then from that directory:
+  GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 /usr/bin/time -l go tool orchestrion go test -race -count=1 -timeout 20m -v -run '^TestFx(LateBindAfterRootFinish|DoubleFinishRace)$' .
+Output: woven-race.out.txt (exit 1). The first woven -race build, which failed on an unused import, took 237 s. The captured rerun took 29 s with a warm cache. Peak RSS reported by /usr/bin/time -l was 409 MB, under 4 GB.
+TestFxLateBindAfterRootFinish (mocktracer): 2 controls pass; the late-child-span case emits 0 vulnerabilities while an open annotation for the finished root holds 1.
+TestFxDoubleFinishRace (real tracer + fake agent with span_meta_structs:true): 30 WARNING: DATA RACE, spans.Finished -> SetMetaStruct (orchestrion.go:44) vs writer metaStructMap.EncodeMsg, and TryCommitTainted Event writes vs writer Event.MarshalMsg.
+
+Rerun (second pass, fresh private copy, same HEAD 2e23b46): rerun.out.txt, EXIT=1, peak RSS 418 MB. F2: late-child case emitted 0 vulnerabilities, 1 held by an open annotation for the finished root; both controls emitted 1. F3: 1 DATA RACE, setMetaStructLocked span.go:865 <- spans.Finished orchestrion.go:44 <- deferred 2nd Finish vs metaStructMap.EncodeMsg meta_struct.go:25 <- processOutChunk tracer.go:909. (The Event-content race from the first run did not recur this time. That is nondeterministic, and the detector deduplicates reports.)
+Causality controls: zz_fx_life_spans_f2_ctl_test.go, run with -run '^TestFxCtl' in the same directory, gives ctl.out.txt, EXIT=0, no race. Double Finish without a late bind is clean, and a late bind with a single Finish is clean, so the race needs both.

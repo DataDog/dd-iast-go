@@ -1,0 +1,13 @@
+[
+  {
+    "id": "sink-parity-F1",
+    "verdict": "CONFIRMED",
+    "original_severity": "High",
+    "adjusted_severity": "Medium",
+    "reachable_default": true,
+    "documented_limitation": false,
+    "reason": "At the default 250-character boundary, source.go emits an empty tainted part; both JSON and MessagePack omit its schema-required value. This is a real malformed-report edge case, but backend rejection or a lost vulnerability has not been demonstrated.",
+    "evidence_path": ".omo/review/evidence/fx-sink-parity-F1/independent_boundary.out.txt",
+    "repro_command": "cd /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go && mkdir -p /tmp/ddiast-review/wt && rsync -a --exclude .git --exclude .omo ./ /tmp/ddiast-review/wt/fx-sink-parity-F1/ && cp .omo/review/evidence/fx-sink-parity-F1/independent_boundary_test.go /tmp/ddiast-review/wt/fx-sink-parity-F1/internal/taint/redaction/ && cd /tmp/ddiast-review/wt/fx-sink-parity-F1 && GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 go test -timeout 5m -run '^TestIndependentSQLBoundaryEvidence$' -count=1 -v ./internal/taint/redaction"
+  }
+]

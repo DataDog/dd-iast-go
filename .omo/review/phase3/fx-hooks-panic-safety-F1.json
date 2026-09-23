@@ -1,0 +1,13 @@
+[
+ {
+  "id": "hooks-panic-safety-F1",
+  "verdict": "CONFIRMED",
+  "original_severity": "Critical",
+  "adjusted_severity": "Medium",
+  "reachable_default": false,
+  "documented_limitation": false,
+  "reason": "Mechanism real: iobridge.Propagate/ReadAll (bridge.go:30-43) invoke callbacks without recover; woven fault injection shows the IAST panic escapes io.LimitReader/TeeReader/MultiReader/ReadAll and replaces an in-flight host panic in io.ReadAll. But the real callbacks never panicked across adversarial reader shapes, oversized bodies, concurrent scope.Finish, or an HTTP handler path; injection requires an internal package unimportable by customers. Defense-in-depth gap, not a reachable crash.",
+  "evidence_path": ".omo/review/evidence/fx-hooks-panic-safety-F1/woven-go1.26.6.out.txt",
+  "repro_command": "GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -timeout 15m -count=1 -run 'TestFX_|TestReview_InternalReaderCallbackCannotPanicHost' ./iast/io -v  # after copying zz_fx_panic_test.go (and the finder's io_reader_repro_test.go as zz_review_panic_test.go) into iast/io/ of a private copy"
+ }
+]

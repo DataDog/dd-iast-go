@@ -1,0 +1,127 @@
+$ GOTOOLCHAIN=go1.26.6 go test -timeout 14m -v -run "TestStoreSequenceFlood|TestStoreSequenceSeeds" -coverprofile=cov.out ./internal/taint/store/
+=== RUN   TestStoreSequenceFlood
+    sequence_fuzz_test.go:1624: compactions=242 aborts=0 probeSkips=0 crowded=0 maxProbe=40 avgProbe=2.42
+    sequence_fuzz_test.go:1627: flood owner=0 roots=16 derived=4080 values=4096 process=4096
+    sequence_fuzz_test.go:1627: flood owner=1 roots=16 derived=4080 values=4096 process=8192
+    sequence_fuzz_test.go:1627: flood owner=2 roots=16 derived=4080 values=4096 process=12288
+    sequence_fuzz_test.go:1627: flood owner=3 roots=16 derived=4080 values=4096 process=16384
+    sequence_fuzz_test.go:1627: flood owner=4 roots=0 derived=0 values=0 process=16384
+    sequence_fuzz_test.go:1627: flood owner=0 roots=16 derived=4080 values=4096 process=4096
+    sequence_fuzz_test.go:1627: flood owner=1 roots=16 derived=4080 values=4096 process=8192
+    sequence_fuzz_test.go:1627: flood owner=2 roots=16 derived=4080 values=4096 process=12288
+    sequence_fuzz_test.go:1627: flood owner=3 roots=16 derived=4080 values=4096 process=16384
+    sequence_fuzz_test.go:1627: flood owner=4 roots=0 derived=0 values=0 process=16384
+    sequence_fuzz_test.go:1627: flood owner=0 roots=16 derived=4080 values=4096 process=4096
+    sequence_fuzz_test.go:1627: flood owner=1 roots=16 derived=4080 values=4096 process=8192
+    sequence_fuzz_test.go:1627: flood owner=2 roots=16 derived=4080 values=4096 process=12288
+    sequence_fuzz_test.go:1627: flood owner=3 roots=16 derived=4080 values=4096 process=16384
+    sequence_fuzz_test.go:1627: flood owner=4 roots=0 derived=0 values=0 process=16384
+--- PASS: TestStoreSequenceFlood (0.19s)
+=== RUN   TestStoreSequenceSeeds
+--- PASS: TestStoreSequenceSeeds (4.63s)
+PASS
+coverage: 80.2% of statements
+ok  	github.com/DataDog/dd-iast-go/internal/taint/store	5.192s	coverage: 80.2% of statements
+github.com/DataDog/dd-iast-go/internal/taint/store/binding.go:55:	Handle				66.7%
+github.com/DataDog/dd-iast-go/internal/taint/store/binding.go:67:	Identity			75.0%
+github.com/DataDog/dd-iast-go/internal/taint/store/binding.go:77:	BindObject			77.8%
+github.com/DataDog/dd-iast-go/internal/taint/store/binding.go:95:	BindObjectValue			80.0%
+github.com/DataDog/dd-iast-go/internal/taint/store/binding.go:112:	LookupObject			66.7%
+github.com/DataDog/dd-iast-go/internal/taint/store/binding.go:121:	LookupObjectValue		75.0%
+github.com/DataDog/dd-iast-go/internal/taint/store/binding.go:129:	lookupObject			74.1%
+github.com/DataDog/dd-iast-go/internal/taint/store/binding.go:166:	bind				82.8%
+github.com/DataDog/dd-iast-go/internal/taint/store/binding.go:205:	dynamicPointer			71.4%
+github.com/DataDog/dd-iast-go/internal/taint/store/binding.go:217:	find				88.9%
+github.com/DataDog/dd-iast-go/internal/taint/store/binding.go:232:	reset				100.0%
+github.com/DataDog/dd-iast-go/internal/taint/store/binding.go:241:	bindingHash			100.0%
+github.com/DataDog/dd-iast-go/internal/taint/store/limits.go:44:	sizeClass			100.0%
+github.com/DataDog/dd-iast-go/internal/taint/store/lookup.go:35:	Handle				83.3%
+github.com/DataDog/dd-iast-go/internal/taint/store/lookup.go:53:	Len				66.7%
+github.com/DataDog/dd-iast-go/internal/taint/store/lookup.go:61:	At				66.7%
+github.com/DataDog/dd-iast-go/internal/taint/store/lookup.go:68:	reset				60.0%
+github.com/DataDog/dd-iast-go/internal/taint/store/lookup.go:81:	MayContain			73.3%
+github.com/DataDog/dd-iast-go/internal/taint/store/lookup.go:107:	Lookup				81.2%
+github.com/DataDog/dd-iast-go/internal/taint/store/mutation.go:25:	PublishBytesMutation		85.0%
+github.com/DataDog/dd-iast-go/internal/taint/store/mutation.go:79:	claimMutation			93.3%
+github.com/DataDog/dd-iast-go/internal/taint/store/mutation.go:101:	prepareRanges			76.9%
+github.com/DataDog/dd-iast-go/internal/taint/store/overflow.go:8:	allocateOverflow		71.4%
+github.com/DataDog/dd-iast-go/internal/taint/store/overflow.go:20:	freeOverflow			80.0%
+github.com/DataDog/dd-iast-go/internal/taint/store/overflow.go:29:	freeOverflowLocked		83.3%
+github.com/DataDog/dd-iast-go/internal/taint/store/owner.go:20:		Acquire				83.3%
+github.com/DataDog/dd-iast-go/internal/taint/store/owner.go:67:		Disabled			100.0%
+github.com/DataDog/dd-iast-go/internal/taint/store/owner.go:72:		ID				66.7%
+github.com/DataDog/dd-iast-go/internal/taint/store/owner.go:80:		Generation			66.7%
+github.com/DataDog/dd-iast-go/internal/taint/store/owner.go:88:		Index				66.7%
+github.com/DataDog/dd-iast-go/internal/taint/store/owner.go:96:		Charged				66.7%
+github.com/DataDog/dd-iast-go/internal/taint/store/owner.go:105:	Values				66.7%
+github.com/DataDog/dd-iast-go/internal/taint/store/owner.go:113:	RecordBytesDrop			0.0%
+github.com/DataDog/dd-iast-go/internal/taint/store/owner.go:120:	Counters			66.7%
+github.com/DataDog/dd-iast-go/internal/taint/store/owner.go:127:	alive				100.0%
+github.com/DataDog/dd-iast-go/internal/taint/store/owner.go:131:	beginWrite			76.9%
+github.com/DataDog/dd-iast-go/internal/taint/store/owner.go:151:	endWrite			100.0%
+github.com/DataDog/dd-iast-go/internal/taint/store/owner.go:157:	Finish				100.0%
+github.com/DataDog/dd-iast-go/internal/taint/store/owner.go:218:	resetDropCounters		100.0%
+github.com/DataDog/dd-iast-go/internal/taint/store/root.go:22:		TaintString			85.2%
+github.com/DataDog/dd-iast-go/internal/taint/store/root.go:62:		TaintSourceString		85.7%
+github.com/DataDog/dd-iast-go/internal/taint/store/root.go:102:		TaintBytes			85.7%
+github.com/DataDog/dd-iast-go/internal/taint/store/root.go:144:		TaintSourceBytes		86.7%
+github.com/DataDog/dd-iast-go/internal/taint/store/root.go:190:		AdoptSourceBytes		85.7%
+github.com/DataDog/dd-iast-go/internal/taint/store/root.go:231:		AdoptString			100.0%
+github.com/DataDog/dd-iast-go/internal/taint/store/root.go:242:		AdoptBytes			100.0%
+github.com/DataDog/dd-iast-go/internal/taint/store/root.go:250:		adopt				100.0%
+github.com/DataDog/dd-iast-go/internal/taint/store/root.go:273:		Derive				100.0%
+github.com/DataDog/dd-iast-go/internal/taint/store/root.go:281:		reserveRootSlot			65.6%
+github.com/DataDog/dd-iast-go/internal/taint/store/root.go:323:		publishRoot			77.8%
+github.com/DataDog/dd-iast-go/internal/taint/store/root.go:347:		publishRangesLocked		87.5%
+github.com/DataDog/dd-iast-go/internal/taint/store/root.go:370:		rollbackRoot			91.3%
+github.com/DataDog/dd-iast-go/internal/taint/store/store.go:48:		StringKey			100.0%
+github.com/DataDog/dd-iast-go/internal/taint/store/store.go:56:		BytesKey			100.0%
+github.com/DataDog/dd-iast-go/internal/taint/store/store.go:184:	BindOperatorActive		100.0%
+github.com/DataDog/dd-iast-go/internal/taint/store/store.go:190:	addOperatorValues		100.0%
+github.com/DataDog/dd-iast-go/internal/taint/store/store.go:198:	ActiveValues			0.0%
+github.com/DataDog/dd-iast-go/internal/taint/store/store.go:201:	New				100.0%
+github.com/DataDog/dd-iast-go/internal/taint/store/store.go:211:	ProcessCharged			66.7%
+github.com/DataDog/dd-iast-go/internal/taint/store/store.go:219:	AcquireDrops			66.7%
+github.com/DataDog/dd-iast-go/internal/taint/store/store.go:228:	ProcessValues			66.7%
+github.com/DataDog/dd-iast-go/internal/taint/store/store.go:237:	Stats				94.4%
+github.com/DataDog/dd-iast-go/internal/taint/store/store.go:261:	snapshotDrops			100.0%
+github.com/DataDog/dd-iast-go/internal/taint/store/value.go:13:		keyHash				90.9%
+github.com/DataDog/dd-iast-go/internal/taint/store/value.go:28:		shardIndex			100.0%
+github.com/DataDog/dd-iast-go/internal/taint/store/value.go:29:		initialSlot			100.0%
+github.com/DataDog/dd-iast-go/internal/taint/store/value.go:31:		validKey			100.0%
+github.com/DataDog/dd-iast-go/internal/taint/store/value.go:35:		inWindow			90.0%
+github.com/DataDog/dd-iast-go/internal/taint/store/value.go:51:		reserveInt64			100.0%
+github.com/DataDog/dd-iast-go/internal/taint/store/value.go:63:		reserveInt32			100.0%
+github.com/DataDog/dd-iast-go/internal/taint/store/value.go:75:		reserveRootValue		64.3%
+github.com/DataDog/dd-iast-go/internal/taint/store/value.go:98:		releaseRootValue		83.3%
+github.com/DataDog/dd-iast-go/internal/taint/store/value.go:110:	putWindow			83.6%
+github.com/DataDog/dd-iast-go/internal/taint/store/value.go:196:	insertWindow			100.0%
+github.com/DataDog/dd-iast-go/internal/taint/store/value.go:231:	stale				75.0%
+github.com/DataDog/dd-iast-go/internal/taint/store/value.go:245:	reclaim				70.6%
+github.com/DataDog/dd-iast-go/internal/taint/store/value.go:273:	recordProbe			100.0%
+github.com/DataDog/dd-iast-go/internal/taint/store/value.go:281:	compact				88.0%
+github.com/DataDog/dd-iast-go/internal/taint/store/writer.go:54:	Handle				66.7%
+github.com/DataDog/dd-iast-go/internal/taint/store/writer.go:66:	Identity			66.7%
+github.com/DataDog/dd-iast-go/internal/taint/store/writer.go:76:	LookupWriterValue		62.1%
+github.com/DataDog/dd-iast-go/internal/taint/store/writer.go:117:	AdoptBufferWriter		0.0%
+github.com/DataDog/dd-iast-go/internal/taint/store/writer.go:152:	UpdateWriter			72.9%
+github.com/DataDog/dd-iast-go/internal/taint/store/writer.go:234:	SnapshotWriter			52.2%
+github.com/DataDog/dd-iast-go/internal/taint/store/writer.go:266:	ResetWriter			83.3%
+github.com/DataDog/dd-iast-go/internal/taint/store/writer.go:291:	TruncateWriter			85.7%
+github.com/DataDog/dd-iast-go/internal/taint/store/writer.go:339:	BindWriterActive		66.7%
+github.com/DataDog/dd-iast-go/internal/taint/store/writer.go:346:	addWriterStates			100.0%
+github.com/DataDog/dd-iast-go/internal/taint/store/writer.go:354:	HasWriterStates			0.0%
+github.com/DataDog/dd-iast-go/internal/taint/store/writer.go:359:	InvalidateWriterPointer		100.0%
+github.com/DataDog/dd-iast-go/internal/taint/store/writer.go:366:	InvalidateBuffer		73.1%
+github.com/DataDog/dd-iast-go/internal/taint/store/writer.go:402:	validWriterView			100.0%
+github.com/DataDog/dd-iast-go/internal/taint/store/writer.go:407:	overlaps			100.0%
+github.com/DataDog/dd-iast-go/internal/taint/store/writer.go:412:	writerPresent			80.0%
+github.com/DataDog/dd-iast-go/internal/taint/store/writer.go:436:	refreshWriterIndexLocked	75.0%
+github.com/DataDog/dd-iast-go/internal/taint/store/writer.go:448:	writerViewIndexLocked		55.6%
+github.com/DataDog/dd-iast-go/internal/taint/store/writer.go:464:	writerIndexLocked		100.0%
+github.com/DataDog/dd-iast-go/internal/taint/store/writer.go:474:	resizeWriterChargeLocked	70.6%
+github.com/DataDog/dd-iast-go/internal/taint/store/writer.go:498:	removeWriterLocked		93.3%
+github.com/DataDog/dd-iast-go/internal/taint/store/writer.go:519:	clearDirtyWritersLocked		50.0%
+github.com/DataDog/dd-iast-go/internal/taint/store/writer.go:528:	releaseWritersForFinishLocked	100.0%
+github.com/DataDog/dd-iast-go/internal/taint/store/writer.go:544:	setOrNil			100.0%
+total:									(statements)			80.2%

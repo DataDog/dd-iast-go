@@ -1,0 +1,172 @@
+# Condensed verdicts from orchestrion@eliottness/iast-testing:experiments/go-shadow/COVERAGE-LEDGER.md
+# ID | case | PatchedGo | Orchestrion(source-rewrite)
+### A. Source, values, calls, and control
+1 | Tracking disabled | Win ✎ | Win ✎
+2 | Empty or clean source | Win ✎ | Win ✎
+3 | Equal bytes, one dirty and one clean | Win ✎ | Win ✎
+4 | Local string assignment | Win ✎ | Win
+5 | Conditional phi merge | Win ✎ | Win ✎
+6 | Direct static identity call | Win ✎ | Win
+7 | Function-value identity call | Win ✎ | Win
+8 | Static recursion | Win ✎ | Win ✎
+9 | Dynamic recursion and stack growth | Win ✎ | Win ✎
+10 | Deferred dynamic call cleanup | Win ✎ | Win ✎
+11 | Panic/recover transition cleanup | Win ✎ | Win ✎
+12 | Recovered named return | Win ✎ | Win ✎
+13 | Address-taken string parameter | Win ✎ | Win ✎
+14 | Tainted parameter ignored, clean return | Win ✎ | Win ✎
+15 | Closure captures a string | Win ✎ | Win
+16 | Interface dispatch returns same string | Win ✎ | Win
+17 | Interface receiver stays clean | Win ✎ | Win ✎
+18 | Indirect os.Getenv or os.Open function values | Win ✎ | Loss
+19 | Global string assignment | Win ✎ | Win ✎
+20 | Implicit or control-flow taint | Win ✎ | Loss
+### B. Strings, bytes, runes, and library transforms
+21 | String concatenation with exact ranges | Win ✎ | Win ✎
+22 | Two-index string or byte slice | Win ✎ | Win ✎
+23 | Omitted-bound or three-index slice | Win ✎ | Win ✎
+24 | string to []byte to string | Win ✎ | Win ✎
+25 | string to []rune to string | Win ✎ | Win ✎
+26 | Append scalar byte to tainted bytes | Win ✎ | Win ✎
+27 | Append string bytes with source... | Win ✎ | Win ✎
+28 | Generic byte-slice append | Win ✎ | Win ✎
+29 | copy([]byte, string) | Win ✎ | Win ✎
+30 | clear([]byte) removes taint | Win ✎ | Win ✎
+31 | Clean byte overwrites dirty byte | Win ✎ | Win ✎
+32 | Dirty indexed byte assigned into clean slice | Win ✎ | Win ✎
+33 | Direct string byte-index reconstruction | Win ✎ | Win ✎
+34 | Byte scalar through local variable | Win ✎ | Win ✎
+35 | Rune scalar through local variable | Win ✎ | Win ✎
+36 | Byte or rune scalar through call, map, or channel | Win ✎ | Win ✎
+37 | strings.Clone | Win ✎ | Win ✎
+38 | bytes.Clone | Win ✎ | Win ✎
+39 | strings.Replace | Win ✎ | Win ✎
+40 | strings.ReplaceAll | Win ✎ | Win ✎
+41 | strings.Repeat | Win ✎ | Win ✎
+42 | strings.ToUpper | Win ✎ | Win ✎
+43 | strings.ToLower | Win ✎ | Partial
+44 | strings.Map | Win ✎ | Partial
+45 | strings.Join | Win ✎ | Win ✎
+46 | fmt.Sprintf with string | Win ✎ | Win ✎
+47 | fmt.Sprintf with map or aggregate | Win ✎ | Win ✎
+48 | filepath.Join | Win ✎ | Win ✎
+49 | strconv.Quote fresh output | Win ✎ | Win ✎
+50 | Other operations in URL, regexp, encoding, JSON, or XML packages | **Not proven** | **Not proven**
+51 | Fresh allocation in uninstrumented dependency | Win ✎ | Win ✎
+### C. Named/generic types, Builder, and Buffer
+52 | Named string to named bytes to named string | Partial ✎ | Win ✎
+53 | Generic ~string concat with two string args | Win ✎ | Win ✎
+54 | Named byte-slice append across types | Win ✎ | Win ✎
+55 | Named string bytes appended to named slice | Win ✎ | Win ✎
+56 | Named string copied to named byte slice | Win ✎ | Win ✎
+57 | Named byte-element slice ([]Octet) conversion chain | Win ✎ | Win ✎
+58 | strings.Builder.WriteString and String | Win ✎ | Win ✎
+59 | strings.Builder.Write([]byte) | Win ✎ | Win ✎
+60 | strings.Builder.Grow relocation | Win ✎ | Win
+61 | bytes.Buffer.WriteString and String | Win ✎ | Win ✎
+62 | bytes.Buffer.Write([]byte) and Bytes view | Win ✎ | Win ✎
+63 | Direct bytes.Buffer.Grow | Win ✎ | Win
+64 | Method-value Buffer.Grow | Win ✎ | Win ✎
+65 | Method-expression, promoted, or interface Grow | Partial ✎ | Partial ✎
+66 | bytes.Buffer.Next shifts ranges | Win ✎ | Win ✎
+67 | bytes.Buffer.Truncate | Win ✎ | Win ✎
+68 | bytes.Buffer.Reset clears taint | Win ✎ | Win ✎
+69 | bytes.NewBufferString | Win ✎ | Win ✎
+70 | bytes.NewBuffer([]byte) | Win ✎ | Partial
+71 | Buffer.Bytes alias gets dirty byte write | Win ✎ | Win ✎
+72 | Buffer.Bytes alias gets clean overwrite | Win ✎ | Win ✎
+73 | Buffer Read, ReadBytes, ReadString, or ReadFrom | Partial ✎ | Win ✎
+74 | Buffer.WriteByte or WriteRune | Win ✎ | Win ✎
+75 | Arbitrary Reader or Writer implementation | **Not proven** | **Not proven**
+### D. Channels, selects, maps, closures, and concurrency
+76 | Buffered chan string send and receive | Win ✎ | Win
+77 | Unbuffered channel across goroutines | Win ✎ | Win ✎
+78 | Buffered channel survives GC pressure | Win ✎ | Win ✎
+79 | select buffered send | Win ✎ | Win ✎
+80 | select blocking receive | Win ✎ | Win ✎
+81 | select blocking send | Win ✎ | Win ✎
+82 | Closed channel returns clean zero string | Win ✎ | Win ✎
+83 | Standalone buffered receive in select | Win ✎ | Win ✎
+84 | Zero-sized channel avoids label-buffer blowup | Win ✎ | Partial
+85 | Map assignment and lookup | Win ✎ | Partial
+86 | Map literal and lookup | Win ✎ | Win
+87 | Map growth and rehash | Win ✎ | Win ✎
+88 | Map comma-ok lookup | Win ✎ | Win ✎
+89 | Map range value | Win ✎ | Win ✎
+90 | maps.Clone | Win ✎ | Win ✎
+91 | Map overwrite with clean value | Win ✎ | Win ✎
+92 | Map delete | Win ✎ | Win ✎
+93 | Map clear | Win ✎ | Win ✎
+94 | Generic small-key map | Win ✎ | Win ✎
+95 | Reflection map delete and clean overwrite | Partial ✎ | Win ✎
+96 | Closure capture across GC | Win ✎ | Partial
+97 | Struct field transport | Partial ✎ | Win ✎
+98 | Select matrix under race detector | Win ✎ | Win ✎
+99 | Map lifecycle under race detector | Win ✎ | Win ✎
+100 | Independent concurrent range registrations | Win ✎ | Partial
+### E. Memory lifecycle, capacity, platforms, and foreign code
+101 | Exact heap-address reuse does not leak taint | Win ✎ | Partial
+102 | Non-recursive stack move with live tainted frame | Partial | Win ✎
+103 | Stack reuse clears old labels | Partial | Win ✎
+104 | GC sweep clears heap shadow | Win ✎ | Loss ✎
+105 | Registry category reaches 65,536 records | Win ✎ | Win ✎
+106 | Registry reports Unknown after saturation | **Not proven** | Win ✎
+107 | No-op Buffer Grow avoids capacity use | Win ✎ | Partial
+108 | Request-scoped reset with escaped values | **Not proven** | Partial ✎
+109 | Moving-GC compatibility | **Not proven** | **Not proven**
+110 | 32-bit execution | **Not proven** | **Not proven**
+111 | Non-darwin platform | **Not proven** | **Not proven**
+112 | Unsafe alias or write | Loss | Loss
+113 | Arbitrary cgo or native pointer write | Loss | Loss
+114 | Assembly data flow | Loss | Loss
+115 | go:linkname bypass | Loss | Loss
+116 | Plugin outside the build closure | Loss | Loss
+117 | Prebuilt package or artifact, mixed behavior | Partial ✎ | Partial
+118 | Root-module rewritten dependency | Partial ✎ | Partial
+119 | Instrumentation configured but disabled overhead | Partial | Win ✎
+120 | Heap reuse under race detector | Win ✎ | Win ✎
+### F. Source, sink, provenance, and policy semantics
+121 | Direct os.Getenv source to os.Open sink | Win ✎ | Win ✎
+122 | os.OpenFile sink | Partial ✎ | Win ✎
+123 | Runtime dirty or clean decision | Win ✎ | Win ✎
+124 | Exact byte ranges | Win ✎ | Win ✎
+125 | Exact source-occurrence identity | Win ✎ | Win ✎
+126 | Multiple exact source-root sets | Win ✎ | Win ✎
+127 | Conservative whole-result taint | Win ✎ | Win ✎
+128 | Sink-specific sanitizer policy | Loss | Loss
+129 | Explicit trusted declassification API | Loss | Loss
+130 | Default sink value redaction | Win | Win ✎
+### G. Concrete unadapted APIs and missing regression targets
+131 | url.QueryEscape fresh string | Win ✎ | Win ✎
+132 | regexp.ReplaceAllString fresh string | Win ✎ | Partial ✎
+133 | base64 EncodeToString | Win ✎ | Win ✎
+134 | json.Marshal bytes | Win ✎ | Win ✎
+135 | xml.Marshal bytes | Win ✎ | Win ✎
+136 | bufio.Reader.ReadString | Win ✎ | Win ✎
+137 | database/sql.Scan from driver []byte into string | Win ✎ | Win ✎
+138 | io.Copy into bytes.Buffer | Win ✎ | Win ✎
+139 | bytes.Buffer.WriteTo into copy-producing writer | Win ✎ | Win ✎
+140 | No-inline prebuilt identity function | Win ✎ | Partial
+141 | No-inline prebuilt fresh-string function | Win ✎ | Win ✎
+142 | Function call launched with go | Win ✎ | Win ✎
+143 | No-inline function returns two strings | Win ✎ | Win ✎
+144 | []string element store and load | Win ✎ | Win ✎
+145 | Tainted string used as map key and ranged back | Win ✎ | Win ✎
+146 | Reflection map delete, isolated check | Win ✎ | Win ✎
+147 | Reflection map clean overwrite, isolated check | Win ✎ | Win ✎
+148 | Named rune-slice conversion | Win ✎ | Win ✎
+152 | strings.Cut alias result | Win ✎ | Win ✎
+153 | strings.TrimPrefix alias result | Win ✎ | Win ✎
+154 | strings.Split slice of string views | Win ✎ | Win ✎
+155 | regexp.FindString alias-like result | Win ✎ | Win ✎
+156 | path.Clean fresh string | Win ✎ | Win ✎
+157 | Two independently tainted inputs concatenated | Win ✎ | Win ✎
+158 | Process-lifetime safe metadata reset | **Not proven** | Loss
+50 | Other operations in URL, regexp, encoding, JSON, or XML packages | **Not proven** | Umbrella row; the report defers to concrete rows 131-135, 155-156.
+75 | Arbitrary Reader or Writer implementation | **Not proven** | Umbrella row; the report defers to concrete rows 73, 136-139.
+106 | Registry reports Unknown after saturation | **Not proven** | Patched Go remains not proven here. Orchestrion now IMPLEMENTS the taint.Unknown state, so the note that it is "a proposal, not implemented" is no longer true for that column - see the case 106 row in section E.
+108 | Request-scoped reset with escaped values | **Not proven** | Patched Go remains not proven. Orchestrion NOW HAS the API the report called impossible - `StartRequest()` in `runtime/taint/lifecycle.go` - so its Loss is retired; it is Partial rather than Win because eviction latches a process-wide saturation flag that over-taints every later clean sink. See the case 108 row in section E.
+109 | Moving-GC compatibility | **Not proven** | Go has no compacting heap and no compaction API.
+110 | 32-bit execution | **Not proven** | Needs a 32-bit (`GOARCH=386`) build lane.
+111 | Non-darwin platform | **Not proven** | Needs a non-darwin build lane.
+158 | Process-lifetime safe metadata reset | **Not proven** | No process-wide safe reset API exists.

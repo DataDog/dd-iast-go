@@ -1,0 +1,13 @@
+[
+  {
+    "id": "res-digest-F1",
+    "severity": "Low",
+    "category": "config",
+    "location": "iast/net/http/orchestrion.yml:29-33",
+    "title": "Long-lived sampled handlers hold one of the two default analysis permits for their whole lifetime",
+    "claim": "The analysis permit is acquired in serverHandler.ServeHTTP and released only by the deferred Finish when the handler returns (request/owner.go:65-80,272). With DD_IAST_MAX_CONCURRENT_REQUESTS=2 by default, two sampled long-lived handlers (SSE, websocket, long polling, streaming) make every other request capacity-dropped until they close. Not a leak or permanent, but undocumented and able to silently disable IAST for long periods.",
+    "evidence_path": null,
+    "repro_command": null,
+    "needs_repro": true
+  }
+]

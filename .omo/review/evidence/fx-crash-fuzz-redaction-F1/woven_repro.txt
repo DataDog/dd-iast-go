@@ -1,0 +1,34 @@
+Command: cd <copy>/iast/database/sql/testapp && env GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 /usr/bin/time -l go tool orchestrion go test -count=1 -timeout=20m -run TestFXOracleQuoteDesyncWoven -v .
+(test file: zz_fx_oracle_desync_woven_test.go)
+
+=== RUN   TestFXOracleQuoteDesyncWoven
+=== RUN   TestFXOracleQuoteDesyncWoven/Q
+    zz_fx_oracle_desync_woven_test.go:58: state=Q vulnerabilities=1 leak=true event={"sources":[{"origin":"http.request.parameter","name":"email","value":"alice.fx@example.com"}],"vulnerabilities":[{"type":"SQL_INJECTION","hash":-1972644163,"evidence":{"valueParts":[{"value":"INSERT INTO contacts (kind, tag, phone, email) VALUES ('Q',"},{"pattern":"***","redacted":true},{"value":",'"},{"pattern":"******","redacted":true},{"value":"'"},{"pattern":"*","redacted":true},{"value":"'"},{"value":"alice.fx@example.com","source":0},{"value":"'"},{"pattern":"*","redacted":true}]},"location":{"spanId":651758060996437140,"path":"/tmp/ddiast-review/wt/fx-crash-fuzz-redaction-F1/iast/database/sql/testapp/zz_fx_oracle_desync_woven_test.go","line":46,"method":"github.com/DataDog/dd-iast-go/testapps/database-sql_test.TestFXOracleQuoteDesyncWoven.func1","stackId":"0a8e6df1-3cbd-46b3-af08-ca14d2269027"}}]}
+    zz_fx_oracle_desync_woven_test.go:63: LEAK: raw tainted value in span event payload (state=Q)
+=== RUN   TestFXOracleQuoteDesyncWoven/P
+    zz_fx_oracle_desync_woven_test.go:58: state=P vulnerabilities=1 leak=false event={"sources":[{"origin":"http.request.parameter","name":"email","pattern":"abcdefghijklmnopqrst","redacted":true}],"vulnerabilities":[{"type":"SQL_INJECTION","hash":-1972644163,"evidence":{"valueParts":[{"value":"INSERT INTO contacts (kind, tag, phone, email) VALUES ('"},{"pattern":"*","redacted":true},{"value":"','"},{"pattern":"*","redacted":true},{"value":"','"},{"pattern":"******","redacted":true},{"value":"','"},{"pattern":"abcdefghijklmnopqrst","redacted":true,"source":0},{"value":"')"}]},"location":{"spanId":6771805835735602795,"path":"/tmp/ddiast-review/wt/fx-crash-fuzz-redaction-F1/iast/database/sql/testapp/zz_fx_oracle_desync_woven_test.go","line":46,"method":"github.com/DataDog/dd-iast-go/testapps/database-sql_test.TestFXOracleQuoteDesyncWoven.func1","stackId":"67ce6b38-af4e-40f0-ab2f-d4f11b387b60"}}]}
+--- FAIL: TestFXOracleQuoteDesyncWoven (0.02s)
+    --- FAIL: TestFXOracleQuoteDesyncWoven/Q (0.01s)
+    --- PASS: TestFXOracleQuoteDesyncWoven/P (0.01s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/testapps/database-sql	0.938s
+FAIL
+exit status 1
+       29.27 real         3.38 user         7.02 sys
+           356417536  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              208871  page reclaims
+               23459  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                 226  messages sent
+                 243  messages received
+                5328  signals received
+                9772  voluntary context switches
+              122968  involuntary context switches
+          4891808151  instructions retired
+          3235600873  cycles elapsed
+            52331264  peak memory footprint

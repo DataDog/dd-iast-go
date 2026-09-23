@@ -1,0 +1,13 @@
+$ GOTOOLCHAIN=go1.26.6 go test -timeout 4m -v -run TestReview ./internal/taint/store/
+=== RUN   TestReviewStaleSlotsConsumeLookupFanout
+    review_fanout_test.go:34: 5 live owners: visible=4 (documented fanout cap 4)
+    review_fanout_test.go:46: after finishing owner 1: live owners=[2 3 4 5] visible=[2 3 4]
+    review_fanout_test.go:48: BUG: 4 live owners (<= MaxSnapshotOwners) hold the key but Lookup returned 3; the stale slot consumed a fanout window
+--- FAIL: TestReviewStaleSlotsConsumeLookupFanout (0.00s)
+=== RUN   TestReviewEmptyRangeEntry
+    review_fanout_test.go:81: untainted gap window: snapshot.Len()=1 entry.Ranges.Len()=0 MayContain=true
+    review_fanout_test.go:83: OBSERVED: Lookup returns an owner entry with zero ranges; propagation callers gate on snapshot.Len() and will clone/charge a zero-provenance root
+--- FAIL: TestReviewEmptyRangeEntry (0.00s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/store	0.564s
+FAIL

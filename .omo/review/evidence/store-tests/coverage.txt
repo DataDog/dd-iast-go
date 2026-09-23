@@ -1,0 +1,18 @@
+Command:
+cd /tmp/ddiast-review/wt/store-tests && GOTOOLCHAIN=go1.26.6 go test -timeout 15m -coverprofile=/tmp/ddiast-review/wt/store-tests/store.cover ./internal/taint/store
+
+Result:
+ok  	github.com/DataDog/dd-iast-go/internal/taint/store	3.997s	coverage: 91.5% of statements
+
+Selected zero-hit production blocks on risky paths:
+- internal/taint/store/binding.go:186.31-202.14: existing-pointer rebinding, reader-capacity transition, and replacement accounting branches.
+- internal/taint/store/value.go:232.32-266.3: stale-slot classification and reclamation branches for invalid owner/root state and lock contention.
+- internal/taint/store/mutation.go:51.132-56.26 and 80.71-86.3: changed-root identity and generation-claim rejection paths.
+- internal/taint/store/owner.go:21.14-42.4: acquisition-lock and writer-lock contention paths.
+
+Function coverage below 80%:
+- bindingTable.bind: 58.6%
+- LookupObject: 66.7%
+- reclaim: 70.6%
+- stale: 75.0%
+- reserveRootValue: 78.6%

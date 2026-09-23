@@ -1,0 +1,13 @@
+Command:
+GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 /usr/bin/time -l go tool orchestrion go test -timeout 10m -count=1 -run TestFinder_DeferredSourceAdviceMustNotReplaceHostPanic ./iast/net/http -v
+
+Output:
+=== RUN   TestFinder_DeferredSourceAdviceMustNotReplaceHostPanic
+    zz_finder_panic_test.go:55: host panic replaced: got type=*struct { kind string } value=&{IAST Form}; internal fault identical=true
+--- FAIL: TestFinder_DeferredSourceAdviceMustNotReplaceHostPanic (0.00s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/iast/net/http	0.773s
+FAIL
+exit status 1
+       23.44 real         6.86 user        10.79 sys
+           374521856  maximum resident set size

@@ -1,0 +1,35 @@
+[
+  {
+    "id": "hooks-fidelity-strings-F1",
+    "severity": "Low",
+    "category": "behavior-change",
+    "location": "iast/propagation/operators.go:207-304; iast/propagation/orchestrion.yml:343-403",
+    "title": "Slice panic text differs from native when gc constant-folds a sub-word out-of-range index (native message is the wrong one)",
+    "claim": "With a compile-time-known uint8/uint16/int8 index (e.g. var i uint8 = 200; s[:i]) native gc panics with boundsError text reporting index 0 ('[:0] with length 3'); the generic wrapper reports the true index ('[:200] with length 3'). Same panic site and type; only the Error() text differs, and the wrapper is the correct one. Non-constant indices of every width produce identical messages.",
+    "evidence_path": ".omo/review/evidence/hooks-fidelity-strings/slicepanic-output.txt",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 go run ./cmd/slicepanic2   (program: .omo/review/evidence/hooks-fidelity-strings/cmd__slicepanic2__main.go)",
+    "needs_repro": false
+  },
+  {
+    "id": "hooks-fidelity-strings-F2",
+    "severity": "Info",
+    "category": "behavior-change",
+    "location": "internal/taint/propagation/string_exact.go:21-48,68-69; iast/propagation/strings.go:126-130",
+    "title": "Tainted strings.Join of one element returns a fresh clone where the stdlib returns the element itself",
+    "claim": "JoinString only takes the alias fast path when separator == \"\"; for a single tainted element with a non-empty separator it clones. Content is equal; identity differs (unsafe-only) and costs one extra len(s) allocation per tainted call.",
+    "evidence_path": ".omo/review/evidence/hooks-fidelity-strings/run5-all-go1.27.0-short.log",
+    "repro_command": "GOTOOLCHAIN=go1.27.0 go test -short -run TestFidelityAliasIdentity -v ./iast/propagation/ (harness: .omo/review/evidence/hooks-fidelity-strings/iast__propagation__zz_fidelity_diff_test.go)",
+    "needs_repro": false
+  },
+  {
+    "id": "hooks-fidelity-strings-F3",
+    "severity": "Info",
+    "category": "perf",
+    "location": "iast/propagation/operators.go:198-204",
+    "title": "Inactive BytesToString heap-allocates where native string(b) stays on the stack (duplicate of hooks-yml-operators-F4 / prop-concat-conv-json-F1; fix probe clarifies scope)",
+    "claim": "Native non-escaping string(b) = 0 allocs; BytesToString = 1 alloc with IAST inactive. Evaluating string(value) inside the !HasValues() branch restores 0 allocs, but the same restructuring of Concat2 regresses it from 0 to 1 alloc, so the fix belongs only in BytesToString.",
+    "evidence_path": ".omo/review/evidence/hooks-fidelity-strings/iast__propagation__zz_fidelity_allocfix_test.go",
+    "repro_command": "go test -run 'TestFidelityInactiveAllocations' -v ./iast/propagation/",
+    "needs_repro": false
+  }
+]

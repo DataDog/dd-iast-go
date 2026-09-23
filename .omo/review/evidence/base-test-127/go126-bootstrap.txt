@@ -1,0 +1,7 @@
+Command:
+  cd /tmp/ddiast-review/wt/base-test-127/iast/integration/testapp
+  GOTOOLCHAIN=go1.26.6 go tool orchestrion go build ./cmd/bootstrap
+
+Exit status: 0
+
+Captured stdout/stderr: empty

@@ -1,0 +1,11 @@
+$ cd /tmp/ddiast-review/wt/fx-hooks-compile-matrix-F1/appb && go tool nm ./woven | grep -i 'iast/propagation' | head -8; go tool nm ./woven | grep -ic 'iast/propagation'; cp go.mod /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/.omo/review/evidence/fx-hooks-compile-matrix-F1/app-orchestrion-latest/go.mod.control-pinned
+[rc=0]
+100cdf750 R github.com/DataDog/dd-iast-go/iast/propagation..dict.StringSliceHigh[string,int]
+100cdf730 R github.com/DataDog/dd-iast-go/iast/propagation..dict.concat2Result[string]
+100cdf770 R github.com/DataDog/dd-iast-go/iast/propagation..dict.concat3Result[string]
+100d10d10 D github.com/DataDog/dd-iast-go/iast/propagation..inittask
+100555d90 T github.com/DataDog/dd-iast-go/iast/propagation.StringSliceHigh[go.shape.string,go.shape.int]
+100555e30 T github.com/DataDog/dd-iast-go/iast/propagation.concat2Result[go.shape.string]
+100555ed0 T github.com/DataDog/dd-iast-go/iast/propagation.concat3Result[go.shape.string]
+100555770 T github.com/DataDog/dd-iast-go/iast/propagation.init.0
+8

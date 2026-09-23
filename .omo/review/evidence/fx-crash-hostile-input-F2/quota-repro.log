@@ -1,0 +1,33 @@
+# Independent woven reproduction at HEAD 2e23b46
+#
+# Reproducer source: quota-repro.go (copied from private worktree
+# cmd/quota-repro/main.go). It starts a real net/http server, obtains the
+# request parameter through Request.FormValue, starts a traced request span,
+# and executes it as a database/sql query through a real database/sql driver.
+#
+# Build (private worktree, Go 1.26.6):
+# /usr/bin/time -l env GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 \
+#   go tool orchestrion go build -o quota-woven ./cmd/quota-repro
+# BUILD_OK
+#
+# Runs (each command starts a fresh process):
+
+$ DD_TRACE_STARTUP_LOGS=false DD_IAST_ENABLED=true DD_IAST_REQUEST_SAMPLING=100 \
+  ./quota-woven -operations=2 -payload-bytes=30000
+operations=2 payload_bytes=30000 executed_tainted=2 recorded_vulnerabilities=2 handler_elapsed=12.121375ms
+
+$ DD_TRACE_STARTUP_LOGS=false DD_IAST_ENABLED=true DD_IAST_REQUEST_SAMPLING=100 \
+  ./quota-woven -operations=40 -payload-bytes=30000
+operations=40 payload_bytes=30000 executed_tainted=40 recorded_vulnerabilities=2 handler_elapsed=699.7515ms
+
+$ DD_TRACE_STARTUP_LOGS=false DD_IAST_ENABLED=true DD_IAST_REQUEST_SAMPLING=100 \
+  DD_IAST_DEDUPLICATION_ENABLED=false DD_IAST_VULNERABILITIES_PER_REQUEST=64 \
+  ./quota-woven -operations=40 -payload-bytes=30000
+operations=40 payload_bytes=30000 executed_tainted=40 recorded_vulnerabilities=40 handler_elapsed=636.095ms
+
+# Interpretation:
+# The middle run preserves default quota (2) and default deduplication. All
+# 40 tainted sink reports reached the post-analysis ExecutedTainted counter;
+# only two committed. The 64-quota / no-dedup control commits all 40 from the
+# same HTTP-to-database/sql surface, showing that the remaining reports were
+# not prevented by source propagation or sink reachability.

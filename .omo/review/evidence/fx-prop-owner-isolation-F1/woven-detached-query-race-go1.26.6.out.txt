@@ -1,0 +1,76 @@
+=== RUN   TestFxWovenDetachedQuery
+==================
+WARNING: DATA RACE
+Write at 0x00c001280018 by goroutine 18:
+  github.com/DataDog/dd-iast-go/internal/taint/request.(*Manager).Acquire()
+      /private/tmp/ddiast-review/wt/fx-prop-owner-isolation-F1/internal/taint/request/owner.go:82 +0x140
+  github.com/DataDog/dd-iast-go/internal/taint/request.begin()
+      /private/tmp/ddiast-review/wt/fx-prop-owner-isolation-F1/internal/taint/request/scope.go:95 +0x1c4
+  github.com/DataDog/dd-iast-go/internal/taint/request.BeginServerContext()
+      /private/tmp/ddiast-review/wt/fx-prop-owner-isolation-F1/internal/taint/request/scope.go:117 +0x34
+  github.com/DataDog/dd-iast-go/internal/taint/httpbridge.Begin()
+      /private/tmp/ddiast-review/wt/fx-prop-owner-isolation-F1/internal/taint/httpbridge/bridge.go:77 +0xe4
+  net/http.serverHandler.ServeHTTP()
+      <generated>:2 +0xd8
+  net/http.(*conn).serve()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2067 +0xa30
+  net/http.(*Server).Serve.gowrap3()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3462 +0x40
+
+Previous read at 0x00c001280018 by goroutine 42:
+  github.com/DataDog/dd-iast-go/internal/taint/request.analysisForOwner()
+      /private/tmp/ddiast-review/wt/fx-prop-owner-isolation-F1/internal/taint/request/http.go:33 +0x170
+  github.com/DataDog/dd-iast-go/internal/taint/request.ManageURLQuery()
+      /private/tmp/ddiast-review/wt/fx-prop-owner-isolation-F1/internal/taint/request/lazy.go:37 +0x78
+  github.com/DataDog/dd-iast-go/internal/taint/urlbridge.Query()
+      /private/tmp/ddiast-review/wt/fx-prop-owner-isolation-F1/internal/taint/urlbridge/bridge.go:30 +0x68
+  net/url.(*URL).Query.func1()
+      <generated>:3 +0x48
+  runtime.deferreturn()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/panic.go:668 +0x5c
+  github.com/DataDog/dd-iast-go/zzfxrepro.handler.func1()
+      /private/tmp/ddiast-review/wt/fx-prop-owner-isolation-F1/zzfxrepro/repro_test.go:22 +0x7c
+
+Goroutine 18 (running) created at:
+  net/http.(*Server).Serve()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3462 +0x5e8
+  net/http/httptest.(*Server).goServe.func1()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/httptest/server.go:341 +0x98
+
+Goroutine 42 (finished) created at:
+  github.com/DataDog/dd-iast-go/zzfxrepro.handler()
+      /private/tmp/ddiast-review/wt/fx-prop-owner-isolation-F1/zzfxrepro/repro_test.go:20 +0x370
+  net/http.HandlerFunc.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2284 +0x48
+  net/http.serverHandler.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3309 +0x580
+  net/http.(*conn).serve()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2067 +0xa30
+  net/http.(*Server).Serve.gowrap3()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3462 +0x40
+==================
+    repro_test.go:44: requests=3000
+    testing.go:1712: race detected during execution of test
+--- FAIL: TestFxWovenDetachedQuery (0.93s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/zzfxrepro	1.686s
+FAIL
+exit status 1
+      145.13 real       147.82 user       112.74 sys
+           362561536  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+             6919018  page reclaims
+              268750  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+               20424  messages sent
+               21874  messages received
+              104663  signals received
+               56603  voluntary context switches
+             2234405  involuntary context switches
+          4521253887  instructions retired
+          2444489509  cycles elapsed
+            58082048  peak memory footprint

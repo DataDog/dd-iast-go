@@ -1,0 +1,13 @@
+[
+  {
+    "id": "crash-deadlock-F1",
+    "severity": "High",
+    "category": "provenance",
+    "location": "internal/taint/store/owner.go:20-60; internal/taint/store/binding.go:77-108",
+    "title": "Stale owner handle can publish into a successor generation",
+    "claim": "A stale Owner handle can observe its old generation and a reused slot's active state, then publish an object binding into the successor generation's binding table, breaking owner provenance isolation.",
+    "evidence_path": ".omo/review/evidence/crash-deadlock/owner-generation-crossover.txt",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 REVIEW_STRESS=90s go test -count=1 -timeout=3m -run TestCrashDeadlockStaleHandleBindAfterSlotReuse -v ./internal/taint/store",
+    "needs_repro": false
+  }
+]

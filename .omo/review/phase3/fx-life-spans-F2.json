@@ -1,0 +1,24 @@
+[
+  {
+    "id": "life-spans-F2",
+    "verdict": "CONFIRMED",
+    "original_severity": "High",
+    "adjusted_severity": "High",
+    "reachable_default": true,
+    "documented_limitation": false,
+    "reason": "Woven build: a handler-created root span is finished, then a child span started from its ctx (woven BindStartSpan) re-creates an open annotation for the finished root. A tainted SQLi via db.ExecContext commits into it (1 held), but 0 vulnerabilities are emitted. Controls (report before Finish, or after Finish with no new span) emit 1. The lost hash also enters the 1h dedup set. Shares its root cause with F3: Finished deletes the entry with no tombstone and LoadOrCompute re-creates it. Reproduced again on a second fresh copy (rerun.out.txt).",
+    "evidence_path": ".omo/review/evidence/fx-life-spans-F2/rerun.out.txt",
+    "repro_command": "cd iast/integration/testapp && GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go tool orchestrion go test -race -count=1 -timeout 20m -v -run '^TestFxLateBindAfterRootFinish$' . (test file: .omo/review/evidence/fx-life-spans-F2/zz_fx_life_spans_f2_test.go)"
+  },
+  {
+    "id": "life-spans-F3",
+    "verdict": "CONFIRMED",
+    "original_severity": "Critical",
+    "adjusted_severity": "Critical",
+    "reachable_default": true,
+    "documented_limitation": false,
+    "reason": "Woven build with a real tracer and a fake agent advertising span_meta_structs: an explicit root.Finish() plus a deferred root.Finish(), with a late child span and a tainted SQL exec in between, gives 30 DATA RACE reports. One race is spans.Finished -> SetMetaStruct on the finished span (orchestrion.go:44) against the writer's metaStructMap.EncodeMsg; the other is TryCommitTainted Event writes against the writer's Event.MarshalMsg. It needs the F2 re-creation plus a double Finish, which dd-trace-go supports, and a modern agent. Reproduced again on a second fresh copy (rerun.out.txt, metaStruct race). Controls (ctl.out.txt): a double Finish without a late bind, and a late bind with a single Finish, are both race-free, so F3 = F2 re-creation + repeated Finish.",
+    "evidence_path": ".omo/review/evidence/fx-life-spans-F2/rerun.out.txt",
+    "repro_command": "cd iast/integration/testapp && GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go tool orchestrion go test -race -count=1 -timeout 20m -v -run '^TestFxDoubleFinishRace$' . (test file: .omo/review/evidence/fx-life-spans-F2/zz_fx_life_spans_f2_test.go)"
+  }
+]

@@ -1,0 +1,19 @@
+MUTANT canon-merge-ignores-marks: KILLED :: --- FAIL: TestReviewOperationsAgainstPerByteOracle (0.01s)
+MUTANT coarse-union-marks: KILLED :: --- FAIL: TestReviewOperationsAgainstPerByteOracle (0.00s)
+MUTANT builder-limit-offbyone: KILLED :: --- FAIL: TestReviewOperationsAgainstPerByteOracle (0.00s)
+MUTANT unsafefor-inverted: KILLED :: --- FAIL: TestReviewOperationsAgainstPerByteOracle (0.00s)
+MUTANT marksource-inverted: KILLED :: --- FAIL: TestReviewOperationsAgainstPerByteOracle (0.00s)
+MUTANT window-shift-offbyone: KILLED :: --- FAIL: TestReviewOperationsAgainstPerByteOracle (0.00s)
+MUTANT canon-later-wins: KILLED :: --- FAIL: TestReviewOperationsAgainstPerByteOracle (0.00s)
+MUTANT repeat-fastpath-limit: KILLED :: --- FAIL: TestReviewOperationsAgainstPerByteOracle (0.00s)
+MUTDONE
+seed=1 ok  	github.com/DataDog/dd-iast-go/internal/taint/ranges	9.062s
+seed=2 ok  	github.com/DataDog/dd-iast-go/internal/taint/ranges	3.448s
+seed=3 ok  	github.com/DataDog/dd-iast-go/internal/taint/ranges	3.185s
+seed=4 ok  	github.com/DataDog/dd-iast-go/internal/taint/ranges	2.826s
+seed=5 ok  	github.com/DataDog/dd-iast-go/internal/taint/ranges	2.954s
+seed=6 ok  	github.com/DataDog/dd-iast-go/internal/taint/ranges	2.056s
+seed=7 ok  	github.com/DataDog/dd-iast-go/internal/taint/ranges	1.843s
+seed=8 ok  	github.com/DataDog/dd-iast-go/internal/taint/ranges	7.284s
+seed=9 ok  	github.com/DataDog/dd-iast-go/internal/taint/ranges	5.846s
+seed=10 ok  	github.com/DataDog/dd-iast-go/internal/taint/ranges	4.475s

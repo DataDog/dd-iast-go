@@ -1,0 +1,8 @@
+=== RUN   TestFXXStaleOwnerBindCrossover
+    zz_fxcross_repro_test.go:90: CROSSOVER: post-Finish handle (slot 60, gen 736, owner id 261760) bound a fresh object; successor already finished; binding table reset before lookup
+    zz_fxcross_repro_test.go:104: post_finish_bind_success=1 lookup_confirmed=0
+    zz_fxcross_repro_test.go:106: stale post-Finish owner handle published a binding into a successor generation
+--- FAIL: TestFXXStaleOwnerBindCrossover (16.18s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/store	17.159s
+FAIL

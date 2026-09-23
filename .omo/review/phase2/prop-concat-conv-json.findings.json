@@ -1,0 +1,68 @@
+[
+  {
+    "id": "prop-concat-conv-json-F1",
+    "severity": "Medium",
+    "category": "perf",
+    "location": "iast/propagation/operators.go:198-204; internal/taint/propagation/conversion.go:15,42",
+    "title": "Woven []byte->string conversion always heap-allocates, even with IAST inactive",
+    "claim": "string(iastprop.BytesToString(b)) returns string(value) from a non-inlinable generic wrapper (cost 131) and internal.BytesToString leaks result to heap via AdoptString, so non-escaping <=32B conversions lose stack allocation in every root package regardless of IAST state; README 'allocation-preserving' is inaccurate.",
+    "evidence_path": ".omo/review/evidence/prop-concat-conv-json/woven_allocs.out",
+    "repro_command": "go tool orchestrion go test -count=1 -run TestReviewWovenAllocs -v ./zzreview/ (woven: 1 alloc; unwoven: 0)",
+    "needs_repro": false
+  },
+  {
+    "id": "prop-concat-conv-json-F2",
+    "severity": "Medium",
+    "category": "perf",
+    "location": "internal/taint/propagation/operator_concat.go:9-79; internal/taint/propagation/string_exact.go:56",
+    "title": "Woven concat forces operands to escape; \"lit\"+string(b) gains an allocation even when inactive",
+    "claim": "copy(inputs[:n], elements[:n]) in joinStringHit makes every Concat operand leak to heap, defeating the zero-copy slicebytetostringtmp for \"p\"+string(b) and any stack operand; +1 alloc per call independent of IAST state. Index-loop copy fixes it (verified in trial).",
+    "evidence_path": ".omo/review/evidence/prop-concat-conv-json/woven_allocs.out",
+    "repro_command": "go tool orchestrion go test -count=1 -run TestReviewWovenAllocs -v ./zzreview/ ; go build -gcflags=-m=2 ./internal/taint/propagation/",
+    "needs_repro": false
+  },
+  {
+    "id": "prop-concat-conv-json-F3",
+    "severity": "Low",
+    "category": "quality",
+    "location": "internal/taint/propagation/json.go:56-68",
+    "title": "JSONString reports success and telemetry even when no owner adopted the clone",
+    "claim": "AdoptString result is ignored; when all adoptions fail it still returns (clone,true) and records executed/coarse telemetry, causing a needless SetString of an untracked clone.",
+    "evidence_path": null,
+    "repro_command": null,
+    "needs_repro": true
+  },
+  {
+    "id": "prop-concat-conv-json-F4",
+    "severity": "Low",
+    "category": "provenance",
+    "location": "internal/taint/propagation/json.go:33,49",
+    "title": "JSON literal range includes delimiting quotes; quote-only taint coarsens whole value",
+    "claim": "Intersection window is the raw token including quotes, so taint touching only a delimiter taints the entire decoded string.",
+    "evidence_path": ".omo/review/evidence/prop-concat-conv-json/unit_reproducers.out",
+    "repro_command": "go test -count=1 -run TestReviewJSONStringBoundsAndEscapes -v ./internal/taint/propagation/ (QUOTE-ONLY: propagated=true ranges=[{0 5 9 0}])",
+    "needs_repro": false
+  },
+  {
+    "id": "prop-concat-conv-json-F5",
+    "severity": "Low",
+    "category": "test-gap",
+    "location": "iast/propagation/operators_test.go:25-60,98-104,145-178",
+    "title": "Concat tests do not pin offsets; operator benchmarks run unwoven",
+    "claim": "Arity tests only assert IsTaintedString with the tainted operand last; no exact-offset tests for first/middle/multiple operands; BenchmarkOperator*Inactive live in a package excluded from operator aspects so they measure native code and cannot catch F1/F2.",
+    "evidence_path": ".omo/review/evidence/prop-concat-conv-json/zz_review_concat_conv_json_test.go",
+    "repro_command": "go test -count=1 -run TestReviewConcatOffsetsProperty -v ./internal/taint/propagation/",
+    "needs_repro": false
+  },
+  {
+    "id": "prop-concat-conv-json-F6",
+    "severity": "Low",
+    "category": "perf",
+    "location": "internal/taint/propagation/string_exact.go:59,76-80",
+    "title": "Tainted concat path repeats snapshot lookups per owner",
+    "claim": "collectStringOwners looks up every operand, then stringOwnerRanges re-looks up each operand per owner: up to 16+4x17 Lookups per tainted Concat16.",
+    "evidence_path": null,
+    "repro_command": null,
+    "needs_repro": true
+  }
+]

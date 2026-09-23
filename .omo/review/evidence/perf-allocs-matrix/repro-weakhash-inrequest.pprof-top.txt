@@ -1,0 +1,25 @@
+File: wh3.test
+Type: alloc_objects
+Time: 2026-09-23 15:40:24 CEST
+Showing nodes accounting for 591047, 98.90% of 597600 total
+Dropped 29 nodes (cum <= 2988)
+Showing top 18 nodes out of 43
+      flat  flat%   sum%        cum   cum%
+     65537 10.97% 10.97%      65537 10.97%  github.com/google/uuid.NewRandomFromReader
+     63724 10.66% 21.63%     103952 17.39%  github.com/DataDog/dd-trace-go/v2/internal/telemetry.Log
+     45253  7.57% 29.20%     177431 29.69%  github.com/DataDog/dd-trace-go/v2/internal/stacktrace.NewEvent
+     44955  7.52% 36.73%      44955  7.52%  github.com/DataDog/dd-trace-go/v2/internal/stacktrace.newQueue[go.shape.struct { PC uintptr; Func *runtime.Func; Function string; File string; Line int; runtime.startLine int; Entry uintptr; runtime.funcInfo runtime.funcInfo }] (inline)
+     43691  7.31% 44.04%      99804 16.70%  github.com/DataDog/dd-iast-go/internal/model.(*Event).CanAddVulnerability
+     43691  7.31% 51.35%     580124 97.08%  github.com/DataDog/dd-iast-go/internal/vulnerability.Report
+     40228  6.73% 58.08%      40228  6.73%  github.com/DataDog/dd-trace-go/v2/internal/telemetry.wantsStacktrace (inline)
+     32776  5.48% 63.56%      77731 13.01%  github.com/DataDog/dd-trace-go/v2/internal/stacktrace.iterator (inline)
+     32769  5.48% 69.05%      32769  5.48%  github.com/google/uuid.UUID.String (inline)
+     32768  5.48% 74.53%      32768  5.48%  github.com/DataDog/dd-trace-go/v2/internal/stacktrace.WithAdditionalSkip (inline)
+     26216  4.39% 78.92%      26216  4.39%  github.com/DataDog/dd-iast-go/internal/vulnerability/stacktrace.LocationFromFrame
+     24577  4.11% 83.03%      24577  4.11%  github.com/DataDog/dd-iast-go/internal/model.NewEvidenceString (inline)
+     19665  3.29% 86.32%      19665  3.29%  github.com/DataDog/dd-trace-go/v2/internal/stacktrace.(*framesIterator).symbolicateFrames
+     19556  3.27% 89.59%      54447  9.11%  github.com/DataDog/dd-trace-go/v2/internal/stacktrace.(*framesIterator).capture
+     16384  2.74% 92.33%     226583 37.92%  github.com/DataDog/dd-trace-go/v2/instrumentation.(*Instrumentation).CaptureStackTrace
+     15226  2.55% 94.88%      15226  2.55%  github.com/DataDog/dd-trace-go/v2/internal/stacktrace.newQueue[go.shape.struct { Text string "msg:\"text,omitempty\""; File string "msg:\"file,omitempty\""; Namespace string "msg:\"namespace,omitempty\""; ClassName string "msg:\"class_name,omitempty\""; Function string "msg:\"function,omitempty\""; Index uint32 "msg:\"id\""; Line uint32 "msg:\"line,omitempty\""; Column uint32 "msg:\"column,omitempty\"" }] (inline)
+     13108  2.19% 97.08%      39324  6.58%  github.com/DataDog/dd-iast-go/internal/vulnerability.locationFromTrace
+     10923  1.83% 98.90%      10923  1.83%  testing.(*B).ResetTimer

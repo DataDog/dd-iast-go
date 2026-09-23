@@ -1,0 +1,13 @@
+[
+  {
+    "id": "hooks-orchestrion-dep-F2",
+    "verdict": "CONFIRMED",
+    "original_severity": "Critical",
+    "adjusted_severity": "Critical",
+    "reachable_default": true,
+    "documented_limitation": false,
+    "reason": "Reproduced independently on Go 1.26.6 with my own woven customer-shaped packages: legal integral untyped float bounds (string and byte forms, low/high/full) and an integral untyped complex bound all pass plain go test but fail the woven build with '<generated>:1: float64/complex128 does not satisfy ... integer'. The pinned join-point guard (slice_expression.go:69-77) checks the resolved types.Basic kind, but go/types has already contextualized these bounds to int, so the UntypedFloat/UntypedComplex exclusion never fires; the dd-iast-go template re-emits the raw constant into a generic helper constrained to 'integer', which infers float64/complex128. The same inference failure reproduces with a plain (non-woven) direct helper call on both go1.26.6 and go1.27.0. Finder's own reproducer re-ran with the identical error. Not documented in README or design intent; violates product rule 1 (compile failure on valid customer code) with no configuration escape hatch; compile failure is Critical by the brief's scale regardless of how rare the constant syntax is.",
+    "evidence_path": ".omo/review/evidence/fx-hooks-orchestrion-dep-F2/run-results.txt",
+    "repro_command": "cd <private copy of dd-iast-go @ 2e23b46> && GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go tool orchestrion go test -timeout 4m -count=1 -v ./review_f2_str (plain 'go test' on the same package passes; see .omo/review/evidence/fx-hooks-orchestrion-dep-F2/ for all shapes)"
+  }
+]

@@ -1,0 +1,7 @@
+=== RUN   TestTaintedPartAtTruncationBoundaryHasRequiredValue
+    schema_parity_test.go:46: WIRE_PAYLOAD={"sources":[{"origin":"http.request.parameter","name":"parameter","value":"xx"}],"vulnerabilities":[{"type":"SQL_INJECTION","hash":1491529353,"evidence":{"valueParts":[{"value":"SELECT                                                                                                                                                                                                                                                    "},{"truncated":"right","source":0}]},"location":{"spanId":1}}]}
+    schema_parity_test.go:62: unredacted tainted part omits required value: map[source:0 truncated:"right"]
+--- FAIL: TestTaintedPartAtTruncationBoundaryHasRequiredValue (0.00s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/redaction	0.694s
+FAIL

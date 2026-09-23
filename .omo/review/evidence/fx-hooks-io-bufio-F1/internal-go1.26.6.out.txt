@@ -1,0 +1,8 @@
+$ GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -timeout 15m -count=1 -v -run TestFXResetKeepsStaleOwner ./iast/io/
+go version go1.26.6 darwin/arm64
+=== RUN   TestFXResetKeepsStaleOwner
+    zz_fx_test.go:30: fx case=reset-while-owner-active tainted=true ownerA.sources 1->2 ownerB.sources=0
+    zz_fx_test.go:34: fx case=reset-after-owner-finish tainted=false
+--- PASS: TestFXResetKeepsStaleOwner (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/iast/io	0.739s

@@ -1,0 +1,24 @@
+=== RUN   TestFxAnchorWovenSurface
+    zz_fx_anchor_repro_test.go:183: woven surface: bodyBound=true limitedReaderBound=1 retained=117399552 incrementalCharge=0
+    zz_fx_anchor_repro_test.go:193: woven finish: heap=16736256 released=100663296 charge=0
+--- PASS: TestFxAnchorWovenSurface (0.51s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/store	1.536s
+      250.36 real        34.87 user       120.82 sys
+           351338496  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              735360  page reclaims
+               38064  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                3566  messages sent
+                3962  messages received
+               53010  signals received
+               27957  voluntary context switches
+              998031  involuntary context switches
+          6015259581  instructions retired
+          4173500967  cycles elapsed
+            39355088  peak memory footprint

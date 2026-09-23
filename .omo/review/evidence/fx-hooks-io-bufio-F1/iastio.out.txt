@@ -1,0 +1,75 @@
+$ cd /tmp/ddiast-review/wt/fx-hooks-io-bufio-F1/ && GOFLAGS=-p=4 GOTOOLCHAIN=go1.27.0 /usr/bin/time -l timeout 1500 go tool orchestrion go test -count=1 -timeout 15m -v -run TestFxF1 ./iast/io/ 2>&1
+# encoding/json
+$WORK/b104/orchestrion/src/encoding/json/<generated>:2: dec.r undefined (type *Decoder has no field or method r)
+$WORK/b104/orchestrion/src/encoding/json/<generated>:2: dec.d undefined (type *Decoder has no field or method d)
+$WORK/b104/orchestrion/src/encoding/json/<generated>:3: dec.d undefined (type *Decoder has no field or method d)
+exit status 2
+# crypto/des
+resolving woven dependency on github.com/DataDog/dd-iast-go/internal/instrumentation/telemetry: -: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+# crypto/md5
+resolving woven dependency on github.com/DataDog/dd-iast-go/internal/instrumentation/telemetry: -: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+# crypto/rc4
+resolving woven dependency on github.com/DataDog/dd-iast-go/internal/instrumentation/telemetry: -: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+# crypto/sha1
+resolving woven dependency on github.com/DataDog/dd-iast-go/internal/instrumentation/telemetry: -: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+FAIL	github.com/DataDog/dd-iast-go/iast/io [build failed]
+FAIL
+exit status 1
+       33.09 real        42.40 user        27.09 sys
+           279625728  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+             3935509  page reclaims
+              147518  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                5112  messages sent
+                5598  messages received
+               45688  signals received
+               29804  voluntary context switches
+              680106  involuntary context switches
+            19185507  instructions retired
+             9155566  cycles elapsed
+             1212728  peak memory footprint
+
+$ cd /tmp/ddiast-review/wt/fx-hooks-io-bufio-F1/ && GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 /usr/bin/time -l timeout 1500 go tool orchestrion go test -count=1 -timeout 15m -v -run TestFxF1 ./iast/io/ 2>&1
+=== RUN   TestFxF1PooledReset
+    zz_fx_f1_test.go:29: case=A tainted=true
+    zz_fx_f1_test.go:30: case=reset-constant tainted=true ownerA.sources before=1 after=2
+    zz_fx_f1_test.go:31: case=fresh-control tainted=false
+--- PASS: TestFxF1PooledReset (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/iast/io	0.560s
+      131.82 real       106.67 user        87.88 sys
+           341950464  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+             7431343  page reclaims
+              265126  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+               14431  messages sent
+               15897  messages received
+               83149  signals received
+               50014  voluntary context switches
+             1615639  involuntary context switches
+            20078614  instructions retired
+            13402955  cycles elapsed
+             1212728  peak memory footprint
+

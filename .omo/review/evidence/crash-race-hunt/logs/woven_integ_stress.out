@@ -1,0 +1,508 @@
+=== RUN   TestRaceHuntConcurrentWovenRequests
+==================
+WARNING: DATA RACE
+Write at 0x00c0006755d8 by goroutine 790:
+  net/http.(*Request).ParseForm.func1()
+      <generated>:4 +0xf4
+  runtime.deferreturn()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/panic.go:668 +0x5c
+  github.com/DataDog/dd-iast-go/testapps/integration.RaceHuntHandle.func2()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt.go:80 +0x140
+  github.com/DataDog/dd-iast-go/testapps/integration.RaceHuntHandle.gowrap1()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt.go:124 +0x38
+
+Previous read at 0x00c0006755d8 by goroutine 789:
+  net/http.(*Request).PostFormValue()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/request.go:1435 +0xac
+  github.com/DataDog/dd-iast-go/testapps/integration.RaceHuntHandle.func2()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt.go:84 +0x1c8
+  github.com/DataDog/dd-iast-go/testapps/integration.RaceHuntHandle.gowrap1()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt.go:124 +0x38
+
+Goroutine 790 (running) created at:
+  github.com/DataDog/dd-iast-go/testapps/integration.RaceHuntHandle()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt.go:73 +0x530
+  github.com/DataDog/dd-iast-go/testapps/integration_test.TestRaceHuntConcurrentWovenRequests.func1()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt_test.go:32 +0x1f4
+  net/http.HandlerFunc.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2284 +0x48
+  net/http.serverHandler.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3309 +0x580
+  net/http.(*conn).serve()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2067 +0xa30
+  net/http.(*Server).Serve.gowrap3()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3462 +0x40
+
+Goroutine 789 (running) created at:
+  github.com/DataDog/dd-iast-go/testapps/integration.RaceHuntHandle()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt.go:73 +0x530
+  github.com/DataDog/dd-iast-go/testapps/integration_test.TestRaceHuntConcurrentWovenRequests.func1()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt_test.go:32 +0x1f4
+  net/http.HandlerFunc.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2284 +0x48
+  net/http.serverHandler.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3309 +0x580
+  net/http.(*conn).serve()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2067 +0xa30
+  net/http.(*Server).Serve.gowrap3()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3462 +0x40
+==================
+==================
+WARNING: DATA RACE
+Read at 0x00c001ea3858 by goroutine 820:
+  net/http.(*Request).ParseForm()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/request.go:1329 +0x78
+  github.com/DataDog/dd-iast-go/testapps/integration.RaceHuntHandle.func2()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt.go:80 +0x140
+  github.com/DataDog/dd-iast-go/testapps/integration.RaceHuntHandle.gowrap1()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt.go:124 +0x38
+
+Previous write at 0x00c001ea3858 by goroutine 823:
+  net/http.(*Request).ParseForm.func1()
+      <generated>:4 +0xf4
+  runtime.deferreturn()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/panic.go:668 +0x5c
+  github.com/DataDog/dd-iast-go/testapps/integration.RaceHuntHandle.func2()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt.go:80 +0x140
+  github.com/DataDog/dd-iast-go/testapps/integration.RaceHuntHandle.gowrap1()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt.go:124 +0x38
+
+Goroutine 820 (running) created at:
+  github.com/DataDog/dd-iast-go/testapps/integration.RaceHuntHandle()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt.go:73 +0x530
+  github.com/DataDog/dd-iast-go/testapps/integration_test.TestRaceHuntConcurrentWovenRequests.func1()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt_test.go:32 +0x1f4
+  net/http.HandlerFunc.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2284 +0x48
+  net/http.serverHandler.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3309 +0x580
+  net/http.(*conn).serve()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2067 +0xa30
+  net/http.(*Server).Serve.gowrap3()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3462 +0x40
+
+Goroutine 823 (running) created at:
+  github.com/DataDog/dd-iast-go/testapps/integration.RaceHuntHandle()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt.go:73 +0x530
+  github.com/DataDog/dd-iast-go/testapps/integration_test.TestRaceHuntConcurrentWovenRequests.func1()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt_test.go:32 +0x1f4
+  net/http.HandlerFunc.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2284 +0x48
+  net/http.serverHandler.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3309 +0x580
+  net/http.(*conn).serve()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2067 +0xa30
+  net/http.(*Server).Serve.gowrap3()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3462 +0x40
+==================
+==================
+WARNING: DATA RACE
+Read at 0x00c001ea3850 by goroutine 820:
+  net/http.(*Request).ParseForm()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/request.go:1337 +0x398
+  github.com/DataDog/dd-iast-go/testapps/integration.RaceHuntHandle.func2()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt.go:80 +0x140
+  github.com/DataDog/dd-iast-go/testapps/integration.RaceHuntHandle.gowrap1()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt.go:124 +0x38
+
+Previous write at 0x00c001ea3850 by goroutine 823:
+  net/http.(*Request).ParseForm.func1()
+      <generated>:4 +0xbc
+  runtime.deferreturn()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/panic.go:668 +0x5c
+  github.com/DataDog/dd-iast-go/testapps/integration.RaceHuntHandle.func2()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt.go:80 +0x140
+  github.com/DataDog/dd-iast-go/testapps/integration.RaceHuntHandle.gowrap1()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt.go:124 +0x38
+
+Goroutine 820 (running) created at:
+  github.com/DataDog/dd-iast-go/testapps/integration.RaceHuntHandle()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt.go:73 +0x530
+  github.com/DataDog/dd-iast-go/testapps/integration_test.TestRaceHuntConcurrentWovenRequests.func1()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt_test.go:32 +0x1f4
+  net/http.HandlerFunc.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2284 +0x48
+  net/http.serverHandler.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3309 +0x580
+  net/http.(*conn).serve()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2067 +0xa30
+  net/http.(*Server).Serve.gowrap3()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3462 +0x40
+
+Goroutine 823 (running) created at:
+  github.com/DataDog/dd-iast-go/testapps/integration.RaceHuntHandle()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt.go:73 +0x530
+  github.com/DataDog/dd-iast-go/testapps/integration_test.TestRaceHuntConcurrentWovenRequests.func1()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt_test.go:32 +0x1f4
+  net/http.HandlerFunc.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2284 +0x48
+  net/http.serverHandler.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3309 +0x580
+  net/http.(*conn).serve()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2067 +0xa30
+  net/http.(*Server).Serve.gowrap3()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3462 +0x40
+==================
+==================
+WARNING: DATA RACE
+Write at 0x00c002d9c090 by goroutine 4410:
+  net/http.(*Request).ParseForm.func1()
+      <generated>:4 +0xbc
+  runtime.deferreturn()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/panic.go:668 +0x5c
+  github.com/DataDog/dd-iast-go/testapps/integration.RaceHuntHandle.func2()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt.go:80 +0x140
+  github.com/DataDog/dd-iast-go/testapps/integration.RaceHuntHandle.gowrap1()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt.go:124 +0x38
+
+Previous read at 0x00c002d9c090 by goroutine 4409:
+  github.com/DataDog/dd-iast-go/testapps/integration.RaceHuntHandle.func2()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt.go:81 +0x150
+  github.com/DataDog/dd-iast-go/testapps/integration.RaceHuntHandle.gowrap1()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt.go:124 +0x38
+
+Goroutine 4410 (running) created at:
+  github.com/DataDog/dd-iast-go/testapps/integration.RaceHuntHandle()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt.go:73 +0x530
+  github.com/DataDog/dd-iast-go/testapps/integration_test.TestRaceHuntConcurrentWovenRequests.func1()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt_test.go:32 +0x1f4
+  net/http.HandlerFunc.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2284 +0x48
+  net/http.serverHandler.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3309 +0x580
+  net/http.(*conn).serve()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2067 +0xa30
+  net/http.(*Server).Serve.gowrap3()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3462 +0x40
+
+Goroutine 4409 (running) created at:
+  github.com/DataDog/dd-iast-go/testapps/integration.RaceHuntHandle()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt.go:73 +0x530
+  github.com/DataDog/dd-iast-go/testapps/integration_test.TestRaceHuntConcurrentWovenRequests.func1()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt_test.go:32 +0x1f4
+  net/http.HandlerFunc.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2284 +0x48
+  net/http.serverHandler.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3309 +0x580
+  net/http.(*conn).serve()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2067 +0xa30
+  net/http.(*Server).Serve.gowrap3()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3462 +0x40
+==================
+==================
+WARNING: DATA RACE
+Write at 0x00c002d9c098 by goroutine 4410:
+  net/http.(*Request).ParseForm.func1()
+      <generated>:4 +0xf4
+  runtime.deferreturn()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/panic.go:668 +0x5c
+  github.com/DataDog/dd-iast-go/testapps/integration.RaceHuntHandle.func2()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt.go:80 +0x140
+  github.com/DataDog/dd-iast-go/testapps/integration.RaceHuntHandle.gowrap1()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt.go:124 +0x38
+
+Previous read at 0x00c002d9c098 by goroutine 4409:
+  github.com/DataDog/dd-iast-go/testapps/integration.RaceHuntHandle.func2()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt.go:82 +0x17c
+  github.com/DataDog/dd-iast-go/testapps/integration.RaceHuntHandle.gowrap1()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt.go:124 +0x38
+
+Goroutine 4410 (running) created at:
+  github.com/DataDog/dd-iast-go/testapps/integration.RaceHuntHandle()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt.go:73 +0x530
+  github.com/DataDog/dd-iast-go/testapps/integration_test.TestRaceHuntConcurrentWovenRequests.func1()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt_test.go:32 +0x1f4
+  net/http.HandlerFunc.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2284 +0x48
+  net/http.serverHandler.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3309 +0x580
+  net/http.(*conn).serve()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2067 +0xa30
+  net/http.(*Server).Serve.gowrap3()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3462 +0x40
+
+Goroutine 4409 (running) created at:
+  github.com/DataDog/dd-iast-go/testapps/integration.RaceHuntHandle()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt.go:73 +0x530
+  github.com/DataDog/dd-iast-go/testapps/integration_test.TestRaceHuntConcurrentWovenRequests.func1()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt_test.go:32 +0x1f4
+  net/http.HandlerFunc.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2284 +0x48
+  net/http.serverHandler.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3309 +0x580
+  net/http.(*conn).serve()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2067 +0xa30
+  net/http.(*Server).Serve.gowrap3()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3462 +0x40
+==================
+==================
+WARNING: DATA RACE
+Write at 0x00c000643ad0 by goroutine 5237:
+  net/http.(*Request).ParseForm.func1()
+      <generated>:4 +0xbc
+  runtime.deferreturn()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/panic.go:668 +0x5c
+  github.com/DataDog/dd-iast-go/testapps/integration.RaceHuntHandle.func2()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt.go:80 +0x140
+  github.com/DataDog/dd-iast-go/testapps/integration.RaceHuntHandle.gowrap1()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt.go:124 +0x38
+
+Previous write at 0x00c000643ad0 by goroutine 5238:
+  net/http.(*Request).ParseForm.func1()
+      <generated>:4 +0xbc
+  runtime.deferreturn()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/panic.go:668 +0x5c
+  github.com/DataDog/dd-iast-go/testapps/integration.RaceHuntHandle.func2()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt.go:80 +0x140
+  github.com/DataDog/dd-iast-go/testapps/integration.RaceHuntHandle.gowrap1()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt.go:124 +0x38
+
+Goroutine 5237 (running) created at:
+  github.com/DataDog/dd-iast-go/testapps/integration.RaceHuntHandle()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt.go:73 +0x530
+  github.com/DataDog/dd-iast-go/testapps/integration_test.TestRaceHuntConcurrentWovenRequests.func1()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt_test.go:32 +0x1f4
+  net/http.HandlerFunc.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2284 +0x48
+  net/http.serverHandler.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3309 +0x580
+  net/http.(*conn).serve()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2067 +0xa30
+  net/http.(*Server).Serve.gowrap3()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3462 +0x40
+
+Goroutine 5238 (running) created at:
+  github.com/DataDog/dd-iast-go/testapps/integration.RaceHuntHandle()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt.go:73 +0x530
+  github.com/DataDog/dd-iast-go/testapps/integration_test.TestRaceHuntConcurrentWovenRequests.func1()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt_test.go:32 +0x1f4
+  net/http.HandlerFunc.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2284 +0x48
+  net/http.serverHandler.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3309 +0x580
+  net/http.(*conn).serve()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2067 +0xa30
+  net/http.(*Server).Serve.gowrap3()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3462 +0x40
+==================
+==================
+WARNING: DATA RACE
+Write at 0x00c000643ad8 by goroutine 5237:
+  net/http.(*Request).ParseForm.func1()
+      <generated>:4 +0xf4
+  runtime.deferreturn()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/panic.go:668 +0x5c
+  github.com/DataDog/dd-iast-go/testapps/integration.RaceHuntHandle.func2()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt.go:80 +0x140
+  github.com/DataDog/dd-iast-go/testapps/integration.RaceHuntHandle.gowrap1()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt.go:124 +0x38
+
+Previous write at 0x00c000643ad8 by goroutine 5238:
+  net/http.(*Request).ParseForm.func1()
+      <generated>:4 +0xf4
+  runtime.deferreturn()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/panic.go:668 +0x5c
+  github.com/DataDog/dd-iast-go/testapps/integration.RaceHuntHandle.func2()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt.go:80 +0x140
+  github.com/DataDog/dd-iast-go/testapps/integration.RaceHuntHandle.gowrap1()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt.go:124 +0x38
+
+Goroutine 5237 (running) created at:
+  github.com/DataDog/dd-iast-go/testapps/integration.RaceHuntHandle()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt.go:73 +0x530
+  github.com/DataDog/dd-iast-go/testapps/integration_test.TestRaceHuntConcurrentWovenRequests.func1()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt_test.go:32 +0x1f4
+  net/http.HandlerFunc.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2284 +0x48
+  net/http.serverHandler.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3309 +0x580
+  net/http.(*conn).serve()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2067 +0xa30
+  net/http.(*Server).Serve.gowrap3()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3462 +0x40
+
+Goroutine 5238 (running) created at:
+  github.com/DataDog/dd-iast-go/testapps/integration.RaceHuntHandle()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt.go:73 +0x530
+  github.com/DataDog/dd-iast-go/testapps/integration_test.TestRaceHuntConcurrentWovenRequests.func1()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt_test.go:32 +0x1f4
+  net/http.HandlerFunc.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2284 +0x48
+  net/http.serverHandler.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3309 +0x580
+  net/http.(*conn).serve()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2067 +0xa30
+  net/http.(*Server).Serve.gowrap3()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3462 +0x40
+==================
+    zz_racehunt_test.go:95: goroutine sinks=1920 spans=483 spansWithIAST=453
+    testing.go:1712: race detected during execution of test
+--- FAIL: TestRaceHuntConcurrentWovenRequests (2.14s)
+=== RUN   TestRaceHuntConcurrentWovenRequests
+==================
+WARNING: DATA RACE
+Write at 0x00c0027d0450 by goroutine 6437:
+  net/http.(*Request).ParseForm.func1()
+      <generated>:4 +0xbc
+  runtime.deferreturn()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/panic.go:668 +0x5c
+  github.com/DataDog/dd-iast-go/testapps/integration.RaceHuntHandle.func2()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt.go:80 +0x140
+  github.com/DataDog/dd-iast-go/testapps/integration.RaceHuntHandle.gowrap1()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt.go:124 +0x38
+
+Previous read at 0x00c0027d0450 by goroutine 6436:
+  net/http.(*Request).ParseForm.func1()
+      <generated>:6 +0x7c
+  runtime.deferreturn()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/panic.go:668 +0x5c
+  github.com/DataDog/dd-iast-go/testapps/integration.RaceHuntHandle.func2()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt.go:80 +0x140
+  github.com/DataDog/dd-iast-go/testapps/integration.RaceHuntHandle.gowrap1()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt.go:124 +0x38
+
+Goroutine 6437 (running) created at:
+  github.com/DataDog/dd-iast-go/testapps/integration.RaceHuntHandle()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt.go:73 +0x530
+  github.com/DataDog/dd-iast-go/testapps/integration_test.TestRaceHuntConcurrentWovenRequests.func1()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt_test.go:32 +0x1f4
+  net/http.HandlerFunc.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2284 +0x48
+  net/http.serverHandler.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3309 +0x580
+  net/http.(*conn).serve()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2067 +0xa30
+  net/http.(*Server).Serve.gowrap3()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3462 +0x40
+
+Goroutine 6436 (running) created at:
+  github.com/DataDog/dd-iast-go/testapps/integration.RaceHuntHandle()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt.go:73 +0x530
+  github.com/DataDog/dd-iast-go/testapps/integration_test.TestRaceHuntConcurrentWovenRequests.func1()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt_test.go:32 +0x1f4
+  net/http.HandlerFunc.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2284 +0x48
+  net/http.serverHandler.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3309 +0x580
+  net/http.(*conn).serve()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2067 +0xa30
+  net/http.(*Server).Serve.gowrap3()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3462 +0x40
+==================
+==================
+WARNING: DATA RACE
+Write at 0x00c0027d0458 by goroutine 6437:
+  net/http.(*Request).ParseForm.func1()
+      <generated>:4 +0xf4
+  runtime.deferreturn()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/panic.go:668 +0x5c
+  github.com/DataDog/dd-iast-go/testapps/integration.RaceHuntHandle.func2()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt.go:80 +0x140
+  github.com/DataDog/dd-iast-go/testapps/integration.RaceHuntHandle.gowrap1()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt.go:124 +0x38
+
+Previous read at 0x00c0027d0458 by goroutine 6436:
+  net/http.(*Request).ParseForm.func1()
+      <generated>:7 +0x94
+  runtime.deferreturn()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/panic.go:668 +0x5c
+  github.com/DataDog/dd-iast-go/testapps/integration.RaceHuntHandle.func2()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt.go:80 +0x140
+  github.com/DataDog/dd-iast-go/testapps/integration.RaceHuntHandle.gowrap1()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt.go:124 +0x38
+
+Goroutine 6437 (running) created at:
+  github.com/DataDog/dd-iast-go/testapps/integration.RaceHuntHandle()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt.go:73 +0x530
+  github.com/DataDog/dd-iast-go/testapps/integration_test.TestRaceHuntConcurrentWovenRequests.func1()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt_test.go:32 +0x1f4
+  net/http.HandlerFunc.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2284 +0x48
+  net/http.serverHandler.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3309 +0x580
+  net/http.(*conn).serve()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2067 +0xa30
+  net/http.(*Server).Serve.gowrap3()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3462 +0x40
+
+Goroutine 6436 (running) created at:
+  github.com/DataDog/dd-iast-go/testapps/integration.RaceHuntHandle()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt.go:73 +0x530
+  github.com/DataDog/dd-iast-go/testapps/integration_test.TestRaceHuntConcurrentWovenRequests.func1()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt_test.go:32 +0x1f4
+  net/http.HandlerFunc.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2284 +0x48
+  net/http.serverHandler.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3309 +0x580
+  net/http.(*conn).serve()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2067 +0xa30
+  net/http.(*Server).Serve.gowrap3()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3462 +0x40
+==================
+    zz_racehunt_test.go:95: goroutine sinks=1920 spans=483 spansWithIAST=480
+    testing.go:1712: race detected during execution of test
+--- FAIL: TestRaceHuntConcurrentWovenRequests (2.46s)
+=== RUN   TestRaceHuntConcurrentWovenRequests
+    zz_racehunt_test.go:95: goroutine sinks=1920 spans=485 spansWithIAST=484
+--- PASS: TestRaceHuntConcurrentWovenRequests (2.44s)
+=== RUN   TestRaceHuntConcurrentWovenRequests
+==================
+WARNING: DATA RACE
+Write at 0x00c00353a090 by goroutine 21028:
+  net/http.(*Request).ParseForm.func1()
+      <generated>:4 +0xbc
+  runtime.deferreturn()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/panic.go:668 +0x5c
+  github.com/DataDog/dd-iast-go/testapps/integration.RaceHuntHandle.func2()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt.go:80 +0x140
+  github.com/DataDog/dd-iast-go/testapps/integration.RaceHuntHandle.gowrap1()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt.go:124 +0x38
+
+Previous read at 0x00c00353a090 by goroutine 21027:
+  net/http.(*Request).FormValue()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/request.go:1420 +0xac
+  github.com/DataDog/dd-iast-go/testapps/integration.RaceHuntHandle.func2()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt.go:83 +0x1b4
+  github.com/DataDog/dd-iast-go/testapps/integration.RaceHuntHandle.gowrap1()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt.go:124 +0x38
+
+Goroutine 21028 (running) created at:
+  github.com/DataDog/dd-iast-go/testapps/integration.RaceHuntHandle()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt.go:73 +0x530
+  github.com/DataDog/dd-iast-go/testapps/integration_test.TestRaceHuntConcurrentWovenRequests.func1()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt_test.go:32 +0x1f4
+  net/http.HandlerFunc.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2284 +0x48
+  net/http.serverHandler.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3309 +0x580
+  net/http.(*conn).serve()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2067 +0xa30
+  net/http.(*Server).Serve.gowrap3()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3462 +0x40
+
+Goroutine 21027 (running) created at:
+  github.com/DataDog/dd-iast-go/testapps/integration.RaceHuntHandle()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt.go:73 +0x530
+  github.com/DataDog/dd-iast-go/testapps/integration_test.TestRaceHuntConcurrentWovenRequests.func1()
+      /tmp/ddiast-review/wt/crash-race-hunt/iast/integration/testapp/zz_racehunt_test.go:32 +0x1f4
+  net/http.HandlerFunc.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2284 +0x48
+  net/http.serverHandler.ServeHTTP()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3309 +0x580
+  net/http.(*conn).serve()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:2067 +0xa30
+  net/http.(*Server).Serve.gowrap3()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go:3462 +0x40
+==================
+    zz_racehunt_test.go:95: goroutine sinks=1920 spans=500 spansWithIAST=482
+    testing.go:1712: race detected during execution of test
+--- FAIL: TestRaceHuntConcurrentWovenRequests (2.29s)
+=== RUN   TestRaceHuntConcurrentWovenRequests
+    zz_racehunt_test.go:95: goroutine sinks=1920 spans=494 spansWithIAST=470
+--- PASS: TestRaceHuntConcurrentWovenRequests (2.43s)
+=== RUN   TestRaceHuntConcurrentWovenRequests
+    zz_racehunt_test.go:95: goroutine sinks=1920 spans=500 spansWithIAST=475
+--- PASS: TestRaceHuntConcurrentWovenRequests (2.74s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/testapps/integration	15.339s
+FAIL

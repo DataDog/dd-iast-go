@@ -1,0 +1,9 @@
+=== RUN   TestProbeBuilderStaleViewReuse
+    probe_test.go:55: iteration 0: FALSE POSITIVE value="cccccccccccccccc" (all clean bytes) ranges=[{Start:0 Length:16 Source:{Source:{Origin:http.request.parameter Name:q} Value:' OR 1=1 --xxxxx} Marks:{bits:0}}] backingReused=true
+    probe_test.go:59: iterations=2000 backingAddressReused=1 falsePositives=1
+    probe_test.go:61: stale Builder writer state published on clean content 1 times
+--- FAIL: TestProbeBuilderStaleViewReuse (3.77s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/iast/internal/zzdiffbytes	4.641s
+FAIL
+exit status 1

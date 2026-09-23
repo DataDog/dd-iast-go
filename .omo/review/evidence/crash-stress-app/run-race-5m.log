@@ -1,0 +1,46 @@
+# cmd: /tmp/ddiast-review/wt/crash-stress-app/stress-race -duration 5m -clients 256 -dumpdir /tmp/ddiast-review/wt/crash-stress-app/dumps-race -agent 127.0.0.1:18131
+# env: DD_IAST_REQUEST_SAMPLING=100 DD_IAST_MAX_CONCURRENT_REQUESTS=64 DD_IAST_DEDUPLICATION_ENABLED=false DD_IAST_VULNERABILITIES_PER_REQUEST=8 GOTRACEBACK=all
+13:26:26.461577 woven=true go=go1.26.6 clients=256 duration=5m0s GOMAXPROCS=16 env: sampling=100 maxconc=64 dedup=false vulns=8
+13:26:42.514583 t= 16s done=2334 rps=146 analyzed=1713 sinkT=1587 sinkU=2000 sql=5099 exec=122 err=0 canc=125 oldest=4.95s gor=1375 heap=126MiB storeValues=8221 storeCharged=2994104 falseTaint=0 bleed=0/225 poolBleed=0 agentSQL=1426 agentCMD=48
+13:26:48.676865 STALL: no progress for 0s, oldest in-flight 10.724847208s -> goroutine dump /tmp/ddiast-review/wt/crash-stress-app/dumps-race/goroutines-1.txt
+13:26:58.532009 t= 32s done=4443 rps=139 analyzed=2211 sinkT=2067 sinkU=2564 sql=9523 exec=238 err=0 canc=244 oldest=14.424s gor=1261 heap=144MiB storeValues=11492 storeCharged=621048 falseTaint=0 bleed=0/639 poolBleed=0 agentSQL=1822 agentCMD=58
+13:27:13.517831 t= 47s done=7276 rps=155 analyzed=3010 sinkT=2791 sinkU=3573 sql=15388 exec=367 err=0 canc=387 oldest=7.447s gor=1272 heap=106MiB storeValues=9340 storeCharged=387160 falseTaint=0 bleed=0/1517 poolBleed=0 agentSQL=2342 agentCMD=70
+2026/09/23 13:27:25 Datadog Tracer v2.11.0-rc.1 ERROR: loading features: Get "http://127.0.0.1:18131/info": dial tcp 127.0.0.1:18131: connect: connection refused (occurred: 23 Sep 26 13:26 CEST)
+13:27:27.010139 STALL: no progress for 0s, oldest in-flight 10.816275208s -> goroutine dump /tmp/ddiast-review/wt/crash-stress-app/dumps-race/goroutines-2.txt
+13:27:29.578086 t= 63s done=9763 rps=155 analyzed=3704 sinkT=3418 sinkU=4359 sql=20494 exec=487 err=0 canc=524 oldest=13.168s gor=1368 heap=123MiB storeValues=11576 storeCharged=3013112 falseTaint=0 bleed=0/2607 poolBleed=0 agentSQL=2858 agentCMD=88
+13:27:45.568558 t= 79s done=12971 rps=164 analyzed=4521 sinkT=4176 sinkU=5425 sql=27150 exec=639 err=0 canc=683 oldest=8.288s gor=1262 heap=123MiB storeValues=13466 storeCharged=1003256 falseTaint=0 bleed=0/4149 poolBleed=0 agentSQL=3413 agentCMD=106
+13:28:01.492748 t= 95s done=16198 rps=170 analyzed=5353 sinkT=4935 sinkU=6457 sql=33903 exec=807 err=0 canc=843 oldest=6.243s gor=1390 heap=103MiB storeValues=12994 storeCharged=3607272 falseTaint=0 bleed=0/5964 poolBleed=0 agentSQL=4036 agentCMD=129
+13:28:10.087291 STALL: no progress for 0s, oldest in-flight 10.630940583s -> goroutine dump /tmp/ddiast-review/wt/crash-stress-app/dumps-race/goroutines-3.txt
+13:28:16.658942 t=110s done=18628 rps=169 analyzed=5973 sinkT=5537 sinkU=7164 sql=39025 exec=913 err=0 canc=966 oldest=12.954s gor=1414 heap=144MiB storeValues=14538 storeCharged=5674976 falseTaint=0 bleed=0/7302 poolBleed=0 agentSQL=4510 agentCMD=144
+13:28:32.792774 t=126s done=20133 rps=160 analyzed=6337 sinkT=5854 sinkU=7582 sql=42242 exec=973 err=0 canc=1050 oldest=15.68s gor=1414 heap=91MiB storeValues=10888 storeCharged=1249528 falseTaint=0 bleed=0/8175 poolBleed=0 agentSQL=4751 agentCMD=150
+13:28:40.978855 STALL: no progress for 0s, oldest in-flight 18.821397916s -> goroutine dump /tmp/ddiast-review/wt/crash-stress-app/dumps-race/goroutines-4.txt
+13:28:48.563881 t=142s done=21998 rps=155 analyzed=6739 sinkT=6217 sinkU=8096 sql=46183 exec=1066 err=0 canc=1141 oldest=17.505s gor=1237 heap=151MiB storeValues=13495 storeCharged=1091704 falseTaint=0 bleed=0/9310 poolBleed=0 agentSQL=5004 agentCMD=158
+13:29:04.616526 t=158s done=23631 rps=150 analyzed=7101 sinkT=6555 sinkU=8579 sql=49647 exec=1133 err=0 canc=1221 oldest=16.015s gor=1251 heap=136MiB storeValues=14112 storeCharged=3847104 falseTaint=0 bleed=0/10290 poolBleed=0 agentSQL=5248 agentCMD=164
+13:29:20.520198 t=174s done=25755 rps=148 analyzed=7645 sinkT=7035 sinkU=9301 sql=54337 exec=1232 err=0 canc=1320 oldest=13.584s gor=1353 heap=83MiB storeValues=8159 storeCharged=196008 falseTaint=0 bleed=0/11703 poolBleed=0 agentSQL=5602 agentCMD=175
+13:29:35.784664 t=189s done=27288 rps=144 analyzed=8070 sinkT=7435 sinkU=9780 sql=57497 exec=1303 err=0 canc=1383 oldest=15.195s gor=1311 heap=110MiB storeValues=11105 storeCharged=227896 falseTaint=0 bleed=0/12749 poolBleed=0 agentSQL=5865 agentCMD=181
+13:29:50.759569 t=204s done=28609 rps=140 analyzed=8408 sinkT=7739 sinkU=10223 sql=60377 exec=1371 err=0 canc=1450 oldest=25.97s gor=1441 heap=125MiB storeValues=9896 storeCharged=738264 falseTaint=0 bleed=0/13636 poolBleed=0 agentSQL=6164 agentCMD=192
+13:30:05.637354 t=219s done=29758 rps=136 analyzed=8684 sinkT=8014 sinkU=10564 sql=63010 exec=1423 err=0 canc=1496 oldest=26.37s gor=1344 heap=142MiB storeValues=10187 storeCharged=894720 falseTaint=0 bleed=0/14309 poolBleed=0 agentSQL=6303 agentCMD=194
+13:30:21.518654 t=235s done=32101 rps=137 analyzed=9281 sinkT=8567 sinkU=11274 sql=67825 exec=1535 err=0 canc=1613 oldest=7.532s gor=1405 heap=89MiB storeValues=8354 storeCharged=1214376 falseTaint=0 bleed=0/15693 poolBleed=0 agentSQL=6747 agentCMD=200
+13:30:36.824659 t=250s done=33671 rps=135 analyzed=9673 sinkT=8910 sinkU=11766 sql=71198 exec=1615 err=0 canc=1679 oldest=22.265s gor=1418 heap=116MiB storeValues=11362 storeCharged=573176 falseTaint=0 bleed=0/16613 poolBleed=0 agentSQL=7052 agentCMD=204
+13:30:52.501745 t=266s done=35235 rps=132 analyzed=10070 sinkT=9266 sinkU=12266 sql=74292 exec=1691 err=0 canc=1759 oldest=19.52s gor=1357 heap=130MiB storeValues=12393 storeCharged=2849848 falseTaint=0 bleed=0/17511 poolBleed=0 agentSQL=7343 agentCMD=208
+13:31:08.575474 t=282s done=36978 rps=131 analyzed=10481 sinkT=9652 sinkU=12738 sql=77914 exec=1777 err=0 canc=1831 oldest=17.001s gor=1414 heap=90MiB storeValues=10412 storeCharged=4916552 falseTaint=0 bleed=0/18619 poolBleed=0 agentSQL=7576 agentCMD=209
+13:31:24.681404 t=298s done=38267 rps=128 analyzed=10762 sinkT=9941 sinkU=13131 sql=80695 exec=1837 err=0 canc=1908 oldest=19.835s gor=1347 heap=141MiB storeValues=13116 storeCharged=963440 falseTaint=0 bleed=0/19446 poolBleed=0 agentSQL=7828 agentCMD=216
+13:31:29.084540 load phase finished: 38642 requests in 5m2s
+13:31:31.099635 quiescent store: values=0 charged=0 acquireDrops=0
+13:31:31.154112 serial verification (T=tainted, A=active untainted, N=not analyzed): TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
+13:31:35.161491 SUMMARY requests=38642 analyzed=10789 sinkTainted=9972 sinkUntaintedActive=13236 sqlCalls=81427 execCalls=1850 clientErrors=0 cancelled=1917 intendedPanics=2950 lateDone=2908 stalls=9 falseTaint=0 bleed=0 (checks=19545) poolBleed=0 heapAfterGC=23MiB goroutines=24 agentPayloads=152 agentBytes=40578815 agentSQL=7898 agentCMD=217
+13:31:35.161565 flow q       n=3042    avg=2.204799s  max=16.230796s (vlen at max=35) activeSinks tainted=1630 untainted=18
+13:31:35.161593 flow h       n=3015    avg=1.333666s  max=11.088225s (vlen at max=60) activeSinks tainted=804 untainted=16
+13:31:35.161613 flow form    n=2974    avg=2.225643s  max=15.501757s (vlen at max=55) activeSinks tainted=1617 untainted=13
+13:31:35.161630 flow json    n=2911    avg=1.157893s  max=10.377491s (vlen at max=58) activeSinks tainted=607 untainted=136
+13:31:35.161644 flow body    n=2977    avg=1.378188s  max=11.742666s (vlen at max=17) activeSinks tainted=0 untainted=814
+13:31:35.161660 flow cookie  n=2978    avg=1.360079s  max=9.943221s  (vlen at max=62) activeSinks tainted=837 untainted=16
+13:31:35.161675 flow p       n=2937    avg=1.415749s  max=11.927251s (vlen at max=49) activeSinks tainted=979 untainted=6
+13:31:35.161692 flow buf     n=2956    avg=1.390708s  max=12.659332s (vlen at max=58) activeSinks tainted=0 untainted=835
+13:31:35.161709 flow fan     n=2961    avg=2.672191s  max=12.351737s (vlen at max=6) activeSinks tainted=230 untainted=6234
+13:31:35.161723 flow late    n=2950    avg=1.386435s  max=11.707631s (vlen at max=25) activeSinks tainted=836 untainted=9
+13:31:35.161737 flow abort   n=2988    avg=1.316338s  max=11.881349s (vlen at max=31) activeSinks tainted=850 untainted=5
+13:31:35.161752 flow big     n=2986    avg=1.555581s  max=10.826681s (vlen at max=54) activeSinks tainted=0 untainted=1011
+13:31:35.161766 flow derive  n=2967    avg=5.447974s  max=28.622681s (vlen at max=46) activeSinks tainted=1582 untainted=4123
+13:31:35.161830 RESULT: FAIL
+# exit=1 wall=311s

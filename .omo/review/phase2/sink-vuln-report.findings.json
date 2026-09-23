@@ -1,0 +1,90 @@
+[
+  {
+    "id": "sink-vuln-report-F1",
+    "severity": "High",
+    "category": "perf",
+    "location": "internal/vulnerability/report.go:41-58",
+    "title": "Weak-hash/cipher reports start an orphan span on every call, with no process dedup",
+    "claim": "The nil-ctx crypto advice makes every md5/sha1/weak-cipher call start an orphan span. About 30% are sampled and force-kept, with stack capture and 85 allocs per call. Report never uses the process dedup set, so identical findings repeat without limit.",
+    "evidence_path": ".omo/review/evidence/sink-vuln-report/repro_external_test.go",
+    "repro_command": "cd <private copy> && GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go test -count=1 -run TestRepro -v ./internal/vulnerability/ (TestReproWeakHashOrphanPerCallNoProcessDedup)",
+    "needs_repro": false
+  },
+  {
+    "id": "sink-vuln-report-F2",
+    "severity": "Medium",
+    "category": "false-negative",
+    "location": "internal/vulnerability/report.go:155-158",
+    "title": "Every location-less finding of a type shares one hash, so the first suppresses the rest for up to 1h",
+    "claim": "A nil-frame location hashes to fnv(type||0||\"\"), so process dedup drops every later location-less finding of that type from any request for up to 1h.",
+    "evidence_path": ".omo/review/evidence/sink-vuln-report/repro_internal_test.go",
+    "repro_command": "cd <private copy> && GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go test -count=1 -run TestRepro -v ./internal/vulnerability/ (TestReproLocationlessHashCollision)",
+    "needs_repro": false
+  },
+  {
+    "id": "sink-vuln-report-F3",
+    "severity": "Medium",
+    "category": "provenance",
+    "location": "iast/database/sql/orchestrion.yml:54-117",
+    "title": "A deferred SQL report during a driver panic uses runtime.gopanic as its location",
+    "claim": "The deferred sink runs from runtime.gopanic, which sqlSkip does not skip. The location becomes runtime/panic.go:860, so all such SQLi hash identically and dedup collapses them.",
+    "evidence_path": ".omo/review/evidence/sink-vuln-report/repro_external_test.go",
+    "repro_command": "cd <private copy> && GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go test -count=1 -run TestRepro -v ./internal/vulnerability/ (TestReproDeferredSinkPanicLocation)",
+    "needs_repro": false
+  },
+  {
+    "id": "sink-vuln-report-F4",
+    "severity": "Medium",
+    "category": "false-negative",
+    "location": "iast/database/sql/sql.go:20-30",
+    "title": "The location and hash point at ORM/driver-wrapper frames, so all SQLi through one ORM line collapse into one finding",
+    "claim": "SkipWhile does not skip third-party ORM frames (JS excludes SQL library paths), so the location is library code and a location-only hash merges every SQLi from that library line.",
+    "evidence_path": null,
+    "repro_command": null,
+    "needs_repro": true
+  },
+  {
+    "id": "sink-vuln-report-F5",
+    "severity": "Medium",
+    "category": "config",
+    "location": "internal/model/vulnerability.go:36-41",
+    "title": "The vulnerability hash includes the absolute build path",
+    "claim": "The hash covers the runtime.Frame.File absolute path, so it changes across build directories or -trimpath settings and yields new backend findings per deploy. The builder path also leaks as the location.",
+    "evidence_path": ".omo/review/evidence/sink-vuln-report/repro-output.txt",
+    "repro_command": null,
+    "needs_repro": false
+  },
+  {
+    "id": "sink-vuln-report-F6",
+    "severity": "Low",
+    "category": "quality",
+    "location": "internal/vulnerability/report.go:102-103",
+    "title": "Telemetry logs pass raw structs through slog.Any",
+    "claim": "This violates the dd-trace-go telemetry log contract (LogValuer only), prints pointer addresses with high cardinality, and event.go:109 has %#v in a constant message.",
+    "evidence_path": null,
+    "repro_command": null,
+    "needs_repro": false
+  },
+  {
+    "id": "sink-vuln-report-F7",
+    "severity": "Low",
+    "category": "perf",
+    "location": "internal/vulnerability/tainted.go:62-95",
+    "title": "A duplicate tainted report without a span still starts and finishes an empty orphan span",
+    "claim": "The orphan span is created before the process dedup check.",
+    "evidence_path": null,
+    "repro_command": null,
+    "needs_repro": false
+  },
+  {
+    "id": "sink-vuln-report-F8",
+    "severity": "Low",
+    "category": "perf",
+    "location": "internal/vulnerability/report.go:138-154",
+    "title": "CaptureLocationSkipWhile walks the whole stack even with stack traces disabled",
+    "claim": "Depth 32 reserves top-frame slots, so dd-trace-go symbolicates the entire stack on every tainted report.",
+    "evidence_path": null,
+    "repro_command": null,
+    "needs_repro": false
+  }
+]

@@ -1,0 +1,112 @@
+{
+ "peak_tree_rss_kb": 1010112,
+ "peak_tree_at_s": 10.1,
+ "peak_tree_top": [
+  [
+   179792,
+   [
+    "compile",
+    "go.opentelemetry.io/collector/pdata/internal"
+   ]
+  ],
+  [
+   170992,
+   [
+    "compile",
+    "go/types"
+   ]
+  ],
+  [
+   144848,
+   [
+    "compile",
+    "github.com/urfave/cli/v2"
+   ]
+  ],
+  [
+   114576,
+   [
+    "compile",
+    "github.com/DataDog/datadog-agent/pkg/proto/pbgo/trace/idx"
+   ]
+  ],
+  [
+   114256,
+   [
+    "compile",
+    "github.com/charmbracelet/x/cellbuf"
+   ]
+  ],
+  [
+   110816,
+   [
+    "(compile)",
+    ""
+   ]
+  ]
+ ],
+ "top_process_peaks_kb": [
+  [
+   "compile github.com/nats-io/nats-server/v2/server",
+   686416
+  ],
+  [
+   "link ",
+   557552
+  ],
+  [
+   "compile runtime",
+   306896
+  ],
+  [
+   "orchestrion-toolexec/compile runtime",
+   233584
+  ],
+  [
+   "(compile) ",
+   215520
+  ],
+  [
+   "compile go.opentelemetry.io/collector/pdata/internal",
+   179792
+  ],
+  [
+   "compile go/types",
+   170992
+  ],
+  [
+   "compile github.com/urfave/cli/v2",
+   144848
+  ],
+  [
+   "compile net",
+   127840
+  ],
+  [
+   "compile google.golang.org/protobuf/internal/impl",
+   121424
+  ],
+  [
+   "compile github.com/DataDog/datadog-agent/pkg/proto/pbgo/trace/idx",
+   114576
+  ],
+  [
+   "compile github.com/charmbracelet/x/cellbuf",
+   114256
+  ],
+  [
+   "compile encoding/gob",
+   101568
+  ],
+  [
+   "compile github.com/json-iterator/go",
+   98384
+  ],
+  [
+   "compile crypto/tls",
+   91504
+  ]
+ ],
+ "samples": 24,
+ "duration_s": 27.7
+}

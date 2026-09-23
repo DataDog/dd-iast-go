@@ -1,0 +1,35 @@
+The 64-KiB collector-only experiment in this run bypasses the SQL analyzer. It is NOT the final production-path retention proof; see 06-sql-evidence.txt. The source-budget, layout and dedup results are used.
+
+COMMAND
+cd /tmp/ddiast-review/wt/store-memory-bounds && env GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 DD_IAST_REQUEST_SAMPLING=100 DD_IAST_MAX_CONCURRENT_REQUESTS=64 DD_IAST_MAX_RANGE_COUNT=64 DD_IAST_VULNERABILITIES_PER_REQUEST=64 timeout 900 go test -count=1 -timeout 12m -v -run '^TestBounds(Event|Annotation|Dedup)' ./internal/taint/store ./internal/spans ./internal/vulnerability/dedup
+
+CAPTURED OUTPUT
+status: completed exit_code: 0
+=== RUN   TestBoundsEventEvidenceRetention
+    zz_review_event_retention_test.go:74: events=64 vulnerabilities=4096 charsPerEvidence=250 sourceIdentityBytes=192 rootCharge=65552 heapBefore=17612800 heapAfter=288776192 delta=271163392 wholeFeatureCeiling=25165824 ratio=10.78
+    zz_review_event_retention_test.go:79: event wireBytes=21772 fallback=false retainedBackingBytesPerEvent=4194304
+    zz_review_event_retention_test.go:89: events finished heap=17293312 released=271482880
+--- PASS: TestBoundsEventEvidenceRetention (0.67s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/store	2.066s
+=== RUN   TestBoundsAnnotationLayout
+    zz_review_bounds_internal_test.go:24: Annotation=3200 Event=48 SourceIdentity=40 ModelSource=64 Vulnerability=24 Evidence=64 ValuePart=72 Location=80 ownerBinding=32 ownerPointers=512 DedupSet=4040 vulnType=1 typeCount=36
+--- PASS: TestBoundsAnnotationLayout (0.00s)
+=== RUN   TestBoundsEventSourceBudgets
+=== RUN   TestBoundsEventSourceBudgets/sourceSize=16
+    zz_review_bounds_internal_test.go:67: sourceSize=16 acceptedEvents=64 identities=16384 processCharge=262144 heapBefore=2834432 heapAfter=5529600 delta=2695168
+    zz_review_bounds_internal_test.go:76: source budget released heap=2809856 charge=0
+=== RUN   TestBoundsEventSourceBudgets/sourceSize=1024
+    zz_review_bounds_internal_test.go:67: sourceSize=1024 acceptedEvents=8 identities=2048 processCharge=2097152 heapBefore=2842624 heapAfter=5971968 delta=3129344
+    zz_review_bounds_internal_test.go:76: source budget released heap=2842624 charge=0
+--- PASS: TestBoundsEventSourceBudgets (0.40s)
+    --- PASS: TestBoundsEventSourceBudgets/sourceSize=16 (0.07s)
+    --- PASS: TestBoundsEventSourceBudgets/sourceSize=1024 (0.33s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/spans	2.264s
+=== RUN   TestBoundsDedupSaturation
+    zz_review_bounds_test.go:26: DedupSet=4040 capacity=1000 heapBefore=958464 heapAfter=917504 delta=-40960
+    zz_review_bounds_test.go:34: overflow resets to 1; exact one-hour expiry clears retained hashes
+--- PASS: TestBoundsDedupSaturation (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/vulnerability/dedup	0.567s

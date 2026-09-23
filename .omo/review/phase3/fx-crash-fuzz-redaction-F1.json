@@ -1,0 +1,24 @@
+[
+ {
+  "id": "crash-fuzz-redaction-F1",
+  "verdict": "CONFIRMED",
+  "original_severity": "Critical",
+  "adjusted_severity": "Critical",
+  "reachable_default": true,
+  "documented_limitation": false,
+  "reason": "Reproduced independently with a woven database/sql build under DEFAULT redaction config: INSERT ... VALUES ('Q','1','<note>','<email>') built with '+' in app code; note '(urgent) call me back' makes both tainted sources (note and email) leave raw as wire source values and evidence parts; control note without leading punctuation is fully redacted. Context-free scanOracleQuotes (sql.go:111-138) splits all dialect lexers out of phase (sql.go:37-43); source.go:66 only redacts sources overlapping an interval. Trigger narrower than claimed (sql.go:141 rejects a span followed by an identifier byte) but ordinary and attacker-forceable.",
+  "evidence_path": ".omo/review/evidence/fx-crash-fuzz-redaction-F1/woven_default_config.out.txt",
+  "repro_command": "cd iast/integration/testapp && cp <evidence>/woven_zz_fx3_chain.go zz_fx3_chain.go && cp <evidence>/woven_zz_fx3_test.go zz_fx3_test.go && env GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -count=1 -timeout=20m -run TestFx3 -v ."
+ },
+ {
+  "id": "sink-redaction-sql-cmd-F1",
+  "verdict": "CONFIRMED",
+  "original_severity": "Critical",
+  "adjusted_severity": "Critical",
+  "reachable_default": true,
+  "documented_limitation": false,
+  "reason": "Duplicate of crash-fuzz-redaction-F1 (same root cause: context-free scanOracleQuotes plus destructive segment split for every dialect). Its trigger SELECT '?q'[?]' s3cr3tTok' re-derived independently (exposed=9/9); realistic shapes leak end to end through the woven sink under default config.",
+  "evidence_path": ".omo/review/evidence/fx-crash-fuzz-redaction-F1/unit_repro.out.txt",
+  "repro_command": "cp .omo/review/evidence/fx-crash-fuzz-redaction-F1/zz_fx3_test.go internal/taint/redaction/ && env GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 go test -count=1 -timeout=15m ./internal/taint/redaction -run TestFx3 -v"
+ }
+]

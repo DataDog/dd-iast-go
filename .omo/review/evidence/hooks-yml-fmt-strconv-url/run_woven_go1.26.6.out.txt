@@ -1,0 +1,51 @@
+=== RUN   TestReviewFmtMethodsInvokedOnce
+    zz_review_fmt_test.go:36: Stringer: result="attacker" calls=1 ranges=UNTAINTED
+    zz_review_fmt_test.go:42: Formatter+error: result="attacker|attacker" calls=2 ranges=UNTAINTED
+--- PASS: TestReviewFmtMethodsInvokedOnce (0.00s)
+=== RUN   TestReviewFmtOverTaint
+    zz_review_fmt_test.go:73: OVERTAINT-CHECK %T                             result="SELECT string" contains-input=false ranges=[0,+13 src=input] 
+    zz_review_fmt_test.go:73: OVERTAINT-CHECK %.0s                           result="SELECT 1" contains-input=false ranges=[0,+8 src=input] 
+    zz_review_fmt_test.go:73: OVERTAINT-CHECK %[2]s                          result="SELECT safe" contains-input=false ranges=[0,+11 src=input] 
+    zz_review_fmt_test.go:73: OVERTAINT-CHECK %d of []byte                   result="SELECT [97 116 116 97 99 107 101 114]" contains-input=false ranges=UNTAINTED
+    zz_review_fmt_test.go:73: OVERTAINT-CHECK RedactedSecret Stringer (%s)   result="SELECT '[redacted]'" contains-input=false ranges=[0,+19 src=input] 
+    zz_review_fmt_test.go:73: OVERTAINT-CHECK ConstFormatter (%v)            result="SELECT constant" contains-input=false ranges=[0,+15 src=input] 
+--- PASS: TestReviewFmtOverTaint (0.00s)
+=== RUN   TestReviewFmtUnderTaint
+    zz_review_fmt_test.go:105: UNDERTAINT-CHECK struct %v          result="SELECT {attacker}" ranges=UNTAINTED
+    zz_review_fmt_test.go:105: UNDERTAINT-CHECK slice %v           result="SELECT [attacker]" ranges=UNTAINTED
+    zz_review_fmt_test.go:105: UNDERTAINT-CHECK *string %s         result="SELECT %!s(*string=0xb26d39a03d0)" ranges=UNTAINTED
+    zz_review_fmt_test.go:105: UNDERTAINT-CHECK Stringer wrap %s   result="SELECT attacker" ranges=UNTAINTED
+    zz_review_fmt_test.go:105: UNDERTAINT-CHECK direct %s          result="SELECT attacker" ranges=[0,+15 src=input] 
+    zz_review_fmt_test.go:105: UNDERTAINT-CHECK direct %q          result="SELECT \"attacker\"" ranges=[0,+17 src=input] 
+    zz_review_fmt_test.go:105: UNDERTAINT-CHECK width %20s         result="SELECT             attacker" ranges=[0,+27 src=input] 
+    zz_review_fmt_test.go:105: UNDERTAINT-CHECK precision %.3s     result="SELECT att" ranges=[0,+10 src=input] 
+    zz_review_fmt_test.go:105: UNDERTAINT-CHECK map %v             result="SELECT map[k:attacker]" ranges=UNTAINTED
+    zz_review_fmt_test.go:105: UNDERTAINT-CHECK error %v           result="SELECT attacker" ranges=UNTAINTED
+--- PASS: TestReviewFmtUnderTaint (0.00s)
+=== RUN   TestReviewFmtAllowlistStringerFalsePositive
+    zz_review_fmt_test.go:115: ALLOWLIST query="SELECT id FROM users ORDER BY name ASC" tainted=true ranges=[0,+38 src=input] 
+    zz_review_fmt_test.go:117: FALSE POSITIVE: query built only from constants is tainted
+--- FAIL: TestReviewFmtAllowlistStringerFalsePositive (0.00s)
+=== RUN   TestReviewBuilderFprintf
+    zz_review_fmt_test.go:127: BUILDER-FPRINTF result="attacker-clean!" ranges=UNTAINTED
+    zz_review_fmt_test.go:129: BUILDER-FPRINTF-FIRST result="xclean-attacker" ranges=[7,+8 src=input] 
+--- PASS: TestReviewBuilderFprintf (0.00s)
+=== RUN   TestReviewFmtTwoSources
+    zz_review_fmt_test.go:145: TWO-SOURCES sprintf result="SELECT * FROM t WHERE a='alpha' AND b='bravo'" ranges=[0,+45 src=a] 
+    zz_review_fmt_test.go:147: CONCAT reference result="abalphacd" ranges=[2,+5 src=a] 
+    zz_review_fmt_test.go:149: PARTIAL-INPUT sprintf result="xabalphacdy" ranges=[0,+11 src=a] 
+--- PASS: TestReviewFmtTwoSources (0.00s)
+=== RUN   TestReviewUnquoteAndUnescapeAlias
+    zz_review_fmt_test.go:158: quoted="\"attacker\"" ranges=[1,+8 src=input] 
+    zz_review_fmt_test.go:160: unquoted="attacker" err=<nil> ranges=[0,+8 src=input] 
+    zz_review_fmt_test.go:163: raw clean unquote="ab" err=<nil> ranges=UNTAINTED
+    zz_review_fmt_test.go:166: queryunescape alias="abattackercd" err=<nil> ranges=[2,+8 src=input] 
+    zz_review_fmt_test.go:168: queryescape alias="abattackercd" ranges=[2,+8 src=input] 
+    zz_review_fmt_test.go:171: queryunescape changed="aba bcd" err=<nil> ranges=[0,+7 src=input] 
+    zz_review_fmt_test.go:173: unquote error="" err=invalid syntax ranges=UNTAINTED
+--- PASS: TestReviewUnquoteAndUnescapeAlias (0.00s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/iast/propagation	0.886s
+FAIL
+exit status 1
+EXIT=1

@@ -1,0 +1,24 @@
+[
+  {
+    "id": "res-shadow-F1",
+    "severity": "Low",
+    "category": "test-gap",
+    "location": ".github/workflows/ci.yml:128-148",
+    "title": "Instrumented CI lane has no guard against orchestrion-gated tests silently skipping",
+    "claim": "All instrumentation-dependent tests t.Skip when !built.WithOrchestrion, and CI selects the woven lane only by orchestrion.tool.go presence. An unwoven run therefore passes green with every such test skipped. The research PR added a hard toolchain preflight for exactly this failure. dd-iast-go's bootstrap symbols.txt check and TestDatabaseSQLInstrumentedCount do not cover it.",
+    "evidence_path": null,
+    "repro_command": null,
+    "needs_repro": false
+  },
+  {
+    "id": "res-shadow-F2",
+    "severity": "Info",
+    "category": "false-negative",
+    "location": "internal/taint/store/store.go:41-61",
+    "title": "Exact (pointer,length) identity keys make every alias created outside root-wrapped calls a silent false negative",
+    "claim": "StringKey/BytesKey key on the exact data pointer and length. Unlike both research prototypes, which use address/range registries or per-byte shadow, sub-slice aliases produced by unwrapped code (regexp.FindString, dependency-internal reslices, method-value calls) lose provenance. This is documented as root-only direct-call coverage, and it is the largest coverage delta the research exposes.",
+    "evidence_path": ".omo/review/evidence/res-shadow/ledger-verdicts.txt",
+    "repro_command": null,
+    "needs_repro": false
+  }
+]

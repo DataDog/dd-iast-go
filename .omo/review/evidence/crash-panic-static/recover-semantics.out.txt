@@ -1,0 +1,24 @@
+$ GOTOOLCHAIN=go1.26.6 go test -count=1 -v -run TestReview ./internal/taint/sqlbridge/ ./internal/taint/jsonbridge/
+=== RUN   TestReviewDeferredReportDoesNotSwallowHostPanic
+    zz_review_recover_test.go:26: callback called=true, recovered by caller=host panic
+--- PASS: TestReviewDeferredReportDoesNotSwallowHostPanic (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/sqlbridge	0.466s
+=== RUN   TestReviewDeferredLiteralDoesNotSwallowHostPanic
+    zz_review_recover_test.go:33: callback called=true, recovered by caller=host panic
+--- PASS: TestReviewDeferredLiteralDoesNotSwallowHostPanic (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/jsonbridge	0.544s
+
+$ GOTOOLCHAIN=local (go1.27)
+go version go1.27.0 darwin/arm64
+=== RUN   TestReviewDeferredReportDoesNotSwallowHostPanic
+    zz_review_recover_test.go:26: callback called=true, recovered by caller=host panic
+--- PASS: TestReviewDeferredReportDoesNotSwallowHostPanic (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/sqlbridge	0.486s
+=== RUN   TestReviewDeferredLiteralDoesNotSwallowHostPanic
+    zz_review_recover_test.go:33: callback called=true, recovered by caller=host panic
+--- PASS: TestReviewDeferredLiteralDoesNotSwallowHostPanic (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/jsonbridge	0.668s

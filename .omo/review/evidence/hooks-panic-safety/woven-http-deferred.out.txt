@@ -1,0 +1,10 @@
+Command (private copy, GOTOOLCHAIN=go1.26.6):
+go tool orchestrion go test -timeout 10m -count=1 -run TestReview_DeferredSource ./iast/net/http -v
+EXIT=1
+=== RUN   TestReview_DeferredSourceAdviceMustNotReplaceHostPanic
+    zz_review_panic_test.go:54: host panic replaced: got type=*struct { kind string } value=&{IAST Form}; internal fault identical=true
+--- FAIL: TestReview_DeferredSourceAdviceMustNotReplaceHostPanic (0.00s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/iast/net/http	0.869s
+FAIL
+exit status 1

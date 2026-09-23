@@ -1,0 +1,27 @@
+File: request.test
+Type: delay
+Time: 2026-09-23 12:05:52 CEST
+Showing nodes accounting for 240.73s, 100% of 240.73s total
+Dropped 8 nodes (cum <= 1.20s)
+Showing top 20 nodes out of 30
+      flat  flat%   sum%        cum   cum%
+   102.21s 42.46% 42.46%    102.21s 42.46%  sync.(*Mutex).Lock /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/sync/mutex.go:46 (inline)
+    78.94s 32.79% 75.25%     78.94s 32.79%  runtime.chanrecv1 /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/chan.go:509
+    59.58s 24.75%   100%     59.58s 24.75%  sync.(*WaitGroup).Wait /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/sync/waitgroup.go:206
+         0     0%   100%     44.65s 18.55%  github.com/DataDog/dd-iast-go/internal/taint/request.(*Scope).Finish /private/tmp/ddiast-review/wt/perf-contention/internal/taint/request/scope.go:219
+         0     0%   100%    102.21s 42.46%  github.com/DataDog/dd-iast-go/internal/taint/request.Analysis.Finish /private/tmp/ddiast-review/wt/perf-contention/internal/taint/request/owner.go:270
+         0     0%   100%     12.72s  5.28%  github.com/DataDog/dd-iast-go/internal/taint/request.BenchmarkPCAdmissionMax16 /private/tmp/ddiast-review/wt/perf-contention/internal/taint/request/zz_perf_contention_test.go:39
+         0     0%   100%      7.49s  3.11%  github.com/DataDog/dd-iast-go/internal/taint/request.BenchmarkPCAdmissionMax2 /private/tmp/ddiast-review/wt/perf-contention/internal/taint/request/zz_perf_contention_test.go:40
+         0     0%   100%      7.72s  3.21%  github.com/DataDog/dd-iast-go/internal/taint/request.BenchmarkPCAdmissionMax64 /private/tmp/ddiast-review/wt/perf-contention/internal/taint/request/zz_perf_contention_test.go:38
+         0     0%   100%     18.87s  7.84%  github.com/DataDog/dd-iast-go/internal/taint/request.BenchmarkPCBeginRequestFinish /private/tmp/ddiast-review/wt/perf-contention/internal/taint/request/zz_perf_contention_test.go:52
+         0     0%   100%     44.65s 18.55%  github.com/DataDog/dd-iast-go/internal/taint/request.BenchmarkPCBeginRequestFinish.func2 /private/tmp/ddiast-review/wt/perf-contention/internal/taint/request/zz_perf_contention_test.go:74
+         0     0%   100%     12.78s  5.31%  github.com/DataDog/dd-iast-go/internal/taint/request.BenchmarkPCIntraRequestSourceVsVisit /private/tmp/ddiast-review/wt/perf-contention/internal/taint/request/zz_perf_contention_test.go:103
+         0     0%   100%     27.93s 11.60%  github.com/DataDog/dd-iast-go/internal/taint/request.pcAdmission /private/tmp/ddiast-review/wt/perf-contention/internal/taint/request/zz_perf_contention_test.go:19
+         0     0%   100%     57.56s 23.91%  github.com/DataDog/dd-iast-go/internal/taint/request.pcAdmission.func1 /private/tmp/ddiast-review/wt/perf-contention/internal/taint/request/zz_perf_contention_test.go:27
+         0     0%   100%    102.14s 42.43%  github.com/DataDog/dd-iast-go/internal/taint/store.(*Owner).Finish /private/tmp/ddiast-review/wt/perf-contention/internal/taint/store/owner.go:182
+         0     0%   100%     78.94s 32.79%  main.main _testmain.go:152
+         0     0%   100%     78.94s 32.79%  runtime.main /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/proc.go:290
+         0     0%   100%     78.45s 32.59%  testing.(*B).Run /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/testing/benchmark.go:868
+         0     0%   100%     59.58s 24.75%  testing.(*B).RunParallel /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/testing/benchmark.go:985
+         0     0%   100%    102.21s 42.46%  testing.(*B).RunParallel.func1 /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/testing/benchmark.go:982
+         0     0%   100%     72.10s 29.95%  testing.(*B).doBench /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/testing/benchmark.go:297

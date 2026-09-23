@@ -1,0 +1,35 @@
+Independent woven customer-program reproduction, 2026-09-23.
+Source: reviewpin.go, copied to the private module's reviewpin/main.go.
+No changes were made to the main checkout's Go code.
+
+cd /tmp/ddiast-review/wt/fx-light-deps-license-F1
+GOWORK=off GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 /usr/bin/time -l go tool orchestrion go build -o ./reviewpin/reviewpin ./reviewpin
+./reviewpin/reviewpin left right
+go version -m ./reviewpin/reviewpin
+
+Captured Go 1.26.6 output (combined command exit 0):
+      161.64 real       119.43 user       112.88 sys
+           434208768  maximum resident set size
+woven=true concat=leftright
+./reviewpin/reviewpin: go1.26.6
+	path	github.com/DataDog/dd-iast-go/reviewpin
+	dep	github.com/DataDog/orchestrion	v1.12.2-0.20260828141217-23afa71d6dcb	h1:ub7d3pLhYIhXyiK++iCvAy0wtHcIT5S5XO0PeFZUnwQ=
+
+The example also emitted Datadog tracer startup and a connection-refused
+diagnostic for absent localhost:8126; these did not prevent output or a
+successful exit. Peak RSS is 434,208,768 bytes, under the brief's 4 GB flag.
+
+cd /tmp/ddiast-review/wt/fx-light-deps-license-F1
+GOWORK=off GOTOOLCHAIN=go1.27.0 GOFLAGS=-p=4 /usr/bin/time -l go tool orchestrion go build -o ./reviewpin/reviewpin127 ./reviewpin
+
+Captured Go 1.27.0 output (command exit 1):
+# github.com/DataDog/dd-iast-go/reviewpin
+resolving woven dependency on github.com/DataDog/dd-iast-go/iast/encoding/json: -: # encoding/json
+$WORK/b072/orchestrion/src/encoding/json/<generated>:2: dec.r undefined (type *Decoder has no field or method r)
+$WORK/b072/orchestrion/src/encoding/json/<generated>:2: dec.d undefined (type *Decoder has no field or method d)
+$WORK/b072/orchestrion/src/encoding/json/<generated>:3: dec.d undefined (type *Decoder has no field or method d)
+exit status 2
+
+The Go 1.27.0 error is due to the Go 1.26-specific encoding/json.Decoder
+field access in iast/encoding/json/orchestrion.yml:40-43; it is not caused
+by the pinned commit's branch ancestry.

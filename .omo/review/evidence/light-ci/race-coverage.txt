@@ -1,0 +1,40 @@
+Review evidence: race-test coverage
+
+Source inspected: .github/workflows/ci.yml, test job. The woven test command
+selects `go tool orchestrion go test` only for the primary unit-test invocation.
+The subsequent race invocations are separate plain `go test` commands:
+
+  go test -race -shuffle=on ./.github
+  go test -race -count=1 -shuffle=on ./internal/taint/...
+
+Neither invokes `go tool orchestrion`; the first targets only CI tooling, and
+the second targets internal packages rather than woven application call sites.
+The explicit workflow line references are ci.yml:150-151.
+
+Commands run in the private copy `/tmp/ddiast-review/wt/light-ci`:
+
+  go test -race -shuffle=on ./.github
+  go test -race -count=1 -shuffle=on ./internal/taint/...
+
+Captured output:
+
+  exit=0
+  ok   github.com/DataDog/dd-iast-go/.github 5.957s
+  ok   github.com/DataDog/dd-iast-go/internal/taint/commandbridge 2.157s
+  ok   github.com/DataDog/dd-iast-go/internal/taint/evidence 1.649s
+  ok   github.com/DataDog/dd-iast-go/internal/taint/httpbridge 2.609s
+  ok   github.com/DataDog/dd-iast-go/internal/taint/iobridge 1.841s
+  ok   github.com/DataDog/dd-iast-go/internal/taint/jsonbridge 2.190s
+  ok   github.com/DataDog/dd-iast-go/internal/taint/operatorbridge 2.237s
+  ok   github.com/DataDog/dd-iast-go/internal/taint/propagation 40.099s
+  ok   github.com/DataDog/dd-iast-go/internal/taint/ranges 16.769s
+  ok   github.com/DataDog/dd-iast-go/internal/taint/redaction 3.318s
+  ok   github.com/DataDog/dd-iast-go/internal/taint/request 6.323s
+  ok   github.com/DataDog/dd-iast-go/internal/taint/scopebridge 2.827s
+  ok   github.com/DataDog/dd-iast-go/internal/taint/sqlbridge 3.063s
+  ok   github.com/DataDog/dd-iast-go/internal/taint/store 82.879s
+  ok   github.com/DataDog/dd-iast-go/internal/taint/urlbridge 3.517s
+  ok   github.com/DataDog/dd-iast-go/internal/taint/writerbridge 1.938s
+
+These passing commands confirm the current race targets build and pass; they do
+not establish race coverage of the Orchestrion-woven call sites.

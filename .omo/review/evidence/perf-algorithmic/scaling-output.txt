@@ -1,0 +1,70 @@
+Private-copy root: /tmp/ddiast-review/wt/perf-algorithmic
+Toolchain: GOTOOLCHAIN=go1.26.6
+Host: darwin/arm64, Apple M4 Max; up to 15 concurrent review agents.
+
+Command:
+GOTOOLCHAIN=go1.26.6 go test -mod=readonly -run "^$" -bench "^BenchmarkReviewCollectRepeatedSource$" -benchmem -benchtime=100ms -count=1 -cpu=1 -timeout 5m ./internal/taint/evidence
+BenchmarkReviewCollectRepeatedSource/ranges=8/sourceBytes=4096           1792      462871 ns/op      5173 B/op     9 allocs/op
+BenchmarkReviewCollectRepeatedSource/ranges=16/sourceBytes=8192           72     1566117 ns/op     10085 B/op     9 allocs/op
+BenchmarkReviewCollectRepeatedSource/ranges=32/sourceBytes=16384         100    10259389 ns/op     19845 B/op     9 allocs/op
+BenchmarkReviewCollectRepeatedSource/ranges=64/sourceBytes=32768          36    29140468 ns/op     39109 B/op     9 allocs/op
+PASS
+ok github.com/DataDog/dd-iast-go/internal/taint/evidence 4.368s
+Doubling ns/op ratios: 3.38, 6.55, 2.84. Setup validates one source and 2*n-1 parts in a 2*n-1-byte sink value.
+
+Command:
+GOTOOLCHAIN=go1.26.6 go test -mod=readonly -run "^$" -bench "^BenchmarkReviewSourceIndexCollisions$" -benchmem -benchtime=100ms -count=2 -cpu=1 -timeout 5m ./internal/taint/evidence
+BenchmarkReviewSourceIndexCollisions/distinct/32          19299      45540 ns/op      944 B/op    64 allocs/op
+BenchmarkReviewSourceIndexCollisions/distinct/32          10358      42038 ns/op      944 B/op    64 allocs/op
+BenchmarkReviewSourceIndexCollisions/colliding/32           266     694344 ns/op     1024 B/op    64 allocs/op
+BenchmarkReviewSourceIndexCollisions/colliding/32          6289     106911 ns/op     1024 B/op    64 allocs/op
+BenchmarkReviewSourceIndexCollisions/distinct/64          10000      63144 ns/op     1968 B/op   128 allocs/op
+BenchmarkReviewSourceIndexCollisions/distinct/64          10000     142770 ns/op     1968 B/op   128 allocs/op
+BenchmarkReviewSourceIndexCollisions/colliding/64          2744     362814 ns/op     2048 B/op   128 allocs/op
+BenchmarkReviewSourceIndexCollisions/colliding/64          5637     379680 ns/op     2048 B/op   128 allocs/op
+BenchmarkReviewSourceIndexCollisions/distinct/128           664     223736 ns/op     4016 B/op   256 allocs/op
+BenchmarkReviewSourceIndexCollisions/distinct/128          5164     232754 ns/op     4016 B/op   256 allocs/op
+BenchmarkReviewSourceIndexCollisions/colliding/128          100    1500446 ns/op     4096 B/op   256 allocs/op
+BenchmarkReviewSourceIndexCollisions/colliding/128          100    2597548 ns/op     4096 B/op   256 allocs/op
+PASS
+ok github.com/DataDog/dd-iast-go/internal/taint/evidence 21.203s
+64->128 colliding ns/op: 4.14x and 6.84x; colliding/distinct at 128: 6.71x and 11.16x.
+
+Command:
+GOTOOLCHAIN=go1.26.6 go test -mod=readonly -run "^$" -bench "^BenchmarkReviewSQLAndRedaction$" -benchmem -benchtime=150ms -count=2 -cpu=1 -timeout 8m ./internal/taint/redaction
+BenchmarkReviewSQLAndRedaction/sql/4096         1989      117696 ns/op     1680 B/op    21 allocs/op
+BenchmarkReviewSQLAndRedaction/sql/16384         522      862471 ns/op     1680 B/op    21 allocs/op
+BenchmarkReviewSQLAndRedaction/sql/32768         100     1731460 ns/op     1680 B/op    21 allocs/op
+BenchmarkReviewSQLAndRedaction/redact/4096      6896       52180 ns/op     4824 B/op     7 allocs/op
+BenchmarkReviewSQLAndRedaction/redact/16384     1466      212892 ns/op    17112 B/op     7 allocs/op
+BenchmarkReviewSQLAndRedaction/redact/32768      733      700048 ns/op    33496 B/op     7 allocs/op
+PASS
+ok github.com/DataDog/dd-iast-go/internal/taint/redaction 8.104s
+Timings are noisy on this shared machine; these bounded analyzer/redaction runs do not isolate a second super-linear defect.
+
+Command:
+GOTOOLCHAIN=go1.26.6 go test -mod=readonly -count=1 -timeout 7m -run "Test(StringWindowsPublishesAtMost32NonEmptyWindows|ReplaceStringHandlesEmptyPatternAndCoarseLimit|JoinStringCoarseFallbackIncludesSeparator|SnapshotMaxParts|CollectorDropsCompleteReportAtBounds|SensitiveIntervalsOverflowRedactsCompleteEvidence)$" ./internal/taint/propagation ./internal/taint/evidence ./internal/taint/redaction
+ok github.com/DataDog/dd-iast-go/internal/taint/propagation 0.578s
+ok github.com/DataDog/dd-iast-go/internal/taint/evidence 0.790s
+ok github.com/DataDog/dd-iast-go/internal/taint/redaction 0.674s
+
+Command:
+GOTOOLCHAIN=go1.26.6 go test -mod=readonly -run "^$" -bench "^BenchmarkReviewBuilderAndSplit$" -benchmem -benchtime=100ms -count=2 -cpu=1 -timeout 7m ./iast/propagation
+BenchmarkReviewBuilderAndSplit/builder/128          596     504832 ns/op      504 B/op     6 allocs/op
+BenchmarkReviewBuilderAndSplit/builder/128          100    1261076 ns/op      504 B/op     6 allocs/op
+BenchmarkReviewBuilderAndSplit/builder/256          171     797392 ns/op     1016 B/op     7 allocs/op
+BenchmarkReviewBuilderAndSplit/builder/256          384    1428234 ns/op     1016 B/op     7 allocs/op
+BenchmarkReviewBuilderAndSplit/builder/512          140    2005949 ns/op     3320 B/op     9 allocs/op
+BenchmarkReviewBuilderAndSplit/builder/512           64    2726549 ns/op     3320 B/op     9 allocs/op
+BenchmarkReviewBuilderAndSplit/builder/1024         100    2914304 ns/op     5368 B/op    10 allocs/op
+BenchmarkReviewBuilderAndSplit/builder/1024          64    2461043 ns/op     5368 B/op    10 allocs/op
+BenchmarkReviewBuilderAndSplit/builder/2048          30    5011604 ns/op    12536 B/op    12 allocs/op
+BenchmarkReviewBuilderAndSplit/builder/2048          14    9175908 ns/op    12536 B/op    12 allocs/op
+BenchmarkReviewBuilderAndSplit/split/128          10000      13984 ns/op     2304 B/op     1 allocs/op
+BenchmarkReviewBuilderAndSplit/split/256          10000      24950 ns/op     4864 B/op     1 allocs/op
+BenchmarkReviewBuilderAndSplit/split/512           2539      58051 ns/op     9472 B/op     1 allocs/op
+BenchmarkReviewBuilderAndSplit/split/1024           566     212363 ns/op    18432 B/op     1 allocs/op
+BenchmarkReviewBuilderAndSplit/split/2048          3775     148304 ns/op    40960 B/op     1 allocs/op
+PASS
+ok github.com/DataDog/dd-iast-go/iast/propagation 6.182s
+Writer and split are bounded in propagation and did not yield a reproducible quadratic trend (the shared host made split timing nonmonotonic).

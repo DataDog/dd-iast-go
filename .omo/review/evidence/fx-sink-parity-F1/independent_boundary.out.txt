@@ -1,0 +1,15 @@
+Command: cd /tmp/ddiast-review/wt/fx-sink-parity-F1 && GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 go test -timeout 5m -run '^TestIndependentSQLBoundaryEvidence$' -count=1 -v ./internal/taint/redaction
+=== RUN   TestIndependentSQLBoundaryEvidence
+    independent_boundary_test.go:99: encoding=json prefix=249 tainted_part={"source":0,"truncated":"right","value":"x"}
+    independent_boundary_test.go:99: encoding=msgpack prefix=249 tainted_part={"source":0,"truncated":"right","value":"x"}
+    independent_boundary_test.go:99: encoding=json prefix=250 tainted_part={"source":0,"truncated":"right"}
+    independent_boundary_test.go:104: encoding=json prefix=250 unredacted tainted part lacks schema-required value: {"source":0,"truncated":"right"}
+    independent_boundary_test.go:99: encoding=msgpack prefix=250 tainted_part={"source":0,"truncated":"right"}
+    independent_boundary_test.go:104: encoding=msgpack prefix=250 unredacted tainted part lacks schema-required value: {"source":0,"truncated":"right"}
+--- FAIL: TestIndependentSQLBoundaryEvidence (0.06s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/redaction	1.102s
+FAIL
+GO_TEST_EXIT=1
+
+Command exited with code 1

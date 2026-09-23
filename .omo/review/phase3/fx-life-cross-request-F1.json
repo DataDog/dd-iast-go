@@ -1,0 +1,13 @@
+[
+ {
+  "id": "life-cross-request-F1",
+  "verdict": "CONFIRMED",
+  "original_severity": "High",
+  "adjusted_severity": "High",
+  "reachable_default": true,
+  "documented_limitation": true,
+  "reason": "Independently reproduced 3/3 on Go 1.26.6 with a woven two-request app: A's io.ReadAll body slice, recycled while A is active, is refilled by B via append+strconv.AppendInt to the same length; string(buf) matches A's (ptr,len,KindBytes) root key, Lookup accepts the active foreign owner without a content check, and B's span reports SQL_INJECTION sourced from A's http.request.body. Different-length and A-finished controls are clean. README:43-46 documents stale ranges from unobserved append/copy writes but not cross-request attribution, which violates product rule 4. The trigger is narrow (the pool must recycle the io.ReadAll result, with an exact length match while A is live), so this sits at the low end of High. Go 1.27.0 is untestable because the woven testapp fails to build on the known encoding/json break.",
+  "evidence_path": ".omo/review/evidence/fx-life-cross-request-F1/run-go1.26.6-count3.log",
+  "repro_command": "cp .omo/review/evidence/fx-life-cross-request-F1/zz_fx_f1_*.go iast/integration/testapp/ && cd iast/integration/testapp && GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -count=3 -timeout 15m -run TestFxF1 -v ."
+ }
+]

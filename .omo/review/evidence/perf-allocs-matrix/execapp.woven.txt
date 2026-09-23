@@ -1,0 +1,8 @@
+goos: darwin
+goarch: arm64
+pkg: github.com/DataDog/dd-iast-go/testapps/os-exec
+cpu: Apple M4 Max
+BenchmarkCommandStartErrorInactive-16    	    2000	   2323464 ns/op	   21037 B/op	      28 allocs/op
+PASS
+ok  	github.com/DataDog/dd-iast-go/testapps/os-exec	5.402s
+?   	github.com/DataDog/dd-iast-go/testapps/os-exec/cmd/bootstrap	[no test files]

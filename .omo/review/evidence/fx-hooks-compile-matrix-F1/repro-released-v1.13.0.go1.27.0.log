@@ -1,0 +1,7 @@
+$ cd /tmp/ddiast-review/wt/fx-hooks-compile-matrix-F1/app && export GOFLAGS=-p=4 GOPROXY=off GOTOOLCHAIN=local; go version; timeout 600 go tool orchestrion go build -o /dev/null . ; echo EXIT=$?
+[rc=0]
+go version go1.27.0 darwin/arm64
+EXIT=1
+loading injector configuration: in "github.com/DataDog/dd-iast-go" imported from "/private/tmp/ddiast-review/wt/fx-hooks-compile-matrix-F1/app/orchestrion.tool.go": in "github.com/DataDog/dd-iast-go/iast/propagation" imported from "/tmp/ddiast-review/wt/fx-hooks-compile-matrix-F1/ddiast/orchestrion.tool.go": yaml.Decode "/tmp/ddiast-review/wt/fx-hooks-compile-matrix-F1/ddiast/iast/propagation/orchestrion.yml": unknown injection point type "string-concat"
+go: error obtaining buildID for go tool compile: exit status 255
+exit status 1

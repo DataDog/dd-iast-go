@@ -1,0 +1,47 @@
+File: http0.test
+Type: alloc_objects
+Time: 2026-09-23 15:46:34 CEST
+Showing nodes accounting for 1648474, 85.93% of 1918410 total
+Dropped 121 nodes (cum <= 9592)
+Showing top 40 nodes out of 142
+      flat  flat%   sum%        cum   cum%
+    163842  8.54%  8.54%     163842  8.54%  github.com/DataDog/dd-trace-go/v2/ddtrace/tracer.getPropagators
+    154753  8.07% 16.61%     154753  8.07%  github.com/DataDog/dd-trace-go/v2/ddtrace/tracer.(*Span).AsMap-range1 (inline)
+    152474  7.95% 24.56%     307227 16.01%  github.com/DataDog/dd-trace-go/v2/ddtrace/tracer.(*Span).AsMap
+    101284  5.28% 29.83%     101284  5.28%  net/http.copyValues (inline)
+     84158  4.39% 34.22%     106003  5.53%  net/textproto.readMIMEHeader
+     76461  3.99% 38.21%      76461  3.99%  github.com/DataDog/dd-trace-go/v2/ddtrace/tracer.Tag (inline)
+     65537  3.42% 41.62%      65537  3.42%  github.com/DataDog/dd-trace-go/contrib/net/http/v2/internal/orchestrion.resourceNamer
+     54613  2.85% 44.47%      54613  2.85%  net/textproto.canonicalMIMEHeaderKey
+     43196  2.25% 46.72%      43196  2.25%  net/url.parseQuery
+     40960  2.14% 48.86%      41188  2.15%  fmt.Sprintf
+     40960  2.14% 50.99%      40960  2.14%  github.com/DataDog/dd-trace-go/v2/instrumentation/httptrace.urlFromRequest
+     38230  1.99% 52.98%      38230  1.99%  strings.genSplit
+     34227  1.78% 54.77%      34227  1.78%  github.com/DataDog/dd-trace-go/v2/ddtrace/tracer.newTrace (inline)
+     32768  1.71% 56.48%      32768  1.71%  context.WithCancelCause
+     32768  1.71% 58.19%      54614  2.85%  github.com/DataDog/dd-trace-go/v2/ddtrace/tracer.ResourceName (inline)
+     32768  1.71% 59.89%      32768  1.71%  github.com/DataDog/dd-trace-go/v2/internal/orchestrion.WrapContext
+     32768  1.71% 61.60%      32768  1.71%  net.JoinHostPort
+     32768  1.71% 63.31%    1208645 63.00%  net/http.(*conn).serve
+     30286  1.58% 64.89%      30286  1.58%  net/http.Header.Clone
+     26216  1.37% 66.25%      26216  1.37%  context.withCancel (inline)
+     25488  1.33% 67.58%      41872  2.18%  github.com/DataDog/dd-trace-go/v2/instrumentation/httptrace.startRequestSpan.func3
+     25322  1.32% 68.90%    1035298 53.97%  github.com/DataDog/dd-trace-go/contrib/net/http/v2/internal/wrap.Handler.func1
+     23528  1.23% 70.13%      23528  1.23%  github.com/DataDog/dd-trace-go/v2/ddtrace/tracer.(*Span).setMetricLocked
+     21846  1.14% 71.27%      21846  1.14%  net/textproto.NewReader (inline)
+     21845  1.14% 72.41%      21845  1.14%  github.com/DataDog/dd-trace-go/v2/instrumentation/httptrace.HeaderTagsFromRequest
+     21845  1.14% 73.55%      21845  1.14%  github.com/DataDog/dd-trace-go/v2/instrumentation/httptrace.newResponseWriter (inline)
+     20027  1.04% 74.59%      25489  1.33%  github.com/DataDog/dd-trace-go/v2/ddtrace/tracer.(*trace).copyOnWriteSet
+     20026  1.04% 75.63%      20026  1.04%  github.com/DataDog/dd-trace-go/v2/ddtrace/tracer/internal.(*SpanMeta).initMap (inline)
+     19861  1.04% 76.67%      19861  1.04%  net/http.(*Transport).getConn
+     18726  0.98% 77.65%     182568  9.52%  github.com/DataDog/dd-trace-go/v2/ddtrace/tracer.NewPropagator
+     17877  0.93% 78.58%      50645  2.64%  net/textproto.MIMEHeader.Set (inline)
+     16386  0.85% 79.43%      16386  0.85%  net/http.newTransferWriter
+     16384  0.85% 80.29%      16384  0.85%  encoding/hex.EncodeToString
+     16384  0.85% 81.14%     585765 30.53%  github.com/DataDog/dd-trace-go/v2/instrumentation/httptrace.BeforeHandle
+     16384  0.85% 81.99%      16384  0.85%  net/http.readTransfer
+     16384  0.85% 82.85%      16384  0.85%  net/url.(*URL).RequestURI
+     16384  0.85% 83.70%      16384  0.85%  strings.NewReader
+     14746  0.77% 84.47%     483092 25.18%  github.com/DataDog/dd-trace-go/v2/instrumentation/httptrace.startRequestSpan
+     14339  0.75% 85.22%      31817  1.66%  github.com/DataDog/dd-trace-go/v2/ddtrace/tracer.newSpanContext
+     13655  0.71% 85.93%      26399  1.38%  github.com/DataDog/dd-trace-go/v2/ddtrace/tracer.(*propagator).extractTextMap

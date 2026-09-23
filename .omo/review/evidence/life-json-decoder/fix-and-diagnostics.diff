@@ -1,0 +1,66 @@
+--- /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/internal/taint/jsonbridge/bridge.go	2026-09-23 11:18:59
++++ /tmp/ddiast-review/wt/life-json-decoder/internal/taint/jsonbridge/bridge.go	2026-09-23 14:10:50
+@@ -112,12 +112,15 @@
+ 	slot.document.Store(nil)
+ 	reader := slot.reader.Load()
+ 	if reader == nil {
++		ReviewDocNoReader.Add(1)
+ 		return
+ 	}
+ 	clone := documentSlow(callback, reader.value, data)
+ 	if len(clone) != len(data) {
++		ReviewDocNoClone.Add(1)
+ 		return
+ 	}
++	ReviewDocStored.Add(1)
+ 	slot.document.Store(&document{original: slicePointer(data), length: uint32(len(data)), clone: clone})
+ }
+ 
+@@ -155,9 +158,21 @@
+ 	if slot != nil {
+ 		quoted = slot.quoted.Swap(nil)
+ 	}
++	ReviewLitEnter.Add(1)
++	if slot == nil {
++		ReviewLitNoSlot.Add(1)
++	}
+ 	if !active() || !hasValues() {
++		ReviewLitInactive.Add(1)
+ 		return
+ 	}
++	if slot != nil {
++		if m := slot.document.Load(); m == nil {
++			ReviewLitNoDoc.Add(1)
++		} else if m.original != slicePointer(original) || m.length != uint32(len(original)) {
++			ReviewLitDocMismatch.Add(1)
++		}
++	}
+ 	if fromQuoted && quoted != nil && quoted.original == slicePointer(original) && quoted.documentLength == uint32(len(original)) {
+ 		end := uint64(quoted.offset) + uint64(quoted.length)
+ 		if end <= uint64(len(original)) {
+@@ -171,6 +186,7 @@
+ 			if offset <= uintptr(len(mapped.clone)) && uintptr(len(item)) <= uintptr(len(mapped.clone))-offset {
+ 				document = mapped.clone
+ 				literal = mapped.clone[offset : offset+uintptr(len(item))]
++				ReviewLitMapped.Add(1)
+ 			}
+ 		}
+ 	}
+@@ -207,13 +223,13 @@
+ 	if pointer == 0 {
+ 		return nil
+ 	}
++	if slot := findDecoderState(pointer); slot != nil {
++		slot.depth.Add(1)
++		return slot
++	}
+ 	start := int((pointer >> 3) % uintptr(len(decoderStates)))
+ 	for probe := 0; probe < 4; probe++ {
+ 		slot := &decoderStates[(start+probe)%len(decoderStates)]
+-		if slot.pointer.Load() == pointer {
+-			slot.depth.Add(1)
+-			return slot
+-		}
+ 		if slot.pointer.CompareAndSwap(0, 1) {
+ 			slot.reader.Store(nil)
+ 			slot.document.Store(nil)

@@ -1,0 +1,5 @@
+span[6] evidence: {"valueParts": [{"value": "SELECT "}, {"pattern": "abcdefghijklmnopqrstuvwxyzAB", "redacted": true, "source": 8}, {"value": " FROM "}, {"value": "/h", "source": 9}, {"value": " -- "}, {"value": "/h?password=hunter2SECRETPW&x=1", "source": 10}]}
+span[6] source: {"origin": "http.request.uri", "value": "/h?password=hunter2SECRETPW&x=1"}
+span[50] evidence: {"valueParts": [{"value": "SELECT * FROM Users WHERE email = '"}, {"pattern": "abcdefghijkl", "redacted": true, "source": 0}, {"value": "' AND password = '81dc9bdb52d04dc20036dbd8313ed055' AND deletedAt IS NULL"}]}
+span[50] evidence: {"valueParts": [{"value": "SELECT * FROM Users WHERE id = "}, {"pattern": "abcdefghijkl", "redacted": true, "source": 0}, {"pattern": "**********", "redacted": true}, {"value": "'tok_live_SECRETBLOCK'"}, {"pattern": "***", "redacted": true}]}
+span[51] evidence: {"valueParts": [{"value": "SELECT * FROM Users WHERE id = "}, {"pattern": "abcdefgh", "redacted": true, "source": 0}, {"value": " /* token='tok_live_SECRETBLOCK' */"}]}

@@ -1,0 +1,32 @@
+File: memprobe-woven
+Type: alloc_space
+Time: 2026-09-23 15:19:11 CEST
+Showing nodes accounting for 1541.12kB, 39.38% of 3913.67kB total
+Dropped 98 nodes (cum <= 19.57kB)
+Showing top 25 nodes out of 66
+      flat  flat%   sum%        cum   cum%
+ 1086.75kB 27.77% 27.77%  1086.75kB 27.77%  github.com/DataDog/dd-iast-go/internal/spans.BindScope.func1
+     240kB  6.13% 33.90%      240kB  6.13%  github.com/DataDog/dd-trace-go/v2/ddtrace/tracer.newConcentrator
+     136kB  3.47% 37.38%      136kB  3.47%  github.com/DataDog/dd-trace-go/v2/internal/appsec/apisec/internal/timed.NewLRU
+   20.12kB  0.51% 37.89%    35.22kB   0.9%  github.com/DataDog/dd-iast-go/internal/taint/request.begin
+   15.09kB  0.39% 38.28%    15.09kB  0.39%  context.WithValue
+   13.70kB  0.35% 38.63%    13.70kB  0.35%  runtime.mallocgc
+   13.38kB  0.34% 38.97%    18.77kB  0.48%  encoding/json.typeFields
+   10.06kB  0.26% 39.22%    10.06kB  0.26%  github.com/DataDog/dd-trace-go/v2/internal/orchestrion.WrapContext (inline)
+    5.03kB  0.13% 39.35%  1091.78kB 27.90%  github.com/puzpuzpuz/xsync/v4.(*Map[go.shape.struct { weak._ [0]*github.com/DataDog/dd-trace-go/v2/ddtrace/tracer.Span; weak.u unsafe.Pointer },go.shape.*uint8]).doCompute
+    0.55kB 0.014% 39.37%    19.08kB  0.49%  encoding/json.typeEncoder
+    0.19kB 0.0048% 39.37%    19.08kB  0.49%  encoding/json.cachedTypeFields
+    0.19kB 0.0048% 39.38%    19.08kB  0.49%  encoding/json.newStructEncoder (inline)
+    0.06kB 0.0016% 39.38%    19.08kB  0.49%  encoding/json.newPtrEncoder
+         0     0% 39.38%    19.08kB  0.49%  encoding/json.(*Encoder).Encode
+         0     0% 39.38%    19.08kB  0.49%  encoding/json.(*encodeState).marshal
+         0     0% 39.38%    19.08kB  0.49%  encoding/json.(*encodeState).reflectValue
+         0     0% 39.38%    19.08kB  0.49%  encoding/json.newTypeEncoder
+         0     0% 39.38%    19.08kB  0.49%  encoding/json.typeEncoder.OnceValue[go.shape.func].func3 (inline)
+         0     0% 39.38%    19.08kB  0.49%  encoding/json.typeEncoder.func1
+         0     0% 39.38%    19.08kB  0.49%  encoding/json.typeEncoder.typeEncoder.OnceValue[go.shape.func].func3.func4
+         0     0% 39.38%    19.08kB  0.49%  encoding/json.valueEncoder
+         0     0% 39.38%  1101.84kB 28.15%  github.com/DataDog/dd-iast-go/iast/net/http.BindStartSpan
+         0     0% 39.38%  1096.81kB 28.03%  github.com/DataDog/dd-iast-go/internal/spans.BindScope
+         0     0% 39.38%  1106.89kB 28.28%  github.com/DataDog/dd-iast-go/internal/spans.BindScopeFromContext
+         0     0% 39.38%    35.22kB   0.9%  github.com/DataDog/dd-iast-go/internal/taint/request.Begin

@@ -1,0 +1,21 @@
+Private copy: /tmp/ddiast-review/wt/hooks-yml-strings
+Go toolchain: GOTOOLCHAIN=go1.26.6
+Place zz_review_strings.go in iast/internal/propagationtest and
+zz_review_strings_test.go in iast/propagation.
+
+Command: go test -timeout 15m -count=1 -run TestReviewReplacerReceiverAndArgumentEvaluateOnce -v ./iast/propagation
+=== RUN   TestReviewReplacerReceiverAndArgumentEvaluateOnce
+    zz_review_strings_test.go:63: requires woven application calls
+--- SKIP: TestReviewReplacerReceiverAndArgumentEvaluateOnce (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/iast/propagation	0.485s
+
+Command: go tool orchestrion go test -timeout 15m -count=1 -run TestReviewReplacerReceiverAndArgumentEvaluateOnce -v ./iast/propagation
+# github.com/DataDog/dd-iast-go/iast/internal/propagationtest
+iast/internal/propagationtest/zz_review_strings.go:42: (*strings.Replacer) (type) is not an expression
+iast/internal/propagationtest/zz_review_strings.go:42: cannot use strings.NewReplacer(",", ";") (value of type *strings.Replacer) as string value in argument to __orchestrion_iastpropagation.ReplacerReplace
+iast/internal/propagationtest/zz_review_strings.go:47: (*strings.Builder) (type) is not an expression
+iast/internal/propagationtest/zz_review_strings.go:47: cannot use &builder (value of type *strings.Builder) as string value in argument to __orchestrion_iastpropagation.BuilderWriteString
+exit status 2
+FAIL	github.com/DataDog/dd-iast-go/iast/propagation [build failed]
+FAIL

@@ -1,0 +1,9 @@
+$ cd /tmp/ddiast-review/wt/fx-sink-evidence-F1 && GOTOOLCHAIN=go1.26.6 go version
+go version go1.26.6 darwin/arm64
+
+$ cd /tmp/ddiast-review/wt/fx-sink-evidence-F1 && GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go test -run '^TestFXSinkEvidenceFifthOwnerOmission$' -count=1 -timeout=5m -v ./internal/vulnerability
+=== RUN   TestFXSinkEvidenceFifthOwnerOmission
+    zz_fx_sink_evidence_f1_test.go:105: default_max_concurrent=2 admitted=2 third=capacity_dropped; configured_max_concurrent=5 admitted=5; sources=5 snapshot_owners=4 fifth_owner_retained=false report_committed=true fifth_owner_vulnerabilities=0 orphan_spans=1
+--- PASS: TestFXSinkEvidenceFifthOwnerOmission (0.05s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/vulnerability	0.928s

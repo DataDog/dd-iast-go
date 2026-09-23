@@ -1,0 +1,23 @@
+appsec-go-test-app.plain-126                  exit=0    time_maxrss=  0.59GB tree_peak=  0.88GB top=0.57GB compile modernc.org/sqlite/lib
+appsec-go-test-app.woven-iast                 exit=0    time_maxrss=  1.29GB tree_peak=  2.36GB top=1.29GB orchestrion-toolexec/compile modernc.org/sqlite/lib
+go-sqlite3.plain-126                          exit=0    time_maxrss=  0.81GB tree_peak=  0.74GB top=0.69GB clang 
+go-sqlite3.woven-iast                         exit=0    time_maxrss=  0.86GB tree_peak=  1.17GB top=0.86GB compile github.com/nats-io/nats-server/v2/server
+idioms.woven-iast                             exit=1    time_maxrss=  0.88GB tree_peak=  0.96GB top=0.65GB compile github.com/nats-io/nats-server/v2/server
+nho_net-http-orchestrion.plain-126            exit=0    time_maxrss=  0.79GB tree_peak=  0.96GB top=0.63GB link 
+nho_net-http-orchestrion.woven-iast           exit=0    time_maxrss=  0.90GB tree_peak=  1.37GB top=0.89GB compile github.com/nats-io/nats-server/v2/server
+overhead.plain-126                            exit=0    time_maxrss=  0.31GB tree_peak=  0.31GB top=0.28GB compile runtime
+overhead.woven-iast                           exit=0    time_maxrss=  0.92GB tree_peak=  1.08GB top=0.72GB compile github.com/nats-io/nats-server/v2/server
+playground-gin.plain-126                      exit=0    time_maxrss=  1.03GB tree_peak=  1.03GB top=0.96GB compile github.com/ugorji/go/codec
+playground-gin.woven-iast                     exit=0    time_maxrss=  1.33GB tree_peak=  2.12GB top=1.31GB compile github.com/ugorji/go/codec
+samber-lo.plain-126                           exit=0    time_maxrss=  0.31GB tree_peak=  0.27GB top=0.24GB compile runtime
+samber-lo.woven-iast-127                      exit=1    time_maxrss=  0.83GB tree_peak=  0.96GB top=0.77GB compile github.com/nats-io/nats-server/v2/server
+samber-lo.woven-iast                          exit=0    time_maxrss=  0.90GB tree_peak=  1.02GB top=0.84GB compile github.com/nats-io/nats-server/v2/server
+st-golang-app.plain-126                       exit=0    time_maxrss=  0.80GB tree_peak=  3.93GB top=0.79GB (clang) 
+st-golang-app.woven-iast-127                  exit=1    time_maxrss=  0.84GB tree_peak=  1.21GB top=0.72GB compile github.com/nats-io/nats-server/v2/server
+st-golang-app.woven-iast                      exit=0    time_maxrss=  0.90GB tree_peak=  4.35GB top=0.75GB compile github.com/nats-io/nats-server/v2/server
+x-exp.plain-126                               exit=0    time_maxrss=  0.31GB tree_peak=  0.48GB top=0.14GB compile runtime
+x-exp.plain-127                               exit=0    time_maxrss=  0.27GB tree_peak=  0.49GB top=0.13GB (compile) 
+x-exp.woven-iast-127-nojsonv2                 exit=0    time_maxrss=  0.83GB tree_peak=  2.54GB top=0.74GB compile github.com/nats-io/nats-server/v2/server
+x-exp.woven-iast-127-rerun                    exit=137  time_maxrss=   nanGB tree_peak= 22.33GB top=22.23GB orchestrion:go build 
+x-exp.woven-iast-127                          exit=1    time_maxrss= 17.04GB tree_peak= 17.13GB top=17.04GB orchestrion:go build 
+x-exp.woven-iast                              exit=0    time_maxrss=  0.86GB tree_peak=  3.20GB top=0.81GB compile github.com/nats-io/nats-server/v2/server

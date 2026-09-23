@@ -1,0 +1,10 @@
+revision=2e23b4614320defd0d32177a69888dcab73f4d11
+go_version=go version go1.26.6 darwin/arm64
+goos=darwin
+goarch=arm64
+cpu_count=16
+count=10
+benchtime=500ms
+cpu=1
+bench=.
+sampling=100

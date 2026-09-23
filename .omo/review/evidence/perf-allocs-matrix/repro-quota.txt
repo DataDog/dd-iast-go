@@ -1,0 +1,5 @@
+=== RUN   TestReproWeakHashQuotaDiscardsWork
+    zz_repro_quota_test.go:31: span "repro.request" iast.enabled=1 payload_len=360 WEAK_HASH_count=1 payload={"vulnerabilities":[{"type":"WEAK_HASH","hash":418139936,"evidence":{"value":"MD5"},"location":{"spanId":8170579624922510662,"path":"/tmp/ddiast-review/wt/perf-allocs-matrix/benchmarks/overhead/zz_repro_quota_test.go","line":42,"method":"github.com/DataDog/dd-iast-go/benchmarks/overhead_test.hashManyTimes","stackId":"3da7be8b-caa5-47ed-97cd-a9be2b6b8844"}}]}
+--- PASS: TestReproWeakHashQuotaDiscardsWork (0.02s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/benchmarks/overhead	0.756s

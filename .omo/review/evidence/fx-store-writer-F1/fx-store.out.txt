@@ -1,0 +1,15 @@
+=== RUN   TestFxF1UnrelatedLookupDirtiesCriticalSectionOwner
+    zz_fx_f1_store_test.go:49: after unrelated lookup while B holds its writer critical section: B.writerDirty=true
+    zz_fx_f1_store_test.go:58: B.SnapshotWriter after the unrelated lookup: ok=false charged=0 writerCount=0
+    zz_fx_f1_store_test.go:61: BUG: unrelated writer lookup for receiver 0x3340e9b1a008 dirtied B's owner (writerDirty=true) although no pointer or backing of B matched
+    zz_fx_f1_store_test.go:64: BUG: B lost its entire tracked builder state (snapshot=false charged=0) because of request A's unrelated writer lookup
+--- FAIL: TestFxF1UnrelatedLookupDirtiesCriticalSectionOwner (0.01s)
+=== RUN   TestFxF1ConcurrentUnrelatedLookupWipeRate
+    zz_fx_f1_store_test.go:94: FX-F1 store: ops=20000 B-update-losses=7500
+    zz_fx_f1_store_test.go:96: BUG: B lost writer state on 7500/20000 updates because of A's unrelated lookups
+--- FAIL: TestFxF1ConcurrentUnrelatedLookupWipeRate (0.01s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/store	0.554s
+FAIL
+
+---STDERR---

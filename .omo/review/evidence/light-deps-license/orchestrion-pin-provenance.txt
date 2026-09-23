@@ -1,0 +1,14 @@
+Command:
+git -C /Users/eliott.bouhana/go/src/github.com/DataDog/orchestrion show -s --format='%H%n%P%n%s' 23afa71d6dcb
+git -C /Users/eliott.bouhana/go/src/github.com/DataDog/orchestrion show-ref refs/remotes/origin/main refs/remotes/origin/romain.marcadier/iast-operator-join-points
+git -C /Users/eliott.bouhana/go/src/github.com/DataDog/orchestrion merge-base --is-ancestor 23afa71d6dcb origin/main; printf 'ancestor_exit=%s\n' $?
+
+Captured output:
+23afa71d6dcb13cc221c6461745229779e7674b4
+c4d7471de15fba9824eebbb15ee717eb649d2a79
+fix(join): exclude noninteger slice constants
+5c24783fcd76f00cd1ff21c418a6662785d6c811 refs/remotes/origin/main
+23afa71d6dcb13cc221c6461745229779e7674b4 refs/remotes/origin/romain.marcadier/iast-operator-join-points
+ancestor_exit=1
+
+Interpretation: the exact revision pinned as Orchestrion v1.12.2-0.20260828141217-23afa71d6dcb exists on the named remote topic branch and is not an ancestor of origin/main in this clone.

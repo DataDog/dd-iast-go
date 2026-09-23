@@ -1,0 +1,13 @@
+=== RUN   TestFXTruncationBoundaryWireParts
+CASE prefix=250 query_len=254 sort_tainted=true query_tainted=true
+CASE prefix=250 payload_len=749 tail=ethod":"github.com/DataDog/dd-iast-go/testapps/integration_test.fxRawSpanPayload.func1","stackId":"74ecd64b-4e78-450a-b2d9-beb90ffda500"}}]}
+CASE prefix=249 query_len=253 sort_tainted=true query_tainted=true
+CASE prefix=249 payload_len=760 tail=ethod":"github.com/DataDog/dd-iast-go/testapps/integration_test.fxRawSpanPayload.func1","stackId":"2cf4937a-9635-4c19-9ca0-f9879f7dad58"}}]}
+CASE prefix=120 query_len=124 sort_tainted=true query_tainted=true
+CASE prefix=120 payload_len=614 tail=ethod":"github.com/DataDog/dd-iast-go/testapps/integration_test.fxRawSpanPayload.func1","stackId":"3686c538-d5f1-4485-abc7-6bc8ad1328cd"}}]}
+--- PASS: TestFXTruncationBoundaryWireParts (0.03s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/testapps/integration	0.567s
+       33.61 real         4.84 user         8.48 sys
+EXIT=0
+           367165440  maximum resident set size

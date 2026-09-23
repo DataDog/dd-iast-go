@@ -1,0 +1,24 @@
+[
+  {
+    "id": "sink-redaction-sql-cmd-F1",
+    "severity": "Critical",
+    "category": "redaction",
+    "location": "internal/taint/redaction/sql.go:27-42,108-156",
+    "title": "Oracle q-quote pre-pass can leak a later SQL literal",
+    "claim": "The context-free Oracle q-quote pre-pass removes bytes that can be ordinary quote boundaries in another lexical interpretation, causing a later SQL literal to be omitted from sensitive intervals and its tainted source to be emitted raw.",
+    "evidence_path": ".omo/review/evidence/sink-redaction-sql-cmd/malformed_oracle_quote.out.txt",
+    "repro_command": "cd /tmp/ddiast-review/wt/sink-redaction-sql-cmd && env GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 go test -count=1 -timeout=15m ./internal/taint/redaction -run '^TestReviewMalformedLiteralContainingOracleQuoteDoesNotExposeSuffix$'",
+    "needs_repro": false
+  },
+  {
+    "id": "sink-redaction-sql-cmd-F2",
+    "severity": "Medium",
+    "category": "test-gap",
+    "location": "internal/taint/redaction/fuzz_test.go:34-68",
+    "title": "SQL fuzz oracle repeats the pre-pass it is meant to test",
+    "claim": "The fuzz oracle partitions the query with scanOracleQuotes before checking coverage, so it cannot detect literals lost by that same destructive partitioning.",
+    "evidence_path": null,
+    "repro_command": null,
+    "needs_repro": true
+  }
+]

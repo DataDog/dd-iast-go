@@ -1,0 +1,45 @@
+$ cd <seam copy> && GOTOOLCHAIN=go1.26.6 go test -race -run TestReviewSeam -count=1 -v ./internal/taint/store/
+
+=== RUN   TestReviewSeamStaleHandleBindsIntoReusedSlot
+    zz_review_seam_test.go:21: stale_gen=1 fresh_gen=2 fresh_index=0 bind_returned=true
+    zz_review_seam_test.go:25: LookupObject ref[0]: index=0 generation=2 kind=2
+    zz_review_seam_test.go:28: finished request's handle bound its object into the next request (gen 2)
+--- FAIL: TestReviewSeamStaleHandleBindsIntoReusedSlot (0.00s)
+=== RUN   TestReviewSeamStaleHandleWriterStateIntoReusedSlot
+    zz_review_seam_test.go:46: stale_gen=1 fresh_gen=2 update_returned=true writer_refs=1 charged_fresh=8
+    zz_review_seam_test.go:53: fresh request (gen 2) now reports writer provenance: [{Start:0 Length:4 SourceID:7 Marks:0}]
+    zz_review_seam_test.go:54: finished request's writer provenance (source 7 of A) became request C's provenance
+--- FAIL: TestReviewSeamStaleHandleWriterStateIntoReusedSlot (0.00s)
+=== RUN   TestReviewSeamControlSequentialReuse
+    zz_review_seam_test.go:71: control: stale bind rejected, LookupObject=0
+--- PASS: TestReviewSeamControlSequentialReuse (0.00s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/store	0.363s
+FAIL
+
+
+# Seam diff (review-only scheduling hook, same load order as original):
+--- /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/internal/taint/store/owner.go	2026-09-23 11:18:59
++++ /tmp/ddiast-review/wt/store-concurrency/seam/internal/taint/store/owner.go	2026-09-23 15:02:47
+@@ -124,8 +124,20 @@
+ 	return snapshotDrops(&o.owner.drops)
+ }
+ 
++// reviewAliveHook is a REVIEW-ONLY seam that runs between the two loads that
++// the original expression performs in the same order.
++var reviewAliveHook func()
++
+ func (o *Owner) alive() bool {
+-	return !o.Disabled() && o.gen == o.owner.generation.Load() && ownerState(o.owner.state.Load()) == stateActive
++	if o.Disabled() {
++		return false
++	}
++	generationMatches := o.gen == o.owner.generation.Load()
++	if hook := reviewAliveHook; hook != nil {
++		reviewAliveHook = nil
++		hook()
++	}
++	return generationMatches && ownerState(o.owner.state.Load()) == stateActive
+ }
+ 
+ func (o *Owner) beginWrite() bool {

@@ -1,0 +1,10 @@
+# cwd=/tmp/ddiast-review/wt/fx-life-lazy-reader-F1
+# GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 go test -race -timeout 10m -count=1 -run 'TestFx' -v ./iast/net/http
+=== RUN   TestFxRepeatedMultipartParseFanOut
+    zz_fx_repeated_parse_race_test.go:56: WithOrchestrion=false field tainted=false
+--- PASS: TestFxRepeatedMultipartParseFanOut (0.00s)
+=== RUN   TestFxRepeatedParseFormFanOut
+    zz_fx_repeated_parse_race_test.go:56: WithOrchestrion=false field tainted=false
+--- PASS: TestFxRepeatedParseFormFanOut (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/iast/net/http	1.659s

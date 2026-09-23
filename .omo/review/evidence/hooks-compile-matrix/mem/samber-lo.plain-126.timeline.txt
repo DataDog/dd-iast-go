@@ -1,0 +1,3 @@
+0.1s tree=35MB top=[(29, ('go', '')), (3, ('(compile)', '')), (1, ('timeout', ''))]
+1.2s tree=279MB top=[(246, ('compile', 'runtime')), (30, ('go', '')), (1, ('timeout', ''))]
+2.2s tree=147MB top=[(114, ('(compile)', '')), (30, ('go', '')), (1, ('timeout', ''))]

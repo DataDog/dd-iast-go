@@ -1,0 +1,15 @@
+# command: cd /tmp/ddiast-review/wt/fx-prop-bytes-exact-F1 && GOMAXPROCS=4 GOTOOLCHAIN=go1.26.6 go test -p=4 -count=1 -timeout=3m -run '^TestFx' -v ./internal/taint/propagation
+# exit: 1
+=== RUN   TestFxResliceBeyondLen
+    zz_fx_reslice_test.go:38: control short[1:3]  short=[{1 2 9 4}] out="EL" len=2 cap=7 byteRanges=[{0 2 9 4}] stringRanges=[{0 2 9 4}]
+    zz_fx_reslice_test.go:38: short[:5]           short=[{1 2 9 4}] out="SELEC" len=5 cap=8 byteRanges=[] stringRanges=[]
+    zz_fx_reslice_test.go:38: short[1:6]          short=[{1 2 9 4}] out="ELECT" len=5 cap=7 byteRanges=[] stringRanges=[]
+    zz_fx_reslice_test.go:38: short[1:6:7]        short=[{1 2 9 4}] out="ELECT" len=5 cap=6 byteRanges=[] stringRanges=[]
+    zz_fx_reslice_test.go:38: short[:8]           short=[{1 2 9 4}] out="SELECT-x" len=8 cap=8 byteRanges=[{1 6 9 4}] stringRanges=[{1 6 9 4}]
+    zz_fx_reslice_test.go:48: token start "SE" ranges=[{0 2 10 0}]
+    zz_fx_reslice_test.go:54: grown token "SELECT" ranges=[]
+    zz_fx_reslice_test.go:59: FX-REPRO: 4 reslice(s) within capacity lost all provenance
+--- FAIL: TestFxResliceBeyondLen (0.00s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/propagation	0.367s
+FAIL

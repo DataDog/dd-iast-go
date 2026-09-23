@@ -1,0 +1,738 @@
+[
+ {
+  "part": "store",
+  "id": "store-value",
+  "category": "deep-low",
+  "task": "Review internal/taint/store/value.go (value handles, identity, taint lookup for strings/[]byte) for correctness and crash safety.",
+  "scope": "Primary read scope: internal/taint/store/value.go and its tests. You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "How are values identified (pointer/len/cap, uintptr)? Can two distinct live values collide? Can a handle outlive its data? Every index/slice op bounds-safe? Zero-length strings/slices, nil slices, string literals in rodata, substrings sharing backing arrays. Every suspected Critical/High issue MUST be proven with a reproducer written in your private copy (a Go test in the relevant package, or a small program) and its captured output; copy it to your evidence dir."
+ },
+ {
+  "part": "store",
+  "id": "store-root",
+  "category": "deep-low",
+  "task": "Review internal/taint/store/root.go (managed roots) for correctness, bounds, and lifecycle.",
+  "scope": "Primary read scope: internal/taint/store/root.go. You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "Root creation/adoption/invalidation; generation counters and ABA; overflow paths; memory charges accurate and always released; what happens at every limit. Every suspected Critical/High issue MUST be proven with a reproducer written in your private copy (a Go test in the relevant package, or a small program) and its captured output; copy it to your evidence dir."
+ },
+ {
+  "part": "store",
+  "id": "store-writer",
+  "category": "deep-low",
+  "task": "Review internal/taint/store/writer.go (writer state for strings.Builder/bytes.Buffer) for correctness, bounds, and aliasing.",
+  "scope": "Primary read scope: internal/taint/store/writer.go. You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "Receiver anchors, 8 receivers/owner, 4 owners/receiver, 64KiB charge; buffer copy transfer semantics; invalidation on mutable exposure; stale view detection; release on owner end. Can a writer entry be orphaned (never released)? Every suspected Critical/High issue MUST be proven with a reproducer written in your private copy (a Go test in the relevant package, or a small program) and its captured output; copy it to your evidence dir."
+ },
+ {
+  "part": "store",
+  "id": "store-binding",
+  "category": "deep-low",
+  "task": "Review internal/taint/store/binding.go and owner.go (owner binding and owner lifecycle in the store) for correctness.",
+  "scope": "Primary read scope: internal/taint/store/binding.go, internal/taint/store/owner.go. You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "Owner registration/retire, stale-owner detection, binding of values to owners, foreign-owner semantics, release completeness on owner end (including panics mid-request). Every suspected Critical/High issue MUST be proven with a reproducer written in your private copy (a Go test in the relevant package, or a small program) and its captured output; copy it to your evidence dir."
+ },
+ {
+  "part": "store",
+  "id": "store-lookup",
+  "category": "deep-low",
+  "task": "Review internal/taint/store/{lookup,mutation,store,limits,overflow}.go for correctness and bounds.",
+  "scope": "Primary read scope: internal/taint/store/{lookup,mutation,store,limits,overflow}.go. You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "Lookup data structures (hash/probe), collision handling, table growth vs fixed bounds, overflow accounting, mutation atomicity, limit constants vs README/config. Every suspected Critical/High issue MUST be proven with a reproducer written in your private copy (a Go test in the relevant package, or a small program) and its captured output; copy it to your evidence dir."
+ },
+ {
+  "part": "store",
+  "id": "store-concurrency",
+  "category": "deep-high",
+  "task": "Prove or disprove the concurrency safety of internal/taint/store under the Go memory model.",
+  "scope": "Primary read scope: internal/taint/store/*.go. You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "Enumerate every shared mutable field, the lock/atomic guarding it, checklocks annotations, and lock ordering. Look for check-then-act races, torn multi-word reads (strings/slices read without lock), atomics mixed with plain access, publication without happens-before, lock held while calling out (callbacks, allocation-heavy work), deadlock potential. Write targeted -race tests (go test -race -count=50) for every suspicious interleaving. Every suspected Critical/High issue MUST be proven with a reproducer written in your private copy (a Go test in the relevant package, or a small program) and its captured output; copy it to your evidence dir."
+ },
+ {
+  "part": "store",
+  "id": "store-identity-gc",
+  "category": "deep-high",
+  "task": "Determine whether address-based value identity in the taint store can attach stale or foreign taint to reused memory after GC.",
+  "scope": "Primary read scope: internal/taint/store/*.go, iast/propagation/writer.go, internal/taint/jsonbridge/bridge.go, internal/taint/propagation/json.go. You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "The store and hooks key values by uintptr of unsafe.StringData/SliceData. Determine precisely whether a tainted value that becomes unreachable can have its address reused by a new allocation that then reads as tainted (same or different request), and what liveness guarantees (anchors, owner end, generation checks) prevent it. Build a reproducer: taint via the real API, drop references, runtime.GC() repeatedly, allocate same-size values until address reuse, query taint. Also: do uintptr keys keep objects alive (no) and are there strong anchors that do (memory retention)? Every suspected Critical/High issue MUST be proven with a reproducer written in your private copy (a Go test in the relevant package, or a small program) and its captured output; copy it to your evidence dir."
+ },
+ {
+  "part": "store",
+  "id": "store-memory-bounds",
+  "category": "deep-low",
+  "task": "Compute and empirically verify the worst-case memory footprint of all taint storage.",
+  "scope": "Primary read scope: internal/taint/store, internal/taint/request, internal/taint/ranges, internal/spans, internal/vulnerability/dedup. You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "Derive the theoretical max bytes from every limit constant and config (DD_IAST_MAX_CONCURRENT_REQUESTS up to 64, DD_IAST_MAX_RANGE_COUNT up to 64). Then write a saturation harness in the private copy driving the public/internal APIs to every limit and measure runtime.MemStats HeapInuse before/after (GC'd). Any storage whose growth is not bounded by a constant is Critical; bound exceeded by >2x is High. Include the documented retained-anchor caveat (README) and quantify it with an adversarial case. Every suspected Critical/High issue MUST be proven with a reproducer written in your private copy (a Go test in the relevant package, or a small program) and its captured output; copy it to your evidence dir."
+ },
+ {
+  "part": "store",
+  "id": "store-stress",
+  "category": "unspecified-high",
+  "task": "Write and run a randomized concurrent stress harness against the taint store to find races, panics, and invariant violations.",
+  "scope": "Primary read scope: internal/taint/store/*.go and callers. You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "In the private copy, write a test that spawns 32-64 goroutines performing random interleavings of the store's exported operations (create owners, taint values, lookup, mutate, writers, release owners, overflow) with invariant assertions after each op; run with -race for at least 10 minutes total (e.g. -count and loop), with GOMAXPROCS 2 and 16. Report every panic/race/invariant failure with the seed. Also report harness design so it can be adopted. Every suspected Critical/High issue MUST be proven with a reproducer written in your private copy (a Go test in the relevant package, or a small program) and its captured output; copy it to your evidence dir."
+ },
+ {
+  "part": "store",
+  "id": "store-tests",
+  "category": "unspecified-low",
+  "task": "Audit the quality of internal/taint/store tests: coverage gaps, tautologies, and nondeterminism.",
+  "scope": "Primary read scope: internal/taint/store/*_test.go. You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "Run go test -coverprofile in the private copy and list uncovered production lines on risky paths. Identify tests that cannot fail (assert mocks, pinned constants, oracle re-derived from output), time.Sleep/timing-based tests, and missing negative/limit tests. Findings are test-gap/quality."
+ },
+ {
+  "part": "store",
+  "id": "store-api-misuse",
+  "category": "deep-low",
+  "task": "Review how every caller uses the internal/taint/store API and find contract violations.",
+  "scope": "Primary read scope: callers of internal/taint/store across /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go (use gopls/grep). You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "For each exported store function, state its preconditions (owner alive, lock held, non-nil, length limits) and check every call site honours them, including error/ok results ignored, and nil owner paths from unsampled requests. Every suspected Critical/High issue MUST be proven with a reproducer written in your private copy (a Go test in the relevant package, or a small program) and its captured output; copy it to your evidence dir."
+ },
+ {
+  "part": "store",
+  "id": "store-fuzz",
+  "category": "unspecified-high",
+  "task": "Write a model-based fuzz target for store operation sequences and run it.",
+  "scope": "Primary read scope: internal/taint/store/*.go. You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "In the private copy write FuzzStoreSequence: decode fuzz bytes into op sequences over the store API, maintain a simple reference model, assert equivalence (taint presence, ranges, limits honoured, no panic). Run `go test -fuzz=FuzzStoreSequence -fuzztime=15m` (bounded). Save any crasher corpus files to evidence. Every suspected Critical/High issue MUST be proven with a reproducer written in your private copy (a Go test in the relevant package, or a small program) and its captured output; copy it to your evidence dir."
+ },
+ {
+  "part": "prop",
+  "id": "prop-ranges-algebra",
+  "category": "deep-low",
+  "task": "Review internal/taint/ranges (range algebra, canonicalization, marks) for correctness.",
+  "scope": "Primary read scope: internal/taint/ranges/*.go. You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "Offsets arithmetic overflow (int), empty/zero-length ranges, overlap merge semantics preserving distinct sources, marks per range, max range count truncation policy (which ranges dropped? does dropping lose the one that matters?), slice/copy/concat/shift algebra. Every suspected Critical/High issue MUST be proven with a reproducer written in your private copy (a Go test in the relevant package, or a small program) and its captured output; copy it to your evidence dir."
+ },
+ {
+  "part": "prop",
+  "id": "prop-ranges-fuzz",
+  "category": "unspecified-high",
+  "task": "Stress internal/taint/ranges with long fuzz campaigns and new property tests against a naive oracle.",
+  "scope": "Primary read scope: internal/taint/ranges. You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "Run FuzzCanonicalize and FuzzSliceAndCopy for 10 minutes each in the private copy. Write a new property test comparing each operation against a naive per-byte label-array oracle for random inputs (100k cases). Every suspected Critical/High issue MUST be proven with a reproducer written in your private copy (a Go test in the relevant package, or a small program) and its captured output; copy it to your evidence dir."
+ },
+ {
+  "part": "prop",
+  "id": "prop-engine-core",
+  "category": "deep-low",
+  "task": "Review internal/taint/propagation/propagation.go (engine core) for correctness and crash safety.",
+  "scope": "Primary read scope: internal/taint/propagation/propagation.go, telemetry.go. You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "Entry points, owner resolution, gating fast paths, result adoption (when is the result a new root vs alias), error handling, telemetry counters. Every suspected Critical/High issue MUST be proven with a reproducer written in your private copy (a Go test in the relevant package, or a small program) and its captured output; copy it to your evidence dir."
+ },
+ {
+  "part": "prop",
+  "id": "prop-string-exact",
+  "category": "deep-low",
+  "task": "Review internal/taint/propagation/string_exact.go for range-offset correctness on every supported string operation.",
+  "scope": "Primary read scope: internal/taint/propagation/string_exact.go. You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "For each op (Cut/Split/Fields/Trim/Lines/Replace/Repeat/Join/case/Map/ToValidUTF8/Clone...), derive expected output ranges and check the code; include empty separators, n=-1/0, overlapping matches, repeat counts that overflow, Replace with empty old. Every suspected Critical/High issue MUST be proven with a reproducer written in your private copy (a Go test in the relevant package, or a small program) and its captured output; copy it to your evidence dir."
+ },
+ {
+  "part": "prop",
+  "id": "prop-string-coarse",
+  "category": "unspecified-high",
+  "task": "Review internal/taint/propagation/string_coarse.go and iast/propagation/coarse.go for correctness of coarse (whole-value) propagation.",
+  "scope": "Primary read scope: internal/taint/propagation/string_coarse.go, iast/propagation/coarse.go. You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "When is coarse used vs exact, source identity retention, over-tainting consequences (false positives), the unsafe.StringData equality check in coarse.go:42. Every suspected Critical/High issue MUST be proven with a reproducer written in your private copy (a Go test in the relevant package, or a small program) and its captured output; copy it to your evidence dir."
+ },
+ {
+  "part": "prop",
+  "id": "prop-bytes-exact",
+  "category": "deep-high",
+  "task": "Prove or disprove correctness of byte-slice propagation, aliasing, and invalidation in internal/taint/propagation/bytes_exact.go.",
+  "scope": "Primary read scope: internal/taint/propagation/bytes_exact.go, conversion.go, and store interactions. You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "[]byte is mutable: windows share parent roots; writes via aliases are not observed (documented). Find cases where the code reports taint on bytes that were overwritten through SUPPORTED paths, or loses taint on supported windows; check cap/len arithmetic for 3-index slices; results that alias inputs vs fresh copies. Every suspected Critical/High issue MUST be proven with a reproducer written in your private copy (a Go test in the relevant package, or a small program) and its captured output; copy it to your evidence dir."
+ },
+ {
+  "part": "prop",
+  "id": "prop-writer",
+  "category": "deep-low",
+  "task": "Review internal/taint/propagation/writer.go (Builder/Buffer propagation) for correctness.",
+  "scope": "Primary read scope: internal/taint/propagation/writer.go, internal/taint/writerbridge. You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "Write/WriteString/WriteByte/WriteRune/Grow/Reset/Truncate/String/ReadFrom/Next/Read semantics: ranges shift correctly with read offset? Buffer.Next/Read consuming data — are ranges shifted? Truncate(0) clears? Builder copy detection. Every suspected Critical/High issue MUST be proven with a reproducer written in your private copy (a Go test in the relevant package, or a small program) and its captured output; copy it to your evidence dir."
+ },
+ {
+  "part": "prop",
+  "id": "prop-concat-conv-json",
+  "category": "unspecified-high",
+  "task": "Review operator_concat.go, conversion.go and json.go in internal/taint/propagation for correctness.",
+  "scope": "Primary read scope: internal/taint/propagation/{operator_concat,conversion,json}.go. You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "2-16 operand concat offsets; conversions string<->[]byte allocation-preserving semantics; JSON literal pointer arithmetic (json.go:31-32) — can literal lie outside document (bounds)? escaped strings (\\u escapes change length: are ranges coarse?). Every suspected Critical/High issue MUST be proven with a reproducer written in your private copy (a Go test in the relevant package, or a small program) and its captured output; copy it to your evidence dir."
+ },
+ {
+  "part": "prop",
+  "id": "prop-owner-isolation",
+  "category": "deep-high",
+  "task": "Prove or disprove that taint never bleeds across request owners and that stale-owner taint is handled safely.",
+  "scope": "Primary read scope: internal/taint/propagation, internal/taint/store/owner.go, internal/taint/request. You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "Values shared across requests (global caches, sync.Pool, interned strings, config loaded during a request), foreign-owner taint reporting semantics, owner ID reuse/ABA, what happens when owner ends during propagation. Build reproducers with two concurrent/successive owners. Every suspected Critical/High issue MUST be proven with a reproducer written in your private copy (a Go test in the relevant package, or a small program) and its captured output; copy it to your evidence dir."
+ },
+ {
+  "part": "prop",
+  "id": "prop-unicode",
+  "category": "unspecified-high",
+  "task": "Hunt range-offset bugs in length-changing transformations (Unicode case mapping, ToValidUTF8, Map, escapes).",
+  "scope": "Primary read scope: internal/taint/propagation/*.go, iast/propagation/*.go. You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "Case conversion where byte length changes (e.g. 'ẞ', 'İ', 'ı', U+0250 series, Kelvin sign), invalid UTF-8 inputs, Map returning negative or multi-byte runes, url/strconv escaping, Title-like ops. Build a differential test: per-byte source labels computed by an oracle vs ranges produced; any out-of-bounds range (end > len) is Critical if it can panic downstream (evidence/redaction slicing). Every suspected Critical/High issue MUST be proven with a reproducer written in your private copy (a Go test in the relevant package, or a small program) and its captured output; copy it to your evidence dir."
+ },
+ {
+  "part": "prop",
+  "id": "prop-semantics-parity",
+  "category": "deep-low",
+  "task": "Compare dd-iast-go propagation semantics against dd-trace-java/js/py and the Orchestrion research checks.",
+  "scope": "Primary read scope: internal/taint/propagation, iast/propagation, README propagation table, phase1 research digest; sibling repos /Users/eliott.bouhana/go/src/github.com/DataDog/dd-trace-{java,js,py}. You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "For each supported op, does dd-iast-go taint the same parts as the reference tracers (e.g. case conversion, trim, split, format, escape/unescape, quote)? Differences that cause false positives/negatives on common vulnerable patterns are High (with example). Also list common Go patterns not propagated that break real SQLi/CMDi detection (e.g. fmt.Sprintf %v with struct, strings.NewReplacer, text/template, path/filepath.Join)."
+ },
+ {
+  "part": "prop",
+  "id": "prop-engine-fuzz",
+  "category": "unspecified-high",
+  "task": "Run long fuzz campaigns on the propagation engine and add an exact-string-op differential fuzzer.",
+  "scope": "Primary read scope: internal/taint/propagation. You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "In the private copy, run FuzzEngineSequence and FuzzOwnerLifecycle for 12 minutes each; then write a new fuzzer that applies random string ops (via the engine's exact functions) and checks produced ranges against a per-byte oracle and never exceed the value length. Run 12 minutes. Every suspected Critical/High issue MUST be proven with a reproducer written in your private copy (a Go test in the relevant package, or a small program) and its captured output; copy it to your evidence dir."
+ },
+ {
+  "part": "hooks",
+  "id": "hooks-yml-strings",
+  "category": "deep-low",
+  "task": "Review the strings-package join points and advice in iast/propagation/orchestrion.yml for correctness.",
+  "scope": "Primary read scope: iast/propagation/orchestrion.yml (strings sections), iast/propagation/strings.go. You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "For each join point: does the pointcut match exactly the intended functions (signature, package), is the advice's replacement call semantically identical (argument evaluation order, multiple returns, variadics), generic instantiations, named string types (type S string) handled, method values/expressions excluded as documented. Every suspected Critical/High issue MUST be proven with a reproducer written in your private copy (a Go test in the relevant package, or a small program) and its captured output; copy it to your evidence dir."
+ },
+ {
+  "part": "hooks",
+  "id": "hooks-yml-bytes",
+  "category": "deep-low",
+  "task": "Review the bytes-package join points and advice in iast/propagation/orchestrion.yml for correctness.",
+  "scope": "Primary read scope: iast/propagation/orchestrion.yml (bytes sections), iast/propagation/bytes.go. You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "Same checklist as strings plus aliasing: stdlib functions that return subslices of the input (TrimSpace, Fields, Split, Cut) must still return aliases — a wrapper returning a copy changes program behavior (Critical). Named []byte types. Every suspected Critical/High issue MUST be proven with a reproducer written in your private copy (a Go test in the relevant package, or a small program) and its captured output; copy it to your evidence dir."
+ },
+ {
+  "part": "hooks",
+  "id": "hooks-yml-fmt-strconv-url",
+  "category": "unspecified-high",
+  "task": "Review fmt, strconv and net/url join points and wrappers (iast/propagation, iast/net/url) for correctness.",
+  "scope": "Primary read scope: iast/propagation/orchestrion.yml (fmt/strconv sections), iast/net/url/*, internal/taint/urlbridge. You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "fmt.Sprint* with Stringer/Formatter/error values whose methods have side effects (must be invoked exactly once), %v of structs/maps, width/precision; strconv quote/unquote error returns; url escape/unescape error paths. Wrapper must never evaluate the formatting twice. Every suspected Critical/High issue MUST be proven with a reproducer written in your private copy (a Go test in the relevant package, or a small program) and its captured output; copy it to your evidence dir."
+ },
+ {
+  "part": "hooks",
+  "id": "hooks-yml-writers",
+  "category": "deep-low",
+  "task": "Review strings.Builder and bytes.Buffer join points and iast/propagation/writer.go for correctness and safety.",
+  "scope": "Primary read scope: iast/propagation/orchestrion.yml (writer sections), iast/propagation/writer.go, iast/internal/propagationtest/writer.go. You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "writer.go:213-214 computes Backing via pointer arithmetic from Anchor minus (Cap - cap(value)) — verify correctness and that no invalid pointer is ever formed/dereferenced (Go rules: uintptr arithmetic creating pointers outside allocations is invalid). Receiver escapes, copies of Buffer by value, nil receivers, Builder copy panic preserved. Every suspected Critical/High issue MUST be proven with a reproducer written in your private copy (a Go test in the relevant package, or a small program) and its captured output; copy it to your evidence dir."
+ },
+ {
+  "part": "hooks",
+  "id": "hooks-yml-operators",
+  "category": "deep-high",
+  "task": "Prove or disprove semantic preservation of the operator join points (string +, slicing, conversions) in iast/propagation/orchestrion.yml and iast/propagation/operators.go.",
+  "scope": "Primary read scope: iast/propagation/orchestrion.yml (operator sections), iast/propagation/operators.go, internal/taint/operatorbridge, orchestrion branch origin/romain.marcadier/iast-operator-join-points (git -C /Users/eliott.bouhana/go/src/github.com/DataDog/orchestrion diff main...23afa71). You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "Evaluation order of operands with side effects (f()+g()), constant folding (const expressions must stay constant: using a wrapped expr in const/array-size/switch-case contexts would break compile), untyped constants, generics with ~string constraints, slice expressions with side-effecting indices evaluated once, panics on out-of-range slicing preserved with same message, string(byteSlice) optimizations (map keys, comparisons) excluded as documented, performance of every + in customer code. Write compile tests with tricky shapes woven by orchestrion in the private copy. Every suspected Critical/High issue MUST be proven with a reproducer written in your private copy (a Go test in the relevant package, or a small program) and its captured output; copy it to your evidence dir."
+ },
+ {
+  "part": "hooks",
+  "id": "hooks-fidelity-strings",
+  "category": "unspecified-high",
+  "task": "Differentially test every wrapped strings/fmt/strconv/url function against the uninstrumented stdlib for identical results and panics.",
+  "scope": "Primary read scope: iast/propagation/strings.go, coarse.go, operators.go, orchestrion.yml. You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "In the private copy build a table-driven + randomized differential test that calls each iast/propagation wrapper function directly AND the stdlib function with the same inputs (tainted and untainted, active owner and inactive), asserting identical return values, identical panics (recover and compare values), and no extra allocations visible to the caller semantics. Include edge inputs (empty, invalid UTF-8, huge counts). Any divergence = Critical. Every suspected Critical/High issue MUST be proven with a reproducer written in your private copy (a Go test in the relevant package, or a small program) and its captured output; copy it to your evidence dir."
+ },
+ {
+  "part": "hooks",
+  "id": "hooks-fidelity-bytes",
+  "category": "unspecified-high",
+  "task": "Differentially test every wrapped bytes and writer function against the uninstrumented stdlib, including aliasing behavior.",
+  "scope": "Primary read scope: iast/propagation/bytes.go, writer.go, orchestrion.yml. You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "Same as strings differential test, plus: result aliasing must match stdlib exactly (compare unsafe.SliceData ranges relative to input and cap), mutation-through-result visible identically, Buffer/Builder state after wrapped ops identical (Len, Cap, String, Available). Any divergence = Critical. Every suspected Critical/High issue MUST be proven with a reproducer written in your private copy (a Go test in the relevant package, or a small program) and its captured output; copy it to your evidence dir."
+ },
+ {
+  "part": "hooks",
+  "id": "hooks-io-bufio",
+  "category": "unspecified-high",
+  "task": "Review iast/io, iast/bufio, and internal/taint/iobridge hooks for correctness and behavior preservation.",
+  "scope": "Primary read scope: iast/io/*, iast/bufio/*, internal/taint/iobridge, internal/taint/request/reader.go. You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "io.ReadAll/LimitReader/etc wrappers: return identical bytes/errors, EOF semantics, partial reads, readers that return n>0 with err, 64KiB / size limits (reader_limits_test.go), bufio.Reader Peek/ReadString. Every suspected Critical/High issue MUST be proven with a reproducer written in your private copy (a Go test in the relevant package, or a small program) and its captured output; copy it to your evidence dir."
+ },
+ {
+  "part": "hooks",
+  "id": "hooks-compile-matrix",
+  "category": "unspecified-high",
+  "task": "Weave dd-iast-go into several real-world Go codebases with Orchestrion and hunt compile/link failures or runtime breakage.",
+  "scope": "Candidate codebases (pick at least 5, prefer diverse): /Users/eliott.bouhana/go/src/github.com/DataDog/appsec-go-test-app, /Users/eliott.bouhana/go/src/github.com/DataDog/datadog-security-playground (if Go), system-tests Go weblogs under /Users/eliott.bouhana/go/src/github.com/DataDog/system-tests/utils/build/docker/golang, a generics-heavy module from the module cache (e.g. golang.org/x/exp or samber/lo if present), a cgo-using package, and /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/benchmarks/overhead. Copy each into /tmp/ddiast-review/wt/hooks-compile-matrix/.",
+  "focus": "For each: add dd-iast-go via go.mod replace => /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go (in the COPY), import it in orchestrion.tool.go (github.com/DataDog/dd-iast-go), run `go tool orchestrion go build ./...` (or orchestrion pin first as needed) with GOTOOLCHAIN=go1.26.6 and then local go1.27. Also `go vet` and run its tests woven if cheap. Every compile/link failure attributable to dd-iast-go weaving = Critical compile-break with the error. Document what was built."
+ },
+ {
+  "part": "hooks",
+  "id": "hooks-orchestrion-dep",
+  "category": "deep-low",
+  "task": "Review the unmerged Orchestrion operator-join-point changes that dd-iast-go depends on (pseudo-version 23afa71) for correctness and release risk.",
+  "scope": "git -C /Users/eliott.bouhana/go/src/github.com/DataDog/orchestrion diff main...23afa71 (branch origin/romain.marcadier/iast-operator-join-points, 19 files ~1.2k lines: internal/injector/typed/coretype.go, join point matching for typed operator expressions, safe string byte conversions). Do not check out branches in /Users/eliott.bouhana/go/src/github.com/DataDog/orchestrion.",
+  "focus": "Correctness of core-type resolution for generics/type params, which expressions match, noninteger slice constants exclusion, template support; risks of generated code failing to compile; and release risk of depending on a pseudo-version of an unmerged branch (the plan mentions orchestrion PR #881 pending). Compare to what dd-iast-go's yml actually uses."
+ },
+ {
+  "part": "hooks",
+  "id": "hooks-panic-safety",
+  "category": "deep-low",
+  "task": "Audit every hook/advice execution path for panic containment and exact panic preservation.",
+  "scope": "Primary read scope: iast/**/*.go (non-test), internal/taint/*bridge, taint/taint.go, internal/spans/orchestrion.go. You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "(1) If IAST internal code panics inside advice (e.g. range bug), is it recovered so the host never sees it? List every advice entry lacking recover and what can panic below it. (2) Conversely, stdlib panics (strings.Repeat negative count, Builder copy check, Buffer.Truncate out of range, slicing out of range) must reach the host UNCHANGED (same value/type) and IAST must not swallow them or leave state inconsistent (locks held, slots not released). Write tests proving both. Every suspected Critical/High issue MUST be proven with a reproducer written in your private copy (a Go test in the relevant package, or a small program) and its captured output; copy it to your evidence dir."
+ },
+ {
+  "part": "hooks",
+  "id": "hooks-scope-root",
+  "category": "unspecified-low",
+  "task": "Verify the scoping of propagation instrumentation (application root only, test mains, vendored and workspace modules) against the docs.",
+  "scope": "Primary read scope: all orchestrion.yml under iast/ and taint/, internal/spans/orchestrion.yml, orchestrion.tool.go, commit 24c35ec (distinguish test mains). You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "What exactly is 'the application root'? Are dependencies and stdlib woven? Behavior in go.work workspaces, vendor/, replace directives, test binaries, plugins, non-main executables (README says sinks only activate in root main). Build small samples in the private copy to confirm. Mismatch with README = doc/Medium; silent loss of all detection in common layouts (e.g. cmd/app mains, workspace) = High."
+ },
+ {
+  "part": "life",
+  "id": "life-owner-scope",
+  "category": "deep-low",
+  "task": "Review internal/taint/request/owner.go and scope.go (request owner creation, scope propagation, teardown) for correctness.",
+  "scope": "Primary read scope: internal/taint/request/{owner,scope}.go, internal/taint/scopebridge. You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "Owner lifecycle state machine, teardown ordering, double-finish, finish racing with in-flight propagation, context binding, idempotence. Every suspected Critical/High issue MUST be proven with a reproducer written in your private copy (a Go test in the relevant package, or a small program) and its captured output; copy it to your evidence dir."
+ },
+ {
+  "part": "life",
+  "id": "life-table-lookup",
+  "category": "deep-low",
+  "task": "Review internal/taint/request/table.go and lookup.go for correctness, bounds, and concurrency.",
+  "scope": "Primary read scope: internal/taint/request/{table,lookup}.go. You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "Fixed-size tables, probing, admission, eviction, ABA on slot reuse, concurrent add/lookup/remove. Every suspected Critical/High issue MUST be proven with a reproducer written in your private copy (a Go test in the relevant package, or a small program) and its captured output; copy it to your evidence dir."
+ },
+ {
+  "part": "life",
+  "id": "life-lazy-reader",
+  "category": "deep-low",
+  "task": "Review internal/taint/request/{lazy,reader,http,source}.go (lazy HTTP source tainting and body readers) for correctness.",
+  "scope": "Primary read scope: internal/taint/request/{lazy,reader,http,source}.go, internal/taint/httpbridge. You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "Lazy materialization of query/form/header/cookie/multipart sources: races if handler reads r.Form concurrently, ParseForm/ParseMultipartForm semantics preserved (no double parse, no body consumption change!), body reader wrapping preserves io semantics, source limits (configured range limits, commit d3d62a4). Every suspected Critical/High issue MUST be proven with a reproducer written in your private copy (a Go test in the relevant package, or a small program) and its captured output; copy it to your evidence dir."
+ },
+ {
+  "part": "life",
+  "id": "life-spans",
+  "category": "deep-low",
+  "task": "Review internal/spans (owner, tainted, payload, annotation, orchestrion.go, vulnerability.go) for correctness and lifecycle safety.",
+  "scope": "Primary read scope: internal/spans/*.go, internal/spans/orchestrion.yml. You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "Span/owner association via weak pointers, annotation at span finish, sampling decisions retained (commit 87ecf02), orphan span creation, per-request vulnerability quota, what if span finishes before sinks report, concurrency at finish. Every suspected Critical/High issue MUST be proven with a reproducer written in your private copy (a Go test in the relevant package, or a small program) and its captured output; copy it to your evidence dir."
+ },
+ {
+  "part": "life",
+  "id": "life-bridges",
+  "category": "unspecified-high",
+  "task": "Review every internal/taint/*bridge package for registration safety, nil handling, init ordering, and concurrency.",
+  "scope": "Primary read scope: internal/taint/{commandbridge,httpbridge,iobridge,jsonbridge,operatorbridge,scopebridge,sqlbridge,urlbridge,writerbridge}. You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "How callbacks are registered (atomic.Pointer? plain var set in init?), data races between registration and use, behavior when sink/source packages are not linked, nil function pointers, double registration. Every suspected Critical/High issue MUST be proven with a reproducer written in your private copy (a Go test in the relevant package, or a small program) and its captured output; copy it to your evidence dir."
+ },
+ {
+  "part": "life",
+  "id": "life-public-api",
+  "category": "unspecified-low",
+  "task": "Review the public taint package (taint/taint.go, taint/orchestrion.yml) API design and correctness.",
+  "scope": "Primary read scope: taint/*. You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "Is the exported API minimal, documented, safe for external callers (nil, empty, concurrent)? Does it expose internals that lock in design? Go doc quality. Every suspected Critical/High issue MUST be proven with a reproducer written in your private copy (a Go test in the relevant package, or a small program) and its captured output; copy it to your evidence dir."
+ },
+ {
+  "part": "life",
+  "id": "life-admission",
+  "category": "deep-low",
+  "task": "Audit request sampling and concurrent-request admission for slot leaks and permanent IAST self-disable.",
+  "scope": "Primary read scope: internal/taint/request, internal/spans, internal/config, iast/net/http. You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "Trace acquire/release of the MAX_CONCURRENT_REQUESTS slots across: normal completion, handler panic (net/http recovers), hijacked connections (websockets), http2 streams, ServeHTTP that never returns (long-poll/streaming), client disconnect, middleware short-circuit. A leaked slot after N events permanently disables IAST = High. Sampling correctness (30% default) and distribution. Every suspected Critical/High issue MUST be proven with a reproducer written in your private copy (a Go test in the relevant package, or a small program) and its captured output; copy it to your evidence dir."
+ },
+ {
+  "part": "life",
+  "id": "life-async",
+  "category": "deep-high",
+  "task": "Prove or disprove safety when tainted values and request owners are used across goroutines and after request end.",
+  "scope": "Primary read scope: internal/taint/request, internal/taint/store, internal/taint/propagation, internal/spans. You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "Goroutines spawned by handlers that outlive the request and keep propagating/sinking tainted values; r.WithContext/r.Clone/new requests created by middleware; context.WithoutCancel; values stored in globals and used in later requests; owner end concurrent with sink report. Expect: no panic, no race, no report attached to wrong span, bounded memory. Build reproducers with the instrumented testapp (iast/integration/testapp) in the private copy. Every suspected Critical/High issue MUST be proven with a reproducer written in your private copy (a Go test in the relevant package, or a small program) and its captured output; copy it to your evidence dir."
+ },
+ {
+  "part": "life",
+  "id": "life-soak",
+  "category": "unspecified-high",
+  "task": "Run a soak test of an instrumented HTTP app to detect memory or goroutine leaks in the request lifecycle.",
+  "scope": "Use iast/integration/testapp (or write a small main in the private copy woven with orchestrion) exercising tainted sources->propagation->SQL/exec sinks.",
+  "focus": "Drive >=200k requests (in-process client) with a mix of tainted/untainted, sampled/unsampled, panicking handlers, and early-returning handlers; sample runtime.MemStats (after GC) and goroutine counts every 10k requests; report the curve. Monotonic growth = Critical leak with evidence. Keep total run under 25 minutes. Every suspected Critical/High issue MUST be proven with a reproducer written in your private copy (a Go test in the relevant package, or a small program) and its captured output; copy it to your evidence dir."
+ },
+ {
+  "part": "life",
+  "id": "life-cross-request",
+  "category": "deep-high",
+  "task": "Hunt taint bleeding between requests through memory reuse (sync.Pool, buffer reuse, GC address reuse) using the instrumented app.",
+  "scope": "Primary read scope: internal/taint/store, internal/taint/request, iast/propagation/writer.go. You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "Scenarios: handler A taints a pooled bytes.Buffer / []byte then returns it to sync.Pool; handler B (different request, untainted input) reuses it and hits a SQL sink — is a vulnerability falsely reported in B, and with A's source value (sensitive data leak across users!)? Also freed-and-reallocated memory at same address. Build woven reproducers in the private copy. Every suspected Critical/High issue MUST be proven with a reproducer written in your private copy (a Go test in the relevant package, or a small program) and its captured output; copy it to your evidence dir."
+ },
+ {
+  "part": "life",
+  "id": "life-json-decoder",
+  "category": "unspecified-high",
+  "task": "Review JSON decoding taint (internal/taint/jsonbridge, iast/encoding/json) for slot handling, reentrancy, panic cleanup, and limits.",
+  "scope": "Primary read scope: internal/taint/jsonbridge, iast/encoding/json, internal/taint/propagation/json.go. You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "64 process slots four-probe admission, reentrant decoders, panics inside custom UnmarshalJSON (cleanup on panic), >64KiB documents, concurrent decoders on the same reader, streaming Decoder with multiple Decode calls, commit 7de00fb. Every suspected Critical/High issue MUST be proven with a reproducer written in your private copy (a Go test in the relevant package, or a small program) and its captured output; copy it to your evidence dir."
+ },
+ {
+  "part": "life",
+  "id": "life-weak-gc",
+  "category": "unspecified-high",
+  "task": "Test the weak-pointer-based span/owner association under GC pressure for correctness.",
+  "scope": "Primary read scope: internal/spans/{owner,annotation,orchestrion,vulnerability}.go. You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "Write tests that force GC between span start, taint, sink and finish; check nothing is lost incorrectly (span alive but weak pointer nil?) and nothing is retained after finish. weak.Pointer semantics require the object be pointer-referenced — confirm usage correct. Every suspected Critical/High issue MUST be proven with a reproducer written in your private copy (a Go test in the relevant package, or a small program) and its captured output; copy it to your evidence dir."
+ },
+ {
+  "part": "sink",
+  "id": "sink-http-sources",
+  "category": "deep-low",
+  "task": "Review HTTP source instrumentation (iast/net/http orchestrion.yml + http.go, httpbridge) for completeness and behavior preservation.",
+  "scope": "Primary read scope: iast/net/http/*, internal/taint/httpbridge, internal/taint/request/http.go. You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "Every documented origin (URI, path, raw query, header names/values, cookies, query/form params, PathValue, multipart, body) actually tainted with the right origin constant and name; request methods wrapped preserve return values/errors; no extra parsing side effects; handles http.Request constructed by tests / httptest / nil URL. Every suspected Critical/High issue MUST be proven with a reproducer written in your private copy (a Go test in the relevant package, or a small program) and its captured output; copy it to your evidence dir."
+ },
+ {
+  "part": "sink",
+  "id": "sink-sql",
+  "category": "deep-low",
+  "task": "Review SQL-injection sink instrumentation (iast/database/sql, sqlbridge) for correctness and coverage.",
+  "scope": "Primary read scope: iast/database/sql/*, internal/taint/sqlbridge. You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "All DB/Conn/Tx/Stmt Prepare/Exec/Query/QueryRow(+Context) covered; query string checked exactly once; parameters not evidence; driver.Valuer; reporting location = customer frame; secure marks respected; behavior preserved on errors. Every suspected Critical/High issue MUST be proven with a reproducer written in your private copy (a Go test in the relevant package, or a small program) and its captured output; copy it to your evidence dir."
+ },
+ {
+  "part": "sink",
+  "id": "sink-exec",
+  "category": "unspecified-high",
+  "task": "Review command-injection sink instrumentation (iast/os/exec, commandbridge, redaction/command.go) for correctness.",
+  "scope": "Primary read scope: iast/os/exec/*, internal/taint/commandbridge, internal/taint/redaction/command.go. You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "Report only on Start attempt; Path vs Args[0], LookPath, exec.CommandContext, Cmd reused/Start twice, Env/Dir not evidence, evidence joining of args (quoting) and ranges mapping into joined evidence. Every suspected Critical/High issue MUST be proven with a reproducer written in your private copy (a Go test in the relevant package, or a small program) and its captured output; copy it to your evidence dir."
+ },
+ {
+  "part": "sink",
+  "id": "sink-json-sources",
+  "category": "unspecified-low",
+  "task": "Review encoding/json instrumentation (iast/encoding/json orchestrion.yml + json.go) for correctness.",
+  "scope": "Primary read scope: iast/encoding/json/*. You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "Which stdlib internals are woven (stability across Go versions!), named string types, ,string fields, maps, arrays, embedded structs; behavior identical to stdlib. Every suspected Critical/High issue MUST be proven with a reproducer written in your private copy (a Go test in the relevant package, or a small program) and its captured output; copy it to your evidence dir."
+ },
+ {
+  "part": "sink",
+  "id": "sink-evidence",
+  "category": "deep-low",
+  "task": "Review internal/taint/evidence (evidence collection and value-part construction) for correctness and crash safety.",
+  "scope": "Primary read scope: internal/taint/evidence/*. You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "Value parts ordering, source index dedup by (origin,name,full value), truncation to 250 chars at rune boundaries, ranges beyond value length, 32KiB evidence limit, snapshot canonicalization. Every suspected Critical/High issue MUST be proven with a reproducer written in your private copy (a Go test in the relevant package, or a small program) and its captured output; copy it to your evidence dir."
+ },
+ {
+  "part": "sink",
+  "id": "sink-redaction-source",
+  "category": "deep-low",
+  "task": "Review source/value redaction (internal/taint/redaction/source.go, analyzer.go) for sensitive-data leaks and correctness.",
+  "scope": "Primary read scope: internal/taint/redaction/{source,analyzer}.go. You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "Name/value pattern defaults vs other tracers, redaction applied BEFORE anything leaves the process, partial-range redaction correctness, overflow paths (overflow_test.go) never emit raw values, regex from env (catastrophic backtracking impossible in RE2 but huge patterns?). An unredacted secret in output = Critical. Every suspected Critical/High issue MUST be proven with a reproducer written in your private copy (a Go test in the relevant package, or a small program) and its captured output; copy it to your evidence dir."
+ },
+ {
+  "part": "sink",
+  "id": "sink-redaction-sql-cmd",
+  "category": "deep-low",
+  "task": "Review SQL and command tokenization-based redaction (internal/taint/redaction/sql.go, command.go) for correctness and crash safety.",
+  "scope": "Primary read scope: internal/taint/redaction/{sql,command}.go. You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "Tokenizer on malformed/unterminated quotes, comments, dollar-quoting, backslash escapes, MySQL/Postgres dialect differences, multibyte chars; literals redacted per spec; never slices out of bounds. Compare with dd-trace-java/py SQL tokenizer behavior. Every suspected Critical/High issue MUST be proven with a reproducer written in your private copy (a Go test in the relevant package, or a small program) and its captured output; copy it to your evidence dir."
+ },
+ {
+  "part": "sink",
+  "id": "sink-vuln-report",
+  "category": "deep-low",
+  "task": "Review vulnerability reporting (internal/vulnerability tainted.go, report.go, dedup, stacktrace, location) for correctness.",
+  "scope": "Primary read scope: internal/vulnerability/**/*.go. You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "Hash stability/uniqueness semantics matching other tracers, dedup bounded (LRU size?), quota interactions, location = first customer frame (not IAST frames/orchestrion-generated), stacktrace redaction, orphan event limits (README caveat). Every suspected Critical/High issue MUST be proven with a reproducer written in your private copy (a Go test in the relevant package, or a small program) and its captured output; copy it to your evidence dir."
+ },
+ {
+  "part": "sink",
+  "id": "sink-payload-model",
+  "category": "unspecified-low",
+  "task": "Review the event payload model changes (internal/model, internal/spans/payload.go) and the 25,000-byte limit enforcement.",
+  "scope": "Primary read scope: internal/model/*.go (non-generated), internal/spans/payload.go, internal/model/truncation. You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "Encoding format matches backend expectations (_dd.iast.json / meta_struct), truncation never produces invalid JSON/msgp, 25,000 limit enforced on the final encoded size, generated files in sync (go generate diff in private copy). Every suspected Critical/High issue MUST be proven with a reproducer written in your private copy (a Go test in the relevant package, or a small program) and its captured output; copy it to your evidence dir."
+ },
+ {
+  "part": "sink",
+  "id": "sink-parity",
+  "category": "deep-low",
+  "task": "Check cross-language parity of the reported IAST data against other Datadog tracers and system-tests expectations.",
+  "scope": "dd-iast-go internal/vulnerability, internal/taint/evidence, redaction, model; sibling repos /Users/eliott.bouhana/go/src/github.com/DataDog/{dd-trace-java,dd-trace-js,dd-trace-py,system-tests} (system-tests/tests/appsec/iast).",
+  "focus": "Origin names, vulnerability type strings, evidence valueParts format, source redaction markers, hash algorithm, location fields, sampling/dedup semantics. Differences that would break backend processing or system-tests = High."
+ },
+ {
+  "part": "sink",
+  "id": "sink-e2e-truepos",
+  "category": "unspecified-high",
+  "task": "Build an instrumented vulnerable demo HTTP app and verify real SQLi/CMDi detections (true positives) and absence of false positives end to end.",
+  "scope": "Private copy; write a small app module under /tmp/ddiast-review/wt/sink-e2e-truepos using dd-trace-go (mocktracer or a local capture of spans) + dd-iast-go via replace, woven with orchestrion (model on iast/integration/testapp).",
+  "focus": "Endpoints: vulnerable SQL via fmt.Sprintf/concat/strings.Builder/json body field; safe SQL with parameters; vulnerable exec.Command(\"sh\",\"-c\", userInput); safe exec with constant; tainted value sanitized by strconv.Atoi. Drive with net/http client (curl-like). Capture the span meta/meta_struct IAST payload for each; verify vulnerability type, evidence ranges, source origin/name, redaction, location file:line. Missing true positive on a documented supported flow = High; false positive = High. Every suspected Critical/High issue MUST be proven with a reproducer written in your private copy (a Go test in the relevant package, or a small program) and its captured output; copy it to your evidence dir."
+ },
+ {
+  "part": "sink",
+  "id": "sink-systemtests",
+  "category": "unspecified-high",
+  "task": "Map system-tests IAST expectations for Go onto dd-iast-go support and report expected pass/fail.",
+  "scope": "/Users/eliott.bouhana/go/src/github.com/DataDog/system-tests (tests/appsec/iast, manifests/golang.yml, utils/build/docker/golang), /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/.github/workflows/system-tests.yml",
+  "focus": "List every IAST test for SQLi, CMDi, sources (headers, cookies, params, body, path) and weak hash/cipher; predict pass/fail against dd-iast-go given its support, flag mismatches in origin names or evidence formats. If docker is available and a single weblog run fits in 25 minutes, run it; otherwise static mapping only (state which)."
+ },
+ {
+  "part": "perf",
+  "id": "perf-hotpath",
+  "category": "deep-low",
+  "task": "Audit the cost of every hook on the inactive (no owner) and active-but-untainted paths.",
+  "scope": "Primary read scope: iast/**/*.go (non-test), internal/taint/*bridge, internal/taint/propagation/propagation.go. You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "For each advice: what runs before the cheap gate? Count atomics, map lookups, allocations, function calls on the untainted path. Use `go test -bench -benchmem` allocs/op in the private copy (allocs are deterministic even on a noisy machine) and `-gcflags=-m` to confirm inlining of gates. Anything allocating on the inactive path = High perf."
+ },
+ {
+  "part": "perf",
+  "id": "perf-escape",
+  "category": "unspecified-high",
+  "task": "Analyze inlining and escape behavior of instrumented call sites and advice functions.",
+  "scope": "Primary read scope: iast/propagation, iast/*. You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "Build a woven sample with -gcflags='-m=2' (orchestrion build in private copy) and report: advice functions not inlinable and why, arguments forced to escape to heap (e.g. writer receivers — README admits stack receiver escape), extra allocations introduced in customer code by weaving vs plain build (compare -m output on the same customer file). Quantify with allocs/op on a small benchmark."
+ },
+ {
+  "part": "perf",
+  "id": "perf-contention",
+  "category": "unspecified-high",
+  "task": "Measure lock contention in the taint store and request admission under parallel load.",
+  "scope": "Primary read scope: internal/taint/store, internal/taint/request. You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "Write parallel benchmarks (b.RunParallel) for hot store operations and admission; run with -cpu=1,4,8,16 and -mutexprofile/-blockprofile in the private copy; report scaling ratio and top contended locks (profiles are meaningful despite noise; note it). Global lock on hot path that serializes all requests = High perf."
+ },
+ {
+  "part": "perf",
+  "id": "perf-algorithmic",
+  "category": "deep-low",
+  "task": "Find super-linear (quadratic or worse) behaviors in taint propagation and reporting under adversarial inputs.",
+  "scope": "Primary read scope: internal/taint/ranges, internal/taint/propagation, internal/taint/store/writer.go, internal/taint/evidence, internal/taint/redaction. You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "Candidates: many ranges with repeated concat, Builder with thousands of small tainted writes, Split producing many parts, Replace with many matches, redaction regex over large values, evidence construction for 32KiB values. Measure scaling by doubling input size (ratio-based, robust to noise) in the private copy. Super-linear on attacker-controlled input sizes = High."
+ },
+ {
+  "part": "perf",
+  "id": "perf-memory",
+  "category": "unspecified-high",
+  "task": "Measure per-request memory overhead of taint tracking for realistic and worst-case requests.",
+  "scope": "Primary read scope: internal/taint, internal/spans. You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "In the private copy measure bytes allocated per request (testing.AllocsPerRun / MemStats TotalAlloc deltas) for: untainted request, typical tainted request (10 params -> SQL), worst case (limits saturated). Compare to plain build. Report retained memory after request end (should return to baseline)."
+ },
+ {
+  "part": "perf",
+  "id": "perf-binary-compile",
+  "category": "quick",
+  "task": "Measure compile-time and binary-size overhead of weaving dd-iast-go.",
+  "scope": "iast/integration/testapp and benchmarks/overhead in the private copy.",
+  "focus": "Measure go build vs go tool orchestrion go build (clean cache each: GOCACHE=$(mktemp -d)) time and binary size, and count woven call sites (orchestrion -work / -x logs or grep generated files). Report numbers; flag >2x size or >5x build time as Medium perf."
+ },
+ {
+  "part": "perf",
+  "id": "perf-gc",
+  "category": "unspecified-low",
+  "task": "Assess GC-related overhead (weak pointers, cleanups, anchors, retained objects) of taint tracking.",
+  "scope": "Primary read scope: internal/spans, internal/taint/store. You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "Count weak.Make/cleanup/finalizer calls per request, their costs, objects retained until owner end; GODEBUG=gctrace=1 comparison in a small woven loop. Report."
+ },
+ {
+  "part": "perf",
+  "id": "perf-disabled",
+  "category": "unspecified-low",
+  "task": "Measure what remains of overhead when IAST is disabled or requests are sampled out.",
+  "scope": "Primary read scope: internal/config, iast/net/http, iast/propagation. You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "DD_IAST_ENABLED=false and DD_IAST_REQUEST_SAMPLING=0: which hooks still run, their allocs/op and gate costs (benchmarks in the private copy; allocs are reliable). Anything nonzero-alloc when disabled = High perf."
+ },
+ {
+  "part": "perf",
+  "id": "perf-bench-quality",
+  "category": "unspecified-low",
+  "task": "Review the benchmark suites (benchmarks/overhead and package Benchmark* functions) for measurement validity and gaps.",
+  "scope": "Primary read scope: benchmarks/overhead/*, all *_test.go Benchmark functions. You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "Do workloads actually exercise tainted active paths (not just inactive)? Dead-code elimination risks (results unused), setup inside timed loop, missing b.ReportAllocs, missing benchmarks for SQL/exec sinks with tainted input, HTTP source tainting, JSON. Findings: perf/test-gap."
+ },
+ {
+  "part": "perf",
+  "id": "perf-allocs-matrix",
+  "category": "unspecified-high",
+  "task": "Produce an allocations matrix for all existing benchmarks, woven versus plain, to flag unexpected allocations.",
+  "scope": "All modules; private copy.",
+  "focus": "Run every Benchmark* with -benchmem -benchtime=2000x -count=1 plain and woven (go tool orchestrion go test) in root and nested modules. Table: bench, allocs/op plain, woven, B/op. Timing columns only as indicative (machine shared). Flag allocs on inactive/untainted paths."
+ },
+ {
+  "part": "crash",
+  "id": "crash-fuzz-ranges",
+  "category": "unspecified-low",
+  "task": "Run the ranges fuzzers for long campaigns and triage any crasher.",
+  "scope": "internal/taint/ranges in the private copy.",
+  "focus": "go test -run='^$' -fuzz='^FuzzCanonicalize$' -fuzztime=15m and same for FuzzSliceAndCopy, -parallel=4. Triage crashers (minimized input, root cause, file:line). No crashers = report campaign stats."
+ },
+ {
+  "part": "crash",
+  "id": "crash-fuzz-engine",
+  "category": "unspecified-low",
+  "task": "Run the propagation engine fuzzers for long campaigns and triage any crasher.",
+  "scope": "internal/taint/propagation in the private copy.",
+  "focus": "FuzzEngineSequence and FuzzOwnerLifecycle, 15 minutes each, -parallel=4. Triage."
+ },
+ {
+  "part": "crash",
+  "id": "crash-fuzz-redaction",
+  "category": "unspecified-low",
+  "task": "Run the redaction, evidence, and request fuzzers for long campaigns and triage any crasher.",
+  "scope": "internal/taint/redaction, internal/taint/evidence, internal/taint/request in the private copy.",
+  "focus": "FuzzAnalyzeSQL, FuzzMappedPattern, FuzzSnapshotCanonicalization, FuzzAdd — 8 minutes each, -parallel=4. Triage."
+ },
+ {
+  "part": "crash",
+  "id": "crash-diff-strings",
+  "category": "unspecified-high",
+  "task": "Write and run a woven differential fuzzer comparing instrumented strings/fmt/strconv/url calls against native results.",
+  "scope": "Private copy; a woven test package (go tool orchestrion go test) in a module like iast/integration/testapp copy.",
+  "focus": "Fuzz inputs through source-tainting helpers, call woven stdlib functions (so the real advice runs) and compare with results computed via reflection-invoked/func-value calls (which are documented as NOT woven) — assert identical outputs and panics. Run 15 minutes. Any divergence = Critical. Every suspected Critical/High issue MUST be proven with a reproducer written in your private copy (a Go test in the relevant package, or a small program) and its captured output; copy it to your evidence dir."
+ },
+ {
+  "part": "crash",
+  "id": "crash-diff-bytes",
+  "category": "unspecified-high",
+  "task": "Write and run a woven differential fuzzer comparing instrumented bytes and writer calls against native results.",
+  "scope": "Private copy; woven test package.",
+  "focus": "Same approach for bytes.* functions and bytes.Buffer/strings.Builder method sequences (random op sequences; compare final state and every return value with a native twin driven via method values). 15 minutes. Every suspected Critical/High issue MUST be proven with a reproducer written in your private copy (a Go test in the relevant package, or a small program) and its captured output; copy it to your evidence dir."
+ },
+ {
+  "part": "crash",
+  "id": "crash-panic-static",
+  "category": "deep-low",
+  "task": "Statically enumerate every potential panic site in production code reachable from hooks and classify whether it can fire.",
+  "scope": "Primary read scope: all non-test .go under taint/, internal/, iast/. You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "Index/slice expressions, type assertions without ok, nil map writes, nil derefs, division, make with computed sizes, integer overflow into slice bounds, closed channel sends. For each reachable site decide: provably safe / guarded by recover / can fire (then reproduce). Every suspected Critical/High issue MUST be proven with a reproducer written in your private copy (a Go test in the relevant package, or a small program) and its captured output; copy it to your evidence dir."
+ },
+ {
+  "part": "crash",
+  "id": "crash-unsafe",
+  "category": "ultrabrain",
+  "task": "Prove or disprove memory safety of every unsafe, uintptr, and weak-pointer use in production code under the Go GC and memory model.",
+  "scope": "Production files: iast/propagation/writer.go (lines ~200-245: Anchor, Backing = uintptr(Anchor) - (Cap - cap(value)), pointer->uintptr conversions), iast/propagation/coarse.go:42, internal/taint/jsonbridge/bridge.go:~204, internal/taint/propagation/json.go:~31, internal/spans/{annotation,orchestrion,owner,vulnerability}.go (weak), plus any store code keeping uintptr keys.",
+  "focus": "For each: is any uintptr ever converted back to a pointer (unsafe rule violations: invalid pointers, pointers past allocation end, stale addresses)? Can uintptr-keyed identity match a different, later object after GC (stale taint / wrong provenance) — prove with invariants or build a reproducer. Are weak pointers made from interior pointers or values that may be stack allocated? Does checkptr (-gcflags=all=-d=checkptr) or -race -asan flag anything when running the test suites in the private copy? Deliver a per-site verdict table. Every suspected Critical/High issue MUST be proven with a reproducer written in your private copy (a Go test in the relevant package, or a small program) and its captured output; copy it to your evidence dir."
+ },
+ {
+  "part": "crash",
+  "id": "crash-race-hunt",
+  "category": "unspecified-high",
+  "task": "Hunt data races with high-count race runs under varied GOMAXPROCS, plain and woven.",
+  "scope": "Private copy.",
+  "focus": "go test -race -count=20 -cpu=1,4,16 ./internal/taint/... ./internal/spans/... ./internal/vulnerability/...; woven -race -count=5 in iast/integration/testapp, iast/database/sql/testapp, iast/os/exec/testapp, and iast/propagation. Also run with -gcflags=all=-d=checkptr. Each race in production code = Critical with trace. Every suspected Critical/High issue MUST be proven with a reproducer written in your private copy (a Go test in the relevant package, or a small program) and its captured output; copy it to your evidence dir."
+ },
+ {
+  "part": "crash",
+  "id": "crash-stress-app",
+  "category": "unspecified-high",
+  "task": "Stress an instrumented HTTP app with highly concurrent tainted traffic hitting sinks to find panics and deadlocks.",
+  "scope": "Private copy; build on iast/integration/testapp or a small woven main.",
+  "focus": "Run an httptest server woven with dd-iast-go, 256 concurrent clients, 5 minutes, randomized flows (sources->propagation->SQL (sqlite or fake driver)/exec (/bin/true)), with DD_IAST_REQUEST_SAMPLING=100 and MAX_CONCURRENT_REQUESTS=64; build with -race for one run and without for another. On stall >10s dump goroutines (SIGQUIT/pprof). Any panic/deadlock = Critical. Every suspected Critical/High issue MUST be proven with a reproducer written in your private copy (a Go test in the relevant package, or a small program) and its captured output; copy it to your evidence dir."
+ },
+ {
+  "part": "crash",
+  "id": "crash-config-extremes",
+  "category": "unspecified-low",
+  "task": "Run the test suites and a woven sample under extreme and malformed DD_IAST_* environment values.",
+  "scope": "internal/config and a woven sample in the private copy.",
+  "focus": "Matrix: DD_IAST_MAX_RANGE_COUNT=1,64,0,-5,abc; DD_IAST_TRUNCATION_MAX_VALUE=0,1,huge; DD_IAST_VULNERABILITIES_PER_REQUEST=1,1000000; DD_IAST_MAX_CONCURRENT_REQUESTS=0,64,1000; DD_IAST_REQUEST_SAMPLING=0,100,150; invalid regexes for REDACTION patterns; DD_IAST_REDACTION_ENABLED=false; DD_IAST_ENABLED=false. Verify documented clamping/fallback and no panic; run the woven integration tests under a few of these. Every suspected Critical/High issue MUST be proven with a reproducer written in your private copy (a Go test in the relevant package, or a small program) and its captured output; copy it to your evidence dir."
+ },
+ {
+  "part": "crash",
+  "id": "crash-deadlock",
+  "category": "deep-low",
+  "task": "Analyze lock ordering, callbacks under locks, and goroutine leaks for deadlock and liveness risks.",
+  "scope": "Primary read scope: all production code with sync.Mutex/RWMutex/atomic/channels. You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "Build a lock-order graph across packages; find locks held while calling into dd-trace-go (span finish callbacks), user code (Stringer via fmt under IAST lock?), or allocation-triggered cleanups/finalizers that may re-enter IAST. Check goroutines started by IAST and their termination. Every suspected Critical/High issue MUST be proven with a reproducer written in your private copy (a Go test in the relevant package, or a small program) and its captured output; copy it to your evidence dir."
+ },
+ {
+  "part": "crash",
+  "id": "crash-hostile-input",
+  "category": "unspecified-high",
+  "task": "Attack an instrumented HTTP app with hostile inputs to find panics, memory blowups, or leaked sensitive values.",
+  "scope": "Private copy; woven app built on iast/integration/testapp or a small main.",
+  "focus": "Inputs: 1MB headers (within server limits), 10k query params, invalid UTF-8 everywhere, multipart with 5k parts and huge filenames, 50MB bodies with io.ReadAll path, 10k-deep nested JSON, JSON with huge strings and many escapes, cookies with odd syntax. Measure RSS/heap, check panics, and confirm limits drop provenance instead of growing memory. Every suspected Critical/High issue MUST be proven with a reproducer written in your private copy (a Go test in the relevant package, or a small program) and its captured output; copy it to your evidence dir."
+ },
+ {
+  "part": "light",
+  "id": "light-config",
+  "category": "quick",
+  "task": "Review internal/config changes (config.go, init.go, loader) for correctness and README consistency.",
+  "scope": "Primary read scope: internal/config/**. You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "Parsing, clamping, fallbacks, alias env vars, README table accuracy for every variable."
+ },
+ {
+  "part": "light",
+  "id": "light-model",
+  "category": "quick",
+  "task": "Review internal/model changes (event.go, constants, tests) for correctness.",
+  "scope": "Primary read scope: internal/model/**. You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "Diff vs merge-base; generated code in sync; round-trip tests meaningful."
+ },
+ {
+  "part": "light",
+  "id": "light-ci",
+  "category": "quick",
+  "task": "Review CI workflow and coverage tooling changes (.github/**, code-coverage.datadog.yml).",
+  "scope": "Primary read scope: .github/**, code-coverage.datadog.yml. You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "Correctness of module discovery, coverage merging script (merge-coverage.py, coverage_test.go), fuzz steps, pinned action SHAs, permissions, test coverage of nested modules, whether race runs cover woven code."
+ },
+ {
+  "part": "light",
+  "id": "light-docs",
+  "category": "unspecified-low",
+  "task": "Verify README claims against code and check plan-doc hygiene per AGENTS.md.",
+  "scope": "Primary read scope: README.md, _docs/plans/*, code. You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "Each README propagation/sink/config claim true in code? AGENTS.md says plans must be deleted once the feature is accepted: list the plan files that remain. Removed docs (_docs/sources-and-sinks) — was useful content lost? .DS_Store files committed (_docs/.DS_Store, root .DS_Store)?"
+ },
+ {
+  "part": "light",
+  "id": "light-testapps",
+  "category": "quick",
+  "task": "Review the nested testapp modules and integration tests for quality and determinism.",
+  "scope": "Primary read scope: iast/*/testapp/**, iast/integration/testapp/**. You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "Test assertions meaningful, go.mod replace usage, duplicated go.sum churn, bootstrap fixtures, nondeterminism."
+ },
+ {
+  "part": "light",
+  "id": "light-deps-license",
+  "category": "quick",
+  "task": "Review dependency and licensing changes (go.mod/go.sum across modules, .ddla-overrides, LICENSE-3rdparty.csv).",
+  "scope": "Primary read scope: go.mod, go.sum, */go.mod, .ddla-overrides, LICENSE-3rdparty.csv. You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "New deps and why, pseudo-version pins (orchestrion unmerged branch = release blocker), dd-trace-go rc version, license override justification, tool directives."
+ },
+ {
+  "part": "light",
+  "id": "light-preexisting",
+  "category": "quick",
+  "task": "Quickly review pre-existing, non-branch parts of the repo (crypto hash/cipher, stacktrace, telemetry, instrumentation).",
+  "scope": "Primary read scope: iast/crypto/**, internal/vulnerability/stacktrace, internal/instrumentation/**. You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "Obvious bugs, panics, concurrency, perf on hot paths."
+ },
+ {
+  "part": "light",
+  "id": "light-test-determinism",
+  "category": "quick",
+  "task": "Scan all test files for nondeterminism (sleeps, timing waits, order dependence, global state).",
+  "scope": "Primary read scope: all *_test.go. You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "grep time.Sleep, time.After in tests, Eventually-style polling, t.Parallel with shared globals, reliance on map order, GC-timing assumptions (runtime.GC then expect cleanup). List each with file:line and severity (test-gap/quality)."
+ },
+ {
+  "part": "light",
+  "id": "light-bench-code",
+  "category": "quick",
+  "task": "Review benchmarks/overhead code changes (runner/main.go, buffer.go, tests) for correctness.",
+  "scope": "Primary read scope: benchmarks/overhead/**. You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "Runner correctness (process isolation, alternating order, benchstat invocation, error handling), buffer workloads validity."
+ },
+ {
+  "part": "light",
+  "id": "light-wiring",
+  "category": "quick",
+  "task": "Check orchestrion.tool.go imports, README vulnerability table, and AGENTS.md compliance for every orchestrion.yml package.",
+  "scope": "Primary read scope: orchestrion.tool.go, iast/**/orchestrion.yml, taint/orchestrion.yml, internal/spans/orchestrion.yml, README.md. You may read any other file in /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go and sibling repos for context. ",
+  "focus": "Every package with orchestrion.yml imported (iast/AGENTS.md rule); no stale imports; README table correct."
+ }
+]

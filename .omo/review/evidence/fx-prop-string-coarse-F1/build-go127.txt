@@ -1,0 +1,27 @@
+COMMAND=GOFLAGS=-p=4 GOTOOLCHAIN=go1.27.0 /usr/bin/time -l timeout 900 go tool orchestrion go build -o /tmp/ddiast-review/wt/fx-prop-string-coarse-F1/fx-coarse-127 ./cmd/fx-coarse
+CWD=/tmp/ddiast-review/wt/fx-prop-string-coarse-F1/iast/integration/testapp
+status: exited_1 exit_code: 1
+# encoding/json
+$WORK/b104/orchestrion/src/encoding/json/<generated>:2: dec.r undefined (type *Decoder has no field or method r)
+$WORK/b104/orchestrion/src/encoding/json/<generated>:2: dec.d undefined (type *Decoder has no field or method d)
+$WORK/b104/orchestrion/src/encoding/json/<generated>:3: dec.d undefined (type *Decoder has no field or method d)
+exit status 2
+exit status 1
+       42.08 real        78.62 user        55.55 sys
+           301711360  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+             5007459  page reclaims
+              140664  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                6833  messages sent
+                7243  messages received
+               53427  signals received
+               24503  voluntary context switches
+             1089365  involuntary context switches
+            20328897  instructions retired
+            13474121  cycles elapsed
+             1212728  peak memory footprint

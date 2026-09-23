@@ -1,0 +1,10 @@
+File: memprobe-woven
+Type: alloc_space
+Time: 2026-09-23 15:19:11 CEST
+Showing nodes accounting for 5590344B, 100% of 5590344B total
+----------------------------------------------------------+-------------
+      flat  flat%   sum%        cum   cum%   calls calls% + context 	 	 
+----------------------------------------------------------+-------------
+                                          1112832B   100% |   github.com/puzpuzpuz/xsync/v4.(*Map[go.shape.struct { weak._ [0]*github.com/DataDog/dd-trace-go/v2/ddtrace/tracer.Span; weak.u unsafe.Pointer },go.shape.*uint8]).LoadOrCompute.func1
+  1112832B 19.91% 19.91%   1112832B 19.91%                | github.com/DataDog/dd-iast-go/internal/spans.BindScope.func1
+----------------------------------------------------------+-------------

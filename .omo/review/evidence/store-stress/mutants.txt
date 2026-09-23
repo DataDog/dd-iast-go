@@ -1,0 +1,14 @@
+MUTANT lookup.go: if owner.generation.Load() != window.ownerGen || ownerState(owner.stat
+VIOLATION seed=1 epoch=0 worker=31 op=foreign lookup owner=49: lookup entry id=65 has idx/gen 24/1 but owner was 24/2
+        VIOLATION seed=1 epoch=0 worker=31 op=foreign lookup owner=49: lookup entry id=65 has idx/gen 24/1 but owner was 24/2
+
+MUTANT owner.go: if root.overflow != 0 {
+VIOLATION seed=1 epoch=0 main: quiescent: overflow accounting: free 6 + in use 17 != 256
+VIOLATION seed=1 epoch=0 main: quiescent: overflow accounting: free 6 + in use 0 != 256
+VIOLATION seed=1 epoch=0 main: quiescent: store not empty after drain: values=0 charged=0 writers=0 overflowFree=6 opMirror=0 wMirror=0
+
+MUTANT mutation.go: o.owner.values.Add(-count)
+VIOLATION seed=1 epoch=0 main: quiescent: owner 1 values counter 11 != live index slots 1
+VIOLATION seed=1 epoch=0 main: quiescent: owner 2 values counter 8 != live index slots 7
+VIOLATION seed=1 epoch=0 main: quiescent: owner 3 values counter 6 != live index slots 3
+

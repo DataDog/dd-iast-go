@@ -1,0 +1,29 @@
+=== RUN   TestReviewNegativeDecisionsCrowdOutActiveRequest
+    zz_review_lifespans_test.go:53: sampled-out request 0 bound (negative decision stored)
+    zz_review_lifespans_test.go:53: sampled-out request 1 bound (negative decision stored)
+    zz_review_lifespans_test.go:62: active request: scope.Active()=true decision=3 BindScope annotation nil=true
+    zz_review_lifespans_test.go:67: ReportTainted first=false second(dedup)=false
+    zz_review_lifespans_test.go:69: weak-sink annotation for active request sampled=false
+    zz_review_lifespans_test.go:80: finished span name="vulnerability" enabled=1 has_iast_json=false
+    zz_review_lifespans_test.go:80: finished span name="vulnerability" enabled=1 has_iast_json=false
+    zz_review_lifespans_test.go:80: finished span name="active-request" enabled=0 has_iast_json=false
+    zz_review_lifespans_test.go:80: finished span name="sampled-out-request" enabled=0 has_iast_json=false
+    zz_review_lifespans_test.go:80: finished span name="sampled-out-request" enabled=0 has_iast_json=false
+    zz_review_lifespans_test.go:95: BUG: active request annotation nil=true enabled tag=0 event on request span=false orphan spans=2 (want non-nil, 1, true, 0)
+--- FAIL: TestReviewNegativeDecisionsCrowdOutActiveRequest (0.01s)
+=== RUN   TestReviewLateBindAfterRootFinishLosesFindings
+    zz_review_lifespans_test.go:115: root finished; original annotation closed=true
+    zz_review_lifespans_test.go:121: late bind: annotation nil=false same-as-original=false closed=false
+    zz_review_lifespans_test.go:131: ReportTainted returned true; zombie annotation holds 2 vulnerabilities
+    zz_review_lifespans_test.go:137: after child+scope finish: zombie still in store for finished root=true
+    zz_review_lifespans_test.go:138: finished span name="request" enabled=1 has_iast_json=false
+    zz_review_lifespans_test.go:138: finished span name="late-db-call" enabled=<nil> has_iast_json=false
+    zz_review_lifespans_test.go:147: BUG: ReportTainted reported success and 2 findings were committed, but no finished span carries an IAST event
+--- FAIL: TestReviewLateBindAfterRootFinishLosesFindings (0.01s)
+=== RUN   TestReviewWeakReportWithoutSpanCreatesOrphanPerCall
+    zz_review_lifespans_test.go:178: 100 weak-hash calls at one call site -> 100 orphan spans, 0 carrying an IAST event, 0 manual.keep, 0 distinct hashes
+    zz_review_lifespans_test.go:182: allocations per weak-hash call with no span in context: 59 (stack traces enabled)
+--- PASS: TestReviewWeakReportWithoutSpanCreatesOrphanPerCall (0.01s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/internal/vulnerability	0.843s
+FAIL

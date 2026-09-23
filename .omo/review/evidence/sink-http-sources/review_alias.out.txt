@@ -1,0 +1,23 @@
+Reproducer placement: copy /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/.omo/review/evidence/sink-http-sources/review_alias_test.go to iast/net/http/review_alias_test.go in the private copy.
+Run these commands from the PRIVATE COPY /tmp/ddiast-review/wt/sink-http-sources, not the main checkout.
+
+$ GOTOOLCHAIN=go1.26.6 go test -timeout 12m -count=1 -run ^TestReview_ -v ./iast/net/http
+=== RUN   TestReview_HeaderAliasReflectsHandlerMutation_whenFallbackTaintsRequest
+--- PASS: TestReview_HeaderAliasReflectsHandlerMutation_whenFallbackTaintsRequest (0.00s)
+=== RUN   TestReview_QueryValueRemainsClean_whenApplicationReplacesRequestQuery
+--- PASS: TestReview_QueryValueRemainsClean_whenApplicationReplacesRequestQuery (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/iast/net/http	0.971s
+exit code: 0
+
+$ GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -timeout 12m -count=1 -run ^TestReview_ -v ./iast/net/http
+=== RUN   TestReview_HeaderAliasReflectsHandlerMutation_whenFallbackTaintsRequest
+    review_alias_test.go:26: header map alias lost handler mutation: got "", want "observed"
+--- FAIL: TestReview_HeaderAliasReflectsHandlerMutation_whenFallbackTaintsRequest (0.00s)
+=== RUN   TestReview_QueryValueRemainsClean_whenApplicationReplacesRequestQuery
+    review_alias_test.go:43: replaced query yielded value "trusted-value", tainted=true; want clean trusted-value
+--- FAIL: TestReview_QueryValueRemainsClean_whenApplicationReplacesRequestQuery (0.00s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/iast/net/http	0.741s
+FAIL
+exit code: 1

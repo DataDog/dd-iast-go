@@ -1,0 +1,13 @@
+[
+  {
+    "id": "perf-memory-F1",
+    "verdict": "CONFIRMED",
+    "original_severity": "High",
+    "adjusted_severity": "High",
+    "reachable_default": true,
+    "documented_limitation": false,
+    "reason": "Code at HEAD 2e23b46 verified: sql.Report runs CollectString (sql.go:37) and AnalyzeSQL (sql.go:45), and ReportTainted runs BuildWithSensitive (tainted.go:57) and a full depth-32 CaptureLocationSkipWhile stack capture with UUID (tainted.go:76, StackTraceEnabled defaults true) before the only dedup test, dedup.Set.Check at tainted.go:93; the SQLi hash uses only type+location (model/vulnerability.go:24-43), so none of that work is needed for the decision. Independently reproduced with my own woven (Orchestrion, go1.26.6) harness: 320 requests, dedup on (default), only 1 vulnerability committed, yet sql.Report allocated 3.65 MB = 11.7 KB per request (CaptureLocationSkipWhile 8.47 KB/req, matching the finder's 8.5); per-request cost 22,521 B vs 6,233 B plain and 9,940 B sampled-out. Finder's magnitudes (33,570 vs 8,209 B, 4.09x, Report cum 17.9 KB/req = 71% of the +25.4 KB sampled overhead) are consistent. Reachable under default config (30% sampling, dedup on, stack traces on) by any woven app with a real SQLi at a fixed call site; not a documented limitation (README Cost Control claims minimized overhead; violates AGENTS.md cheap-check gating). Nuance: the hash needs a location, so a shallow (~0.5-1 KB) capture must precede the check; ~95% of the measured cost is still avoidable, so High stands. Single root cause (gate ordering in ReportTainted); distinct from the quota trigger (VulnerabilitiesPerRequest, enforced later in TryCommitTainted/CanAddVulnerability).",
+    "evidence_path": ".omo/review/evidence/fx-perf-memory-F1/",
+    "repro_command": "cd <private-copy>/iast/integration/testapp && export GOTOOLCHAIN=go1.26.6 GOFLAGS='-p=4 -mod=mod' && /usr/bin/time -l go tool orchestrion go build -o out/dedup-woven ./cmd/dedupprobe && env DD_TRACE_STARTUP_LOGS=false DD_INSTRUMENTATION_TELEMETRY_ENABLED=false DD_IAST_REQUEST_SAMPLING=100 ./out/dedup-woven -n=300 -warm=20 -memprofile=prof/woven-s100.pprof && go tool pprof -top -cum -focus=iast/database/sql.Report -sample_index=alloc_space out/dedup-woven prof/woven-s100.pprof   (harness: .omo/review/evidence/fx-perf-memory-F1/dedupprobe_main.go -> cmd/dedupprobe/main.go)"
+  }
+]

@@ -1,0 +1,13 @@
+[
+  {
+    "id": "life-weak-gc-F2",
+    "verdict": "CONFIRMED",
+    "original_severity": "High",
+    "adjusted_severity": "High",
+    "reachable_default": true,
+    "documented_limitation": false,
+    "reason": "Late child spans retain the finished trace root; BindScope recreates a root-keyed annotation, while Finished(child) deletes only a child key. Independent Go 1.26.6/1.27.0 repros show two stale slots deny a later active request, and a focused woven Go 1.26.6 repro shows an open late annotation accepts a vulnerability commit after its root finished. The weak-crypto nil-context trigger in the original claim is refuted.",
+    "evidence_path": ".omo/review/evidence/fx-life-weak-gc-F2/",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go test -count=1 -timeout 12m -run 'TestReviewFXLate' -v ./internal/spans/ (after copying review_fx_late_bind_test.go into internal/spans of the private copy)"
+  }
+]

@@ -1,0 +1,150 @@
+PASS
+ok  	github.com/DataDog/dd-iast-go/iast/bufio	2.999s
+PASS
+ok  	github.com/DataDog/dd-iast-go/iast/crypto/cipher	0.711s
+PASS
+ok  	github.com/DataDog/dd-iast-go/iast/crypto/hash	0.680s
+goos: darwin
+goarch: arm64
+pkg: github.com/DataDog/dd-iast-go/iast/database/sql
+cpu: Apple M4 Max
+BenchmarkReportActiveClean-16    	    2000	        16.75 ns/op	       0 B/op	       0 allocs/op
+PASS
+ok  	github.com/DataDog/dd-iast-go/iast/database/sql	0.551s
+goos: darwin
+goarch: arm64
+pkg: github.com/DataDog/dd-iast-go/iast/encoding/json
+cpu: Apple M4 Max
+BenchmarkLiteralInactive-16       	    2000	        21.44 ns/op	       0 B/op	       0 allocs/op
+BenchmarkLiteralActiveClean-16    	    2000	        18.94 ns/op	       0 B/op	       0 allocs/op
+PASS
+ok  	github.com/DataDog/dd-iast-go/iast/encoding/json	0.542s
+?   	github.com/DataDog/dd-iast-go/iast/internal/propagationtest	[no test files]
+PASS
+ok  	github.com/DataDog/dd-iast-go/iast/io	0.481s
+PASS
+ok  	github.com/DataDog/dd-iast-go/iast/net/http	0.542s
+?   	github.com/DataDog/dd-iast-go/iast/net/url	[no test files]
+goos: darwin
+goarch: arm64
+pkg: github.com/DataDog/dd-iast-go/iast/os/exec
+cpu: Apple M4 Max
+BenchmarkReportActiveClean-16    	    2000	        14.44 ns/op	       0 B/op	       0 allocs/op
+PASS
+ok  	github.com/DataDog/dd-iast-go/iast/os/exec	0.448s
+goos: darwin
+goarch: arm64
+pkg: github.com/DataDog/dd-iast-go/iast/propagation
+cpu: Apple M4 Max
+BenchmarkOperatorConcat4Inactive-16                	    2000	        51.46 ns/op	      24 B/op	       1 allocs/op
+BenchmarkOperatorConcat4ActiveClean-16             	    2000	        25.25 ns/op	      24 B/op	       1 allocs/op
+BenchmarkOperatorConversionsInactive-16            	    2000	        11.56 ns/op	      24 B/op	       1 allocs/op
+BenchmarkOperatorOptimizedConversionExcluded-16    	    2000	         2.000 ns/op	       0 B/op	       0 allocs/op
+BenchmarkOperatorSlicesInactive-16                 	    2000	         4.271 ns/op	       0 B/op	       0 allocs/op
+PASS
+ok  	github.com/DataDog/dd-iast-go/iast/propagation	0.499s
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/config	0.487s
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/config/loader	0.499s
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/config/parser	0.477s
+?   	github.com/DataDog/dd-iast-go/internal/instrumentation	[no test files]
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/instrumentation/telemetry	0.474s
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/model	0.461s
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/model/constants	0.212s
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/model/truncation	0.181s
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/spans	0.492s
+goos: darwin
+goarch: arm64
+pkg: github.com/DataDog/dd-iast-go/internal/taint/commandbridge
+cpu: Apple M4 Max
+BenchmarkReportInactive-16    	    2000	         2.354 ns/op	       0 B/op	       0 allocs/op
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/commandbridge	0.197s
+goos: darwin
+goarch: arm64
+pkg: github.com/DataDog/dd-iast-go/internal/taint/evidence
+cpu: Apple M4 Max
+BenchmarkCollectStringMiss-16    	    2000	        14.15 ns/op	       0 B/op	       0 allocs/op
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/evidence	0.480s
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/httpbridge	0.463s
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/iobridge	0.187s
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/jsonbridge	0.448s
+goos: darwin
+goarch: arm64
+pkg: github.com/DataDog/dd-iast-go/internal/taint/operatorbridge
+cpu: Apple M4 Max
+BenchmarkHasValuesClean-16    	    2000	         1.958 ns/op	       0 B/op	       0 allocs/op
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/operatorbridge	0.444s
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/propagation	0.418s
+goos: darwin
+goarch: arm64
+pkg: github.com/DataDog/dd-iast-go/internal/taint/ranges
+cpu: Apple M4 Max
+BenchmarkCanonicalizeTwo-16         	    2000	       504.4 ns/op	       0 B/op	       0 allocs/op
+BenchmarkConcatTwo-16               	    2000	        56.23 ns/op	       0 B/op	       0 allocs/op
+BenchmarkSliceTwo-16                	    2000	        59.60 ns/op	       0 B/op	       0 allocs/op
+BenchmarkConcatFreshGoroutine-16    	    2000	       915.6 ns/op	     152 B/op	       3 allocs/op
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/ranges	0.406s
+goos: darwin
+goarch: arm64
+pkg: github.com/DataDog/dd-iast-go/internal/taint/redaction
+cpu: Apple M4 Max
+BenchmarkAnalyzeSQL/typical-16         	    2000	      3174 ns/op	    1682 B/op	      21 allocs/op
+BenchmarkAnalyzeSQL/two_hundred_literals-16         	    2000	     69487 ns/op	   34709 B/op	      26 allocs/op
+BenchmarkAnalyzeSQL/q_quote_flood-16                	    2000	     35472 ns/op	    5568 B/op	       8 allocs/op
+BenchmarkAnalyzeCommand-16                          	    2000	        62.69 ns/op	      72 B/op	       2 allocs/op
+BenchmarkMappedPattern-16                           	    2000	        16.38 ns/op	       0 B/op	       0 allocs/op
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/redaction	0.676s
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/request	0.406s
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/scopebridge	0.193s
+goos: darwin
+goarch: arm64
+pkg: github.com/DataDog/dd-iast-go/internal/taint/sqlbridge
+cpu: Apple M4 Max
+BenchmarkReportInactive-16    	    2000	         2.000 ns/op	       0 B/op	       0 allocs/op
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/sqlbridge	0.177s
+goos: darwin
+goarch: arm64
+pkg: github.com/DataDog/dd-iast-go/internal/taint/store
+cpu: Apple M4 Max
+BenchmarkFinishWithActiveWriter-16    	    2000	      1136 ns/op	     224 B/op	       6 allocs/op
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/store	0.387s
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/urlbridge	0.378s
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/writerbridge	0.376s
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/vulnerability	0.476s
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/vulnerability/dedup	0.175s
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/vulnerability/stacktrace	0.159s
+goos: darwin
+goarch: arm64
+pkg: github.com/DataDog/dd-iast-go/taint
+cpu: Apple M4 Max
+BenchmarkStringLookup/hit-16         	    2000	       370.5 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStringLookup/miss-16        	    2000	         7.188 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStringLookup/visit-16       	    2000	       384.3 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStringLookup/no-active-16   	    2000	         2.042 ns/op	       0 B/op	       0 allocs/op
+PASS
+ok  	github.com/DataDog/dd-iast-go/taint	0.368s

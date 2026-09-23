@@ -1,0 +1,10 @@
+=== RUN   TestReviewJoinSingleElementClones
+    zz_review_join_single_test.go:22: native aliases element: true
+    zz_review_join_single_test.go:25: JoinString returned alias: false
+    zz_review_join_single_test.go:26: owner charge: 4096 -> 8192 bytes; owner values: 1 -> 2
+    zz_review_join_single_test.go:27: ranges on returned value: [{0 4096 1 0}]
+    zz_review_join_single_test.go:29: JoinString replaced an already-tracked alias with a fresh 4096-byte clone (extra charge 4096 bytes)
+--- FAIL: TestReviewJoinSingleElementClones (0.00s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/propagation	0.366s
+FAIL

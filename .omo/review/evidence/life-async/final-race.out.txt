@@ -1,0 +1,95 @@
+=== RUN   TestReviewLateGoroutineAfterRequestEnd
+    lifeasync_review_test.go:150: after end: tainted q=false derivedIn=false derived=false concat=false
+    lifeasync_review_test.go:150: ctx0 exec error context canceled context canceled
+    lifeasync_review_test.go:156: span "iast.review.request" hasEvent=false vulns=0
+    lifeasync_review_test.go:161: after late goroutine: ProcessCharged=0 ProcessValues=0 ActiveStore!=nil=false
+--- PASS: TestReviewLateGoroutineAfterRequestEnd (0.01s)
+=== RUN   TestReviewGlobalAcrossRequests
+    lifeasync_review_test.go:223: address reuse: hits=1 tainted=0 (freed len 15)
+    lifeasync_review_test.go:228: span "iast.review.request" value="SELECT request_a_value FROM t" vulns=1 sources=1
+    lifeasync_review_test.go:230:    evidence="SELECT request_a_value FROM t"
+    lifeasync_review_test.go:228: span "iast.review.request" value="SELECT request_b_value FROM t" vulns=1 sources=1
+    lifeasync_review_test.go:230:    evidence="SELECT request_b_value FROM t"
+    lifeasync_review_test.go:241: after global across requests: ProcessCharged=0 ProcessValues=0 ActiveStore!=nil=false
+--- PASS: TestReviewGlobalAcrossRequests (0.01s)
+=== RUN   TestReviewWorkerWithFinishedRequestContext
+    lifeasync_review_test.go:276: worker: A-scope active=false valueTainted=true
+    lifeasync_review_test.go:285: span "iast.review.request" value="SELECT request_a FROM t" vulns=0
+    lifeasync_review_test.go:285: span "iast.review.request" value="SELECT request_b_worker FROM t" vulns=1
+    lifeasync_review_test.go:288:    evidence="SELECT request_b_worker FROM t -- bg"
+    lifeasync_review_test.go:299: RESULT sink with finished-A ctx reported=false; same value via background ctx reported=true
+    lifeasync_review_test.go:301: FALSE NEGATIVE: value tainted by live request B is dropped because the sink context carries finished request A's scope
+--- FAIL: TestReviewWorkerWithFinishedRequestContext (0.01s)
+=== RUN   TestReviewConcurrentOwnerEndVsSink
+    lifeasync_review_test.go:392: RESULT requests=24 requestVulns=132 orphanSpans=66 orphanVulns=66 foreignSources=0
+    lifeasync_review_test.go:393: after concurrent owner-end vs sink: ProcessCharged=0 ProcessValues=0 ActiveStore!=nil=false
+--- PASS: TestReviewConcurrentOwnerEndVsSink (0.06s)
+=== RUN   TestReviewMiddlewareDetachedContext
+=== RUN   TestReviewMiddlewareDetachedContext/control_passthrough
+    lifeasync_review_test.go:435: inner scope=true active=true decision=3 urlBoundOwners=1 queryTainted=true headerTainted=true
+    lifeasync_review_test.go:438: span "iast.review.request" vulns=2
+    lifeasync_review_test.go:440:    evidence="SELECT mw_query FROM t"
+    lifeasync_review_test.go:440:    evidence="SELECT mw_header FROM t"
+    lifeasync_review_test.go:444: RESULT control passthrough: reported=2 of 2 tainted sinks
+=== RUN   TestReviewMiddlewareDetachedContext/detached,_permits_free
+    lifeasync_review_test.go:435: inner scope=true active=true decision=3 urlBoundOwners=2 queryTainted=false headerTainted=true
+    lifeasync_review_test.go:438: span "iast.review.request" vulns=1
+    lifeasync_review_test.go:440:    evidence="SELECT mw_header FROM t"
+    lifeasync_review_test.go:444: RESULT detached, permits free: reported=1 of 2 tainted sinks
+    lifeasync_review_test.go:446: FALSE NEGATIVE: 1 of 2 tainted sinks reported
+=== RUN   TestReviewMiddlewareDetachedContext/detached,_one_permit
+    lifeasync_review_test.go:435: inner scope=true active=false decision=2 urlBoundOwners=1 queryTainted=true headerTainted=true
+    lifeasync_review_test.go:438: span "iast.review.request" vulns=0
+    lifeasync_review_test.go:444: RESULT detached, one permit: reported=0 of 2 tainted sinks
+    lifeasync_review_test.go:446: FALSE NEGATIVE: 0 of 2 tainted sinks reported
+--- FAIL: TestReviewMiddlewareDetachedContext (0.03s)
+    --- PASS: TestReviewMiddlewareDetachedContext/control_passthrough (0.01s)
+    --- FAIL: TestReviewMiddlewareDetachedContext/detached,_permits_free (0.01s)
+    --- FAIL: TestReviewMiddlewareDetachedContext/detached,_one_permit (0.01s)
+=== RUN   TestReviewMiddlewareURLCopy
+=== RUN   TestReviewMiddlewareURLCopy/control_WithContext
+    lifeasync_review_test.go:488: scopeActive=true urlBoundOwners=1 URL.Query tainted=true RawQuery tainted=true FormValue tainted=true header tainted=true
+    lifeasync_review_test.go:492:    span "iast.review.request" evidence="SELECT mw_query FROM t"
+    lifeasync_review_test.go:492:    span "iast.review.request" evidence="SELECT mw_header FROM t"
+    lifeasync_review_test.go:496: RESULT control WithContext: reported=2 of 2 tainted sinks
+=== RUN   TestReviewMiddlewareURLCopy/http.StripPrefix
+    lifeasync_review_test.go:488: scopeActive=true urlBoundOwners=0 URL.Query tainted=false RawQuery tainted=true FormValue tainted=true header tainted=true
+    lifeasync_review_test.go:492:    span "iast.review.request" evidence="SELECT mw_header FROM t"
+    lifeasync_review_test.go:496: RESULT http.StripPrefix: reported=1 of 2 tainted sinks
+    lifeasync_review_test.go:498: FALSE NEGATIVE: 1 of 2 tainted sinks reported
+=== RUN   TestReviewMiddlewareURLCopy/Request.Clone
+    lifeasync_review_test.go:488: scopeActive=true urlBoundOwners=0 URL.Query tainted=false RawQuery tainted=true FormValue tainted=true header tainted=true
+    lifeasync_review_test.go:492:    span "iast.review.request" evidence="SELECT mw_header FROM t"
+    lifeasync_review_test.go:496: RESULT Request.Clone: reported=1 of 2 tainted sinks
+    lifeasync_review_test.go:498: FALSE NEGATIVE: 1 of 2 tainted sinks reported
+--- FAIL: TestReviewMiddlewareURLCopy (0.03s)
+    --- PASS: TestReviewMiddlewareURLCopy/control_WithContext (0.01s)
+    --- FAIL: TestReviewMiddlewareURLCopy/http.StripPrefix (0.01s)
+    --- FAIL: TestReviewMiddlewareURLCopy/Request.Clone (0.01s)
+=== RUN   TestReviewLateLazySourcesDuringNextRequest
+    lifeasync_review_test.go:557: late lazy on A while B live: query=false form=false header=false cookie=false (B value tainted=true)
+    lifeasync_review_test.go:562: span "iast.review.request" value="A" vulns=0
+    lifeasync_review_test.go:562: span "iast.review.request" value="B" vulns=0
+--- PASS: TestReviewLateLazySourcesDuringNextRequest (0.01s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/testapps/integration	0.487s
+FAIL
+exit status 1
+        5.57 real         3.29 user         4.49 sys
+           384303104  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              307333  page reclaims
+               11876  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                2480  messages sent
+                2491  messages received
+                9231  signals received
+                5895  voluntary context switches
+              209691  involuntary context switches
+          5515654133  instructions retired
+          3092076136  cycles elapsed
+            38552272  peak memory footprint

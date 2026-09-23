@@ -1,0 +1,6 @@
+Reproducer: minimal/main.go.
+Command: cd /tmp/ddiast-review/wt/fx-base-test-127-F1 && GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 /usr/bin/time -l timeout 180 go tool orchestrion go build -o /dev/null ./repro
+Exit status: 0.
+      149.74 real       125.29 user        96.06 sys
+           438992896  maximum resident set size
+                   0  swaps

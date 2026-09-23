@@ -1,0 +1,22 @@
+$ cd $WT/fx/sqlonly
+$ GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4  go tool orchestrion go build -buildmode=plugin -o ../out/sqlonly-pluginnomain.so ./cmd/pluginnomain
+        4.37 real         1.80 user         2.66 sys
+            99221504  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              120909  page reclaims
+                3737  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                  26  messages sent
+                  25  messages received
+                2490  signals received
+                 956  voluntary context switches
+               35840  involuntary context switches
+          4328543138  instructions retired
+          2329485756  cycles elapsed
+            79561496  peak memory footprint
+
+exit status: 0

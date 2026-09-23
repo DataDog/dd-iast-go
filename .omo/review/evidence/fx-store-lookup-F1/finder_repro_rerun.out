@@ -1,0 +1,16 @@
+Command:
+cd /tmp/ddiast-review/wt/fx-store-lookup-F1 && GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go test -timeout 15m ./internal/taint/store -run ^TestReproLookupSkipsLiveOwnerAfterFourStaleMatches$ -count=1 -v
+
+Captured output (re-run independently in my private copy /tmp/ddiast-review/wt/fx-store-lookup-F1):
+=== RUN   TestReproLookupSkipsLiveOwnerAfterFourStaleMatches
+    stale_fanout_repro_test.go:36: 
+        	Error Trace:	/tmp/ddiast-review/wt/fx-store-lookup-F1/internal/taint/store/stale_fanout_repro_test.go:36
+        	Error:      	Not equal: 
+        	            	expected: 1
+        	            	actual  : 0
+        	Test:       	TestReproLookupSkipsLiveOwnerAfterFourStaleMatches
+        	Messages:   	the fifth live owner must not be excluded by four stale slots
+--- FAIL: TestReproLookupSkipsLiveOwnerAfterFourStaleMatches (0.00s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/store	1.106s
+FAIL

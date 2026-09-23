@@ -1,0 +1,157 @@
+// Review harness (sink-systemtests): weblog-like handlers placed in a
+// non-test root-module package, like the system-tests net-http-orchestrion
+// main package.
+package testapp
+
+import (
+	"context"
+	"crypto/md5"
+	"crypto/rc4"
+	"database/sql"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	osexec "os/exec"
+	"strings"
+)
+
+// SystemTestsMux mirrors the system-tests IAST weblog endpoints.
+func SystemTestsMux(db *sql.DB) *http.ServeMux {
+	sink := func(w http.ResponseWriter, ctx context.Context, value string) {
+		rows, err := db.QueryContext(ctx, "SELECT * FROM "+value)
+		if err == nil {
+			rows.Close()
+		}
+		w.WriteHeader(http.StatusOK)
+	}
+
+	mux := http.NewServeMux()
+	// --- sinks ---
+	mux.HandleFunc("POST /iast/sqli/test_insecure", func(w http.ResponseWriter, r *http.Request) {
+		query := "SELECT * FROM IAST_USER WHERE USERNAME = '" + r.FormValue("username") + "' AND PASSWORD = '" + r.FormValue("password") + "'"
+		rows, err := db.QueryContext(r.Context(), query)
+		if err == nil {
+			rows.Close()
+		}
+	})
+	mux.HandleFunc("POST /iast/sqli/test_secure", func(w http.ResponseWriter, r *http.Request) {
+		rows, err := db.QueryContext(r.Context(), "SELECT * FROM IAST_USER WHERE USERNAME = ? AND PASSWORD = ?", r.FormValue("username"), r.FormValue("password"))
+		if err == nil {
+			rows.Close()
+		}
+	})
+	mux.HandleFunc("POST /iast/cmdi/test_insecure", func(w http.ResponseWriter, r *http.Request) {
+		_ = osexec.CommandContext(r.Context(), r.FormValue("cmd")).Run()
+	})
+	mux.HandleFunc("POST /iast/cmdi/test_secure", func(w http.ResponseWriter, r *http.Request) {
+		_ = osexec.CommandContext(r.Context(), "ls").Run()
+	})
+	mux.HandleFunc("GET /iast/insecure_hashing/test_md5_algorithm", func(w http.ResponseWriter, _ *http.Request) {
+		digest := md5.Sum([]byte("insecure"))
+		fmt.Fprintf(w, "%x", digest)
+	})
+	mux.HandleFunc("GET /iast/insecure_cipher/test_insecure_algorithm", func(w http.ResponseWriter, _ *http.Request) {
+		stream, err := rc4.NewCipher([]byte("insecure key"))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		plaintext := []byte("insecure plaintext")
+		ciphertext := make([]byte, len(plaintext))
+		stream.XORKeyStream(ciphertext, plaintext)
+		fmt.Fprintf(w, "%x", ciphertext)
+	})
+	// --- sources ---
+	mux.HandleFunc("GET /iast/source/header/test", func(w http.ResponseWriter, r *http.Request) {
+		sink(w, r.Context(), r.Header.Get("table"))
+	})
+	mux.HandleFunc("GET /iast/source/headername/test", func(w http.ResponseWriter, r *http.Request) {
+		for name := range r.Header {
+			if strings.EqualFold(name, "user") {
+				sink(w, r.Context(), name)
+				return
+			}
+		}
+		w.WriteHeader(http.StatusNotFound)
+	})
+	mux.HandleFunc("GET /iast/source/cookiename/test", func(w http.ResponseWriter, r *http.Request) {
+		for _, c := range r.Cookies() {
+			if c.Name == "table" {
+				sink(w, r.Context(), c.Name)
+				return
+			}
+		}
+		w.WriteHeader(http.StatusNotFound)
+	})
+	mux.HandleFunc("GET /iast/source/cookievalue/test", func(w http.ResponseWriter, r *http.Request) {
+		c, err := r.Cookie("table")
+		if err != nil {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		sink(w, r.Context(), c.Value)
+	})
+	mux.HandleFunc("/iast/source/parametername/test", func(w http.ResponseWriter, r *http.Request) {
+		if err := r.ParseForm(); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		for name := range r.Form {
+			if name == "user" {
+				sink(w, r.Context(), name)
+				return
+			}
+		}
+		w.WriteHeader(http.StatusNotFound)
+	})
+	mux.HandleFunc("/iast/source/parameter/test", func(w http.ResponseWriter, r *http.Request) {
+		sink(w, r.Context(), r.FormValue("table"))
+	})
+	mux.HandleFunc("GET /iast/source/parameter_query/test", func(w http.ResponseWriter, r *http.Request) {
+		sink(w, r.Context(), r.URL.Query().Get("table"))
+	})
+	mux.HandleFunc("GET /iast/source/path/test", func(w http.ResponseWriter, r *http.Request) {
+		sink(w, r.Context(), r.URL.Path)
+	})
+	mux.HandleFunc("GET /iast/source/path_parameter/test/{table}", func(w http.ResponseWriter, r *http.Request) {
+		sink(w, r.Context(), r.PathValue("table"))
+	})
+	mux.HandleFunc("GET /iast/source/uri/test", func(w http.ResponseWriter, r *http.Request) {
+		sink(w, r.Context(), r.RequestURI)
+	})
+	mux.HandleFunc("GET /iast/source/uri_url/test", func(w http.ResponseWriter, r *http.Request) {
+		sink(w, r.Context(), r.URL.String())
+	})
+	mux.HandleFunc("POST /iast/source/body/test", func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			Name  string `json:"name"`
+			Value string `json:"value"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		sink(w, r.Context(), body.Value)
+	})
+	mux.HandleFunc("POST /iast/source/multipart/test", func(w http.ResponseWriter, r *http.Request) {
+		if err := r.ParseMultipartForm(1 << 20); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		for _, headers := range r.MultipartForm.File {
+			for _, fh := range headers {
+				sink(w, r.Context(), fh.Filename)
+				return
+			}
+		}
+		w.WriteHeader(http.StatusNotFound)
+	})
+
+	mux.HandleFunc("POST /iast/sqli/direct", func(w http.ResponseWriter, r *http.Request) {
+		rows, err := db.QueryContext(r.Context(), r.FormValue("q"))
+		if err == nil {
+			rows.Close()
+		}
+	})
+	return mux
+}

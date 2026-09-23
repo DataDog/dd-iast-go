@@ -1,0 +1,13 @@
+[
+  {
+    "id": "sink-redaction-source-F2",
+    "verdict": "CONFIRMED",
+    "original_severity": "Critical",
+    "adjusted_severity": "Medium",
+    "reachable_default": true,
+    "documented_limitation": false,
+    "reason": "Mechanism real at HEAD 2e23b46: buildWireSources (internal/taint/redaction/source.go:110-111) passes source.Name verbatim into model.NewSourceRedactedString, so a source classified sensitive by its name serializes that unredacted name on the wire. Reproduced independently through the public taint API plus the production MessagePack encoder, and on a full woven orchestrion build (Go 1.26.6) with a real HTTP request whose credential-shaped query key reached database/sql sinks: the captured span event shows name=token:abcdefghijklm with redacted=true while the value was pattern-replaced. Default configuration, no env overrides. Severity downgraded from Critical to Medium: the only data reachable through this path is client-controlled key/name structure (an attacker exfiltrating their own credential-shaped key), never user or server secrets, which live in source values and are redacted; and keeping source names is the deliberate uniform cross-language IAST design (dd-trace-java SourceAdapter.java:75-80, dd-trace-js vulnerable-formatter, dd-trace-python reporter.py:361-363 all keep the name and redact only the value). It remains a genuine narrow bypass of the redaction contract (credential-shaped string leaves with redacted:true) that should be fixed. Not a documented README limitation. Shares one root cause with sink-redaction-source-F1: the same buildWireSources/NewSourceRedactedString call site deciding what a redacted wire source retains (F1: content-derived pattern; F2: unredacted name); F3 is unrelated.",
+    "evidence_path": ".omo/review/evidence/fx-sink-redaction-source-F2/woven-run.out.txt",
+    "repro_command": "cd /tmp/ddiast-review/wt/fx-sink-redaction-source-F2/iast/integration/testapp && env -u DD_IAST_REDACTION_ENABLED -u DD_IAST_REDACTION_NAME_PATTERN -u DD_IAST_REDACTION_VALUE_PATTERN -u DD_IAST_REDACTION_KEYS_REGEXP -u DD_IAST_REDACTION_VALUES_REGEXP GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 /usr/bin/time -l go tool orchestrion go test . -run TestFxSensitiveSourceNameLeavesProcessUnredacted -count=1 -timeout 15m -v"
+  }
+]

@@ -1,0 +1,106 @@
+{
+ "peak_tree_rss_kb": 1002400,
+ "peak_tree_at_s": 30.2,
+ "peak_tree_top": [
+  [
+   573536,
+   [
+    "link",
+    ""
+   ]
+  ],
+  [
+   360320,
+   [
+    "(dsymutil)",
+    ""
+   ]
+  ],
+  [
+   65728,
+   [
+    "go",
+    ""
+   ]
+  ],
+  [
+   1584,
+   [
+    "timeout",
+    ""
+   ]
+  ],
+  [
+   1232,
+   [
+    "time",
+    ""
+   ]
+  ]
+ ],
+ "top_process_peaks_kb": [
+  [
+   "link ",
+   660544
+  ],
+  [
+   "clang ",
+   660016
+  ],
+  [
+   "(dsymutil) ",
+   360320
+  ],
+  [
+   "compile github.com/DataDog/dd-trace-go/v2/ddtrace/tracer",
+   195488
+  ],
+  [
+   "compile go.opentelemetry.io/collector/pdata/internal",
+   191072
+  ],
+  [
+   "compile crypto/tls",
+   159952
+  ],
+  [
+   "(compile) ",
+   138496
+  ],
+  [
+   "dsymutil ",
+   131344
+  ],
+  [
+   "compile net/http",
+   114352
+  ],
+  [
+   "compile google.golang.org/protobuf/internal/impl",
+   112976
+  ],
+  [
+   "compile github.com/DataDog/dd-trace-go/v2/internal/appsec/listener/sqlsec",
+   110064
+  ],
+  [
+   "compile encoding/gob",
+   109680
+  ],
+  [
+   "compile github.com/DataDog/dd-trace-go/v2/internal/appsec/listener/waf",
+   108976
+  ],
+  [
+   "compile github.com/Shopify/sarama",
+   104864
+  ],
+  [
+   "compile github.com/DataDog/dd-trace-go/v2/instrumentation/appsec/emitter/grpcsec",
+   102464
+  ]
+ ],
+ "samples": 28,
+ "killed_at_limit": false,
+ "duration_s": 32.3
+}

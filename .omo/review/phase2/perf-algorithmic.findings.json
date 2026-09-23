@@ -1,0 +1,24 @@
+[
+  {
+    "id": "perf-algorithmic-F1",
+    "severity": "High",
+    "category": "perf",
+    "location": "internal/taint/evidence/evidence.go:209-240,277-291",
+    "title": "Rehashing a full source for each reported range",
+    "claim": "Each unsafe range rehashes its entire source name/value before checking an existing source entry, causing O(range count * source length) work on every sink report even when all ranges reference one source.",
+    "evidence_path": ".omo/review/evidence/perf-algorithmic/review_scaling_test.go",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 go test -mod=readonly -run '^$' -bench '^BenchmarkReviewCollectRepeatedSource$' -benchmem -benchtime=100ms -count=1 -cpu=1 -timeout 5m ./internal/taint/evidence",
+    "needs_repro": false
+  },
+  {
+    "id": "perf-algorithmic-F2",
+    "severity": "High",
+    "category": "perf",
+    "location": "internal/taint/evidence/evidence.go:240-277",
+    "title": "Predictable source-index collisions cause quadratic probes",
+    "claim": "Unsalted FNV indexing into 512 linearly probed slots lets attacker-chosen distinct source values share one starting slot, causing O(source count squared) comparisons during reporting.",
+    "evidence_path": ".omo/review/evidence/perf-algorithmic/review_scaling_test.go",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 go test -mod=readonly -run '^$' -bench '^BenchmarkReviewSourceIndexCollisions$' -benchmem -benchtime=100ms -count=2 -cpu=1 -timeout 5m ./internal/taint/evidence",
+    "needs_repro": false
+  }
+]

@@ -1,0 +1,35 @@
+[
+  {
+    "id": "base-test-127-F1",
+    "verdict": "CONFIRMED",
+    "original_severity": "Critical",
+    "adjusted_severity": "Critical",
+    "reachable_default": true,
+    "documented_limitation": false,
+    "reason": "Go 1.27's default JSON-v2 Decoder lacks r and d; independent woven encoding/json build fails with compiler errors. README restricts advertised JSON propagation coverage to Go 1.26 but does not allow breaking valid Go 1.27 builds.",
+    "evidence_path": ".omo/review/evidence/fx-base-test-127-F1/json127-compiler.txt",
+    "repro_command": "cd /tmp/ddiast-review/wt/fx-base-test-127-F1 && GOTOOLCHAIN=local GOFLAGS=-p=1 /usr/bin/time -l timeout 120 go tool orchestrion go build encoding/json"
+  },
+  {
+    "id": "hooks-compile-matrix-F2",
+    "verdict": "CONFIRMED",
+    "original_severity": "Critical",
+    "adjusted_severity": "Critical",
+    "reachable_default": true,
+    "documented_limitation": false,
+    "reason": "An independent valid customer main package importing only strings fails woven on Go 1.27 through the dd-iast-go dependency closure; the compiler separately identifies the JSON-v2 field references. Go 1.26.6 and Go 1.27 with nojsonv2 both build. The original 7/7 matrix was not repeated.",
+    "evidence_path": ".omo/review/evidence/fx-base-test-127-F1/build127-default.txt",
+    "repro_command": "cd /tmp/ddiast-review/wt/fx-base-test-127-F1 && GOTOOLCHAIN=local GOFLAGS=-p=4 /usr/bin/time -l timeout 180 go tool orchestrion go build -o /dev/null ./repro"
+  },
+  {
+    "id": "hooks-compile-matrix-F6",
+    "verdict": "CONFIRMED",
+    "original_severity": "Critical",
+    "adjusted_severity": "Critical",
+    "reachable_default": true,
+    "documented_limitation": false,
+    "reason": "The independent one-file JSON-free woven build on Go 1.27 reached 24,120,426,496 bytes maximum RSS and failed with nats: maximum payload exceeded, versus 426,426,368 bytes and success under GOEXPERIMENT=nojsonv2. The exact x/exp figures, 40 GB attribution, and error-retention allocation mechanism were not independently proved.",
+    "evidence_path": ".omo/review/evidence/fx-base-test-127-F1/build127-default.txt",
+    "repro_command": "cd /tmp/ddiast-review/wt/fx-base-test-127-F1 && GOTOOLCHAIN=local GOFLAGS=-p=4 /usr/bin/time -l timeout 180 go tool orchestrion go build -o /dev/null ./repro"
+  }
+]

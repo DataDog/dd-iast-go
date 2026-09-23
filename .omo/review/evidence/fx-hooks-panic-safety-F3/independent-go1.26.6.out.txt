@@ -1,0 +1,14 @@
+Command:
+GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 /usr/bin/time -l go tool orchestrion go test -timeout 10m -count=1 -run '^Test_RequestParseForm_preserves_body_panic_when_deferred_IAST_callback_fails$' ./iast/net/http -v
+
+Output:
+=== RUN   Test_RequestParseForm_preserves_body_panic_when_deferred_IAST_callback_fails
+    zz_f3_independent_test.go:69: control retained the exact customer panic pointer with the registered callback
+    zz_f3_independent_test.go:99: deferred IAST callback masked customer panic: got=*struct { origin string } &{IAST deferred Form}; gotIAST=true
+--- FAIL: Test_RequestParseForm_preserves_body_panic_when_deferred_IAST_callback_fails (0.00s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/iast/net/http	0.749s
+FAIL
+exit status 1
+       19.31 real         8.04 user        12.66 sys
+           369000448  maximum resident set size

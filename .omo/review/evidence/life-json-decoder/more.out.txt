@@ -1,0 +1,23 @@
+=== RUN   TestReviewStreamingDecoderMultipleDecodes
+    zz_review_json_test.go:199: decode 0 (doc len 17): err=<nil> len=5 tainted=true sourceLen=17
+    zz_review_json_test.go:199: decode 1 (doc len 71692): err=<nil> len=71680 tainted=false sourceLen=0
+    zz_review_json_test.go:199: decode 2 (doc len 17): err=<nil> len=5 tainted=true sourceLen=18
+    zz_review_json_test.go:202: occupied slots after: 0
+--- PASS: TestReviewStreamingDecoderMultipleDecodes (0.01s)
+=== RUN   TestReviewTokenStreamAndPointerFields
+    zz_review_json_test.go:226: open token err=<nil>
+    zz_review_json_test.go:226: err=<nil> value="a1" tainted=true source="{\"value\":\"a1\",\"ptr\":\"p1\",\"any\":\"i1\"}" | *string="p1" tainted=true | any="i1" tainted=false
+    zz_review_json_test.go:226: err=<nil> value="a2" tainted=true source="{\"value\":\"a2\",\"ptr\":\"p2\",\"any\":\"i2\"}" | *string="p2" tainted=true | any="i2" tainted=false
+--- PASS: TestReviewTokenStreamAndPointerFields (0.00s)
+=== RUN   TestReviewUnmarshalPanicCleanup
+    zz_review_json_test.go:255: recovered=review panic occupiedAfterPanic=0 nextErr=<nil> next="q" tainted=false
+--- PASS: TestReviewUnmarshalPanicCleanup (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/testapps/integration	0.841s
+===40
+=== RUN   TestReviewConcurrentHeapDecodersHashCapacity
+    zz_review_json_test.go:121: sizeof(json.Decoder)=304 offset(d)=40
+    zz_review_json_test.go:164: decoders=40 distinctStartBuckets=8 buckets=map[5:5 13:6 21:4 29:6 37:5 45:4 53:6 61:4] occupiedWhileBlocked=32 taintedResults=8
+--- PASS: TestReviewConcurrentHeapDecodersHashCapacity (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/testapps/integration	0.295s

@@ -1,0 +1,17 @@
+Source: .github/workflows/ci.yml, "Sink executable bootstrap tests"
+CI check: go tool nm <binary> output is searched with grep -F for each
+non-empty line in cmd/bootstrap/symbols.txt.
+
+iast/database/sql/testapp:
+github.com/DataDog/dd-iast-go/iast/database/sql.init.0
+github.com/DataDog/dd-iast-go/internal/spans.Finished
+
+iast/os/exec/testapp:
+github.com/DataDog/dd-iast-go/iast/os/exec.init.0
+github.com/DataDog/dd-iast-go/internal/spans.Finished
+
+iast/integration/testapp:
+github.com/DataDog/dd-iast-go/iast/database/sql.init.0
+github.com/DataDog/dd-iast-go/iast/encoding/json.init.0
+github.com/DataDog/dd-iast-go/iast/os/exec.init.0
+github.com/DataDog/dd-iast-go/internal/spans.Finished

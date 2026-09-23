@@ -1,0 +1,7 @@
+Command: cd /tmp/ddiast-review/wt/fx-life-owner-scope-F1 && GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 go test -race -run '^TestReviewServerScopeReacquiredWhenContextContainsFinishedScope$' -count=1 -timeout 2m ./internal/taint/request
+--- FAIL: TestReviewServerScopeReacquiredWhenContextContainsFinishedScope (0.00s)
+    lifecycle_review_test.go:38: new request: created=false active=false; expected a fresh live scope
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/request	0.609s
+FAIL
+exit=1

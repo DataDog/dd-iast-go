@@ -1,0 +1,10 @@
+goos: darwin
+goarch: arm64
+pkg: github.com/DataDog/dd-iast-go/iast/propagation
+cpu: Apple M4 Max
+BenchmarkHotPathReview/no-owner/split-seq/native-16         	   10000	        33.92 ns/op	      64 B/op	       2 allocs/op
+BenchmarkHotPathReview/no-owner/split-seq/hook-16           	   10000	        50.16 ns/op	      96 B/op	       3 allocs/op
+BenchmarkHotPathReview/active-clean/split-seq/native-16     	   10000	        32.03 ns/op	      64 B/op	       2 allocs/op
+BenchmarkHotPathReview/active-clean/split-seq/hook-16       	   10000	        43.62 ns/op	      96 B/op	       3 allocs/op
+PASS
+ok  	github.com/DataDog/dd-iast-go/iast/propagation	0.624s

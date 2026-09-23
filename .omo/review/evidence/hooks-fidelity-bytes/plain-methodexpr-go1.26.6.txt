@@ -1,0 +1,4 @@
+=== RUN   TestMethodExpr
+--- PASS: TestMethodExpr (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/iast/internal/zzfid/methodexpr	0.437s

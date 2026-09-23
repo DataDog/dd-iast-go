@@ -1,0 +1,45 @@
+# github.com/DataDog/dd-iast-go/testapps/integration/zzfx/buffer [github.com/DataDog/dd-iast-go/testapps/integration/zzfx/buffer.test]
+zzfx/buffer/buffer.go:9: (*bytes.Buffer) (type) is not an expression
+zzfx/buffer/buffer.go:9: cannot use &b (value of type *bytes.Buffer) as int value in argument to __orchestrion_iastpropagation.BufferGrow
+zzfx/buffer/buffer.go:10: (*bytes.Buffer) (type) is not an expression
+zzfx/buffer/buffer.go:10: cannot use &b (value of type *bytes.Buffer) as string value in argument to __orchestrion_iastpropagation.BufferWriteString
+zzfx/buffer/buffer.go:11: (*bytes.Buffer) (type) is not an expression
+exit status 2
+# github.com/DataDog/dd-iast-go/testapps/integration/zzfx/replacer [github.com/DataDog/dd-iast-go/testapps/integration/zzfx/replacer.test]
+zzfx/replacer/replacer.go:10: (*str.Replacer) (type) is not an expression
+zzfx/replacer/replacer.go:10: cannot use r (variable of type *strings.Replacer) as string value in argument to __orchestrion_iastpropagation.ReplacerReplace
+exit status 2
+FAIL	github.com/DataDog/dd-iast-go/testapps/integration/zzfx/buffer [build failed]
+# github.com/DataDog/dd-iast-go/testapps/integration/zzfx/builder [github.com/DataDog/dd-iast-go/testapps/integration/zzfx/builder.test]
+zzfx/builder/builder.go:9: (*strings.Builder) (type) is not an expression
+zzfx/builder/builder.go:9: cannot use &b (value of type *strings.Builder) as string value in argument to __orchestrion_iastpropagation.BuilderWriteString
+zzfx/builder/builder.go:10: (*strings.Builder) (type) is not an expression
+zzfx/builder/builder.go:10: cannot use &b (value of type *strings.Builder) as byte value in argument to __orchestrion_iastpropagation.BuilderWriteByte
+zzfx/builder/builder.go:11: (*strings.Builder) (type) is not an expression
+exit status 2
+FAIL	github.com/DataDog/dd-iast-go/testapps/integration/zzfx/builder [build failed]
+=== RUN   TestBuild
+--- PASS: TestBuild (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/testapps/integration/zzfx/control	0.490s
+FAIL	github.com/DataDog/dd-iast-go/testapps/integration/zzfx/replacer [build failed]
+FAIL
+exit status 1
+       55.07 real        39.14 user        31.91 sys
+           317456384  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+             2531913  page reclaims
+               87667  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                3125  messages sent
+                3329  messages received
+               31901  signals received
+               13673  voluntary context switches
+              769140  involuntary context switches
+            20687352  instructions retired
+            14105467  cycles elapsed
+             1212728  peak memory footprint

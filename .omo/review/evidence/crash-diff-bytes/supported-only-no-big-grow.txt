@@ -1,0 +1,22 @@
+=== RUN   TestDiffWritersSupportedOnly
+    diff_test.go:508: writers-supported: woven=true iterations=3000 DIGEST=05433506dee0e6b1
+    diff_test.go:515:   stat buffer.String.expected                                       8352
+    diff_test.go:515:   stat buffer.String.lost                                           60
+    diff_test.go:515:   stat buffer.String.over-range-limit.expected                      3
+    diff_test.go:515:   stat buffer.String.over-range-limit.partial                       3
+    diff_test.go:515:   stat buffer.final.String.expected                                 2013
+    diff_test.go:515:   stat buffer.final.String.lost                                     16
+    diff_test.go:515:   stat buffer.final.String.over-range-limit.expected                2
+    diff_test.go:515:   stat buffer.final.String.over-range-limit.partial                 2
+    diff_test.go:515:   stat buffer.panic.S:bytes.Buffer.Grow: negative count             744
+    diff_test.go:515:   stat buffer.panic.S:bytes.Buffer: truncation out of range         1416
+    diff_test.go:515:   stat builder.String.expected                                      7570
+    diff_test.go:515:   stat builder.String.lost                                          75
+    diff_test.go:515:   stat builder.final.String.expected                                1811
+    diff_test.go:515:   stat builder.final.String.lost                                    11
+    diff_test.go:515:   stat builder.final.String.over-range-limit.expected               1
+    diff_test.go:515:   stat builder.final.String.over-range-limit.partial                1
+    diff_test.go:515:   stat builder.panic.S:strings.Builder.Grow: negative count         759
+--- PASS: TestDiffWritersSupportedOnly (1.45s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/iast/internal/zzdiffbytes	1.976s

@@ -1,0 +1,7 @@
+(first run of the same test, earlier version: only mode gc-each-row with 200 attempts)
+=== RUN   TestReviewBuilderABAFalseSQLi/zero-value-reset
+    zz_review_builder_aba_test.go:86: mode=zero-value-reset attempts=200 backingAddressReused=0 staleTaintedClean=0 staleWithoutReuse=0 SQLiReports=0
+=== RUN   TestReviewBuilderABAFalseSQLi/control-woven-Reset
+    zz_review_builder_aba_test.go:86: mode=control-woven-Reset attempts=200 backingAddressReused=0 staleTaintedClean=0 staleWithoutReuse=0 SQLiReports=0
+--- PASS
+woven build: 140.18 real, maximum resident set size 376504320 (~359 MiB)

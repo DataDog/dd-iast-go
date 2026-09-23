@@ -1,0 +1,6 @@
+Command: cd samber-lo && GOTOOLCHAIN=local GOCACHE=/tmp/ddiast-review/wt/hooks-compile-matrix/gocache-cur /usr/bin/time -l timeout 1320 go tool orchestrion go build ./...
+go version: go version go1.27.0 darwin/arm64
+start: Wed Sep 23 14:18:34 CEST 2026
+14:18  up 11 days, 20:57, 4 users, load averages: 19.56 32.63 55.48
+Exit status: 1
+end: Wed Sep 23 14:19:11 CEST 2026

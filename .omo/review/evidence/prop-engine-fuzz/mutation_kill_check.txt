@@ -1,0 +1,15 @@
+Corpus replay of FuzzExactStringOps (1156 inputs) against injected engine mutants; each mutant reverted after the run.
+
+MUTANT string_exact.go: currentLen += uint32(len(separator)) * 0
+--- FAIL: FuzzExactStringOps (0.24s)
+    --- FAIL: FuzzExactStringOps/0230fe0eaef29db2 (0.00s)
+        zz_review_exact_ops_fuzz_test.go:46: step 10 op 0 JoinString n=6 sep="," concat=false result 0: missing owner 0 contribution (value="é\xff80!m0\xd82\u05fc080!m0\xd82\u05fc080é\xff80!m0\xd82\u05fc080!m0\xd82\u05fc080é\xff80!m0\xd82\u05fc080!m0\xd82\u05fc080éé\xff80!m0\xd82\u05fc080!m0\xd82\u05fc080é\xff80!m0\xd82\u05fc080!m0\xd82\u05fc080é\xff80!m0\xd82\u05fc080!m0\xd82\u05fc080\xffé\xff80!m0\xd82\u05fc080!m0\xd82\u05fc080é\xff80!m0\xd82\u05fc080!m0\xd82\u05fc080é\xff80!m0\xd82\u05fc080!m0\xd8
+MUTANT bytes_exact.go: exact := len(input) == len(result)
+--- FAIL: FuzzExactStringOps (0.21s)
+    --- FAIL: FuzzExactStringOps/22e84e46dad39055 (0.00s)
+        zz_review_exact_ops_fuzz_test.go:46: step 3 op 14 CaseBytes mode=0 input="2\x1000C0é" coarse result 0: owner 0 ranges differ (value="2\x1000C0É" len=8)
+
+MUTANT propagation.go: o.marks |= r.Marks
+--- FAIL: FuzzExactStringOps (0.17s)
+    --- FAIL: FuzzExactStringOps/seed#0 (0.00s)
+        zz_review_exact_ops_fuzz_test.go:46: step 4 op 7 CoarseString replacer=["é" "e"] input="é\xffi-repeated-" coarse result 0: owner 0 ranges differ (value="e\xffi-repeated-" len=13)

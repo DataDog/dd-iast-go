@@ -1,0 +1,23 @@
+=== RUN   TestReviewCoarseResetsConfiguredRangeLimit
+=== RUN   TestReviewCoarseResetsConfiguredRangeLimit/configured_64_truncated_to_10
+    zz_review_range_limit_test.go:44: configured DD_IAST_MAX_RANGE_COUNT=64 sources=16: direct join ranges=16, join-after-coarse ranges=10
+    zz_review_range_limit_test.go:52: 
+        	Error Trace:	/tmp/ddiast-review/wt/prop-ranges-fuzz/internal/taint/propagation/zz_review_range_limit_test.go:52
+        	Error:      	Not equal: 
+        	            	expected: 16
+        	            	actual  : 10
+        	Test:       	TestReviewCoarseResetsConfiguredRangeLimit/configured_64_truncated_to_10
+        	Messages:   	configured limit 64 must be honored after a coarse step
+=== RUN   TestReviewCoarseResetsConfiguredRangeLimit/configured_2_exceeded
+    zz_review_range_limit_test.go:44: configured DD_IAST_MAX_RANGE_COUNT=2 sources=6: direct join ranges=2, join-after-coarse ranges=6
+    zz_review_range_limit_test.go:57: 
+        	Error Trace:	/tmp/ddiast-review/wt/prop-ranges-fuzz/internal/taint/propagation/zz_review_range_limit_test.go:57
+        	Error:      	"6" is not less than or equal to "2"
+        	Test:       	TestReviewCoarseResetsConfiguredRangeLimit/configured_2_exceeded
+        	Messages:   	configured limit 2 must not be exceeded after a coarse step
+--- FAIL: TestReviewCoarseResetsConfiguredRangeLimit (0.00s)
+    --- FAIL: TestReviewCoarseResetsConfiguredRangeLimit/configured_64_truncated_to_10 (0.00s)
+    --- FAIL: TestReviewCoarseResetsConfiguredRangeLimit/configured_2_exceeded (0.00s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/propagation	0.497s
+FAIL

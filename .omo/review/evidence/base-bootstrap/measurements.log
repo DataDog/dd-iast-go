@@ -1,0 +1,35 @@
+Reproduction: each command ran from its nested module directory using GOTOOLCHAIN=go1.26.6.
+
+=== iast/database/sql/testapp ===
+COMMAND woven env GOTOOLCHAIN=go1.26.6 go tool orchestrion go build -o /tmp/ddiast-review/wt/base-bootstrap/artifacts/sql-bootstrap-woven ./cmd/bootstrap
+EXIT woven 0 ELAPSED_SECONDS 6.410
+COMMAND plain env GOTOOLCHAIN=go1.26.6 go build -o /tmp/ddiast-review/wt/base-bootstrap/artifacts/sql-bootstrap-plain ./cmd/bootstrap
+EXIT plain 0 ELAPSED_SECONDS 1.314
+wc -c: 22139826 woven; 1749218 plain
+SYMBOL_CHECK github.com/DataDog/dd-iast-go/iast/database/sql.init.0: 100548c40 T github.com/DataDog/dd-iast-go/iast/database/sql.init.0
+SYMBOL_CHECK github.com/DataDog/dd-iast-go/internal/spans.Finished: 10053d310 T github.com/DataDog/dd-iast-go/internal/spans.Finished
+SIZE_OVERHEAD_BYTES 20390608
+
+=== iast/os/exec/testapp ===
+COMMAND woven env GOTOOLCHAIN=go1.26.6 go tool orchestrion go build -o /tmp/ddiast-review/wt/base-bootstrap/artifacts/exec-woven ./cmd/bootstrap
+EXIT exec-woven 0 ELAPSED_SECONDS 230.515
+SIZE exec-woven 22137202
+SYMBOL_CHECK github.com/DataDog/dd-iast-go/iast/os/exec.init.0: 100547530 T github.com/DataDog/dd-iast-go/iast/os/exec.init.0
+SYMBOL_CHECK github.com/DataDog/dd-iast-go/internal/spans.Finished: 10053da30 T github.com/DataDog/dd-iast-go/internal/spans.Finished
+COMMAND plain env GOTOOLCHAIN=go1.26.6 go build -o /tmp/ddiast-review/wt/base-bootstrap/artifacts/exec-plain ./cmd/bootstrap
+EXIT exec-plain 0 ELAPSED_SECONDS 1.369
+SIZE exec-plain 1749218
+SIZE_OVERHEAD_BYTES exec 20387984
+
+=== iast/integration/testapp ===
+COMMAND woven env GOTOOLCHAIN=go1.26.6 go tool orchestrion go build -o /tmp/ddiast-review/wt/base-bootstrap/artifacts/integration-woven ./cmd/bootstrap
+EXIT integration-woven 0 ELAPSED_SECONDS 92.342
+SIZE integration-woven 22194578
+SYMBOL_CHECK github.com/DataDog/dd-iast-go/iast/database/sql.init.0: 10054bc30 T github.com/DataDog/dd-iast-go/iast/database/sql.init.0
+SYMBOL_CHECK github.com/DataDog/dd-iast-go/iast/encoding/json.init.0: 10054c480 T github.com/DataDog/dd-iast-go/iast/encoding/json.init.0
+SYMBOL_CHECK github.com/DataDog/dd-iast-go/iast/os/exec.init.0: 10054ca90 T github.com/DataDog/dd-iast-go/iast/os/exec.init.0
+SYMBOL_CHECK github.com/DataDog/dd-iast-go/internal/spans.Finished: 100540040 T github.com/DataDog/dd-iast-go/internal/spans.Finished
+COMMAND plain env GOTOOLCHAIN=go1.26.6 go build -o /tmp/ddiast-review/wt/base-bootstrap/artifacts/integration-plain ./cmd/bootstrap
+EXIT integration-plain 0 ELAPSED_SECONDS 0.392
+SIZE integration-plain 1749218
+SIZE_OVERHEAD_BYTES integration 20445360

@@ -1,0 +1,23 @@
+=== example.com/idioms
+exit=0
+=== example.com/idioms/pcgo
+exit=0
+=== example.com/idioms/pconst
+exit=0
+=== example.com/idioms/pembed
+exit=0
+=== example.com/idioms/pflow
+exit=0
+=== example.com/idioms/pgeneric
+exit=0
+=== example.com/idioms/pmethod
+exit=0
+=== example.com/idioms/pnamed
+exit=0
+=== example.com/idioms/pnoimport
+exit=0
+=== example.com/idioms/pslice
+exit=0
+=== example.com/idioms/pvariadic
+exit=0
+ALLDONE

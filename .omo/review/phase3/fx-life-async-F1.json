@@ -1,0 +1,13 @@
+[
+ {
+  "id": "life-async-F1",
+  "verdict": "CONFIRMED",
+  "original_severity": "High",
+  "adjusted_severity": "High",
+  "reachable_default": true,
+  "documented_limitation": false,
+  "reason": "Independent woven reproducer (real server, ServeMux + http.StripPrefix sub-router, Request.Clone middleware) shows URL.Query values untainted (RawQuery still tainted) and 0 SQLi reported, vs 1 in controls (plain mux, FormValue behind the same StripPrefix, TimeoutHandler sharing *url.URL). Cause: ManageURLQuery attributes only by pointer-identity URL binding made at scope creation; copied *url.URL has none. Deterministic false negative on a supported source->sink path; not documented.",
+  "evidence_path": ".omo/review/evidence/fx-life-async-F1/run2-go1266.out.txt",
+  "repro_command": "cp .omo/review/evidence/fx-life-async-F1/fxurl{,_test}.go <private-copy>/iast/integration/testapp/ && cd <private-copy>/iast/integration/testapp && GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go tool orchestrion go test -run '^TestFxURLQueryBehindStdlibRouting$' -count=1 -v -timeout 15m ."
+ }
+]

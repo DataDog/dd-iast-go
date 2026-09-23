@@ -1,0 +1,36 @@
+Command: ... -run TestFXOracleQuoteMatrix -v (zz_fx_matrix_test.go)
+
+=== RUN   TestFXOracleQuoteMatrix
+    zz_fx_matrix_test.go:42: leak=false exposed=0/9 query="SELECT * FROM t WHERE c IN ('Q','R') AND p = 's3cr3tVal'"
+    zz_fx_matrix_test.go:42: leak=false exposed=0/9 query="SELECT * FROM t WHERE c IN ('Q','R','S') AND p = 's3cr3tVal'"
+    zz_fx_matrix_test.go:42: leak=false exposed=0/9 query="SELECT * FROM t WHERE c IN ('Q','R','S','T') AND p = 's3cr3tVal'"
+    zz_fx_matrix_test.go:42: leak=false exposed=0/9 query="SELECT * FROM t WHERE c IN ('Q', 'R', 'S') AND p = 's3cr3tVal'"
+    zz_fx_matrix_test.go:42: leak=false exposed=0/9 query="INSERT INTO t (a, b, c) VALUES ('q','a','s3cr3tVal')"
+    zz_fx_matrix_test.go:42: leak=false exposed=0/9 query="INSERT INTO t (a, b) VALUES ('Q','s3cr3tVal')"
+    zz_fx_matrix_test.go:42: leak=false exposed=0/9 query="INSERT INTO t (a, b, c, d) VALUES ('Q','a','b','s3cr3tVal')"
+    zz_fx_matrix_test.go:42: leak=false exposed=0/9 query="INSERT INTO t VALUES ('Q','a','b'),('R','c','s3cr3tVal')"
+    zz_fx_matrix_test.go:42: leak=false exposed=0/9 query="SELECT * FROM t WHERE grade = 'Q' AND (x = 1) AND p = 's3cr3tVal'"
+    zz_fx_matrix_test.go:42: leak=false exposed=0/9 query="SELECT * FROM t WHERE c IN ('P','R','S') AND p = 's3cr3tVal'"
+    zz_fx_matrix_test.go:44: leaking queries: 0/10
+--- PASS: TestFXOracleQuoteMatrix (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/redaction	0.618s
+
+
+Command: ... -run TestFXOracleQuoteMatrix2 -v (zz_fx_matrix2_test.go)
+
+=== RUN   TestFXOracleQuoteMatrix2
+    zz_fx_matrix2_test.go:42: leak=false exposed=0/9 query="INSERT INTO t (kind, meta, owner) VALUES ('Q','{}','s3cr3tVal')"
+    zz_fx_matrix2_test.go:42: leak=true  exposed=9/9 query="INSERT INTO t (kind, tag, path, owner) VALUES ('Q','a','/tmp','s3cr3tVal')"
+    zz_fx_matrix2_test.go:42: leak=true  exposed=9/9 query="INSERT INTO t (kind, tag, phone, owner) VALUES ('Q','a','+33612','s3cr3tVal')"
+    zz_fx_matrix2_test.go:42: leak=true  exposed=9/9 query="SELECT * FROM t WHERE kind IN ('Q','A','') AND owner = 's3cr3tVal'"
+    zz_fx_matrix2_test.go:42: leak=false exposed=0/9 query="SELECT * FROM t WHERE kind IN ('Q','A') AND name LIKE '%x%' AND owner = 's3cr3tVal'"
+    zz_fx_matrix2_test.go:42: leak=true  exposed=9/9 query="INSERT INTO t (kind, tag, pattern, owner) VALUES ('Q','a','%x%','s3cr3tVal')"
+    zz_fx_matrix2_test.go:42: leak=true  exposed=9/9 query="INSERT INTO t (kind, tag, owner) VALUES ('Q','a',' s3cr3tVal')"
+    zz_fx_matrix2_test.go:42: leak=true  exposed=9/9 query="INSERT INTO t (kind, tag, owner) VALUES ('Q','',' s3cr3tVal')"
+    zz_fx_matrix2_test.go:42: leak=true  exposed=9/9 query="INSERT INTO t (kind, tag, owner) VALUES ('Q','',' s3cr3tVal')"
+    zz_fx_matrix2_test.go:42: leak=false exposed=0/9 query="INSERT INTO t (kind, tag, owner) VALUES ('P','a',' s3cr3tVal')"
+    zz_fx_matrix2_test.go:44: leaking queries: 7/10
+--- PASS: TestFXOracleQuoteMatrix2 (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/redaction	0.729s

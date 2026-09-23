@@ -1,0 +1,22 @@
+diff --git 1/Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/internal/taint/jsonbridge/bridge.go 2/internal/taint/jsonbridge/bridge.go
+index f6613a6..1ad4851 100644
+--- 1/Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/internal/taint/jsonbridge/bridge.go
++++ 2/internal/taint/jsonbridge/bridge.go
+@@ -207,13 +207,13 @@ func addDecoderState(pointer uintptr) *decoderSlot {
+ 	if pointer == 0 {
+ 		return nil
+ 	}
++	if slot := findDecoderState(pointer); slot != nil {
++		slot.depth.Add(1)
++		return slot
++	}
+ 	start := int((pointer >> 3) % uintptr(len(decoderStates)))
+ 	for probe := 0; probe < 4; probe++ {
+ 		slot := &decoderStates[(start+probe)%len(decoderStates)]
+-		if slot.pointer.Load() == pointer {
+-			slot.depth.Add(1)
+-			return slot
+-		}
+ 		if slot.pointer.CompareAndSwap(0, 1) {
+ 			slot.reader.Store(nil)
+ 			slot.document.Store(nil)

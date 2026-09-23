@@ -1,0 +1,182 @@
+=== RUN   TestReviewLateGoroutineAfterRequestEnd
+    lifeasync_review_test.go:150: after end: tainted q=false derivedIn=false derived=false concat=false
+    lifeasync_review_test.go:150: ctx0 exec error context canceled context canceled
+    lifeasync_review_test.go:156: span "iast.review.request" hasEvent=false vulns=0
+    lifeasync_review_test.go:161: after late goroutine: ProcessCharged=0 ProcessValues=0 ActiveStore!=nil=false
+--- PASS: TestReviewLateGoroutineAfterRequestEnd (0.01s)
+=== RUN   TestReviewGlobalAcrossRequests
+    lifeasync_review_test.go:223: address reuse: hits=1 tainted=0 (freed len 15)
+    lifeasync_review_test.go:228: span "iast.review.request" value="SELECT request_a_value FROM t" vulns=1 sources=1
+    lifeasync_review_test.go:230:    evidence="SELECT request_a_value FROM t"
+    lifeasync_review_test.go:228: span "iast.review.request" value="SELECT request_b_value FROM t" vulns=1 sources=1
+    lifeasync_review_test.go:230:    evidence="SELECT request_b_value FROM t"
+    lifeasync_review_test.go:241: after global across requests: ProcessCharged=0 ProcessValues=0 ActiveStore!=nil=false
+--- PASS: TestReviewGlobalAcrossRequests (0.01s)
+=== RUN   TestReviewConcurrentOwnerEndVsSink
+    lifeasync_review_test.go:392: RESULT requests=24 requestVulns=49 orphanSpans=27 orphanVulns=27 foreignSources=0
+    lifeasync_review_test.go:393: after concurrent owner-end vs sink: ProcessCharged=0 ProcessValues=0 ActiveStore!=nil=false
+--- PASS: TestReviewConcurrentOwnerEndVsSink (0.02s)
+=== RUN   TestReviewLateGoroutineAfterRequestEnd
+    lifeasync_review_test.go:150: after end: tainted q=false derivedIn=false derived=false concat=false
+    lifeasync_review_test.go:150: ctx0 exec error context canceled context canceled
+    lifeasync_review_test.go:156: span "iast.review.request" hasEvent=false vulns=0
+    lifeasync_review_test.go:161: after late goroutine: ProcessCharged=0 ProcessValues=0 ActiveStore!=nil=false
+--- PASS: TestReviewLateGoroutineAfterRequestEnd (0.01s)
+=== RUN   TestReviewGlobalAcrossRequests
+    lifeasync_review_test.go:223: address reuse: hits=1 tainted=0 (freed len 15)
+    lifeasync_review_test.go:228: span "iast.review.request" value="SELECT request_a_value FROM t" vulns=1 sources=1
+    lifeasync_review_test.go:230:    evidence="SELECT request_a_value FROM t"
+    lifeasync_review_test.go:228: span "iast.review.request" value="SELECT request_b_value FROM t" vulns=1 sources=1
+    lifeasync_review_test.go:230:    evidence="SELECT request_b_value FROM t"
+    lifeasync_review_test.go:241: after global across requests: ProcessCharged=0 ProcessValues=0 ActiveStore!=nil=false
+--- PASS: TestReviewGlobalAcrossRequests (0.01s)
+=== RUN   TestReviewConcurrentOwnerEndVsSink
+    lifeasync_review_test.go:392: RESULT requests=24 requestVulns=266 orphanSpans=146 orphanVulns=146 foreignSources=0
+    lifeasync_review_test.go:393: after concurrent owner-end vs sink: ProcessCharged=0 ProcessValues=0 ActiveStore!=nil=false
+--- PASS: TestReviewConcurrentOwnerEndVsSink (0.12s)
+=== RUN   TestReviewLateGoroutineAfterRequestEnd
+    lifeasync_review_test.go:150: after end: tainted q=false derivedIn=false derived=false concat=false
+    lifeasync_review_test.go:150: ctx0 exec error context canceled context canceled
+    lifeasync_review_test.go:156: span "iast.review.request" hasEvent=false vulns=0
+    lifeasync_review_test.go:161: after late goroutine: ProcessCharged=0 ProcessValues=0 ActiveStore!=nil=false
+--- PASS: TestReviewLateGoroutineAfterRequestEnd (0.01s)
+=== RUN   TestReviewGlobalAcrossRequests
+    lifeasync_review_test.go:223: address reuse: hits=1 tainted=0 (freed len 15)
+    lifeasync_review_test.go:228: span "iast.review.request" value="SELECT request_a_value FROM t" vulns=1 sources=1
+    lifeasync_review_test.go:230:    evidence="SELECT request_a_value FROM t"
+    lifeasync_review_test.go:228: span "iast.review.request" value="SELECT request_b_value FROM t" vulns=1 sources=1
+    lifeasync_review_test.go:230:    evidence="SELECT request_b_value FROM t"
+    lifeasync_review_test.go:241: after global across requests: ProcessCharged=0 ProcessValues=0 ActiveStore!=nil=false
+--- PASS: TestReviewGlobalAcrossRequests (0.01s)
+=== RUN   TestReviewConcurrentOwnerEndVsSink
+    lifeasync_review_test.go:392: RESULT requests=24 requestVulns=305 orphanSpans=171 orphanVulns=171 foreignSources=0
+    lifeasync_review_test.go:393: after concurrent owner-end vs sink: ProcessCharged=0 ProcessValues=0 ActiveStore!=nil=false
+--- PASS: TestReviewConcurrentOwnerEndVsSink (0.13s)
+=== RUN   TestReviewLateGoroutineAfterRequestEnd
+    lifeasync_review_test.go:150: after end: tainted q=false derivedIn=false derived=false concat=false
+    lifeasync_review_test.go:150: ctx0 exec error context canceled context canceled
+    lifeasync_review_test.go:156: span "iast.review.request" hasEvent=false vulns=0
+    lifeasync_review_test.go:161: after late goroutine: ProcessCharged=0 ProcessValues=0 ActiveStore!=nil=false
+--- PASS: TestReviewLateGoroutineAfterRequestEnd (0.01s)
+=== RUN   TestReviewGlobalAcrossRequests
+    lifeasync_review_test.go:223: address reuse: hits=1 tainted=0 (freed len 15)
+    lifeasync_review_test.go:228: span "iast.review.request" value="SELECT request_a_value FROM t" vulns=1 sources=1
+    lifeasync_review_test.go:230:    evidence="SELECT request_a_value FROM t"
+    lifeasync_review_test.go:228: span "iast.review.request" value="SELECT request_b_value FROM t" vulns=1 sources=1
+    lifeasync_review_test.go:230:    evidence="SELECT request_b_value FROM t"
+    lifeasync_review_test.go:241: after global across requests: ProcessCharged=0 ProcessValues=0 ActiveStore!=nil=false
+--- PASS: TestReviewGlobalAcrossRequests (0.01s)
+=== RUN   TestReviewConcurrentOwnerEndVsSink
+    lifeasync_review_test.go:392: RESULT requests=24 requestVulns=183 orphanSpans=76 orphanVulns=76 foreignSources=0
+    lifeasync_review_test.go:393: after concurrent owner-end vs sink: ProcessCharged=0 ProcessValues=0 ActiveStore!=nil=false
+--- PASS: TestReviewConcurrentOwnerEndVsSink (0.08s)
+=== RUN   TestReviewLateGoroutineAfterRequestEnd
+    lifeasync_review_test.go:150: after end: tainted q=false derivedIn=false derived=false concat=false
+    lifeasync_review_test.go:150: ctx0 exec error context canceled context canceled
+    lifeasync_review_test.go:156: span "iast.review.request" hasEvent=false vulns=0
+    lifeasync_review_test.go:161: after late goroutine: ProcessCharged=0 ProcessValues=0 ActiveStore!=nil=false
+--- PASS: TestReviewLateGoroutineAfterRequestEnd (0.01s)
+=== RUN   TestReviewGlobalAcrossRequests
+    lifeasync_review_test.go:223: address reuse: hits=1 tainted=0 (freed len 15)
+    lifeasync_review_test.go:228: span "iast.review.request" value="SELECT request_a_value FROM t" vulns=1 sources=1
+    lifeasync_review_test.go:230:    evidence="SELECT request_a_value FROM t"
+    lifeasync_review_test.go:228: span "iast.review.request" value="SELECT request_b_value FROM t" vulns=1 sources=1
+    lifeasync_review_test.go:230:    evidence="SELECT request_b_value FROM t"
+    lifeasync_review_test.go:241: after global across requests: ProcessCharged=0 ProcessValues=0 ActiveStore!=nil=false
+--- PASS: TestReviewGlobalAcrossRequests (0.01s)
+=== RUN   TestReviewConcurrentOwnerEndVsSink
+    lifeasync_review_test.go:392: RESULT requests=24 requestVulns=243 orphanSpans=126 orphanVulns=126 foreignSources=0
+    lifeasync_review_test.go:393: after concurrent owner-end vs sink: ProcessCharged=0 ProcessValues=0 ActiveStore!=nil=false
+--- PASS: TestReviewConcurrentOwnerEndVsSink (0.10s)
+=== RUN   TestReviewLateGoroutineAfterRequestEnd
+    lifeasync_review_test.go:150: after end: tainted q=false derivedIn=false derived=false concat=false
+    lifeasync_review_test.go:150: ctx0 exec error context canceled context canceled
+    lifeasync_review_test.go:156: span "iast.review.request" hasEvent=false vulns=0
+    lifeasync_review_test.go:161: after late goroutine: ProcessCharged=0 ProcessValues=0 ActiveStore!=nil=false
+--- PASS: TestReviewLateGoroutineAfterRequestEnd (0.01s)
+=== RUN   TestReviewGlobalAcrossRequests
+    lifeasync_review_test.go:223: address reuse: hits=1 tainted=0 (freed len 15)
+    lifeasync_review_test.go:228: span "iast.review.request" value="SELECT request_a_value FROM t" vulns=1 sources=1
+    lifeasync_review_test.go:230:    evidence="SELECT request_a_value FROM t"
+    lifeasync_review_test.go:228: span "iast.review.request" value="SELECT request_b_value FROM t" vulns=1 sources=1
+    lifeasync_review_test.go:230:    evidence="SELECT request_b_value FROM t"
+    lifeasync_review_test.go:241: after global across requests: ProcessCharged=0 ProcessValues=0 ActiveStore!=nil=false
+--- PASS: TestReviewGlobalAcrossRequests (0.01s)
+=== RUN   TestReviewConcurrentOwnerEndVsSink
+    lifeasync_review_test.go:392: RESULT requests=24 requestVulns=128 orphanSpans=67 orphanVulns=67 foreignSources=0
+    lifeasync_review_test.go:393: after concurrent owner-end vs sink: ProcessCharged=0 ProcessValues=0 ActiveStore!=nil=false
+--- PASS: TestReviewConcurrentOwnerEndVsSink (0.06s)
+=== RUN   TestReviewLateGoroutineAfterRequestEnd
+    lifeasync_review_test.go:150: after end: tainted q=false derivedIn=false derived=false concat=false
+    lifeasync_review_test.go:150: ctx0 exec error context canceled context canceled
+    lifeasync_review_test.go:156: span "iast.review.request" hasEvent=false vulns=0
+    lifeasync_review_test.go:161: after late goroutine: ProcessCharged=0 ProcessValues=0 ActiveStore!=nil=false
+--- PASS: TestReviewLateGoroutineAfterRequestEnd (0.01s)
+=== RUN   TestReviewGlobalAcrossRequests
+    lifeasync_review_test.go:223: address reuse: hits=1 tainted=0 (freed len 15)
+    lifeasync_review_test.go:228: span "iast.review.request" value="SELECT request_a_value FROM t" vulns=1 sources=1
+    lifeasync_review_test.go:230:    evidence="SELECT request_a_value FROM t"
+    lifeasync_review_test.go:228: span "iast.review.request" value="SELECT request_b_value FROM t" vulns=1 sources=1
+    lifeasync_review_test.go:230:    evidence="SELECT request_b_value FROM t"
+    lifeasync_review_test.go:241: after global across requests: ProcessCharged=0 ProcessValues=0 ActiveStore!=nil=false
+--- PASS: TestReviewGlobalAcrossRequests (0.01s)
+=== RUN   TestReviewConcurrentOwnerEndVsSink
+    lifeasync_review_test.go:392: RESULT requests=24 requestVulns=302 orphanSpans=157 orphanVulns=157 foreignSources=0
+    lifeasync_review_test.go:393: after concurrent owner-end vs sink: ProcessCharged=0 ProcessValues=0 ActiveStore!=nil=false
+--- PASS: TestReviewConcurrentOwnerEndVsSink (0.12s)
+=== RUN   TestReviewLateGoroutineAfterRequestEnd
+    lifeasync_review_test.go:150: after end: tainted q=false derivedIn=false derived=false concat=false
+    lifeasync_review_test.go:150: ctx0 exec error context canceled context canceled
+    lifeasync_review_test.go:156: span "iast.review.request" hasEvent=false vulns=0
+    lifeasync_review_test.go:161: after late goroutine: ProcessCharged=0 ProcessValues=0 ActiveStore!=nil=false
+--- PASS: TestReviewLateGoroutineAfterRequestEnd (0.01s)
+=== RUN   TestReviewGlobalAcrossRequests
+    lifeasync_review_test.go:223: address reuse: hits=1 tainted=0 (freed len 15)
+    lifeasync_review_test.go:228: span "iast.review.request" value="SELECT request_a_value FROM t" vulns=1 sources=1
+    lifeasync_review_test.go:230:    evidence="SELECT request_a_value FROM t"
+    lifeasync_review_test.go:228: span "iast.review.request" value="SELECT request_b_value FROM t" vulns=1 sources=1
+    lifeasync_review_test.go:230:    evidence="SELECT request_b_value FROM t"
+    lifeasync_review_test.go:241: after global across requests: ProcessCharged=0 ProcessValues=0 ActiveStore!=nil=false
+--- PASS: TestReviewGlobalAcrossRequests (0.01s)
+=== RUN   TestReviewConcurrentOwnerEndVsSink
+    lifeasync_review_test.go:392: RESULT requests=24 requestVulns=135 orphanSpans=83 orphanVulns=83 foreignSources=0
+    lifeasync_review_test.go:393: after concurrent owner-end vs sink: ProcessCharged=0 ProcessValues=0 ActiveStore!=nil=false
+--- PASS: TestReviewConcurrentOwnerEndVsSink (0.07s)
+=== RUN   TestReviewLateGoroutineAfterRequestEnd
+    lifeasync_review_test.go:150: after end: tainted q=false derivedIn=false derived=false concat=false
+    lifeasync_review_test.go:150: ctx0 exec error context canceled context canceled
+    lifeasync_review_test.go:156: span "iast.review.request" hasEvent=false vulns=0
+    lifeasync_review_test.go:161: after late goroutine: ProcessCharged=0 ProcessValues=0 ActiveStore!=nil=false
+--- PASS: TestReviewLateGoroutineAfterRequestEnd (0.01s)
+=== RUN   TestReviewGlobalAcrossRequests
+    lifeasync_review_test.go:223: address reuse: hits=1 tainted=0 (freed len 15)
+    lifeasync_review_test.go:228: span "iast.review.request" value="SELECT request_a_value FROM t" vulns=1 sources=1
+    lifeasync_review_test.go:230:    evidence="SELECT request_a_value FROM t"
+    lifeasync_review_test.go:228: span "iast.review.request" value="SELECT request_b_value FROM t" vulns=1 sources=1
+    lifeasync_review_test.go:230:    evidence="SELECT request_b_value FROM t"
+    lifeasync_review_test.go:241: after global across requests: ProcessCharged=0 ProcessValues=0 ActiveStore!=nil=false
+--- PASS: TestReviewGlobalAcrossRequests (0.01s)
+=== RUN   TestReviewConcurrentOwnerEndVsSink
+    lifeasync_review_test.go:392: RESULT requests=24 requestVulns=264 orphanSpans=191 orphanVulns=191 foreignSources=0
+    lifeasync_review_test.go:393: after concurrent owner-end vs sink: ProcessCharged=0 ProcessValues=0 ActiveStore!=nil=false
+--- PASS: TestReviewConcurrentOwnerEndVsSink (0.12s)
+=== RUN   TestReviewLateGoroutineAfterRequestEnd
+    lifeasync_review_test.go:150: after end: tainted q=false derivedIn=false derived=false concat=false
+    lifeasync_review_test.go:150: ctx0 exec error context canceled context canceled
+    lifeasync_review_test.go:156: span "iast.review.request" hasEvent=false vulns=0
+    lifeasync_review_test.go:161: after late goroutine: ProcessCharged=0 ProcessValues=0 ActiveStore!=nil=false
+--- PASS: TestReviewLateGoroutineAfterRequestEnd (0.01s)
+=== RUN   TestReviewGlobalAcrossRequests
+    lifeasync_review_test.go:223: address reuse: hits=1 tainted=0 (freed len 15)
+    lifeasync_review_test.go:228: span "iast.review.request" value="SELECT request_a_value FROM t" vulns=1 sources=1
+    lifeasync_review_test.go:230:    evidence="SELECT request_a_value FROM t"
+    lifeasync_review_test.go:228: span "iast.review.request" value="SELECT request_b_value FROM t" vulns=1 sources=1
+    lifeasync_review_test.go:230:    evidence="SELECT request_b_value FROM t"
+    lifeasync_review_test.go:241: after global across requests: ProcessCharged=0 ProcessValues=0 ActiveStore!=nil=false
+--- PASS: TestReviewGlobalAcrossRequests (0.01s)
+=== RUN   TestReviewConcurrentOwnerEndVsSink
+    lifeasync_review_test.go:392: RESULT requests=24 requestVulns=327 orphanSpans=143 orphanVulns=143 foreignSources=0
+    lifeasync_review_test.go:393: after concurrent owner-end vs sink: ProcessCharged=0 ProcessValues=0 ActiveStore!=nil=false
+--- PASS: TestReviewConcurrentOwnerEndVsSink (0.12s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/testapps/integration	2.878s

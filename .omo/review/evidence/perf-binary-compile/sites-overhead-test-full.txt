@@ -1,0 +1,46 @@
+# overhead-test-full: woven files under /tmp/ddiast-review/wt/perf-binary-compile/tmp/go-build2315348475/**/orchestrion/src/ (count=32)
+files importing dd-iast-go: 18; IAST helper call expressions: 72
+## per woven package dir (call expressions)
+    36 bytes
+    14 net/http
+     7 github.com/DataDog/dd-iast-go/benchmarks/overhead
+     7 encoding/json
+     4 io
+     1 bufio
+     1 github.com/DataDog/dd-trace-go/v2/instrumentation/httptrace
+     1 github.com/DataDog/dd-trace-go/contrib/net/http/v2/internal/wrap
+     1 net/url
+     0 github.com/DataDog/dd-iast-go/benchmarks/overhead_test
+     0 crypto/des
+     0 crypto/rc4
+     0 synthetic
+     0 crypto/sha1
+     0 crypto/md5
+## per helper
+    18 __orchestrion_iastwriterbridge.Active
+    18 __orchestrion_iastwriterbridge.Invalidate
+     5 __orchestrion_iastiobridge.Propagate
+     3 __orchestrion_iastpropagation.BufferWriteString
+     3 __orchestrion_iasthttpbridge.Cookie
+     2 __orchestrion_iastpropagation.BufferReset
+     2 __orchestrion_iasthttpbridge.MultipartParameter
+     2 __orchestrion_iasthttpbridge.Parameter
+     2 __orchestrion_iastjsonbridge.Bind
+     2 __orchestrion_iastjsonbridge.Unbind
+     2 __orchestrion_iasthttp.BindStartSpan
+     1 __orchestrion_iastpropagation.BufferGrow
+     1 __orchestrion_iastpropagation.BufferString
+     1 __orchestrion_iasthttpbridge.Begin
+     1 __orchestrion_iasthttpbridge.Finish
+     1 __orchestrion_iasthttpbridge.Eager
+     1 __orchestrion_iasthttpbridge.Form
+     1 __orchestrion_iasthttpbridge.Multipart
+     1 __orchestrion_iasthttpbridge.PathParameter
+     1 __orchestrion_iastiobridge.ReadAll
+     1 __orchestrion_iastjsonbridge.Document
+     1 __orchestrion_iastjsonbridge.Quoted
+     1 __orchestrion_iastjsonbridge.Literal
+     1 __orchestrion_iasturlbridge.Query
+
+## crypto/* woven call expressions (alias names not matched by the iast regex above)
+(crypto/{md5,sha1,des,rc4} weaves call `__dd__iast_ReportWeak*__` go:linkname stubs via prepend-statements; not matched by the alias regexes above, not counted.)

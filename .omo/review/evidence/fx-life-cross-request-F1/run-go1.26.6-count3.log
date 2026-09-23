@@ -1,0 +1,86 @@
+=== RUN   TestFxF1PooledReadAllBody
+=== RUN   TestFxF1PooledReadAllBody/concurrent-same-length
+    zz_fx_f1_test.go:94: A: body ptr=0x1629bbb6e000 tainted=true
+    zz_fx_f1_test.go:95: B: buf ptr=0x1629bbb6e000 sameBacking=true query="SELECT name FROM users WHERE id=4242" tainted=true
+    zz_fx_f1_test.go:101: span fx.B: enabled=1 json={"sources":[{"origin":"http.request.body","pattern":"abcdefghijklmnopqrstuvwxyzABCDEFGHIJ","redacted":true}],"vulnerabilities":[{"type":"SQL_INJECTION","hash":107466838,"evidence":{"valueParts":[{"pattern":"************************************","redacted":true,"source":0}]},"location":{"spanId":3948595276739554968,"path":"/tmp/ddiast-review/wt/fx-life-cross-request-F1/iast/integration/testapp/zz_fx_f1_app.go","line":58,"method":"github.com/DataDog/dd-iast-go/testapps/integration.FxLookup","stackId":"47f8762e-82bd-480c-b9df-b7eedcdd212e"}}]}
+    zz_fx_f1_test.go:101: span fx.A: enabled=1 json=
+    zz_fx_f1_test.go:109: B span source: origin=http.request.body value=""
+    zz_fx_f1_test.go:116: CONFIRMED CROSS-REQUEST BLEED: clean server-built query "SELECT name FROM users WHERE id=4242" in request B reported with A's body as source
+=== RUN   TestFxF1PooledReadAllBody/concurrent-different-length
+    zz_fx_f1_test.go:94: A: body ptr=0x1629bbb6e400 tainted=true
+    zz_fx_f1_test.go:95: B: buf ptr=0x1629bbb6e400 sameBacking=true query="SELECT name FROM users WHERE id=42" tainted=false
+    zz_fx_f1_test.go:101: span fx.B: enabled=1 json=
+    zz_fx_f1_test.go:101: span fx.A: enabled=1 json=
+=== RUN   TestFxF1PooledReadAllBody/sequential-A-finished
+    zz_fx_f1_test.go:94: A: body ptr=0x1629bbb6e600 tainted=true
+    zz_fx_f1_test.go:95: B: buf ptr=0x1629bbb6e600 sameBacking=true query="SELECT name FROM users WHERE id=4242" tainted=false
+    zz_fx_f1_test.go:101: span fx.A: enabled=1 json=
+    zz_fx_f1_test.go:101: span fx.B: enabled=1 json=
+--- PASS: TestFxF1PooledReadAllBody (0.03s)
+    --- PASS: TestFxF1PooledReadAllBody/concurrent-same-length (0.01s)
+    --- PASS: TestFxF1PooledReadAllBody/concurrent-different-length (0.01s)
+    --- PASS: TestFxF1PooledReadAllBody/sequential-A-finished (0.01s)
+=== RUN   TestFxF1PooledReadAllBody
+=== RUN   TestFxF1PooledReadAllBody/concurrent-same-length
+    zz_fx_f1_test.go:94: A: body ptr=0x1629bbb96c00 tainted=true
+    zz_fx_f1_test.go:95: B: buf ptr=0x1629bbb96c00 sameBacking=true query="SELECT name FROM users WHERE id=4242" tainted=true
+    zz_fx_f1_test.go:101: span fx.B: enabled=1 json={"sources":[{"origin":"http.request.body","pattern":"abcdefghijklmnopqrstuvwxyzABCDEFGHIJ","redacted":true}],"vulnerabilities":[{"type":"SQL_INJECTION","hash":107466838,"evidence":{"valueParts":[{"pattern":"************************************","redacted":true,"source":0}]},"location":{"spanId":1990622328979266714,"path":"/tmp/ddiast-review/wt/fx-life-cross-request-F1/iast/integration/testapp/zz_fx_f1_app.go","line":58,"method":"github.com/DataDog/dd-iast-go/testapps/integration.FxLookup","stackId":"7a5fbcbb-8520-4d29-a9a5-5840f33e2786"}}]}
+    zz_fx_f1_test.go:101: span fx.A: enabled=1 json=
+    zz_fx_f1_test.go:109: B span source: origin=http.request.body value=""
+    zz_fx_f1_test.go:116: CONFIRMED CROSS-REQUEST BLEED: clean server-built query "SELECT name FROM users WHERE id=4242" in request B reported with A's body as source
+=== RUN   TestFxF1PooledReadAllBody/concurrent-different-length
+    zz_fx_f1_test.go:94: A: body ptr=0x1629bbb6e800 tainted=true
+    zz_fx_f1_test.go:95: B: buf ptr=0x1629bbb6e800 sameBacking=true query="SELECT name FROM users WHERE id=42" tainted=false
+    zz_fx_f1_test.go:101: span fx.B: enabled=1 json=
+    zz_fx_f1_test.go:101: span fx.A: enabled=1 json=
+=== RUN   TestFxF1PooledReadAllBody/sequential-A-finished
+    zz_fx_f1_test.go:94: A: body ptr=0x1629bbaac200 tainted=true
+    zz_fx_f1_test.go:95: B: buf ptr=0x1629bbaac200 sameBacking=true query="SELECT name FROM users WHERE id=4242" tainted=false
+    zz_fx_f1_test.go:101: span fx.A: enabled=1 json=
+    zz_fx_f1_test.go:101: span fx.B: enabled=1 json=
+--- PASS: TestFxF1PooledReadAllBody (0.03s)
+    --- PASS: TestFxF1PooledReadAllBody/concurrent-same-length (0.01s)
+    --- PASS: TestFxF1PooledReadAllBody/concurrent-different-length (0.01s)
+    --- PASS: TestFxF1PooledReadAllBody/sequential-A-finished (0.01s)
+=== RUN   TestFxF1PooledReadAllBody
+=== RUN   TestFxF1PooledReadAllBody/concurrent-same-length
+    zz_fx_f1_test.go:94: A: body ptr=0x1629bbb6ea00 tainted=true
+    zz_fx_f1_test.go:95: B: buf ptr=0x1629bbb6ea00 sameBacking=true query="SELECT name FROM users WHERE id=4242" tainted=true
+    zz_fx_f1_test.go:101: span fx.B: enabled=1 json={"sources":[{"origin":"http.request.body","pattern":"abcdefghijklmnopqrstuvwxyzABCDEFGHIJ","redacted":true}],"vulnerabilities":[{"type":"SQL_INJECTION","hash":107466838,"evidence":{"valueParts":[{"pattern":"************************************","redacted":true,"source":0}]},"location":{"spanId":8543604227470965630,"path":"/tmp/ddiast-review/wt/fx-life-cross-request-F1/iast/integration/testapp/zz_fx_f1_app.go","line":58,"method":"github.com/DataDog/dd-iast-go/testapps/integration.FxLookup","stackId":"869c51a6-f8e5-4c8d-aea9-d89eeb8fa54a"}}]}
+    zz_fx_f1_test.go:101: span fx.A: enabled=1 json=
+    zz_fx_f1_test.go:109: B span source: origin=http.request.body value=""
+    zz_fx_f1_test.go:116: CONFIRMED CROSS-REQUEST BLEED: clean server-built query "SELECT name FROM users WHERE id=4242" in request B reported with A's body as source
+=== RUN   TestFxF1PooledReadAllBody/concurrent-different-length
+    zz_fx_f1_test.go:94: A: body ptr=0x1629bbb96e00 tainted=true
+    zz_fx_f1_test.go:95: B: buf ptr=0x1629bbb96e00 sameBacking=true query="SELECT name FROM users WHERE id=42" tainted=false
+    zz_fx_f1_test.go:101: span fx.B: enabled=1 json=
+    zz_fx_f1_test.go:101: span fx.A: enabled=1 json=
+=== RUN   TestFxF1PooledReadAllBody/sequential-A-finished
+    zz_fx_f1_test.go:94: A: body ptr=0x1629bbaac400 tainted=true
+    zz_fx_f1_test.go:95: B: buf ptr=0x1629bbaac400 sameBacking=true query="SELECT name FROM users WHERE id=4242" tainted=false
+    zz_fx_f1_test.go:101: span fx.A: enabled=1 json=
+    zz_fx_f1_test.go:101: span fx.B: enabled=1 json=
+--- PASS: TestFxF1PooledReadAllBody (0.04s)
+    --- PASS: TestFxF1PooledReadAllBody/concurrent-same-length (0.01s)
+    --- PASS: TestFxF1PooledReadAllBody/concurrent-different-length (0.01s)
+    --- PASS: TestFxF1PooledReadAllBody/sequential-A-finished (0.01s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/testapps/integration	0.369s
+        6.11 real         2.85 user         5.43 sys
+           368590848  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              296051  page reclaims
+               12643  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                2436  messages sent
+                2443  messages received
+                9140  signals received
+                5777  voluntary context switches
+              206869  involuntary context switches
+          5599736514  instructions retired
+          3193928066  cycles elapsed
+            38421176  peak memory footprint

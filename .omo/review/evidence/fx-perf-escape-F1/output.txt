@@ -1,0 +1,48 @@
+Independent reproducer: Go 1.26.6, HEAD 2e23b46, GOFLAGS=-p=4.
+Selected verbatim output lines follow each command. All commands exited 0.
+
+$ cd /tmp/ddiast-review/wt/fx-perf-escape-F1 && GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 go test -timeout 10m -count=1 -run "^Test(Short|Empty)ByteConversionAllocation$" -bench "^BenchmarkShortHeaderConversion$" -benchtime=20000x -benchmem -v ./reviewf1
+    repro_test.go:33: form=local woven=false enabled="" sampling="" allocs/run=0
+    repro_test.go:33: form=returned woven=false enabled="" sampling="" allocs/run=0
+    repro_test.go:48: form=empty woven=false allocs/run=0
+BenchmarkShortHeaderConversion-16    	   20000	        12.94 ns/op	       0 B/op	       0 allocs/op
+PASS
+ok  	github.com/DataDog/dd-iast-go/reviewf1	0.435s
+
+$ cd /tmp/ddiast-review/wt/fx-perf-escape-F1 && GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 /usr/bin/time -l go tool orchestrion go test -timeout 10m -count=1 -run "^Test(Short|Empty)ByteConversionAllocation$" -bench "^BenchmarkShortHeaderConversion$" -benchtime=20000x -benchmem -v ./reviewf1
+    repro_test.go:33: form=local woven=true enabled="" sampling="" allocs/run=1
+    repro_test.go:33: form=returned woven=true enabled="" sampling="" allocs/run=1
+    repro_test.go:48: form=empty woven=true allocs/run=0
+BenchmarkShortHeaderConversion-16    	   20000	        35.05 ns/op	      16 B/op	       1 allocs/op
+PASS
+ok  	github.com/DataDog/dd-iast-go/reviewf1	0.747s
+           106201088  maximum resident set size
+
+$ cd /tmp/ddiast-review/wt/fx-perf-escape-F1 && GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 DD_IAST_ENABLED=false /usr/bin/time -l go tool orchestrion go test -timeout 10m -count=1 -run "^TestShortByteConversionAllocation$" -v ./reviewf1
+    repro_test.go:33: form=local woven=true enabled="false" sampling="" allocs/run=1
+    repro_test.go:33: form=returned woven=true enabled="false" sampling="" allocs/run=1
+PASS
+ok  	github.com/DataDog/dd-iast-go/reviewf1	0.473s
+           103022592  maximum resident set size
+
+$ cd /tmp/ddiast-review/wt/fx-perf-escape-F1 && GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 DD_IAST_REQUEST_SAMPLING=0 /usr/bin/time -l go tool orchestrion go test -timeout 10m -count=1 -run "^TestShortByteConversionAllocation$" -v ./reviewf1
+    repro_test.go:33: form=local woven=true enabled="" sampling="0" allocs/run=1
+    repro_test.go:33: form=returned woven=true enabled="" sampling="0" allocs/run=1
+PASS
+ok  	github.com/DataDog/dd-iast-go/reviewf1	0.835s
+           106954752  maximum resident set size
+
+$ cd /tmp/ddiast-review/wt/fx-perf-escape-F1 && GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 go test -timeout 10m -count=1 -run "^$" -gcflags="github.com/DataDog/dd-iast-go/reviewf1=-m -m" ./reviewf1
+reviewf1/repro.go:16:6: can inline returnedString with cost 3 as: func([]byte) string { return string(raw) }
+reviewf1/repro.go:23:24: inlining call to returnedString
+reviewf1/repro.go:6:17: string(raw) does not escape
+reviewf1/repro.go:23:24: string(raw) does not escape
+ok  	github.com/DataDog/dd-iast-go/reviewf1	0.611s [no tests to run]
+
+$ cd /tmp/ddiast-review/wt/fx-perf-escape-F1 && GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 /usr/bin/time -l go tool orchestrion go test -timeout 10m -count=1 -run "^$" -gcflags="github.com/DataDog/dd-iast-go/reviewf1=-m -m" ./reviewf1
+./iast/propagation/operators.go:198:6: cannot inline propagation.BytesToString[go.shape.[]uint8]: function too complex: cost 131 exceeds budget 80
+reviewf1/repro.go:16: can inline returnedString with cost 63 as: func([]byte) string { return string(propagation.BytesToString[go.shape.[]uint8](&propagation..dict.BytesToString[[]uint8], raw)) }
+reviewf1/repro.go:23: inlining call to returnedString
+./iast/propagation/operators.go:199:19: string(propagation.value) escapes to heap in BytesToString[go.shape.[]uint8]:
+ok  	github.com/DataDog/dd-iast-go/reviewf1	0.496s [no tests to run]
+           103792640  maximum resident set size

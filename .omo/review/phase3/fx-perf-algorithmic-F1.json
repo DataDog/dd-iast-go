@@ -1,0 +1,13 @@
+[
+  {
+    "id": "perf-algorithmic-F1",
+    "verdict": "CONFIRMED",
+    "original_severity": "High",
+    "adjusted_severity": "High",
+    "reachable_default": true,
+    "documented_limitation": false,
+    "reason": "The command-evidence collector rehashes one 64-KiB HTTP source for each of 10 disjoint unsafe ranges under the default range limit. The independent Go 1.26.6 reproducer retains one source and shows 10-19x paired collection time versus one range; CPU profiling attributes 47.78% of samples to sourceHash. Bounded but several times more sink-path work than necessary.",
+    "evidence_path": ".omo/review/evidence/fx-perf-algorithmic-F1/command-source-output.txt",
+    "repro_command": "ROOT=/Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go; WT=/tmp/ddiast-review/wt/fx-perf-algorithmic-F1; mkdir -p \"$WT\" && rsync -a --exclude .git --exclude .omo \"$ROOT/\" \"$WT/\" && cp \"$ROOT/.omo/review/evidence/fx-perf-algorithmic-F1/review_command_source_test.go\" \"$WT/internal/taint/evidence/\" && cd \"$WT\" && GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go test -mod=readonly -run '^$' -bench '^BenchmarkReviewCommandRepeatedSource$' -benchmem -benchtime=200ms -count=2 -cpu=1 -v -timeout 5m ./internal/taint/evidence"
+  }
+]

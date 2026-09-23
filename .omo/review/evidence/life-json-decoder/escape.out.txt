@@ -1,0 +1,40 @@
+./zz_review_json_test.go:32:6: moved to heap: v
+./zz_review_json_test.go:33:24: &json.Decoder{...} escapes to heap
+./zz_review_json_test.go:33:24: inlining call to json.NewDecoder
+./zz_review_json_test.go:33:42: &strings.Reader{...} escapes to heap
+./zz_review_json_test.go:33:42: inlining call to strings.NewReader
+./zz_review_json_test.go:38:6: moved to heap: v
+./zz_review_json_test.go:45:35: &strings.Reader{...} escapes to heap
+./zz_review_json_test.go:45:35: inlining call to strings.NewReader
+./zz_review_json_test.go:45:60: can inline reviewTaintedDecode.func1
+./zz_review_json_test.go:45:60: func literal escapes to heap
+./zz_review_json_test.go:46:7: moved to heap: v
+./zz_review_json_test.go:49:25: &json.Decoder{...} escapes to heap
+./zz_review_json_test.go:49:25: inlining call to json.NewDecoder
+/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/encoding/json/decode.go:102: leaking param: data
+/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/encoding/json/decode.go:1020: inlining call to reflect.flag.kind
+/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/encoding/json/decode.go:1021: inlining call to (*decodeState).readIndex
+/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/encoding/json/decode.go:1021: inlining call to (*decodeState).saveError
+/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/encoding/json/decode.go:1021: string(item) does not escape
+/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/encoding/json/decode.go:1035: leaking param: d
+/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/encoding/json/decode.go:1038: "JSON decoder out of sync - data changing underfoot?" escapes to heap
+/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/encoding/json/decode.go:1040: (*decodeState).arrayInterface(d) escapes to heap
+/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/encoding/json/decode.go:1052: leaking param: d
+/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/encoding/json/decode.go:106: moved to heap: d
+/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/encoding/json/decode.go:1061: append escapes to heap
+/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/encoding/json/decode.go:1071: "JSON decoder out of sync - data changing underfoot?" escapes to heap
+/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/encoding/json/decode.go:1078: leaking param: d
+/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/encoding/json/decode.go:1088: "JSON decoder out of sync - data changing underfoot?" escapes to heap
+/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/encoding/json/decode.go:1092: inlining call to (*decodeState).readIndex
+/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/encoding/json/decode.go:1094: inlining call to (*decodeState).readIndex
+/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/encoding/json/decode.go:1097: "JSON decoder out of sync - data changing underfoot?" escapes to heap
+/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/encoding/json/decode.go:1105: "JSON decoder out of sync - data changing underfoot?" escapes to heap
+/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/encoding/json/decode.go:1120: "JSON decoder out of sync - data changing underfoot?" escapes to heap
+/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/encoding/json/decode.go:1129: leaking param content: d
+/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/encoding/json/decode.go:1131: inlining call to (*decodeState).readIndex
+/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/encoding/json/decode.go:1134: inlining call to (*decodeState).readIndex
+/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/encoding/json/decode.go:1141: c == byte(116) escapes to heap
+/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/encoding/json/decode.go:1144: inlining call to unquote
+/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/encoding/json/decode.go:1144: string(s) escapes to heap
+/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/encoding/json/decode.go:1146: "JSON decoder out of sync - data changing underfoot?" escapes to heap
+/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/encoding/json/decode.go:1148: s escapes to heap

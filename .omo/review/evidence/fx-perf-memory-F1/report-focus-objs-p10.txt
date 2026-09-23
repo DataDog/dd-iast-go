@@ -1,0 +1,75 @@
+File: dedupcost-woven
+Type: alloc_objects
+Time: 2026-09-23 16:09:09 CEST
+Active filters:
+   focus=iast/database/sql.Report$
+Showing nodes accounting for 38500, 35.61% of 108106 total
+      flat  flat%   sum%        cum   cum%
+         0     0%     0%      38500 35.61%  database/sql.(*DB).QueryContext
+         0     0%     0%      38500 35.61%  github.com/DataDog/dd-iast-go/iast/database/sql.Report
+         0     0%     0%      38500 35.61%  github.com/DataDog/dd-iast-go/internal/taint/sqlbridge.Report
+         0     0%     0%      38500 35.61%  main.handleVuln
+         0     0%     0%      38500 35.61%  main.main
+         0     0%     0%      38500 35.61%  main.main.func1
+         0     0%     0%      38500 35.61%  main.runQuery
+         0     0%     0%      38500 35.61%  runtime.main
+         0     0%     0%      22000 20.35%  github.com/DataDog/dd-iast-go/internal/vulnerability.ReportTainted
+         0     0%     0%      14000 12.95%  github.com/DataDog/dd-iast-go/internal/vulnerability.CaptureLocationSkipWhile
+       500  0.46%  0.46%      10500  9.71%  github.com/DataDog/dd-iast-go/internal/taint/redaction.AnalyzeSQL
+         0     0%  0.46%       9000  8.33%  github.com/DataDog/dd-iast-go/internal/taint/redaction.scanSQLSegment
+      9000  8.33%  8.79%       9000  8.33%  github.com/DataDog/go-sqllexer.New
+         0     0%  8.79%       6500  6.01%  github.com/DataDog/dd-iast-go/internal/taint/redaction.BuildWithSensitive
+         0     0%  8.79%       6000  5.55%  github.com/DataDog/dd-iast-go/internal/taint/evidence.CollectString
+         0     0%  8.79%       5500  5.09%  github.com/DataDog/dd-iast-go/internal/vulnerability.SkipWhile.firstApplicationFrame
+      5500  5.09% 13.88%       5500  5.09%  github.com/DataDog/dd-iast-go/internal/vulnerability.SkipWhile.matchesNamespace (inline)
+       500  0.46% 14.34%       5000  4.63%  github.com/DataDog/dd-trace-go/v2/instrumentation.(*Instrumentation).CaptureStackTrace
+      1000  0.93% 15.26%       4000  3.70%  github.com/DataDog/dd-trace-go/v2/internal/stacktrace.NewEvent
+      2000  1.85% 17.11%       3500  3.24%  github.com/DataDog/dd-iast-go/internal/taint/evidence.(*collector).finish
+      1000  0.93% 18.04%       3500  3.24%  github.com/DataDog/dd-iast-go/internal/taint/redaction.buildWireSources
+       500  0.46% 18.50%       3000  2.78%  github.com/DataDog/dd-iast-go/internal/taint/redaction.buildParts
+         0     0% 18.50%       3000  2.78%  github.com/DataDog/dd-trace-go/v2/internal/stacktrace.SkipAndCaptureWithDepth
+      3000  2.78% 21.28%       3000  2.78%  internal/stringslite.Clone (inline)
+         0     0% 21.28%       3000  2.78%  strings.Clone (inline)
+         0     0% 21.28%       2500  2.31%  github.com/DataDog/dd-iast-go/internal/taint/evidence.(*collector).add (inline)
+         0     0% 21.28%       2500  2.31%  github.com/DataDog/dd-iast-go/internal/taint/evidence.(*collector).addAt
+         0     0% 21.28%       2500  2.31%  github.com/DataDog/dd-iast-go/internal/taint/evidence.(*collector).sourceIndex
+         0     0% 21.28%       2500  2.31%  github.com/DataDog/dd-iast-go/internal/taint/evidence.CollectString.func1
+         0     0% 21.28%       2500  2.31%  github.com/DataDog/dd-iast-go/internal/taint/redaction.alphanumericPattern
+      2500  2.31% 23.59%       2500  2.31%  github.com/DataDog/dd-iast-go/internal/taint/redaction.buildPart
+         0     0% 23.59%       2500  2.31%  github.com/DataDog/dd-iast-go/internal/taint/request.VisitString
+         0     0% 23.59%       2500  2.31%  github.com/DataDog/dd-iast-go/internal/taint/request.deliverEntry
+         0     0% 23.59%       2500  2.31%  github.com/DataDog/dd-iast-go/internal/taint/request.visitKey
+         0     0% 23.59%       2500  2.31%  github.com/DataDog/dd-iast-go/internal/taint/request.visitKeyHit
+      2500  2.31% 25.90%       2500  2.31%  internal/bytealg.MakeNoZero
+         0     0% 25.90%       2500  2.31%  strings.(*Builder).Grow
+         0     0% 25.90%       2500  2.31%  strings.(*Builder).grow
+       500  0.46% 26.36%       1500  1.39%  github.com/DataDog/dd-trace-go/v2/internal/stacktrace.(*framesIterator).capture
+       500  0.46% 26.83%       1500  1.39%  github.com/DataDog/dd-trace-go/v2/internal/stacktrace.iterator (inline)
+         0     0% 26.83%       1000  0.93%  github.com/DataDog/dd-iast-go/internal/taint/evidence.(*Snapshot).canonicalize
+      1000  0.93% 27.75%       1000  0.93%  github.com/DataDog/dd-iast-go/internal/taint/redaction.scanOracleQuotes
+       500  0.46% 28.21%       1000  0.93%  github.com/DataDog/dd-iast-go/internal/vulnerability.locationFromTrace
+      1000  0.93% 29.14%       1000  0.93%  github.com/DataDog/dd-trace-go/v2/internal/stacktrace.newQueue[go.shape.struct { PC uintptr; Func *runtime.Func; Function string; File string; Line int; runtime.startLine int; Entry uintptr; runtime.funcInfo runtime.funcInfo }] (inline)
+         0     0% 29.14%       1000  0.93%  github.com/google/uuid.NewString
+       500  0.46% 29.60%        500  0.46%  github.com/DataDog/dd-iast-go/internal/model.NewEvidenceTaintedValue (inline)
+         0     0% 29.60%        500  0.46%  github.com/DataDog/dd-iast-go/internal/model.NewVulnerability
+       500  0.46% 30.06%        500  0.46%  github.com/DataDog/dd-iast-go/internal/taint/evidence.(*Snapshot).buildParts
+       500  0.46% 30.53%        500  0.46%  github.com/DataDog/dd-iast-go/internal/taint/evidence.(*Snapshot).reindexSources
+         0     0% 30.53%        500  0.46%  github.com/DataDog/dd-iast-go/internal/vulnerability.selectTaintedAnnotation
+       500  0.46% 30.99%        500  0.46%  github.com/DataDog/dd-iast-go/internal/vulnerability/stacktrace.LocationFromFrame
+         0     0% 30.99%        500  0.46%  github.com/DataDog/dd-trace-go/v2/ddtrace/tracer.SpanFromContext
+         0     0% 30.99%        500  0.46%  github.com/DataDog/dd-trace-go/v2/instrumentation.WithStackTraceDepth
+         0     0% 30.99%        500  0.46%  github.com/DataDog/dd-trace-go/v2/instrumentation.WithStackTraceID
+         0     0% 30.99%        500  0.46%  github.com/DataDog/dd-trace-go/v2/instrumentation.WithStackTraceSkip
+       500  0.46% 31.45%        500  0.46%  github.com/DataDog/dd-trace-go/v2/internal/orchestrion.WrapContext (inline)
+         0     0% 31.45%        500  0.46%  github.com/DataDog/dd-trace-go/v2/internal/stacktrace.(*framesIterator).Next
+         0     0% 31.45%        500  0.46%  github.com/DataDog/dd-trace-go/v2/internal/stacktrace.(*framesIterator).next
+       500  0.46% 31.91%        500  0.46%  github.com/DataDog/dd-trace-go/v2/internal/stacktrace.(*framesIterator).symbolicateFrames
+       500  0.46% 32.38%        500  0.46%  github.com/DataDog/dd-trace-go/v2/internal/stacktrace.WithAdditionalSkip (inline)
+       500  0.46% 32.84%        500  0.46%  github.com/DataDog/dd-trace-go/v2/internal/stacktrace.WithDepth (inline)
+       500  0.46% 33.30%        500  0.46%  github.com/DataDog/dd-trace-go/v2/internal/stacktrace.WithID (inline)
+       500  0.46% 33.76%        500  0.46%  github.com/DataDog/dd-trace-go/v2/internal/stacktrace.WithSkip (inline)
+       500  0.46% 34.23%        500  0.46%  github.com/DataDog/dd-trace-go/v2/internal/stacktrace.newQueue[go.shape.struct { Text string "msg:\"text,omitempty\""; File string "msg:\"file,omitempty\""; Namespace string "msg:\"namespace,omitempty\""; ClassName string "msg:\"class_name,omitempty\""; Function string "msg:\"function,omitempty\""; Index uint32 "msg:\"id\""; Line uint32 "msg:\"line,omitempty\""; Column uint32 "msg:\"column,omitempty\"" }] (inline)
+         0     0% 34.23%        500  0.46%  github.com/google/uuid.NewRandom
+       500  0.46% 34.69%        500  0.46%  github.com/google/uuid.NewRandomFromReader
+       500  0.46% 35.15%        500  0.46%  github.com/google/uuid.UUID.String (inline)
+       500  0.46% 35.61%        500  0.46%  hash/fnv.New32a (inline)

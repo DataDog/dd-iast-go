@@ -1,0 +1,69 @@
+Private-copy command (Go 1.26.6):
+GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go test -mod=readonly -run '^$' -bench '^BenchmarkReviewCommandRepeatedSource$' -benchmem -benchtime=200ms -count=2 -cpu=1 -v -timeout 5m ./internal/taint/evidence
+goos: darwin
+goarch: arm64
+pkg: github.com/DataDog/dd-iast-go/internal/taint/evidence
+cpu: Apple M4 Max
+BenchmarkReviewCommandRepeatedSource
+BenchmarkReviewCommandRepeatedSource/sourceBytes=128/arguments=1
+    review_command_source_test.go:63: sourceBytes=128 sinkBytes=1 collectedRanges=1 distinctSources=1 defaultRangeLimit=10
+BenchmarkReviewCommandRepeatedSource/sourceBytes=128/arguments=1         	  111087	      2502 ns/op	     584 B/op	       9 allocs/op
+    review_command_source_test.go:63: sourceBytes=128 sinkBytes=1 collectedRanges=1 distinctSources=1 defaultRangeLimit=10
+BenchmarkReviewCommandRepeatedSource/sourceBytes=128/arguments=1         	   75380	      2766 ns/op	     584 B/op	       9 allocs/op
+BenchmarkReviewCommandRepeatedSource/sourceBytes=128/arguments=10
+    review_command_source_test.go:63: sourceBytes=128 sinkBytes=19 collectedRanges=10 distinctSources=1 defaultRangeLimit=10
+BenchmarkReviewCommandRepeatedSource/sourceBytes=128/arguments=10        	   10411	     21771 ns/op	    1408 B/op	       9 allocs/op
+    review_command_source_test.go:63: sourceBytes=128 sinkBytes=19 collectedRanges=10 distinctSources=1 defaultRangeLimit=10
+BenchmarkReviewCommandRepeatedSource/sourceBytes=128/arguments=10        	    9814	     59020 ns/op	    1408 B/op	       9 allocs/op
+BenchmarkReviewCommandRepeatedSource/sourceBytes=65536/arguments=1
+    review_command_source_test.go:63: sourceBytes=65536 sinkBytes=1 collectedRanges=1 distinctSources=1 defaultRangeLimit=10
+BenchmarkReviewCommandRepeatedSource/sourceBytes=65536/arguments=1       	     778	    399989 ns/op	   65992 B/op	       9 allocs/op
+    review_command_source_test.go:63: sourceBytes=65536 sinkBytes=1 collectedRanges=1 distinctSources=1 defaultRangeLimit=10
+BenchmarkReviewCommandRepeatedSource/sourceBytes=65536/arguments=1       	     552	    418269 ns/op	   65992 B/op	       9 allocs/op
+BenchmarkReviewCommandRepeatedSource/sourceBytes=65536/arguments=10
+    review_command_source_test.go:63: sourceBytes=65536 sinkBytes=19 collectedRanges=10 distinctSources=1 defaultRangeLimit=10
+BenchmarkReviewCommandRepeatedSource/sourceBytes=65536/arguments=10      	     100	   7443828 ns/op	   66816 B/op	       9 allocs/op
+    review_command_source_test.go:63: sourceBytes=65536 sinkBytes=19 collectedRanges=10 distinctSources=1 defaultRangeLimit=10
+BenchmarkReviewCommandRepeatedSource/sourceBytes=65536/arguments=10      	      50	   4285379 ns/op	   66816 B/op	       9 allocs/op
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/evidence	6.305s
+
+Private-copy command (Go 1.26.6, CPU profile):
+GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go test -mod=readonly -run '^$' -bench '^BenchmarkReviewCommandRepeatedSource/sourceBytes=65536/arguments=10$' -benchtime=2s -count=1 -cpu=1 -timeout 5m -cpuprofile=review-source.prof ./internal/taint/evidence && GOTOOLCHAIN=go1.26.6 go tool pprof -top -nodecount=12 review-source.prof
+BenchmarkReviewCommandRepeatedSource/sourceBytes=65536/arguments=10         	     775	   7058708 ns/op	   66837 B/op	       9 allocs/op
+--- BENCH: BenchmarkReviewCommandRepeatedSource/sourceBytes=65536/arguments=10
+    review_command_source_test.go:63: sourceBytes=65536 sinkBytes=19 collectedRanges=10 distinctSources=1 defaultRangeLimit=10
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/evidence	6.345s
+File: evidence.test
+Type: cpu
+Time: 2026-09-23 18:21:16 CEST
+Duration: 5.69s, Total samples = 900ms (15.83%)
+Showing nodes accounting for 900ms, 100% of 900ms total
+Showing top 12 nodes out of 33
+      flat  flat%   sum%        cum   cum%
+     430ms 47.78% 47.78%      500ms 55.56%  github.com/DataDog/dd-iast-go/internal/taint/evidence.sourceHash (inline)
+     220ms 24.44% 72.22%      220ms 24.44%  runtime.memmove
+     160ms 17.78% 90.00%      160ms 17.78%  runtime.madvise
+      70ms  7.78% 97.78%       70ms  7.78%  runtime.asyncPreempt
+      10ms  1.11% 98.89%       10ms  1.11%  internal/runtime/atomic.(*UnsafePointer).StoreNoWB (inline)
+      10ms  1.11%   100%       10ms  1.11%  runtime.memequal
+         0     0%   100%      730ms 81.11%  github.com/DataDog/dd-iast-go/internal/taint/evidence.(*collector).addAt
+         0     0%   100%      730ms 81.11%  github.com/DataDog/dd-iast-go/internal/taint/evidence.(*collector).sourceIndex
+         0     0%   100%      740ms 82.22%  github.com/DataDog/dd-iast-go/internal/taint/evidence.CollectJoinedStrings
+         0     0%   100%      730ms 81.11%  github.com/DataDog/dd-iast-go/internal/taint/evidence.CollectJoinedStrings.func1
+
+Private-copy command (Go 1.27.0):
+GOTOOLCHAIN=go1.27.0 GOFLAGS=-p=4 go test -mod=readonly -run '^$' -bench '^BenchmarkReviewCommandRepeatedSource/sourceBytes=65536' -benchmem -benchtime=100ms -count=1 -cpu=1 -v -timeout 5m ./internal/taint/evidence
+BenchmarkReviewCommandRepeatedSource/sourceBytes=65536/arguments=1
+    review_command_source_test.go:63: sourceBytes=65536 sinkBytes=1 collectedRanges=1 distinctSources=1 defaultRangeLimit=10
+BenchmarkReviewCommandRepeatedSource/sourceBytes=65536/arguments=1         	     687	    901123 ns/op	   65992 B/op	       9 allocs/op
+BenchmarkReviewCommandRepeatedSource/sourceBytes=65536/arguments=10
+    review_command_source_test.go:63: sourceBytes=65536 sinkBytes=19 collectedRanges=10 distinctSources=1 defaultRangeLimit=10
+BenchmarkReviewCommandRepeatedSource/sourceBytes=65536/arguments=10        	      24	   4982410 ns/op	   66816 B/op	       9 allocs/op
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/evidence	1.392s
+
+Private-copy format and nearby-test check:
+test -z "$(gofmt -l internal/taint/evidence/review_command_source_test.go)" && GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go test -mod=readonly -run '^(TestCollectStringOwnsCanonicalEvidence|TestCollectJoinedStringsPreservesArgumentOffsets)$' -count=1 -timeout 5m ./internal/taint/evidence
+ok  	github.com/DataDog/dd-iast-go/internal/taint/evidence	0.565s

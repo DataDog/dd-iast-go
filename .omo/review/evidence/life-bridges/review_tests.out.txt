@@ -1,0 +1,61 @@
+$ GOTOOLCHAIN=go1.26.6 go test -race -count=1 -timeout 10m -run 'TestReview' -v ./internal/taint/{sqlbridge,jsonbridge,urlbridge,iobridge,scopebridge,writerbridge,httpbridge}
+=== RUN   TestReviewDeferredReportKeepsHostPanic
+    zz_review_test.go:34: host recovered=driver panic callback calls=1
+--- PASS: TestReviewDeferredReportKeepsHostPanic (0.00s)
+=== RUN   TestReviewPanickingCallbackDuringHostPanic
+    zz_review_test.go:43: host recovered=driver panic
+--- PASS: TestReviewPanickingCallbackDuringHostPanic (0.00s)
+=== RUN   TestReviewConcurrentRegisterAndReport
+--- PASS: TestReviewConcurrentRegisterAndReport (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/sqlbridge	1.374s
+=== RUN   TestReviewDeferredLiteralKeepsHostPanic
+    zz_review_test.go:35: host recovered=literalStore panic
+--- PASS: TestReviewDeferredLiteralKeepsHostPanic (0.00s)
+=== RUN   TestReviewNilRegisterIsShielded
+    zz_review_test.go:42: registered non-nil holder with nil funcs: true
+    zz_review_test.go:49: no panic escaped with nil callbacks
+--- PASS: TestReviewNilRegisterIsShielded (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/jsonbridge	1.598s
+=== RUN   TestReviewCallbackPanicReachesHost
+    zz_review_test.go:14: panic escaping bridge into host: callback panic
+--- PASS: TestReviewCallbackPanicReachesHost (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/urlbridge	2.971s
+=== RUN   TestReviewCallbackPanicReachesHost
+    zz_review_test.go:14: panic escaping bridge into host: callback panic
+--- PASS: TestReviewCallbackPanicReachesHost (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/iobridge	2.668s
+=== RUN   TestReviewCallbackPanicReachesHost
+    zz_review_test.go:14: panic escaping bridge into host: callback panic
+--- PASS: TestReviewCallbackPanicReachesHost (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/scopebridge	2.392s
+=== RUN   TestReviewCallbackPanicReachesHost
+    zz_review_test.go:14: panic escaping bridge into host: callback panic
+--- PASS: TestReviewCallbackPanicReachesHost (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/writerbridge	2.159s
+=== RUN   TestReviewCallbackPanicReachesHost
+    zz_review_test.go:19: panic escaping bridge into net/http: eager panic
+--- PASS: TestReviewCallbackPanicReachesHost (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/httpbridge	1.883s
+
+
+$ go test -race ./internal/taint/...bridge/... ; go list -deps link check
+ok  	github.com/DataDog/dd-iast-go/internal/taint/commandbridge	1.417s
+ok  	github.com/DataDog/dd-iast-go/internal/taint/httpbridge	1.488s
+ok  	github.com/DataDog/dd-iast-go/internal/taint/iobridge	1.649s
+ok  	github.com/DataDog/dd-iast-go/internal/taint/jsonbridge	1.789s
+ok  	github.com/DataDog/dd-iast-go/internal/taint/operatorbridge	2.072s
+ok  	github.com/DataDog/dd-iast-go/internal/taint/scopebridge	2.624s
+ok  	github.com/DataDog/dd-iast-go/internal/taint/sqlbridge	2.832s
+ok  	github.com/DataDog/dd-iast-go/internal/taint/urlbridge	2.309s
+ok  	github.com/DataDog/dd-iast-go/internal/taint/writerbridge	2.494s
+iast/database/sql links request: 1
+iast/os/exec links request: 1
+iast/encoding/json links request: 1
+iast/net/http links request: 1

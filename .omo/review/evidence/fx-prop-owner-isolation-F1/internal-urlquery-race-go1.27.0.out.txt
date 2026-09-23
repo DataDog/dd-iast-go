@@ -1,0 +1,58 @@
+=== RUN   TestFxSlotIndexRaceURLQuery
+==================
+WARNING: DATA RACE
+Write at 0x00c000f00018 by goroutine 8:
+  github.com/DataDog/dd-iast-go/internal/taint/request.(*Manager).Acquire()
+      /private/tmp/ddiast-review/wt/fx-prop-owner-isolation-F1/internal/taint/request/owner.go:82 +0x140
+  github.com/DataDog/dd-iast-go/internal/taint/request.begin()
+      /private/tmp/ddiast-review/wt/fx-prop-owner-isolation-F1/internal/taint/request/scope.go:95 +0x1c4
+  github.com/DataDog/dd-iast-go/internal/taint/request.Begin()
+      /private/tmp/ddiast-review/wt/fx-prop-owner-isolation-F1/internal/taint/request/scope.go:76 +0x9c
+  github.com/DataDog/dd-iast-go/internal/taint/request.fxRun()
+      /private/tmp/ddiast-review/wt/fx-prop-owner-isolation-F1/internal/taint/request/zz_fx_slotindex_test.go:32 +0x84
+  github.com/DataDog/dd-iast-go/internal/taint/request.TestFxSlotIndexRaceURLQuery()
+      /private/tmp/ddiast-review/wt/fx-prop-owner-isolation-F1/internal/taint/request/zz_fx_slotindex_test.go:50 +0x30
+  testing.tRunner()
+      /opt/homebrew/Cellar/go/1.27.0/libexec/src/testing/testing.go:2193 +0x164
+  testing.(*T).Run.gowrap1()
+      /opt/homebrew/Cellar/go/1.27.0/libexec/src/testing/testing.go:2258 +0x34
+
+Previous read at 0x00c000f00018 by goroutine 27:
+  github.com/DataDog/dd-iast-go/internal/taint/request.analysisForOwner()
+      /private/tmp/ddiast-review/wt/fx-prop-owner-isolation-F1/internal/taint/request/http.go:33 +0x170
+  github.com/DataDog/dd-iast-go/internal/taint/request.ManageURLQuery()
+      /private/tmp/ddiast-review/wt/fx-prop-owner-isolation-F1/internal/taint/request/lazy.go:37 +0x78
+  github.com/DataDog/dd-iast-go/internal/taint/request.TestFxSlotIndexRaceURLQuery.func1()
+      /private/tmp/ddiast-review/wt/fx-prop-owner-isolation-F1/internal/taint/request/zz_fx_slotindex_test.go:50 +0x3c
+  github.com/DataDog/dd-iast-go/internal/taint/request.fxRun.func1()
+      /private/tmp/ddiast-review/wt/fx-prop-owner-isolation-F1/internal/taint/request/zz_fx_slotindex_test.go:40 +0xc8
+
+Goroutine 8 (running) created at:
+  testing.(*T).Run()
+      /opt/homebrew/Cellar/go/1.27.0/libexec/src/testing/testing.go:2258 +0x7bc
+  testing.runTests.func1()
+      /opt/homebrew/Cellar/go/1.27.0/libexec/src/testing/testing.go:2742 +0x74
+  testing.tRunner()
+      /opt/homebrew/Cellar/go/1.27.0/libexec/src/testing/testing.go:2193 +0x164
+  testing.runTests()
+      /opt/homebrew/Cellar/go/1.27.0/libexec/src/testing/testing.go:2740 +0x7a0
+  testing.(*M).Run()
+      /opt/homebrew/Cellar/go/1.27.0/libexec/src/testing/testing.go:2600 +0xb38
+  main.main()
+      _testmain.go:146 +0x100
+
+Goroutine 27 (finished) created at:
+  github.com/DataDog/dd-iast-go/internal/taint/request.fxRun()
+      /private/tmp/ddiast-review/wt/fx-prop-owner-isolation-F1/internal/taint/request/zz_fx_slotindex_test.go:40 +0x4b0
+  github.com/DataDog/dd-iast-go/internal/taint/request.TestFxSlotIndexRaceURLQuery()
+      /private/tmp/ddiast-review/wt/fx-prop-owner-isolation-F1/internal/taint/request/zz_fx_slotindex_test.go:50 +0x30
+  testing.tRunner()
+      /opt/homebrew/Cellar/go/1.27.0/libexec/src/testing/testing.go:2193 +0x164
+  testing.(*T).Run.gowrap1()
+      /opt/homebrew/Cellar/go/1.27.0/libexec/src/testing/testing.go:2258 +0x34
+==================
+    testing.go:1865: race detected during execution of test
+--- FAIL: TestFxSlotIndexRaceURLQuery (0.14s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/request	0.837s
+FAIL

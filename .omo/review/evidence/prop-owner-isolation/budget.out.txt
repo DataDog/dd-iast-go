@@ -1,0 +1,8 @@
+=== RUN   TestReviewForeignTrafficExhaustsOwnerBudget
+    zz_review_owner_isolation_test.go:169: owner A id=1: foreign builders=8; A's own builder query tainted ranges=[]
+    zz_review_owner_isolation_test.go:171: foreign (unsampled) builder result ranges=[{start:30 length:13 source:tenant-from-A ownerID:1}]
+    zz_review_owner_isolation_test.go:173: A's own supported builder propagation was dropped after unsampled traffic filled A's writer table
+--- FAIL: TestReviewForeignTrafficExhaustsOwnerBudget (0.00s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/iast/propagation	0.413s
+FAIL

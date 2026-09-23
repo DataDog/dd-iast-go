@@ -1,0 +1,24 @@
+[
+  {
+    "id": "map-design-F1",
+    "severity": "Medium",
+    "category": "doc",
+    "location": "_docs/plans/taint-tracking-net-http-sqli-cmdi-phase-7a.md:5",
+    "title": "Phase 7a's status header contradicts its implementation record",
+    "claim": "The Phase 7a header says it is a draft pending critic and user review, while the same document records implemented commit boundaries and user-approved activation; the parent plan also marks the phase complete with approved assumptions.",
+    "evidence_path": null,
+    "repro_command": null,
+    "needs_repro": true
+  },
+  {
+    "id": "map-design-F2",
+    "severity": "Medium",
+    "category": "doc",
+    "location": "_docs/plans/taint-tracking-net-http-sqli-cmdi.md:209",
+    "title": "The parent plan overstates the one-byte exclusion",
+    "claim": "The parent plan says the first version does not track one-byte values, but the Phase 5 plan permits one-byte derived windows from an existing managed root. The documented behavior needs to distinguish new one-byte managed roots from derived one-byte windows.",
+    "evidence_path": null,
+    "repro_command": null,
+    "needs_repro": true
+  }
+]

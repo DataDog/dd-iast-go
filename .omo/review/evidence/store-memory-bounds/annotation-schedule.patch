@@ -1,0 +1,21 @@
+--- a/internal/spans/annotation.go
++++ b/internal/spans/annotation.go
+@@ -24,6 +24,8 @@
+ )
+ 
+ var (
++	// Review-only scheduling seam: pause after the capacity read, before insert.
++	reviewAfterCapacityCheck func()
+ 	// nonSampledAnnotation is immutable by convention. Reporting returns before
+ 	// touching Event or RequestTainted when Sampled is false.
+ 	nonSampledAnnotation = new(Annotation)
+@@ -130,6 +132,9 @@
+ 
+ 	// Can't do this within the TryCompute callback as this would deadlock.
+ 	hasSpace := trimStore()
++	if reviewAfterCapacityCheck != nil {
++		reviewAfterCapacityCheck()
++	}
+ 
+ 	ptr := weak.Make(root)
+ 	ann, _ := store.LoadOrCompute(ptr, func() (*Annotation, bool) {

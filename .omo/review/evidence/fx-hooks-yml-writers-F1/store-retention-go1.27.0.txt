@@ -1,0 +1,7 @@
+=== RUN   TestFxInteriorViewAnchorRetainsBacking
+    fx_retention_test.go:29: store charged=128 bytes for 8 writer records
+    fx_retention_test.go:35: retained while owner active: 128 MiB
+    fx_retention_test.go:44: released by owner finish: 140 MiB
+--- PASS: TestFxInteriorViewAnchorRetainsBacking (0.03s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/store	1.200s

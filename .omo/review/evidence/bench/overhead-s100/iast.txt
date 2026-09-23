@@ -1,0 +1,430 @@
+goos: darwin
+goarch: arm64
+pkg: github.com/DataDog/dd-iast-go/benchmarks/overhead
+cpu: Apple M4 Max
+BenchmarkBytesBufferCopies/read     	 2975060	       201.8 ns/op	      56 B/op	       2 allocs/op
+BenchmarkBytesBufferCopies/write    	  340375	      1712 ns/op	      64 B/op	       2 allocs/op
+BenchmarkBytesBufferCopies/active-unrelated         	 4019096	       148.2 ns/op	       0 B/op	       0 allocs/op
+BenchmarkPropagationActiveUntainted/StringWindow    	201489342	         2.931 ns/op	       0 B/op	       0 allocs/op
+BenchmarkPropagationActiveUntainted/StringWindows   	20487109	        29.95 ns/op	      48 B/op	       1 allocs/op
+BenchmarkPropagationActiveUntainted/StringCopy      	100000000	         6.837 ns/op	       8 B/op	       1 allocs/op
+BenchmarkPropagationActiveUntainted/StringCoarse    	31675362	        22.75 ns/op	       8 B/op	       1 allocs/op
+BenchmarkPropagationActiveUntainted/ByteWindow      	213543871	         2.796 ns/op	       0 B/op	       0 allocs/op
+BenchmarkPropagationActiveUntainted/ByteCopy        	60898248	        11.14 ns/op	       8 B/op	       1 allocs/op
+BenchmarkStringsBuilder                             	28328611	        23.56 ns/op	      24 B/op	       2 allocs/op
+BenchmarkBytesBuffer                                	20595465	        30.99 ns/op	      80 B/op	       2 allocs/op
+BenchmarkBytesClone                                 	55195674	        12.10 ns/op	      24 B/op	       1 allocs/op
+BenchmarkBytesTrimSpace                             	328023751	         1.828 ns/op	       0 B/op	       0 allocs/op
+BenchmarkBytesSplit                                 	17302638	        33.85 ns/op	      80 B/op	       1 allocs/op
+BenchmarkBytesJoin                                  	30054535	        19.81 ns/op	      16 B/op	       1 allocs/op
+BenchmarkBytesRepeat                                	42899275	        14.18 ns/op	      16 B/op	       1 allocs/op
+BenchmarkBytesReplaceAll                            	16664370	        34.71 ns/op	      16 B/op	       1 allocs/op
+BenchmarkBytesToLower                               	33889766	        17.50 ns/op	      16 B/op	       1 allocs/op
+BenchmarkBytesMap                                   	21299947	        28.40 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStringsClone                               	68812602	        11.26 ns/op	      24 B/op	       1 allocs/op
+BenchmarkStringsTrimSpace                           	331237564	         1.794 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStringsToLower                             	18663316	        28.83 ns/op	      16 B/op	       1 allocs/op
+BenchmarkFmtSprintf                                 	15430345	        35.15 ns/op	      16 B/op	       1 allocs/op
+BenchmarkURLQueryEscape                             	26913019	        23.75 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStrconvQuote                               	10999747	        54.52 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStringsJoin                                	25408028	        25.92 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStringsRepeat                              	28466598	        22.36 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStringsReplaceAll                          	13808458	        42.15 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStringsSplitSeq                            	46696087	        12.91 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStringsSplit                               	18688240	        32.19 ns/op	      48 B/op	       1 allocs/op
+BenchmarkHealth                                     	  523611	      1124 ns/op	    6114 B/op	      19 allocs/op
+BenchmarkRequestProcessing                          	  242170	      2633 ns/op	    8792 B/op	      47 allocs/op
+BenchmarkRequestProcessingParallel                  	  222736	      2655 ns/op	    8792 B/op	      47 allocs/op
+BenchmarkHTTPRoundTrip                              	    8307	     70984 ns/op	   40869 B/op	     510 allocs/op
+BenchmarkWeakHashNoActiveSpan                       	 3781946	       158.0 ns/op	     128 B/op	       4 allocs/op
+BenchmarkWeakHashActiveSpan                         	   63679	      9606 ns/op	   19904 B/op	      98 allocs/op
+BenchmarkWeakCipherNoActiveSpan                     	 1270597	       471.0 ns/op	     256 B/op	       5 allocs/op
+BenchmarkWeakCipherActiveSpan                       	   61292	      9805 ns/op	   20032 B/op	      99 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/DataDog/dd-iast-go/benchmarks/overhead
+cpu: Apple M4 Max
+BenchmarkBytesBufferCopies/read     	 3019348	       199.6 ns/op	      56 B/op	       2 allocs/op
+BenchmarkBytesBufferCopies/write    	  352590	      1665 ns/op	      64 B/op	       2 allocs/op
+BenchmarkBytesBufferCopies/active-unrelated         	 3387139	       156.5 ns/op	       0 B/op	       0 allocs/op
+BenchmarkPropagationActiveUntainted/StringWindow    	205928480	         2.889 ns/op	       0 B/op	       0 allocs/op
+BenchmarkPropagationActiveUntainted/StringWindows   	19858479	        29.70 ns/op	      48 B/op	       1 allocs/op
+BenchmarkPropagationActiveUntainted/StringCopy      	100000000	         6.873 ns/op	       8 B/op	       1 allocs/op
+BenchmarkPropagationActiveUntainted/StringCoarse    	31269609	        22.31 ns/op	       8 B/op	       1 allocs/op
+BenchmarkPropagationActiveUntainted/ByteWindow      	213757428	         2.803 ns/op	       0 B/op	       0 allocs/op
+BenchmarkPropagationActiveUntainted/ByteCopy        	67120663	        10.88 ns/op	       8 B/op	       1 allocs/op
+BenchmarkStringsBuilder                             	27487315	        23.84 ns/op	      24 B/op	       2 allocs/op
+BenchmarkBytesBuffer                                	21064395	        30.66 ns/op	      80 B/op	       2 allocs/op
+BenchmarkBytesClone                                 	55987561	        12.42 ns/op	      24 B/op	       1 allocs/op
+BenchmarkBytesTrimSpace                             	325036401	         1.850 ns/op	       0 B/op	       0 allocs/op
+BenchmarkBytesSplit                                 	15983500	        36.58 ns/op	      80 B/op	       1 allocs/op
+BenchmarkBytesJoin                                  	30635103	        20.03 ns/op	      16 B/op	       1 allocs/op
+BenchmarkBytesRepeat                                	43478786	        14.01 ns/op	      16 B/op	       1 allocs/op
+BenchmarkBytesReplaceAll                            	17783331	        35.00 ns/op	      16 B/op	       1 allocs/op
+BenchmarkBytesToLower                               	35819646	        17.41 ns/op	      16 B/op	       1 allocs/op
+BenchmarkBytesMap                                   	20529343	        28.58 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStringsClone                               	60380900	        12.15 ns/op	      24 B/op	       1 allocs/op
+BenchmarkStringsTrimSpace                           	334326639	         1.913 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStringsToLower                             	19496053	        29.30 ns/op	      16 B/op	       1 allocs/op
+BenchmarkFmtSprintf                                 	17161857	        34.03 ns/op	      16 B/op	       1 allocs/op
+BenchmarkURLQueryEscape                             	22947658	        24.01 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStrconvQuote                               	11138510	        54.99 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStringsJoin                                	23199051	        25.17 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStringsRepeat                              	28933731	        21.71 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStringsReplaceAll                          	14169406	        42.67 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStringsSplitSeq                            	46914249	        12.93 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStringsSplit                               	18663002	        32.42 ns/op	      48 B/op	       1 allocs/op
+BenchmarkHealth                                     	  529436	      1127 ns/op	    6114 B/op	      19 allocs/op
+BenchmarkRequestProcessing                          	  230683	      2683 ns/op	    8792 B/op	      47 allocs/op
+BenchmarkRequestProcessingParallel                  	  216313	      2629 ns/op	    8792 B/op	      47 allocs/op
+BenchmarkHTTPRoundTrip                              	    8612	     68997 ns/op	   40869 B/op	     510 allocs/op
+BenchmarkWeakHashNoActiveSpan                       	 3801519	       158.2 ns/op	     128 B/op	       4 allocs/op
+BenchmarkWeakHashActiveSpan                         	   64200	      9487 ns/op	   19904 B/op	      98 allocs/op
+BenchmarkWeakCipherNoActiveSpan                     	 1256527	       475.9 ns/op	     256 B/op	       5 allocs/op
+BenchmarkWeakCipherActiveSpan                       	   60162	     10349 ns/op	   20032 B/op	      99 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/DataDog/dd-iast-go/benchmarks/overhead
+cpu: Apple M4 Max
+BenchmarkBytesBufferCopies/read     	 3011300	       201.9 ns/op	      56 B/op	       2 allocs/op
+BenchmarkBytesBufferCopies/write    	  359580	      1667 ns/op	      64 B/op	       2 allocs/op
+BenchmarkBytesBufferCopies/active-unrelated         	 3832128	       168.5 ns/op	       0 B/op	       0 allocs/op
+BenchmarkPropagationActiveUntainted/StringWindow    	202698451	         3.019 ns/op	       0 B/op	       0 allocs/op
+BenchmarkPropagationActiveUntainted/StringWindows   	19726405	        30.21 ns/op	      48 B/op	       1 allocs/op
+BenchmarkPropagationActiveUntainted/StringCopy      	100000000	         7.318 ns/op	       8 B/op	       1 allocs/op
+BenchmarkPropagationActiveUntainted/StringCoarse    	31838330	        22.34 ns/op	       8 B/op	       1 allocs/op
+BenchmarkPropagationActiveUntainted/ByteWindow      	216498280	         2.774 ns/op	       0 B/op	       0 allocs/op
+BenchmarkPropagationActiveUntainted/ByteCopy        	61987203	        10.75 ns/op	       8 B/op	       1 allocs/op
+BenchmarkStringsBuilder                             	27656565	        23.31 ns/op	      24 B/op	       2 allocs/op
+BenchmarkBytesBuffer                                	20307344	        30.41 ns/op	      80 B/op	       2 allocs/op
+BenchmarkBytesClone                                 	54988485	        11.95 ns/op	      24 B/op	       1 allocs/op
+BenchmarkBytesTrimSpace                             	336329703	         1.786 ns/op	       0 B/op	       0 allocs/op
+BenchmarkBytesSplit                                 	16981852	        33.89 ns/op	      80 B/op	       1 allocs/op
+BenchmarkBytesJoin                                  	31433427	        18.81 ns/op	      16 B/op	       1 allocs/op
+BenchmarkBytesRepeat                                	43572589	        13.92 ns/op	      16 B/op	       1 allocs/op
+BenchmarkBytesReplaceAll                            	16757630	        34.64 ns/op	      16 B/op	       1 allocs/op
+BenchmarkBytesToLower                               	34266866	        17.30 ns/op	      16 B/op	       1 allocs/op
+BenchmarkBytesMap                                   	21784020	        28.15 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStringsClone                               	61882252	        12.30 ns/op	      24 B/op	       1 allocs/op
+BenchmarkStringsTrimSpace                           	331061347	         1.794 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStringsToLower                             	18432943	        29.14 ns/op	      16 B/op	       1 allocs/op
+BenchmarkFmtSprintf                                 	16688878	        33.28 ns/op	      16 B/op	       1 allocs/op
+BenchmarkURLQueryEscape                             	25794663	        24.00 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStrconvQuote                               	10609390	        54.12 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStringsJoin                                	24772616	        25.36 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStringsRepeat                              	29670043	        21.81 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStringsReplaceAll                          	13896501	        42.74 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStringsSplitSeq                            	46543648	        12.96 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStringsSplit                               	18602271	        32.57 ns/op	      48 B/op	       1 allocs/op
+BenchmarkHealth                                     	  539756	      1158 ns/op	    6114 B/op	      19 allocs/op
+BenchmarkRequestProcessing                          	  239955	      2619 ns/op	    8792 B/op	      47 allocs/op
+BenchmarkRequestProcessingParallel                  	  213798	      2634 ns/op	    8792 B/op	      47 allocs/op
+BenchmarkHTTPRoundTrip                              	    8391	     71529 ns/op	   40869 B/op	     510 allocs/op
+BenchmarkWeakHashNoActiveSpan                       	 3356566	       165.3 ns/op	     128 B/op	       4 allocs/op
+BenchmarkWeakHashActiveSpan                         	   64192	      9427 ns/op	   19904 B/op	      98 allocs/op
+BenchmarkWeakCipherNoActiveSpan                     	 1232916	       491.7 ns/op	     256 B/op	       5 allocs/op
+BenchmarkWeakCipherActiveSpan                       	   48908	     10644 ns/op	   20032 B/op	      99 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/DataDog/dd-iast-go/benchmarks/overhead
+cpu: Apple M4 Max
+BenchmarkBytesBufferCopies/read     	 3017104	       200.1 ns/op	      56 B/op	       2 allocs/op
+BenchmarkBytesBufferCopies/write    	  345000	      1714 ns/op	      64 B/op	       2 allocs/op
+BenchmarkBytesBufferCopies/active-unrelated         	 4073180	       154.0 ns/op	       0 B/op	       0 allocs/op
+BenchmarkPropagationActiveUntainted/StringWindow    	207164793	         2.916 ns/op	       0 B/op	       0 allocs/op
+BenchmarkPropagationActiveUntainted/StringWindows   	21993564	        29.21 ns/op	      48 B/op	       1 allocs/op
+BenchmarkPropagationActiveUntainted/StringCopy      	100000000	         7.128 ns/op	       8 B/op	       1 allocs/op
+BenchmarkPropagationActiveUntainted/StringCoarse    	31513708	        22.55 ns/op	       8 B/op	       1 allocs/op
+BenchmarkPropagationActiveUntainted/ByteWindow      	215105676	         2.789 ns/op	       0 B/op	       0 allocs/op
+BenchmarkPropagationActiveUntainted/ByteCopy        	58487370	        10.74 ns/op	       8 B/op	       1 allocs/op
+BenchmarkStringsBuilder                             	27392778	        23.66 ns/op	      24 B/op	       2 allocs/op
+BenchmarkBytesBuffer                                	19175326	        31.62 ns/op	      80 B/op	       2 allocs/op
+BenchmarkBytesClone                                 	53830970	        12.30 ns/op	      24 B/op	       1 allocs/op
+BenchmarkBytesTrimSpace                             	325961103	         1.821 ns/op	       0 B/op	       0 allocs/op
+BenchmarkBytesSplit                                 	16880070	        34.37 ns/op	      80 B/op	       1 allocs/op
+BenchmarkBytesJoin                                  	30753984	        20.55 ns/op	      16 B/op	       1 allocs/op
+BenchmarkBytesRepeat                                	42059758	        14.45 ns/op	      16 B/op	       1 allocs/op
+BenchmarkBytesReplaceAll                            	17096715	        34.79 ns/op	      16 B/op	       1 allocs/op
+BenchmarkBytesToLower                               	33768729	        18.01 ns/op	      16 B/op	       1 allocs/op
+BenchmarkBytesMap                                   	20483262	        28.74 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStringsClone                               	64728703	        10.86 ns/op	      24 B/op	       1 allocs/op
+BenchmarkStringsTrimSpace                           	332969223	         1.792 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStringsToLower                             	18335143	        29.32 ns/op	      16 B/op	       1 allocs/op
+BenchmarkFmtSprintf                                 	16494127	        35.01 ns/op	      16 B/op	       1 allocs/op
+BenchmarkURLQueryEscape                             	26278090	        23.81 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStrconvQuote                               	11108522	        55.07 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStringsJoin                                	22872608	        25.41 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStringsRepeat                              	28509206	        21.99 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStringsReplaceAll                          	13431945	        42.21 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStringsSplitSeq                            	46903398	        12.91 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStringsSplit                               	18463384	        33.03 ns/op	      48 B/op	       1 allocs/op
+BenchmarkHealth                                     	  549441	      1162 ns/op	    6114 B/op	      19 allocs/op
+BenchmarkRequestProcessing                          	  222084	      2640 ns/op	    8792 B/op	      47 allocs/op
+BenchmarkRequestProcessingParallel                  	  220849	      2591 ns/op	    8792 B/op	      47 allocs/op
+BenchmarkHTTPRoundTrip                              	    8647	     68534 ns/op	   40869 B/op	     510 allocs/op
+BenchmarkWeakHashNoActiveSpan                       	 3187258	       182.5 ns/op	     128 B/op	       4 allocs/op
+BenchmarkWeakHashActiveSpan                         	   64102	      9313 ns/op	   19904 B/op	      98 allocs/op
+BenchmarkWeakCipherNoActiveSpan                     	 1281338	       469.7 ns/op	     256 B/op	       5 allocs/op
+BenchmarkWeakCipherActiveSpan                       	   60823	      9848 ns/op	   20032 B/op	      99 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/DataDog/dd-iast-go/benchmarks/overhead
+cpu: Apple M4 Max
+BenchmarkBytesBufferCopies/read     	 3012544	       200.6 ns/op	      56 B/op	       2 allocs/op
+BenchmarkBytesBufferCopies/write    	  339620	      1718 ns/op	      64 B/op	       2 allocs/op
+BenchmarkBytesBufferCopies/active-unrelated         	 4049407	       149.3 ns/op	       0 B/op	       0 allocs/op
+BenchmarkPropagationActiveUntainted/StringWindow    	208930320	         2.825 ns/op	       0 B/op	       0 allocs/op
+BenchmarkPropagationActiveUntainted/StringWindows   	20327956	        29.95 ns/op	      48 B/op	       1 allocs/op
+BenchmarkPropagationActiveUntainted/StringCopy      	100000000	         7.066 ns/op	       8 B/op	       1 allocs/op
+BenchmarkPropagationActiveUntainted/StringCoarse    	31318508	        22.52 ns/op	       8 B/op	       1 allocs/op
+BenchmarkPropagationActiveUntainted/ByteWindow      	212881614	         2.810 ns/op	       0 B/op	       0 allocs/op
+BenchmarkPropagationActiveUntainted/ByteCopy        	68294029	        10.83 ns/op	       8 B/op	       1 allocs/op
+BenchmarkStringsBuilder                             	28078384	        23.58 ns/op	      24 B/op	       2 allocs/op
+BenchmarkBytesBuffer                                	20675247	        29.43 ns/op	      80 B/op	       2 allocs/op
+BenchmarkBytesClone                                 	56043339	        12.11 ns/op	      24 B/op	       1 allocs/op
+BenchmarkBytesTrimSpace                             	330334401	         1.835 ns/op	       0 B/op	       0 allocs/op
+BenchmarkBytesSplit                                 	17404063	        34.21 ns/op	      80 B/op	       1 allocs/op
+BenchmarkBytesJoin                                  	31377332	        20.66 ns/op	      16 B/op	       1 allocs/op
+BenchmarkBytesRepeat                                	43482986	        13.96 ns/op	      16 B/op	       1 allocs/op
+BenchmarkBytesReplaceAll                            	17322620	        34.40 ns/op	      16 B/op	       1 allocs/op
+BenchmarkBytesToLower                               	34545794	        17.24 ns/op	      16 B/op	       1 allocs/op
+BenchmarkBytesMap                                   	20920897	        28.58 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStringsClone                               	59683426	        11.83 ns/op	      24 B/op	       1 allocs/op
+BenchmarkStringsTrimSpace                           	335652910	         1.786 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStringsToLower                             	21272572	        28.25 ns/op	      16 B/op	       1 allocs/op
+BenchmarkFmtSprintf                                 	18418855	        32.83 ns/op	      16 B/op	       1 allocs/op
+BenchmarkURLQueryEscape                             	25561372	        24.06 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStrconvQuote                               	11015389	        53.88 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStringsJoin                                	23694810	        26.18 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStringsRepeat                              	28748712	        21.28 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStringsReplaceAll                          	13851200	        43.28 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStringsSplitSeq                            	38543690	        13.38 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStringsSplit                               	18420894	        33.03 ns/op	      48 B/op	       1 allocs/op
+BenchmarkHealth                                     	  539954	      1133 ns/op	    6114 B/op	      19 allocs/op
+BenchmarkRequestProcessing                          	  240681	      2583 ns/op	    8792 B/op	      47 allocs/op
+BenchmarkRequestProcessingParallel                  	  212974	      2626 ns/op	    8792 B/op	      47 allocs/op
+BenchmarkHTTPRoundTrip                              	    8458	     69767 ns/op	   40869 B/op	     510 allocs/op
+BenchmarkWeakHashNoActiveSpan                       	 3687001	       158.4 ns/op	     128 B/op	       4 allocs/op
+BenchmarkWeakHashActiveSpan                         	   64002	      9419 ns/op	   19904 B/op	      98 allocs/op
+BenchmarkWeakCipherNoActiveSpan                     	 1280918	       468.5 ns/op	     256 B/op	       5 allocs/op
+BenchmarkWeakCipherActiveSpan                       	   61118	      9934 ns/op	   20032 B/op	      99 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/DataDog/dd-iast-go/benchmarks/overhead
+cpu: Apple M4 Max
+BenchmarkBytesBufferCopies/read     	 2997249	       200.8 ns/op	      56 B/op	       2 allocs/op
+BenchmarkBytesBufferCopies/write    	  352213	      1658 ns/op	      64 B/op	       2 allocs/op
+BenchmarkBytesBufferCopies/active-unrelated         	 4050798	       150.4 ns/op	       0 B/op	       0 allocs/op
+BenchmarkPropagationActiveUntainted/StringWindow    	208782220	         2.872 ns/op	       0 B/op	       0 allocs/op
+BenchmarkPropagationActiveUntainted/StringWindows   	19960383	        30.38 ns/op	      48 B/op	       1 allocs/op
+BenchmarkPropagationActiveUntainted/StringCopy      	100000000	         7.051 ns/op	       8 B/op	       1 allocs/op
+BenchmarkPropagationActiveUntainted/StringCoarse    	31123627	        22.58 ns/op	       8 B/op	       1 allocs/op
+BenchmarkPropagationActiveUntainted/ByteWindow      	203548298	         2.936 ns/op	       0 B/op	       0 allocs/op
+BenchmarkPropagationActiveUntainted/ByteCopy        	65528716	        11.11 ns/op	       8 B/op	       1 allocs/op
+BenchmarkStringsBuilder                             	27572156	        23.99 ns/op	      24 B/op	       2 allocs/op
+BenchmarkBytesBuffer                                	18777652	        31.09 ns/op	      80 B/op	       2 allocs/op
+BenchmarkBytesClone                                 	55757760	        12.35 ns/op	      24 B/op	       1 allocs/op
+BenchmarkBytesTrimSpace                             	328240888	         1.809 ns/op	       0 B/op	       0 allocs/op
+BenchmarkBytesSplit                                 	17332273	        35.61 ns/op	      80 B/op	       1 allocs/op
+BenchmarkBytesJoin                                  	30200518	        19.58 ns/op	      16 B/op	       1 allocs/op
+BenchmarkBytesRepeat                                	41767095	        14.79 ns/op	      16 B/op	       1 allocs/op
+BenchmarkBytesReplaceAll                            	16828090	        34.81 ns/op	      16 B/op	       1 allocs/op
+BenchmarkBytesToLower                               	35346009	        17.69 ns/op	      16 B/op	       1 allocs/op
+BenchmarkBytesMap                                   	20595907	        28.93 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStringsClone                               	59098260	        11.94 ns/op	      24 B/op	       1 allocs/op
+BenchmarkStringsTrimSpace                           	328835668	         1.812 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStringsToLower                             	18101071	        28.05 ns/op	      16 B/op	       1 allocs/op
+BenchmarkFmtSprintf                                 	15190785	        38.89 ns/op	      16 B/op	       1 allocs/op
+BenchmarkURLQueryEscape                             	23779641	        25.24 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStrconvQuote                               	10744688	        55.56 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStringsJoin                                	23243426	        25.31 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStringsRepeat                              	27901136	        21.99 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStringsReplaceAll                          	13431519	        42.77 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStringsSplitSeq                            	44675682	        13.12 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStringsSplit                               	19136772	        32.39 ns/op	      48 B/op	       1 allocs/op
+BenchmarkHealth                                     	  532329	      1146 ns/op	    6114 B/op	      19 allocs/op
+BenchmarkRequestProcessing                          	  231838	      2627 ns/op	    8792 B/op	      47 allocs/op
+BenchmarkRequestProcessingParallel                  	  228740	      2631 ns/op	    8792 B/op	      47 allocs/op
+BenchmarkHTTPRoundTrip                              	    8505	     69688 ns/op	   40869 B/op	     510 allocs/op
+BenchmarkWeakHashNoActiveSpan                       	 3785053	       158.3 ns/op	     128 B/op	       4 allocs/op
+BenchmarkWeakHashActiveSpan                         	   62145	      9554 ns/op	   19904 B/op	      98 allocs/op
+BenchmarkWeakCipherNoActiveSpan                     	 1281512	       468.0 ns/op	     256 B/op	       5 allocs/op
+BenchmarkWeakCipherActiveSpan                       	   60650	     10268 ns/op	   20032 B/op	      99 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/DataDog/dd-iast-go/benchmarks/overhead
+cpu: Apple M4 Max
+BenchmarkBytesBufferCopies/read     	 2911182	       205.7 ns/op	      56 B/op	       2 allocs/op
+BenchmarkBytesBufferCopies/write    	  346866	      1697 ns/op	      64 B/op	       2 allocs/op
+BenchmarkBytesBufferCopies/active-unrelated         	 4057574	       147.8 ns/op	       0 B/op	       0 allocs/op
+BenchmarkPropagationActiveUntainted/StringWindow    	206042305	         2.922 ns/op	       0 B/op	       0 allocs/op
+BenchmarkPropagationActiveUntainted/StringWindows   	20581896	        29.80 ns/op	      48 B/op	       1 allocs/op
+BenchmarkPropagationActiveUntainted/StringCopy      	100000000	         6.997 ns/op	       8 B/op	       1 allocs/op
+BenchmarkPropagationActiveUntainted/StringCoarse    	31574029	        22.77 ns/op	       8 B/op	       1 allocs/op
+BenchmarkPropagationActiveUntainted/ByteWindow      	214742584	         2.792 ns/op	       0 B/op	       0 allocs/op
+BenchmarkPropagationActiveUntainted/ByteCopy        	73219100	        10.83 ns/op	       8 B/op	       1 allocs/op
+BenchmarkStringsBuilder                             	27237596	        23.75 ns/op	      24 B/op	       2 allocs/op
+BenchmarkBytesBuffer                                	20532798	        32.67 ns/op	      80 B/op	       2 allocs/op
+BenchmarkBytesClone                                 	50525430	        12.42 ns/op	      24 B/op	       1 allocs/op
+BenchmarkBytesTrimSpace                             	327612028	         1.845 ns/op	       0 B/op	       0 allocs/op
+BenchmarkBytesSplit                                 	16358560	        35.90 ns/op	      80 B/op	       1 allocs/op
+BenchmarkBytesJoin                                  	31570846	        18.99 ns/op	      16 B/op	       1 allocs/op
+BenchmarkBytesRepeat                                	41560360	        14.61 ns/op	      16 B/op	       1 allocs/op
+BenchmarkBytesReplaceAll                            	15762303	        35.75 ns/op	      16 B/op	       1 allocs/op
+BenchmarkBytesToLower                               	34047222	        17.63 ns/op	      16 B/op	       1 allocs/op
+BenchmarkBytesMap                                   	21113068	        29.40 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStringsClone                               	55333963	        13.18 ns/op	      24 B/op	       1 allocs/op
+BenchmarkStringsTrimSpace                           	330005622	         1.816 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStringsToLower                             	17333984	        29.17 ns/op	      16 B/op	       1 allocs/op
+BenchmarkFmtSprintf                                 	14995860	        39.54 ns/op	      16 B/op	       1 allocs/op
+BenchmarkURLQueryEscape                             	24053799	        24.35 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStrconvQuote                               	11032884	        54.99 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStringsJoin                                	22005998	        25.50 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStringsRepeat                              	31610557	        21.66 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStringsReplaceAll                          	13399885	        41.90 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStringsSplitSeq                            	45862792	        12.86 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStringsSplit                               	18724814	        33.40 ns/op	      48 B/op	       1 allocs/op
+BenchmarkHealth                                     	  524101	      1139 ns/op	    6114 B/op	      19 allocs/op
+BenchmarkRequestProcessing                          	  240504	      2579 ns/op	    8792 B/op	      47 allocs/op
+BenchmarkRequestProcessingParallel                  	  225580	      2674 ns/op	    8792 B/op	      47 allocs/op
+BenchmarkHTTPRoundTrip                              	    8473	     70053 ns/op	   40869 B/op	     510 allocs/op
+BenchmarkWeakHashNoActiveSpan                       	 3726780	       162.3 ns/op	     128 B/op	       4 allocs/op
+BenchmarkWeakHashActiveSpan                         	   62278	      9805 ns/op	   19904 B/op	      98 allocs/op
+BenchmarkWeakCipherNoActiveSpan                     	 1245769	       480.3 ns/op	     256 B/op	       5 allocs/op
+BenchmarkWeakCipherActiveSpan                       	   58177	     10250 ns/op	   20032 B/op	      99 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/DataDog/dd-iast-go/benchmarks/overhead
+cpu: Apple M4 Max
+BenchmarkBytesBufferCopies/read     	 2964181	       202.7 ns/op	      56 B/op	       2 allocs/op
+BenchmarkBytesBufferCopies/write    	  353967	      1694 ns/op	      64 B/op	       2 allocs/op
+BenchmarkBytesBufferCopies/active-unrelated         	 4029202	       158.1 ns/op	       0 B/op	       0 allocs/op
+BenchmarkPropagationActiveUntainted/StringWindow    	207614042	         2.887 ns/op	       0 B/op	       0 allocs/op
+BenchmarkPropagationActiveUntainted/StringWindows   	20782729	        29.70 ns/op	      48 B/op	       1 allocs/op
+BenchmarkPropagationActiveUntainted/StringCopy      	100000000	         7.135 ns/op	       8 B/op	       1 allocs/op
+BenchmarkPropagationActiveUntainted/StringCoarse    	32229762	        22.84 ns/op	       8 B/op	       1 allocs/op
+BenchmarkPropagationActiveUntainted/ByteWindow      	217857540	         2.770 ns/op	       0 B/op	       0 allocs/op
+BenchmarkPropagationActiveUntainted/ByteCopy        	63052530	        10.88 ns/op	       8 B/op	       1 allocs/op
+BenchmarkStringsBuilder                             	26910756	        23.76 ns/op	      24 B/op	       2 allocs/op
+BenchmarkBytesBuffer                                	20474670	        29.67 ns/op	      80 B/op	       2 allocs/op
+BenchmarkBytesClone                                 	56434512	        12.13 ns/op	      24 B/op	       1 allocs/op
+BenchmarkBytesTrimSpace                             	329514624	         1.807 ns/op	       0 B/op	       0 allocs/op
+BenchmarkBytesSplit                                 	17313872	        33.81 ns/op	      80 B/op	       1 allocs/op
+BenchmarkBytesJoin                                  	32347993	        19.72 ns/op	      16 B/op	       1 allocs/op
+BenchmarkBytesRepeat                                	43533465	        14.34 ns/op	      16 B/op	       1 allocs/op
+BenchmarkBytesReplaceAll                            	17074456	        36.02 ns/op	      16 B/op	       1 allocs/op
+BenchmarkBytesToLower                               	36241365	        17.43 ns/op	      16 B/op	       1 allocs/op
+BenchmarkBytesMap                                   	21843897	        28.04 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStringsClone                               	64327924	        12.28 ns/op	      24 B/op	       1 allocs/op
+BenchmarkStringsTrimSpace                           	333136382	         1.789 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStringsToLower                             	19882554	        29.32 ns/op	      16 B/op	       1 allocs/op
+BenchmarkFmtSprintf                                 	19203865	        32.78 ns/op	      16 B/op	       1 allocs/op
+BenchmarkURLQueryEscape                             	23755790	        24.03 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStrconvQuote                               	10637346	        54.40 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStringsJoin                                	24476848	        24.90 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStringsRepeat                              	29163255	        22.12 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStringsReplaceAll                          	13386793	        41.95 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStringsSplitSeq                            	46704571	        12.96 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStringsSplit                               	17659047	        32.94 ns/op	      48 B/op	       1 allocs/op
+BenchmarkHealth                                     	  513145	      1160 ns/op	    6114 B/op	      19 allocs/op
+BenchmarkRequestProcessing                          	  228708	      2656 ns/op	    8792 B/op	      47 allocs/op
+BenchmarkRequestProcessingParallel                  	  218502	      2704 ns/op	    8792 B/op	      47 allocs/op
+BenchmarkHTTPRoundTrip                              	    7808	     72834 ns/op	   40870 B/op	     510 allocs/op
+BenchmarkWeakHashNoActiveSpan                       	 3699045	       159.3 ns/op	     128 B/op	       4 allocs/op
+BenchmarkWeakHashActiveSpan                         	   64527	      9389 ns/op	   19904 B/op	      98 allocs/op
+BenchmarkWeakCipherNoActiveSpan                     	 1267530	       472.9 ns/op	     256 B/op	       5 allocs/op
+BenchmarkWeakCipherActiveSpan                       	   60688	      9863 ns/op	   20032 B/op	      99 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/DataDog/dd-iast-go/benchmarks/overhead
+cpu: Apple M4 Max
+BenchmarkBytesBufferCopies/read     	 2974386	       202.4 ns/op	      56 B/op	       2 allocs/op
+BenchmarkBytesBufferCopies/write    	  361923	      1666 ns/op	      64 B/op	       2 allocs/op
+BenchmarkBytesBufferCopies/active-unrelated         	 4059902	       148.6 ns/op	       0 B/op	       0 allocs/op
+BenchmarkPropagationActiveUntainted/StringWindow    	206593665	         2.901 ns/op	       0 B/op	       0 allocs/op
+BenchmarkPropagationActiveUntainted/StringWindows   	20785759	        29.22 ns/op	      48 B/op	       1 allocs/op
+BenchmarkPropagationActiveUntainted/StringCopy      	100000000	         7.048 ns/op	       8 B/op	       1 allocs/op
+BenchmarkPropagationActiveUntainted/StringCoarse    	31495512	        22.51 ns/op	       8 B/op	       1 allocs/op
+BenchmarkPropagationActiveUntainted/ByteWindow      	211965012	         2.869 ns/op	       0 B/op	       0 allocs/op
+BenchmarkPropagationActiveUntainted/ByteCopy        	66267829	        10.93 ns/op	       8 B/op	       1 allocs/op
+BenchmarkStringsBuilder                             	26657730	        24.21 ns/op	      24 B/op	       2 allocs/op
+BenchmarkBytesBuffer                                	19217679	        30.15 ns/op	      80 B/op	       2 allocs/op
+BenchmarkBytesClone                                 	57021574	        12.26 ns/op	      24 B/op	       1 allocs/op
+BenchmarkBytesTrimSpace                             	325926945	         1.813 ns/op	       0 B/op	       0 allocs/op
+BenchmarkBytesSplit                                 	16290458	        34.34 ns/op	      80 B/op	       1 allocs/op
+BenchmarkBytesJoin                                  	31221676	        19.68 ns/op	      16 B/op	       1 allocs/op
+BenchmarkBytesRepeat                                	42551558	        15.17 ns/op	      16 B/op	       1 allocs/op
+BenchmarkBytesReplaceAll                            	16770315	        34.67 ns/op	      16 B/op	       1 allocs/op
+BenchmarkBytesToLower                               	36274872	        17.47 ns/op	      16 B/op	       1 allocs/op
+BenchmarkBytesMap                                   	20684484	        28.83 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStringsClone                               	59576760	        12.03 ns/op	      24 B/op	       1 allocs/op
+BenchmarkStringsTrimSpace                           	333450117	         1.797 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStringsToLower                             	20152514	        27.93 ns/op	      16 B/op	       1 allocs/op
+BenchmarkFmtSprintf                                 	17267925	        39.01 ns/op	      16 B/op	       1 allocs/op
+BenchmarkURLQueryEscape                             	25729447	        24.35 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStrconvQuote                               	11003385	        54.31 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStringsJoin                                	22938848	        25.05 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStringsRepeat                              	28475379	        21.83 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStringsReplaceAll                          	14053291	        42.80 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStringsSplitSeq                            	45177320	        12.94 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStringsSplit                               	19007316	        32.91 ns/op	      48 B/op	       1 allocs/op
+BenchmarkHealth                                     	  501916	      1179 ns/op	    6114 B/op	      19 allocs/op
+BenchmarkRequestProcessing                          	  231351	      2651 ns/op	    8792 B/op	      47 allocs/op
+BenchmarkRequestProcessingParallel                  	  209112	      2624 ns/op	    8792 B/op	      47 allocs/op
+BenchmarkHTTPRoundTrip                              	    8340	     71519 ns/op	   40869 B/op	     510 allocs/op
+BenchmarkWeakHashNoActiveSpan                       	 3799497	       166.4 ns/op	     128 B/op	       4 allocs/op
+BenchmarkWeakHashActiveSpan                         	   62437	      9501 ns/op	   19904 B/op	      98 allocs/op
+BenchmarkWeakCipherNoActiveSpan                     	 1280062	       472.0 ns/op	     256 B/op	       5 allocs/op
+BenchmarkWeakCipherActiveSpan                       	   57484	     10200 ns/op	   20032 B/op	      99 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/DataDog/dd-iast-go/benchmarks/overhead
+cpu: Apple M4 Max
+BenchmarkBytesBufferCopies/read     	 3010114	       199.7 ns/op	      56 B/op	       2 allocs/op
+BenchmarkBytesBufferCopies/write    	  341623	      1704 ns/op	      64 B/op	       2 allocs/op
+BenchmarkBytesBufferCopies/active-unrelated         	 4078615	       157.9 ns/op	       0 B/op	       0 allocs/op
+BenchmarkPropagationActiveUntainted/StringWindow    	208371378	         2.891 ns/op	       0 B/op	       0 allocs/op
+BenchmarkPropagationActiveUntainted/StringWindows   	21248433	        29.99 ns/op	      48 B/op	       1 allocs/op
+BenchmarkPropagationActiveUntainted/StringCopy      	100000000	         6.809 ns/op	       8 B/op	       1 allocs/op
+BenchmarkPropagationActiveUntainted/StringCoarse    	29996374	        22.31 ns/op	       8 B/op	       1 allocs/op
+BenchmarkPropagationActiveUntainted/ByteWindow      	216117956	         2.790 ns/op	       0 B/op	       0 allocs/op
+BenchmarkPropagationActiveUntainted/ByteCopy        	67971338	        11.00 ns/op	       8 B/op	       1 allocs/op
+BenchmarkStringsBuilder                             	27899893	        23.83 ns/op	      24 B/op	       2 allocs/op
+BenchmarkBytesBuffer                                	20010728	        30.07 ns/op	      80 B/op	       2 allocs/op
+BenchmarkBytesClone                                 	57278781	        11.96 ns/op	      24 B/op	       1 allocs/op
+BenchmarkBytesTrimSpace                             	333827739	         1.817 ns/op	       0 B/op	       0 allocs/op
+BenchmarkBytesSplit                                 	16842951	        34.84 ns/op	      80 B/op	       1 allocs/op
+BenchmarkBytesJoin                                  	29562778	        19.25 ns/op	      16 B/op	       1 allocs/op
+BenchmarkBytesRepeat                                	41205134	        14.09 ns/op	      16 B/op	       1 allocs/op
+BenchmarkBytesReplaceAll                            	16811686	        35.30 ns/op	      16 B/op	       1 allocs/op
+BenchmarkBytesToLower                               	35397706	        17.28 ns/op	      16 B/op	       1 allocs/op
+BenchmarkBytesMap                                   	20866117	        28.69 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStringsClone                               	56910920	        11.74 ns/op	      24 B/op	       1 allocs/op
+BenchmarkStringsTrimSpace                           	333943088	         1.788 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStringsToLower                             	21470553	        27.82 ns/op	      16 B/op	       1 allocs/op
+BenchmarkFmtSprintf                                 	15153028	        39.29 ns/op	      16 B/op	       1 allocs/op
+BenchmarkURLQueryEscape                             	23506864	        23.99 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStrconvQuote                               	10942772	        54.46 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStringsJoin                                	24789716	        25.83 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStringsRepeat                              	29057331	        22.17 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStringsReplaceAll                          	13630502	        42.71 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStringsSplitSeq                            	46676409	        13.02 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStringsSplit                               	18461845	        32.39 ns/op	      48 B/op	       1 allocs/op
+BenchmarkHealth                                     	  548361	      1117 ns/op	    6114 B/op	      19 allocs/op
+BenchmarkRequestProcessing                          	  241066	      2609 ns/op	    8792 B/op	      47 allocs/op
+BenchmarkRequestProcessingParallel                  	  220136	      2591 ns/op	    8792 B/op	      47 allocs/op
+BenchmarkHTTPRoundTrip                              	    8160	     71963 ns/op	   40869 B/op	     510 allocs/op
+BenchmarkWeakHashNoActiveSpan                       	 3814476	       159.4 ns/op	     128 B/op	       4 allocs/op
+BenchmarkWeakHashActiveSpan                         	   61503	      9445 ns/op	   19904 B/op	      98 allocs/op
+BenchmarkWeakCipherNoActiveSpan                     	 1269105	       474.0 ns/op	     256 B/op	       5 allocs/op
+BenchmarkWeakCipherActiveSpan                       	   56430	     10572 ns/op	   20032 B/op	      99 allocs/op
+PASS

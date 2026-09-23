@@ -1,0 +1,11 @@
+ok  	github.com/DataDog/dd-iast-go/internal/taint/jsonbridge	0.607s
+===fixed-40serial
+    zz_review_json_test.go:177: decoders=40 distinctStartBuckets=8 buckets=map[5:5 13:5 21:5 29:5 37:5 45:5 53:5 61:5] occupiedWhileBlocked=32 taintedResults=32
+--- PASS: TestReviewConcurrentHeapDecodersHashCapacity (0.01s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/testapps/integration	0.666s
+===fixed-16concurrent
+    zz_review_json_test.go:177: decoders=16 distinctStartBuckets=8 buckets=map[5:2 13:2 21:2 29:2 37:2 45:2 53:2 61:2] occupiedWhileBlocked=16 taintedResults=16
+--- PASS: TestReviewConcurrentHeapDecodersHashCapacity (0.01s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/testapps/integration	0.341s

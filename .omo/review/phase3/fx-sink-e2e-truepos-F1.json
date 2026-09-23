@@ -1,0 +1,24 @@
+[
+ {
+  "id": "sink-e2e-truepos-F1",
+  "verdict": "CONFIRMED",
+  "original_severity": "Critical",
+  "adjusted_severity": "Critical",
+  "reachable_default": true,
+  "documented_limitation": false,
+  "reason": "sqlSensitiveToken (sql.go:83-100) has no COMMENT/MULTILINE_COMMENT case; woven demo with default redaction shows user=admin' -- emitting 'app-secret-literal-7f3a' AND tenant = 42 in clear while user=alice redacts them; clean app comment bodies also emitted; contradicts shared evidence-redaction corpus and dd-trace-java.",
+  "evidence_path": ".omo/review/evidence/fx-sink-e2e-truepos-F1/woven-output.txt",
+  "repro_command": "cd <copy>/fxrepro && GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 go tool orchestrion go build -o ../fxdemo . && cd .. && DD_IAST_ENABLED=true DD_IAST_REQUEST_SAMPLING=100 DD_IAST_DEDUPLICATION_ENABLED=false ./fxdemo  (+ go test ./internal/taint/redaction -run TestFXCommentRedaction -count=1 -v with fx_comment_test.go)"
+ },
+ {
+  "id": "sink-redaction-source-F3",
+  "verdict": "CONFIRMED",
+  "original_severity": "Critical",
+  "adjusted_severity": "Critical",
+  "reachable_default": true,
+  "documented_limitation": false,
+  "reason": "Duplicate of sink-e2e-truepos-F1 (same root cause sql.go:98-99). Woven demo: tainted note in '-- ' comment serialized raw as source value and evidence part; internal API reproduces 'SELECT 1 -- hunter2' leak exactly.",
+  "evidence_path": ".omo/review/evidence/fx-sink-e2e-truepos-F1/unit-output.txt",
+  "repro_command": "cd <copy>/fxrepro && GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 go tool orchestrion go build -o ../fxdemo . && cd .. && DD_IAST_ENABLED=true DD_IAST_REQUEST_SAMPLING=100 DD_IAST_DEDUPLICATION_ENABLED=false ./fxdemo  (+ go test ./internal/taint/redaction -run TestFXCommentRedaction -count=1 -v with fx_comment_test.go)"
+ }
+]

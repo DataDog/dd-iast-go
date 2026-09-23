@@ -1,0 +1,24 @@
+[
+  {
+    "id": "prop-string-coarse-F1",
+    "verdict": "CONFIRMED",
+    "original_severity": "High",
+    "adjusted_severity": "High",
+    "reachable_default": true,
+    "documented_limitation": false,
+    "reason": "An independently authored Go 1.26.6 woven executable sends real HTTP source data through named-string and named-byte formatting methods into database/sql.ExecContext. Constant-only SQL receives a full-output source range and an actual SQL_INJECTION span event. Explicit String() and clean-argument controls stay untainted. Only request sampling is forced to 100 percent; the same active path is reachable at the default 30 percent. Coarse ranges are documented, but attribution from a discarded receiver to constant method output is not. Duplicate root cause with hooks-yml-fmt-strconv-url-F1. Go 1.27 runtime verification is blocked by an independently reproduced, unrelated encoding/json weave compilation failure.",
+    "evidence_path": ".omo/review/evidence/fx-prop-string-coarse-F1/woven-go126.txt",
+    "repro_command": "cd /tmp/ddiast-review/wt/fx-prop-string-coarse-F1/iast/integration/testapp && GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 /usr/bin/time -l timeout 900 go tool orchestrion go build -o /tmp/ddiast-review/wt/fx-prop-string-coarse-F1/fx-coarse-126 ./cmd/fx-coarse && DD_TRACE_STARTUP_LOGS=false timeout 30 /tmp/ddiast-review/wt/fx-prop-string-coarse-F1/fx-coarse-126 stringer"
+  },
+  {
+    "id": "hooks-yml-fmt-strconv-url-F1",
+    "verdict": "CONFIRMED",
+    "original_severity": "High",
+    "adjusted_severity": "High",
+    "reachable_default": true,
+    "documented_limitation": false,
+    "reason": "The independent woven HTTP-to-SQL reproducer confirms false SQL_INJECTION events for Stringer, error, Formatter, and GoStringer outputs that contain only constants. Sprint, Sprintf, Sprintln, and named-byte Stringer paths reproduce; methods execute exactly once and negative controls pass. formatArgumentKey uses reflected receiver backing rather than the method-produced value. Default redaction, deduplication, and quotas do not prevent the false event. This is the same root cause as prop-string-coarse-F1, not a second defect. The documented coarse policy does not authorize false contributors. Go 1.27 runtime verification is blocked by an unrelated encoding/json weave compilation failure.",
+    "evidence_path": ".omo/review/evidence/fx-prop-string-coarse-F1/woven-go126.txt",
+    "repro_command": "cd /tmp/ddiast-review/wt/fx-prop-string-coarse-F1/iast/integration/testapp && GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 /usr/bin/time -l timeout 900 go tool orchestrion go build -o /tmp/ddiast-review/wt/fx-prop-string-coarse-F1/fx-coarse-126 ./cmd/fx-coarse && DD_TRACE_STARTUP_LOGS=false timeout 30 /tmp/ddiast-review/wt/fx-prop-string-coarse-F1/fx-coarse-126 formatter"
+  }
+]

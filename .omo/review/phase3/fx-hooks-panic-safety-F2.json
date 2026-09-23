@@ -1,0 +1,13 @@
+[
+ {
+  "id": "hooks-panic-safety-F2",
+  "verdict": "CONFIRMED",
+  "original_severity": "Critical",
+  "adjusted_severity": "Medium",
+  "reachable_default": false,
+  "documented_limitation": false,
+  "reason": "Mechanism reproduced: the unrecovered writerbridge callback runs before native bytes.Buffer writes, so an injected panic in the real Store.InvalidateBuffer aborts the host write (identical panic value), and a panic inside the locked region also leaks lifecycleMu so scope.Finish blocks. But the real callback path has no natural panic source (static review plus woven 16x300 concurrent stress with 0 panics), so it is a missing guard, not a reachable crash.",
+  "evidence_path": ".omo/review/evidence/fx-hooks-panic-safety-F2/woven-go1.26.6-run2.out.txt",
+  "repro_command": "cp zz_fx_f2_test.go iast/propagation/ && cp zz_review_fault.go internal/taint/store/ && patch -p0 internal/taint/store/writer.go < store_writer_fault_hook.diff (private copy); GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -timeout 15m -count=1 -run 'TestFX_F2_' ./iast/propagation -v"
+ }
+]

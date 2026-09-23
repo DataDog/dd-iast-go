@@ -1,0 +1,38 @@
+Independent reproduction
+========================
+
+Source checkout: HEAD 2e23b4614320defd0d32177a69888dcab73f4d11
+Private copy: /tmp/ddiast-review/wt/fx-store-memory-bounds-F1
+Toolchain: go1.26.6 darwin/arm64
+Reproducer source: repro/writer_anchor_review_test.go
+Woven test-app helper patch: repro/testapp-helper.patch
+
+Command (final successful run):
+cd /tmp/ddiast-review/wt/fx-store-memory-bounds-F1 && env GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 DD_IAST_REQUEST_SAMPLING=100 DD_IAST_MAX_CONCURRENT_REQUESTS=2 /opt/homebrew/opt/coreutils/libexec/gnubin/timeout 900 go tool orchestrion go test -count=1 -timeout 12m -v -run '^TestReview(ReaderAnchorRetainsCallerAllocation|BufferWriterAnchorRetainsCallerAllocationThroughWovenHook)$' ./iast/propagation
+
+Captured output:
+=== RUN   TestReviewReaderAnchorRetainsCallerAllocation
+F1_READER payload_bytes=100663296 retained_heap_alloc_delta=100663304 retained_heap_inuse_delta=100663296 charge_delta=0
+F1_READER finish_released_heap_alloc=100663384 finish_released_heap_inuse=100663296
+--- PASS: TestReviewReaderAnchorRetainsCallerAllocation (0.00s)
+=== RUN   TestReviewBufferWriterAnchorRetainsCallerAllocationThroughWovenHook
+F1_BUFFER payload_bytes=100663296 retained_heap_alloc_delta=100663360 retained_heap_inuse_delta=100663296 charge_delta=64 writer_charge_delta=64
+F1_BUFFER finish_released_heap_alloc=100663168 finish_released_heap_inuse=100663296
+--- PASS: TestReviewBufferWriterAnchorRetainsCallerAllocationThroughWovenHook (0.01s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/iast/propagation	0.576s
+
+The reader test calls the production request.EagerHTTP callback with a
+pointer-backed io.ReadCloser holding a 96 MiB bytes.Reader, then returns from
+the allocation helper before forcing GC. The buffer test calls
+bytes.Buffer.WriteString from the test-app package through the woven
+Orchestrion advice; it starts from a valid 64-byte-capacity slice into a 96 MiB
+allocation and writes an HTTP-URI-tainted string. Both tests observe
+HeapInuse after GC and after owner Finish. The only sampling override is 100%
+for deterministic admission; the active-request limit is the default 2.
+
+The first harness run had exit code 1 because its HeapAlloc release assertion
+required an exact 100663296-byte delta and observed 100663232 bytes for the
+buffer case (64 bytes below the allocation size), while HeapInuse already
+showed the full 100663296-byte retention. The assertion was corrected to use
+HeapInuse with a 1 MiB measurement tolerance; the final run above exited 0.

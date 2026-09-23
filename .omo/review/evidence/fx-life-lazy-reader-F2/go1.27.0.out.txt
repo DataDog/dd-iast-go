@@ -1,0 +1,12 @@
+Command:
+cd /tmp/ddiast-review/wt/fx-life-lazy-reader-F2 && GOFLAGS=-p=4 GOTOOLCHAIN=go1.27.0 /usr/bin/time -l go tool orchestrion go test -race -timeout 10m -count=1 -run '^TestReviewFXMixedMultiReaderAttributesTrustedPrefixToRequestBody$' -v ./iast/net/http
+
+Captured output (exit status 1; key lines):
+# encoding/json
+$WORK/b104/orchestrion/src/encoding/json/<generated>:3: dec.d undefined (type *Decoder has no field or method d)
+exit status 2
+FAIL	github.com/DataDog/dd-iast-go/iast/net/http [build failed]
+FAIL
+exit status 1
+       77.96 real        83.00 user        51.30 sys
+           257687552  maximum resident set size

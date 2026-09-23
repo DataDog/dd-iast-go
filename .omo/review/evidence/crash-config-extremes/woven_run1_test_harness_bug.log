@@ -1,0 +1,1809 @@
+=== RUN   TestConfigExtremesMaxConcurrentRequestsZeroDisablesAnalysis
+--- PASS: TestConfigExtremesMaxConcurrentRequestsZeroDisablesAnalysis (0.01s)
+=== RUN   TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[\nname: iast.e2e.request\ntags: map[string]interface {}{\"_dd.iast.enabled\":1, \"_dd.iast.json\":\"{\\\"sources\\\":[{\\\"origin\\\":\\\"http.request.parameter\\\",\\\"name\\\":\\\"query\\\",\\\"pattern\\\":\\\"abcdefghijklmno\\\",\\\"redacted\\\":true}],\\\"vulnerabilities\\\":[{\\\"type\\\":\\\"SQL_INJECTION\\\",\\\"hash\\\":258421583,\\\"evidence\\\":{\\\"valueParts\\\":[{\\\"pattern\\\":\\\"abcdefghijklmno\\\",\\\"redacted\\\":true,\\\"source\\\":0}]},\\\"location\\\":{\\\"spanId\\\":1617791182923104075,\\\"path\\\":\\\"/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go\\\",\\\"line\\\":133,\\\"method\\\":\\\"github.com/DataDog/dd-iast-go/testapps/integration_test.TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic.func2.2\\\",\\\"stackId\\\":\\\"12a26ad4-a6d8-4804-85fc-4258aef1f2f3\\\"}}]}\", \"_dd.p.dm\":\"-5\", \"_dd.p.tid\":\"6ab3bd3600000000\", \"_dd.profiling.enabled\":0, \"_dd.stack\":map[string][]*stacktrace.Event{\"vulnerability\":[]*stacktrace.Event{(*stacktrace.Event)(0x6734898f87e0)}}, \"_dd.tags.process\":\"entrypoint.basedir:b001,entrypoint.name:integration.test,entrypoint.type:executable,entrypoint.workdir:testapp\", \"_dd.top_level\":1, \"_sampling_priority_v1\":2, \"language\":\"go\", \"resource.name\":\"iast.e2e.request\", \"service.name\":\"\", \"span.name\":\"iast.e2e.request\", \"span.type\":\"\"}\nstart: 2026-09-23 13:51:18.533031 +0200 CEST\nduration: 111µs\nid: 1617791182923104075\nparent: 0\ntrace: 6ab3bd360000000016738c826ae3ff4b\nbaggage: map[string]string{}\n \nname: iast.e2e.request\ntags: map[string]interface {}{\"_dd.iast.enabled\":1, \"_dd.iast.json\":\"{\\\"sources\\\":[{\\\"origin\\\":\\\"http.request.parameter\\\",\\\"name\\\":\\\"query\\\",\\\"pattern\\\":\\\"abcdefghijklmno\\\",\\\"redacted\\\":true}],\\\"vulnerabilities\\\":[{\\\"type\\\":\\\"SQL_INJECTION\\\",\\\"hash\\\":258421583,\\\"evidence\\\":{\\\"valueParts\\\":[{\\\"pattern\\\":\\\"abcdefghijklmno\\\",\\\"redacted\\\":true,\\\"source\\\":0}]},\\\"location\\\":{\\\"spanId\\\":6553178479470863287,\\\"path\\\":\\\"/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go\\\",\\\"line\\\":133,\\\"method\\\":\\\"github.com/DataDog/dd-iast-go/testapps/integration_test.TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic.func2.2\\\",\\\"stackId\\\":\\\"12c1c4b1-5479-4230-b8c3-188f103bf3be\\\"}}]}\", \"_dd.p.dm\":\"-5\", \"_dd.p.tid\":\"6ab3bd3600000000\", \"_dd.profiling.enabled\":0, \"_dd.stack\":map[string][]*stacktrace.Event{\"vulnerability\":[]*stacktrace.Event{(*stacktrace.Event)(0x6734898f8930)}}, \"_dd.tags.process\":\"entrypoint.basedir:b001,entrypoint.name:integration.test,entrypoint.type:executable,entrypoint.workdir:testapp\", \"_dd.top_level\":1, \"_sampling_priority_v1\":2, \"language\":\"go\", \"resource.name\":\"iast.e2e.request\", \"service.name\":\"\", \"span.name\":\"iast.e2e.request\", \"span.type\":\"\"}\nstart: 2026-09-23 13:51:18.533197 +0200 CEST\nduration: 116µs\nid: 6553178479470863287\nparent: 0\ntrace: 6ab3bd36000000005af1911b5a9863b7\nbaggage: map[string]string{}\n]" should have 1 item(s), but has 2
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+    config_extremes_test.go:131: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/request_event_test.go:41
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/e2e_test.go:221
+        	            				/tmp/ddiast-review/wt/crash-config-extremes/iast/integration/testapp/config_extremes_test.go:131
+        	            				/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:1447
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic
+--- FAIL: TestConfigExtremesMaxConcurrentRequestsSaturatedDropsWithoutPanic (0.19s)
+=== RUN   TestConfigExtremesVulnerabilitiesPerRequestClampedToOne
+--- PASS: TestConfigExtremesVulnerabilitiesPerRequestClampedToOne (0.01s)
+=== RUN   TestConfigExtremesVulnerabilitiesPerRequestHardMaxSixtyFour
+--- PASS: TestConfigExtremesVulnerabilitiesPerRequestHardMaxSixtyFour (0.01s)
+=== RUN   TestConfigExtremesTruncationMaxValueZero
+--- PASS: TestConfigExtremesTruncationMaxValueZero (0.01s)
+=== RUN   TestConfigExtremesTruncationMaxValueHuge
+--- PASS: TestConfigExtremesTruncationMaxValueHuge (0.02s)
+=== RUN   TestConfigExtremesRedactionEnabledFalseLeavesValueUnredacted
+--- PASS: TestConfigExtremesRedactionEnabledFalseLeavesValueUnredacted (0.04s)
+=== RUN   TestConfigExtremesInvalidRedactionRegexFallsBackToDefault
+--- PASS: TestConfigExtremesInvalidRedactionRegexFallsBackToDefault (0.07s)
+=== RUN   TestConfigExtremesDisabledSkipsAnalysisWithoutPanic
+--- PASS: TestConfigExtremesDisabledSkipsAnalysisWithoutPanic (0.04s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/testapps/integration	0.857s
+?   	github.com/DataDog/dd-iast-go/testapps/integration/cmd/bootstrap	[no test files]
+?   	github.com/DataDog/dd-iast-go/testapps/integration/cmd/bootstrap.test	[no test files]
+FAIL
+exit status 1

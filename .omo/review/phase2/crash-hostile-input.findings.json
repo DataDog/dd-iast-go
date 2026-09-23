@@ -1,0 +1,35 @@
+[
+  {
+    "id": "crash-hostile-input-F1",
+    "severity": "Critical",
+    "category": "redaction",
+    "location": "internal/taint/redaction/sql.go:83-100",
+    "title": "SQL comment bodies are never redacted; literals after an injected -- or inside /* */ leak in clear",
+    "claim": "sqlSensitiveToken ignores sqllexer COMMENT/MULTILINE_COMMENT tokens, so in the canonical exploit ' OR TRUE -- the application-owned tail (e.g. password = '81dc9bdb...') and any /* ... */ content are emitted verbatim in evidence, contrary to the shared cross-tracer redaction corpus and dd-trace-java/js behavior. analyzer_test.go:30 pins the unredacted behavior.",
+    "evidence_path": ".omo/review/evidence/crash-hostile-input/hostile_comment_repro_test.go",
+    "repro_command": "go test -count=1 -run TestHostileSQLCommentBodiesAreRedacted -v ./internal/taint/redaction/ ; end-to-end: woven hostile app GET /exploit?param=%27%20OR%20TRUE%20-- (see leak-excerpts.txt, spans-woven.json)",
+    "needs_repro": false
+  },
+  {
+    "id": "crash-hostile-input-F2",
+    "severity": "High",
+    "category": "perf",
+    "location": "iast/database/sql/sql.go:34-49; internal/vulnerability/tainted.go:57-83; internal/spans/tainted.go:69",
+    "title": "Sink analysis, evidence building and stack capture run for every tainted query after the per-request quota is full",
+    "claim": "CollectString, AnalyzeSQL (6 dialect lexings up to 32 KiB), BuildWithSensitive and CaptureLocationSkipWhile all execute before the only quota check (Annotation.TryCommitTainted -> Event.CanAddVulnerability). With the default quota of 2, all later tainted sinks in a request do fully discarded work; measured 142 ms vs 5.9 ms plain (~24x) for 40 tainted 30 KB queries.",
+    "evidence_path": ".omo/review/evidence/crash-hostile-input/quota-timing.log",
+    "repro_command": "Run woven vs plain hostile app with DD_IAST_ENABLED=true DD_IAST_REQUEST_SAMPLING=100 (default quota/dedup) and time driver case mp_40_parts; supporting: go test -run XXX -bench BenchmarkHostileAnalyzeSQL30KB -benchtime 50x ./internal/taint/redaction/",
+    "needs_repro": false
+  },
+  {
+    "id": "crash-hostile-input-F3",
+    "severity": "Low",
+    "category": "memory-bound",
+    "location": "internal/spans/tainted.go:264",
+    "title": "Retroactive source redaction builds patterns from byte length, exceeding the 250-character truncation limit",
+    "claim": "redactSourceOccurrence uses strings.Repeat(\"*\", len(Value)) on a value truncated to 250 runes; with multibyte (U+FFFD) content the pattern reaches 3-4x DD_IAST_TRUNCATION_MAX_VALUE (observed 640/656 chars). Payload stays under 25,000 bytes.",
+    "evidence_path": ".omo/review/evidence/crash-hostile-input/spans-woven.json",
+    "repro_command": "python3 driver.py against woven hostile app; cases readall_64k, readall_invalid, prop_hdr_invalid",
+    "needs_repro": false
+  }
+]

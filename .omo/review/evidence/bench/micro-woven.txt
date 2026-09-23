@@ -1,0 +1,222 @@
+goos: darwin
+goarch: arm64
+pkg: github.com/DataDog/dd-iast-go/internal/taint/ranges
+cpu: Apple M4 Max
+BenchmarkCanonicalizeTwo-16         	 2358678	       515.3 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCanonicalizeTwo-16         	 2339661	       505.7 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCanonicalizeTwo-16         	 2296288	       507.3 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCanonicalizeTwo-16         	 2410095	       492.5 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCanonicalizeTwo-16         	 2438313	       497.5 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCanonicalizeTwo-16         	 2504404	       486.6 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCanonicalizeTwo-16         	 2407744	       501.2 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCanonicalizeTwo-16         	 2431768	       494.1 ns/op	       0 B/op	       0 allocs/op
+BenchmarkConcatTwo-16               	21969756	        54.25 ns/op	       0 B/op	       0 allocs/op
+BenchmarkConcatTwo-16               	21539071	        54.48 ns/op	       0 B/op	       0 allocs/op
+BenchmarkConcatTwo-16               	22400212	        54.68 ns/op	       0 B/op	       0 allocs/op
+BenchmarkConcatTwo-16               	22255364	        54.10 ns/op	       0 B/op	       0 allocs/op
+BenchmarkConcatTwo-16               	22159214	        55.21 ns/op	       0 B/op	       0 allocs/op
+BenchmarkConcatTwo-16               	22524265	        53.91 ns/op	       0 B/op	       0 allocs/op
+BenchmarkConcatTwo-16               	21833199	        54.02 ns/op	       0 B/op	       0 allocs/op
+BenchmarkConcatTwo-16               	22432806	        54.12 ns/op	       0 B/op	       0 allocs/op
+BenchmarkSliceTwo-16                	22957297	        52.00 ns/op	       0 B/op	       0 allocs/op
+BenchmarkSliceTwo-16                	23419012	        51.97 ns/op	       0 B/op	       0 allocs/op
+BenchmarkSliceTwo-16                	23319384	        51.69 ns/op	       0 B/op	       0 allocs/op
+BenchmarkSliceTwo-16                	21488158	        52.19 ns/op	       0 B/op	       0 allocs/op
+BenchmarkSliceTwo-16                	23209671	        52.03 ns/op	       0 B/op	       0 allocs/op
+BenchmarkSliceTwo-16                	23137231	        52.21 ns/op	       0 B/op	       0 allocs/op
+BenchmarkSliceTwo-16                	23471805	        52.05 ns/op	       0 B/op	       0 allocs/op
+BenchmarkSliceTwo-16                	23201052	        51.92 ns/op	       0 B/op	       0 allocs/op
+BenchmarkConcatFreshGoroutine-16    	 1290883	       928.5 ns/op	     152 B/op	       3 allocs/op
+BenchmarkConcatFreshGoroutine-16    	 1298404	       927.0 ns/op	     152 B/op	       3 allocs/op
+BenchmarkConcatFreshGoroutine-16    	 1257712	       949.1 ns/op	     152 B/op	       3 allocs/op
+BenchmarkConcatFreshGoroutine-16    	 1284631	       934.2 ns/op	     152 B/op	       3 allocs/op
+BenchmarkConcatFreshGoroutine-16    	 1300556	       922.6 ns/op	     152 B/op	       3 allocs/op
+BenchmarkConcatFreshGoroutine-16    	 1289454	       929.6 ns/op	     152 B/op	       3 allocs/op
+BenchmarkConcatFreshGoroutine-16    	 1294226	       926.2 ns/op	     152 B/op	       3 allocs/op
+BenchmarkConcatFreshGoroutine-16    	 1297899	       925.2 ns/op	     152 B/op	       3 allocs/op
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/ranges	39.117s
+goos: darwin
+goarch: arm64
+pkg: github.com/DataDog/dd-iast-go/internal/taint/redaction
+cpu: Apple M4 Max
+BenchmarkAnalyzeSQL/typical-16         	  411522	      2795 ns/op	    1680 B/op	      21 allocs/op
+BenchmarkAnalyzeSQL/typical-16         	  414217	      2915 ns/op	    1680 B/op	      21 allocs/op
+BenchmarkAnalyzeSQL/typical-16         	  414921	      2809 ns/op	    1680 B/op	      21 allocs/op
+BenchmarkAnalyzeSQL/typical-16         	  424033	      2917 ns/op	    1680 B/op	      21 allocs/op
+BenchmarkAnalyzeSQL/typical-16         	  429745	      2774 ns/op	    1680 B/op	      21 allocs/op
+BenchmarkAnalyzeSQL/typical-16         	  434164	      2822 ns/op	    1680 B/op	      21 allocs/op
+BenchmarkAnalyzeSQL/typical-16         	  434833	      2758 ns/op	    1680 B/op	      21 allocs/op
+BenchmarkAnalyzeSQL/typical-16         	  439018	      2748 ns/op	    1680 B/op	      21 allocs/op
+BenchmarkAnalyzeSQL/two_hundred_literals-16         	   18086	     66142 ns/op	   34704 B/op	      26 allocs/op
+BenchmarkAnalyzeSQL/two_hundred_literals-16         	   18210	     66130 ns/op	   34704 B/op	      26 allocs/op
+BenchmarkAnalyzeSQL/two_hundred_literals-16         	   17995	     66581 ns/op	   34704 B/op	      26 allocs/op
+BenchmarkAnalyzeSQL/two_hundred_literals-16         	   18108	     66983 ns/op	   34704 B/op	      26 allocs/op
+BenchmarkAnalyzeSQL/two_hundred_literals-16         	   18385	     65154 ns/op	   34704 B/op	      26 allocs/op
+BenchmarkAnalyzeSQL/two_hundred_literals-16         	   18080	     67192 ns/op	   34704 B/op	      26 allocs/op
+BenchmarkAnalyzeSQL/two_hundred_literals-16         	   18282	     65945 ns/op	   34704 B/op	      26 allocs/op
+BenchmarkAnalyzeSQL/two_hundred_literals-16         	   18220	     65805 ns/op	   34704 B/op	      26 allocs/op
+BenchmarkAnalyzeSQL/q_quote_flood-16                	   37611	     31660 ns/op	    5568 B/op	       8 allocs/op
+BenchmarkAnalyzeSQL/q_quote_flood-16                	   37490	     31670 ns/op	    5568 B/op	       8 allocs/op
+BenchmarkAnalyzeSQL/q_quote_flood-16                	   37759	     33113 ns/op	    5568 B/op	       8 allocs/op
+BenchmarkAnalyzeSQL/q_quote_flood-16                	   37789	     32107 ns/op	    5568 B/op	       8 allocs/op
+BenchmarkAnalyzeSQL/q_quote_flood-16                	   37402	     31949 ns/op	    5568 B/op	       8 allocs/op
+BenchmarkAnalyzeSQL/q_quote_flood-16                	   37416	     33219 ns/op	    5568 B/op	       8 allocs/op
+BenchmarkAnalyzeSQL/q_quote_flood-16                	   37557	     31841 ns/op	    5568 B/op	       8 allocs/op
+BenchmarkAnalyzeSQL/q_quote_flood-16                	   37838	     31563 ns/op	    5568 B/op	       8 allocs/op
+BenchmarkAnalyzeCommand-16                          	23969298	        49.39 ns/op	      72 B/op	       2 allocs/op
+BenchmarkAnalyzeCommand-16                          	25062504	        48.94 ns/op	      72 B/op	       2 allocs/op
+BenchmarkAnalyzeCommand-16                          	24039784	        48.12 ns/op	      72 B/op	       2 allocs/op
+BenchmarkAnalyzeCommand-16                          	24836214	        49.05 ns/op	      72 B/op	       2 allocs/op
+BenchmarkAnalyzeCommand-16                          	24965022	        48.35 ns/op	      72 B/op	       2 allocs/op
+BenchmarkAnalyzeCommand-16                          	25064030	        49.36 ns/op	      72 B/op	       2 allocs/op
+BenchmarkAnalyzeCommand-16                          	24671960	        48.65 ns/op	      72 B/op	       2 allocs/op
+BenchmarkAnalyzeCommand-16                          	24996788	        48.75 ns/op	      72 B/op	       2 allocs/op
+BenchmarkMappedPattern-16                           	74455927	        15.98 ns/op	       0 B/op	       0 allocs/op
+BenchmarkMappedPattern-16                           	76117576	        16.09 ns/op	       0 B/op	       0 allocs/op
+BenchmarkMappedPattern-16                           	74576238	        15.84 ns/op	       0 B/op	       0 allocs/op
+BenchmarkMappedPattern-16                           	76013713	        15.90 ns/op	       0 B/op	       0 allocs/op
+BenchmarkMappedPattern-16                           	71908315	        16.56 ns/op	       0 B/op	       0 allocs/op
+BenchmarkMappedPattern-16                           	75983428	        15.98 ns/op	       0 B/op	       0 allocs/op
+BenchmarkMappedPattern-16                           	72116467	        16.15 ns/op	       0 B/op	       0 allocs/op
+BenchmarkMappedPattern-16                           	75225285	        15.97 ns/op	       0 B/op	       0 allocs/op
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/redaction	48.792s
+goos: darwin
+goarch: arm64
+pkg: github.com/DataDog/dd-iast-go/internal/taint/evidence
+cpu: Apple M4 Max
+BenchmarkCollectStringMiss-16    	613369406	         1.797 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCollectStringMiss-16    	670228652	         1.771 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCollectStringMiss-16    	677950623	         1.766 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCollectStringMiss-16    	684427396	         1.804 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCollectStringMiss-16    	683404378	         1.767 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCollectStringMiss-16    	680653300	         1.791 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCollectStringMiss-16    	683375030	         1.777 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCollectStringMiss-16    	683952130	         1.764 ns/op	       0 B/op	       0 allocs/op
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/evidence	10.193s
+goos: darwin
+goarch: arm64
+pkg: github.com/DataDog/dd-iast-go/internal/taint/operatorbridge
+cpu: Apple M4 Max
+BenchmarkHasValuesClean-16    	651287390	         1.714 ns/op	       0 B/op	       0 allocs/op
+BenchmarkHasValuesClean-16    	715142041	         1.696 ns/op	       0 B/op	       0 allocs/op
+BenchmarkHasValuesClean-16    	701641035	         1.713 ns/op	       0 B/op	       0 allocs/op
+BenchmarkHasValuesClean-16    	708096019	         1.733 ns/op	       0 B/op	       0 allocs/op
+BenchmarkHasValuesClean-16    	676934128	         1.778 ns/op	       0 B/op	       0 allocs/op
+BenchmarkHasValuesClean-16    	678069853	         1.728 ns/op	       0 B/op	       0 allocs/op
+BenchmarkHasValuesClean-16    	713830184	         1.722 ns/op	       0 B/op	       0 allocs/op
+BenchmarkHasValuesClean-16    	721597077	         1.686 ns/op	       0 B/op	       0 allocs/op
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/operatorbridge	10.134s
+goos: darwin
+goarch: arm64
+pkg: github.com/DataDog/dd-iast-go/internal/taint/commandbridge
+cpu: Apple M4 Max
+BenchmarkReportInactive-16    	617695165	         1.785 ns/op	       0 B/op	       0 allocs/op
+BenchmarkReportInactive-16    	678878463	         1.776 ns/op	       0 B/op	       0 allocs/op
+BenchmarkReportInactive-16    	685261358	         1.756 ns/op	       0 B/op	       0 allocs/op
+BenchmarkReportInactive-16    	686361751	         1.754 ns/op	       0 B/op	       0 allocs/op
+BenchmarkReportInactive-16    	688452031	         1.759 ns/op	       0 B/op	       0 allocs/op
+BenchmarkReportInactive-16    	687259968	         1.760 ns/op	       0 B/op	       0 allocs/op
+BenchmarkReportInactive-16    	679099214	         1.779 ns/op	       0 B/op	       0 allocs/op
+BenchmarkReportInactive-16    	687792562	         1.750 ns/op	       0 B/op	       0 allocs/op
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/commandbridge	9.858s
+goos: darwin
+goarch: arm64
+pkg: github.com/DataDog/dd-iast-go/iast/propagation
+cpu: Apple M4 Max
+BenchmarkOperatorConcat4Inactive-16                	54525622	        21.70 ns/op	      24 B/op	       1 allocs/op
+BenchmarkOperatorConcat4Inactive-16                	57072535	        21.79 ns/op	      24 B/op	       1 allocs/op
+BenchmarkOperatorConcat4Inactive-16                	54242191	        21.49 ns/op	      24 B/op	       1 allocs/op
+BenchmarkOperatorConcat4Inactive-16                	55436318	        21.84 ns/op	      24 B/op	       1 allocs/op
+BenchmarkOperatorConcat4Inactive-16                	57693693	        22.13 ns/op	      24 B/op	       1 allocs/op
+BenchmarkOperatorConcat4Inactive-16                	56359857	        22.00 ns/op	      24 B/op	       1 allocs/op
+BenchmarkOperatorConcat4Inactive-16                	51938214	        21.89 ns/op	      24 B/op	       1 allocs/op
+BenchmarkOperatorConcat4Inactive-16                	55914945	        21.84 ns/op	      24 B/op	       1 allocs/op
+BenchmarkOperatorConcat4ActiveClean-16             	53958756	        20.90 ns/op	      24 B/op	       1 allocs/op
+BenchmarkOperatorConcat4ActiveClean-16             	57168152	        20.45 ns/op	      24 B/op	       1 allocs/op
+BenchmarkOperatorConcat4ActiveClean-16             	58349323	        20.59 ns/op	      24 B/op	       1 allocs/op
+BenchmarkOperatorConcat4ActiveClean-16             	59293177	        20.34 ns/op	      24 B/op	       1 allocs/op
+BenchmarkOperatorConcat4ActiveClean-16             	59260356	        20.51 ns/op	      24 B/op	       1 allocs/op
+BenchmarkOperatorConcat4ActiveClean-16             	58474069	        20.43 ns/op	      24 B/op	       1 allocs/op
+BenchmarkOperatorConcat4ActiveClean-16             	60519966	        20.82 ns/op	      24 B/op	       1 allocs/op
+BenchmarkOperatorConcat4ActiveClean-16             	58959969	        20.46 ns/op	      24 B/op	       1 allocs/op
+BenchmarkOperatorConversionsInactive-16            	140047256	         8.555 ns/op	      24 B/op	       1 allocs/op
+BenchmarkOperatorConversionsInactive-16            	137491975	         8.788 ns/op	      24 B/op	       1 allocs/op
+BenchmarkOperatorConversionsInactive-16            	138843792	         8.700 ns/op	      24 B/op	       1 allocs/op
+BenchmarkOperatorConversionsInactive-16            	138630427	         8.645 ns/op	      24 B/op	       1 allocs/op
+BenchmarkOperatorConversionsInactive-16            	142197538	         8.472 ns/op	      24 B/op	       1 allocs/op
+BenchmarkOperatorConversionsInactive-16            	138526798	         8.659 ns/op	      24 B/op	       1 allocs/op
+BenchmarkOperatorConversionsInactive-16            	135820476	         8.936 ns/op	      24 B/op	       1 allocs/op
+BenchmarkOperatorConversionsInactive-16            	136156203	         8.739 ns/op	      24 B/op	       1 allocs/op
+BenchmarkOperatorOptimizedConversionExcluded-16    	713125648	         1.731 ns/op	       0 B/op	       0 allocs/op
+BenchmarkOperatorOptimizedConversionExcluded-16    	719733518	         1.671 ns/op	       0 B/op	       0 allocs/op
+BenchmarkOperatorOptimizedConversionExcluded-16    	732124717	         1.654 ns/op	       0 B/op	       0 allocs/op
+BenchmarkOperatorOptimizedConversionExcluded-16    	719637840	         1.666 ns/op	       0 B/op	       0 allocs/op
+BenchmarkOperatorOptimizedConversionExcluded-16    	724936638	         1.707 ns/op	       0 B/op	       0 allocs/op
+BenchmarkOperatorOptimizedConversionExcluded-16    	734337386	         1.645 ns/op	       0 B/op	       0 allocs/op
+BenchmarkOperatorOptimizedConversionExcluded-16    	710635248	         1.681 ns/op	       0 B/op	       0 allocs/op
+BenchmarkOperatorOptimizedConversionExcluded-16    	676027616	         1.671 ns/op	       0 B/op	       0 allocs/op
+BenchmarkOperatorSlicesInactive-16                 	324341636	         3.582 ns/op	       0 B/op	       0 allocs/op
+BenchmarkOperatorSlicesInactive-16                 	342025774	         3.551 ns/op	       0 B/op	       0 allocs/op
+BenchmarkOperatorSlicesInactive-16                 	333984795	         3.622 ns/op	       0 B/op	       0 allocs/op
+BenchmarkOperatorSlicesInactive-16                 	336016917	         3.677 ns/op	       0 B/op	       0 allocs/op
+BenchmarkOperatorSlicesInactive-16                 	327845599	         3.694 ns/op	       0 B/op	       0 allocs/op
+BenchmarkOperatorSlicesInactive-16                 	322024748	         3.771 ns/op	       0 B/op	       0 allocs/op
+BenchmarkOperatorSlicesInactive-16                 	291279781	         3.873 ns/op	       0 B/op	       0 allocs/op
+BenchmarkOperatorSlicesInactive-16                 	327461016	         3.663 ns/op	       0 B/op	       0 allocs/op
+PASS
+ok  	github.com/DataDog/dd-iast-go/iast/propagation	48.616s
+goos: darwin
+goarch: arm64
+pkg: github.com/DataDog/dd-iast-go/iast/encoding/json
+cpu: Apple M4 Max
+BenchmarkLiteralInactive-16       	70239733	        16.90 ns/op	       0 B/op	       0 allocs/op
+BenchmarkLiteralInactive-16       	72574795	        16.54 ns/op	       0 B/op	       0 allocs/op
+BenchmarkLiteralInactive-16       	68180040	        16.61 ns/op	       0 B/op	       0 allocs/op
+BenchmarkLiteralInactive-16       	73394683	        16.65 ns/op	       0 B/op	       0 allocs/op
+BenchmarkLiteralInactive-16       	73488133	        16.64 ns/op	       0 B/op	       0 allocs/op
+BenchmarkLiteralInactive-16       	71962399	        16.64 ns/op	       0 B/op	       0 allocs/op
+BenchmarkLiteralInactive-16       	71112340	        16.64 ns/op	       0 B/op	       0 allocs/op
+BenchmarkLiteralInactive-16       	71993341	        16.85 ns/op	       0 B/op	       0 allocs/op
+BenchmarkLiteralActiveClean-16    	73273492	        16.51 ns/op	       0 B/op	       0 allocs/op
+BenchmarkLiteralActiveClean-16    	73406468	        16.56 ns/op	       0 B/op	       0 allocs/op
+BenchmarkLiteralActiveClean-16    	72475987	        16.58 ns/op	       0 B/op	       0 allocs/op
+BenchmarkLiteralActiveClean-16    	70097040	        16.77 ns/op	       0 B/op	       0 allocs/op
+BenchmarkLiteralActiveClean-16    	73000284	        17.05 ns/op	       0 B/op	       0 allocs/op
+BenchmarkLiteralActiveClean-16    	60782060	        16.96 ns/op	       0 B/op	       0 allocs/op
+BenchmarkLiteralActiveClean-16    	71480870	        16.70 ns/op	       0 B/op	       0 allocs/op
+BenchmarkLiteralActiveClean-16    	71840872	        16.96 ns/op	       0 B/op	       0 allocs/op
+PASS
+ok  	github.com/DataDog/dd-iast-go/iast/encoding/json	19.797s
+goos: darwin
+goarch: arm64
+pkg: github.com/DataDog/dd-iast-go/iast/database/sql
+cpu: Apple M4 Max
+BenchmarkReportActiveClean-16    	187582836	         6.349 ns/op	       0 B/op	       0 allocs/op
+BenchmarkReportActiveClean-16    	189965469	         6.273 ns/op	       0 B/op	       0 allocs/op
+BenchmarkReportActiveClean-16    	192109911	         6.239 ns/op	       0 B/op	       0 allocs/op
+BenchmarkReportActiveClean-16    	190368768	         6.328 ns/op	       0 B/op	       0 allocs/op
+BenchmarkReportActiveClean-16    	189200712	         6.335 ns/op	       0 B/op	       0 allocs/op
+BenchmarkReportActiveClean-16    	188728813	         6.334 ns/op	       0 B/op	       0 allocs/op
+BenchmarkReportActiveClean-16    	182540217	         6.480 ns/op	       0 B/op	       0 allocs/op
+BenchmarkReportActiveClean-16    	186084930	         6.468 ns/op	       0 B/op	       0 allocs/op
+PASS
+ok  	github.com/DataDog/dd-iast-go/iast/database/sql	10.138s
+goos: darwin
+goarch: arm64
+pkg: github.com/DataDog/dd-iast-go/iast/os/exec
+cpu: Apple M4 Max
+BenchmarkReportActiveClean-16    	102544173	        11.63 ns/op	       0 B/op	       0 allocs/op
+BenchmarkReportActiveClean-16    	100000000	        11.45 ns/op	       0 B/op	       0 allocs/op
+BenchmarkReportActiveClean-16    	100000000	        11.42 ns/op	       0 B/op	       0 allocs/op
+BenchmarkReportActiveClean-16    	100000000	        11.32 ns/op	       0 B/op	       0 allocs/op
+BenchmarkReportActiveClean-16    	100000000	        11.43 ns/op	       0 B/op	       0 allocs/op
+BenchmarkReportActiveClean-16    	100000000	        11.31 ns/op	       0 B/op	       0 allocs/op
+BenchmarkReportActiveClean-16    	98776276	        11.68 ns/op	       0 B/op	       0 allocs/op
+BenchmarkReportActiveClean-16    	100000000	        11.48 ns/op	       0 B/op	       0 allocs/op
+PASS
+ok  	github.com/DataDog/dd-iast-go/iast/os/exec	9.810s

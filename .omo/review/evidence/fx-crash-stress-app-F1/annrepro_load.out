@@ -1,0 +1,15 @@
+# built in private copy iast/integration/testapp after:
+#   GOPROXY=off GOFLAGS=-mod=mod go get github.com/DataDog/dd-trace-go/contrib/net/http/v2@v2.11.0-rc.1
+#   GOTOOLCHAIN=go1.26.6 GOFLAGS='-p=4 -mod=mod' GOPROXY=off go tool orchestrion go build -o annrepro ./cmd/annrepro   (peak RSS 452 MB, 39 s)
+$ DD_IAST_DEDUPLICATION_ENABLED=false LOAD_CLIENTS={0,2,8} ./annrepro load   (sampling/concurrency at defaults)
+woven=true DD_IAST_REQUEST_SAMPLING="" DD_IAST_MAX_CONCURRENT_REQUESTS="" DD_IAST_DEDUPLICATION_ENABLED="false" (empty = default: 30%, 2, true)
+LOAD clients=0: victims=300 analyzed=89 reported=89 analyzedButEnabled0=0 orphanEmpty=0 orphanWithPayload=0
+exit=0
+
+woven=true DD_IAST_REQUEST_SAMPLING="" DD_IAST_MAX_CONCURRENT_REQUESTS="" DD_IAST_DEDUPLICATION_ENABLED="false" (empty = default: 30%, 2, true)
+LOAD clients=2: victims=300 analyzed=90 reported=0 analyzedButEnabled0=90 orphanEmpty=90 orphanWithPayload=0
+exit=0
+
+woven=true DD_IAST_REQUEST_SAMPLING="" DD_IAST_MAX_CONCURRENT_REQUESTS="" DD_IAST_DEDUPLICATION_ENABLED="false" (empty = default: 30%, 2, true)
+LOAD clients=8: victims=300 analyzed=0 reported=0 analyzedButEnabled0=0 orphanEmpty=0 orphanWithPayload=0
+exit=0

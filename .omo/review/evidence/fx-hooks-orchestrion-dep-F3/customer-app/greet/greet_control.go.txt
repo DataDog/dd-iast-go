@@ -1,0 +1,9 @@
+// Package greet is an ordinary helper package (control: has one import).
+package greet
+
+import "strings"
+
+// Hello builds a greeting.
+func Hello(name string) string {
+	return "Hello, " + strings.TrimSpace(name) + "!"
+}

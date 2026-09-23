@@ -1,0 +1,5 @@
+ok  	github.com/DataDog/dd-iast-go/internal/taint/store	1.561s
+ok  	github.com/DataDog/dd-iast-go/internal/taint/propagation	1.521s
+ok  	github.com/DataDog/dd-iast-go/internal/taint/writerbridge	1.776s [no tests to run]
+ok  	github.com/DataDog/dd-iast-go/iast/propagation	2.091s
+baseline exit=0

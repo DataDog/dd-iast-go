@@ -1,0 +1,10 @@
+$ GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -count=1 -v -run 'TestReviewStaleBindingAfterReset|TestReviewCrossOwnerViaResetReader' ./iast/io/  (finder's zz_review_repro_test.go copied in)
+=== RUN   TestReviewStaleBindingAfterReset
+    zz_review_repro_test.go:56: case=bufio.Reset data="SELECT 1 FROM clean_constant" tainted=true ranges=[0,+28 origin=http.request.body value="SELECT 1 FROM clean_constant"]
+    zz_review_repro_test.go:61: case=LimitedReader.R data="SELECT 2 FROM clean_constant" tainted=true ranges=[0,+28 origin=http.request.body value="SELECT 2 FROM clean_constant"]
+--- PASS: TestReviewStaleBindingAfterReset (0.00s)
+=== RUN   TestReviewCrossOwnerViaResetReader
+    zz_review_repro_test.go:83: case=cross-owner dataB="SELECT 3 FROM data_of_B" tainted=true ranges=[0,+23 origin=http.request.body value="SELECT 3 FROM data_of_B"] ownerA.sources before=1 after=2 ownerB.sources=0
+--- PASS: TestReviewCrossOwnerViaResetReader (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/iast/io	0.826s

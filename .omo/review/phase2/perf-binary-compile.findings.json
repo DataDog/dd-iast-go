@@ -1,0 +1,35 @@
+[
+ {
+  "id": "perf-binary-compile-F1",
+  "severity": "Medium",
+  "category": "perf",
+  "location": "iast/integration/testapp/orchestrion.tool.go:11-22",
+  "title": "A cold woven build takes 6.9x-39x longer than a plain go build (threshold 5x)",
+  "claim": "Cold GOCACHE woven build: bootstrap 167.8s/283 CPU-s vs 4.3s/3.7 CPU-s plain (39x wall). Overhead test 78.7s vs 11.4s (6.9x). Most of it is the Orchestrion self-build (~112 CPU-s) and the tracer (the control is already 10.3x/7.9x). The dd-iast-go increment is 3.8x wall/1.8x CPU on bootstrap and within noise on overhead. Warm rebuilds take 6.7-13.8s. Peak RSS <=1.09 GB.",
+  "evidence_path": ".omo/review/evidence/perf-binary-compile/builds.log",
+  "repro_command": "cd iast/integration/testapp && GOCACHE=$(mktemp -d) GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 /usr/bin/time -l go tool orchestrion go build -work -o bootstrap ./cmd/bootstrap",
+  "needs_repro": false
+ },
+ {
+  "id": "perf-binary-compile-F2",
+  "severity": "Medium",
+  "category": "perf",
+  "location": "orchestrion.tool.go:26",
+  "title": "A woven small binary is 12.7x (+20.4 MB) larger than plain; dd-iast-go's own share is 1-5%",
+  "claim": "The empty-main bootstrap grows 1,749,218 -> 22,194,578 bytes. The tracer-only control is 21,098,994, so dd-iast-go adds 1,095,584 bytes (1.05x). Realistic binaries: overhead 1.11x vs plain, 1.02x vs control; testapp test 1.01x.",
+  "evidence_path": ".omo/review/evidence/perf-binary-compile/summary.md",
+  "repro_command": "cd iast/integration/testapp && GOCACHE=$(mktemp -d) GOTOOLCHAIN=go1.26.6 go tool orchestrion go build -o woven ./cmd/bootstrap && GOCACHE=$(mktemp -d) GOTOOLCHAIN=go1.26.6 go build -o plain ./cmd/bootstrap && ls -l woven plain",
+  "needs_repro": false
+ },
+ {
+  "id": "perf-binary-compile-F3",
+  "severity": "Info",
+  "category": "perf",
+  "location": "iast/propagation/orchestrion.yml",
+  "title": "63 stdlib IAST weave sites are compiled into every woven binary, regardless of use",
+  "claim": "Identical across targets: bytes 36, net/http 14, encoding/json 7, io 4, bufio 1, net/url 1. App-root sites scale with app code (13 testapp, 7 benchmark).",
+  "evidence_path": ".omo/review/evidence/perf-binary-compile/sites-itapp-bootstrap-full.txt",
+  "repro_command": "go tool orchestrion go build -work ./cmd/bootstrap; grep -rhoE '__orchestrion_[A-Za-z0-9_]*iast[A-Za-z0-9_]*\\.[A-Za-z]+\\(' $WORK/*/orchestrion/src | sort | uniq -c",
+  "needs_repro": false
+ }
+]

@@ -1,0 +1,13 @@
+[
+  {
+    "id": "crash-unsafe-F1",
+    "verdict": "CONFIRMED",
+    "original_severity": "High",
+    "adjusted_severity": "High",
+    "reachable_default": true,
+    "documented_limitation": false,
+    "reason": "Mechanism verified at HEAD 2e23b46 and reproduced three ways: the finder's test re-run in a fresh private copy; my own internal-API test (sampled open replacement under a finished root; committed finding never emitted; two retained replacements hold both MaxConcurrentRequests slots and a fresh 100%-sampled request is denied); and my own woven build (go tool orchestrion, Go 1.26.6) where the real woven StartSpanFromContext wrapper (iast/net/http BindStartSpan -> spans.BindScope) recreated an open annotation under a finished request root, the real woven Finished(root) hook had deleted the original, a later live 100%-sampled request attaching to the dead trace via GLS parent inference was denied IAST analysis by the stale marker, and a weak-hash finding reported through the exported public sink API (iast/crypto/hash.ReportWeakHash) with a live-child context was stranded in an open sampled annotation and never emitted. Default-config reachability is real (background goroutine outliving the request root span); the stranded-finding false negative additionally needs the exported sink API with a span context (woven stdlib hooks pass nil ctx and use orphan spans; tainted sinks never create annotations). Not a documented limitation: it breaks the documented DD_IAST_MAX_CONCURRENT_REQUESTS contract and rules 3 and 4. Severity stays High: false-negative vulnerability on a supported sink path plus a leaked admission slot that can permanently self-disable IAST at the default capacity of 2.",
+    "evidence_path": ".omo/review/evidence/fx-crash-unsafe-F1/",
+    "repro_command": "env GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 GOCACHE=/tmp/ddiast-review/wt/fx-crash-unsafe-F1/.gocache GOTMPDIR=/tmp/ddiast-review/wt/fx-crash-unsafe-F1/.gotmp go test -count=1 -v -run 'TestFX|TestReproFinishedRoot' -timeout=5m ./internal/spans"
+  }
+]

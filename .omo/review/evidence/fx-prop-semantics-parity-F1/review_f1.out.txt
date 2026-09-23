@@ -1,0 +1,20 @@
+Command (private copy):
+cd /tmp/ddiast-review/wt/fx-prop-semantics-parity-F1 && /usr/bin/time -l env GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -timeout 8m -count=1 -run "^TestReviewF1_" -v ./iast/propagation
+Exit code: 1 (expected failing regression test)
+
+=== RUN   TestReviewF1_StringerFieldReachesSQL_whenFormattedByApplication
+    review_f1_test.go:29: query="SELECT * FROM users WHERE 1=1 --" input_tainted=true output_tainted=false sql_collection=0
+    review_f1_test.go:32:
+        	Error Trace:	/tmp/ddiast-review/wt/fx-prop-semantics-parity-F1/iast/propagation/review_f1_test.go:32
+        	Error:      	Not equal:
+        	            	expected: 0x1
+        	            	actual  : 0x0
+        	Test:       	TestReviewF1_StringerFieldReachesSQL_whenFormattedByApplication
+--- FAIL: TestReviewF1_StringerFieldReachesSQL_whenFormattedByApplication (0.00s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/iast/propagation	0.861s
+FAIL
+exit status 1
+      133.89 real       148.38 user       186.06 sys
+           350093312  maximum resident set size
+            38011624  peak memory footprint

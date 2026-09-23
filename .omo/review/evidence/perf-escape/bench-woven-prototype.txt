@@ -1,0 +1,52 @@
+goos: darwin
+goarch: arm64
+pkg: github.com/DataDog/dd-iast-go/perfsample
+cpu: Apple M4 Max
+BenchmarkExtra/ConcatLocal2-16         	   20000	        28.64 ns/op	       3 B/op	       1 allocs/op
+BenchmarkExtra/ConcatLocal4-16         	   20000	        31.10 ns/op	       0 B/op	       0 allocs/op
+BenchmarkExtra/ConcatLocal5-16         	   20000	        35.62 ns/op	       0 B/op	       0 allocs/op
+BenchmarkExtra/ConcatLocal8-16         	   20000	        54.00 ns/op	      16 B/op	       1 allocs/op
+BenchmarkExtra/ConcatLocal16-16        	   20000	        86.32 ns/op	      16 B/op	       1 allocs/op
+BenchmarkExtra/ConcatConvOperand-16    	   20000	        32.05 ns/op	       5 B/op	       1 allocs/op
+BenchmarkExtra/SplitSeqPass-16         	   20000	        58.05 ns/op	      40 B/op	       2 allocs/op
+BenchmarkExtra/BufferStringLocal-16    	   20000	        13.44 ns/op	       3 B/op	       1 allocs/op
+BenchmarkExtra/BuilderStringLocal-16   	   20000	         3.158 ns/op	       0 B/op	       0 allocs/op
+BenchmarkActive/Sample/ConcatLocal-16  	   20000	        33.02 ns/op	       8 B/op	       1 allocs/op
+BenchmarkActive/Sample/ConvLocal-16    	   20000	         4.552 ns/op	       0 B/op	       0 allocs/op
+BenchmarkActive/Sample/ByteSliceLocal-16         	   20000	        11.18 ns/op	       0 B/op	       0 allocs/op
+BenchmarkActive/Sample/StringSliceLocal-16       	   20000	         5.283 ns/op	       0 B/op	       0 allocs/op
+BenchmarkActive/Sample/BuilderLocal-16           	   20000	       708.8 ns/op	      40 B/op	       2 allocs/op
+BenchmarkActive/Sample/BufferLocal-16            	   20000	       818.3 ns/op	     112 B/op	       2 allocs/op
+BenchmarkActive/Sample/JoinLocal-16              	   20000	        47.88 ns/op	       8 B/op	       1 allocs/op
+BenchmarkActive/Sample/SprintfLocal-16           	   20000	       220.6 ns/op	      21 B/op	       2 allocs/op
+BenchmarkActive/Sample/CutLocal-16               	   20000	        19.07 ns/op	       0 B/op	       0 allocs/op
+BenchmarkActive/Sample/TrimLocal-16              	   20000	        12.53 ns/op	       0 B/op	       0 allocs/op
+BenchmarkActive/Sample/SplitSeqLocal-16          	   20000	        36.62 ns/op	       0 B/op	       0 allocs/op
+BenchmarkActive/Sample/FieldsSeqLocal-16         	   20000	        29.01 ns/op	       0 B/op	       0 allocs/op
+BenchmarkActive/Sample/QuoteLocal-16             	   20000	       193.6 ns/op	      16 B/op	       2 allocs/op
+BenchmarkActive/Sample/ToLowerLocal-16           	   20000	        11.66 ns/op	       0 B/op	       0 allocs/op
+BenchmarkActive/Extra/ConcatLocal2-16            	   20000	        27.73 ns/op	       3 B/op	       1 allocs/op
+BenchmarkActive/Extra/ConcatLocal4-16            	   20000	        33.58 ns/op	       0 B/op	       0 allocs/op
+BenchmarkActive/Extra/ConcatLocal5-16            	   20000	        37.66 ns/op	       0 B/op	       0 allocs/op
+BenchmarkActive/Extra/ConcatLocal8-16            	   20000	        54.18 ns/op	      16 B/op	       1 allocs/op
+BenchmarkActive/Extra/ConcatLocal16-16           	   20000	        89.80 ns/op	      16 B/op	       1 allocs/op
+BenchmarkActive/Extra/ConcatConvOperand-16       	   20000	        33.36 ns/op	       5 B/op	       1 allocs/op
+BenchmarkActive/Extra/SplitSeqPass-16            	   20000	        72.86 ns/op	      40 B/op	       2 allocs/op
+BenchmarkActive/Extra/BufferStringLocal-16       	   20000	       122.6 ns/op	       3 B/op	       1 allocs/op
+BenchmarkActive/Extra/BuilderStringLocal-16      	   20000	       107.0 ns/op	       0 B/op	       0 allocs/op
+BenchmarkSample/ConcatLocal-16                   	   20000	        30.43 ns/op	       8 B/op	       1 allocs/op
+BenchmarkSample/ConvLocal-16                     	   20000	         4.544 ns/op	       0 B/op	       0 allocs/op
+BenchmarkSample/ByteSliceLocal-16                	   20000	        11.55 ns/op	       0 B/op	       0 allocs/op
+BenchmarkSample/StringSliceLocal-16              	   20000	         5.258 ns/op	       0 B/op	       0 allocs/op
+BenchmarkSample/BuilderLocal-16                  	   20000	        37.27 ns/op	      40 B/op	       2 allocs/op
+BenchmarkSample/BufferLocal-16                   	   20000	        41.42 ns/op	     112 B/op	       2 allocs/op
+BenchmarkSample/JoinLocal-16                     	   20000	        28.26 ns/op	       8 B/op	       1 allocs/op
+BenchmarkSample/SprintfLocal-16                  	   20000	        57.64 ns/op	      21 B/op	       2 allocs/op
+BenchmarkSample/CutLocal-16                      	   20000	         8.177 ns/op	       0 B/op	       0 allocs/op
+BenchmarkSample/TrimLocal-16                     	   20000	         6.404 ns/op	       0 B/op	       0 allocs/op
+BenchmarkSample/SplitSeqLocal-16                 	   20000	        18.75 ns/op	       0 B/op	       0 allocs/op
+BenchmarkSample/FieldsSeqLocal-16                	   20000	        13.78 ns/op	       0 B/op	       0 allocs/op
+BenchmarkSample/QuoteLocal-16                    	   20000	        42.70 ns/op	      16 B/op	       2 allocs/op
+BenchmarkSample/ToLowerLocal-16                  	   20000	         7.348 ns/op	       0 B/op	       0 allocs/op
+PASS
+ok  	github.com/DataDog/dd-iast-go/perfsample	0.571s

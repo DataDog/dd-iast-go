@@ -1,0 +1,53 @@
+== schema validation (Draft7, like TestIastVulnerabilitySchema) ==
+sqli_insecure                            VALID
+sqli_direct_nonconcat                    VALID
+sqli_testfile_concat                     no event (enabled=1, status=200)
+sqli_secure                              no event (enabled=1, status=200)
+cmdi_insecure                            VALID
+cmdi_secure                              no event (enabled=1, status=200)
+weak_hash_md5                            VALID
+weak_cipher_rc4                          VALID
+source_header_value                      VALID
+source_header_name                       VALID
+source_cookie_name                       VALID
+source_cookie_value                      VALID
+source_parameter_name_get                VALID
+source_parameter_name_post               VALID
+source_parameter_value_get_formvalue     VALID
+source_parameter_value_get_urlquery      VALID
+source_parameter_value_post              VALID
+source_path                              VALID
+source_path_parameter                    VALID
+source_uri_requesturi                    VALID
+source_uri_urlstring                     no event (enabled=1, status=200)
+source_body_json                         VALID
+source_multipart_file                    no event (enabled=1, status=200)
+
+== system-tests assertions ==
+control: SQL direct source, no concat                PASS insecure (1 vuln)
+control: SQL concat inside _test.go                  FAIL insecure: no SQL_INJECTION
+TestSqlInjection.insecure/secure                     PASS insecure (1 vuln); PASS secure
+TestSqlInjection_StackTrace/ExtendedLocation         PASS location-in-stack; frames=8 location={'spanId': 1187621824273252924, 'path': '/tmp/ddiast-review/wt/sink-systemtests/repo/iast/integration/testapp/zz_systemtests_mux.go', 'line': 32, 'method': 'github.com/DataDog/dd-iast-go/testapps/integration.SystemTestsMux.func2', 'stackId': '030f9351-d941-4354-a67d-4d5c112058ac'}
+TestCommandInjection.insecure/secure                 PASS insecure (1 vuln); PASS secure
+TestCommandInjection_StackTrace/ExtendedLocation     PASS location-in-stack; frames=8 location={'spanId': 2674802281338560268, 'path': '/tmp/ddiast-review/wt/sink-systemtests/repo/iast/integration/testapp/zz_systemtests_mux.go', 'line': 44, 'method': 'github.com/DataDog/dd-iast-go/testapps/integration.SystemTestsMux.func4', 'stackId': '62a69066-da8d-4b90-a0ad-82e1f94462f5'}
+TestWeakHash.insecure (evidence MD5)                 PASS insecure (1 vuln)
+TestWeakHash_StackTrace/ExtendedLocation             PASS location-in-stack; frames=8 location={'spanId': 283308023943340504, 'path': '/tmp/ddiast-review/wt/sink-systemtests/repo/iast/integration/testapp/zz_systemtests_mux.go', 'line': 50, 'method': 'github.com/DataDog/dd-iast-go/testapps/integration.SystemTestsMux.func6', 'stackId': '3fd19bf0-3c71-4377-8ab9-c241c6badfb0'}
+TestWeakCipher.insecure                              PASS insecure (1 vuln)
+TestWeakCipher_StackTrace/ExtendedLocation           PASS location-in-stack; frames=8 location={'spanId': 7234433062118465908, 'path': '/tmp/ddiast-review/wt/sink-systemtests/repo/iast/integration/testapp/zz_systemtests_mux.go', 'line': 54, 'method': 'github.com/DataDog/dd-iast-go/testapps/integration.SystemTestsMux.func7', 'stackId': '2605a422-edde-4544-9f7c-32a15160785d'}
+TestHeaderValue                                      PASS ({'origin': 'http.request.header', 'name': 'Table', 'value': 'user'})
+TestHeaderValue (intended name 'table')              FAIL: names ['table'] not in [{'origin': 'http.request.header', 'name': 'Table', 'value': 'user'}]
+TestHeaderName                                       PASS ({'origin': 'http.request.header.name', 'name': 'User', 'value': 'User'})
+TestHeaderName (intended name 'user')                FAIL: names ['user'] not in [{'origin': 'http.request.header.name', 'name': 'User', 'value': 'User'}]
+TestCookieName                                       PASS ({'origin': 'http.request.cookie.name', 'name': 'table', 'value': 'table'})
+TestCookieValue                                      PASS ({'origin': 'http.request.cookie.value', 'name': 'table', 'value': 'user'})
+TestParameterName GET                                PASS ({'origin': 'http.request.parameter.name', 'name': 'user', 'value': 'user'})
+TestParameterName POST                               PASS ({'origin': 'http.request.parameter.name', 'name': 'user', 'value': 'user'})
+TestParameterValue GET (FormValue)                   PASS ({'origin': 'http.request.parameter', 'name': 'table', 'value': 'user'})
+TestParameterValue GET (URL.Query)                   PASS ({'origin': 'http.request.parameter', 'name': 'table', 'value': 'user'})
+TestParameterValue POST                              PASS ({'origin': 'http.request.parameter', 'name': 'table', 'value': 'user'})
+TestPath                                             PASS ({'origin': 'http.request.path', 'value': '/iast/source/path/test'})
+TestPathParameter                                    PASS ({'origin': 'http.request.path.parameter', 'name': 'table', 'value': 'user'})
+TestURI (RequestURI)                                 FAIL: value 'http://localhost:7777/iast/source/uri/test' not in [{'origin': 'http.request.uri', 'value': '/iast/source/uri/test'}]
+TestURI (URL.String)                                 FAIL: no IAST event
+TestRequestBody                                      PASS ({'origin': 'http.request.body', 'value': '{"name": "table", "value": "user"}'})
+TestMultipart                                        FAIL: no IAST event

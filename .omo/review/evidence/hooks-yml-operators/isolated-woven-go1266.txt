@@ -1,0 +1,124 @@
+WORK=/tmp/ddiast-review/wt/hooks-yml-operators/tmp/go-build3558463292
+# github.com/DataDog/dd-iast-go/reviewoperators/constantlen
+reviewoperators/constantlen/constant.go:11: len([1]string{…}) (value of type int) is not constant
+reviewoperators/constantlen/constant.go:12: len([1]string{…}) (value of type int) is not constant
+reviewoperators/constantlen/constant.go:15: array length len([1]string{…}) (value of type int) must be constant
+exit status 2
+# github.com/DataDog/dd-iast-go/reviewoperators/floatbounds [github.com/DataDog/dd-iast-go/reviewoperators/floatbounds.test]
+<generated>:1: float64 does not satisfy "github.com/DataDog/dd-iast-go/iast/propagation".integer (float64 missing in ~int | ~int8 | ~int16 | ~int32 | ~int64 | ~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64 | ~uintptr)
+<generated>:1: complex128 does not satisfy "github.com/DataDog/dd-iast-go/iast/propagation".integer (complex128 missing in ~int | ~int8 | ~int16 | ~int32 | ~int64 | ~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64 | ~uintptr)
+<generated>:1: float64 does not satisfy "github.com/DataDog/dd-iast-go/iast/propagation".integer (float64 missing in ~int | ~int8 | ~int16 | ~int32 | ~int64 | ~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64 | ~uintptr)
+exit status 2
+# github.com/DataDog/dd-iast-go/reviewoperators/noimports
+panic: assignment to entry in nil map
+
+goroutine 1 [running]:
+github.com/DataDog/orchestrion/internal/toolexec/aspect.Weaver.OnCompile({{0xb13e9c4e244?, 0x2?}, {0x0?, 0x101b4b60c?}}, {0x102cf66a8, 0xb13e9fa3ee0}, 0xb13e9d45c20)
+	/Users/eliott.bouhana/go/pkg/mod/github.com/!data!dog/orchestrion@v1.12.2-0.20260828141217-23afa71d6dcb/internal/toolexec/aspect/oncompile.go:195 +0x17ac
+github.com/DataDog/orchestrion/internal/toolexec/proxy.ProcessCommand[...](...)
+	/Users/eliott.bouhana/go/pkg/mod/github.com/!data!dog/orchestrion@v1.12.2-0.20260828141217-23afa71d6dcb/internal/toolexec/proxy/proxy.go:78
+github.com/DataDog/orchestrion/internal/cmd.init.func8(0xb13e9fbc1c0)
+	/Users/eliott.bouhana/go/pkg/mod/github.com/!data!dog/orchestrion@v1.12.2-0.20260828141217-23afa71d6dcb/internal/cmd/toolexec.go:93 +0x4c4
+github.com/urfave/cli/v2.(*Command).Run(0x102edcf40, 0xb13e9fbc1c0, {0xb13e9c47a20, 0x15, 0x15})
+	/Users/eliott.bouhana/go/pkg/mod/github.com/urfave/cli/v2@v2.27.7/command.go:276 +0x580
+github.com/urfave/cli/v2.(*Command).Run(0xb13e9c47600, 0xb13e9fb3e40, {0xb13e9c46160, 0x16, 0x16})
+	/Users/eliott.bouhana/go/pkg/mod/github.com/urfave/cli/v2@v2.27.7/command.go:269 +0x774
+github.com/urfave/cli/v2.(*App).RunContext(0xb13e9df0c00, {0x102cf63d0, 0x102f26d20}, {0xb13e9c46160, 0x16, 0x16})
+	/Users/eliott.bouhana/go/pkg/mod/github.com/urfave/cli/v2@v2.27.7/app.go:333 +0x4bc
+main.main()
+	/Users/eliott.bouhana/go/pkg/mod/github.com/!data!dog/orchestrion@v1.12.2-0.20260828141217-23afa71d6dcb/main.go:218 +0xe9c
+=== RUN   TestWeavingPreflight
+    operators_test.go:37: woven=true
+--- PASS: TestWeavingPreflight (0.00s)
+=== RUN   TestEvaluationOrderAndTypes
+--- PASS: TestEvaluationOrderAndTypes (0.00s)
+=== RUN   TestSlicePanicParity
+=== RUN   TestSlicePanicParity/{-1_2_3}
+    operators_test.go:85: string: runtime.boundsError: runtime error: slice bounds out of range [-1:]
+    operators_test.go:85: bytes: runtime.boundsError: runtime error: slice bounds out of range [-1:]
+    operators_test.go:85: full: runtime.boundsError: runtime error: slice bounds out of range [-1::]
+    operators_test.go:85: low: 
+    operators_test.go:85: zero: 
+=== RUN   TestSlicePanicParity/{0_5_6}
+    operators_test.go:85: string: runtime.boundsError: runtime error: slice bounds out of range [:5] with length 4
+    operators_test.go:85: bytes: runtime.boundsError: runtime error: slice bounds out of range [:5] with capacity 4
+    operators_test.go:85: full: runtime.boundsError: runtime error: slice bounds out of range [::6] with capacity 4
+    operators_test.go:85: low: runtime.boundsError: runtime error: slice bounds out of range [5:4]
+    operators_test.go:85: zero: runtime.boundsError: runtime error: slice bounds out of range [::6] with capacity 4
+=== RUN   TestSlicePanicParity/{3_2_4}
+    operators_test.go:85: string: runtime.boundsError: runtime error: slice bounds out of range [3:2]
+    operators_test.go:85: bytes: runtime.boundsError: runtime error: slice bounds out of range [3:2]
+    operators_test.go:85: full: runtime.boundsError: runtime error: slice bounds out of range [3:2:]
+    operators_test.go:85: low: 
+    operators_test.go:85: zero: 
+=== RUN   TestSlicePanicParity/{1_3_2}
+    operators_test.go:85: string: 
+    operators_test.go:85: bytes: 
+    operators_test.go:85: full: runtime.boundsError: runtime error: slice bounds out of range [:3:2]
+    operators_test.go:85: low: 
+    operators_test.go:85: zero: runtime.boundsError: runtime error: slice bounds out of range [:3:2]
+=== RUN   TestSlicePanicParity/{1_3_9}
+    operators_test.go:85: string: 
+    operators_test.go:85: bytes: 
+    operators_test.go:85: full: runtime.boundsError: runtime error: slice bounds out of range [::9] with capacity 4
+    operators_test.go:85: low: 
+    operators_test.go:85: zero: runtime.boundsError: runtime error: slice bounds out of range [::9] with capacity 4
+=== RUN   TestSlicePanicParity/{0_18446744073709551615_4}
+    operators_test.go:85: string: runtime.boundsError: runtime error: slice bounds out of range [:18446744073709551615] with length 4
+    operators_test.go:85: bytes: runtime.boundsError: runtime error: slice bounds out of range [:18446744073709551615] with capacity 4
+    operators_test.go:85: full: runtime.boundsError: runtime error: slice bounds out of range [:18446744073709551615:4]
+    operators_test.go:85: low: runtime.boundsError: runtime error: slice bounds out of range [18446744073709551615:4]
+    operators_test.go:85: zero: runtime.boundsError: runtime error: slice bounds out of range [:18446744073709551615:4]
+=== RUN   TestSlicePanicParity/{9_10_4}
+    operators_test.go:85: string: runtime.boundsError: runtime error: slice bounds out of range [:10] with length 4
+    operators_test.go:85: bytes: runtime.boundsError: runtime error: slice bounds out of range [:10] with capacity 4
+    operators_test.go:85: full: runtime.boundsError: runtime error: slice bounds out of range [:10:4]
+    operators_test.go:85: low: runtime.boundsError: runtime error: slice bounds out of range [10:4]
+    operators_test.go:85: zero: runtime.boundsError: runtime error: slice bounds out of range [:10:4]
+--- PASS: TestSlicePanicParity (0.00s)
+    --- PASS: TestSlicePanicParity/{-1_2_3} (0.00s)
+    --- PASS: TestSlicePanicParity/{0_5_6} (0.00s)
+    --- PASS: TestSlicePanicParity/{3_2_4} (0.00s)
+    --- PASS: TestSlicePanicParity/{1_3_2} (0.00s)
+    --- PASS: TestSlicePanicParity/{1_3_9} (0.00s)
+    --- PASS: TestSlicePanicParity/{0_18446744073709551615_4} (0.00s)
+    --- PASS: TestSlicePanicParity/{9_10_4} (0.00s)
+=== RUN   TestUnevaluatedArrayOperands
+=== RUN   TestUnevaluatedArrayOperands/range=false
+    operators_test.go:102: got=0 want=1 panic="runtime.boundsError: runtime error: slice bounds out of range [:99] with length 3"
+    operators_test.go:104: previously unevaluated array operand was evaluated
+=== RUN   TestUnevaluatedArrayOperands/range=true
+    operators_test.go:102: got=0 want=1 panic="runtime.boundsError: runtime error: slice bounds out of range [:99] with length 3"
+    operators_test.go:104: previously unevaluated array operand was evaluated
+--- FAIL: TestUnevaluatedArrayOperands (0.00s)
+    --- FAIL: TestUnevaluatedArrayOperands/range=false (0.00s)
+    --- FAIL: TestUnevaluatedArrayOperands/range=true (0.00s)
+=== RUN   TestInactiveAllocations
+=== RUN   TestInactiveAllocations/concat_len
+    operators_test.go:125: native=0 woven=1 allocations/op
+    operators_test.go:127: inactive instrumentation adds heap allocation
+=== RUN   TestInactiveAllocations/concat_compare
+    operators_test.go:125: native=0 woven=1 allocations/op
+    operators_test.go:127: inactive instrumentation adds heap allocation
+=== RUN   TestInactiveAllocations/conversion_local
+    operators_test.go:125: native=0 woven=1 allocations/op
+    operators_test.go:127: inactive instrumentation adds heap allocation
+=== RUN   TestInactiveAllocations/conversion_compare_excluded
+    operators_test.go:125: native=0 woven=0 allocations/op
+=== RUN   TestInactiveAllocations/conversion_map_excluded
+    operators_test.go:125: native=0 woven=0 allocations/op
+--- FAIL: TestInactiveAllocations (0.01s)
+    --- FAIL: TestInactiveAllocations/concat_len (0.00s)
+    --- FAIL: TestInactiveAllocations/concat_compare (0.00s)
+    --- FAIL: TestInactiveAllocations/conversion_local (0.00s)
+    --- PASS: TestInactiveAllocations/conversion_compare_excluded (0.00s)
+    --- PASS: TestInactiveAllocations/conversion_map_excluded (0.00s)
+=== RUN   TestExactProvenanceAndCleanControls
+--- PASS: TestExactProvenanceAndCleanControls (0.00s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/reviewoperators	0.505s
+FAIL	github.com/DataDog/dd-iast-go/reviewoperators/constantlen [build failed]
+FAIL	github.com/DataDog/dd-iast-go/reviewoperators/floatbounds [build failed]
+FAIL	github.com/DataDog/dd-iast-go/reviewoperators/noimports [build failed]
+FAIL
+exit status 1

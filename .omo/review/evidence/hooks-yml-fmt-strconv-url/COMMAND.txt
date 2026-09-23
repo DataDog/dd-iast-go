@@ -1,0 +1,1 @@
+cd <private copy> && GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -vet=off -count=1 -timeout 15m -run TestReview -v ./iast/propagation/  (fixture copied to iast/internal/propagationtest/zz_review_fmt.go, test to iast/propagation/zz_review_fmt_test.go)

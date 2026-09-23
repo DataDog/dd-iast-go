@@ -1,0 +1,26 @@
+Command: cd <private copy>/benchmarks/overhead && export GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 && gofmt -l . && uptime && /usr/bin/time -l go tool orchestrion go test -run '^$' -bench '^BenchmarkF2WovenWriters$' -benchtime=300ms -count=3 -cpu=1,4 -benchmem -timeout=25m . 2>&1 | grep -v '^go: downloading' | grep -E 'Benchmark|F2:|^ok|FAIL|PASS|maximum resident|real|panic|rror'
+
+15:58  up 11 days, 22:36, 5 users, load averages: 25.82 42.54 44.08
+F2: woven=true instrumentedPropagation=125
+BenchmarkF2WovenWriters/no-owner           	 1000000	       376.0 ns/op	     440 B/op	       9 allocs/op
+BenchmarkF2WovenWriters/no-owner           	  837769	       497.9 ns/op	     440 B/op	       9 allocs/op
+BenchmarkF2WovenWriters/no-owner           	  923026	       668.9 ns/op	     440 B/op	       9 allocs/op
+BenchmarkF2WovenWriters/no-owner-4         	  626977	       617.9 ns/op	     440 B/op	       9 allocs/op
+BenchmarkF2WovenWriters/no-owner-4         	  740988	       872.6 ns/op	     440 B/op	       9 allocs/op
+BenchmarkF2WovenWriters/no-owner-4         	  690128	       780.5 ns/op	     440 B/op	       9 allocs/op
+BenchmarkF2WovenWriters/active-clean-owner           	   21853	     16123 ns/op	     440 B/op	       9 allocs/op
+BenchmarkF2WovenWriters/active-clean-owner           	   21448	     16367 ns/op	     440 B/op	       9 allocs/op
+BenchmarkF2WovenWriters/active-clean-owner           	   22228	     16720 ns/op	     440 B/op	       9 allocs/op
+BenchmarkF2WovenWriters/active-clean-owner-4         	   22182	     16445 ns/op	     440 B/op	       9 allocs/op
+BenchmarkF2WovenWriters/active-clean-owner-4         	   22452	     15751 ns/op	     440 B/op	       9 allocs/op
+BenchmarkF2WovenWriters/active-clean-owner-4         	   23080	     15489 ns/op	     440 B/op	       9 allocs/op
+BenchmarkF2WovenWriters/active-clean-owner-parallel           	   23042	     15804 ns/op	     440 B/op	       9 allocs/op
+BenchmarkF2WovenWriters/active-clean-owner-parallel           	   22812	     15933 ns/op	     440 B/op	       9 allocs/op
+BenchmarkF2WovenWriters/active-clean-owner-parallel           	   23049	     16137 ns/op	     440 B/op	       9 allocs/op
+BenchmarkF2WovenWriters/active-clean-owner-parallel-4         	   88449	      4052 ns/op	     440 B/op	       9 allocs/op
+BenchmarkF2WovenWriters/active-clean-owner-parallel-4         	   84744	      4193 ns/op	     440 B/op	       9 allocs/op
+BenchmarkF2WovenWriters/active-clean-owner-parallel-4         	   79663	      4636 ns/op	     440 B/op	       9 allocs/op
+PASS
+ok  	github.com/DataDog/dd-iast-go/benchmarks/overhead	8.784s
+       19.26 real        19.07 user        13.04 sys
+           367919104  maximum resident set size

@@ -1,0 +1,41 @@
+Command:
+  cd /tmp/ddiast-review/wt/fx-life-admission-F1 &&
+  /usr/bin/time -l env GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 \
+    go tool orchestrion go test ./iast/net/http \
+    -run TestLifeAdmissionDisconnect -count=1 -v -timeout 4m
+
+Captured output:
+=== RUN   TestLifeAdmissionDisconnect
+=== RUN   TestLifeAdmissionDisconnect/HTTP1
+    zz_life_admission_test.go:81: disconnected request still owns the single IAST slot
+    zz_life_admission_test.go:106: after disconnect: subsequent request decision=2 (Active=3, CapacityDropped=2)
+    zz_life_admission_test.go:108: disconnected request blocks IAST admission for all subsequent requests: got 2, want 3
+=== RUN   TestLifeAdmissionDisconnect/HTTP2
+    zz_life_admission_test.go:81: disconnected request still owns the single IAST slot
+    zz_life_admission_test.go:106: after disconnect: subsequent request decision=2 (Active=3, CapacityDropped=2)
+    zz_life_admission_test.go:108: disconnected request blocks IAST admission for all subsequent requests: got 2, want 3
+--- FAIL: TestLifeAdmissionDisconnect (0.01s)
+    --- FAIL: TestLifeAdmissionDisconnect/HTTP1 (0.00s)
+    --- FAIL: TestLifeAdmissionDisconnect/HTTP2 (0.00s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/iast/net/http	0.613s
+FAIL
+exit status 1
+       70.17 real         8.02 user        15.48 sys
+           372097024  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              496895  page reclaims
+               32952  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                3393  messages sent
+                3781  messages received
+               12050  signals received
+               19937  voluntary context switches
+              291106  involuntary context switches
+          4750599229  instructions retired
+          3268526527  cycles elapsed
+            67273400  peak memory footprint

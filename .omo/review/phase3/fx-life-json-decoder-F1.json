@@ -1,0 +1,13 @@
+[
+ {
+  "id": "life-json-decoder-F1",
+  "verdict": "CONFIRMED",
+  "original_severity": "High",
+  "adjusted_severity": "High",
+  "reachable_default": true,
+  "documented_limitation": false,
+  "reason": "Independently reproduced via a woven Go 1.26.6 build with two real concurrent HTTP requests each running json.NewDecoder(r.Body).Decode: when B's Decoder shares A's start bucket and A finishes while B blocks in Read, the nested decodeState.unmarshal Bind claims A's freed probe as a duplicate slot without the document, so B's value is untainted (0/20; control 20/20; with the find-first fix 20/20). The README's 'colliding concurrent decodes drop provenance' covers admission failure, not an admitted decode losing taint with free capacity; this violates rule 4 on a supported path. Go 1.27 is not separately reachable only because the JSON hooks don't compile there (base-test-127-F1).",
+  "evidence_path": ".omo/review/evidence/fx-life-json-decoder-F1/head-go1.26.6.out.txt",
+  "repro_command": "cp .omo/review/evidence/fx-life-json-decoder-F1/zz_fx_f1_test.go iast/integration/testapp/ && cd iast/integration/testapp && GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -count=1 -run TestFxF1NestedBindConcurrentRequests -v ."
+ }
+]

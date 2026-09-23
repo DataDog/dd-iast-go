@@ -1,0 +1,46 @@
+diff --git 1/Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/internal/taint/request/owner.go 2/internal/taint/request/owner.go
+index a2264e5..4701fbe 100644
+--- 1/Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/internal/taint/request/owner.go
++++ 2/internal/taint/request/owner.go
+@@ -49,7 +49,11 @@ func NewManager(taintStore *store.Store) *Manager {
+ 	if taintStore == nil {
+ 		taintStore = store.New()
+ 	}
+-	return &Manager{store: taintStore}
++	m := &Manager{store: taintStore}
++	for i := range m.slots {
++		m.slots[i].index = uint8(i)
++	}
++	return m
+ }
+ 
+ // Acquire takes one of max non-blocking permits. max is clamped to [0,64].
+@@ -79,7 +83,6 @@ func (m *Manager) Acquire(max int) (Analysis, bool) {
+ 		}
+ 	}
+ 	slot := &m.slots[index]
+-	slot.index = uint8(index)
+ 	storeOwner := m.store.Acquire()
+ 	if storeOwner.Disabled() {
+ 		m.used.And(^(uint64(1) << index))
+
+
+$ go test -race -count=3 fx tests
+=== RUN   TestFxSlotIndexRaceURLQuery
+--- PASS: TestFxSlotIndexRaceURLQuery (0.09s)
+=== RUN   TestFxSlotIndexRaceReadAll
+--- PASS: TestFxSlotIndexRaceReadAll (0.06s)
+=== RUN   TestFxSlotIndexRaceURLQuery
+--- PASS: TestFxSlotIndexRaceURLQuery (0.08s)
+=== RUN   TestFxSlotIndexRaceReadAll
+--- PASS: TestFxSlotIndexRaceReadAll (0.05s)
+=== RUN   TestFxSlotIndexRaceURLQuery
+--- PASS: TestFxSlotIndexRaceURLQuery (0.08s)
+=== RUN   TestFxSlotIndexRaceReadAll
+--- PASS: TestFxSlotIndexRaceReadAll (0.05s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/request	1.998s
+
+
+$ go test -race ./internal/taint/request (whole pkg incl. fx tests)
+ok  	github.com/DataDog/dd-iast-go/internal/taint/request	1.747s

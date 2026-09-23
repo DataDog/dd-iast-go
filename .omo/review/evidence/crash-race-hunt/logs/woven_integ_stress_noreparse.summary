@@ -1,0 +1,7 @@
+=== iast/integration/testapp: go tool orchestrion go test -race -run TestRaceHuntConcurrentWovenRequests -v -count=2 -cpu=4,16 -timeout 10m .
+exit=0 secs=135
+races=/tmp/ddiast-review/wt/crash-race-hunt/_logs/woven_integ_stress_noreparse.out:0,/tmp/ddiast-review/wt/crash-race-hunt/_logs/woven_integ_stress_noreparse.time:0
+checkptr=/tmp/ddiast-review/wt/crash-race-hunt/_logs/woven_integ_stress_noreparse.out:0,/tmp/ddiast-review/wt/crash-race-hunt/_logs/woven_integ_stress_noreparse.time:0
+      1 ok  	github.com/DataDog/dd-iast-go/testapps/integration	67.258s
+           384483328  maximum resident set size
+            45761256  peak memory footprint

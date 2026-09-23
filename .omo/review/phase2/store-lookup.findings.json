@@ -1,0 +1,13 @@
+[
+  {
+    "id": "store-lookup-F1",
+    "severity": "High",
+    "category": "false-negative",
+    "location": "internal/taint/store/lookup.go:125-129",
+    "title": "Stale matches consume the live-owner snapshot budget",
+    "claim": "Lookup retains only four matching slots before owner and root liveness validation. Four stale matches can therefore cause a fifth live owner with the same key to be skipped, after which validation drops the stale entries and returns an empty snapshot.",
+    "evidence_path": ".omo/review/evidence/store-lookup/stale_fanout_repro.out",
+    "repro_command": "cd /tmp/ddiast-review/wt/store-lookup && GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go test -timeout 15m ./internal/taint/store -run '^TestReproLookupSkipsLiveOwnerAfterFourStaleMatches$' -count=1 -v",
+    "needs_repro": false
+  }
+]

@@ -1,0 +1,13 @@
+[
+ {
+  "id": "life-weak-gc-F3",
+  "verdict": "CONFIRMED",
+  "original_severity": "High",
+  "adjusted_severity": "High",
+  "reachable_default": false,
+  "documented_limitation": false,
+  "reason": "Reproduced end to end in a woven build with the real tracer and WithSpanPool(true). The weak.Pointer key identifies the span object, so a stale entry left on a finished root (re-created by the woven BindStartSpan after Finished) is inherited by the next request that reuses the object. Result: the agent received request B's span carrying request A's SQLi (bleed), or request B's own SQLi was dropped (false negative, no orphan fallback). Requires the opt-in experimental span pool. The finder's AnnotationFor/Report(ctx) trigger is unreachable from woven sinks at HEAD (Report callers pass nil ctx), but BindStartSpan is a reachable trigger.",
+  "evidence_path": ".omo/review/evidence/fx-life-weak-gc-F3/review_f3_pool_test.go",
+  "repro_command": "cp .omo/review/evidence/fx-life-weak-gc-F3/review_f3_pool_test.go iast/integration/testapp/ && cd iast/integration/testapp && GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go tool orchestrion go test -count=1 -timeout 10m -run 'TestReviewF3WovenSpanPool' -v ."
+ }
+]

@@ -1,0 +1,10 @@
+Run inside the private copy /tmp/ddiast-review/wt/base-bootstrap (deleted after
+the review; recreate with the rsync command from BRIEF.md):
+
+cd /tmp/ddiast-review/wt/base-bootstrap/iast/database/sql/testapp
+GOTOOLCHAIN=go1.26.6 go tool orchestrion go build -o /tmp/iast-bootstrap ./cmd/bootstrap
+go tool nm /tmp/iast-bootstrap | grep -F -f cmd/bootstrap/symbols.txt
+GOTOOLCHAIN=go1.26.6 go build -o /tmp/iast-bootstrap-plain ./cmd/bootstrap
+wc -c /tmp/iast-bootstrap /tmp/iast-bootstrap-plain
+
+Repeat verbatim in iast/os/exec/testapp and iast/integration/testapp.

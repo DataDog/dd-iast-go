@@ -1,0 +1,23 @@
+$ cd /tmp/ddiast-review/wt/fx-hooks-compile-matrix-F1/app && export GOFLAGS=-p=4 GOPROXY=off GOTOOLCHAIN=go1.26.6; go version; go list -m github.com/DataDog/orchestrion; /usr/bin/time -l timeout 1200 go tool orchestrion go build -o /dev/null . 2>&1 | grep -v '^ *[0-9]* *[a-z].*\(page\|signal\|swap\|block\|message\|context\|instruction\|cycles\|footprint\)' ; echo EXIT=${PIPESTATUS[0]}
+[rc=0]
+go version go1.26.6 darwin/arm64
+github.com/DataDog/orchestrion v1.13.0
+loading injector configuration: in "github.com/DataDog/dd-iast-go" imported from "/private/tmp/ddiast-review/wt/fx-hooks-compile-matrix-F1/app/orchestrion.tool.go": in "github.com/DataDog/dd-iast-go/iast/propagation" imported from "/tmp/ddiast-review/wt/fx-hooks-compile-matrix-F1/ddiast/orchestrion.tool.go": yaml.Decode "/tmp/ddiast-review/wt/fx-hooks-compile-matrix-F1/ddiast/iast/propagation/orchestrion.yml": unknown injection point type "string-concat"
+go: error obtaining buildID for go tool compile: exit status 255
+exit status 1
+        3.87 real         1.38 user         3.34 sys
+            65748992  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+               96717  page reclaims
+                 636  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   6  messages sent
+                   5  messages received
+                3237  signals received
+            19355483  instructions retired
+             9596475  cycles elapsed
+EXIT=1

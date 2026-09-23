@@ -1,0 +1,6 @@
+=== RUN   TestJoinedEvidenceFindsFifthBoundOwner
+    zz_review_owner_fanout_test.go:66: fifth owner reports = 0, snapshot owners = 4, orphan spans = 1; want 1 report on fifth owner
+--- FAIL: TestJoinedEvidenceFindsFifthBoundOwner (0.05s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/internal/vulnerability	0.578s
+FAIL

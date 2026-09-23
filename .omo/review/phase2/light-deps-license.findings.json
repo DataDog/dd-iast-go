@@ -1,0 +1,13 @@
+[
+  {
+    "id": "light-deps-license-F1",
+    "severity": "High",
+    "category": "config",
+    "location": "go.mod:14",
+    "title": "Orchestrion pin is from an unmerged topic branch",
+    "claim": "The pinned Orchestrion revision is on origin/romain.marcadier/iast-operator-join-points and is not an ancestor of origin/main, so this dependency blocks release until a merged release is available.",
+    "evidence_path": ".omo/review/evidence/light-deps-license/orchestrion-pin-provenance.txt",
+    "repro_command": "git -C /Users/eliott.bouhana/go/src/github.com/DataDog/orchestrion merge-base --is-ancestor 23afa71d6dcb origin/main",
+    "needs_repro": false
+  }
+]

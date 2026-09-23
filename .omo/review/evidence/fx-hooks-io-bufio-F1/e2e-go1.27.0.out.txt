@@ -1,0 +1,10 @@
+$ cd iast/integration/testapp && GOFLAGS=-p=4 GOTOOLCHAIN=go1.27.0 go tool orchestrion go test -timeout 15m -count=1 -v -run TestFX .
+go version go1.27.0 darwin/arm64
+# encoding/json
+$WORK/b104/orchestrion/src/encoding/json/<generated>:2: dec.r undefined (type *Decoder has no field or method r)
+$WORK/b104/orchestrion/src/encoding/json/<generated>:2: dec.d undefined (type *Decoder has no field or method d)
+$WORK/b104/orchestrion/src/encoding/json/<generated>:3: dec.d undefined (type *Decoder has no field or method d)
+exit status 2
+FAIL	github.com/DataDog/dd-iast-go/testapps/integration [build failed]
+FAIL
+exit status 1

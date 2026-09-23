@@ -1,0 +1,13 @@
+[
+  {
+    "id": "store-lookup-F1",
+    "verdict": "CONFIRMED",
+    "original_severity": "High",
+    "adjusted_severity": "Medium",
+    "reachable_default": false,
+    "documented_limitation": false,
+    "reason": "Mechanism confirmed at HEAD 2e23b46 and independently reproduced on three surfaces (store API, propagation CopyString path, request body-adoption path): Store.Lookup fills its four-entry candidate window with unvalidated matching slots before owner/root liveness validation (lookup.go:117-129), so four stale (finished-owner) slots can hide a fifth live owner and return an empty snapshot while MayContain still reports a hit. However, the state requires five owners holding index slots on the same address key simultaneously: putWindow reclaims dead-owner same-key slots on the next insert (proven by control test), default DD_IAST_MAX_CONCURRENT_REQUESTS=2 caps concurrent owners, and every woven adoption site (source taints, propagation fanout, writer and reader/body publishes) caps same-address adoptions at MaxSnapshotOwners=4 via fixed refs/snapshot arrays, so customer-reachable code cannot construct it. Not a documented limitation (the authors' own test asserts stale entries must not hide live owners). Real internal-contract false negative, unreachable from customer code: Medium, not High.",
+    "evidence_path": ".omo/review/evidence/fx-store-lookup-F1/repro_propagation.out",
+    "repro_command": "cp .omo/review/evidence/fx-store-lookup-F1/fx_stale_fanout_repro_test.go <worktree>/internal/taint/propagation/ && cd <worktree> && GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go test -timeout 15m ./internal/taint/propagation -run '^TestFx' -count=1 -v"
+  }
+]

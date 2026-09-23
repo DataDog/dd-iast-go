@@ -1,0 +1,27 @@
+File: store.test
+Type: delay
+Time: 2026-09-23 12:02:30 CEST
+Showing nodes accounting for 154.45s, 100% of 154.45s total
+Dropped 15 nodes (cum <= 0.77s)
+Showing top 20 nodes out of 29
+      flat  flat%   sum%        cum   cum%
+    61.57s 39.86% 39.86%     61.57s 39.86%  runtime.chanrecv1 /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/chan.go:509
+    51.08s 33.07% 72.93%     51.08s 33.07%  sync.(*Mutex).Lock /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/sync/mutex.go:46 (inline)
+    41.80s 27.07%   100%     41.80s 27.07%  sync.(*WaitGroup).Wait /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/sync/waitgroup.go:206
+         0     0%   100%     51.06s 33.06%  github.com/DataDog/dd-iast-go/internal/taint/store.(*Owner).Finish /private/tmp/ddiast-review/wt/perf-contention/internal/taint/store/owner.go:182
+         0     0%   100%      5.31s  3.44%  github.com/DataDog/dd-iast-go/internal/taint/store.BenchmarkPCDeriveOwnOwner /private/tmp/ddiast-review/wt/perf-contention/internal/taint/store/zz_perf_contention_test.go:114
+         0     0%   100%      5.09s  3.30%  github.com/DataDog/dd-iast-go/internal/taint/store.BenchmarkPCLookupHit /private/tmp/ddiast-review/wt/perf-contention/internal/taint/store/zz_perf_contention_test.go:73
+         0     0%   100%      5.74s  3.71%  github.com/DataDog/dd-iast-go/internal/taint/store.BenchmarkPCLookupSameKey /private/tmp/ddiast-review/wt/perf-contention/internal/taint/store/zz_perf_contention_test.go:95
+         0     0%   100%      5.53s  3.58%  github.com/DataDog/dd-iast-go/internal/taint/store.BenchmarkPCMayContainHit /private/tmp/ddiast-review/wt/perf-contention/internal/taint/store/zz_perf_contention_test.go:52
+         0     0%   100%      6.09s  3.94%  github.com/DataDog/dd-iast-go/internal/taint/store.BenchmarkPCMixedReadWrite /private/tmp/ddiast-review/wt/perf-contention/internal/taint/store/zz_perf_contention_test.go:148
+         0     0%   100%      6.99s  4.53%  github.com/DataDog/dd-iast-go/internal/taint/store.BenchmarkPCRequestLifecycle /private/tmp/ddiast-review/wt/perf-contention/internal/taint/store/zz_perf_contention_test.go:257
+         0     0%   100%      7.05s  4.57%  github.com/DataDog/dd-iast-go/internal/taint/store.BenchmarkPCRequestLifecycleOverflow /private/tmp/ddiast-review/wt/perf-contention/internal/taint/store/zz_perf_contention_test.go:265
+         0     0%   100%     14.04s  9.09%  github.com/DataDog/dd-iast-go/internal/taint/store.pcLifecycle /private/tmp/ddiast-review/wt/perf-contention/internal/taint/store/zz_perf_contention_test.go:207
+         0     0%   100%        51s 33.02%  github.com/DataDog/dd-iast-go/internal/taint/store.pcLifecycle.func1 /private/tmp/ddiast-review/wt/perf-contention/internal/taint/store/zz_perf_contention_test.go:244
+         0     0%   100%     61.57s 39.86%  main.main _testmain.go:214
+         0     0%   100%     61.57s 39.86%  runtime.main /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/proc.go:290
+         0     0%   100%     61.03s 39.52%  testing.(*B).Run /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/testing/benchmark.go:868
+         0     0%   100%     41.80s 27.07%  testing.(*B).RunParallel /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/testing/benchmark.go:985
+         0     0%   100%     51.08s 33.07%  testing.(*B).RunParallel.func1 /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/testing/benchmark.go:982
+         0     0%   100%     49.68s 32.17%  testing.(*B).doBench /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/testing/benchmark.go:297
+         0     0%   100%     41.71s 27.01%  testing.(*B).doBench.gowrap1 /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/testing/benchmark.go:296

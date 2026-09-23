@@ -1,0 +1,24 @@
+[
+  {
+    "id": "prop-engine-core-F1",
+    "verdict": "CONFIRMED",
+    "original_severity": "High",
+    "adjusted_severity": "High",
+    "reachable_default": true,
+    "documented_limitation": false,
+    "reason": "The Go 1.26.6 woven reproducer makes 32 empty string and byte Split outputs precede the only non-empty alias; both parts[32] values are clean because the helpers stop at raw output index 32 instead of 32 non-empty windows.",
+    "evidence_path": ".omo/review/evidence/fx-prop-engine-core-F1/go1.26.6-woven.out.txt",
+    "repro_command": "GOWORK=off GOTOOLCHAIN=go1.26.6 GOFLAGS='-p=4' /usr/bin/time -l go -C /tmp/ddiast-review/wt/fx-prop-engine-core-F1 tool orchestrion go test ./iast/propagation -run '^TestReviewFxSplitKeepsFirstNonEmptyAfterEmptyPrefix$' -count=1 -timeout=5m -v"
+  },
+  {
+    "id": "prop-string-exact-F1",
+    "verdict": "CONFIRMED",
+    "original_severity": "High",
+    "adjusted_severity": "High",
+    "reachable_default": true,
+    "documented_limitation": false,
+    "reason": "The string subtest of the same independent woven reproducer observes parts[32] == \"attack\" with tainted=false. This is the string-only duplicate of prop-engine-core-F1.",
+    "evidence_path": ".omo/review/evidence/fx-prop-engine-core-F1/go1.26.6-woven.out.txt",
+    "repro_command": "GOWORK=off GOTOOLCHAIN=go1.26.6 GOFLAGS='-p=4' /usr/bin/time -l go -C /tmp/ddiast-review/wt/fx-prop-engine-core-F1 tool orchestrion go test ./iast/propagation -run '^TestReviewFxSplitKeepsFirstNonEmptyAfterEmptyPrefix$' -count=1 -timeout=5m -v"
+  }
+]

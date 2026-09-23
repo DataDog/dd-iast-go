@@ -1,0 +1,13 @@
+Command:
+cd /tmp/ddiast-review/wt/sink-redaction-source && env -u DD_IAST_REDACTION_ENABLED -u DD_IAST_REDACTION_NAME_PATTERN -u DD_IAST_REDACTION_VALUE_PATTERN -u DD_IAST_REDACTION_KEYS_REGEXP -u DD_IAST_REDACTION_VALUES_REGEXP GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 go test ./internal/taint/redaction -run TestReview -count=1 -timeout 15m
+
+Output:
+--- FAIL: TestReviewRedactionPatternMustNotReproduceSecret (0.00s)
+    review_pattern_and_name_leak_test.go:34: LEAK: redacted password value was serialized in a pattern: {"sources":[{"origin":"http.request.parameter","name":"password","pattern":"abc","redacted":true}],"vulnerabilities":[{"type":"SQL_INJECTION","hash":0,"evidence":{"valueParts":[{"pattern":"abc","redacted":true,"source":0}]}}]}
+--- FAIL: TestReviewSensitiveSourceNameMustNotLeaveProcess (0.00s)
+    review_pattern_and_name_leak_test.go:59: LEAK: source name marked sensitive was serialized unchanged: {"sources":[{"origin":"http.request.parameter","name":"token:abcdefghijklm","pattern":"abcdefg","redacted":true}],"vulnerabilities":[{"type":"SQL_INJECTION","hash":0,"evidence":{"valueParts":[{"pattern":"abcdefg","redacted":true,"source":0}]}}]}
+--- FAIL: TestReviewSQLCommentSecretMustBeRedacted (0.00s)
+    review_sql_comment_leak_test.go:41: LEAK: default redaction serialized SQL comment secret: {"sources":[{"origin":"http.request.parameter","name":"parameter","value":"hunter2"}],"vulnerabilities":[{"type":"SQL_INJECTION","hash":0,"evidence":{"valueParts":[{"value":"SELECT "},{"pattern":"*","redacted":true},{"value":" -- "},{"value":"hunter2","source":0},{"value":"\n"}]}}]}
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/redaction	1.929s
+FAIL

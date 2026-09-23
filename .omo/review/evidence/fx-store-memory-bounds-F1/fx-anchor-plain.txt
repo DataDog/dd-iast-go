@@ -1,0 +1,14 @@
+=== RUN   TestFxAnchorRetention
+=== RUN   TestFxAnchorRetention/reader
+    zz_fx_anchor_repro_test.go:75: reader control: before=917504 control=917504 drift=0 chargeBefore=0
+    zz_fx_anchor_repro_test.go:97: reader bound: retained=115843072 delta=114925568 incrementalCharge=0
+    zz_fx_anchor_repro_test.go:103: reader finish: heap=15179776 released=100663296 charge=-16
+=== RUN   TestFxAnchorRetention/buffer
+    zz_fx_anchor_repro_test.go:116: buffer control: before=15212544 control=15212544 drift=0 chargeBefore=0
+    zz_fx_anchor_repro_test.go:139: buffer tracked: retained=115875840 delta=100663296 incrementalCharge=64
+    zz_fx_anchor_repro_test.go:145: buffer finish: heap=15212544 released=100663296 charge=-16
+--- PASS: TestFxAnchorRetention (1.36s)
+    --- PASS: TestFxAnchorRetention/reader (1.04s)
+    --- PASS: TestFxAnchorRetention/buffer (0.32s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/store	1.960s

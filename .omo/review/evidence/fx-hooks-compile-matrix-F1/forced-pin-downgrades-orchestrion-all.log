@@ -1,0 +1,5 @@
+$ cp -r /tmp/ddiast-review/wt/fx-hooks-compile-matrix-F1/app /tmp/ddiast-review/wt/fx-hooks-compile-matrix-F1/appc && cd /tmp/ddiast-review/wt/fx-hooks-compile-matrix-F1/appc && export GOPROXY=off GOTOOLCHAIN=go1.26.6 GOFLAGS=-mod=mod; timeout 300 go get github.com/DataDog/orchestrion@v1.12.2-0.20260828141217-23afa71d6dcb 2>&1; grep -n 'orchestrion/all\|DataDog/orchestrion ' go.mod
+[rc=0]
+go: removed github.com/DataDog/dd-trace-go/orchestrion/all/v2 v2.11.0-rc.1
+go: downgraded github.com/DataDog/orchestrion v1.13.0 => v1.12.2-0.20260828141217-23afa71d6dcb
+9:	github.com/DataDog/orchestrion v1.12.2-0.20260828141217-23afa71d6dcb

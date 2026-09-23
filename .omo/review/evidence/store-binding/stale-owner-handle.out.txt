@@ -1,0 +1,11 @@
+Command (from /tmp/ddiast-review/wt/store-binding):
+GOTOOLCHAIN=go1.26.6 go test -run TestReviewStaleOwnerCannotMisidentifyAndChargeReusedSlot -count=1 -v -timeout=2m ./internal/taint/store
+
+=== RUN   TestReviewStaleOwnerCannotMisidentifyAndChargeReusedSlot
+    store_binding_stale_review_test.go:25: previous ID=1 new ID=2 stale.ID()=2 new owner bytes drops=1
+    store_binding_stale_review_test.go:30: stale owner handle exposed a new identity and changed its counters
+--- FAIL: TestReviewStaleOwnerCannotMisidentifyAndChargeReusedSlot (0.00s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/store	0.693s
+FAIL
+Command exited with code 1

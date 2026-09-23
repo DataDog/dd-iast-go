@@ -1,0 +1,13 @@
+[
+  {
+    "id": "sink-redaction-source-F1",
+    "verdict": "CONFIRMED",
+    "original_severity": "Critical",
+    "adjusted_severity": "Critical",
+    "reachable_default": true,
+    "documented_limitation": false,
+    "reason": "Mechanism verified at HEAD 2e23b46 (source.go:110 uses alphanumericPattern(len(value)) as model.Source.Pattern; source.go:213-214/279-293 slice the same fixed alphabet for evidence ValuePart.Pattern; no check compares pattern to value). Independently reproduced twice: (1) unit test with the real default redaction configuration — serialized event contains \"pattern\":\"abc\",\"redacted\":true for a password source whose value is abc, in both the source and the evidence part; (2) woven orchestrion e2e on Go 1.26.6 — HTTP request parameter password=abc concatenated into a database/sql query yields a serialized vulnerability event containing the raw password \"abc\" as the redacted pattern. Leak requires the secret (or tainted substring) to equal a window of the fixed alphabet (e.g. a, ab, abc ... abcd...j), a narrow class that includes top-10 common passwords; for other secrets only length/offset metadata leaks. Not documented in README or phase1/01-design-intent.md; breaks the 'redacted before leaving the process' product rule. Single root cause distinct from phase-2 F2 (source name serialization) and F3 (SQL comment analyzer coverage).",
+    "evidence_path": ".omo/review/evidence/fx-sink-redaction-source-F1/woven-e2e-pattern-leak.out.txt",
+    "repro_command": "cd /tmp/ddiast-review/wt/fx-sink-redaction-source-F1/iast/integration/testapp && env -u DD_IAST_REDACTION_ENABLED -u DD_IAST_REDACTION_NAME_PATTERN -u DD_IAST_REDACTION_VALUE_PATTERN -u DD_IAST_REDACTION_KEYS_REGEXP -u DD_IAST_REDACTION_VALUES_REGEXP GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -run TestFXPasswordPatternLeakE2E -count=1 -v -timeout 15m ."
+  }
+]

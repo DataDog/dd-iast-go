@@ -1,0 +1,29 @@
+COMMAND (DD_IAST_REQUEST_SAMPLING=100 DD_IAST_MAX_CONCURRENT_REQUESTS=64, no production patch)
+cd /tmp/ddiast-review/wt/fx-store-memory-bounds-F2 && ulimit -n 8192; env GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 DD_IAST_REQUEST_SAMPLING=100 DD_IAST_MAX_CONCURRENT_REQUESTS=64 timeout 900 go test -count=1 -timeout 12m -v -run '^TestFxF2(Burst|HTTPServer)$' ./internal/spans
+
+CAPTURED OUTPUT (filtered)
+    zz_fx_f2_test.go:100: HTTP configured=64 trigger=48 requests=64 storedAnnotations=64 sampled=54 ratio=1.00 heapDelta=18120704
+    zz_fx_f2_test.go:100: HTTP configured=64 trigger=48 requests=64 storedAnnotations=64 sampled=64 ratio=1.00 heapDelta=1941504
+    zz_fx_f2_test.go:100: HTTP configured=64 trigger=48 requests=64 storedAnnotations=64 sampled=61 ratio=1.00 heapDelta=2285568
+    zz_fx_f2_test.go:100: HTTP configured=64 trigger=48 requests=64 storedAnnotations=64 sampled=64 ratio=1.00 heapDelta=2564096
+    zz_fx_f2_test.go:100: HTTP configured=64 trigger=48 requests=64 storedAnnotations=64 sampled=62 ratio=1.00 heapDelta=2260992
+    zz_fx_f2_test.go:100: HTTP configured=64 trigger=48 requests=256 storedAnnotations=64 sampled=64 ratio=1.00 heapDelta=8273920
+    zz_fx_f2_test.go:100: HTTP configured=64 trigger=48 requests=256 storedAnnotations=64 sampled=63 ratio=1.00 heapDelta=5316608
+    zz_fx_f2_test.go:100: HTTP configured=64 trigger=48 requests=256 storedAnnotations=64 sampled=64 ratio=1.00 heapDelta=4988928
+    zz_fx_f2_test.go:100: HTTP configured=64 trigger=48 requests=256 storedAnnotations=64 sampled=63 ratio=1.00 heapDelta=4931584
+    zz_fx_f2_test.go:100: HTTP configured=64 trigger=48 requests=256 storedAnnotations=64 sampled=64 ratio=1.00 heapDelta=5046272
+    zz_fx_f2_test.go:100: HTTP configured=64 trigger=48 requests=1024 storedAnnotations=64 sampled=64 ratio=1.00 heapDelta=28663808
+    zz_fx_f2_test.go:100: HTTP configured=64 trigger=48 requests=1024 storedAnnotations=64 sampled=61 ratio=1.00 heapDelta=17268736
+    zz_fx_f2_test.go:100: HTTP configured=64 trigger=48 requests=1024 storedAnnotations=64 sampled=64 ratio=1.00 heapDelta=17539072
+    zz_fx_f2_test.go:100: HTTP configured=64 trigger=48 requests=1024 storedAnnotations=64 sampled=58 ratio=1.00 heapDelta=17145856
+    zz_fx_f2_test.go:100: HTTP configured=64 trigger=48 requests=1024 storedAnnotations=64 sampled=63 ratio=1.00 heapDelta=17203200
+--- PASS: TestFxF2HTTPServer (1.42s)
+    zz_fx_f2_test.go:175: BURST path=BindScopeFromContext configured=64 goroutines=64 maxStoredAnnotations=64 sampledAtMax=64 ratio=1.00 heapDeltaAtMax=-12165120 (10 trials)
+    zz_fx_f2_test.go:175: BURST path=BindScopeFromContext configured=64 goroutines=1024 maxStoredAnnotations=65 sampledAtMax=0 ratio=1.02 heapDeltaAtMax=294912 (10 trials)
+    zz_fx_f2_test.go:175: BURST path=BindScopeFromContext configured=64 goroutines=8192 maxStoredAnnotations=65 sampledAtMax=0 ratio=1.02 heapDeltaAtMax=1974272 (10 trials)
+    zz_fx_f2_test.go:175: BURST path=AnnotationFor configured=64 goroutines=64 maxStoredAnnotations=64 sampledAtMax=64 ratio=1.00 heapDeltaAtMax=122880 (10 trials)
+    zz_fx_f2_test.go:175: BURST path=AnnotationFor configured=64 goroutines=1024 maxStoredAnnotations=67 sampledAtMax=67 ratio=1.05 heapDeltaAtMax=303104 (10 trials)
+    zz_fx_f2_test.go:175: BURST path=AnnotationFor configured=64 goroutines=8192 maxStoredAnnotations=67 sampledAtMax=67 ratio=1.05 heapDeltaAtMax=360448 (10 trials)
+--- PASS: TestFxF2Burst (3.92s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/spans	5.852s

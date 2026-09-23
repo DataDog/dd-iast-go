@@ -1,0 +1,5 @@
+=== RUN   TestFidelityDifferentialFmt
+    zz_fidelity_diff_test.go:774: fmt: 18000 differential cases
+--- PASS: TestFidelityDifferentialFmt (135.32s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/iast/propagation	135.926s

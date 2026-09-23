@@ -1,0 +1,34 @@
+=== RUN   TestFxSQLCommentTailRedactedEndToEnd
+    fx_comment_leak_e2e_test.go:43: part: {Value:SELECT * FROM Users WHERE email = ' Pattern: Redacted:false Truncated: SourceIndex:<nil> SecureMarks:[]}
+    fx_comment_leak_e2e_test.go:43: part: {Value: Pattern:abcdefghijkl Redacted:true Truncated: SourceIndex:0x276de1c476c0 SecureMarks:[]}
+    fx_comment_leak_e2e_test.go:43: part: {Value:' AND password = '81dc9bdb52d04dc20036dbd8313ed055' AND deletedAt IS NULL Pattern: Redacted:false Truncated: SourceIndex:<nil> SecureMarks:[]}
+    fx_comment_leak_e2e_test.go:43: secret "81dc9bdb52d04dc20036dbd8313ed055" appears unredacted in the evidence that leaves the process
+--- FAIL: TestFxSQLCommentTailRedactedEndToEnd (0.01s)
+=== RUN   TestFxSQLBlockCommentRedactedEndToEnd
+    fx_comment_leak_e2e_test.go:54: part: {Value:SELECT * FROM Users WHERE email = ' Pattern: Redacted:false Truncated: SourceIndex:<nil> SecureMarks:[]}
+    fx_comment_leak_e2e_test.go:54: part: {Value: Pattern:abcdefghijkl Redacted:true Truncated: SourceIndex:0x276de1c46498 SecureMarks:[]}
+    fx_comment_leak_e2e_test.go:54: part: {Value:' /* token='81dc9bdb52d04dc20036dbd8313ed055' */ Pattern: Redacted:false Truncated: SourceIndex:<nil> SecureMarks:[]}
+    fx_comment_leak_e2e_test.go:54: secret "81dc9bdb52d04dc20036dbd8313ed055" appears unredacted in the evidence that leaves the process
+--- FAIL: TestFxSQLBlockCommentRedactedEndToEnd (0.01s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/testapps/integration	0.905s
+FAIL
+exit status 1
+       28.68 real         6.07 user        11.01 sys
+           364904448  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              374929  page reclaims
+               29059  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                2482  messages sent
+                2511  messages received
+                8470  signals received
+               13108  voluntary context switches
+              278392  involuntary context switches
+          5472031121  instructions retired
+          3411922876  cycles elapsed
+            40075984  peak memory footprint

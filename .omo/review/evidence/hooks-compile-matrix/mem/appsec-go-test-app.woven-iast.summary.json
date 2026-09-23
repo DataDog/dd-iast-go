@@ -1,0 +1,112 @@
+{
+ "peak_tree_rss_kb": 2472608,
+ "peak_tree_at_s": 45.9,
+ "peak_tree_top": [
+  [
+   1348576,
+   [
+    "orchestrion-toolexec/compile",
+    "modernc.org/sqlite/lib"
+   ]
+  ],
+  [
+   663424,
+   [
+    "compile",
+    "modernc.org/sqlite/lib"
+   ]
+  ],
+  [
+   61664,
+   [
+    "orchestrion:tool orchestrion",
+    ""
+   ]
+  ],
+  [
+   57744,
+   [
+    "orchestrion:build -toolexec",
+    ""
+   ]
+  ],
+  [
+   55488,
+   [
+    "orchestrion-toolexec/compile",
+    "github.com/DataDog/dd-trace-go/v2/instrumentation/httptrace"
+   ]
+  ],
+  [
+   50128,
+   [
+    "orchestrion-toolexec/compile",
+    "github.com/DataDog/dd-trace-go/contrib/google.golang.org/grpc/v2"
+   ]
+  ]
+ ],
+ "top_process_peaks_kb": [
+  [
+   "orchestrion-toolexec/compile modernc.org/sqlite/lib",
+   1348576
+  ],
+  [
+   "compile github.com/nats-io/nats-server/v2/server",
+   688224
+  ],
+  [
+   "compile modernc.org/sqlite/lib",
+   663424
+  ],
+  [
+   "link ",
+   602128
+  ],
+  [
+   "(link) ",
+   558944
+  ],
+  [
+   "compile runtime",
+   278464
+  ],
+  [
+   "dsymutil ",
+   214272
+  ],
+  [
+   "compile go.opentelemetry.io/collector/pdata/internal",
+   199728
+  ],
+  [
+   "(compile) ",
+   182960
+  ],
+  [
+   "orchestrion-toolexec/compile modernc.org/libc",
+   159280
+  ],
+  [
+   "compile crypto/tls",
+   158800
+  ],
+  [
+   "orchestrion-toolexec/compile net/http",
+   140208
+  ],
+  [
+   "orchestrion-toolexec/compile go.opentelemetry.io/collector/pdata/internal",
+   134176
+  ],
+  [
+   "orchestrion-toolexec/compile crypto/internal/fips140/nistec",
+   105392
+  ],
+  [
+   "orchestrion-toolexec/compile runtime",
+   102608
+  ]
+ ],
+ "samples": 45,
+ "duration_s": 56.4
+}

@@ -1,0 +1,13 @@
+[
+  {
+    "id": "hooks-yml-writers-F1",
+    "verdict": "CONFIRMED",
+    "original_severity": "High",
+    "adjusted_severity": "High",
+    "reachable_default": true,
+    "documented_limitation": true,
+    "reason": "Mechanism real at HEAD 2e23b46 and independently reproduced: typed Anchor (iast/propagation/writer.go:213-214) plus retained receiver (internal/taint/store/writer.go:37) pin the entire caller allocation while the store charges only sizeClass(visible Capacity). Woven reproducer on Go 1.26.6 retains 112 MiB across GC with all customer references dropped (24 MiB envelope exceeded ~4.7x, arbitrary factor as caller allocations grow); store-level reproducer shows charged=128 bytes, retained=128 MiB on Go 1.26.6 and 1.27.0, released by owner finish. Documented as a deliberate trade-off (01-design-intent.md: 'full allocation retention is not charged exactly'), but the documented justification (bounded anchor counts) does not bound retained bytes and the design's own checklist requires retained heap within the 24 MiB envelope, so it violates product rule 3. Not Critical: release is synchronous at owner finish and the retained memory is caller-owned; requires the interior-view Buffer pattern (buffers with visible capacity over 64 KiB are untracked).",
+    "evidence_path": ".omo/review/evidence/fx-hooks-yml-writers-F1/",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -count=1 -timeout=15m ./iast/propagation -run TestFxBufferInteriorViewRetainsCallerAllocation -v"
+  }
+]

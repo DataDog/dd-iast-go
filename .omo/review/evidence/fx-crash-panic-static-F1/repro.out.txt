@@ -1,0 +1,253 @@
+# fx-crash-panic-static-F1 captured output
+
+## go1.26.6 builds
+$ cd <copy>/_repro/f1verify && GOFLAGS='-p=4 -mod=mod' GOTOOLCHAIN=go1.26.6 GOPROXY=off /usr/bin/time -l timeout 1500 go tool orchestrion go build -o shop . 2>&1 | tail -25
+        7.20 real         4.80 user         8.64 sys
+           441303040  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              446320  page reclaims
+               32700  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                 223  messages sent
+                 253  messages received
+               13098  signals received
+               13049  voluntary context switches
+              173871  involuntary context switches
+            20324161  instructions retired
+            12150531  cycles elapsed
+             1212728  peak memory footprint
+
+$ cd <copy>/_repro/f1verify && GOFLAGS='-p=4 -mod=mod' GOTOOLCHAIN=go1.26.6 GOPROXY=off /usr/bin/time -l timeout 1500 go tool orchestrion go build -o shop . 2>&1 | grep -E 'error|real|maximum resident|cannot|\.go:' | head -20; ls -la shop
+       26.88 real         4.81 user         7.25 sys
+           426606592  maximum resident set size
+-rwxr-xr-x 1 eliott.bouhana staff 22248066 Sep 23 16:45 shop
+
+$ cd <copy>/_repro/f1verify && GOFLAGS='-p=4 -mod=mod' GOTOOLCHAIN=go1.27.0 GOPROXY=off /usr/bin/time -l timeout 1500 go tool orchestrion go build -o shop127 . 2>&1 | grep -E 'error|real|maximum resident|cannot|\.go:' | head -20; ls -la shop127
+       67.89 real        24.23 user        20.63 sys
+           287916032  maximum resident set size
+ls: cannot access 'shop127': No such file or directory
+
+$ cd <copy>/_repro/f1verify && GOFLAGS='-p=4 -mod=mod' GOTOOLCHAIN=go1.26.6 GOPROXY=off /usr/bin/time -l timeout 1500 go tool orchestrion go build -o shop . 2>&1 | tail -20 | grep -E 'error|real|maximum resident|\.go:'; ls -la shop
+       38.01 real         6.89 user         9.27 sys
+           431964160  maximum resident set size
+-rwxr-xr-x 1 eliott.bouhana staff 22248066 Sep 23 16:48 shop
+
+
+## go1.26.6 runs
+$ REPRO=  ./shop
+EXIT=0
+MAIN_OK fingerprint=skipped des=false early=0000 runtime=b4a6
+2026/09/23 16:44:48 Datadog Tracer v2.11.0-rc.1 WARN: appsec: error while flushing SCA Security Data: Post "http://localhost:8126/telemetry/proxy/api/v2/apmtelemetry": dial tcp 127.0.0.1:8126: connect: connection refused
+2026/09/23 16:44:48 Datadog Tracer v2.11.0-rc.1 ERROR: lost 1 traces: Post "http://localhost:8126/v0.4/traces": dial tcp 127.0.0.1:8126: connect: connection refused (occurred: 23 Sep 26 16:44 CEST)
+2026/09/23 16:44:48 Datadog Tracer v2.11.0-rc.1 ERROR: loading features: Get "http://localhost:8126/info": dial tcp 127.0.0.1:8126: connect: connection refused (occurred: 23 Sep 26 16:44 CEST)
+
+$ REPRO=sha1  ./shop
+EXIT=2
+panic: interface conversion: interface {} is nil, not *tracer.Tracer
+
+goroutine 1 [running]:
+github.com/DataDog/dd-trace-go/v2/ddtrace/internal.GetGlobalTracer[...](...)
+	/Users/eliott.bouhana/go/pkg/mod/github.com/!data!dog/dd-trace-go/v2@v2.11.0-rc.1/ddtrace/internal/globaltracer.go:43
+github.com/DataDog/dd-trace-go/v2/ddtrace/tracer.getGlobalTracer(...)
+	/Users/eliott.bouhana/go/pkg/mod/github.com/!data!dog/dd-trace-go/v2@v2.11.0-rc.1/ddtrace/tracer/globaltracer.go:22
+github.com/DataDog/dd-trace-go/v2/ddtrace/tracer.StartSpan({0x100d1cfd6?, 0x10079b400?}, {0x2fabcd630e70?, 0x100cc8d44?, 0x1015eba28?})
+	/Users/eliott.bouhana/go/pkg/mod/github.com/!data!dog/dd-trace-go/v2@v2.11.0-rc.1/ddtrace/tracer/tracer.go:468 +0xb8
+github.com/DataDog/dd-iast-go/internal/spans.NewOrphanVulnerabilitySpan()
+	/tmp/ddiast-review/wt/fx-crash-panic-static-F1/internal/spans/vulnerability.go:18 +0xf0
+github.com/DataDog/dd-iast-go/internal/vulnerability.Report({0x0?, 0x0?}, 0x20, {0x100d17ad4, 0x5}, 0x1015f4df8, {{0x100d18247, 0x6}, {0x100d62a58, 0x0}, ...})
+	/tmp/ddiast-review/wt/fx-crash-panic-static-F1/internal/vulnerability/report.go:47 +0xa0
+github.com/DataDog/dd-iast-go/iast/crypto/hash.ReportWeakHash({0x0, 0x0}, 0x100d17a6b?)
+	/tmp/ddiast-review/wt/fx-crash-panic-static-F1/iast/crypto/hash/hash.go:19 +0x78
+crypto/sha1.New()
+	<generated>:2 +0x28
+github.com/acme/shop/digest.compute()
+	/tmp/ddiast-review/wt/fx-crash-panic-static-F1/_repro/f1verify/digest/digest.go:16 +0x48
+github.com/acme/shop/digest.init()
+	/tmp/ddiast-review/wt/fx-crash-panic-static-F1/_repro/f1verify/digest/digest.go:10 +0x1c
+
+$ REPRO=des  ./shop
+EXIT=0
+MAIN_OK fingerprint=skipped des=true early=0000 runtime=b4a6
+2026/09/23 16:44:49 Datadog Tracer v2.11.0-rc.1 WARN: appsec: error while flushing SCA Security Data: Post "http://localhost:8126/telemetry/proxy/api/v2/apmtelemetry": dial tcp 127.0.0.1:8126: connect: connection refused
+2026/09/23 16:44:49 Datadog Tracer v2.11.0-rc.1 ERROR: loading features: Get "http://localhost:8126/info": dial tcp 127.0.0.1:8126: connect: connection refused (occurred: 23 Sep 26 16:44 CEST)
+2026/09/23 16:44:49 Datadog Tracer v2.11.0-rc.1 ERROR: lost 1 traces: Post "http://localhost:8126/v0.4/traces": dial tcp 127.0.0.1:8126: connect: connection refused (occurred: 23 Sep 26 16:44 CEST)
+
+$ REPRO=early  ./shop
+EXIT=0
+MAIN_OK fingerprint=skipped des=false early=2b3d runtime=b4a6
+2026/09/23 16:44:49 Datadog Tracer v2.11.0-rc.1 WARN: appsec: error while flushing SCA Security Data: Post "http://localhost:8126/telemetry/proxy/api/v2/apmtelemetry": dial tcp 127.0.0.1:8126: connect: connection refused
+2026/09/23 16:44:49 Datadog Tracer v2.11.0-rc.1 ERROR: loading features: Get "http://localhost:8126/info": dial tcp 127.0.0.1:8126: connect: connection refused (occurred: 23 Sep 26 16:44 CEST)
+2026/09/23 16:44:49 Datadog Tracer v2.11.0-rc.1 ERROR: lost 1 traces: Post "http://localhost:8126/v0.4/traces": dial tcp 127.0.0.1:8126: connect: connection refused (occurred: 23 Sep 26 16:44 CEST)
+
+$ REPRO=sha1 DD_IAST_ENABLED=false ./shop
+EXIT=0
+MAIN_OK fingerprint=c1b12c72 des=false early=0000 runtime=b4a6
+2026/09/23 16:44:50 Datadog Tracer v2.11.0-rc.1 WARN: appsec: error while flushing SCA Security Data: Post "http://localhost:8126/telemetry/proxy/api/v2/apmtelemetry": dial tcp 127.0.0.1:8126: connect: connection refused
+2026/09/23 16:44:50 Datadog Tracer v2.11.0-rc.1 ERROR: loading features: Get "http://localhost:8126/info": dial tcp 127.0.0.1:8126: connect: connection refused (occurred: 23 Sep 26 16:44 CEST)
+
+$ REPRO=des DD_IAST_ENABLED=false ./shop
+EXIT=0
+MAIN_OK fingerprint=skipped des=true early=0000 runtime=b4a6
+2026/09/23 16:44:51 Datadog Tracer v2.11.0-rc.1 WARN: appsec: error while flushing SCA Security Data: Post "http://localhost:8126/telemetry/proxy/api/v2/apmtelemetry": dial tcp 127.0.0.1:8126: connect: connection refused
+2026/09/23 16:44:51 Datadog Tracer v2.11.0-rc.1 ERROR: loading features: Get "http://localhost:8126/info": dial tcp 127.0.0.1:8126: connect: connection refused (occurred: 23 Sep 26 16:44 CEST)
+
+$ REPRO=des2 ./shop   (rebuilt with legacy2)
+EXIT=0
+MAIN_OK fingerprint=skipped des=false early=0000 runtime=b4a6 probe=9f1a74ec160843d7
+2026/09/23 16:46:59 Datadog Tracer v2.11.0-rc.1 WARN: appsec: error while flushing SCA Security Data: Post "http://localhost:8126/telemetry/proxy/api/v2/apmtelemetry": dial tcp 127.0.0.1:8126: connect: connection refused
+2026/09/23 16:46:59 Datadog Tracer v2.11.0-rc.1 ERROR: loading features: Get "http://localhost:8126/info": dial tcp 127.0.0.1:8126: connect: connection refused (occurred: 23 Sep 26 16:46 CEST)
+2026/09/23 16:46:59 Datadog Tracer v2.11.0-rc.1 ERROR: lost 1 traces: Post "http://localhost:8126/v0.4/traces": dial tcp 127.0.0.1:8126: connect: connection refused (occurred: 23 Sep 26 16:46 CEST)
+
+$ REPRO=sha1 ./shop   (rebuilt with legacy2)
+EXIT=2
+panic: interface conversion: interface {} is nil, not *tracer.Tracer
+
+goroutine 1 [running]:
+github.com/DataDog/dd-trace-go/v2/ddtrace/internal.GetGlobalTracer[...](...)
+	/Users/eliott.bouhana/go/pkg/mod/github.com/!data!dog/dd-trace-go/v2@v2.11.0-rc.1/ddtrace/internal/globaltracer.go:43
+github.com/DataDog/dd-trace-go/v2/ddtrace/tracer.getGlobalTracer(...)
+	/Users/eliott.bouhana/go/pkg/mod/github.com/!data!dog/dd-trace-go/v2@v2.11.0-rc.1/ddtrace/tracer/globaltracer.go:22
+github.com/DataDog/dd-trace-go/v2/ddtrace/tracer.StartSpan({0x1051391d6?, 0x104cd5988?}, {0x4792be3a8990?, 0x1050e4f24?, 0x4792be527b28?})
+	/Users/eliott.bouhana/go/pkg/mod/github.com/!data!dog/dd-trace-go/v2@v2.11.0-rc.1/ddtrace/tracer/tracer.go:468 +0xb8
+github.com/DataDog/dd-iast-go/internal/spans.NewOrphanVulnerabilitySpan()
+	/tmp/ddiast-review/wt/fx-crash-panic-static-F1/internal/spans/vulnerability.go:18 +0xf0
+github.com/DataDog/dd-iast-go/internal/vulnerability.Report({0x0?, 0x0?}, 0x20, {0x105133cd4, 0x5}, 0x105a10df8, {{0x105134447, 0x6}, {0x10517ec60, 0x0}, ...})
+	/tmp/ddiast-review/wt/fx-crash-panic-static-F1/internal/vulnerability/report.go:47 +0xa0
+github.com/DataDog/dd-iast-go/iast/crypto/hash.ReportWeakHash({0x0, 0x0}, 0x105133c6b?)
+	/tmp/ddiast-review/wt/fx-crash-panic-static-F1/iast/crypto/hash/hash.go:19 +0x78
+crypto/sha1.New()
+	<generated>:2 +0x28
+github.com/acme/shop/digest.compute()
+	/tmp/ddiast-review/wt/fx-crash-panic-static-F1/_repro/f1verify/digest/digest.go:16 +0x48
+github.com/acme/shop/digest.init()
+	/tmp/ddiast-review/wt/fx-crash-panic-static-F1/_repro/f1verify/digest/digest.go:10 +0x1c
+
+$ REPRO= ./shop   (rebuilt with legacy2)
+EXIT=0
+MAIN_OK fingerprint=skipped des=false early=0000 runtime=b4a6 probe=skipped
+2026/09/23 16:47:00 Datadog Tracer v2.11.0-rc.1 WARN: appsec: error while flushing SCA Security Data: Post "http://localhost:8126/telemetry/proxy/api/v2/apmtelemetry": dial tcp 127.0.0.1:8126: connect: connection refused
+2026/09/23 16:47:00 Datadog Tracer v2.11.0-rc.1 ERROR: loading features: Get "http://localhost:8126/info": dial tcp 127.0.0.1:8126: connect: connection refused (occurred: 23 Sep 26 16:46 CEST)
+2026/09/23 16:47:00 Datadog Tracer v2.11.0-rc.1 ERROR: lost 1 traces: Post "http://localhost:8126/v0.4/traces": dial tcp 127.0.0.1:8126: connect: connection refused (occurred: 23 Sep 26 16:47 CEST)
+
+$ REPRO=des2 ./shop   (legacy2 now slices the hex string: hex.EncodeToString(dst)[:8])
+EXIT=2
+panic: interface conversion: interface {} is nil, not *tracer.Tracer
+
+goroutine 1 [running]:
+github.com/DataDog/dd-trace-go/v2/ddtrace/internal.GetGlobalTracer[...](...)
+	/Users/eliott.bouhana/go/pkg/mod/github.com/!data!dog/dd-trace-go/v2@v2.11.0-rc.1/ddtrace/internal/globaltracer.go:43
+github.com/DataDog/dd-trace-go/v2/ddtrace/tracer.getGlobalTracer(...)
+	/Users/eliott.bouhana/go/pkg/mod/github.com/!data!dog/dd-trace-go/v2@v2.11.0-rc.1/ddtrace/tracer/globaltracer.go:22
+github.com/DataDog/dd-trace-go/v2/ddtrace/tracer.StartSpan({0x102f8d1f6?, 0x102b283f0?}, {0x5d4a6ad729e0?, 0x102f38f44?, 0x1?})
+	/Users/eliott.bouhana/go/pkg/mod/github.com/!data!dog/dd-trace-go/v2@v2.11.0-rc.1/ddtrace/tracer/tracer.go:468 +0xb8
+github.com/DataDog/dd-iast-go/internal/spans.NewOrphanVulnerabilitySpan()
+	/tmp/ddiast-review/wt/fx-crash-panic-static-F1/internal/spans/vulnerability.go:18 +0xf0
+github.com/DataDog/dd-iast-go/internal/vulnerability.Report({0x0?, 0x0?}, 0x1f, {0x102f8734d, 0x3}, 0x103864df0, {{0x0, 0x0}, {0x0, 0x0}, ...})
+	/tmp/ddiast-review/wt/fx-crash-panic-static-F1/internal/vulnerability/report.go:47 +0xa0
+github.com/DataDog/dd-iast-go/iast/crypto/cipher.ReportWeakCipher({0x0?, 0x0?}, {0x102f8734d?, 0x5d4a6ad50106?}, {0x0?, 0x102a986a0?}, {0x0?, 0x5d4a6ae75d40?}, {0x0?, 0x102b5b0c8?})
+	/tmp/ddiast-review/wt/fx-crash-panic-static-F1/iast/crypto/cipher/cipher.go:21 +0x74
+crypto/des.NewCipher({0x102f894f5, 0x8, 0x8})
+	<generated>:2 +0x54
+github.com/acme/shop/legacy2.compute()
+	/tmp/ddiast-review/wt/fx-crash-panic-static-F1/_repro/f1verify/legacy2/legacy2.go:16 +0x58
+github.com/acme/shop/legacy2.init()
+	/tmp/ddiast-review/wt/fx-crash-panic-static-F1/_repro/f1verify/legacy2/legacy2.go:10 +0x1c
+
+## GODEBUG=inittrace=1 REPRO=des (first build, legacy2 without slice) - filtered
+75: init crypto/des
+76: init crypto/md5
+78: init crypto/sha1
+79: init example.com/early
+81: init github.com/acme/shop/legacy
+125: init github.com/DataDog/dd-iast-go/internal/config
+166: init github.com/acme/shop/digest
+208: init github.com/DataDog/dd-trace-go/v2/ddtrace/tracer
+211: init github.com/DataDog/dd-iast-go/internal/spans
+
+## GODEBUG=inittrace=1 REPRO=des2 (legacy2 without slice) - filtered
+75: init crypto/des
+76: init crypto/md5
+78: init crypto/sha1
+79: init example.com/early
+81: init github.com/acme/shop/legacy
+82: init github.com/acme/shop/legacy2
+126: init github.com/DataDog/dd-iast-go/internal/config
+167: init github.com/acme/shop/digest
+209: init github.com/DataDog/dd-trace-go/v2/ddtrace/tracer
+212: init github.com/DataDog/dd-iast-go/internal/spans
+
+## go1.27.0 (GOTOOLCHAIN=local) build, full integration: FAILS in encoding/json weaving (dec.r undefined) -- unrelated to F1
+
+## go1.27.0 build without iast/encoding/json
+$ cd <copy>/_repro/f1verify127 && GOFLAGS='-p=4 -mod=mod' GOTOOLCHAIN=local GOPROXY=off /usr/bin/time -l timeout 1500 go tool orchestrion go build -o shop127 . 2>&1 | tail -20 | grep -E 'error|undefined|real|maximum resident|\.go:'; ls -la shop127; go version shop127
+      163.73 real        95.03 user        69.32 sys
+           430063616  maximum resident set size
+-rwxr-xr-x 1 eliott.bouhana staff 22787362 Sep 23 16:51 shop127
+shop127: go1.27.0
+
+
+## go1.27.0 runs
+$ REPRO=sha1  ./shop127
+EXIT=2
+panic: interface conversion: interface {} is nil, not *tracer.Tracer
+
+goroutine 1 [running]:
+github.com/DataDog/dd-trace-go/v2/ddtrace/internal.GetGlobalTracer[...](...)
+	/Users/eliott.bouhana/go/pkg/mod/github.com/!data!dog/dd-trace-go/v2@v2.11.0-rc.1/ddtrace/internal/globaltracer.go:43
+github.com/DataDog/dd-trace-go/v2/ddtrace/tracer.getGlobalTracer(...)
+	/Users/eliott.bouhana/go/pkg/mod/github.com/!data!dog/dd-trace-go/v2@v2.11.0-rc.1/ddtrace/tracer/globaltracer.go:22
+github.com/DataDog/dd-trace-go/v2/ddtrace/tracer.StartSpan({0x10490474a?, 0x104f102c0?}, {0x8f0d0fae980?, 0x104f9b610?, 0x1051cb800?})
+	/Users/eliott.bouhana/go/pkg/mod/github.com/!data!dog/dd-trace-go/v2@v2.11.0-rc.1/ddtrace/tracer/tracer.go:468 +0xb8
+github.com/DataDog/dd-iast-go/internal/spans.NewOrphanVulnerabilitySpan()
+	/tmp/ddiast-review/wt/fx-crash-panic-static-F1/internal/spans/vulnerability.go:18 +0x108
+github.com/DataDog/dd-iast-go/internal/vulnerability.Report({0x0?, 0x0?}, 0x20, {0x1048ff17f, 0x5}, 0x1051cd818, {{0x1048ff8fb, 0x6}, {0x10494b070, 0x0}, ...})
+	/tmp/ddiast-review/wt/fx-crash-panic-static-F1/internal/vulnerability/report.go:47 +0xa0
+github.com/DataDog/dd-iast-go/iast/crypto/hash.ReportWeakHash({0x0, 0x0}, 0x1048ff116?)
+	/tmp/ddiast-review/wt/fx-crash-panic-static-F1/iast/crypto/hash/hash.go:19 +0x78
+crypto/sha1.New()
+	orchestrion/src/crypto/sha1/<generated>:2 +0x28
+github.com/acme/shop/digest.compute()
+	/tmp/ddiast-review/wt/fx-crash-panic-static-F1/_repro/f1verify127/digest/digest.go:16 +0x48
+github.com/acme/shop/digest.init()
+	/tmp/ddiast-review/wt/fx-crash-panic-static-F1/_repro/f1verify127/digest/digest.go:10 +0x1c
+
+$ REPRO=des2  ./shop127
+EXIT=2
+panic: interface conversion: interface {} is nil, not *tracer.Tracer
+
+goroutine 1 [running]:
+github.com/DataDog/dd-trace-go/v2/ddtrace/internal.GetGlobalTracer[...](...)
+	/Users/eliott.bouhana/go/pkg/mod/github.com/!data!dog/dd-trace-go/v2@v2.11.0-rc.1/ddtrace/internal/globaltracer.go:43
+github.com/DataDog/dd-trace-go/v2/ddtrace/tracer.getGlobalTracer(...)
+	/Users/eliott.bouhana/go/pkg/mod/github.com/!data!dog/dd-trace-go/v2@v2.11.0-rc.1/ddtrace/tracer/globaltracer.go:22
+github.com/DataDog/dd-trace-go/v2/ddtrace/tracer.StartSpan({0x1008ec74a?, 0x100ef82c0?}, {0x30d0b3ad5060?, 0x100f83610?, 0x1011b3800?})
+	/Users/eliott.bouhana/go/pkg/mod/github.com/!data!dog/dd-trace-go/v2@v2.11.0-rc.1/ddtrace/tracer/tracer.go:468 +0xb8
+github.com/DataDog/dd-iast-go/internal/spans.NewOrphanVulnerabilitySpan()
+	/tmp/ddiast-review/wt/fx-crash-panic-static-F1/internal/spans/vulnerability.go:18 +0x108
+github.com/DataDog/dd-iast-go/internal/vulnerability.Report({0x0?, 0x0?}, 0x1f, {0x1008e67d4, 0x3}, 0x1011b5810, {{0x0, 0x0}, {0x0, 0x0}, ...})
+	/tmp/ddiast-review/wt/fx-crash-panic-static-F1/internal/vulnerability/report.go:47 +0xa0
+github.com/DataDog/dd-iast-go/iast/crypto/cipher.ReportWeakCipher({0x0?, 0x0?}, {0x1008e67d4?, 0x30d0b3ab2106?}, {0x0?, 0x1003caed0?}, {0x0?, 0x30d0b3cedcb0?}, {0x0?, 0x1004b4148?})
+	/tmp/ddiast-review/wt/fx-crash-panic-static-F1/iast/crypto/cipher/cipher.go:21 +0x74
+crypto/des.NewCipher({0x1008e89bd, 0x8, 0x8})
+	orchestrion/src/crypto/des/<generated>:2 +0x54
+github.com/acme/shop/legacy2.compute()
+	/tmp/ddiast-review/wt/fx-crash-panic-static-F1/_repro/f1verify127/legacy2/legacy2.go:16 +0x58
+github.com/acme/shop/legacy2.init()
+	/tmp/ddiast-review/wt/fx-crash-panic-static-F1/_repro/f1verify127/legacy2/legacy2.go:10 +0x1c
+
+$ REPRO=  ./shop127
+EXIT=0
+MAIN_OK fingerprint=skipped des=false early=0000 runtime=b4a6 probe=skipped
+2026/09/23 16:51:25 Datadog Tracer v2.11.0-rc.1 WARN: appsec: error while flushing SCA Security Data: Post "http://localhost:8126/telemetry/proxy/api/v2/apmtelemetry": dial tcp 127.0.0.1:8126: connect: connection refused
+2026/09/23 16:51:25 Datadog Tracer v2.11.0-rc.1 ERROR: loading features: Get "http://localhost:8126/info": dial tcp 127.0.0.1:8126: connect: connection refused (occurred: 23 Sep 26 16:51 CEST)
+2026/09/23 16:51:25 Datadog Tracer v2.11.0-rc.1 ERROR: lost 1 traces: Post "http://localhost:8126/v0.4/traces": dial tcp 127.0.0.1:8126: connect: connection refused (occurred: 23 Sep 26 16:51 CEST)
+
+$ REPRO=sha1 DD_IAST_ENABLED=false ./shop127
+EXIT=0
+MAIN_OK fingerprint=c1b12c72 des=false early=0000 runtime=b4a6 probe=skipped
+2026/09/23 16:51:26 Datadog Tracer v2.11.0-rc.1 WARN: appsec: error while flushing SCA Security Data: Post "http://localhost:8126/telemetry/proxy/api/v2/apmtelemetry": dial tcp 127.0.0.1:8126: connect: connection refused
+2026/09/23 16:51:26 Datadog Tracer v2.11.0-rc.1 ERROR: loading features: Get "http://localhost:8126/info": dial tcp 127.0.0.1:8126: connect: connection refused (occurred: 23 Sep 26 16:51 CEST)

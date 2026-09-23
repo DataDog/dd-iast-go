@@ -1,0 +1,13 @@
+[
+  {
+    "id": "light-deps-license-F1",
+    "verdict": "CONFIRMED",
+    "original_severity": "High",
+    "adjusted_severity": "Info",
+    "reachable_default": false,
+    "documented_limitation": true,
+    "reason": "The pinned revision is on the upstream topic branch and outside main, and the phase-6 plan explicitly requires a published release containing its join points before general availability. This is a documented release prerequisite, not a customer-triggered failure: an independently woven Go 1.26.6 customer program built and ran successfully. Go 1.27.0 fails at a separate encoding/json advice incompatibility.",
+    "evidence_path": ".omo/review/evidence/fx-light-deps-license-F1/provenance.txt",
+    "repro_command": "cd /tmp/ddiast-review/wt/fx-light-deps-license-F1 && pin=$(GOWORK=off GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go list -m -f '{{.Version}}' github.com/DataDog/orchestrion) && git -C /Users/eliott.bouhana/go/src/github.com/DataDog/orchestrion merge-base --is-ancestor \"${pin##*-}\" origin/main"
+  }
+]

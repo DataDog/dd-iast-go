@@ -1,0 +1,2507 @@
+[
+  {
+    "name": "sqli_insecure",
+    "status": 200,
+    "enabled": 1,
+    "event": {
+      "sources": [
+        {
+          "origin": "http.request.parameter",
+          "name": "username",
+          "pattern": "abcdefghijklmnopq",
+          "redacted": true
+        },
+        {
+          "origin": "http.request.parameter",
+          "name": "password",
+          "pattern": "abcdef",
+          "redacted": true
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "type": "SQL_INJECTION",
+          "hash": 63118906,
+          "evidence": {
+            "valueParts": [
+              {
+                "value": "SELECT * FROM IAST_USER WHERE USERNAME = '"
+              },
+              {
+                "pattern": "abcdefghijklmnopq",
+                "redacted": true,
+                "source": 0
+              },
+              {
+                "value": "' AND PASSWORD = '"
+              },
+              {
+                "pattern": "abcdef",
+                "redacted": true,
+                "source": 1
+              },
+              {
+                "value": "'"
+              }
+            ]
+          },
+          "location": {
+            "spanId": 1187621824273252924,
+            "path": "/tmp/ddiast-review/wt/sink-systemtests/repo/iast/integration/testapp/zz_systemtests_mux.go",
+            "line": 32,
+            "method": "github.com/DataDog/dd-iast-go/testapps/integration.SystemTestsMux.func2",
+            "stackId": "030f9351-d941-4354-a67d-4d5c112058ac"
+          }
+        }
+      ]
+    },
+    "stack": {
+      "vulnerability": [
+        {
+          "Category": "vulnerability",
+          "Frames": [
+            {
+              "ClassName": "",
+              "Column": 0,
+              "File": "/tmp/ddiast-review/wt/sink-systemtests/repo/iast/integration/testapp/zz_systemtests_mux.go",
+              "Function": "SystemTestsMux.func2",
+              "Index": 0,
+              "Line": 32,
+              "Namespace": "github.com/DataDog/dd-iast-go/testapps/integration",
+              "Text": ""
+            },
+            {
+              "ClassName": "HandlerFunc",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 1,
+              "Line": 2284,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "*ServeMux",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 2,
+              "Line": 2826,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "",
+              "Column": 0,
+              "File": "/tmp/ddiast-review/wt/sink-systemtests/repo/iast/integration/testapp/zz_systemtests_shape_test.go",
+              "Function": "stServer.func1",
+              "Index": 3,
+              "Line": 48,
+              "Namespace": "github.com/DataDog/dd-iast-go/testapps/integration_test",
+              "Text": ""
+            },
+            {
+              "ClassName": "HandlerFunc",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 4,
+              "Line": 2284,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "serverHandler",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 5,
+              "Line": 3309,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "*conn",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "serve",
+              "Index": 6,
+              "Line": 2067,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s",
+              "Function": "goexit",
+              "Index": 7,
+              "Line": 1447,
+              "Namespace": "runtime",
+              "Text": ""
+            }
+          ],
+          "ID": "030f9351-d941-4354-a67d-4d5c112058ac",
+          "Language": "go",
+          "Message": "",
+          "Type": ""
+        }
+      ]
+    }
+  },
+  {
+    "name": "sqli_direct_nonconcat",
+    "status": 200,
+    "enabled": 1,
+    "event": {
+      "sources": [
+        {
+          "origin": "http.request.parameter",
+          "name": "q",
+          "pattern": "abcdefghijklmnopqrstuvwxyzABCDEFGHIJ",
+          "redacted": true
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "type": "SQL_INJECTION",
+          "hash": 1933368257,
+          "evidence": {
+            "valueParts": [
+              {
+                "pattern": "abcdefghijklmnopqrstuvwxyzABCDEFGHIJ",
+                "redacted": true,
+                "source": 0
+              }
+            ]
+          },
+          "location": {
+            "spanId": 5689195256647335372,
+            "path": "/tmp/ddiast-review/wt/sink-systemtests/repo/iast/integration/testapp/zz_systemtests_mux.go",
+            "line": 151,
+            "method": "github.com/DataDog/dd-iast-go/testapps/integration.SystemTestsMux.func21",
+            "stackId": "387948ad-10de-481d-ad4c-0d9141698307"
+          }
+        }
+      ]
+    },
+    "stack": {
+      "vulnerability": [
+        {
+          "Category": "vulnerability",
+          "Frames": [
+            {
+              "ClassName": "",
+              "Column": 0,
+              "File": "/tmp/ddiast-review/wt/sink-systemtests/repo/iast/integration/testapp/zz_systemtests_mux.go",
+              "Function": "SystemTestsMux.func21",
+              "Index": 0,
+              "Line": 151,
+              "Namespace": "github.com/DataDog/dd-iast-go/testapps/integration",
+              "Text": ""
+            },
+            {
+              "ClassName": "HandlerFunc",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 1,
+              "Line": 2284,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "*ServeMux",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 2,
+              "Line": 2826,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "",
+              "Column": 0,
+              "File": "/tmp/ddiast-review/wt/sink-systemtests/repo/iast/integration/testapp/zz_systemtests_shape_test.go",
+              "Function": "stServer.func1",
+              "Index": 3,
+              "Line": 48,
+              "Namespace": "github.com/DataDog/dd-iast-go/testapps/integration_test",
+              "Text": ""
+            },
+            {
+              "ClassName": "HandlerFunc",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 4,
+              "Line": 2284,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "serverHandler",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 5,
+              "Line": 3309,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "*conn",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "serve",
+              "Index": 6,
+              "Line": 2067,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s",
+              "Function": "goexit",
+              "Index": 7,
+              "Line": 1447,
+              "Namespace": "runtime",
+              "Text": ""
+            }
+          ],
+          "ID": "387948ad-10de-481d-ad4c-0d9141698307",
+          "Language": "go",
+          "Message": "",
+          "Type": ""
+        }
+      ]
+    }
+  },
+  {
+    "name": "sqli_testfile_concat",
+    "status": 200,
+    "enabled": 1,
+    "event": null,
+    "stack": null
+  },
+  {
+    "name": "sqli_secure",
+    "status": 200,
+    "enabled": 1,
+    "event": null,
+    "stack": null
+  },
+  {
+    "name": "cmdi_insecure",
+    "status": 200,
+    "enabled": 1,
+    "event": {
+      "sources": [
+        {
+          "origin": "http.request.parameter",
+          "name": "cmd",
+          "value": "ls"
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "type": "COMMAND_INJECTION",
+          "hash": -1827377025,
+          "evidence": {
+            "valueParts": [
+              {
+                "value": "ls",
+                "source": 0
+              }
+            ]
+          },
+          "location": {
+            "spanId": 2674802281338560268,
+            "path": "/tmp/ddiast-review/wt/sink-systemtests/repo/iast/integration/testapp/zz_systemtests_mux.go",
+            "line": 44,
+            "method": "github.com/DataDog/dd-iast-go/testapps/integration.SystemTestsMux.func4",
+            "stackId": "62a69066-da8d-4b90-a0ad-82e1f94462f5"
+          }
+        }
+      ]
+    },
+    "stack": {
+      "vulnerability": [
+        {
+          "Category": "vulnerability",
+          "Frames": [
+            {
+              "ClassName": "",
+              "Column": 0,
+              "File": "/tmp/ddiast-review/wt/sink-systemtests/repo/iast/integration/testapp/zz_systemtests_mux.go",
+              "Function": "SystemTestsMux.func4",
+              "Index": 0,
+              "Line": 44,
+              "Namespace": "github.com/DataDog/dd-iast-go/testapps/integration",
+              "Text": ""
+            },
+            {
+              "ClassName": "HandlerFunc",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 1,
+              "Line": 2284,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "*ServeMux",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 2,
+              "Line": 2826,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "",
+              "Column": 0,
+              "File": "/tmp/ddiast-review/wt/sink-systemtests/repo/iast/integration/testapp/zz_systemtests_shape_test.go",
+              "Function": "stServer.func1",
+              "Index": 3,
+              "Line": 48,
+              "Namespace": "github.com/DataDog/dd-iast-go/testapps/integration_test",
+              "Text": ""
+            },
+            {
+              "ClassName": "HandlerFunc",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 4,
+              "Line": 2284,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "serverHandler",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 5,
+              "Line": 3309,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "*conn",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "serve",
+              "Index": 6,
+              "Line": 2067,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s",
+              "Function": "goexit",
+              "Index": 7,
+              "Line": 1447,
+              "Namespace": "runtime",
+              "Text": ""
+            }
+          ],
+          "ID": "62a69066-da8d-4b90-a0ad-82e1f94462f5",
+          "Language": "go",
+          "Message": "",
+          "Type": ""
+        }
+      ]
+    }
+  },
+  {
+    "name": "cmdi_secure",
+    "status": 200,
+    "enabled": 1,
+    "event": null,
+    "stack": null
+  },
+  {
+    "name": "weak_hash_md5",
+    "status": 200,
+    "enabled": 1,
+    "event": {
+      "vulnerabilities": [
+        {
+          "type": "WEAK_HASH",
+          "hash": -474529477,
+          "evidence": {
+            "value": "MD5"
+          },
+          "location": {
+            "spanId": 283308023943340504,
+            "path": "/tmp/ddiast-review/wt/sink-systemtests/repo/iast/integration/testapp/zz_systemtests_mux.go",
+            "line": 50,
+            "method": "github.com/DataDog/dd-iast-go/testapps/integration.SystemTestsMux.func6",
+            "stackId": "3fd19bf0-3c71-4377-8ab9-c241c6badfb0"
+          }
+        }
+      ]
+    },
+    "stack": {
+      "vulnerability": [
+        {
+          "Category": "vulnerability",
+          "Frames": [
+            {
+              "ClassName": "",
+              "Column": 0,
+              "File": "/tmp/ddiast-review/wt/sink-systemtests/repo/iast/integration/testapp/zz_systemtests_mux.go",
+              "Function": "SystemTestsMux.func6",
+              "Index": 1,
+              "Line": 50,
+              "Namespace": "github.com/DataDog/dd-iast-go/testapps/integration",
+              "Text": ""
+            },
+            {
+              "ClassName": "HandlerFunc",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 2,
+              "Line": 2284,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "*ServeMux",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 3,
+              "Line": 2826,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "",
+              "Column": 0,
+              "File": "/tmp/ddiast-review/wt/sink-systemtests/repo/iast/integration/testapp/zz_systemtests_shape_test.go",
+              "Function": "stServer.func1",
+              "Index": 4,
+              "Line": 48,
+              "Namespace": "github.com/DataDog/dd-iast-go/testapps/integration_test",
+              "Text": ""
+            },
+            {
+              "ClassName": "HandlerFunc",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 5,
+              "Line": 2284,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "serverHandler",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 6,
+              "Line": 3309,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "*conn",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "serve",
+              "Index": 7,
+              "Line": 2067,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s",
+              "Function": "goexit",
+              "Index": 8,
+              "Line": 1447,
+              "Namespace": "runtime",
+              "Text": ""
+            }
+          ],
+          "ID": "3fd19bf0-3c71-4377-8ab9-c241c6badfb0",
+          "Language": "go",
+          "Message": "",
+          "Type": ""
+        }
+      ]
+    }
+  },
+  {
+    "name": "weak_cipher_rc4",
+    "status": 200,
+    "enabled": 1,
+    "event": {
+      "vulnerabilities": [
+        {
+          "type": "WEAK_CIPHER",
+          "hash": -1411798572,
+          "evidence": {
+            "value": "RC4"
+          },
+          "location": {
+            "spanId": 7234433062118465908,
+            "path": "/tmp/ddiast-review/wt/sink-systemtests/repo/iast/integration/testapp/zz_systemtests_mux.go",
+            "line": 54,
+            "method": "github.com/DataDog/dd-iast-go/testapps/integration.SystemTestsMux.func7",
+            "stackId": "2605a422-edde-4544-9f7c-32a15160785d"
+          }
+        }
+      ]
+    },
+    "stack": {
+      "vulnerability": [
+        {
+          "Category": "vulnerability",
+          "Frames": [
+            {
+              "ClassName": "",
+              "Column": 0,
+              "File": "/tmp/ddiast-review/wt/sink-systemtests/repo/iast/integration/testapp/zz_systemtests_mux.go",
+              "Function": "SystemTestsMux.func7",
+              "Index": 1,
+              "Line": 54,
+              "Namespace": "github.com/DataDog/dd-iast-go/testapps/integration",
+              "Text": ""
+            },
+            {
+              "ClassName": "HandlerFunc",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 2,
+              "Line": 2284,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "*ServeMux",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 3,
+              "Line": 2826,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "",
+              "Column": 0,
+              "File": "/tmp/ddiast-review/wt/sink-systemtests/repo/iast/integration/testapp/zz_systemtests_shape_test.go",
+              "Function": "stServer.func1",
+              "Index": 4,
+              "Line": 48,
+              "Namespace": "github.com/DataDog/dd-iast-go/testapps/integration_test",
+              "Text": ""
+            },
+            {
+              "ClassName": "HandlerFunc",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 5,
+              "Line": 2284,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "serverHandler",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 6,
+              "Line": 3309,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "*conn",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "serve",
+              "Index": 7,
+              "Line": 2067,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s",
+              "Function": "goexit",
+              "Index": 8,
+              "Line": 1447,
+              "Namespace": "runtime",
+              "Text": ""
+            }
+          ],
+          "ID": "2605a422-edde-4544-9f7c-32a15160785d",
+          "Language": "go",
+          "Message": "",
+          "Type": ""
+        }
+      ]
+    }
+  },
+  {
+    "name": "source_header_value",
+    "status": 200,
+    "enabled": 1,
+    "event": {
+      "sources": [
+        {
+          "origin": "http.request.header",
+          "name": "Table",
+          "value": "user"
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "type": "SQL_INJECTION",
+          "hash": -606779149,
+          "evidence": {
+            "valueParts": [
+              {
+                "value": "SELECT * FROM "
+              },
+              {
+                "value": "user",
+                "source": 0
+              }
+            ]
+          },
+          "location": {
+            "spanId": 1958204066455991464,
+            "path": "/tmp/ddiast-review/wt/sink-systemtests/repo/iast/integration/testapp/zz_systemtests_mux.go",
+            "line": 21,
+            "method": "github.com/DataDog/dd-iast-go/testapps/integration.SystemTestsMux.func1",
+            "stackId": "e01dff06-a72c-4c7e-ad64-43305ccee475"
+          }
+        }
+      ]
+    },
+    "stack": {
+      "vulnerability": [
+        {
+          "Category": "vulnerability",
+          "Frames": [
+            {
+              "ClassName": "",
+              "Column": 0,
+              "File": "/tmp/ddiast-review/wt/sink-systemtests/repo/iast/integration/testapp/zz_systemtests_mux.go",
+              "Function": "SystemTestsMux.func1",
+              "Index": 0,
+              "Line": 21,
+              "Namespace": "github.com/DataDog/dd-iast-go/testapps/integration",
+              "Text": ""
+            },
+            {
+              "ClassName": "",
+              "Column": 0,
+              "File": "/tmp/ddiast-review/wt/sink-systemtests/repo/iast/integration/testapp/zz_systemtests_mux.go",
+              "Function": "SystemTestsMux.func8",
+              "Index": 1,
+              "Line": 66,
+              "Namespace": "github.com/DataDog/dd-iast-go/testapps/integration",
+              "Text": ""
+            },
+            {
+              "ClassName": "HandlerFunc",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 2,
+              "Line": 2284,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "*ServeMux",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 3,
+              "Line": 2826,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "",
+              "Column": 0,
+              "File": "/tmp/ddiast-review/wt/sink-systemtests/repo/iast/integration/testapp/zz_systemtests_shape_test.go",
+              "Function": "stServer.func1",
+              "Index": 4,
+              "Line": 48,
+              "Namespace": "github.com/DataDog/dd-iast-go/testapps/integration_test",
+              "Text": ""
+            },
+            {
+              "ClassName": "HandlerFunc",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 5,
+              "Line": 2284,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "serverHandler",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 6,
+              "Line": 3309,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "*conn",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "serve",
+              "Index": 7,
+              "Line": 2067,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s",
+              "Function": "goexit",
+              "Index": 8,
+              "Line": 1447,
+              "Namespace": "runtime",
+              "Text": ""
+            }
+          ],
+          "ID": "e01dff06-a72c-4c7e-ad64-43305ccee475",
+          "Language": "go",
+          "Message": "",
+          "Type": ""
+        }
+      ]
+    }
+  },
+  {
+    "name": "source_header_name",
+    "status": 200,
+    "enabled": 1,
+    "event": {
+      "sources": [
+        {
+          "origin": "http.request.header.name",
+          "name": "User",
+          "value": "User"
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "type": "SQL_INJECTION",
+          "hash": -606779149,
+          "evidence": {
+            "valueParts": [
+              {
+                "value": "SELECT * FROM "
+              },
+              {
+                "value": "User",
+                "source": 0
+              }
+            ]
+          },
+          "location": {
+            "spanId": 1793981089762222794,
+            "path": "/tmp/ddiast-review/wt/sink-systemtests/repo/iast/integration/testapp/zz_systemtests_mux.go",
+            "line": 21,
+            "method": "github.com/DataDog/dd-iast-go/testapps/integration.SystemTestsMux.func1",
+            "stackId": "5aa74a57-0219-4e42-92f2-5cc1c0203c89"
+          }
+        }
+      ]
+    },
+    "stack": {
+      "vulnerability": [
+        {
+          "Category": "vulnerability",
+          "Frames": [
+            {
+              "ClassName": "",
+              "Column": 0,
+              "File": "/tmp/ddiast-review/wt/sink-systemtests/repo/iast/integration/testapp/zz_systemtests_mux.go",
+              "Function": "SystemTestsMux.func1",
+              "Index": 0,
+              "Line": 21,
+              "Namespace": "github.com/DataDog/dd-iast-go/testapps/integration",
+              "Text": ""
+            },
+            {
+              "ClassName": "",
+              "Column": 0,
+              "File": "/tmp/ddiast-review/wt/sink-systemtests/repo/iast/integration/testapp/zz_systemtests_mux.go",
+              "Function": "SystemTestsMux.func9",
+              "Index": 1,
+              "Line": 71,
+              "Namespace": "github.com/DataDog/dd-iast-go/testapps/integration",
+              "Text": ""
+            },
+            {
+              "ClassName": "HandlerFunc",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 2,
+              "Line": 2284,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "*ServeMux",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 3,
+              "Line": 2826,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "",
+              "Column": 0,
+              "File": "/tmp/ddiast-review/wt/sink-systemtests/repo/iast/integration/testapp/zz_systemtests_shape_test.go",
+              "Function": "stServer.func1",
+              "Index": 4,
+              "Line": 48,
+              "Namespace": "github.com/DataDog/dd-iast-go/testapps/integration_test",
+              "Text": ""
+            },
+            {
+              "ClassName": "HandlerFunc",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 5,
+              "Line": 2284,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "serverHandler",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 6,
+              "Line": 3309,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "*conn",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "serve",
+              "Index": 7,
+              "Line": 2067,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s",
+              "Function": "goexit",
+              "Index": 8,
+              "Line": 1447,
+              "Namespace": "runtime",
+              "Text": ""
+            }
+          ],
+          "ID": "5aa74a57-0219-4e42-92f2-5cc1c0203c89",
+          "Language": "go",
+          "Message": "",
+          "Type": ""
+        }
+      ]
+    }
+  },
+  {
+    "name": "source_cookie_name",
+    "status": 200,
+    "enabled": 1,
+    "event": {
+      "sources": [
+        {
+          "origin": "http.request.cookie.name",
+          "name": "table",
+          "value": "table"
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "type": "SQL_INJECTION",
+          "hash": -606779149,
+          "evidence": {
+            "valueParts": [
+              {
+                "value": "SELECT * FROM "
+              },
+              {
+                "value": "table",
+                "source": 0
+              }
+            ]
+          },
+          "location": {
+            "spanId": 5172573968289833020,
+            "path": "/tmp/ddiast-review/wt/sink-systemtests/repo/iast/integration/testapp/zz_systemtests_mux.go",
+            "line": 21,
+            "method": "github.com/DataDog/dd-iast-go/testapps/integration.SystemTestsMux.func1",
+            "stackId": "0347be81-6a83-44f1-bc3c-c60163817418"
+          }
+        }
+      ]
+    },
+    "stack": {
+      "vulnerability": [
+        {
+          "Category": "vulnerability",
+          "Frames": [
+            {
+              "ClassName": "",
+              "Column": 0,
+              "File": "/tmp/ddiast-review/wt/sink-systemtests/repo/iast/integration/testapp/zz_systemtests_mux.go",
+              "Function": "SystemTestsMux.func1",
+              "Index": 0,
+              "Line": 21,
+              "Namespace": "github.com/DataDog/dd-iast-go/testapps/integration",
+              "Text": ""
+            },
+            {
+              "ClassName": "",
+              "Column": 0,
+              "File": "/tmp/ddiast-review/wt/sink-systemtests/repo/iast/integration/testapp/zz_systemtests_mux.go",
+              "Function": "SystemTestsMux.func10",
+              "Index": 1,
+              "Line": 80,
+              "Namespace": "github.com/DataDog/dd-iast-go/testapps/integration",
+              "Text": ""
+            },
+            {
+              "ClassName": "HandlerFunc",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 2,
+              "Line": 2284,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "*ServeMux",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 3,
+              "Line": 2826,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "",
+              "Column": 0,
+              "File": "/tmp/ddiast-review/wt/sink-systemtests/repo/iast/integration/testapp/zz_systemtests_shape_test.go",
+              "Function": "stServer.func1",
+              "Index": 4,
+              "Line": 48,
+              "Namespace": "github.com/DataDog/dd-iast-go/testapps/integration_test",
+              "Text": ""
+            },
+            {
+              "ClassName": "HandlerFunc",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 5,
+              "Line": 2284,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "serverHandler",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 6,
+              "Line": 3309,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "*conn",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "serve",
+              "Index": 7,
+              "Line": 2067,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s",
+              "Function": "goexit",
+              "Index": 8,
+              "Line": 1447,
+              "Namespace": "runtime",
+              "Text": ""
+            }
+          ],
+          "ID": "0347be81-6a83-44f1-bc3c-c60163817418",
+          "Language": "go",
+          "Message": "",
+          "Type": ""
+        }
+      ]
+    }
+  },
+  {
+    "name": "source_cookie_value",
+    "status": 200,
+    "enabled": 1,
+    "event": {
+      "sources": [
+        {
+          "origin": "http.request.cookie.value",
+          "name": "table",
+          "value": "user"
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "type": "SQL_INJECTION",
+          "hash": -606779149,
+          "evidence": {
+            "valueParts": [
+              {
+                "value": "SELECT * FROM "
+              },
+              {
+                "value": "user",
+                "source": 0
+              }
+            ]
+          },
+          "location": {
+            "spanId": 5527461625942022020,
+            "path": "/tmp/ddiast-review/wt/sink-systemtests/repo/iast/integration/testapp/zz_systemtests_mux.go",
+            "line": 21,
+            "method": "github.com/DataDog/dd-iast-go/testapps/integration.SystemTestsMux.func1",
+            "stackId": "1370d088-dee6-4a3b-8c81-12488becfd2d"
+          }
+        }
+      ]
+    },
+    "stack": {
+      "vulnerability": [
+        {
+          "Category": "vulnerability",
+          "Frames": [
+            {
+              "ClassName": "",
+              "Column": 0,
+              "File": "/tmp/ddiast-review/wt/sink-systemtests/repo/iast/integration/testapp/zz_systemtests_mux.go",
+              "Function": "SystemTestsMux.func1",
+              "Index": 0,
+              "Line": 21,
+              "Namespace": "github.com/DataDog/dd-iast-go/testapps/integration",
+              "Text": ""
+            },
+            {
+              "ClassName": "",
+              "Column": 0,
+              "File": "/tmp/ddiast-review/wt/sink-systemtests/repo/iast/integration/testapp/zz_systemtests_mux.go",
+              "Function": "SystemTestsMux.func11",
+              "Index": 1,
+              "Line": 92,
+              "Namespace": "github.com/DataDog/dd-iast-go/testapps/integration",
+              "Text": ""
+            },
+            {
+              "ClassName": "HandlerFunc",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 2,
+              "Line": 2284,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "*ServeMux",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 3,
+              "Line": 2826,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "",
+              "Column": 0,
+              "File": "/tmp/ddiast-review/wt/sink-systemtests/repo/iast/integration/testapp/zz_systemtests_shape_test.go",
+              "Function": "stServer.func1",
+              "Index": 4,
+              "Line": 48,
+              "Namespace": "github.com/DataDog/dd-iast-go/testapps/integration_test",
+              "Text": ""
+            },
+            {
+              "ClassName": "HandlerFunc",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 5,
+              "Line": 2284,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "serverHandler",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 6,
+              "Line": 3309,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "*conn",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "serve",
+              "Index": 7,
+              "Line": 2067,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s",
+              "Function": "goexit",
+              "Index": 8,
+              "Line": 1447,
+              "Namespace": "runtime",
+              "Text": ""
+            }
+          ],
+          "ID": "1370d088-dee6-4a3b-8c81-12488becfd2d",
+          "Language": "go",
+          "Message": "",
+          "Type": ""
+        }
+      ]
+    }
+  },
+  {
+    "name": "source_parameter_name_get",
+    "status": 200,
+    "enabled": 1,
+    "event": {
+      "sources": [
+        {
+          "origin": "http.request.parameter.name",
+          "name": "user",
+          "value": "user"
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "type": "SQL_INJECTION",
+          "hash": -606779149,
+          "evidence": {
+            "valueParts": [
+              {
+                "value": "SELECT * FROM "
+              },
+              {
+                "value": "user",
+                "source": 0
+              }
+            ]
+          },
+          "location": {
+            "spanId": 7161064553312921729,
+            "path": "/tmp/ddiast-review/wt/sink-systemtests/repo/iast/integration/testapp/zz_systemtests_mux.go",
+            "line": 21,
+            "method": "github.com/DataDog/dd-iast-go/testapps/integration.SystemTestsMux.func1",
+            "stackId": "46098071-db24-4e49-a57e-cf73a78d11aa"
+          }
+        }
+      ]
+    },
+    "stack": {
+      "vulnerability": [
+        {
+          "Category": "vulnerability",
+          "Frames": [
+            {
+              "ClassName": "",
+              "Column": 0,
+              "File": "/tmp/ddiast-review/wt/sink-systemtests/repo/iast/integration/testapp/zz_systemtests_mux.go",
+              "Function": "SystemTestsMux.func1",
+              "Index": 0,
+              "Line": 21,
+              "Namespace": "github.com/DataDog/dd-iast-go/testapps/integration",
+              "Text": ""
+            },
+            {
+              "ClassName": "",
+              "Column": 0,
+              "File": "/tmp/ddiast-review/wt/sink-systemtests/repo/iast/integration/testapp/zz_systemtests_mux.go",
+              "Function": "SystemTestsMux.func12",
+              "Index": 1,
+              "Line": 101,
+              "Namespace": "github.com/DataDog/dd-iast-go/testapps/integration",
+              "Text": ""
+            },
+            {
+              "ClassName": "HandlerFunc",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 2,
+              "Line": 2284,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "*ServeMux",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 3,
+              "Line": 2826,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "",
+              "Column": 0,
+              "File": "/tmp/ddiast-review/wt/sink-systemtests/repo/iast/integration/testapp/zz_systemtests_shape_test.go",
+              "Function": "stServer.func1",
+              "Index": 4,
+              "Line": 48,
+              "Namespace": "github.com/DataDog/dd-iast-go/testapps/integration_test",
+              "Text": ""
+            },
+            {
+              "ClassName": "HandlerFunc",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 5,
+              "Line": 2284,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "serverHandler",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 6,
+              "Line": 3309,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "*conn",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "serve",
+              "Index": 7,
+              "Line": 2067,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s",
+              "Function": "goexit",
+              "Index": 8,
+              "Line": 1447,
+              "Namespace": "runtime",
+              "Text": ""
+            }
+          ],
+          "ID": "46098071-db24-4e49-a57e-cf73a78d11aa",
+          "Language": "go",
+          "Message": "",
+          "Type": ""
+        }
+      ]
+    }
+  },
+  {
+    "name": "source_parameter_name_post",
+    "status": 200,
+    "enabled": 1,
+    "event": {
+      "sources": [
+        {
+          "origin": "http.request.parameter.name",
+          "name": "user",
+          "value": "user"
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "type": "SQL_INJECTION",
+          "hash": -606779149,
+          "evidence": {
+            "valueParts": [
+              {
+                "value": "SELECT * FROM "
+              },
+              {
+                "value": "user",
+                "source": 0
+              }
+            ]
+          },
+          "location": {
+            "spanId": 6945576854832182660,
+            "path": "/tmp/ddiast-review/wt/sink-systemtests/repo/iast/integration/testapp/zz_systemtests_mux.go",
+            "line": 21,
+            "method": "github.com/DataDog/dd-iast-go/testapps/integration.SystemTestsMux.func1",
+            "stackId": "bec7a834-4a71-4962-ada6-e6bd41b9ad0e"
+          }
+        }
+      ]
+    },
+    "stack": {
+      "vulnerability": [
+        {
+          "Category": "vulnerability",
+          "Frames": [
+            {
+              "ClassName": "",
+              "Column": 0,
+              "File": "/tmp/ddiast-review/wt/sink-systemtests/repo/iast/integration/testapp/zz_systemtests_mux.go",
+              "Function": "SystemTestsMux.func1",
+              "Index": 0,
+              "Line": 21,
+              "Namespace": "github.com/DataDog/dd-iast-go/testapps/integration",
+              "Text": ""
+            },
+            {
+              "ClassName": "",
+              "Column": 0,
+              "File": "/tmp/ddiast-review/wt/sink-systemtests/repo/iast/integration/testapp/zz_systemtests_mux.go",
+              "Function": "SystemTestsMux.func12",
+              "Index": 1,
+              "Line": 101,
+              "Namespace": "github.com/DataDog/dd-iast-go/testapps/integration",
+              "Text": ""
+            },
+            {
+              "ClassName": "HandlerFunc",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 2,
+              "Line": 2284,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "*ServeMux",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 3,
+              "Line": 2826,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "",
+              "Column": 0,
+              "File": "/tmp/ddiast-review/wt/sink-systemtests/repo/iast/integration/testapp/zz_systemtests_shape_test.go",
+              "Function": "stServer.func1",
+              "Index": 4,
+              "Line": 48,
+              "Namespace": "github.com/DataDog/dd-iast-go/testapps/integration_test",
+              "Text": ""
+            },
+            {
+              "ClassName": "HandlerFunc",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 5,
+              "Line": 2284,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "serverHandler",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 6,
+              "Line": 3309,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "*conn",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "serve",
+              "Index": 7,
+              "Line": 2067,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s",
+              "Function": "goexit",
+              "Index": 8,
+              "Line": 1447,
+              "Namespace": "runtime",
+              "Text": ""
+            }
+          ],
+          "ID": "bec7a834-4a71-4962-ada6-e6bd41b9ad0e",
+          "Language": "go",
+          "Message": "",
+          "Type": ""
+        }
+      ]
+    }
+  },
+  {
+    "name": "source_parameter_value_get_formvalue",
+    "status": 200,
+    "enabled": 1,
+    "event": {
+      "sources": [
+        {
+          "origin": "http.request.parameter",
+          "name": "table",
+          "value": "user"
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "type": "SQL_INJECTION",
+          "hash": -606779149,
+          "evidence": {
+            "valueParts": [
+              {
+                "value": "SELECT * FROM "
+              },
+              {
+                "value": "user",
+                "source": 0
+              }
+            ]
+          },
+          "location": {
+            "spanId": 2473411331094580839,
+            "path": "/tmp/ddiast-review/wt/sink-systemtests/repo/iast/integration/testapp/zz_systemtests_mux.go",
+            "line": 21,
+            "method": "github.com/DataDog/dd-iast-go/testapps/integration.SystemTestsMux.func1",
+            "stackId": "cf7ba377-23ab-4280-910b-4893301bf26a"
+          }
+        }
+      ]
+    },
+    "stack": {
+      "vulnerability": [
+        {
+          "Category": "vulnerability",
+          "Frames": [
+            {
+              "ClassName": "",
+              "Column": 0,
+              "File": "/tmp/ddiast-review/wt/sink-systemtests/repo/iast/integration/testapp/zz_systemtests_mux.go",
+              "Function": "SystemTestsMux.func1",
+              "Index": 0,
+              "Line": 21,
+              "Namespace": "github.com/DataDog/dd-iast-go/testapps/integration",
+              "Text": ""
+            },
+            {
+              "ClassName": "",
+              "Column": 0,
+              "File": "/tmp/ddiast-review/wt/sink-systemtests/repo/iast/integration/testapp/zz_systemtests_mux.go",
+              "Function": "SystemTestsMux.func13",
+              "Index": 1,
+              "Line": 108,
+              "Namespace": "github.com/DataDog/dd-iast-go/testapps/integration",
+              "Text": ""
+            },
+            {
+              "ClassName": "HandlerFunc",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 2,
+              "Line": 2284,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "*ServeMux",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 3,
+              "Line": 2826,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "",
+              "Column": 0,
+              "File": "/tmp/ddiast-review/wt/sink-systemtests/repo/iast/integration/testapp/zz_systemtests_shape_test.go",
+              "Function": "stServer.func1",
+              "Index": 4,
+              "Line": 48,
+              "Namespace": "github.com/DataDog/dd-iast-go/testapps/integration_test",
+              "Text": ""
+            },
+            {
+              "ClassName": "HandlerFunc",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 5,
+              "Line": 2284,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "serverHandler",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 6,
+              "Line": 3309,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "*conn",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "serve",
+              "Index": 7,
+              "Line": 2067,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s",
+              "Function": "goexit",
+              "Index": 8,
+              "Line": 1447,
+              "Namespace": "runtime",
+              "Text": ""
+            }
+          ],
+          "ID": "cf7ba377-23ab-4280-910b-4893301bf26a",
+          "Language": "go",
+          "Message": "",
+          "Type": ""
+        }
+      ]
+    }
+  },
+  {
+    "name": "source_parameter_value_get_urlquery",
+    "status": 200,
+    "enabled": 1,
+    "event": {
+      "sources": [
+        {
+          "origin": "http.request.parameter",
+          "name": "table",
+          "value": "user"
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "type": "SQL_INJECTION",
+          "hash": -606779149,
+          "evidence": {
+            "valueParts": [
+              {
+                "value": "SELECT * FROM "
+              },
+              {
+                "value": "user",
+                "source": 0
+              }
+            ]
+          },
+          "location": {
+            "spanId": 6817793350567418153,
+            "path": "/tmp/ddiast-review/wt/sink-systemtests/repo/iast/integration/testapp/zz_systemtests_mux.go",
+            "line": 21,
+            "method": "github.com/DataDog/dd-iast-go/testapps/integration.SystemTestsMux.func1",
+            "stackId": "2ba06724-4e93-4b78-98fd-31f633a9f58c"
+          }
+        }
+      ]
+    },
+    "stack": {
+      "vulnerability": [
+        {
+          "Category": "vulnerability",
+          "Frames": [
+            {
+              "ClassName": "",
+              "Column": 0,
+              "File": "/tmp/ddiast-review/wt/sink-systemtests/repo/iast/integration/testapp/zz_systemtests_mux.go",
+              "Function": "SystemTestsMux.func1",
+              "Index": 0,
+              "Line": 21,
+              "Namespace": "github.com/DataDog/dd-iast-go/testapps/integration",
+              "Text": ""
+            },
+            {
+              "ClassName": "",
+              "Column": 0,
+              "File": "/tmp/ddiast-review/wt/sink-systemtests/repo/iast/integration/testapp/zz_systemtests_mux.go",
+              "Function": "SystemTestsMux.func14",
+              "Index": 1,
+              "Line": 111,
+              "Namespace": "github.com/DataDog/dd-iast-go/testapps/integration",
+              "Text": ""
+            },
+            {
+              "ClassName": "HandlerFunc",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 2,
+              "Line": 2284,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "*ServeMux",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 3,
+              "Line": 2826,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "",
+              "Column": 0,
+              "File": "/tmp/ddiast-review/wt/sink-systemtests/repo/iast/integration/testapp/zz_systemtests_shape_test.go",
+              "Function": "stServer.func1",
+              "Index": 4,
+              "Line": 48,
+              "Namespace": "github.com/DataDog/dd-iast-go/testapps/integration_test",
+              "Text": ""
+            },
+            {
+              "ClassName": "HandlerFunc",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 5,
+              "Line": 2284,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "serverHandler",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 6,
+              "Line": 3309,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "*conn",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "serve",
+              "Index": 7,
+              "Line": 2067,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s",
+              "Function": "goexit",
+              "Index": 8,
+              "Line": 1447,
+              "Namespace": "runtime",
+              "Text": ""
+            }
+          ],
+          "ID": "2ba06724-4e93-4b78-98fd-31f633a9f58c",
+          "Language": "go",
+          "Message": "",
+          "Type": ""
+        }
+      ]
+    }
+  },
+  {
+    "name": "source_parameter_value_post",
+    "status": 200,
+    "enabled": 1,
+    "event": {
+      "sources": [
+        {
+          "origin": "http.request.parameter",
+          "name": "table",
+          "value": "user"
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "type": "SQL_INJECTION",
+          "hash": -606779149,
+          "evidence": {
+            "valueParts": [
+              {
+                "value": "SELECT * FROM "
+              },
+              {
+                "value": "user",
+                "source": 0
+              }
+            ]
+          },
+          "location": {
+            "spanId": 557982925741145798,
+            "path": "/tmp/ddiast-review/wt/sink-systemtests/repo/iast/integration/testapp/zz_systemtests_mux.go",
+            "line": 21,
+            "method": "github.com/DataDog/dd-iast-go/testapps/integration.SystemTestsMux.func1",
+            "stackId": "94321d7f-157f-41f8-ae15-7e694eb78349"
+          }
+        }
+      ]
+    },
+    "stack": {
+      "vulnerability": [
+        {
+          "Category": "vulnerability",
+          "Frames": [
+            {
+              "ClassName": "",
+              "Column": 0,
+              "File": "/tmp/ddiast-review/wt/sink-systemtests/repo/iast/integration/testapp/zz_systemtests_mux.go",
+              "Function": "SystemTestsMux.func1",
+              "Index": 0,
+              "Line": 21,
+              "Namespace": "github.com/DataDog/dd-iast-go/testapps/integration",
+              "Text": ""
+            },
+            {
+              "ClassName": "",
+              "Column": 0,
+              "File": "/tmp/ddiast-review/wt/sink-systemtests/repo/iast/integration/testapp/zz_systemtests_mux.go",
+              "Function": "SystemTestsMux.func13",
+              "Index": 1,
+              "Line": 108,
+              "Namespace": "github.com/DataDog/dd-iast-go/testapps/integration",
+              "Text": ""
+            },
+            {
+              "ClassName": "HandlerFunc",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 2,
+              "Line": 2284,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "*ServeMux",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 3,
+              "Line": 2826,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "",
+              "Column": 0,
+              "File": "/tmp/ddiast-review/wt/sink-systemtests/repo/iast/integration/testapp/zz_systemtests_shape_test.go",
+              "Function": "stServer.func1",
+              "Index": 4,
+              "Line": 48,
+              "Namespace": "github.com/DataDog/dd-iast-go/testapps/integration_test",
+              "Text": ""
+            },
+            {
+              "ClassName": "HandlerFunc",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 5,
+              "Line": 2284,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "serverHandler",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 6,
+              "Line": 3309,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "*conn",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "serve",
+              "Index": 7,
+              "Line": 2067,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s",
+              "Function": "goexit",
+              "Index": 8,
+              "Line": 1447,
+              "Namespace": "runtime",
+              "Text": ""
+            }
+          ],
+          "ID": "94321d7f-157f-41f8-ae15-7e694eb78349",
+          "Language": "go",
+          "Message": "",
+          "Type": ""
+        }
+      ]
+    }
+  },
+  {
+    "name": "source_path",
+    "status": 200,
+    "enabled": 1,
+    "event": {
+      "sources": [
+        {
+          "origin": "http.request.path",
+          "value": "/iast/source/path/test"
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "type": "SQL_INJECTION",
+          "hash": -606779149,
+          "evidence": {
+            "valueParts": [
+              {
+                "value": "SELECT * FROM "
+              },
+              {
+                "value": "/iast/source/path/test",
+                "source": 0
+              }
+            ]
+          },
+          "location": {
+            "spanId": 8468207146003024196,
+            "path": "/tmp/ddiast-review/wt/sink-systemtests/repo/iast/integration/testapp/zz_systemtests_mux.go",
+            "line": 21,
+            "method": "github.com/DataDog/dd-iast-go/testapps/integration.SystemTestsMux.func1",
+            "stackId": "c1326c07-d8c4-44c7-a5a6-7033285b7b88"
+          }
+        }
+      ]
+    },
+    "stack": {
+      "vulnerability": [
+        {
+          "Category": "vulnerability",
+          "Frames": [
+            {
+              "ClassName": "",
+              "Column": 0,
+              "File": "/tmp/ddiast-review/wt/sink-systemtests/repo/iast/integration/testapp/zz_systemtests_mux.go",
+              "Function": "SystemTestsMux.func1",
+              "Index": 0,
+              "Line": 21,
+              "Namespace": "github.com/DataDog/dd-iast-go/testapps/integration",
+              "Text": ""
+            },
+            {
+              "ClassName": "",
+              "Column": 0,
+              "File": "/tmp/ddiast-review/wt/sink-systemtests/repo/iast/integration/testapp/zz_systemtests_mux.go",
+              "Function": "SystemTestsMux.func15",
+              "Index": 1,
+              "Line": 114,
+              "Namespace": "github.com/DataDog/dd-iast-go/testapps/integration",
+              "Text": ""
+            },
+            {
+              "ClassName": "HandlerFunc",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 2,
+              "Line": 2284,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "*ServeMux",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 3,
+              "Line": 2826,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "",
+              "Column": 0,
+              "File": "/tmp/ddiast-review/wt/sink-systemtests/repo/iast/integration/testapp/zz_systemtests_shape_test.go",
+              "Function": "stServer.func1",
+              "Index": 4,
+              "Line": 48,
+              "Namespace": "github.com/DataDog/dd-iast-go/testapps/integration_test",
+              "Text": ""
+            },
+            {
+              "ClassName": "HandlerFunc",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 5,
+              "Line": 2284,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "serverHandler",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 6,
+              "Line": 3309,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "*conn",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "serve",
+              "Index": 7,
+              "Line": 2067,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s",
+              "Function": "goexit",
+              "Index": 8,
+              "Line": 1447,
+              "Namespace": "runtime",
+              "Text": ""
+            }
+          ],
+          "ID": "c1326c07-d8c4-44c7-a5a6-7033285b7b88",
+          "Language": "go",
+          "Message": "",
+          "Type": ""
+        }
+      ]
+    }
+  },
+  {
+    "name": "source_path_parameter",
+    "status": 200,
+    "enabled": 1,
+    "event": {
+      "sources": [
+        {
+          "origin": "http.request.path.parameter",
+          "name": "table",
+          "value": "user"
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "type": "SQL_INJECTION",
+          "hash": -606779149,
+          "evidence": {
+            "valueParts": [
+              {
+                "value": "SELECT * FROM "
+              },
+              {
+                "value": "user",
+                "source": 0
+              }
+            ]
+          },
+          "location": {
+            "spanId": 5786172170835287549,
+            "path": "/tmp/ddiast-review/wt/sink-systemtests/repo/iast/integration/testapp/zz_systemtests_mux.go",
+            "line": 21,
+            "method": "github.com/DataDog/dd-iast-go/testapps/integration.SystemTestsMux.func1",
+            "stackId": "65a01bbd-34e1-463d-964f-ffc6e4441cbb"
+          }
+        }
+      ]
+    },
+    "stack": {
+      "vulnerability": [
+        {
+          "Category": "vulnerability",
+          "Frames": [
+            {
+              "ClassName": "",
+              "Column": 0,
+              "File": "/tmp/ddiast-review/wt/sink-systemtests/repo/iast/integration/testapp/zz_systemtests_mux.go",
+              "Function": "SystemTestsMux.func1",
+              "Index": 0,
+              "Line": 21,
+              "Namespace": "github.com/DataDog/dd-iast-go/testapps/integration",
+              "Text": ""
+            },
+            {
+              "ClassName": "",
+              "Column": 0,
+              "File": "/tmp/ddiast-review/wt/sink-systemtests/repo/iast/integration/testapp/zz_systemtests_mux.go",
+              "Function": "SystemTestsMux.func16",
+              "Index": 1,
+              "Line": 117,
+              "Namespace": "github.com/DataDog/dd-iast-go/testapps/integration",
+              "Text": ""
+            },
+            {
+              "ClassName": "HandlerFunc",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 2,
+              "Line": 2284,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "*ServeMux",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 3,
+              "Line": 2826,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "",
+              "Column": 0,
+              "File": "/tmp/ddiast-review/wt/sink-systemtests/repo/iast/integration/testapp/zz_systemtests_shape_test.go",
+              "Function": "stServer.func1",
+              "Index": 4,
+              "Line": 48,
+              "Namespace": "github.com/DataDog/dd-iast-go/testapps/integration_test",
+              "Text": ""
+            },
+            {
+              "ClassName": "HandlerFunc",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 5,
+              "Line": 2284,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "serverHandler",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 6,
+              "Line": 3309,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "*conn",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "serve",
+              "Index": 7,
+              "Line": 2067,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s",
+              "Function": "goexit",
+              "Index": 8,
+              "Line": 1447,
+              "Namespace": "runtime",
+              "Text": ""
+            }
+          ],
+          "ID": "65a01bbd-34e1-463d-964f-ffc6e4441cbb",
+          "Language": "go",
+          "Message": "",
+          "Type": ""
+        }
+      ]
+    }
+  },
+  {
+    "name": "source_uri_requesturi",
+    "status": 200,
+    "enabled": 1,
+    "event": {
+      "sources": [
+        {
+          "origin": "http.request.uri",
+          "value": "/iast/source/uri/test"
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "type": "SQL_INJECTION",
+          "hash": -606779149,
+          "evidence": {
+            "valueParts": [
+              {
+                "value": "SELECT * FROM "
+              },
+              {
+                "value": "/iast/source/uri/test",
+                "source": 0
+              }
+            ]
+          },
+          "location": {
+            "spanId": 8542443178983392203,
+            "path": "/tmp/ddiast-review/wt/sink-systemtests/repo/iast/integration/testapp/zz_systemtests_mux.go",
+            "line": 21,
+            "method": "github.com/DataDog/dd-iast-go/testapps/integration.SystemTestsMux.func1",
+            "stackId": "3f2b6ba6-e13f-4ef1-a20e-2bcd83d360fa"
+          }
+        }
+      ]
+    },
+    "stack": {
+      "vulnerability": [
+        {
+          "Category": "vulnerability",
+          "Frames": [
+            {
+              "ClassName": "",
+              "Column": 0,
+              "File": "/tmp/ddiast-review/wt/sink-systemtests/repo/iast/integration/testapp/zz_systemtests_mux.go",
+              "Function": "SystemTestsMux.func1",
+              "Index": 0,
+              "Line": 21,
+              "Namespace": "github.com/DataDog/dd-iast-go/testapps/integration",
+              "Text": ""
+            },
+            {
+              "ClassName": "",
+              "Column": 0,
+              "File": "/tmp/ddiast-review/wt/sink-systemtests/repo/iast/integration/testapp/zz_systemtests_mux.go",
+              "Function": "SystemTestsMux.func17",
+              "Index": 1,
+              "Line": 120,
+              "Namespace": "github.com/DataDog/dd-iast-go/testapps/integration",
+              "Text": ""
+            },
+            {
+              "ClassName": "HandlerFunc",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 2,
+              "Line": 2284,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "*ServeMux",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 3,
+              "Line": 2826,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "",
+              "Column": 0,
+              "File": "/tmp/ddiast-review/wt/sink-systemtests/repo/iast/integration/testapp/zz_systemtests_shape_test.go",
+              "Function": "stServer.func1",
+              "Index": 4,
+              "Line": 48,
+              "Namespace": "github.com/DataDog/dd-iast-go/testapps/integration_test",
+              "Text": ""
+            },
+            {
+              "ClassName": "HandlerFunc",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 5,
+              "Line": 2284,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "serverHandler",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 6,
+              "Line": 3309,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "*conn",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "serve",
+              "Index": 7,
+              "Line": 2067,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s",
+              "Function": "goexit",
+              "Index": 8,
+              "Line": 1447,
+              "Namespace": "runtime",
+              "Text": ""
+            }
+          ],
+          "ID": "3f2b6ba6-e13f-4ef1-a20e-2bcd83d360fa",
+          "Language": "go",
+          "Message": "",
+          "Type": ""
+        }
+      ]
+    }
+  },
+  {
+    "name": "source_uri_urlstring",
+    "status": 200,
+    "enabled": 1,
+    "event": null,
+    "stack": null
+  },
+  {
+    "name": "source_body_json",
+    "status": 200,
+    "enabled": 1,
+    "event": {
+      "sources": [
+        {
+          "origin": "http.request.body",
+          "value": "{\"name\": \"table\", \"value\": \"user\"}"
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "type": "SQL_INJECTION",
+          "hash": -606779149,
+          "evidence": {
+            "valueParts": [
+              {
+                "value": "SELECT * FROM "
+              },
+              {
+                "value": "user",
+                "source": 0
+              }
+            ]
+          },
+          "location": {
+            "spanId": 6796008746223153157,
+            "path": "/tmp/ddiast-review/wt/sink-systemtests/repo/iast/integration/testapp/zz_systemtests_mux.go",
+            "line": 21,
+            "method": "github.com/DataDog/dd-iast-go/testapps/integration.SystemTestsMux.func1",
+            "stackId": "c348db64-abea-4f90-9cb4-f19379079e33"
+          }
+        }
+      ]
+    },
+    "stack": {
+      "vulnerability": [
+        {
+          "Category": "vulnerability",
+          "Frames": [
+            {
+              "ClassName": "",
+              "Column": 0,
+              "File": "/tmp/ddiast-review/wt/sink-systemtests/repo/iast/integration/testapp/zz_systemtests_mux.go",
+              "Function": "SystemTestsMux.func1",
+              "Index": 0,
+              "Line": 21,
+              "Namespace": "github.com/DataDog/dd-iast-go/testapps/integration",
+              "Text": ""
+            },
+            {
+              "ClassName": "",
+              "Column": 0,
+              "File": "/tmp/ddiast-review/wt/sink-systemtests/repo/iast/integration/testapp/zz_systemtests_mux.go",
+              "Function": "SystemTestsMux.func19",
+              "Index": 1,
+              "Line": 134,
+              "Namespace": "github.com/DataDog/dd-iast-go/testapps/integration",
+              "Text": ""
+            },
+            {
+              "ClassName": "HandlerFunc",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 2,
+              "Line": 2284,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "*ServeMux",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 3,
+              "Line": 2826,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "",
+              "Column": 0,
+              "File": "/tmp/ddiast-review/wt/sink-systemtests/repo/iast/integration/testapp/zz_systemtests_shape_test.go",
+              "Function": "stServer.func1",
+              "Index": 4,
+              "Line": 48,
+              "Namespace": "github.com/DataDog/dd-iast-go/testapps/integration_test",
+              "Text": ""
+            },
+            {
+              "ClassName": "HandlerFunc",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 5,
+              "Line": 2284,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "serverHandler",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "ServeHTTP",
+              "Index": 6,
+              "Line": 3309,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "*conn",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/net/http/server.go",
+              "Function": "serve",
+              "Index": 7,
+              "Line": 2067,
+              "Namespace": "net/http",
+              "Text": ""
+            },
+            {
+              "ClassName": "",
+              "Column": 0,
+              "File": "/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s",
+              "Function": "goexit",
+              "Index": 8,
+              "Line": 1447,
+              "Namespace": "runtime",
+              "Text": ""
+            }
+          ],
+          "ID": "c348db64-abea-4f90-9cb4-f19379079e33",
+          "Language": "go",
+          "Message": "",
+          "Type": ""
+        }
+      ]
+    }
+  },
+  {
+    "name": "source_multipart_file",
+    "status": 200,
+    "enabled": 1,
+    "event": null,
+    "stack": null
+  }
+]

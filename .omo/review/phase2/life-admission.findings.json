@@ -1,0 +1,13 @@
+[
+  {
+    "id": "life-admission-F1",
+    "severity": "High",
+    "category": "leak",
+    "location": "iast/net/http/orchestrion.yml:27-33",
+    "title": "Disconnected stalled handlers retain admission slots indefinitely",
+    "claim": "A canceled HTTP/1 or HTTP/2 request whose handler remains blocked retains its analysis permit until ServeHTTP returns. At the configured concurrent-analysis limit, all later requests are capacity-dropped indefinitely.",
+    "evidence_path": ".omo/review/evidence/life-admission/zz_life_admission_test.go",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 go tool orchestrion go test ./iast/net/http -run TestLifeAdmissionDisconnect -count=1 -v -timeout 4m",
+    "needs_repro": false
+  }
+]

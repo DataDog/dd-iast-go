@@ -1,0 +1,13 @@
+[
+  {
+    "id": "crash-hostile-input-F1",
+    "verdict": "CONFIRMED",
+    "original_severity": "Critical",
+    "adjusted_severity": "Critical",
+    "reachable_default": true,
+    "documented_limitation": false,
+    "reason": "sqlSensitiveToken (internal/taint/redaction/sql.go:83-100) has no case for sqllexer COMMENT/MULTILINE_COMMENT, so comment bodies never become sensitive intervals. Verified independently: (1) unit reproducer shows the lexer emits COMMENT/MULTILINE_COMMENT tokens carrying the secret in all 6 dialects and AnalyzeSQL leaves the comment tail uncovered (intervals=[{40 4}]); (2) woven e2e (go tool orchestrion, Go 1.26.6, HTTP source -> woven library concat -> database/sql ExecContext -> span payload) ships the valuePart \"' AND password = '81dc9bdb52d04dc20036dbd8313ed055' AND deletedAt IS NULL\" unredacted, and the block-comment variant too; (3) the normative shared corpus (dd-trace-js evidence-redaction-suite.json and dd-trace-java evidence-redaction-suite.yml) redacts exactly these comment bodies including the identical 81dc9bdb 'SQLi exploited' case. Reachable under default config (DD_IAST_ENABLED and DD_IAST_REDACTION_ENABLED default true; the default value pattern cannot match a plain password hash and applies only to source values). Not documented: README/plans do not exempt comments; the pending 'validate against the normative shared corpus' item in the plans marks this as unvalidated, not accepted, and analyzer_test.go:30 pins the bug rather than documenting a limitation. Sensitive data leaving the process unredacted => Critical.",
+    "evidence_path": ".omo/review/evidence/fx-crash-hostile-input-F1/",
+    "repro_command": "cd <private copy>/iast/integration/testapp && GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -count=1 -run 'TestFx' -v -timeout 15m . ; unit: GOTOOLCHAIN=go1.26.6 go test -count=1 -run 'TestFx' -v ./internal/taint/redaction/"
+  }
+]

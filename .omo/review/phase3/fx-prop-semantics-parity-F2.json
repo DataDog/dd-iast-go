@@ -1,0 +1,13 @@
+[
+  {
+    "id": "prop-semantics-parity-F2",
+    "verdict": "CONFIRMED",
+    "original_severity": "High",
+    "adjusted_severity": "High",
+    "reachable_default": true,
+    "documented_limitation": false,
+    "reason": "A woven Go 1.26.6 HTTP-query -> root-application fmt.Sprintf -> database/sql.ExecContext reproducer returned the clean bytes \"SELECT 40 + 2 /*  */\" while taint.IsTaintedString was true and the SQL sink emitted one finding. The wrapper coarsens every inspected argument without checking whether fmt emitted its bytes.",
+    "evidence_path": ".omo/review/evidence/fx-prop-semantics-parity-F2/woven_http_sql_go1.26.6.out.txt",
+    "repro_command": "cd /tmp/ddiast-review/wt/fx-prop-semantics-parity-F2/iast/integration/testapp && GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go tool orchestrion go test -timeout 8m -count=1 -run '^TestHTTPQuery_SprintfZeroPrecision_reportsCleanSQL$' -v ."
+  }
+]

@@ -1,0 +1,24 @@
+[
+  {
+    "id": "life-lazy-reader-F1",
+    "severity": "Critical",
+    "category": "race",
+    "location": "internal/taint/request/lazy.go:119-141",
+    "title": "Repeated multipart parsing races with form readers",
+    "claim": "After initial multipart parsing, the woven repeated ParseMultipartForm call writes already-managed strings into Request.Form and Request.PostForm slices while application goroutines may read the populated forms; an uninstrumented repeated call does not write these slices.",
+    "evidence_path": ".omo/review/evidence/life-lazy-reader/repeated-multipart-race.out.txt",
+    "repro_command": "cd /tmp/ddiast-review/wt/life-lazy-reader && GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -race -timeout 10m -count=1 -run 'TestReview(RepeatedMultipartParseDoesNotWriteForm|MultiReaderDoesNotTaintCleanPrefix)$' -v ./iast/net/http ./iast/io",
+    "needs_repro": false
+  },
+  {
+    "id": "life-lazy-reader-F2",
+    "severity": "High",
+    "category": "provenance",
+    "location": "internal/taint/request/reader.go:27-45",
+    "title": "Mixed MultiReader marks trusted bytes as request body",
+    "claim": "Binding a composite io.MultiReader when only one component reader is HTTP-bound leads ReadAllBytes to mark the whole output, including clean bytes from unbound components, as an HTTP request-body source.",
+    "evidence_path": ".omo/review/evidence/life-lazy-reader/multireader-clean-prefix.out.txt",
+    "repro_command": "cd /tmp/ddiast-review/wt/life-lazy-reader && GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -race -timeout 10m -count=1 -run 'TestReview(RepeatedMultipartParseDoesNotWriteForm|MultiReaderDoesNotTaintCleanPrefix)$' -v ./iast/net/http ./iast/io",
+    "needs_repro": false
+  }
+]

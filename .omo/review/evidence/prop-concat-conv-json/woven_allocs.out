@@ -1,0 +1,20 @@
+# Woven run: cd <private copy> && GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -timeout 20m -count=1 -run TestReviewWovenAllocs -v ./zzreview/
+# (no IAST request active; built.WithOrchestrion=true)
+=== RUN   TestReviewWovenAllocs
+WOVEN built.WithOrchestrion=true
+WOVEN-ALLOCS s:=string(b)        1
+WOVEN-ALLOCS s:="p"+string(b)  1
+WOVEN-ALLOCS s:=a+b              0
+--- PASS: TestReviewWovenAllocs (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/zzreview	0.380s
+
+# Unwoven baseline of the same test: GOTOOLCHAIN=go1.26.6 go test -count=1 -run TestReviewWovenAllocs -v ./zzreview/
+=== RUN   TestReviewWovenAllocs
+WOVEN built.WithOrchestrion=false
+WOVEN-ALLOCS s:=string(b)        0
+WOVEN-ALLOCS s:="p"+string(b)  0
+WOVEN-ALLOCS s:=a+b              0
+--- PASS: TestReviewWovenAllocs (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/zzreview	0.420s

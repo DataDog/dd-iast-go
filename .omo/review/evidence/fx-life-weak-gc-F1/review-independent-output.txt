@@ -1,0 +1,30 @@
+Private copy: /tmp/ddiast-review/wt/fx-life-weak-gc-F1
+Source: evidence/fx-life-weak-gc-F1/review_independent_starvation_test.go
+Copy source to internal/spans/review_independent_starvation_test.go before running.
+Run sequentially (Go 1.26.6 first, then 1.27.0):
+GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go test -count=1 -timeout 12m -run '^TestIndependentActiveRequestKeepsItsReportingSlot$' -v ./internal/spans/
+GOTOOLCHAIN=go1.27.0 GOFLAGS=-p=4 go test -count=1 -timeout 12m -run '^TestIndependentActiveRequestKeepsItsReportingSlot$' -v ./internal/spans/
+
+go1.26.6 exit=1:
+=== RUN   TestIndependentActiveRequestKeepsItsReportingSlot
+    review_independent_starvation_test.go:60: default capacity=2 negative roots=2 active=true annotation=false ownerBound=false spanBound=false orphanAnnotation=false
+    review_independent_starvation_test.go:63: admitted active analysis has neither a bound reporting annotation nor orphan reporting capacity
+--- FAIL: TestIndependentActiveRequestKeepsItsReportingSlot (0.01s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/internal/spans	0.863s
+
+go1.27.0 exit=1:
+=== RUN   TestIndependentActiveRequestKeepsItsReportingSlot
+    review_independent_starvation_test.go:60: default capacity=2 negative roots=2 active=true annotation=false ownerBound=false spanBound=false orphanAnnotation=false
+    review_independent_starvation_test.go:63: admitted active analysis has neither a bound reporting annotation nor orphan reporting capacity
+--- FAIL: TestIndependentActiveRequestKeepsItsReportingSlot (0.01s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/internal/spans	0.797s
+
+Additional independent calculation, default 30% sample and two slots,
+enumerating all 2^N sampled-out/admitted sequences for N in-flight requests;
+weighted expected lost admitted / expected admitted:
+N=3:  0.273 / 0.873 = 31.3%
+N=4:  0.508 / 1.108 = 45.9%
+N=8:  1.087 / 1.687 = 64.4%
+N=16: 1.371 / 1.971 = 69.6%

@@ -1,0 +1,72 @@
+=== RUN   TestReviewBuilderABAFalseSQLi
+=== RUN   TestReviewBuilderABAFalseSQLi/zero-value-reset/gc-each-row
+    zz_review_builder_aba_test.go:80: attempt 125: clean query "SELECT name FROM users WHERE id = 42" carries range start=0 len=36 source=http.request.parameter:id value="b3f1c2d4-5e6f-4a7b-8c9d-0e1f2a3b4c5d"
+    zz_review_builder_aba_test.go:94: mode=zero-value-reset/gc-each-row attempts=2000 backingAddressReused=88 staleTaintedClean=88 staleWithoutReuse=0 SQLiReports=1
+    zz_review_builder_aba_test.go:96: REPORTED SQL_INJECTION evidence=&{Value: Pattern: Redacted:false Truncated: ValueParts:[{Value: Pattern:************************************ Redacted:true Truncated: SourceIndex:0xef67875e2b0 SecureMarks:[]}]}
+    zz_review_builder_aba_test.go:99: REPORTED source={Origin:http.request.parameter Name:id Value: Pattern:abcdefghijklmnopqrstuvwxyzABCDEFGHIJ Redacted:true Truncated:}
+    zz_review_builder_aba_test.go:102: BUG: clean server-side query reported as SQL injection from stale builder taint (fp=88, reports=1)
+=== RUN   TestReviewBuilderABAFalseSQLi/zero-value-reset/collect-rows
+    zz_review_builder_aba_test.go:94: mode=zero-value-reset/collect-rows attempts=2000 backingAddressReused=0 staleTaintedClean=0 staleWithoutReuse=0 SQLiReports=0
+=== RUN   TestReviewBuilderABAFalseSQLi/control-woven-Reset/collect-rows
+    zz_review_builder_aba_test.go:94: mode=control-woven-Reset/collect-rows attempts=2000 backingAddressReused=1 staleTaintedClean=0 staleWithoutReuse=0 SQLiReports=0
+--- FAIL: TestReviewBuilderABAFalseSQLi (5.97s)
+    --- FAIL: TestReviewBuilderABAFalseSQLi/zero-value-reset/gc-each-row (5.94s)
+    --- PASS: TestReviewBuilderABAFalseSQLi/zero-value-reset/collect-rows (0.02s)
+    --- PASS: TestReviewBuilderABAFalseSQLi/control-woven-Reset/collect-rows (0.01s)
+=== RUN   TestReviewBuilderABAFalseSQLi
+=== RUN   TestReviewBuilderABAFalseSQLi/zero-value-reset/gc-each-row
+    zz_review_builder_aba_test.go:94: mode=zero-value-reset/gc-each-row attempts=2000 backingAddressReused=0 staleTaintedClean=0 staleWithoutReuse=0 SQLiReports=0
+=== RUN   TestReviewBuilderABAFalseSQLi/zero-value-reset/collect-rows
+    zz_review_builder_aba_test.go:80: attempt 40: clean query "SELECT name FROM users WHERE id = 42" carries range start=0 len=36 source=http.request.parameter:id value="b3f1c2d4-5e6f-4a7b-8c9d-0e1f2a3b4c5d"
+    zz_review_builder_aba_test.go:94: mode=zero-value-reset/collect-rows attempts=2000 backingAddressReused=1 staleTaintedClean=1 staleWithoutReuse=0 SQLiReports=1
+    zz_review_builder_aba_test.go:96: REPORTED SQL_INJECTION evidence=&{Value: Pattern: Redacted:false Truncated: ValueParts:[{Value: Pattern:************************************ Redacted:true Truncated: SourceIndex:0xef678af6230 SecureMarks:[]}]}
+    zz_review_builder_aba_test.go:99: REPORTED source={Origin:http.request.parameter Name:id Value: Pattern:abcdefghijklmnopqrstuvwxyzABCDEFGHIJ Redacted:true Truncated:}
+    zz_review_builder_aba_test.go:102: BUG: clean server-side query reported as SQL injection from stale builder taint (fp=1, reports=1)
+=== RUN   TestReviewBuilderABAFalseSQLi/control-woven-Reset/collect-rows
+    zz_review_builder_aba_test.go:94: mode=control-woven-Reset/collect-rows attempts=2000 backingAddressReused=1 staleTaintedClean=0 staleWithoutReuse=0 SQLiReports=0
+--- FAIL: TestReviewBuilderABAFalseSQLi (4.51s)
+    --- PASS: TestReviewBuilderABAFalseSQLi/zero-value-reset/gc-each-row (4.48s)
+    --- FAIL: TestReviewBuilderABAFalseSQLi/zero-value-reset/collect-rows (0.01s)
+    --- PASS: TestReviewBuilderABAFalseSQLi/control-woven-Reset/collect-rows (0.01s)
+=== RUN   TestReviewBuilderABAFalseSQLi
+=== RUN   TestReviewBuilderABAFalseSQLi/zero-value-reset/gc-each-row
+    zz_review_builder_aba_test.go:80: attempt 6: clean query "SELECT name FROM users WHERE id = 42" carries range start=0 len=36 source=http.request.parameter:id value="b3f1c2d4-5e6f-4a7b-8c9d-0e1f2a3b4c5d"
+    zz_review_builder_aba_test.go:94: mode=zero-value-reset/gc-each-row attempts=2000 backingAddressReused=163 staleTaintedClean=163 staleWithoutReuse=0 SQLiReports=1
+    zz_review_builder_aba_test.go:96: REPORTED SQL_INJECTION evidence=&{Value: Pattern: Redacted:false Truncated: ValueParts:[{Value: Pattern:************************************ Redacted:true Truncated: SourceIndex:0xef67875e2d0 SecureMarks:[]}]}
+    zz_review_builder_aba_test.go:99: REPORTED source={Origin:http.request.parameter Name:id Value: Pattern:abcdefghijklmnopqrstuvwxyzABCDEFGHIJ Redacted:true Truncated:}
+    zz_review_builder_aba_test.go:102: BUG: clean server-side query reported as SQL injection from stale builder taint (fp=163, reports=1)
+=== RUN   TestReviewBuilderABAFalseSQLi/zero-value-reset/collect-rows
+    zz_review_builder_aba_test.go:80: attempt 42: clean query "SELECT name FROM users WHERE id = 42" carries range start=0 len=36 source=http.request.parameter:id value="b3f1c2d4-5e6f-4a7b-8c9d-0e1f2a3b4c5d"
+    zz_review_builder_aba_test.go:94: mode=zero-value-reset/collect-rows attempts=2000 backingAddressReused=1 staleTaintedClean=1 staleWithoutReuse=0 SQLiReports=1
+    zz_review_builder_aba_test.go:96: REPORTED SQL_INJECTION evidence=&{Value: Pattern: Redacted:false Truncated: ValueParts:[{Value: Pattern:************************************ Redacted:true Truncated: SourceIndex:0xef67875e420 SecureMarks:[]}]}
+    zz_review_builder_aba_test.go:99: REPORTED source={Origin:http.request.parameter Name:id Value: Pattern:abcdefghijklmnopqrstuvwxyzABCDEFGHIJ Redacted:true Truncated:}
+    zz_review_builder_aba_test.go:102: BUG: clean server-side query reported as SQL injection from stale builder taint (fp=1, reports=1)
+=== RUN   TestReviewBuilderABAFalseSQLi/control-woven-Reset/collect-rows
+    zz_review_builder_aba_test.go:94: mode=control-woven-Reset/collect-rows attempts=2000 backingAddressReused=1 staleTaintedClean=0 staleWithoutReuse=0 SQLiReports=0
+--- FAIL: TestReviewBuilderABAFalseSQLi (11.65s)
+    --- FAIL: TestReviewBuilderABAFalseSQLi/zero-value-reset/gc-each-row (11.60s)
+    --- FAIL: TestReviewBuilderABAFalseSQLi/zero-value-reset/collect-rows (0.01s)
+    --- PASS: TestReviewBuilderABAFalseSQLi/control-woven-Reset/collect-rows (0.03s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/testapps/integration	23.100s
+FAIL
+exit status 1
+       58.91 real        18.94 user        15.24 sys
+           365248512  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              361423  page reclaims
+               29068  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                2478  messages sent
+                2501  messages received
+               19881  signals received
+               26258  voluntary context switches
+              655823  involuntary context switches
+          5853286365  instructions retired
+          3904981842  cycles elapsed
+            39633616  peak memory footprint
+EXIT=1

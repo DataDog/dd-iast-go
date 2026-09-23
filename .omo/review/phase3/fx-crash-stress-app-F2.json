@@ -1,0 +1,13 @@
+[
+  {
+    "id": "crash-stress-app-F2",
+    "verdict": "CONFIRMED",
+    "original_severity": "High",
+    "adjusted_severity": "High",
+    "reachable_default": true,
+    "documented_limitation": false,
+    "reason": "Go 1.26.6 woven HTTP requests with tracked bytes.Buffer state made unrelated clean indirect WriteByte mutations scan active writer owners: default sampling median 6 to 475 ns/op with one tracked owner, and configured 64-owner median 5 to 1838 ns/op; no-writer and post-finish controls returned to baseline. Exact json.Marshal ratios were not remeasured.",
+    "evidence_path": ".omo/review/evidence/fx-crash-stress-app-F2/default.out",
+    "repro_command": "cd /tmp/ddiast-review/wt/fx-crash-stress-app-F2/iast/integration/testapp && GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 go tool orchestrion go build -o fxwriter ./cmd/fxwriter && GOMAXPROCS=2 ./fxwriter 2 (stage .omo/review/evidence/fx-crash-stress-app-F2/fxwriter_main.go as cmd/fxwriter/main.go first)"
+  }
+]

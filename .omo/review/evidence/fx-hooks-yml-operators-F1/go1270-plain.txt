@@ -1,0 +1,13 @@
+Command, from the private copy:
+GOTOOLCHAIN=local GOFLAGS=-p=2 DD_IAST_ENABLED=false go test -timeout 3m -count=1 -v ./reviewfxoperators ./reviewfxoperators/constantlen
+
+Captured output:
+go version go1.27.0 darwin/arm64
+=== RUN   TestLenDoesNotEvaluateArrayElement
+--- PASS: TestLenDoesNotEvaluateArrayElement (0.00s)
+=== RUN   TestRangeDoesNotEvaluateArrayElement
+--- PASS: TestRangeDoesNotEvaluateArrayElement (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/reviewfxoperators	0.362s
+?   	github.com/DataDog/dd-iast-go/reviewfxoperators/constantlen	[no test files]
+GO1270_PLAIN_EXIT=0

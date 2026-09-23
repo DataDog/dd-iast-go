@@ -1,0 +1,26 @@
+Command (run in /tmp/ddiast-review/wt/life-lazy-reader):
+GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -race -timeout 10m -count=1 -run "TestReview(RepeatedMultipartParseDoesNotWriteForm|MultiReaderDoesNotTaintCleanPrefix)$" -v ./iast/net/http ./iast/io
+
+Captured output (exit status 1; representative unedited lines):
+=== RUN   TestReviewRepeatedMultipartParseDoesNotWriteForm
+==================
+WARNING: DATA RACE
+Read at 0x00c000054260 by goroutine 30:
+  github.com/DataDog/dd-iast-go/iast/net/http_test.TestReviewRepeatedMultipartParseDoesNotWriteForm.func1()
+      /tmp/ddiast-review/wt/life-lazy-reader/iast/net/http/zz_life_lazy_reader_race_test.go:47 +0x98
+
+Previous write at 0x00c000054260 by goroutine 13:
+  runtime.slicecopy()
+      /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/slice.go:392 +0x0
+  github.com/DataDog/dd-iast-go/internal/taint/request.replaceMatchingSuffix()
+      /tmp/ddiast-review/wt/life-lazy-reader/internal/taint/request/lazy.go:141 +0x2e8
+  github.com/DataDog/dd-iast-go/internal/taint/request.ManageMultipart()
+      /tmp/ddiast-review/wt/life-lazy-reader/internal/taint/request/lazy.go:125 +0x1c8
+  github.com/DataDog/dd-iast-go/internal/taint/httpbridge.Multipart()
+      /tmp/ddiast-review/wt/life-lazy-reader/internal/taint/httpbridge/bridge.go:146 +0x7c
+  net/http.(*Request).ParseMultipartForm.func1()
+      <generated>:4 +0xec
+    testing.go:1712: race detected during execution of test
+--- FAIL: TestReviewRepeatedMultipartParseDoesNotWriteForm (0.01s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/iast/net/http	0.851s

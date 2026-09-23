@@ -1,0 +1,24 @@
+[
+  {
+    "id": "store-identity-gc-F1",
+    "severity": "High",
+    "category": "false-positive",
+    "location": "iast/propagation/writer.go:202-205",
+    "title": "strings.Builder writer views are not anchored, so a freed and reused backing address revives stale or cross-request taint",
+    "claim": "builderView records {data pointer,len,cap} with no Anchor; the writer record retains only the *strings.Builder receiver. An unwoven reset or rewrite (zero assignment, method-value or dependency Reset, fmt.Fprintf, io.WriteString) lets GC free the tracked backing. A clean rewrite at the same address with the same len and cap matches the stale view in LookupWriterValue/SnapshotWriter (store/writer.go:76-111,234-263), and publishWriterString adopts the clean String() result with the old source ranges. This is false taint with a wrong source, and cross-request bleed when the builder is shared and the tainting request is still active. Fix: anchor the builder backing like bytes.Buffer.",
+    "evidence_path": ".omo/review/evidence/store-identity-gc/zz_review_gc_identity_test.go",
+    "repro_command": "cp .omo/review/evidence/store-identity-gc/zz_review_gc_identity_test.go <private-checkout>/iast/propagation/ && GOTOOLCHAIN=go1.26.6 go test -count=1 -run TestReview -v ./iast/propagation/  (output: .omo/review/evidence/store-identity-gc/repro-head.out.txt, repro-realistic.out.txt; fix: builder-anchor-fix.diff, repro-with-fix.out.txt)",
+    "needs_repro": false
+  },
+  {
+    "id": "store-identity-gc-F2",
+    "severity": "Low",
+    "category": "test-gap",
+    "location": "internal/taint/store/identity_test.go:30-65",
+    "title": "The existing address-reuse regression test is usually vacuous (skips)",
+    "claim": "TestAddressReuseDoesNotReviveFinishedOwner skips whenever the allocator does not reuse the address after a single GC. It skipped in 4 of 5 runs on go1.26.6. No test covers builder or buffer backing reuse.",
+    "evidence_path": null,
+    "repro_command": "for i in 1 2 3 4 5; do GOTOOLCHAIN=go1.26.6 go test -count=1 -run TestAddressReuseDoesNotReviveFinishedOwner -v ./internal/taint/store/; done",
+    "needs_repro": false
+  }
+]

@@ -1,0 +1,58 @@
+--- run 1 (builder backing anchored)
+    zz_review_gc_identity_test.go:94: owner live: 50000 same-class allocations after GC, root 0x1b54902651c0 never reused; weak pointer live=true
+    zz_review_gc_identity_test.go:109: after Finish (request B active): root collected; address 0x1b54902651c0 reused after 276 allocations; IsTaintedBytes=false IsTaintedString=false
+--- PASS: TestReviewStoreAddressReuseAfterFinish (0.01s)
+    zz_review_gc_identity_test.go:139: bytes: address 0x1b549025f260 reused after 1 allocations after Finish, IsTainted=false
+--- PASS: TestReviewStoreBytesAddressReuseAfterFinish (0.00s)
+    zz_review_gc_identity_test.go:188: allocator did not reuse the address
+    zz_review_gc_identity_test.go:188: allocator did not reuse the address
+--- PASS: TestReviewBuilderStaleViewAfterAddressReuse (0.00s)
+    --- SKIP: TestReviewBuilderStaleViewAfterAddressReuse/zero-assign (0.00s)
+    --- SKIP: TestReviewBuilderStaleViewAfterAddressReuse/method-value-reset (0.00s)
+    zz_review_gc_identity_test.go:221: bytes.Buffer: tracked backing 0x1b549026b600 (cap 64) not reused across 50000 same-class allocations after zero-assign+GC (writer Anchor retains it)
+--- PASS: TestReviewBufferAnchorPreventsReuse (0.00s)
+    zz_review_gc_identity_test.go:248: iterations=20000 falsePositives=0
+--- PASS: TestReviewBuilderStaleViewRealistic (0.08s)
+    zz_review_gc_identity_test.go:281: allocator did not reuse the address
+--- SKIP: TestReviewBuilderStaleViewCrossRequest (0.00s)
+ok  	github.com/DataDog/dd-iast-go/iast/propagation	0.504s
+--- run 2 (builder backing anchored)
+    zz_review_gc_identity_test.go:94: owner live: 50000 same-class allocations after GC, root 0x48fa94cb31c0 never reused; weak pointer live=true
+    zz_review_gc_identity_test.go:109: after Finish (request B active): root collected; address 0x48fa94cb31c0 reused after 276 allocations; IsTaintedBytes=false IsTaintedString=false
+--- PASS: TestReviewStoreAddressReuseAfterFinish (0.01s)
+    zz_review_gc_identity_test.go:139: bytes: address 0x48fa94cad260 reused after 1 allocations after Finish, IsTainted=false
+--- PASS: TestReviewStoreBytesAddressReuseAfterFinish (0.00s)
+    zz_review_gc_identity_test.go:188: allocator did not reuse the address
+    zz_review_gc_identity_test.go:188: allocator did not reuse the address
+--- PASS: TestReviewBuilderStaleViewAfterAddressReuse (0.00s)
+    --- SKIP: TestReviewBuilderStaleViewAfterAddressReuse/zero-assign (0.00s)
+    --- SKIP: TestReviewBuilderStaleViewAfterAddressReuse/method-value-reset (0.00s)
+    zz_review_gc_identity_test.go:221: bytes.Buffer: tracked backing 0x48fa94cb9600 (cap 64) not reused across 50000 same-class allocations after zero-assign+GC (writer Anchor retains it)
+--- PASS: TestReviewBufferAnchorPreventsReuse (0.00s)
+    zz_review_gc_identity_test.go:248: iterations=20000 falsePositives=0
+--- PASS: TestReviewBuilderStaleViewRealistic (0.11s)
+    zz_review_gc_identity_test.go:281: allocator did not reuse the address
+--- SKIP: TestReviewBuilderStaleViewCrossRequest (0.00s)
+ok  	github.com/DataDog/dd-iast-go/iast/propagation	0.338s
+--- run 3 (builder backing anchored)
+    zz_review_gc_identity_test.go:94: owner live: 50000 same-class allocations after GC, root 0x30c4dacdea40 never reused; weak pointer live=true
+    zz_review_gc_identity_test.go:109: after Finish (request B active): root collected; address 0x30c4dacdea40 reused after 252 allocations; IsTaintedBytes=false IsTaintedString=false
+--- PASS: TestReviewStoreAddressReuseAfterFinish (0.01s)
+    zz_review_gc_identity_test.go:139: bytes: address 0x30c4dacd9020 reused after 1 allocations after Finish, IsTainted=false
+--- PASS: TestReviewStoreBytesAddressReuseAfterFinish (0.00s)
+    zz_review_gc_identity_test.go:188: allocator did not reuse the address
+    zz_review_gc_identity_test.go:188: allocator did not reuse the address
+--- PASS: TestReviewBuilderStaleViewAfterAddressReuse (0.01s)
+    --- SKIP: TestReviewBuilderStaleViewAfterAddressReuse/zero-assign (0.00s)
+    --- SKIP: TestReviewBuilderStaleViewAfterAddressReuse/method-value-reset (0.00s)
+    zz_review_gc_identity_test.go:221: bytes.Buffer: tracked backing 0x30c4dace5340 (cap 64) not reused across 50000 same-class allocations after zero-assign+GC (writer Anchor retains it)
+--- PASS: TestReviewBufferAnchorPreventsReuse (0.00s)
+    zz_review_gc_identity_test.go:248: iterations=20000 falsePositives=0
+--- PASS: TestReviewBuilderStaleViewRealistic (0.16s)
+    zz_review_gc_identity_test.go:281: allocator did not reuse the address
+--- SKIP: TestReviewBuilderStaleViewCrossRequest (0.00s)
+ok  	github.com/DataDog/dd-iast-go/iast/propagation	0.388s
+--- existing suites with fix
+ok  	github.com/DataDog/dd-iast-go/iast/propagation	0.411s
+ok  	github.com/DataDog/dd-iast-go/internal/taint/propagation	0.754s
+ok  	github.com/DataDog/dd-iast-go/internal/taint/store	1.287s

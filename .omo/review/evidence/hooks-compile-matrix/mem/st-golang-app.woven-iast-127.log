@@ -1,0 +1,6 @@
+Command: cd st-golang-app && GOTOOLCHAIN=local GOCACHE=/tmp/ddiast-review/wt/hooks-compile-matrix/gocache-cur /usr/bin/time -l timeout 1320 go tool orchestrion go build ./...
+go version: go version go1.27.0 darwin/arm64
+start: Wed Sep 23 14:19:35 CEST 2026
+14:19  up 11 days, 20:58, 4 users, load averages: 22.07 31.61 53.58
+Exit status: 1
+end: Wed Sep 23 14:20:10 CEST 2026

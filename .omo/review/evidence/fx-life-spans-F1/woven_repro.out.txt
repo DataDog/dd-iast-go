@@ -1,0 +1,32 @@
+=== RUN   TestReviewFxF1NegativeDecisionsStarveActive
+    zz_review_fx_f1_test.go:110: inflight_sampled_out=0 active_scope=true request_span _dd.iast.enabled=1 request_span_has_SQLi_event=true orphan_spans=0 orphan_spans_with_event=0
+    zz_review_fx_f1_test.go:110: inflight_sampled_out=1 active_scope=true request_span _dd.iast.enabled=1 request_span_has_SQLi_event=true orphan_spans=0 orphan_spans_with_event=0
+    zz_review_fx_f1_test.go:110: inflight_sampled_out=2 active_scope=true request_span _dd.iast.enabled=0 request_span_has_SQLi_event=false orphan_spans=1 orphan_spans_with_event=0
+    zz_review_fx_f1_test.go:113: BUG: admitted (permit-holding) request with a tainted SQL sink reported NOTHING when 2 sampled-out requests were in flight
+--- FAIL: TestReviewFxF1NegativeDecisionsStarveActive (0.01s)
+=== RUN   TestReviewFxF1DefaultConfigLossRate
+    zz_review_fx_f1_test.go:201: default config: requests=400 admitted(active scope)=117 reported_on_request_span=38 lost_on_request_span=79 orphan_spans=78 orphan_spans_with_event=73
+    zz_review_fx_f1_test.go:204: BUG: 6 admitted requests with a tainted SQL sink produced no finding anywhere
+--- FAIL: TestReviewFxF1DefaultConfigLossRate (0.02s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/testapps/integration	0.692s
+FAIL
+exit status 1
+       12.50 real         3.62 user         6.18 sys
+           359038976  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              285728  page reclaims
+               26862  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                3208  messages sent
+                3215  messages received
+                8542  signals received
+               14849  voluntary context switches
+              261600  involuntary context switches
+          5628839505  instructions retired
+          2984669978  cycles elapsed
+            38601448  peak memory footprint

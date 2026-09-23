@@ -1,0 +1,21 @@
+COMMAND (no production patch; -cpu 2,16)
+cd /tmp/ddiast-review/wt/fx-store-memory-bounds-F2 && ulimit -n 8192; env GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 [DD_IAST_REQUEST_SAMPLING=100 DD_IAST_MAX_CONCURRENT_REQUESTS=64] timeout 900 go test -count=1 -timeout 12m -cpu 2,16 -v -run '^TestFxF2NearCapacity$' ./internal/spans
+
+== max64 ==
+    zz_fx_f2_test.go:156: NEARCAP configured=64 prefill=63 goroutines=1024 GOMAXPROCS=2 maxStoredAnnotations=65 sampledAtMax=65 ratio=1.02 (20 trials)
+    zz_fx_f2_test.go:156: NEARCAP configured=64 prefill=63 goroutines=8192 GOMAXPROCS=2 maxStoredAnnotations=65 sampledAtMax=65 ratio=1.02 (20 trials)
+--- PASS: TestFxF2NearCapacity (0.83s)
+    zz_fx_f2_test.go:156: NEARCAP configured=64 prefill=63 goroutines=1024 GOMAXPROCS=16 maxStoredAnnotations=65 sampledAtMax=65 ratio=1.02 (20 trials)
+    zz_fx_f2_test.go:156: NEARCAP configured=64 prefill=63 goroutines=8192 GOMAXPROCS=16 maxStoredAnnotations=65 sampledAtMax=65 ratio=1.02 (20 trials)
+--- PASS: TestFxF2NearCapacity (0.92s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/spans	2.327s
+== default ==
+    zz_fx_f2_test.go:156: NEARCAP configured=2 prefill=1 goroutines=1024 GOMAXPROCS=2 maxStoredAnnotations=3 sampledAtMax=2 ratio=1.50 (20 trials)
+    zz_fx_f2_test.go:156: NEARCAP configured=2 prefill=1 goroutines=8192 GOMAXPROCS=2 maxStoredAnnotations=2 sampledAtMax=0 ratio=1.00 (20 trials)
+--- PASS: TestFxF2NearCapacity (0.73s)
+    zz_fx_f2_test.go:156: NEARCAP configured=2 prefill=1 goroutines=1024 GOMAXPROCS=16 maxStoredAnnotations=3 sampledAtMax=0 ratio=1.50 (20 trials)
+    zz_fx_f2_test.go:156: NEARCAP configured=2 prefill=1 goroutines=8192 GOMAXPROCS=16 maxStoredAnnotations=2 sampledAtMax=1 ratio=1.00 (20 trials)
+--- PASS: TestFxF2NearCapacity (0.79s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/spans	1.799s

@@ -1,0 +1,7 @@
+Command: cd <private copy> && GOTOOLCHAIN=go1.26.6 go test -run TestF2Sizes -v -count=1 -timeout=5m ./internal/taint/store
+
+=== RUN   TestF2Sizes
+    f2_sizes_review_test.go:9: Snapshot=6312 WriterRef=24 [MaxSnapshotOwners]WriterRef=96 owner=187440 MaxOwners=64
+--- PASS: TestF2Sizes (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/store	0.543s

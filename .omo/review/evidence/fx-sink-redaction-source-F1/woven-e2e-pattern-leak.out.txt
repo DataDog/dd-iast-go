@@ -1,0 +1,21 @@
+Independent phase-3 reproducer (woven orchestrion build: HTTP source -> string concat -> database/sql sink).
+Note: the testapp package init() disables name-based redaction for its own fixtures; the test restores a
+built-in-equivalent name pattern (see README default DD_IAST_REDACTION_NAME_PATTERN) for the request.
+Peak RSS of the woven build: 366 MB (/usr/bin/time -l).
+
+Command:
+cd /tmp/ddiast-review/wt/fx-sink-redaction-source-F1/iast/integration/testapp && env -u DD_IAST_REDACTION_ENABLED -u DD_IAST_REDACTION_NAME_PATTERN -u DD_IAST_REDACTION_VALUE_PATTERN -u DD_IAST_REDACTION_KEYS_REGEXP -u DD_IAST_REDACTION_VALUES_REGEXP GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -run TestFXPasswordPatternLeakE2E -count=1 -v -timeout 15m .
+
+Output:
+=== RUN   TestFXPasswordPatternLeakE2E
+    fx_pattern_leak_test.go:37: password tainted: true
+    fx_pattern_leak_test.go:39: query tainted: true
+    fx_pattern_leak_test.go:60: LEAK redacted model.Source.Pattern equals the secret: model.Source{Origin:0x1, Name:"password", Value:"", Pattern:"abc", Redacted:true, Truncated:0x0}
+    fx_pattern_leak_test.go:70: LEAK redacted evidence ValuePart.Pattern equals the secret: model.ValuePart{Value:"", Pattern:"abc", Redacted:true, Truncated:0x0, SourceIndex:(*int)(0x4d74d0e9cd20), SecureMarks:[]constants.VulnerabilityType(nil)}
+    fx_pattern_leak_test.go:70: LEAK redacted evidence ValuePart.Pattern equals the secret: model.ValuePart{Value:"", Pattern:"abc", Redacted:true, Truncated:0x0, SourceIndex:(*int)(0x4d74d0e9cd48), SecureMarks:[]constants.VulnerabilityType(nil)}
+    fx_pattern_leak_test.go:79: LEAK serialized event contains the raw password: {"sources":[{"origin":"http.request.parameter","name":"password","pattern":"abc","redacted":true}],"vulnerabilities":[{"type":"SQL_INJECTION","hash":93930027,"evidence":{"valueParts":[{"value":"SELECT '"},{"pattern":"*****","redacted":true},{"value":"' WHERE pw = '"},{"pattern":"abc","redacted":true,"source":0},{"value":"'"}]},"location":{"spanId":5399376132008430238,"path":"/tmp/ddiast-review/wt/fx-sink-redaction-source-F1/iast/integration/testapp/fx_pattern_leak_test.go","line":40,"method":"github.com/DataDog/dd-iast-go/testapps/integration_test.TestFXPasswordPatternLeakE2E.func2","stackId":"948d6387-c99f-4cf6-b775-67ec52a868b4"}},{"type":"SQL_INJECTION","hash":1743337217,"evidence":{"valueParts":[{"value":"SELECT '"},{"pattern":"*****","redacted":true},{"value":"' WHERE pw = '"},{"pattern":"abc","redacted":true,"source":0},{"value":"'"}]},"location":{"spanId":5399376132008430238,"path":"/tmp/ddiast-review/wt/fx-sink-redaction-source-F1/iast/integration/testapp/fx_pattern_leak_test.go","line":46,"method":"github.com/DataDog/dd-iast-go/testapps/integration_test.TestFXPasswordPatternLeakE2E.func2","stackId":"bdfda051-a392-4909-968b-02b3c291ce51"}}]}
+--- FAIL: TestFXPasswordPatternLeakE2E (0.01s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/testapps/integration	0.803s
+FAIL
+exit status 1

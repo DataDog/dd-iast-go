@@ -1,0 +1,59 @@
+=== RUN   TestNoOwnerAllocationParity
+    sequence_test.go:45: toolchain=go1.26.6 woven=false enabled=true sampling=30 max_concurrent=2 no_owner=true
+=== RUN   TestNoOwnerAllocationParity/SplitSeq
+    sequence_test.go:57: native=2 direct=2 extra=0 allocs/call
+=== RUN   TestNoOwnerAllocationParity/SplitAfterSeq
+    sequence_test.go:57: native=2 direct=2 extra=0 allocs/call
+=== RUN   TestNoOwnerAllocationParity/Lines
+    sequence_test.go:57: native=2 direct=2 extra=0 allocs/call
+=== RUN   TestNoOwnerAllocationParity/FieldsSeq
+    sequence_test.go:57: native=1 direct=1 extra=0 allocs/call
+=== RUN   TestNoOwnerAllocationParity/FieldsFuncSeq
+    sequence_test.go:57: native=1 direct=1 extra=0 allocs/call
+--- PASS: TestNoOwnerAllocationParity (0.01s)
+    --- PASS: TestNoOwnerAllocationParity/SplitSeq (0.00s)
+    --- PASS: TestNoOwnerAllocationParity/SplitAfterSeq (0.00s)
+    --- PASS: TestNoOwnerAllocationParity/Lines (0.00s)
+    --- PASS: TestNoOwnerAllocationParity/FieldsSeq (0.00s)
+    --- PASS: TestNoOwnerAllocationParity/FieldsFuncSeq (0.00s)
+=== RUN   TestSequenceValues
+=== RUN   TestSequenceValues/SplitSeq
+=== RUN   TestSequenceValues/SplitAfterSeq
+=== RUN   TestSequenceValues/Lines
+=== RUN   TestSequenceValues/FieldsSeq
+=== RUN   TestSequenceValues/FieldsFuncSeq
+--- PASS: TestSequenceValues (0.00s)
+    --- PASS: TestSequenceValues/SplitSeq (0.00s)
+    --- PASS: TestSequenceValues/SplitAfterSeq (0.00s)
+    --- PASS: TestSequenceValues/Lines (0.00s)
+    --- PASS: TestSequenceValues/FieldsSeq (0.00s)
+    --- PASS: TestSequenceValues/FieldsFuncSeq (0.00s)
+goos: darwin
+goarch: arm64
+pkg: github.com/DataDog/dd-iast-go/iast/seqreview
+cpu: Apple M4 Max
+BenchmarkEscapingSequence
+BenchmarkEscapingSequence/SplitSeq/native
+BenchmarkEscapingSequence/SplitSeq/native-16         	   10000	        87.09 ns/op	      64 B/op	       2 allocs/op
+BenchmarkEscapingSequence/SplitSeq/direct
+BenchmarkEscapingSequence/SplitSeq/direct-16         	   10000	        50.35 ns/op	      64 B/op	       2 allocs/op
+BenchmarkEscapingSequence/SplitAfterSeq/native
+BenchmarkEscapingSequence/SplitAfterSeq/native-16    	   10000	        72.72 ns/op	      64 B/op	       2 allocs/op
+BenchmarkEscapingSequence/SplitAfterSeq/direct
+BenchmarkEscapingSequence/SplitAfterSeq/direct-16    	   10000	        47.39 ns/op	      64 B/op	       2 allocs/op
+BenchmarkEscapingSequence/Lines/native
+BenchmarkEscapingSequence/Lines/native-16            	   10000	        50.38 ns/op	      32 B/op	       2 allocs/op
+BenchmarkEscapingSequence/Lines/direct
+BenchmarkEscapingSequence/Lines/direct-16            	   10000	        36.62 ns/op	      32 B/op	       2 allocs/op
+BenchmarkEscapingSequence/FieldsSeq/native
+BenchmarkEscapingSequence/FieldsSeq/native-16        	   10000	        33.65 ns/op	      24 B/op	       1 allocs/op
+BenchmarkEscapingSequence/FieldsSeq/direct
+BenchmarkEscapingSequence/FieldsSeq/direct-16        	   10000	        29.18 ns/op	      24 B/op	       1 allocs/op
+BenchmarkEscapingSequence/FieldsFuncSeq/native
+BenchmarkEscapingSequence/FieldsFuncSeq/native-16    	   10000	        33.14 ns/op	      32 B/op	       1 allocs/op
+BenchmarkEscapingSequence/FieldsFuncSeq/direct
+BenchmarkEscapingSequence/FieldsFuncSeq/direct-16    	   10000	        29.89 ns/op	      32 B/op	       1 allocs/op
+BenchmarkImmediateSplit
+BenchmarkImmediateSplit-16                           	   10000	        20.62 ns/op	       0 B/op	       0 allocs/op
+PASS
+ok  	github.com/DataDog/dd-iast-go/iast/seqreview	0.940s

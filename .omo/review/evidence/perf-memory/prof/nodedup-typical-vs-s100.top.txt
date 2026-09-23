@@ -1,0 +1,37 @@
+File: memprobe-woven
+Type: alloc_space
+Time: 2026-09-23 15:19:09 CEST
+Showing nodes accounting for 3617.27kB, 13.04% of 27730.19kB total
+Dropped 233 nodes (cum <= 138.65kB)
+Showing top 30 nodes out of 93
+      flat  flat%   sum%        cum   cum%
+     963kB  3.47%  3.47%      963kB  3.47%  github.com/tinylib/msgp/msgp.Require (inline)
+  727.25kB  2.62%  6.10%   836.14kB  3.02%  encoding/json.Marshal
+  647.02kB  2.33%  8.43%  2656.81kB  9.58%  github.com/DataDog/dd-iast-go/internal/spans.Finished
+  584.32kB  2.11% 10.54%  1151.13kB  4.15%  github.com/DataDog/dd-iast-go/internal/spans.(*Annotation).TryCommitTainted
+     321kB  1.16% 11.69%      321kB  1.16%  github.com/DataDog/dd-iast-go/internal/spans.(*Annotation).remapParts
+  127.90kB  0.46% 12.15%   127.90kB  0.46%  github.com/DataDog/dd-trace-go/v2/internal/stacktrace.getSpanValue (inline)
+  105.33kB  0.38% 12.53%   105.33kB  0.38%  github.com/DataDog/dd-trace-go/v2/ddtrace/tracer.(*Span).setMetaStructLocked
+  105.33kB  0.38% 12.91%   105.33kB  0.38%  github.com/DataDog/dd-trace-go/v2/ddtrace/tracer.(*trace).copyOnWriteSet
+   50.16kB  0.18% 13.10%   126.17kB  0.45%  github.com/DataDog/dd-iast-go/internal/model/constants.Origin.MarshalJSON
+     -36kB  0.13% 12.97%      -36kB  0.13%  regexp.(*bitState).reset
+     -32kB  0.12% 12.85%      -32kB  0.12%  compress/flate.(*dictDecoder).init (inline)
+   23.75kB 0.086% 12.94%    23.75kB 0.086%  bytes.growSlice
+   22.70kB 0.082% 13.02%    22.70kB 0.082%  runtime.mallocgc
+    5.02kB 0.018% 13.04%   238.29kB  0.86%  github.com/DataDog/dd-trace-go/v2/internal/stacktrace.AddToSpan
+    2.02kB 0.0073% 13.04%  3681.77kB 13.28%  main.main
+    0.44kB 0.0016% 13.04%    24.19kB 0.087%  bytes.(*Buffer).grow
+    0.05kB 0.00017% 13.04%   316.03kB  1.14%  github.com/DataDog/dd-trace-go/v2/ddtrace/tracer.(*Span).setTagLocked
+         0     0% 13.04%      -32kB  0.12%  compress/flate.NewReader
+         0     0% 13.04%      -32kB  0.12%  compress/gzip.(*Reader).Reset
+         0     0% 13.04%      -32kB  0.12%  compress/gzip.(*Reader).readHeader
+         0     0% 13.04%      -32kB  0.12%  compress/gzip.NewReader
+         0     0% 13.04%  1115.01kB  4.02%  database/sql.(*DB).QueryContext
+         0     0% 13.04%   179.33kB  0.65%  encoding/json.(*encodeState).marshal
+         0     0% 13.04%   179.33kB  0.65%  encoding/json.(*encodeState).reflectValue
+         0     0% 13.04%   157.06kB  0.57%  encoding/json.addrMarshalerEncoder
+         0     0% 13.04%   184.17kB  0.66%  encoding/json.arrayEncoder.encode
+         0     0% 13.04%   157.06kB  0.57%  encoding/json.condAddrEncoder.encode
+         0     0% 13.04%   184.36kB  0.66%  encoding/json.ptrEncoder.encode
+         0     0% 13.04%   184.17kB  0.66%  encoding/json.sliceEncoder.encode
+         0     0% 13.04%   184.36kB  0.66%  encoding/json.structEncoder.encode

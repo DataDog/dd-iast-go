@@ -1,0 +1,9 @@
+Command: cd go-sqlite3 && GOTOOLCHAIN=go1.26.6 go vet ./...
+go version: go version go1.26.6 darwin/arm64
+
+sqlite3_test.go:471:22: (*testing.common).Errorf format %q has arg expected of wrong type int64
+sqlite3_test.go:524:56: (*testing.common).Errorf format %q has arg affected of wrong type int64
+sqlite3_test.go:536:22: (*testing.common).Errorf format %q has arg expected of wrong type int64
+sqlite3_test.go:543:56: (*testing.common).Errorf format %q has arg affected of wrong type int64
+
+Exit status: 1  (elapsed 54s)

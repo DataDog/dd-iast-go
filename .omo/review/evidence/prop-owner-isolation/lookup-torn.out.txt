@@ -1,0 +1,5 @@
+=== RUN   TestReviewLookupTornHybridEntry
+    zz_review_lookup_torn_test.go:98: cycles=1184024 lookups=183766858 entries=0 hybrids=0 handleAccepted=0
+--- PASS: TestReviewLookupTornHybridEntry (40.01s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/store	40.352s

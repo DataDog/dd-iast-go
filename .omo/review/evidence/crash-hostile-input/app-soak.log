@@ -1,0 +1,166 @@
+2026/09/23 12:10:08 Datadog Tracer v2.11.0-rc.1 WARN: appsec: error while flushing SCA Security Data: Post "http://localhost:8126/telemetry/proxy/api/v2/apmtelemetry": dial tcp 127.0.0.1:8126: connect: connection refused
+2026/09/23 12:10:08 listening on 127.0.0.1:18093
+2026/09/23 12:10:09 multipart error: multipart: message too large
+2026/09/23 12:10:10 multipart error: multipart: NextPart: EOF
+2026/09/23 12:10:10 json decode error: invalid character '[' exceeded max depth
+2026/09/23 12:10:10 json unmarshal error: invalid character '[' exceeded max depth
+2026/09/23 12:10:11 multipart error: multipart: NextPart: EOF
+2026/09/23 12:10:11 multipart error: multipart: message too large
+2026/09/23 12:10:11 json decode error: invalid character '[' exceeded max depth
+2026/09/23 12:10:11 json unmarshal error: invalid character '[' exceeded max depth
+2026/09/23 12:10:11 multipart error: multipart: message too large
+2026/09/23 12:10:11 multipart error: multipart: NextPart: EOF
+2026/09/23 12:10:11 json decode error: invalid character '[' exceeded max depth
+2026/09/23 12:10:11 json unmarshal error: invalid character '[' exceeded max depth
+2026/09/23 12:10:11 multipart error: multipart: message too large
+2026/09/23 12:10:11 multipart error: multipart: NextPart: EOF
+2026/09/23 12:10:12 json unmarshal error: invalid character '[' exceeded max depth
+2026/09/23 12:10:12 json decode error: invalid character '[' exceeded max depth
+2026/09/23 12:10:12 multipart error: multipart: message too large
+2026/09/23 12:10:12 multipart error: multipart: NextPart: EOF
+2026/09/23 12:10:12 json decode error: invalid character '[' exceeded max depth
+2026/09/23 12:10:12 json unmarshal error: invalid character '[' exceeded max depth
+2026/09/23 12:10:12 multipart error: multipart: message too large
+2026/09/23 12:10:12 multipart error: multipart: NextPart: EOF
+2026/09/23 12:10:12 json decode error: invalid character '[' exceeded max depth
+2026/09/23 12:10:12 json unmarshal error: invalid character '[' exceeded max depth
+2026/09/23 12:10:13 multipart error: multipart: message too large
+2026/09/23 12:10:13 multipart error: multipart: NextPart: EOF
+2026/09/23 12:10:13 json decode error: invalid character '[' exceeded max depth
+2026/09/23 12:10:13 json unmarshal error: invalid character '[' exceeded max depth
+2026/09/23 12:10:13 multipart error: multipart: message too large
+2026/09/23 12:10:13 multipart error: multipart: NextPart: EOF
+2026/09/23 12:10:13 json decode error: invalid character '[' exceeded max depth
+2026/09/23 12:10:13 json unmarshal error: invalid character '[' exceeded max depth
+2026/09/23 12:10:13 multipart error: multipart: message too large
+2026/09/23 12:10:13 multipart error: multipart: NextPart: EOF
+2026/09/23 12:10:13 json decode error: invalid character '[' exceeded max depth
+2026/09/23 12:10:13 json unmarshal error: invalid character '[' exceeded max depth
+2026/09/23 12:10:13 multipart error: multipart: message too large
+2026/09/23 12:10:14 multipart error: multipart: NextPart: EOF
+2026/09/23 12:10:14 json decode error: invalid character '[' exceeded max depth
+2026/09/23 12:10:14 json unmarshal error: invalid character '[' exceeded max depth
+2026/09/23 12:10:14 multipart error: multipart: NextPart: EOF
+2026/09/23 12:10:14 multipart error: multipart: message too large
+2026/09/23 12:10:14 json decode error: invalid character '[' exceeded max depth
+2026/09/23 12:10:14 json unmarshal error: invalid character '[' exceeded max depth
+2026/09/23 12:10:14 multipart error: multipart: message too large
+2026/09/23 12:10:14 multipart error: multipart: NextPart: EOF
+2026/09/23 12:10:14 json decode error: invalid character '[' exceeded max depth
+2026/09/23 12:10:14 json unmarshal error: invalid character '[' exceeded max depth
+2026/09/23 12:10:15 multipart error: multipart: message too large
+2026/09/23 12:10:15 multipart error: multipart: NextPart: EOF
+2026/09/23 12:10:15 json decode error: invalid character '[' exceeded max depth
+2026/09/23 12:10:15 json unmarshal error: invalid character '[' exceeded max depth
+2026/09/23 12:10:15 multipart error: multipart: message too large
+2026/09/23 12:10:15 multipart error: multipart: NextPart: EOF
+2026/09/23 12:10:15 json decode error: invalid character '[' exceeded max depth
+2026/09/23 12:10:15 json unmarshal error: invalid character '[' exceeded max depth
+2026/09/23 12:10:15 multipart error: multipart: message too large
+2026/09/23 12:10:15 multipart error: multipart: NextPart: EOF
+2026/09/23 12:10:15 json decode error: invalid character '[' exceeded max depth
+2026/09/23 12:10:15 json unmarshal error: invalid character '[' exceeded max depth
+2026/09/23 12:10:16 multipart error: multipart: message too large
+2026/09/23 12:10:16 multipart error: multipart: NextPart: EOF
+2026/09/23 12:10:16 json decode error: invalid character '[' exceeded max depth
+2026/09/23 12:10:16 json unmarshal error: invalid character '[' exceeded max depth
+2026/09/23 12:10:16 multipart error: multipart: NextPart: EOF
+2026/09/23 12:10:16 multipart error: multipart: message too large
+2026/09/23 12:10:16 json decode error: invalid character '[' exceeded max depth
+2026/09/23 12:10:16 json unmarshal error: invalid character '[' exceeded max depth
+2026/09/23 12:10:16 multipart error: multipart: NextPart: EOF
+2026/09/23 12:10:16 multipart error: multipart: message too large
+2026/09/23 12:10:16 json decode error: invalid character '[' exceeded max depth
+2026/09/23 12:10:16 json unmarshal error: invalid character '[' exceeded max depth
+2026/09/23 12:10:17 multipart error: multipart: message too large
+2026/09/23 12:10:17 multipart error: multipart: NextPart: EOF
+2026/09/23 12:10:17 json decode error: invalid character '[' exceeded max depth
+2026/09/23 12:10:17 json unmarshal error: invalid character '[' exceeded max depth
+2026/09/23 12:10:17 multipart error: multipart: message too large
+2026/09/23 12:10:17 multipart error: multipart: NextPart: EOF
+2026/09/23 12:10:17 json decode error: invalid character '[' exceeded max depth
+2026/09/23 12:10:17 json unmarshal error: invalid character '[' exceeded max depth
+2026/09/23 12:10:17 multipart error: multipart: message too large
+2026/09/23 12:10:17 multipart error: multipart: NextPart: EOF
+2026/09/23 12:10:17 json decode error: invalid character '[' exceeded max depth
+2026/09/23 12:10:17 json unmarshal error: invalid character '[' exceeded max depth
+2026/09/23 12:10:18 multipart error: multipart: NextPart: EOF
+2026/09/23 12:10:18 multipart error: multipart: message too large
+2026/09/23 12:10:18 json decode error: invalid character '[' exceeded max depth
+2026/09/23 12:10:18 json unmarshal error: invalid character '[' exceeded max depth
+2026/09/23 12:10:18 multipart error: multipart: NextPart: EOF
+2026/09/23 12:10:18 multipart error: multipart: message too large
+2026/09/23 12:10:18 json decode error: invalid character '[' exceeded max depth
+2026/09/23 12:10:18 json unmarshal error: invalid character '[' exceeded max depth
+2026/09/23 12:10:19 multipart error: multipart: message too large
+2026/09/23 12:10:19 multipart error: multipart: NextPart: EOF
+2026/09/23 12:10:19 json decode error: invalid character '[' exceeded max depth
+2026/09/23 12:10:19 json unmarshal error: invalid character '[' exceeded max depth
+2026/09/23 12:10:19 multipart error: multipart: message too large
+2026/09/23 12:10:19 multipart error: multipart: NextPart: EOF
+2026/09/23 12:10:19 json decode error: invalid character '[' exceeded max depth
+2026/09/23 12:10:19 json unmarshal error: invalid character '[' exceeded max depth
+2026/09/23 12:10:19 multipart error: multipart: message too large
+2026/09/23 12:10:19 multipart error: multipart: NextPart: EOF
+2026/09/23 12:10:19 json decode error: invalid character '[' exceeded max depth
+2026/09/23 12:10:19 json unmarshal error: invalid character '[' exceeded max depth
+2026/09/23 12:10:20 multipart error: multipart: message too large
+2026/09/23 12:10:20 multipart error: multipart: NextPart: EOF
+2026/09/23 12:10:20 json decode error: invalid character '[' exceeded max depth
+2026/09/23 12:10:20 json unmarshal error: invalid character '[' exceeded max depth
+2026/09/23 12:10:20 multipart error: multipart: message too large
+2026/09/23 12:10:20 multipart error: multipart: NextPart: EOF
+2026/09/23 12:10:20 json decode error: invalid character '[' exceeded max depth
+2026/09/23 12:10:20 json unmarshal error: invalid character '[' exceeded max depth
+2026/09/23 12:10:20 multipart error: multipart: message too large
+2026/09/23 12:10:20 multipart error: multipart: NextPart: EOF
+2026/09/23 12:10:20 json unmarshal error: invalid character '[' exceeded max depth
+2026/09/23 12:10:20 json decode error: invalid character '[' exceeded max depth
+2026/09/23 12:10:21 multipart error: multipart: message too large
+2026/09/23 12:10:21 multipart error: multipart: NextPart: EOF
+2026/09/23 12:10:21 json decode error: invalid character '[' exceeded max depth
+2026/09/23 12:10:21 json unmarshal error: invalid character '[' exceeded max depth
+2026/09/23 12:10:21 multipart error: multipart: NextPart: EOF
+2026/09/23 12:10:21 multipart error: multipart: message too large
+2026/09/23 12:10:21 json decode error: invalid character '[' exceeded max depth
+2026/09/23 12:10:21 json unmarshal error: invalid character '[' exceeded max depth
+2026/09/23 12:10:21 multipart error: multipart: message too large
+2026/09/23 12:10:21 multipart error: multipart: NextPart: EOF
+2026/09/23 12:10:22 json decode error: invalid character '[' exceeded max depth
+2026/09/23 12:10:22 json unmarshal error: invalid character '[' exceeded max depth
+2026/09/23 12:10:22 multipart error: multipart: message too large
+2026/09/23 12:10:22 multipart error: multipart: NextPart: EOF
+2026/09/23 12:10:22 json decode error: invalid character '[' exceeded max depth
+2026/09/23 12:10:22 json unmarshal error: invalid character '[' exceeded max depth
+2026/09/23 12:10:22 multipart error: multipart: message too large
+2026/09/23 12:10:22 multipart error: multipart: NextPart: EOF
+2026/09/23 12:10:22 json decode error: invalid character '[' exceeded max depth
+2026/09/23 12:10:22 json unmarshal error: invalid character '[' exceeded max depth
+2026/09/23 12:10:22 multipart error: multipart: NextPart: EOF
+2026/09/23 12:10:22 multipart error: multipart: message too large
+2026/09/23 12:10:22 json decode error: invalid character '[' exceeded max depth
+2026/09/23 12:10:22 json unmarshal error: invalid character '[' exceeded max depth
+2026/09/23 12:10:23 multipart error: multipart: message too large
+2026/09/23 12:10:23 multipart error: multipart: NextPart: EOF
+2026/09/23 12:10:23 json decode error: invalid character '[' exceeded max depth
+2026/09/23 12:10:23 json unmarshal error: invalid character '[' exceeded max depth
+2026/09/23 12:10:23 multipart error: multipart: message too large
+2026/09/23 12:10:23 multipart error: multipart: NextPart: EOF
+2026/09/23 12:10:23 json decode error: invalid character '[' exceeded max depth
+2026/09/23 12:10:23 json unmarshal error: invalid character '[' exceeded max depth
+2026/09/23 12:10:23 multipart error: multipart: message too large
+2026/09/23 12:10:23 multipart error: multipart: NextPart: EOF
+2026/09/23 12:10:23 json decode error: invalid character '[' exceeded max depth
+2026/09/23 12:10:23 json unmarshal error: invalid character '[' exceeded max depth
+2026/09/23 12:10:24 multipart error: multipart: message too large
+2026/09/23 12:10:24 multipart error: multipart: NextPart: EOF
+2026/09/23 12:10:24 json decode error: invalid character '[' exceeded max depth
+2026/09/23 12:10:24 json unmarshal error: invalid character '[' exceeded max depth
+2026/09/23 12:10:24 multipart error: multipart: message too large
+2026/09/23 12:10:24 multipart error: multipart: NextPart: EOF
+2026/09/23 12:10:24 json decode error: invalid character '[' exceeded max depth
+2026/09/23 12:10:24 json unmarshal error: invalid character '[' exceeded max depth
+2026/09/23 12:10:24 multipart error: multipart: message too large
+2026/09/23 12:10:24 multipart error: multipart: NextPart: EOF
+2026/09/23 12:10:24 json decode error: invalid character '[' exceeded max depth
+2026/09/23 12:10:24 json unmarshal error: invalid character '[' exceeded max depth

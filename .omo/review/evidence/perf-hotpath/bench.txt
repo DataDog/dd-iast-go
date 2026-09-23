@@ -1,0 +1,43 @@
+Private checkout: /tmp/ddiast-review/wt/perf-hotpath (Go 1.26.6, darwin/arm64).
+Reproducer: hotpath_review_test.go was run as iast/propagation/hotpath_review_test.go.
+Command: GOTOOLCHAIN=go1.26.6 go test -run "^$" -bench "^BenchmarkHotPathReview/(no-owner|active-clean)/(join-empty|split-seq)" -benchtime=100ms -count=1 -benchmem -timeout=15m ./iast/propagation
+BenchmarkHotPathReview/no-owner/join-empty/native-16          2368  175382 ns/op    0 B/op  0 allocs/op
+BenchmarkHotPathReview/no-owner/join-empty/hook-16            2408  565912 ns/op    0 B/op  0 allocs/op
+BenchmarkHotPathReview/no-owner/split-seq/native-16        1000000     660.7 ns/op   64 B/op  2 allocs/op
+BenchmarkHotPathReview/no-owner/split-seq/hook-16          1000000    1015 ns/op     96 B/op  3 allocs/op
+BenchmarkHotPathReview/active-clean/join-empty/native-16     1293  458305 ns/op    0 B/op  0 allocs/op
+BenchmarkHotPathReview/active-clean/join-empty/hook-16       1402  775086 ns/op    0 B/op  0 allocs/op
+BenchmarkHotPathReview/active-clean/split-seq/native-16   1000000     907.5 ns/op   64 B/op  2 allocs/op
+BenchmarkHotPathReview/active-clean/split-seq/hook-16     1000000     598.2 ns/op   96 B/op  3 allocs/op
+PASS
+
+Command: GOTOOLCHAIN=go1.26.6 go test -run "^$" -bench "^BenchmarkHotPathReview/(no-owner|active-clean)/(split-seq-consumed|builder|buffer)/" -benchtime=100ms -count=1 -benchmem -timeout=15m ./iast/propagation
+BenchmarkHotPathReview/no-owner/split-seq-consumed/native-16       74977  1561 ns/op   0 B/op  0 allocs/op
+BenchmarkHotPathReview/no-owner/split-seq-consumed/hook-16         68818  2011 ns/op   0 B/op  0 allocs/op
+BenchmarkHotPathReview/no-owner/builder/native-16                2319225   161.0 ns/op 64 B/op  1 allocs/op
+BenchmarkHotPathReview/no-owner/builder/hook-16                  1000000   139.9 ns/op 64 B/op  1 allocs/op
+BenchmarkHotPathReview/no-owner/buffer/native-16                 1000000   104.7 ns/op 64 B/op  1 allocs/op
+BenchmarkHotPathReview/no-owner/buffer/hook-16                   1588369   184.4 ns/op 64 B/op  1 allocs/op
+BenchmarkHotPathReview/active-clean/split-seq-consumed/native-16   85581  3807 ns/op   0 B/op  0 allocs/op
+BenchmarkHotPathReview/active-clean/split-seq-consumed/hook-16     77524  1497 ns/op   0 B/op  0 allocs/op
+BenchmarkHotPathReview/active-clean/builder/native-16           2172064    52.44 ns/op 64 B/op 1 allocs/op
+BenchmarkHotPathReview/active-clean/builder/hook-16              124882  1006 ns/op    64 B/op 1 allocs/op
+BenchmarkHotPathReview/active-clean/buffer/native-16            2689186    58.47 ns/op 64 B/op 1 allocs/op
+BenchmarkHotPathReview/active-clean/buffer/hook-16               184792   992.8 ns/op  64 B/op 1 allocs/op
+PASS
+
+Command: GOTOOLCHAIN=go1.26.6 go test -run "^$" -bench "^BenchmarkHotPathReview$" -benchtime=100ms -count=1 -benchmem -timeout=15m ./iast/propagation
+No-owner case/native 64 B/op 1 allocs/op; case/hook 64 B/op 1 allocs/op.
+No-owner fmt/native 176 B/op 3 allocs/op; fmt/hook 176 B/op 3 allocs/op.
+No-owner bytes/native 64 B/op 1 allocs/op; bytes/hook 64 B/op 1 allocs/op.
+No-owner concat/native 128 B/op 1 allocs/op; concat/hook 128 B/op 1 allocs/op.
+Active-clean case/native 64 B/op 1 allocs/op; case/hook 64 B/op 1 allocs/op.
+Active-clean fmt/native 176 B/op 3 allocs/op; fmt/hook 176 B/op 3 allocs/op.
+Active-clean bytes/native 64 B/op 1 allocs/op; bytes/hook 64 B/op 1 allocs/op.
+Active-clean concat/native 128 B/op 1 allocs/op; concat/hook 128 B/op 1 allocs/op.
+PASS
+
+Wall-clock times above are noisy on the shared host; allocation deltas and
+linear pre-gate loops are the primary evidence. The native JSON case in the
+full benchmark uses b.Fatal inside the inner loop and was optimized away; it
+is not used in any finding or comparison.

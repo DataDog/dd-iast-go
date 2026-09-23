@@ -1,0 +1,19 @@
+package spans
+
+import (
+	"testing"
+
+	"github.com/DataDog/dd-iast-go/internal/config"
+	"github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
+)
+
+func TestFXDiag(t *testing.T) {
+	config.RequestSamplingPct = 100
+	config.MaxConcurrentRequests = 2
+	store.Clear()
+	t.Logf("sampling=%d cap=%d threshold=%d size=%d trimStore=%v",
+		config.RequestSamplingPct, config.MaxConcurrentRequests, triggerTrimThreshold, store.Size(), trimStore())
+	span := tracer.StartSpan("diag")
+	ann := AnnotationFor(span)
+	t.Logf("ann=%p sampled=%v isSentinel=%v size=%d", ann, ann.Sampled, ann == nonSampledAnnotation, store.Size())
+}

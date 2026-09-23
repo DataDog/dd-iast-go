@@ -1,0 +1,13 @@
+[
+  {
+    "id": "life-admission-F1",
+    "verdict": "CONFIRMED",
+    "original_severity": "High",
+    "adjusted_severity": "High",
+    "reachable_default": true,
+    "documented_limitation": false,
+    "reason": "Independently reproduced on a woven Go 1.26.6 build with my own reproducer: after a real raw-socket disconnect (HTTP/1) or client cancel (HTTP/2) is observed server-side (handler saw req.Context().Done()), the request scope is still Active and a subsequent probe request gets DecisionCapacityDropped; with the default limit of 2, two stalled disconnected handlers disable IAST for all later requests until they return. The only release path is the deferred iasthttpbridge.Finish in serverHandler.ServeHTTP (iast/net/http/orchestrion.yml:27-33); nothing registers a context-cancellation release. Matches the brief's High definition (permanent IAST self-disable via a leaked admission slot); not a documented limitation.",
+    "evidence_path": ".omo/review/evidence/fx-life-admission-F1/zz_fx_life_admission_test.go",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 go tool orchestrion go test ./iast/net/http -run TestFxDisconnectSlotRetention -count=1 -v -timeout 4m"
+  }
+]

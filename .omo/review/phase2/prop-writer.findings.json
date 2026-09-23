@@ -1,0 +1,13 @@
+[
+  {
+    "id": "prop-writer-F1",
+    "severity": "High",
+    "category": "memory-bound",
+    "location": "internal/taint/propagation/writer.go:101-132",
+    "title": "One Builder retains up to 60 owner records despite a four-owner limit",
+    "claim": "The writer update loop admits a fresh tainted-input owner after four receiver owners are already present; 60 active owners retain 60 charged writer records for one Builder although the documented limit is four.",
+    "evidence_path": ".omo/review/evidence/prop-writer/owner-fanout.out.txt",
+    "repro_command": "cd /tmp/ddiast-review/wt/prop-writer && GOTOOLCHAIN=go1.26.6 go test -timeout 10m -count=1 -run '^TestReviewWriterOwnerFanoutBound$' -v ./internal/taint/propagation",
+    "needs_repro": false
+  }
+]

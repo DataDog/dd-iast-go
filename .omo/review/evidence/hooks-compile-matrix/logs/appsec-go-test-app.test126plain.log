@@ -1,0 +1,16 @@
+Command: cd appsec-go-test-app && GOTOOLCHAIN=go1.26.6 go test -vet=off -count=1 -timeout 10m ./...
+go version: go version go1.26.6 darwin/arm64
+
+?   	go-dvwa	[no test files]
+?   	go-dvwa/api/grpc/pb	[no test files]
+--- FAIL: TestGetProducts (0.00s)
+    sql_test.go:20: 
+        	Error Trace:	/tmp/ddiast-review/wt/hooks-compile-matrix/appsec-go-test-app/vulnerable/sql_test.go:20
+        	Error:      	Received unexpected error:
+        	            	SQL logic error: no such table: product (1)
+        	Test:       	TestGetProducts
+FAIL
+FAIL	go-dvwa/vulnerable	0.761s
+FAIL
+
+Exit status: 1  (elapsed 3s)

@@ -1,0 +1,22 @@
+13:16:00.031696 woven=true go=go1.26.6 clients=256 duration=30s GOMAXPROCS=16 env: sampling=100 maxconc=64 dedup=false vulns=8
+13:16:15.077964 t= 15s done=9215 rps=614 analyzed=6244 sinkT=5835 sinkU=7656 sql=19856 exec=491 err=0 canc=458 oldest=1.731s gor=924 heap=109MiB storeValues=1780 storeCharged=868288 falseTaint=0 bleed=0/2435 poolBleed=0 agentSQL=5286 agentCMD=170
+13:16:30.429026 load phase finished: 17742 requests in 30s
+13:16:31.034463 t= 31s done=17742 rps=572 analyzed=11115 sinkT=10331 sinkU=13814 sql=37839 exec=930 err=0 canc=817 oldest=0s gor=22 heap=63MiB storeValues=0 storeCharged=0 falseTaint=0 bleed=0/6850 poolBleed=0 agentSQL=9767 agentCMD=312
+13:16:32.503493 quiescent store: values=0 charged=0 acquireDrops=0
+13:16:32.512923 serial verification (T=tainted, A=active untainted, N=not analyzed): TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
+13:16:36.517273 SUMMARY requests=17742 analyzed=11115 sinkTainted=10331 sinkUntaintedActive=13814 sqlCalls=37839 execCalls=930 clientErrors=0 cancelled=817 intendedPanics=1330 lateDone=1334 stalls=0 falseTaint=0 bleed=0 (checks=6850) poolBleed=0 heapAfterGC=23MiB goroutines=24 agentPayloads=16 agentBytes=31312068 agentSQL=9902 agentCMD=326
+13:16:36.517328 flow q       n=1289    avg=414.389ms  max=2.500636s  (vlen at max=6)
+13:16:36.517351 flow h       n=1361    avg=346.981ms  max=2.105209s  (vlen at max=24)
+13:16:36.517364 flow form    n=1366    avg=378.686ms  max=2.26747s   (vlen at max=4)
+13:16:36.517371 flow json    n=1336    avg=365.461ms  max=2.485454s  (vlen at max=28)
+13:16:36.517407 flow body    n=1350    avg=356.99ms   max=2.514917s  (vlen at max=44)
+13:16:36.517421 flow cookie  n=1358    avg=338.774ms  max=2.039544s  (vlen at max=22)
+13:16:36.517427 flow p       n=1479    avg=407.254ms  max=3.032771s  (vlen at max=13)
+13:16:36.517432 flow buf     n=1390    avg=368.603ms  max=2.982349s  (vlen at max=34)
+13:16:36.517436 flow fan     n=1394    avg=489.946ms  max=3.02264s   (vlen at max=24)
+13:16:36.517440 flow late    n=1349    avg=350.913ms  max=2.168254s  (vlen at max=33)
+13:16:36.517443 flow abort   n=1345    avg=308.701ms  max=1.948519s  (vlen at max=55)
+13:16:36.517447 flow big     n=1359    avg=582.22ms   max=3.091541s  (vlen at max=30)
+13:16:36.517453 flow derive  n=1366    avg=618.091ms  max=3.992795s  (vlen at max=41331)
+13:16:36.517457 RESULT: PASS
+2026/09/23 13:16:36 Datadog Tracer v2.11.0-rc.1 ERROR: loading features: Get "http://127.0.0.1:18128/info": dial tcp 127.0.0.1:18128: connect: connection refused (occurred: 23 Sep 26 13:15 CEST)

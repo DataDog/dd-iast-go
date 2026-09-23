@@ -1,0 +1,35 @@
+[
+  {
+    "id": "crash-diff-strings-F1",
+    "severity": "High",
+    "category": "false-positive",
+    "location": "internal/taint/propagation/string_coarse.go:88-121,206-219",
+    "title": "fmt coarse propagation taints output bytes that do not come from the tainted argument (confirms prop-string-coarse-F1/F2)",
+    "claim": "formatArgumentKey keys every String/[]byte-kind argument and publishCoarseOwners taints the whole result, even when fmt rendered the argument via String() (named-string Stringer enum) or the verb does not render it (%T, %.0s, %[2]s). A Stringer mapping attacker input to a safe constant yields a fully tainted query string.",
+    "evidence_path": ".omo/review/evidence/crash-diff-strings/targeted.log",
+    "repro_command": "cd <private copy> && GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -v -run TestTargetedEdges ./iast/internal/crashdiff  (harness: .omo/review/evidence/crash-diff-strings/harness/extra_test.go)",
+    "needs_repro": false
+  },
+  {
+    "id": "crash-diff-strings-F2",
+    "severity": "Info",
+    "category": "perf",
+    "location": "internal/taint/propagation/string_exact.go:25-46,69",
+    "title": "Tainted strings.Join of one element with non-empty separator clones instead of aliasing (dup of hooks-fidelity-strings-F2)",
+    "claim": "The alias fast path only runs for separator==\"\"; a single-element Join with a separator returns elems[0] natively but a fresh clone (extra allocation and root charge) on the tainted path. Content is identical.",
+    "evidence_path": ".omo/review/evidence/crash-diff-strings/targeted.log",
+    "repro_command": "cd <private copy> && GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -v -run TestTargetedEdges ./iast/internal/crashdiff",
+    "needs_repro": false
+  },
+  {
+    "id": "crash-diff-strings-F3",
+    "severity": "Info",
+    "category": "provenance",
+    "location": "internal/taint/propagation/propagation.go:217-256",
+    "title": "Window derivation drops under sustained per-root window load (bounded; not reproducible in isolation)",
+    "claim": "About 3,000 of about 2.2M window-op outputs aliasing a tainted input were untainted in the chained random campaign; the first 200 all derive correctly when replayed in a fresh request, consistent with documented per-root/per-request capacity bounds (MaxValuesPerRoot=256).",
+    "evidence_path": ".omo/review/evidence/crash-diff-strings/random-go1.26.6.log",
+    "repro_command": "cd <private copy> && GOTOOLCHAIN=go1.26.6 CRASHDIFF_ITERS=50000 CRASHDIFF_SEED=42 go tool orchestrion go test -v -run TestDiffRandom ./iast/internal/crashdiff",
+    "needs_repro": false
+  }
+]

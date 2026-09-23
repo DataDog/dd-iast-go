@@ -1,0 +1,29 @@
+-test.shuffle 1790158124550621000
+=== RUN   TestInactiveContextReturnsOriginal
+--- PASS: TestInactiveContextReturnsOriginal (0.00s)
+=== RUN   TestTaintRejectsOversizedValues
+--- PASS: TestTaintRejectsOversizedValues (0.00s)
+=== RUN   TestReviewPublicAPIInvalidOriginDropsSilently
+--- PASS: TestReviewPublicAPIInvalidOriginDropsSilently (0.00s)
+=== RUN   TestReviewPublicAPIConcurrentStress
+--- PASS: TestReviewPublicAPIConcurrentStress (0.21s)
+=== RUN   TestPublicConstantAliases
+--- PASS: TestPublicConstantAliases (0.00s)
+=== RUN   TestReviewPublicAPINilAndEmptySafety
+--- PASS: TestReviewPublicAPINilAndEmptySafety (0.00s)
+=== RUN   TestMarksHas
+--- PASS: TestMarksHas (0.00s)
+=== RUN   TestLookupDoesNotAllocate
+--- PASS: TestLookupDoesNotAllocate (0.00s)
+=== RUN   TestTaintStringAndVisit
+--- PASS: TestTaintStringAndVisit (0.00s)
+=== RUN   TestVisitRaceFinishReturnsCompleteSourceOrNothing
+--- PASS: TestVisitRaceFinishReturnsCompleteSourceOrNothing (0.00s)
+=== RUN   TestTaintDropsInvalidAndOneByteSources
+--- PASS: TestTaintDropsInvalidAndOneByteSources (0.00s)
+=== RUN   TestZeroMarksHasNoSecureVulnerability
+--- PASS: TestZeroMarksHasNoSecureVulnerability (0.00s)
+=== RUN   TestTaintBytesCopiesImmutableSourceValue
+--- PASS: TestTaintBytesCopiesImmutableSourceValue (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/taint	1.756s

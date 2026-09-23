@@ -1,0 +1,62 @@
+{
+ "plain": {
+  "bytes_per_req": 6233,
+  "dedup": true,
+  "go": "go1.26.6",
+  "iast_enabled": true,
+  "n": 300,
+  "objects_per_req": 60,
+  "profiled_requests": 320,
+  "sampling": 30,
+  "stack_traces": true,
+  "vuln_spans_total": 0,
+  "vulns_total": 0,
+  "warm": 20,
+  "woven": false
+ },
+ "woven-s0": {
+  "bytes_per_req": 9940,
+  "dedup": true,
+  "go": "go1.26.6",
+  "iast_enabled": true,
+  "n": 300,
+  "objects_per_req": 72,
+  "profiled_requests": 320,
+  "sampling": 0,
+  "stack_traces": true,
+  "vuln_spans_total": 0,
+  "vulns_total": 0,
+  "warm": 20,
+  "woven": true
+ },
+ "woven-s100": {
+  "bytes_per_req": 22521,
+  "dedup": true,
+  "go": "go1.26.6",
+  "iast_enabled": true,
+  "n": 300,
+  "objects_per_req": 153,
+  "profiled_requests": 320,
+  "sampling": 100,
+  "stack_traces": true,
+  "vuln_spans_total": 1,
+  "vulns_total": 1,
+  "warm": 20,
+  "woven": true
+ },
+ "woven-s100-nodedup": {
+  "bytes_per_req": 26354,
+  "dedup": false,
+  "go": "go1.26.6",
+  "iast_enabled": true,
+  "n": 300,
+  "objects_per_req": 181,
+  "profiled_requests": 320,
+  "sampling": 100,
+  "stack_traces": true,
+  "vuln_spans_total": 320,
+  "vulns_total": 320,
+  "warm": 20,
+  "woven": true
+ }
+}

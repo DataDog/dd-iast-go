@@ -1,0 +1,40 @@
+Review base: HEAD 2e23b46, private copy /tmp/ddiast-review/wt/light-testapps.
+
+Nested-module resolution:
+  GOTOOLCHAIN=go1.26.6 go list -m -json github.com/DataDog/dd-iast-go
+  Ran in each of:
+    iast/database/sql/testapp
+    iast/os/exec/testapp
+    iast/integration/testapp
+  Result in all three: Replace.Dir = /tmp/ddiast-review/wt/light-testapps.
+
+Nested go.sum SHA-256:
+  4629721fafeadf38095f209a335d9072abc2c8aed11e6180f5e116b1202fff21  iast/database/sql/testapp/go.sum
+  4629721fafeadf38095f209a335d9072abc2c8aed11e6180f5e116b1202fff21  iast/os/exec/testapp/go.sum
+  4629721fafeadf38095f209a335d9072abc2c8aed11e6180f5e116b1202fff21  iast/integration/testapp/go.sum
+  cmp confirmed all three files identical.
+
+Instrumented tests, Go 1.26.6:
+  GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -count=1 -timeout=15m ./...
+  SQL:         ok github.com/DataDog/dd-iast-go/testapps/database-sql 1.167s
+  OS/exec:     ok github.com/DataDog/dd-iast-go/testapps/os-exec 1.076s
+  Integration: ok github.com/DataDog/dd-iast-go/testapps/integration 14.651s
+
+Shuffled instrumented tests:
+  GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -count=1 -shuffle=on -timeout=15m ./...
+  SQL:         ok github.com/DataDog/dd-iast-go/testapps/database-sql 0.945s
+  OS/exec:     ok github.com/DataDog/dd-iast-go/testapps/os-exec 0.956s
+  Integration: ok github.com/DataDog/dd-iast-go/testapps/integration 15.037s
+
+Repeated shuffled instrumented tests:
+  GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -count=2 -shuffle=on -timeout=15m ./...
+  SQL:         ok github.com/DataDog/dd-iast-go/testapps/database-sql 1.013s
+  OS/exec:     ok github.com/DataDog/dd-iast-go/testapps/os-exec 1.790s
+  Integration: ok github.com/DataDog/dd-iast-go/testapps/integration 31.804s
+
+CI-style bootstrap builds and symbol checks:
+  GOTOOLCHAIN=go1.26.6 go tool orchestrion go build -o <temporary-binary> ./cmd/bootstrap
+  go tool nm <temporary-binary>
+  All symbols in each module's cmd/bootstrap/symbols.txt were present for SQL, OS/exec, and integration.
+
+All listed test and build commands exited successfully.

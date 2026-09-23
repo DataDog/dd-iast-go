@@ -1,0 +1,12 @@
+Command:
+cd /tmp/ddiast-review/wt/store-tests && GOTOOLCHAIN=go1.26.6 go test -race -timeout 15m -count=20 -v -run '^(TestEntryHandleConcurrentFinishIsSafe|TestConcurrentReadersWritersAndFinish|TestLookupRacesMutationAndFinish|TestFinishDrainsActiveWriterAndReleasesRoots|TestAddressReuseDoesNotReviveFinishedOwner)$' ./internal/taint/store
+
+Result:
+- Exit code: 0
+- Race reports: 0
+- Passing invocations: 93
+- Skipped invocations: 7
+- Each skipped TestAddressReuseDoesNotReviveFinishedOwner with:
+  "allocator did not reuse the address within the bounded attempt"
+
+The selected tests otherwise passed under -race. The conditional address-reuse test did not exercise its assertion in 7 of 20 invocations.

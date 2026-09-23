@@ -1,0 +1,13 @@
+[
+ {
+  "id": "hooks-compile-matrix-F1",
+  "verdict": "CONFIRMED",
+  "original_severity": "Critical",
+  "adjusted_severity": "Critical",
+  "reachable_default": true,
+  "documented_limitation": false,
+  "reason": "Independent woven builds: with Orchestrion resolved to the released v1.13.0, either via dd-trace-go/orchestrion/all/v2 v2.11.0-rc.1 (go mod tidy picks it silently) or via go get orchestrion@v1.13.0, go tool orchestrion go build fails on Go 1.26.6 and 1.27.0 at configuration load with 'unknown injection point type \"string-concat\"' (iast/propagation/orchestrion.yml:21). A control on the pinned pseudo-version builds and weaves. 23afa71d6dcb is in no release tag, and forcing the pin removes/downgrades orchestrion/all. The pending-release pin is noted only in internal plans and design notes, never as a customer-facing limitation, and it violates rule 1 (compile failure on valid customer code).",
+  "evidence_path": ".omo/review/evidence/fx-hooks-compile-matrix-F1/repro-released-v1.13.0.go1.26.6.log",
+  "repro_command": "cd evidence/fx-hooks-compile-matrix-F1/app-with-orchestrion-all (fix replace path to a HEAD copy) && GOTOOLCHAIN=go1.26.6 go mod tidy && GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go tool orchestrion go build -o /dev/null ."
+ }
+]

@@ -1,0 +1,90 @@
+[
+  {
+    "id": "perf-escape-F1",
+    "severity": "High",
+    "category": "perf",
+    "location": "iast/propagation/operators.go:197-204; iast/propagation/orchestrion.yml:327-341",
+    "title": "Every woven []byte->string assignment/declaration/return heap-allocates, even with IAST disabled or sampled out",
+    "claim": "BytesToString is not inlinable in customer packages (shape cost 131 > 80), so `result := string(value)` escapes (operators.go:199:19 'escapes to heap'). Plain Go keeps a non-escaping `s := string(b)` of <=32 bytes on the stack. Weaving therefore adds one heap allocation per wrapped conversion on every execution, independent of sampling/activity (identical counts inactive and active-untainted). README:31 calls these conversions 'allocation-preserving', which is false for non-escaping results. Measured 0 -> 1 allocs/op (ConvLocal, StringSliceLocal). A prototype using a non-generic inlinable gate helper plus a template emitting BytesToStringValue([]byte(x)) restores 0 allocs/op.",
+    "evidence_path": ".omo/review/evidence/perf-escape/",
+    "repro_command": "cd <copy> && GOTOOLCHAIN=go1.26.6 go test -run '^$' -bench . -benchtime=20000x ./perfsample  vs  go tool orchestrion go test -run '^$' -bench . -benchtime=20000x ./perfsample (sample.go/sample_test.go/extra_test.go in evidence dir)",
+    "needs_repro": false
+  },
+  {
+    "id": "perf-escape-F2",
+    "severity": "Medium",
+    "category": "perf",
+    "location": "iast/propagation/operators.go:18-196,197-304; internal/taint/operatorbridge/bridge.go:17",
+    "title": "Operator fast gate HasValues is never inlined into generic wrappers in customer builds, and ConcatN zero-alloc behavior depends on that accident",
+    "claim": "When a customer package instantiates iast/propagation generics without importing internal/taint/operatorbridge (always true for customers), the Go inliner does not inline operatorbridge.HasValues into the instantiated shape bodies (reproduced with plain go build on go1.26.6 and go1.27.0). Every woven concat/slice/conversion therefore pays extra out-of-line calls before the cheap gate. The inlinability of Concat2/Concat3 depends on it: with HasValues inlinable (blank import), concat2Result/concat3Result drop to cost 79/80, get inlined, and Concat2/Concat3 exceed budget (91/94). Their results then escape, and 2-3 operand local concats go from 0 to 1 allocs/op (ConcatConvOperand 1 -> 2).",
+    "evidence_path": ".omo/review/evidence/perf-escape/gate-transitive-inlining.txt",
+    "repro_command": "compile a package that calls iastprop.Concat2/BytesToString with and without `_ \"github.com/DataDog/dd-iast-go/internal/taint/operatorbridge\"` using -gcflags=-m=2 (see evidence file)",
+    "needs_repro": false
+  },
+  {
+    "id": "perf-escape-F3",
+    "severity": "Medium",
+    "category": "perf",
+    "location": "internal/taint/propagation/string_exact.go:56; internal/taint/propagation/bytes_exact.go:43",
+    "title": "copy() into the local inputs array makes every concat/Join operand leak to the heap",
+    "claim": "joinStringHit/joinBytesHit copy elements into a fixed local array with copy(), which escape analysis models as flowing element contents to the heap ('leaking param content: elements'). Through internal.ConcatN/JoinString, every operand of a woven `+` chain and strings.Join leaks. The compiler-optimized zero-copy `string(b) + \"x\"` (deliberately left unwrapped by the design) therefore becomes a real heap string: ConcatConvOperand goes from 0 to 1 allocs/op. Replacing copy with an explicit element loop gives 'elements does not escape' and restores 0 allocs/op (prototype v2/v3).",
+    "evidence_path": ".omo/review/evidence/perf-escape/prototype-fix-v3.patch",
+    "repro_command": "see bench-plain.txt vs bench-woven.txt (ConcatConvOperand) and bench-woven-prototype-v3.txt",
+    "needs_repro": false
+  },
+  {
+    "id": "perf-escape-F4",
+    "severity": "Medium",
+    "category": "perf",
+    "location": "iast/propagation/operators.go:90-196",
+    "title": "Concat wrappers for 8-16 operands are not inlinable, so their non-escaping results always heap-allocate",
+    "claim": "Concat8..Concat16 shape functions cost 81..97 (> 80), so `a+...+h` is computed inside an out-of-line function and escapes. Plain Go stack-allocates a non-escaping <=32-byte concat result. Measured 0 -> 1 allocs/op (ConcatLocal8, ConcatLocal16), unconditionally. Arity 2-7 is currently inlined (see F2 for its fragility).",
+    "evidence_path": ".omo/review/evidence/perf-escape/woven-m2.txt",
+    "repro_command": "go tool orchestrion go test -run '^$' -bench 'Extra/ConcatLocal(8|16)' -benchtime=20000x ./perfsample",
+    "needs_repro": false
+  },
+  {
+    "id": "perf-escape-F5",
+    "severity": "Low",
+    "category": "perf",
+    "location": "iast/propagation/writer.go:190-200; iast/propagation/coarse.go:86-99; iast/propagation/strings.go:19-22",
+    "title": "Non-inlinable wrappers force fresh results that plain code keeps on the stack to escape (Buffer.String, strconv.Quote*)",
+    "claim": "Natively inlinable calls whose fresh result does not escape in plain code (bytes.Buffer.String, strconv.Quote/QuoteToASCII/QuoteToGraphic, strings.Clone) are replaced by non-inlinable wrappers (cost 98-220), so the result escapes: BufferStringLocal 0 -> 1, QuoteLocal 1 -> 2 allocs/op, regardless of IAST state.",
+    "evidence_path": ".omo/review/evidence/perf-escape/bench-woven.txt",
+    "repro_command": "compare BufferStringLocal/QuoteLocal in bench-plain.txt vs bench-woven.txt",
+    "needs_repro": false
+  },
+  {
+    "id": "perf-escape-F6",
+    "severity": "Low",
+    "category": "doc",
+    "location": "README.md:70-71; iast/propagation/writer.go:19-200",
+    "title": "Writer receiver escape is unconditional and always happens; README says it 'can' happen",
+    "claim": "Any local strings.Builder/bytes.Buffer with at least one wrapped method call is moved to heap in every woven build ('moved to heap: sb/buf'), independent of IAST enablement, sampling, or taint: +1 alloc (+32 B Builder, +48 B Buffer) per writer. This is a documented and accepted trade-off. The wording understates its universality and does not quantify it.",
+    "evidence_path": ".omo/review/evidence/perf-escape/woven-m2.txt",
+    "repro_command": "compare BuilderLocal/BufferLocal in bench-plain.txt vs bench-woven.txt",
+    "needs_repro": false
+  },
+  {
+    "id": "perf-escape-F7",
+    "severity": "Low",
+    "category": "perf",
+    "location": "iast/propagation/strings.go:19-218; bytes.go:15-194; coarse.go:19-104; writer.go:19-200",
+    "title": "No named-call wrapper is inlinable and none has an inlinable pre-gate",
+    "claim": "All ~75 strings/bytes/fmt/url/strconv wrappers exceed the inline budget (98-220), and writer Buffer wrappers use defer ('unhandled op DEFER'). Natively inlined calls such as strings.Cut, CutPrefix, TrimPrefix, and Builder.WriteString/String become at least two out-of-line calls (the wrapper, then internal.StringWindow at cost 268, which only then checks ActiveStore) even with IAST disabled. Unlike the operators, there is no call-site gate. No extra allocations were measured (CutLocal/TrimLocal 0).",
+    "evidence_path": ".omo/review/evidence/perf-escape/advice-m2.txt",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 go build -gcflags='github.com/DataDog/dd-iast-go/iast/propagation=-m=2' ./iast/propagation",
+    "needs_repro": false
+  },
+  {
+    "id": "perf-escape-F8",
+    "severity": "Info",
+    "category": "ci",
+    "location": "orchestrion@23afa71d6dcb (toolexec compile-flag handling; child builds reuse parent flags at internal/jobserver/pkgs/resolve.go:197-224)",
+    "title": "Woven builds reject -gcflags=-m=2",
+    "claim": "`go tool orchestrion go build -gcflags='-m=2'` fails with 'invalid boolean value \"2\" for -m' (first seen while resolving the woven dependency iobridge, and later on the target package itself), while plain go build with the same compiler accepts it. `-m -m` or package-scoped gcflags work. This complicates escape/inlining audits of woven code.",
+    "evidence_path": ".omo/review/evidence/perf-escape/woven-m2-flag-error.txt",
+    "repro_command": "go tool orchestrion go build -gcflags='-m=2' ./perfsample",
+    "needs_repro": false
+  }
+]

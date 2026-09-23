@@ -1,0 +1,7 @@
+=== .: go tool orchestrion go test -gcflags=all=-d=checkptr=2 -count=1 -timeout 20m ./iast/propagation
+exit=0 secs=1278
+races=/tmp/ddiast-review/wt/crash-race-hunt/_logs/woven_prop_checkptr.out:0,/tmp/ddiast-review/wt/crash-race-hunt/_logs/woven_prop_checkptr.time:0
+checkptr=/tmp/ddiast-review/wt/crash-race-hunt/_logs/woven_prop_checkptr.out:0,/tmp/ddiast-review/wt/crash-race-hunt/_logs/woven_prop_checkptr.time:0
+      1 ok  	github.com/DataDog/dd-iast-go/iast/propagation	0.766s
+           354549760  maximum resident set size
+            40403688  peak memory footprint

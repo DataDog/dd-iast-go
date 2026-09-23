@@ -1,0 +1,13 @@
+[
+  {
+    "id": "prop-writer-F1",
+    "verdict": "CONFIRMED",
+    "original_severity": "High",
+    "adjusted_severity": "High",
+    "reachable_default": false,
+    "documented_limitation": false,
+    "reason": "The woven Go 1.26.6 reproducer records 60 live writer states for one strings.Builder after 60 configured active owners append tainted inputs. The documented receiver limit is four; the global store remains bounded, but this supported non-default configuration exceeds the local bound by 15x.",
+    "evidence_path": ".omo/review/evidence/fx-prop-writer-F1/go1.26.6.out.txt",
+    "repro_command": "cd /tmp/ddiast-review/wt/fx-prop-writer-F1 && cp .omo/review/evidence/fx-prop-writer-F1/own_reproducer_test.go iast/propagation/zz_fx_prop_writer_f1_test.go && GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go tool orchestrion go test -timeout 10m -count=1 -run '^TestFXPropWriterF1ConfiguredOwnerFanout$' -v ./iast/propagation"
+  }
+]

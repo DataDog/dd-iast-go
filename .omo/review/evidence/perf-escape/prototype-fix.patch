@@ -1,0 +1,71 @@
+diff --git i/iast/propagation/operators.go w/iast/propagation/operators.go
+index 218c7f7..00634ff 100644
+--- i/iast/propagation/operators.go
++++ w/iast/propagation/operators.go
+@@ -88,6 +88,9 @@ func concat7Result[T ~string](a, b, c, d, e, f, g T, result T) T {
+ 
+ // Concat8 evaluates and propagates one fixed-arity maximal string concatenation.
+ func Concat8[T ~string](a, b, c, d, e, f, g, h T) T {
++	if !operatorbridge.HasValues() {
++		return a + b + c + d + e + f + g + h
++	}
+ 	return concat8Result(a, b, c, d, e, f, g, h, a+b+c+d+e+f+g+h)
+ }
+ 
+@@ -196,11 +199,15 @@ func concat16Result[T ~string](a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p T,
+ 
+ // BytesToString converts bytes and preserves exact taint ranges on the managed string result.
+ func BytesToString[T ~[]byte](value T) string {
+-	result := string(value)
+ 	if !operatorbridge.HasValues() {
+-		return result
++		return string(value)
+ 	}
+-	return internal.BytesToString([]byte(value), result)
++	return bytesToStringSlow([]byte(value))
++}
++
++//go:noinline
++func bytesToStringSlow(value []byte) string {
++	return internal.BytesToString(value, string(value))
+ }
+ 
+ // StringSliceAll performs a full string slice and derives its managed window.
+diff --git i/iast/propagation/writer.go w/iast/propagation/writer.go
+index d1405fc..5e7c5dd 100644
+--- i/iast/propagation/writer.go
++++ w/iast/propagation/writer.go
+@@ -189,12 +189,14 @@ func BufferTruncate(buffer *bytes.Buffer, length int) {
+ 
+ // BufferString wraps bytes.Buffer.String.
+ func BufferString(buffer *bytes.Buffer) string {
+-	if buffer == nil {
+-		return buffer.String()
+-	}
+-	if !internal.WriterActive() {
++	if buffer == nil || !internal.WriterActive() {
+ 		return buffer.String()
+ 	}
++	return bufferStringSlow(buffer)
++}
++
++//go:noinline
++func bufferStringSlow(buffer *bytes.Buffer) string {
+ 	result := buffer.String()
+ 	return internal.BufferString(buffer, bufferView(buffer), result)
+ }
+diff --git i/internal/taint/propagation/string_exact.go w/internal/taint/propagation/string_exact.go
+index d0ea50b..44aefa7 100644
+--- i/internal/taint/propagation/string_exact.go
++++ w/internal/taint/propagation/string_exact.go
+@@ -53,7 +53,9 @@ func joinStringHit(s *store.Store, elements []string, separator, result string)
+ 	if len(elements) > maxInputs {
+ 		inputCount = maxInputs - 1 // Reserve one coarse-input slot for separator provenance.
+ 	}
+-	copy(inputs[:inputCount], elements[:inputCount])
++	for i := 0; i < inputCount; i++ {
++		inputs[i] = elements[i]
++	}
+ 	inputs[inputCount] = separator
+ 	var owners [store.MaxSnapshotOwners]store.Entry
+ 	ownerCount := collectStringOwners(s, inputs[:inputCount+1], &owners)

@@ -1,0 +1,17 @@
+File: store2.test
+Type: delay
+Time: 2026-09-23 12:08:24 CEST
+Showing nodes accounting for 77.92s, 100% of 77.95s total
+Dropped 234 nodes (cum <= 0.39s)
+      flat  flat%   sum%        cum   cum%
+    77.45s 99.36% 99.36%     77.52s 99.45%  sync.(*Mutex).Unlock /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/sync/mutex.go:65 (partial-inline)
+     0.47s   0.6%   100%      0.47s   0.6%  runtime.unlock /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/lock_spinbit.go:261
+         0     0%   100%      0.81s  1.04%  github.com/DataDog/dd-iast-go/internal/taint/store.(*Owner).AdoptString /private/tmp/ddiast-review/wt/perf-contention/internal/taint/store/root.go:236
+         0     0%   100%     76.70s 98.40%  github.com/DataDog/dd-iast-go/internal/taint/store.(*Owner).Finish /private/tmp/ddiast-review/wt/perf-contention/internal/taint/store/owner.go:203
+         0     0%   100%      0.73s  0.94%  github.com/DataDog/dd-iast-go/internal/taint/store.(*Owner).adopt /private/tmp/ddiast-review/wt/perf-contention/internal/taint/store/root.go:263
+         0     0%   100%      0.73s  0.94%  github.com/DataDog/dd-iast-go/internal/taint/store.(*Owner).publishRangesLocked /private/tmp/ddiast-review/wt/perf-contention/internal/taint/store/root.go:355
+         0     0%   100%      0.73s  0.94%  github.com/DataDog/dd-iast-go/internal/taint/store.(*Owner).publishRoot /private/tmp/ddiast-review/wt/perf-contention/internal/taint/store/root.go:339
+         0     0%   100%      0.73s  0.94%  github.com/DataDog/dd-iast-go/internal/taint/store.(*Store).allocateOverflow /private/tmp/ddiast-review/wt/perf-contention/internal/taint/store/overflow.go:17
+         0     0%   100%      0.81s  1.04%  github.com/DataDog/dd-iast-go/internal/taint/store.pcLifecycle.func1 /private/tmp/ddiast-review/wt/perf-contention/internal/taint/store/zz_perf_contention_test.go:242
+         0     0%   100%     76.74s 98.45%  github.com/DataDog/dd-iast-go/internal/taint/store.pcLifecycle.func1 /private/tmp/ddiast-review/wt/perf-contention/internal/taint/store/zz_perf_contention_test.go:261
+         0     0%   100%     77.57s 99.52%  testing.(*B).RunParallel.func1 /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/testing/benchmark.go:982

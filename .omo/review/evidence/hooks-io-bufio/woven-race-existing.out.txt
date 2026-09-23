@@ -1,0 +1,6 @@
+$ go tool orchestrion go test -count=1 -race -timeout 15m ./iast/io/ ./iast/bufio/ ./internal/taint/iobridge/ ./internal/taint/request/
+exit=0
+ok  	github.com/DataDog/dd-iast-go/iast/io	1.831s
+ok  	github.com/DataDog/dd-iast-go/iast/bufio	1.895s
+ok  	github.com/DataDog/dd-iast-go/internal/taint/iobridge	1.912s
+ok  	github.com/DataDog/dd-iast-go/internal/taint/request	3.447s

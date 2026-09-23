@@ -1,0 +1,25 @@
+$ cd $WT/fx/sqlonly
+$ GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4  go tool orchestrion go build -buildmode=c-shared -o ../out/sqlonly-cshared.dylib ./cmd/cshared
+# example.com/app/cmd/cshared
+resolving "github.com/DataDog/dd-iast-go/iast/database/sql": internal error: nats: maximum payload exceeded
+exit status 1
+       69.84 real       121.69 user        45.84 sys
+          3080912896  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+             6011515  page reclaims
+              194956  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                7350  messages sent
+                7824  messages received
+               39125  signals received
+               22135  voluntary context switches
+             1168405  involuntary context switches
+          4662058122  instructions retired
+          2438486208  cycles elapsed
+            70501072  peak memory footprint
+
+exit status: 1

@@ -1,0 +1,11 @@
+Command: cd /tmp/ddiast-review/wt/life-owner-scope && GOTOOLCHAIN=go1.26.6 go test -race -run "^TestReview" -count=1 -timeout 2m ./internal/taint/request
+--- FAIL: TestReviewServerScopeReacquiredWhenContextContainsFinishedScope (0.00s)
+    lifecycle_review_test.go:38: new request: created=false active=false; expected a fresh live scope
+--- FAIL: TestReviewConcurrentScopeFinishWaitsForExternalCleanup (0.00s)
+    lifecycle_review_test.go:74: second Scope.Finish returned before scopebridge.Finish completed
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/request	1.355s
+FAIL
+
+Control command: cd /tmp/ddiast-review/wt/life-owner-scope && GOTOOLCHAIN=go1.26.6 go test -race -run "^Test(ManagerPermitAndFinish|AnalysisSourceWritesRaceFinish|OwnerDirectoryRejectsFinishedGeneration|ServerContextEntryAndNestedFinish|BeginActiveAndFinish)$" -count=1 -timeout 2m ./internal/taint/request
+ok  	github.com/DataDog/dd-iast-go/internal/taint/request	1.576s

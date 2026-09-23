@@ -1,0 +1,24 @@
+[
+  {
+    "id": "store-concurrency-F1",
+    "verdict": "CONFIRMED",
+    "original_severity": "High",
+    "adjusted_severity": "High",
+    "reachable_default": true,
+    "documented_limitation": false,
+    "reason": "Mechanism verified at HEAD 2e23b46: Acquire recycles a Dead slot (owner.go:53-59) without lifecycleMu; beginWrite/alive (owner.go:127-149) validate a stale handle with two independent atomic loads; BindObject*/UpdateWriter/AdoptBufferWriter/TruncateWriter/ResetWriter never re-check, and bind (binding.go:168-207) has no re-check. My own deterministic seam reproducer shows a finished request's handle publishing a fresh object into the successor generation's binding table AND the successor reading the finished request's provenance (source ID 7) back via its own SnapshotWriter. Natural-scheduling reproduction on unmodified code confirmed by running the finder's reproducer on this machine (FAIL in 47.13s, cross_generation_bindings=1); my own 2x60s natural stress runs (~1.7M slot cycles) did not hit, so the per-operation window is very narrow. Raw *Owner handles escape revalidation at request/reader.go:23-25 (BindReader) and http.go:74; async work outliving the handler can trigger it under default config on Go 1.26.6. Not a documented limitation; breaks product rule 4 (cross-request taint bleed). Logical race, all accesses atomic: no panic/corruption, bounded provenance damage - High, not Critical.",
+    "evidence_path": ".omo/review/evidence/fx-store-concurrency-F1/fx-seam-deterministic.txt",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go test -count=1 -run 'TestFxSeam|TestFxControl' -v ./internal/taint/store/ (deterministic seam: harness fx_seam_hook.go + owner-alive-seam-fx.diff in evidence dir; natural stress: GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 FX_STRESS=60s go test -count=1 -run 'TestFxStaleHandleBindCrossGeneration' -v ./internal/taint/store/)"
+  },
+  {
+    "id": "crash-deadlock-F1",
+    "verdict": "CONFIRMED",
+    "original_severity": "High",
+    "adjusted_severity": "High",
+    "reachable_default": true,
+    "documented_limitation": false,
+    "reason": "Duplicate of store-concurrency-F1, same root cause (Acquire Dead->Active transition without lifecycleMu plus the two-load validation in beginWrite/alive). Verified by the same deterministic seam reproducer (cross-generation binding published by a stale handle) and by natural reproduction: the finder's structurally identical reproducer failed on this machine in 47.13s on unmodified code. Same reachability caveats and same High rating.",
+    "evidence_path": ".omo/review/evidence/fx-store-concurrency-F1/fx-seam-deterministic.txt",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go test -count=1 -run 'TestFxSeamStaleBindIntoSuccessor' -v ./internal/taint/store/ (deterministic; natural corroboration: GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 REVIEW_STRESS=90s go test -count=1 -run TestReviewStaleHandleBindAfterSlotReuse -v ./internal/taint/store/)"
+  }
+]

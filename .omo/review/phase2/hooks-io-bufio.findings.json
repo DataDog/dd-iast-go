@@ -1,0 +1,46 @@
+[
+  {
+    "id": "hooks-io-bufio-F1",
+    "severity": "High",
+    "category": "cross-request",
+    "location": "iast/bufio/orchestrion.yml:15-34; internal/taint/request/reader.go:27-39,67-88; internal/taint/store/binding.go:95-108,166-203",
+    "title": "A reset or reused reader wrapper keeps its original owner's binding, so taint leaks across owners",
+    "claim": "The reader binding is keyed on the wrapper address and set once at construction. bufio.Reader.Reset and LimitedReader.R reassignment are unhooked, so a later io.ReadAll on the wrapper adopts new clean data or another request's data as the original owner's http.request.body source. That causes in-request false positives and cross-owner attribution for pooled bufio readers.",
+    "evidence_path": ".omo/review/evidence/hooks-io-bufio/woven.out.txt",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -count=1 -v -run TestReview ./iast/io/ (with .omo/review/evidence/hooks-io-bufio/zz_review_repro_test.go copied into iast/io)",
+    "needs_repro": false
+  },
+  {
+    "id": "hooks-io-bufio-F2",
+    "severity": "Medium",
+    "category": "false-positive",
+    "location": "iast/io/orchestrion.yml:46-68; internal/taint/request/reader.go:67-88,119-126",
+    "title": "A MultiReader with any bound input taints the whole ReadAll result, including clean and other-owner data",
+    "claim": "The result is bound if any of the first 8 inputs is bound, and ReadAll adopts the whole result as a single body source. Clean readers are tainted, the source value contains non-request bytes, and a bound but empty body makes a fully clean result tainted. The existing test enshrines the merged 'included-excluded' source value.",
+    "evidence_path": ".omo/review/evidence/hooks-io-bufio/woven.out.txt",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -count=1 -v -run TestReviewMultiReaderCleanPrefixTainted ./iast/io/",
+    "needs_repro": false
+  },
+  {
+    "id": "hooks-io-bufio-F3",
+    "severity": "Info",
+    "category": "false-negative",
+    "location": "iast/bufio/orchestrion.yml:15-34; iast/io/orchestrion.yml",
+    "title": "Common body-reading idioms silently lose provenance",
+    "claim": "Pooled bufio readers initialized through Reset, io.NopCloser value wrappers, the bytes.NewReader body-restore idiom, and bufio ReadString/ReadBytes/Scanner results are untainted. These are safe misses, but the README does not document them.",
+    "evidence_path": ".omo/review/evidence/hooks-io-bufio/woven.out.txt",
+    "repro_command": null,
+    "needs_repro": false
+  },
+  {
+    "id": "hooks-io-bufio-F4",
+    "severity": "Info",
+    "category": "perf",
+    "location": "internal/taint/request/http.go:43-49; internal/taint/store/binding.go:121-164",
+    "title": "Reader hooks run on every process-wide call while any analysis is active",
+    "claim": "The only gate is manager.used==0. While any request is sampled, every wrapper and ReadAll call in the process pays for reflect.ValueOf plus a 64-owner TryRLock scan, and a MultiReader pays up to 8 times. A live reader-binding counter would make the gate cheap.",
+    "evidence_path": null,
+    "repro_command": null,
+    "needs_repro": false
+  }
+]

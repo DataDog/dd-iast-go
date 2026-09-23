@@ -1,0 +1,63 @@
+# itapp-test-full: woven files under /tmp/ddiast-review/wt/perf-binary-compile/tmp/go-build3470161074/**/orchestrion/src/ (count=24)
+files importing dd-iast-go: 15; IAST helper call expressions: 78
+## per woven package dir (call expressions)
+    36 bytes
+    14 net/http
+    13 github.com/DataDog/dd-iast-go/testapps/integration
+     7 encoding/json
+     4 io
+     2 github.com/DataDog/dd-iast-go/testapps/integration_test
+     1 bufio
+     1 net/url
+     0 synthetic
+## per helper
+    18 __orchestrion_iastwriterbridge.Active
+    18 __orchestrion_iastwriterbridge.Invalidate
+     5 __orchestrion_iastiobridge.Propagate
+     3 __orchestrion_iasthttpbridge.Cookie
+     2 __orchestrion_iasthttpbridge.MultipartParameter
+     2 __orchestrion_iasthttpbridge.Parameter
+     2 __orchestrion_iasthttp.BindStartSpan
+     2 __orchestrion_propagation.BufferWriteString
+     2 __orchestrion_iastpropagation.BuilderWriteString
+     2 __orchestrion_iastjsonbridge.Bind
+     2 __orchestrion_iastjsonbridge.Unbind
+     1 __orchestrion_iasthttpbridge.Begin
+     1 __orchestrion_iasthttpbridge.Finish
+     1 __orchestrion_iasthttpbridge.Eager
+     1 __orchestrion_iasthttpbridge.Form
+     1 __orchestrion_iasthttpbridge.Multipart
+     1 __orchestrion_iasthttpbridge.PathParameter
+     1 __orchestrion_propagation.StringSliceHigh
+     1 __orchestrion_propagation.StringsTrimSpace
+     1 __orchestrion_propagation.StringsJoin
+     1 __orchestrion_propagation.FmtSprintf
+     1 __orchestrion_propagation.BufferString
+     1 __orchestrion_propagation.BytesJoin
+     1 __orchestrion_iastpropagation.StringsTrimSpace
+     1 __orchestrion_iastpropagation.StringsReplace
+     1 __orchestrion_iastpropagation.BuilderString
+     1 __orchestrion_iastiobridge.ReadAll
+     1 __orchestrion_iastjsonbridge.Document
+     1 __orchestrion_iastjsonbridge.Quoted
+     1 __orchestrion_iastjsonbridge.Literal
+     1 __orchestrion_iasturlbridge.Query
+
+## app-root woven files
+github.com/DataDog/dd-iast-go/testapps/integration_test/e2e_test.go
+github.com/DataDog/dd-iast-go/testapps/integration_test/request_event_test.go
+github.com/DataDog/dd-iast-go/testapps/integration/chains.go
+github.com/DataDog/dd-iast-go/testapps/integration/json_chain.go
+github.com/DataDog/dd-iast-go/testapps/integration/command_chain.go
+
+## all __orchestrion_ alias call counts
+     54 __orchestrion_unsafe
+     36 __orchestrion_iastwriterbridge
+     13 __orchestrion_iasthttpbridge
+      8 __orchestrion_propagation
+      7 __orchestrion_orchestrion
+      7 __orchestrion_iastjsonbridge
+      6 __orchestrion_iastiobridge
+      5 __orchestrion_iastpropagation
+      2 __orchestrion_iasthttp
+      1 __orchestrion_iasturlbridge

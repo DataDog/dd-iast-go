@@ -1,0 +1,11 @@
+# github.com/DataDog/dd-iast-go/iast/internal/zzfid/methodexpr [github.com/DataDog/dd-iast-go/iast/internal/zzfid/methodexpr.test]
+iast/internal/zzfid/methodexpr/methodexpr.go:12: (*bytes.Buffer) (type) is not an expression
+iast/internal/zzfid/methodexpr/methodexpr.go:12: cannot use &b (value of type *bytes.Buffer) as string value in argument to __orchestrion_iastpropagation.BufferWriteString
+iast/internal/zzfid/methodexpr/methodexpr.go:13: (*bytes.Buffer) (type) is not an expression
+iast/internal/zzfid/methodexpr/methodexpr.go:18: (*strings.Builder) (type) is not an expression
+iast/internal/zzfid/methodexpr/methodexpr.go:18: cannot use &b (value of type *strings.Builder) as string value in argument to __orchestrion_iastpropagation.BuilderWriteString
+iast/internal/zzfid/methodexpr/methodexpr.go:19: (*strings.Builder) (type) is not an expression
+exit status 2
+FAIL	github.com/DataDog/dd-iast-go/iast/internal/zzfid/methodexpr [build failed]
+FAIL
+exit status 1

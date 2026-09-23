@@ -1,0 +1,13 @@
+[
+  {
+    "id": "store-memory-bounds-F1",
+    "verdict": "CONFIRMED",
+    "original_severity": "Critical",
+    "adjusted_severity": "Medium",
+    "reachable_default": true,
+    "documented_limitation": true,
+    "reason": "Mechanism independently reproduced (own plain and woven reproducers plus the finder's re-run): a bound reader retains a 96 MiB payload with incremental charge 0 and a 64-byte-capacity interior buffer view retains the full backing with charge 64, released synchronously and exactly at scope.Finish. EagerHTTP binds the body reader on every sampled request, so ordinary code reaches it under default config. However this is an explicitly documented README trade-off (README.md:70-77: anchor count bounded, full retained size not known, released at owner finish); retained bytes are caller-owned, request-lifetime-bounded, and cannot accumulate or leak, so 'unbounded memory growth' (the Critical criterion) does not apply. Re-rated Medium per the brief's documented-trade-off provision: the only rule-3 aspect broken is the strict hard-maximum-footprint reading of transitively retained (not IAST-owned) memory, with the byte charge exceeded by an unbounded factor; High would require a product decision that retained caller memory counts against the footprint. Reader and buffer aspects share one root cause (strong uncharged anchors in binding.go/writer.go), not duplicates of separate defects.",
+    "evidence_path": ".omo/review/evidence/fx-store-memory-bounds-F1/",
+    "repro_command": "cd /tmp/ddiast-review/wt/fx-store-memory-bounds-F1 && env GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 DD_IAST_REQUEST_SAMPLING=100 DD_IAST_MAX_CONCURRENT_REQUESTS=64 DD_IAST_MAX_RANGE_COUNT=64 timeout 900 go test -count=1 -timeout 10m -v -run '^TestFxAnchorRetention$' ./internal/taint/store"
+  }
+]

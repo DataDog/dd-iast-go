@@ -1,0 +1,7 @@
+    extra_test.go:37: Repeat(v,1): alias=true tainted=true
+    extra_test.go:41: Join([v], ","): woven alias=false native alias=true tainted=true
+    extra_test.go:55: Sprintf(%T)                    result="type=string" tainted=true ranges=1
+    extra_test.go:55: Sprintf(%.0s)                  result="xy" tainted=true ranges=1
+    extra_test.go:55: Sprintf(%[2]s)                 result="clean-literal" tainted=true ranges=1
+    extra_test.go:55: Sprint(Stringer named string)  result="constant-red" tainted=true ranges=1
+    extra_test.go:55: Sprintf(%d, len)               result="14" tainted=false ranges=0

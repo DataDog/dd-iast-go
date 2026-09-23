@@ -1,0 +1,13 @@
+[
+ {
+  "id": "hooks-compile-matrix-F3",
+  "verdict": "CONFIRMED",
+  "original_severity": "Critical",
+  "adjusted_severity": "Critical",
+  "reachable_default": true,
+  "documented_limitation": false,
+  "reason": "Independent customer-shaped module: import-free non-main root packages with one non-constant concat (buildinfo), slicing only (textutil) or []byte->string only (bconv) make the pinned weaver panic 'assignment to entry in nil map' at oncompile.go:195 on go1.26.6 and on go1.27.0+nojsonv2, with DD_IAST_ENABLED unset. The app binary importing them fails too. Adding one import fixes it, and woven output is identical to plain. Cause: importcfg.parse leaves PackageFile nil when there are no packagefile lines, and oncompile.go:195 writes to it unguarded (also unfixed in orchestrion origin/main and v1.13.0 at :212). Same root cause as hooks-yml-operators-F3. Minor correction: only []byte->string conversions trigger it (string->[]byte is not instrumented), and import-free package main did not crash.",
+  "evidence_path": ".omo/review/evidence/fx-hooks-compile-matrix-F3/woven-build-go1266.txt",
+  "repro_command": "cd .omo/review/evidence/fx-hooks-compile-matrix-F3/src/app (set replace to a HEAD copy) && for p in $(go list ./...); do GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go tool orchestrion go build -o /dev/null $p; done"
+ }
+]

@@ -1,0 +1,24 @@
+[
+  {
+    "id": "crash-unsafe-F1",
+    "severity": "High",
+    "category": "provenance",
+    "location": "internal/spans/annotation.go:119-149; internal/spans/annotation.go:184-211; internal/spans/orchestrion.go:27-36",
+    "title": "A live child recreates an open annotation after its root finishes",
+    "claim": "After Finished(root) deletes and closes the root-keyed annotation, a live child can create a new sampled annotation under that already-finished root. The root has no later finish hook to submit or remove the replacement, and finishing the child uses a different key.",
+    "evidence_path": ".omo/review/evidence/crash-unsafe/finished_root_repro.out.txt",
+    "repro_command": "env GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 GOCACHE=/tmp/ddiast-review/wt/crash-unsafe/.gocache GOTMPDIR=/tmp/ddiast-review/wt/crash-unsafe/.gotmp go test -count=1 -v -run TestReproFinishedRootAcceptsReplacementFromLiveChild -timeout=5m ./internal/spans",
+    "needs_repro": false
+  },
+  {
+    "id": "crash-unsafe-F2",
+    "severity": "Medium",
+    "category": "memory-bound",
+    "location": "internal/spans/annotation.go:126-145; internal/spans/annotation.go:190-207; internal/spans/annotation.go:223-236; internal/spans/vulnerability.go:21-31",
+    "title": "Annotation capacity admission is not an atomic reservation",
+    "claim": "trimStore checks map size before distinct-key LoadOrCompute insertion, so concurrent callers can observe capacity before any reserves it. The configured maximum is therefore not established as a hard concurrent admission bound.",
+    "evidence_path": null,
+    "repro_command": null,
+    "needs_repro": true
+  }
+]

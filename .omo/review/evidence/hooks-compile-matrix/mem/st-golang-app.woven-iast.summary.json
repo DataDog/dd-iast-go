@@ -1,0 +1,112 @@
+{
+ "peak_tree_rss_kb": 4558032,
+ "peak_tree_at_s": 104.2,
+ "peak_tree_top": [
+  [
+   630384,
+   [
+    "link",
+    ""
+   ]
+  ],
+  [
+   619616,
+   [
+    "link",
+    ""
+   ]
+  ],
+  [
+   614896,
+   [
+    "link",
+    ""
+   ]
+  ],
+  [
+   606672,
+   [
+    "link",
+    ""
+   ]
+  ],
+  [
+   602768,
+   [
+    "link",
+    ""
+   ]
+  ],
+  [
+   401792,
+   [
+    "(dsymutil)",
+    ""
+   ]
+  ]
+ ],
+ "top_process_peaks_kb": [
+  [
+   "compile github.com/nats-io/nats-server/v2/server",
+   782384
+  ],
+  [
+   "link ",
+   700640
+  ],
+  [
+   "clang ",
+   634672
+  ],
+  [
+   "(dsymutil) ",
+   401792
+  ],
+  [
+   "dsymutil ",
+   337216
+  ],
+  [
+   "orchestrion-toolexec/compile runtime",
+   303536
+  ],
+  [
+   "(compile) ",
+   260496
+  ],
+  [
+   "compile github.com/DataDog/dd-trace-go/v2/ddtrace/tracer",
+   213680
+  ],
+  [
+   "compile github.com/ugorji/go/codec",
+   181744
+  ],
+  [
+   "compile google.golang.org/protobuf/internal/impl",
+   151072
+  ],
+  [
+   "compile github.com/IBM/sarama",
+   149952
+  ],
+  [
+   "compile runtime",
+   148960
+  ],
+  [
+   "orchestrion: ",
+   142688
+  ],
+  [
+   "orchestrion-toolexec/compile github.com/IBM/sarama",
+   142688
+  ],
+  [
+   "compile net/http",
+   140256
+  ]
+ ],
+ "samples": 84,
+ "duration_s": 107.3
+}

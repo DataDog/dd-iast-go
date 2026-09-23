@@ -1,0 +1,43 @@
+=== RUN   TestCommandExecutionBoundaries
+=== RUN   TestCommandExecutionBoundaries/start
+=== RUN   TestCommandExecutionBoundaries/run
+=== RUN   TestCommandExecutionBoundaries/output
+=== RUN   TestCommandExecutionBoundaries/combined_output
+--- PASS: TestCommandExecutionBoundaries (0.21s)
+    --- PASS: TestCommandExecutionBoundaries/start (0.07s)
+    --- PASS: TestCommandExecutionBoundaries/run (0.03s)
+    --- PASS: TestCommandExecutionBoundaries/output (0.07s)
+    --- PASS: TestCommandExecutionBoundaries/combined_output (0.04s)
+=== RUN   TestFxF1ControlCommandTaintedName
+    fxf1_repro_test.go:50: FXF1 case=control-exec.Command(tainted) err=<nil> stdout="ran-attacker-binary" path_tainted=true args0_tainted=true FINDINGS=1 want=1
+--- PASS: TestFxF1ControlCommandTaintedName (0.06s)
+=== RUN   TestFxF1PathReassigned
+    fxf1_repro_test.go:61: FXF1 case=cmd.Path=tainted err=<nil> stdout="ran-attacker-binary" path_tainted=true args0_tainted=false FINDINGS=0 want=1
+    fxf1_repro_test.go:61: FXF1 case=cmd.Path=tainted: attacker-chosen binary executed, findings=0 want=1
+--- FAIL: TestFxF1PathReassigned (0.06s)
+=== RUN   TestFxF1StructLiteral
+    fxf1_repro_test.go:71: FXF1 case=&Cmd{Path:tainted,Args:clean} err=<nil> stdout="ran-attacker-binary" path_tainted=true args0_tainted=false FINDINGS=0 want=1
+    fxf1_repro_test.go:71: FXF1 case=&Cmd{Path:tainted,Args:clean}: attacker-chosen binary executed, findings=0 want=1
+--- FAIL: TestFxF1StructLiteral (0.04s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/testapps/os-exec	1.315s
+FAIL
+exit status 1
+       97.99 real       123.60 user        71.36 sys
+           353648640  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+             7982679  page reclaims
+              344580  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                7551  messages sent
+                7611  messages received
+               56470  signals received
+               46912  voluntary context switches
+             1559543  involuntary context switches
+          4849279591  instructions retired
+          3340865684  cycles elapsed
+            56787688  peak memory footprint

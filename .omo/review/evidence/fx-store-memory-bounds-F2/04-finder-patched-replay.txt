@@ -1,0 +1,23 @@
+COMMAND (finder's repro + annotation-schedule.patch from evidence/store-memory-bounds, applied in MY private copy)
+cp .omo/review/evidence/store-memory-bounds/repro/internal/spans/*.go internal/spans/ && patch -p1 < .omo/review/evidence/store-memory-bounds/annotation-schedule.patch
+cd /tmp/ddiast-review/wt/fx-store-memory-bounds-F2 && ulimit -n 8192; env GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 DD_IAST_REQUEST_SAMPLING=100 DD_IAST_MAX_CONCURRENT_REQUESTS=64 DD_IAST_MAX_RANGE_COUNT=64 timeout 900 go test -count=1 -timeout 12m -v -run '^TestBoundsAnnotationAdmission$' ./internal/spans
+(second run: same without env; finder test hard-requires MaxConcurrentRequests==64 and fails its precondition at default)
+
+CAPTURED OUTPUT (filtered)
+patching file internal/spans/annotation.go
+    zz_review_annotation_admission_test.go:51: configured=64 inflight=128 retainedAnnotations=128 ratio=2 heapBefore=2867200 heapAfter=3391488 delta=524288 sourceCharge=0
+    zz_review_annotation_admission_test.go:51: configured=64 inflight=512 retainedAnnotations=512 ratio=8 heapBefore=4046848 heapAfter=6127616 delta=2080768 sourceCharge=0
+    zz_review_annotation_admission_test.go:51: configured=64 inflight=2048 retainedAnnotations=2048 ratio=32 heapBefore=8241152 heapAfter=15777792 delta=7536640 sourceCharge=0
+--- PASS: TestBoundsAnnotationAdmission (0.03s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/spans	0.610s
+EXIT=0
+---- default config, patched ----
+        	Error Trace:	/tmp/ddiast-review/wt/fx-store-memory-bounds-F2/internal/spans/zz_review_annotation_admission_test.go:16
+        	Error:      	Not equal: 
+        	            	expected: 64
+        	            	actual  : 2
+--- FAIL: TestBoundsAnnotationAdmission (0.00s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/internal/spans	0.270s
+FAIL

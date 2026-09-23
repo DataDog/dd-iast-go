@@ -1,0 +1,13 @@
+[
+  {
+    "id": "hooks-orchestrion-dep-F4",
+    "verdict": "CONFIRMED",
+    "original_severity": "High",
+    "adjusted_severity": "High",
+    "reachable_default": true,
+    "documented_limitation": false,
+    "reason": "interfaceCoreType (pinned orchestrion internal/injector/typed/coretype.go:93-95) returns nil on the first mixed embedded union before intersecting the remaining embeddeds, so interface{ ~string | ~int; ~string } (type set ~string) and interface{ ~[]byte | ~[]int; ~[]byte } (type set ~[]byte) get no core type and the string-concat / string-slice / byte-slice join points all miss the expression. Independently reproduced through a woven build (go tool orchestrion go test) in a private copy: positive control [T ~string] retains taint (proving generics are a supported path), all three intersected-constraint operations return correct values but lose taint; the finder's reproducer fails identically. Constraints are legal Go under both go1.26.6 and go1.27.0 (standalone builds exit 0). Not documented in README or 01-design-intent. High stands: false-negative taint on a supported, default-enabled propagation path from valid customer code; not Critical because values and behavior stay correct.",
+    "evidence_path": ".omo/review/evidence/fx-hooks-orchestrion-dep-F4/run-results.txt",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go tool orchestrion go test -timeout 4m -count=1 -run 'TestF4IntersectedCoreTypeKeepsProvenance|TestReviewIntersectionCoreTypeRetainsProvenance' -v ./iast/propagation"
+  }
+]

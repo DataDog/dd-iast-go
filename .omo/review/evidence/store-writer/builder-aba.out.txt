@@ -1,0 +1,23 @@
+=== RUN   TestReviewBuilderABAStaleTaint
+    zz_review_builder_aba_test.go:47: address reused after 623 attempts; result="cccccccccccccccccccccccc" tainted=true
+    zz_review_builder_aba_test.go:52: BUG: clean builder content reported tainted from stale writer state (ABA on unanchored builder view)
+--- FAIL: TestReviewBuilderABAStaleTaint (0.01s)
+=== RUN   TestReviewBuilderABAStaleTaint
+    zz_review_builder_aba_test.go:47: address reused after 5 attempts; result="cccccccccccccccccccccccc" tainted=true
+    zz_review_builder_aba_test.go:52: BUG: clean builder content reported tainted from stale writer state (ABA on unanchored builder view)
+--- FAIL: TestReviewBuilderABAStaleTaint (0.00s)
+=== RUN   TestReviewBuilderABAStaleTaint
+    zz_review_builder_aba_test.go:47: address reused after 12 attempts; result="cccccccccccccccccccccccc" tainted=true
+    zz_review_builder_aba_test.go:52: BUG: clean builder content reported tainted from stale writer state (ABA on unanchored builder view)
+--- FAIL: TestReviewBuilderABAStaleTaint (0.00s)
+=== RUN   TestReviewBuilderABAStaleTaint
+    zz_review_builder_aba_test.go:47: address reused after 19 attempts; result="cccccccccccccccccccccccc" tainted=true
+    zz_review_builder_aba_test.go:52: BUG: clean builder content reported tainted from stale writer state (ABA on unanchored builder view)
+--- FAIL: TestReviewBuilderABAStaleTaint (0.00s)
+=== RUN   TestReviewBuilderABAStaleTaint
+    zz_review_builder_aba_test.go:47: address reused after 26 attempts; result="cccccccccccccccccccccccc" tainted=true
+    zz_review_builder_aba_test.go:52: BUG: clean builder content reported tainted from stale writer state (ABA on unanchored builder view)
+--- FAIL: TestReviewBuilderABAStaleTaint (0.00s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/iast/propagation	0.263s
+FAIL

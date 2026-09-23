@@ -1,0 +1,8 @@
+=== RUN   TestReviewPublicAPINilAndEmptySafety
+--- PASS: TestReviewPublicAPINilAndEmptySafety (0.00s)
+=== RUN   TestReviewPublicAPIInvalidOriginDropsSilently
+--- PASS: TestReviewPublicAPIInvalidOriginDropsSilently (0.00s)
+=== RUN   TestReviewPublicAPIConcurrentStress
+--- PASS: TestReviewPublicAPIConcurrentStress (0.62s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/taint	(cached)

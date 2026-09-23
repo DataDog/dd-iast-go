@@ -1,0 +1,86 @@
+{
+ "peak_tree_rss_kb": 777120,
+ "peak_tree_at_s": 16.3,
+ "peak_tree_top": [
+  [
+   724768,
+   [
+    "clang",
+    ""
+   ]
+  ],
+  [
+   33088,
+   [
+    "go",
+    ""
+   ]
+  ],
+  [
+   16448,
+   [
+    "clang",
+    ""
+   ]
+  ],
+  [
+   1584,
+   [
+    "timeout",
+    ""
+   ]
+  ],
+  [
+   1232,
+   [
+    "time",
+    ""
+   ]
+  ]
+ ],
+ "top_process_peaks_kb": [
+  [
+   "clang ",
+   724768
+  ],
+  [
+   "compile runtime",
+   148624
+  ],
+  [
+   "go ",
+   33088
+  ],
+  [
+   "(clang) ",
+   16336
+  ],
+  [
+   "cgo ",
+   13616
+  ],
+  [
+   "(compile) ",
+   4640
+  ],
+  [
+   "timeout ",
+   1584
+  ],
+  [
+   "time ",
+   1232
+  ],
+  [
+   "compile unicode/utf8",
+   32
+  ],
+  [
+   "compile internal/strconv",
+   32
+  ]
+ ],
+ "samples": 16,
+ "killed_at_limit": false,
+ "duration_s": 17.3
+}

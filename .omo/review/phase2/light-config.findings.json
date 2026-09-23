@@ -1,0 +1,13 @@
+[
+  {
+    "id": "light-config-F1",
+    "severity": "Medium",
+    "category": "doc",
+    "location": "README.md:117",
+    "title": "README omits the vulnerability limit maximum",
+    "claim": "The README says DD_IAST_VULNERABILITIES_PER_REQUEST accepts any integer >= 1, while config.go clamps it to 1..64.",
+    "evidence_path": null,
+    "repro_command": null,
+    "needs_repro": false
+  }
+]

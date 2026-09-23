@@ -1,0 +1,13 @@
+[
+  {
+    "id": "light-ci-F1",
+    "severity": "Medium",
+    "category": "test-gap",
+    "location": ".github/workflows/ci.yml:150-151",
+    "title": "Race jobs do not test woven call sites",
+    "claim": "The race commands use plain go test against ./.github and ./internal/taint/..., unlike the primary Orchestrion test command, so the race lane does not exercise woven application call sites.",
+    "evidence_path": ".omo/review/evidence/light-ci/race-coverage.txt",
+    "repro_command": "go test -race -shuffle=on ./.github && go test -race -count=1 -shuffle=on ./internal/taint/...",
+    "needs_repro": false
+  }
+]

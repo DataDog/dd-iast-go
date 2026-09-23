@@ -1,0 +1,6 @@
+Reproducer: minimal/main.go.
+Command: cd /tmp/ddiast-review/wt/fx-base-test-127-F1 && GOTOOLCHAIN=local GOEXPERIMENT=nojsonv2 GOFLAGS=-p=4 /usr/bin/time -l timeout 180 go tool orchestrion go build -o /dev/null ./repro
+Exit status: 0.
+      107.92 real       133.79 user       113.20 sys
+           426426368  maximum resident set size
+                   0  swaps

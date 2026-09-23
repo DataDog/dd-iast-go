@@ -1,0 +1,28 @@
+=== RUN   TestReviewOracleQuoteDesyncLeaksLiteral
+    zz_review_oracle_desync_test.go:37: query="SELECT * FROM jobs WHERE status IN ('Q','R','') AND token = 'hunter2'" status=0 sensitive=[{40 3} {46 14}] exposedSecretBytes="hunter2"
+    zz_review_oracle_desync_test.go:37: query="SELECT * FROM t WHERE a = 'Q' OR b IN (',','') AND pwd='hunter2'" status=0 sensitive=[{27 1} {40 1} {56 7}] exposedSecretBytes=""
+    zz_review_oracle_desync_test.go:37: query="SELECT * FROM t WHERE c IN ('q','x','-') AND pwd='hunter2'" status=0 sensitive=[{32 3} {39 10}] exposedSecretBytes="hunter2"
+    zz_review_oracle_desync_test.go:37: query="SELECT * FROM jobs WHERE status IN ('P','R','') AND token = 'hunter2'" status=0 sensitive=[{37 1} {41 1} {61 7}] exposedSecretBytes=""
+    zz_review_oracle_desync_test.go:43: 2 queries leak the literal 'hunter2' unredacted
+--- FAIL: TestReviewOracleQuoteDesyncLeaksLiteral (0.00s)
+=== RUN   TestReviewLiteralSyntaxProbe
+    zz_review_oracle_desync_test.go:76: PROBE query="SELECT * FROM t WHERE a = 'it\\'s hunter2'" status=0 exposed=""
+    zz_review_oracle_desync_test.go:76: PROBE query="SELECT * FROM t WHERE a = 'it''s hunter2'" status=0 exposed=""
+    zz_review_oracle_desync_test.go:76: PROBE query="SELECT * FROM t WHERE a = E'x\\'hunter2'" status=0 exposed=""
+    zz_review_oracle_desync_test.go:76: PROBE query="SELECT * FROM t WHERE a = N'hunter2'" status=0 exposed=""
+    zz_review_oracle_desync_test.go:76: PROBE query="SELECT * FROM t WHERE a = \"hunter2\"" status=0 exposed=""
+    zz_review_oracle_desync_test.go:76: PROBE query="SELECT * FROM t WHERE a = $$hunter2$$" status=0 exposed=""
+    zz_review_oracle_desync_test.go:76: PROBE query="SELECT * FROM t WHERE a = $x$hunter2$x$" status=0 exposed=""
+    zz_review_oracle_desync_test.go:76: PROBE query="SELECT * FROM t WHERE a = q'[hunter2]'" status=0 exposed=""
+    zz_review_oracle_desync_test.go:76: PROBE query="SELECT * FROM t WHERE a = 'q' || 'hunter2'" status=0 exposed=""
+    zz_review_oracle_desync_test.go:76: PROBE query="SELECT * FROM t WHERE a = 'Q'||'x'||'hunter2'" status=0 exposed=""
+    zz_review_oracle_desync_test.go:76: PROBE query="SELECT * FROM t WHERE a = '-Q'||'x'||' hunter2'" status=0 exposed=""
+--- PASS: TestReviewLiteralSyntaxProbe (0.00s)
+=== RUN   TestReviewOracleQuoteDesyncLeaksTaintedLiteralEndToEnd
+    zz_review_oracle_desync_test.go:95: status=Q evidence="SELECT * FROM jobs WHERE status IN ('Q',***,''*************'userSecret42'" sourceRedacted=false sourceValue="userSecret42"
+    zz_review_oracle_desync_test.go:97: status=Q: tainted literal leaked raw: source value "userSecret42", evidence "SELECT * FROM jobs WHERE status IN ('Q',***,''*************'userSecret42'"
+    zz_review_oracle_desync_test.go:95: status=P evidence="SELECT * FROM jobs WHERE status IN ('*','*','') AND note = '************'" sourceRedacted=true sourceValue=""
+--- FAIL: TestReviewOracleQuoteDesyncLeaksTaintedLiteralEndToEnd (0.00s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/redaction	0.992s
+FAIL

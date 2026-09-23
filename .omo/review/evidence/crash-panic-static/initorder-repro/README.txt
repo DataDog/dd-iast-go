@@ -1,0 +1,1 @@
+Module: github.com/zzz/initorder (go.mod = iast/integration/testapp/go.mod with module renamed and `replace github.com/DataDog/dd-iast-go => ../..`, go.sum copied), placed at <private copy>/_repro/initorder.

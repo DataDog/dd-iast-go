@@ -1,0 +1,112 @@
+
+=== direct plain; sampling=100 ===
+=== RUN   TestHeaderDirectFunction
+    direct_call_test.go:30: woven=false direct_function_status=204 caller="visible"
+--- PASS: TestHeaderDirectFunction (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/reviewhttp	0.939s
+EXIT_CODE=0
+
+=== direct woven; sampling=100 ===
+=== RUN   TestHeaderDirectFunction
+    direct_call_test.go:30: woven=true direct_function_status=204 caller=""
+    direct_call_test.go:33: 
+        	Error Trace:	/tmp/ddiast-review/wt/fx-sink-http-sources-F1/reviewhttp/direct_call_test.go:33
+        	Error:      	Not equal: 
+        	            	expected: "visible"
+        	            	actual  : ""
+        	            	
+        	            	Diff:
+        	            	--- Expected
+        	            	+++ Actual
+        	            	@@ -1 +1 @@
+        	            	-visible
+        	            	+
+        	Test:       	TestHeaderDirectFunction
+--- FAIL: TestHeaderDirectFunction (0.00s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/reviewhttp	0.796s
+FAIL
+exit status 1
+       25.01 real         7.67 user        12.60 sys
+           339542016  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              422062  page reclaims
+               29659  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                3196  messages sent
+                3563  messages received
+               10494  signals received
+                9604  voluntary context switches
+              316331  involuntary context switches
+          5360599118  instructions retired
+          3409008823  cycles elapsed
+            42189568  peak memory footprint
+EXIT_CODE=1
+
+=== woven; sampling=0 ===
+=== RUN   TestHeaderDirectFunction
+    direct_call_test.go:30: woven=true direct_function_status=204 caller="visible"
+--- PASS: TestHeaderDirectFunction (0.00s)
+=== RUN   TestHeaderMapAliases
+=== RUN   TestHeaderMapAliases/empty
+    header_alias_test.go:41: woven=true request_copied=true source_tainted=false handler="visible" caller="visible"
+=== RUN   TestHeaderMapAliases/eligible
+    header_alias_test.go:41: woven=true request_copied=true source_tainted=false handler="visible" caller="visible"
+--- PASS: TestHeaderMapAliases (0.00s)
+    --- PASS: TestHeaderMapAliases/empty (0.00s)
+    --- PASS: TestHeaderMapAliases/eligible (0.00s)
+=== RUN   TestHeaderValueSliceAliases
+    header_alias_test.go:65: woven=true handler="changed" caller_slice="changed"
+--- PASS: TestHeaderValueSliceAliases (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/reviewhttp	0.480s
+       20.67 real         6.26 user         9.95 sys
+           340443136  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              356831  page reclaims
+               14603  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                3118  messages sent
+                3467  messages received
+                8158  signals received
+                2568  voluntary context switches
+              276972  involuntary context switches
+          5316911270  instructions retired
+          3254986658  cycles elapsed
+            43270864  peak memory footprint
+EXIT_CODE=0
+
+=== woven; default configuration ===
+=== RUN   TestDefaultSamplingObservation
+    header_alias_test.go:89: woven=true default_requests=64 source_tainted=13 alias_lost=13
+--- PASS: TestDefaultSamplingObservation (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/reviewhttp	0.674s
+       32.00 real         6.77 user        11.74 sys
+           343408640  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              351333  page reclaims
+               21734  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                3120  messages sent
+                3467  messages received
+                9613  signals received
+                5327  voluntary context switches
+              358519  involuntary context switches
+          5660068983  instructions retired
+          3453816661  cycles elapsed
+            39797432  peak memory footprint
+EXIT_CODE=0

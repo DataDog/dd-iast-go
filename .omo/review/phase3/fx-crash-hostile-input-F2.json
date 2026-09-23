@@ -1,0 +1,13 @@
+[
+  {
+    "id": "crash-hostile-input-F2",
+    "verdict": "CONFIRMED",
+    "original_severity": "High",
+    "adjusted_severity": "High",
+    "reachable_default": true,
+    "documented_limitation": false,
+    "reason": "The quota is checked only by Annotation.TryCommitTainted after CollectString, AnalyzeSQL, BuildWithSensitive, annotation selection, and CaptureLocationSkipWhile. An independent Go 1.26.6 woven HTTP-to-database/sql reproduction processed 40 tainted reports but committed only two at the default quota.",
+    "evidence_path": ".omo/review/evidence/fx-crash-hostile-input-F2/quota-repro.log",
+    "repro_command": "cd /tmp/ddiast-review/wt/fx-crash-hostile-input-F2 && GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go tool orchestrion go build -o quota-woven ./cmd/quota-repro && DD_TRACE_STARTUP_LOGS=false DD_IAST_ENABLED=true DD_IAST_REQUEST_SAMPLING=100 ./quota-woven -operations=40 -payload-bytes=30000"
+  }
+]

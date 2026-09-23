@@ -1,0 +1,15 @@
+Private repro location:
+/tmp/ddiast-review/wt/sink-json-sources/review-json-go127
+
+Pinned compatibility control:
+$ GOTOOLCHAIN=go1.26.6 go -C /tmp/ddiast-review/wt/sink-json-sources/review-json-go127 tool orchestrion go build .
+(exit 0; no output)
+
+Go 1.27.0 reproducer:
+$ go -C /tmp/ddiast-review/wt/sink-json-sources/review-json-go127 tool orchestrion go build .
+# encoding/json
+$WORK/b002/orchestrion/src/encoding/json/<generated>:2: dec.r undefined (type *Decoder has no field or method r)
+$WORK/b002/orchestrion/src/encoding/json/<generated>:2: dec.d undefined (type *Decoder has no field or method d)
+$WORK/b002/orchestrion/src/encoding/json/<generated>:3: dec.d undefined (type *Decoder has no field or method d)
+exit status 2
+exit status 1

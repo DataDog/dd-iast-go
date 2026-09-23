@@ -1,0 +1,13 @@
+[
+  {
+    "id": "crash-stress-app-F1",
+    "verdict": "CONFIRMED",
+    "original_severity": "High",
+    "adjusted_severity": "High",
+    "reachable_default": true,
+    "documented_limitation": false,
+    "reason": "BindScope stores Sampled:false annotations for non-analyzed root spans in a map capped at MaxConcurrentRequests (same as permits), and entries leave only on Finish or GC. An analyzed request then gets _dd.iast.enabled=0 and its report is dropped via NewOrphanTaintedSpan, which emits an empty vulnerability span. Independent woven reproducer (dd-trace-go contrib/net/http root spans, all defaults): 2 held sampled-out requests -> 0/10 analyzed victims reported, 10 empty orphan spans; recovery at the same site reports. With 2 background clients under load: 0/90 analyzed victims reported (control with 0 clients: 89/89).",
+    "evidence_path": ".omo/review/evidence/fx-crash-stress-app-F1/annrepro_deterministic.out",
+    "repro_command": "cd iast/integration/testapp && GOPROXY=off GOFLAGS=-mod=mod go get github.com/DataDog/dd-trace-go/contrib/net/http/v2@v2.11.0-rc.1 && GOTOOLCHAIN=go1.26.6 GOFLAGS='-p=4 -mod=mod' go tool orchestrion go build -o annrepro ./cmd/annrepro && ./annrepro deterministic && DD_IAST_DEDUPLICATION_ENABLED=false LOAD_CLIENTS=2 ./annrepro load  (source: .omo/review/evidence/fx-crash-stress-app-F1/annrepro_main.go)"
+  }
+]

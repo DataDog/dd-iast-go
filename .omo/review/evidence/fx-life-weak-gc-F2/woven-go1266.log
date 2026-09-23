@@ -1,0 +1,12 @@
+Command:
+GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 /usr/bin/time -l go tool orchestrion go test -count=1 -timeout 12m -run '^TestReviewFXLateBindCannotCommitToFinishedRoot$' -v ./internal/spans/
+
+Exit status: 1
+
+=== RUN   TestReviewFXLateBindCannotCommitToFinishedRoot
+    review_fx_late_bind_test.go:122: BUG: a late child committed a vulnerability into an open annotation whose root had already finished
+--- FAIL: TestReviewFXLateBindCannotCommitToFinishedRoot (0.01s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/internal/spans	0.975s
+
+time(1) maximum resident set size: 350371840 bytes

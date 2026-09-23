@@ -1,0 +1,35 @@
+[
+  {
+    "id": "store-tests-F1",
+    "severity": "Medium",
+    "category": "test-gap",
+    "location": "internal/taint/store/identity_test.go:30-62",
+    "title": "Address-reuse regression check silently skips",
+    "claim": "The allocator-dependent address-reuse test skipped 7 of 20 race-stress invocations, so green runs frequently do not assert stale-address safety.",
+    "evidence_path": ".omo/review/evidence/store-tests/race-stress.txt",
+    "repro_command": "cd /tmp/ddiast-review/wt/store-tests && GOTOOLCHAIN=go1.26.6 go test -race -timeout 15m -count=20 -v -run '^(TestEntryHandleConcurrentFinishIsSafe|TestConcurrentReadersWritersAndFinish|TestLookupRacesMutationAndFinish|TestFinishDrainsActiveWriterAndReleasesRoots|TestAddressReuseDoesNotReviveFinishedOwner)$' ./internal/taint/store",
+    "needs_repro": false
+  },
+  {
+    "id": "store-tests-F2",
+    "severity": "Medium",
+    "category": "quality",
+    "location": "internal/taint/store/lifecycle_test.go:14-35",
+    "title": "Finish blocking assertion can pass before Finish runs",
+    "claim": "The test selects default immediately after starting Finish, without an event proving Finish reached its lifecycle-lock acquisition, so scheduling can make the assertion pass vacuously.",
+    "evidence_path": null,
+    "repro_command": null,
+    "needs_repro": true
+  },
+  {
+    "id": "store-tests-F3",
+    "severity": "Medium",
+    "category": "test-gap",
+    "location": "internal/taint/store/binding.go:166-202; internal/taint/store/binding_behavior_test.go:15-59",
+    "title": "Binding-kind replacement and reader-budget transitions are untested",
+    "claim": "Coverage leaves existing-pointer replacement and reader-count accounting branches unhit, including URL-to-reader rejection at capacity and reader-to-URL release.",
+    "evidence_path": ".omo/review/evidence/store-tests/coverage.txt",
+    "repro_command": "cd /tmp/ddiast-review/wt/store-tests && GOTOOLCHAIN=go1.26.6 go test -timeout 15m -coverprofile=/tmp/ddiast-review/wt/store-tests/store.cover ./internal/taint/store",
+    "needs_repro": false
+  }
+]

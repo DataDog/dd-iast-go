@@ -1,0 +1,41 @@
+=== RUN   TestReviewGCLifecycleNoLossNoRetention
+    review_gc_internal_test.go:170: admissionDrops=47 iterations=1153 emitted=1153 failures=0 aliveSpans=0 aliveAnnotations=0 storeSize=0 processSourceBytes=0
+--- PASS: TestReviewGCLifecycleNoLossNoRetention (2.30s)
+=== RUN   TestReviewContextOnlyReachability
+--- PASS: TestReviewContextOnlyReachability (0.01s)
+=== RUN   TestReviewAbandonedSpanReclaimed
+    review_gc_internal_test.go:242: charge before trim=25 after=0 storeSize=0
+--- PASS: TestReviewAbandonedSpanReclaimed (0.01s)
+=== RUN   TestReviewSampledOutRequestsStarveActiveRequest
+    review_gc_internal_test.go:278: store.Size=2 activeAdmitted=true BindScope=0x0 ExistingForOwner=false ExistingForSpan=false(0x0) orphanAnnotation=0x0
+    review_gc_internal_test.go:284: BUG: admitted active request has no annotation; every tainted finding for it is dropped (ReportTainted returns false at vulnerability/tainted.go:62-67)
+--- FAIL: TestReviewSampledOutRequestsStarveActiveRequest (0.01s)
+=== RUN   TestReviewSampledOutStarvationRate
+    review_gc_internal_test.go:327: inflight= 2 admitted-active= 1176 without-annotation=    0 (0.0%)
+    review_gc_internal_test.go:327: inflight= 3 admitted-active= 1739 without-annotation=  524 (30.1%)
+    review_gc_internal_test.go:327: inflight= 4 admitted-active= 2225 without-annotation=  997 (44.8%)
+    review_gc_internal_test.go:327: inflight= 8 admitted-active= 3385 without-annotation= 2175 (64.3%)
+    review_gc_internal_test.go:327: inflight=16 admitted-active= 3922 without-annotation= 2722 (69.4%)
+--- PASS: TestReviewSampledOutStarvationRate (0.21s)
+=== RUN   TestReviewLateBindAfterRootFinishLeaksSlot
+    review_gc_internal_test.go:356: store.Size after two finished requests with late child spans = 2
+    review_gc_internal_test.go:360: next active admitted=true annotation=0x0
+    review_gc_internal_test.go:362: BUG: stale entries keyed on finished roots block a new active request
+    review_gc_internal_test.go:372: store.Size after late children finished (roots still reachable) = 2
+    review_gc_internal_test.go:377: store.Size after roots unreachable + GC + trim = 0
+--- FAIL: TestReviewLateBindAfterRootFinishLeaksSlot (0.02s)
+=== RUN   TestReviewLateBindActiveScopeSilentlyDropsCommittedFinding
+    review_gc_internal_test.go:400: lateAnnotation=0x4b8228ff9b08 ExistingForOwner=true committed=true rootFinished=true
+    review_gc_internal_test.go:406: BUG: finding committed to an annotation of an already-finished root; it can never be emitted (store still holds it: true)
+--- FAIL: TestReviewLateBindActiveScopeSilentlyDropsCommittedFinding (0.01s)
+=== RUN   TestReviewFinishedAllocatesPerSpan
+    review_gc_internal_test.go:426: config.Enabled=true store.Size=0 allocs per Finished(never-annotated span)=1.00
+    review_gc_internal_test.go:426: config.Enabled=false store.Size=0 allocs per Finished(never-annotated span)=1.00
+--- PASS: TestReviewFinishedAllocatesPerSpan (0.01s)
+=== RUN   TestReviewAdmissionDropsUnderConcurrency
+    review_gc_internal_test.go:458: forceGC=false concurrency=8 capacity=64 admitted=813 dropped=387
+    review_gc_internal_test.go:458: forceGC=true concurrency=8 capacity=64 admitted=1085 dropped=115
+--- PASS: TestReviewAdmissionDropsUnderConcurrency (0.10s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/internal/spans	3.209s
+FAIL

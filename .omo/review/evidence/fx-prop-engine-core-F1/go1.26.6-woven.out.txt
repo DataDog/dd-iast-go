@@ -1,0 +1,19 @@
+Command:
+GOWORK=off GOTOOLCHAIN=go1.26.6 GOFLAGS='-p=4' /usr/bin/time -l go -C /tmp/ddiast-review/wt/fx-prop-engine-core-F1 tool orchestrion go test ./iast/propagation -run '^TestReviewFxSplitKeepsFirstNonEmptyAfterEmptyPrefix$' -count=1 -timeout=5m -v
+
+Key output:
+=== RUN   TestReviewFxSplitKeepsFirstNonEmptyAfterEmptyPrefix/string
+    zz_review_fx_window_budget_test.go:30: string part[32]="attack" tainted=false
+    zz_review_fx_window_budget_test.go:31:
+        Error:       Should be true
+=== RUN   TestReviewFxSplitKeepsFirstNonEmptyAfterEmptyPrefix/bytes
+    zz_review_fx_window_budget_test.go:43: bytes part[32]="attack" tainted=false
+    zz_review_fx_window_budget_test.go:45:
+        Error:       Should be true
+--- FAIL: TestReviewFxSplitKeepsFirstNonEmptyAfterEmptyPrefix (0.00s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/iast/propagation	1.774s
+FAIL
+exit status 1
+      143.03 real       149.77 user       159.06 sys
+           358432768  maximum resident set size

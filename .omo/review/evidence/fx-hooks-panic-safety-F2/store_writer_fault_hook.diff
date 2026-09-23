@@ -1,0 +1,22 @@
+--- /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/internal/taint/store/writer.go	2026-09-23 11:18:59
++++ /tmp/ddiast-review/wt/fx-hooks-panic-safety-F2/internal/taint/store/writer.go	2026-09-23 18:08:42
+@@ -366,6 +366,9 @@
+ func (s *Store) InvalidateBuffer(pointer, backing, capacity uintptr, preserve bool) {
+ 	if s == nil || pointer == 0 {
+ 		return
++	}
++	if ReviewFault.Load() == 1 {
++		panic(ReviewFaultValue)
+ 	}
+ 	for ownerIndex := range s.owners {
+ 		record := &s.owners[ownerIndex]
+@@ -384,6 +387,9 @@
+ 		}
+ 		owner := Owner{store: s, owner: record, index: uint8(ownerIndex), gen: record.generation.Load()}
+ 		record.writerVersion.Add(1)
++		if ReviewFault.Load() == 2 {
++			panic(ReviewFaultValue)
++		}
+ 		owner.clearDirtyWritersLocked()
+ 		for index := 0; index < int(record.writerCount); {
+ 			entry := &record.writers[index]

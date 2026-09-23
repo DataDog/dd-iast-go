@@ -1,0 +1,158 @@
+$ ./initcrash2 (env={'GODEBUG': 'inittrace=1'})
+EXIT=2
+--- stdout ---
+
+--- stderr ---
+init internal/bytealg @0 ms, 0 ms clock, 0 bytes, 0 allocs
+init internal/runtime/sys @0.018 ms, 0 ms clock, 0 bytes, 0 allocs
+init runtime @0.030 ms, 0.042 ms clock, 0 bytes, 0 allocs
+init crypto/internal/fips140deps/cpu @0.36 ms, 0.002 ms clock, 0 bytes, 0 allocs
+init github.com/DataDog/dd-trace-go/v2/internal/samplernames @0.38 ms, 0.042 ms clock, 504 bytes, 4 allocs
+init errors @0.43 ms, 0.009 ms clock, 0 bytes, 0 allocs
+init iter @0.45 ms, 0.002 ms clock, 16 bytes, 1 allocs
+init runtime/metrics @0.46 ms, 0.034 ms clock, 15072 bytes, 95 allocs
+init sync @0.51 ms, 0.001 ms clock, 0 bytes, 0 allocs
+init github.com/DataDog/dd-trace-go/v2/internal/traceprof @0.52 ms, 0.001 ms clock, 80 bytes, 2 allocs
+init internal/godebug @0.53 ms, 0.036 ms clock, 312 bytes, 7 allocs
+init encoding/base64 @0.58 ms, 0.007 ms clock, 1408 bytes, 4 allocs
+init crypto @0.59 ms, 0.001 ms clock, 160 bytes, 1 allocs
+init hash/crc32 @0.60 ms, 0.014 ms clock, 1152 bytes, 5 allocs
+init syscall @0.63 ms, 0.017 ms clock, 2264 bytes, 7 allocs
+init internal/sysinfo @0.65 ms, 0.003 ms clock, 88 bytes, 2 allocs
+init time @0.66 ms, 0.002 ms clock, 256 bytes, 2 allocs
+init context @0.67 ms, 0 ms clock, 112 bytes, 1 allocs
+init crypto/internal/fips140deps/time @0.68 ms, 0.001 ms clock, 0 bytes, 0 allocs
+init github.com/DataDog/dd-trace-go/v2/internal/orchestrion @0.69 ms, 0.002 ms clock, 0 bytes, 1 allocs
+init go.uber.org/zap/internal/bufferpool @0.72 ms, 0.006 ms clock, 88 bytes, 3 allocs
+init go.uber.org/zap/internal/stacktrace @0.74 ms, 0.001 ms clock, 72 bytes, 2 allocs
+init io/fs @0.75 ms, 0 ms clock, 0 bytes, 0 allocs
+init os @0.75 ms, 0.20 ms clock, 14384 bytes, 25 allocs
+init unicode @0.97 ms, 0.048 ms clock, 11400 bytes, 16 allocs
+init reflect @1.0 ms, 0 ms clock, 0 bytes, 0 allocs
+init github.com/DataDog/sketches-go/ddsketch/encoding @1.0 ms, 0.005 ms clock, 48 bytes, 4 allocs
+init github.com/klauspost/compress/internal/snapref @1.0 ms, 0.011 ms clock, 1024 bytes, 1 allocs
+init github.com/modern-go/reflect2 @1.0 ms, 0.032 ms clock, 3928 bytes, 75 allocs
+init google.golang.org/protobuf/internal/detrand @1.1 ms, 0.10 ms clock, 504 bytes, 5 allocs
+init database/sql/driver @1.2 ms, 0.001 ms clock, 0 bytes, 0 allocs
+init github.com/DataDog/go-libddwaf/v5/timer @1.2 ms, 0.002 ms clock, 48 bytes, 1 allocs
+init github.com/planetscale/vtprotobuf/protohelpers @1.2 ms, 0.002 ms clock, 48 bytes, 3 allocs
+init go/token @1.2 ms, 0.014 ms clock, 984 bytes, 4 allocs
+init google.golang.org/protobuf/internal/errors @1.3 ms, 0 ms clock, 0 bytes, 0 allocs
+init google.golang.org/protobuf/encoding/protowire @1.3 ms, 0.009 ms clock, 2728 bytes, 10 allocs
+init log @1.3 ms, 0.004 ms clock, 64 bytes, 2 allocs
+init compress/flate @1.3 ms, 0.008 ms clock, 4240 bytes, 7 allocs
+init compress/gzip @1.3 ms, 0 ms clock, 0 bytes, 0 allocs
+init crypto/internal/fips140 @1.3 ms, 0.004 ms clock, 320 bytes, 8 allocs
+init crypto/internal/fips140/sha256 @1.3 ms, 0.004 ms clock, 48 bytes, 1 allocs
+init crypto/internal/fips140/sha3 @1.3 ms, 0 ms clock, 96 bytes, 1 allocs
+init crypto/internal/fips140/sha512 @1.4 ms, 0.004 ms clock, 192 bytes, 1 allocs
+init crypto/internal/fips140/hmac @1.4 ms, 0 ms clock, 0 bytes, 0 allocs
+init crypto/internal/fips140/check @1.4 ms, 0 ms clock, 0 bytes, 0 allocs
+init crypto/fips140 @1.4 ms, 0 ms clock, 48 bytes, 1 allocs
+init crypto/internal/fips140/aes @1.4 ms, 0 ms clock, 0 bytes, 0 allocs
+init crypto/internal/fips140/bigmod @1.4 ms, 0.001 ms clock, 0 bytes, 0 allocs
+init crypto/internal/fips140/drbg @1.4 ms, 0.001 ms clock, 0 bytes, 0 allocs
+init crypto/internal/fips140/aes/gcm @1.4 ms, 0.001 ms clock, 432 bytes, 3 allocs
+init crypto/internal/fips140/edwards25519/field @1.4 ms, 0.002 ms clock, 144 bytes, 3 allocs
+init crypto/internal/fips140/edwards25519 @1.5 ms, 0.021 ms clock, 528 bytes, 7 allocs
+init crypto/internal/fips140/ed25519 @1.5 ms, 0 ms clock, 64 bytes, 2 allocs
+init crypto/internal/fips140/hkdf @1.5 ms, 0.002 ms clock, 0 bytes, 0 allocs
+init crypto/internal/fips140/mlkem @1.5 ms, 0 ms clock, 64 bytes, 2 allocs
+init crypto/internal/fips140/nistec @1.5 ms, 0.001 ms clock, 0 bytes, 0 allocs
+init crypto/internal/fips140/ecdh @1.5 ms, 0.016 ms clock, 256 bytes, 6 allocs
+init crypto/internal/fips140/ecdsa @1.5 ms, 0.003 ms clock, 608 bytes, 16 allocs
+init crypto/internal/fips140/rsa @1.5 ms, 0.007 ms clock, 3264 bytes, 24 allocs
+init crypto/internal/fips140/tls12 @1.6 ms, 0 ms clock, 0 bytes, 0 allocs
+init crypto/internal/fips140/tls13 @1.6 ms, 0 ms clock, 0 bytes, 0 allocs
+init crypto/sha256 @1.6 ms, 0.002 ms clock, 0 bytes, 0 allocs
+init crypto/sha3 @1.6 ms, 0.001 ms clock, 0 bytes, 0 allocs
+init crypto/sha512 @1.6 ms, 0.001 ms clock, 0 bytes, 0 allocs
+init crypto/tls/internal/fips140tls @1.6 ms, 0.002 ms clock, 0 bytes, 0 allocs
+init encoding/json @1.7 ms, 0.002 ms clock, 32 bytes, 2 allocs
+init encoding/xml @1.7 ms, 0.027 ms clock, 18776 bytes, 6 allocs
+init flag @1.7 ms, 0.001 ms clock, 128 bytes, 2 allocs
+init github.com/DataDog/datadog-agent/pkg/trace/traceutil/normalize @1.7 ms, 0.003 ms clock, 0 bytes, 0 allocs
+init github.com/DataDog/go-sqllexer @1.7 ms, 0.053 ms clock, 100176 bytes, 418 allocs
+init github.com/DataDog/go-tuf/internal/roles @1.8 ms, 0.002 ms clock, 256 bytes, 2 allocs
+init github.com/ebitengine/purego @1.8 ms, 0.092 ms clock, 4208 bytes, 70 allocs
+init github.com/puzpuzpuz/xsync/v4 @1.9 ms, 0.001 ms clock, 0 bytes, 0 allocs
+init github.com/tinylib/msgp/msgp @1.9 ms, 0.005 ms clock, 48 bytes, 1 allocs
+init github.com/DataDog/dd-iast-go/internal/instrumentation/telemetry @1.9 ms, 0.003 ms clock, 1904 bytes, 8 allocs
+init crypto/des @2.0 ms, 0.001 ms clock, 0 bytes, 0 allocs
+init crypto/md5 @2.0 ms, 0 ms clock, 0 bytes, 0 allocs
+init crypto/rc4 @2.0 ms, 0 ms clock, 0 bytes, 0 allocs
+init crypto/sha1 @2.0 ms, 0.002 ms clock, 0 bytes, 0 allocs
+init github.com/DataDog/dd-trace-go/v2/ddtrace/tracer/internal @2.0 ms, 0.001 ms clock, 0 bytes, 0 allocs
+init go.opentelemetry.io/otel/attribute @2.0 ms, 0.005 ms clock, 0 bytes, 0 allocs
+init go.opentelemetry.io/otel/codes @2.0 ms, 0 ms clock, 512 bytes, 4 allocs
+init go.opentelemetry.io/otel/semconv/v1%2e17%2e0 @2.0 ms, 0.003 ms clock, 0 bytes, 0 allocs
+init go.opentelemetry.io/otel/semconv/v1%2e27%2e0 @2.0 ms, 0 ms clock, 0 bytes, 0 allocs
+init go.opentelemetry.io/otel/semconv/v1%2e43%2e0 @2.0 ms, 0.004 ms clock, 64 bytes, 4 allocs
+init go.opentelemetry.io/otel/trace @2.0 ms, 0.001 ms clock, 16 bytes, 2 allocs
+init go.uber.org/zap/zapcore @2.1 ms, 0.007 ms clock, 1320 bytes, 42 allocs
+init github.com/DataDog/dd-trace-go/v2/internal/log @2.1 ms, 0.002 ms clock, 144 bytes, 4 allocs
+init golang.org/x/sys/unix @2.1 ms, 0 ms clock, 48 bytes, 1 allocs
+init google.golang.org/protobuf/reflect/protoreflect @2.1 ms, 0 ms clock, 0 bytes, 0 allocs
+init google.golang.org/protobuf/internal/encoding/text @2.1 ms, 0.001 ms clock, 600 bytes, 7 allocs
+init google.golang.org/protobuf/reflect/protoregistry @2.1 ms, 0.001 ms clock, 88 bytes, 3 allocs
+init google.golang.org/protobuf/proto @2.1 ms, 0.004 ms clock, 296 bytes, 7 allocs
+init google.golang.org/protobuf/encoding/prototext @2.1 ms, 0.001 ms clock, 32 bytes, 1 allocs
+init google.golang.org/protobuf/internal/filedesc @2.1 ms, 0.018 ms clock, 1096 bytes, 18 allocs
+init google.golang.org/protobuf/internal/encoding/tag @2.2 ms, 0.001 ms clock, 0 bytes, 0 allocs
+init google.golang.org/protobuf/internal/impl @2.2 ms, 0.010 ms clock, 288 bytes, 8 allocs
+init google.golang.org/protobuf/internal/filetype @2.2 ms, 0.002 ms clock, 984 bytes, 4 allocs
+init github.com/DataDog/datadog-agent/pkg/proto/pbgo/trace/idx @2.2 ms, 0.079 ms clock, 20072 bytes, 46 allocs
+init github.com/DataDog/datadog-agent/pkg/proto/pbgo/trace @2.3 ms, 0.036 ms clock, 27440 bytes, 56 allocs
+init github.com/DataDog/sketches-go/ddsketch/pb/sketchpb @2.3 ms, 0.009 ms clock, 3776 bytes, 12 allocs
+init github.com/DataDog/sketches-go/ddsketch/store @2.3 ms, 0 ms clock, 0 bytes, 0 allocs
+init go.opentelemetry.io/proto/otlp/common/v1 @2.3 ms, 0.016 ms clock, 4512 bytes, 11 allocs
+init go.opentelemetry.io/proto/otlp/resource/v1 @2.4 ms, 0.012 ms clock, 6888 bytes, 13 allocs
+init github.com/DataDog/dd-trace-go/v2/internal/otelprocesscontext @2.4 ms, 0.006 ms clock, 1216 bytes, 6 allocs
+init go.opentelemetry.io/proto/otlp/metrics/v1 @2.4 ms, 0.027 ms clock, 21936 bytes, 28 allocs
+init go.opentelemetry.io/proto/otlp/trace/v1 @2.4 ms, 0.016 ms clock, 7456 bytes, 24 allocs
+init google.golang.org/genproto/googleapis/rpc/code @2.5 ms, 0.011 ms clock, 12568 bytes, 16 allocs
+init io/ioutil @2.5 ms, 0.005 ms clock, 0 bytes, 0 allocs
+init log/slog @2.5 ms, 0.003 ms clock, 176 bytes, 3 allocs
+init crypto/rand @2.5 ms, 0.001 ms clock, 0 bytes, 0 allocs
+init crypto/rsa @2.5 ms, 0 ms clock, 48 bytes, 2 allocs
+init encoding/asn1 @2.6 ms, 0 ms clock, 32 bytes, 2 allocs
+init crypto/x509/pkix @2.6 ms, 0.001 ms clock, 664 bytes, 4 allocs
+init github.com/klauspost/compress/s2 @2.6 ms, 0 ms clock, 0 bytes, 0 allocs
+init mime @2.6 ms, 0.002 ms clock, 0 bytes, 0 allocs
+init net/http/internal/testcert @2.6 ms, 0.006 ms clock, 3584 bytes, 2 allocs
+init path/filepath @2.6 ms, 0 ms clock, 0 bytes, 0 allocs
+init archive/tar @2.6 ms, 0.005 ms clock, 760 bytes, 6 allocs
+init archive/zip @2.6 ms, 0.002 ms clock, 512 bytes, 6 allocs
+init github.com/DataDog/dd-trace-go/v2/internal/osinfo @2.6 ms, 29 ms clock, 32352 bytes, 161 allocs
+init regexp/syntax @32 ms, 0.033 ms clock, 2344 bytes, 6 allocs
+init regexp @32 ms, 0.002 ms clock, 0 bytes, 0 allocs
+init github.com/DataDog/dd-iast-go/internal/config @32 ms, 0.55 ms clock, 73952 bytes, 444 allocs
+init github.com/DataDog/dd-iast-go/internal/taint/request @32 ms, 0.003 ms clock, 168 bytes, 6 allocs
+init github.com/DataDog/dd-iast-go/internal/taint/propagation @32 ms, 0 ms clock, 8 bytes, 1 allocs
+init github.com/DataDog/dd-iast-go/iast/encoding/json @32 ms, 0 ms clock, 16 bytes, 1 allocs
+init github.com/DataDog/dd-trace-go/v2/internal/hostname/validate @32 ms, 0.065 ms clock, 10024 bytes, 91 allocs
+init github.com/DataDog/go-libddwaf/v5/internal/log @32 ms, 0.002 ms clock, 72 bytes, 2 allocs
+init github.com/DataDog/go-libddwaf/v5 @32 ms, 0.015 ms clock, 168 bytes, 4 allocs
+init github.com/DataDog/go-runtime-metrics-internal/pkg/runtimemetrics @32 ms, 0.024 ms clock, 13000 bytes, 118 allocs
+init github.com/dustin/go-humanize @32 ms, 0.038 ms clock, 9200 bytes, 119 allocs
+init github.com/outcaste-io/ristretto/z @32 ms, 0.044 ms clock, 10104 bytes, 14 allocs
+panic: interface conversion: interface {} is nil, not *tracer.Tracer
+
+goroutine 1 [running]:
+github.com/DataDog/dd-trace-go/v2/ddtrace/internal.GetGlobalTracer[...](...)
+	/Users/eliott.bouhana/go/pkg/mod/github.com/!data!dog/dd-trace-go/v2@v2.11.0-rc.1/ddtrace/internal/globaltracer.go:43
+github.com/DataDog/dd-trace-go/v2/ddtrace/tracer.getGlobalTracer(...)
+	/Users/eliott.bouhana/go/pkg/mod/github.com/!data!dog/dd-trace-go/v2@v2.11.0-rc.1/ddtrace/tracer/globaltracer.go:22
+github.com/DataDog/dd-trace-go/v2/ddtrace/tracer.StartSpan({0x102fecc34?, 0x102a68208?}, {0xc4ff5336580?, 0x102f97e44?, 0xc4ff5359b78?})
+	/Users/eliott.bouhana/go/pkg/mod/github.com/!data!dog/dd-trace-go/v2@v2.11.0-rc.1/ddtrace/tracer/tracer.go:468 +0xb8
+github.com/DataDog/dd-iast-go/internal/spans.NewOrphanVulnerabilitySpan()
+	/private/tmp/ddiast-review/wt/fx-crash-panic-static-F1/internal/spans/vulnerability.go:18 +0xf0
+github.com/DataDog/dd-iast-go/internal/vulnerability.Report({0x0?, 0x0?}, 0x20, {0x102fe79d7, 0x5}, 0x1038c4d98, {{0x102fe7ea8, 0x6}, {0x103032650, 0x0}, ...})
+	/private/tmp/ddiast-review/wt/fx-crash-panic-static-F1/internal/vulnerability/report.go:47 +0xa0
+github.com/DataDog/dd-iast-go/iast/crypto/hash.ReportWeakHash({0x0, 0x0}, 0x102fed8f3?)
+	/private/tmp/ddiast-review/wt/fx-crash-panic-static-F1/iast/crypto/hash/hash.go:19 +0x78
+crypto/sha1.New()
+	<generated>:2 +0x28
+github.com/zzz/initcrash2/fp.init.0()
+	/private/tmp/ddiast-review/wt/fx-crash-panic-static-F1/_repro/initcrash2/fp/fp.go:16 +0x1c
+

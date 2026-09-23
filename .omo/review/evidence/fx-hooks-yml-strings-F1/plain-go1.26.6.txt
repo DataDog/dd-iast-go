@@ -1,0 +1,16 @@
+=== RUN   TestBuild
+--- PASS: TestBuild (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/testapps/integration/zzfx/buffer	0.238s
+=== RUN   TestBuild
+--- PASS: TestBuild (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/testapps/integration/zzfx/builder	0.392s
+=== RUN   TestBuild
+--- PASS: TestBuild (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/testapps/integration/zzfx/control	0.538s
+=== RUN   TestReplace
+--- PASS: TestReplace (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/testapps/integration/zzfx/replacer	0.680s

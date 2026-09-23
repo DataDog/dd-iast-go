@@ -1,0 +1,13 @@
+Command:
+cd /tmp/ddiast-review/wt/fx-prop-writer-F1 && GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 /usr/bin/time -l go tool orchestrion go test -timeout 10m -count=1 -run '^TestFXPropWriterF1ConfiguredOwnerFanout$' -v ./iast/propagation
+
+Exit status: 0
+
+=== RUN   TestFXPropWriterF1ConfiguredOwnerFanout
+    zz_fx_prop_writer_f1_test.go:32: owners=60 writer_records=60 process_charged_bytes=1967040
+--- PASS: TestFXPropWriterF1ConfiguredOwnerFanout (0.01s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/iast/propagation	0.870s
+       30.84 real        14.04 user        88.20 sys
+           347586560  maximum resident set size
+            38847232  peak memory footprint

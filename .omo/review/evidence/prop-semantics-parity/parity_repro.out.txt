@@ -1,0 +1,25 @@
+Command (from /tmp/ddiast-review/wt/prop-semantics-parity):
+GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -timeout 8m -count=1 -run "^TestParity" -v ./iast/propagation
+
+=== RUN   TestParitySprintfStructFieldKeepsTaint
+    parity_repro_test.go:28: query="SELECT * FROM users WHERE 1=1 --" tainted=false sql_collection=0
+    parity_repro_test.go:29:
+        	Error:      	Should be true
+        	Messages:   	a formatted tainted struct field must reach the SQL sink
+--- FAIL: TestParitySprintfStructFieldKeepsTaint (0.00s)
+=== RUN   TestParityMapDeletingTaintedSuffixLeavesCleanSQL
+    parity_repro_test.go:46: query="SELECT 1 " tainted=true clean_control_tainted=false sql_collection=1
+    parity_repro_test.go:49:
+        	Error:      	Should be false
+        	Messages:   	removed input must not taint the retained constant query
+--- FAIL: TestParityMapDeletingTaintedSuffixLeavesCleanSQL (0.00s)
+=== RUN   TestParitySprintfZeroPrecisionLeavesCleanSQL
+    parity_repro_test.go:62: query="SELECT 1" tainted=true clean_control_tainted=false sql_collection=1
+    parity_repro_test.go:65:
+        	Error:      	Should be false
+        	Messages:   	zero-width formatted input must not taint constant output
+--- FAIL: TestParitySprintfZeroPrecisionLeavesCleanSQL (0.00s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/iast/propagation	0.808s
+FAIL
+exit status 1

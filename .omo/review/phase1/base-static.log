@@ -1,0 +1,570 @@
+BASE_STATIC checks at Wed Sep 23 09:36:12 UTC 2026
+HEAD=2e23b4614320defd0d32177a69888dcab73f4d11
+
+===== gofmt -l all Go files =====
+EXIT_CODE=0
+
+===== go vet (.) =====
+COMMAND: go -C . vet ./...
+go: downloading golang.org/x/text v0.42.0
+
+===== RESTART WITH ISOLATED GO CACHE =====
+GOCACHE,GOMODCACHE,GOTMPDIR,GOPATH,HOME and GOLANGCI_LINT_CACHE are confined to this private worktree.
+
+===== gofmt -l all Go files =====
+EXIT_CODE=0
+
+===== go vet (.) =====
+COMMAND: go -C . vet ./...
+timeout: failed to run command ‘runenv’: No such file or directory
+EXIT_CODE=127
+
+===== go vet (iast/database/sql/testapp) =====
+COMMAND: go -C iast/database/sql/testapp vet ./...
+timeout: failed to run command ‘runenv’: No such file or directory
+EXIT_CODE=127
+
+===== go vet (iast/os/exec/testapp) =====
+COMMAND: go -C iast/os/exec/testapp vet ./...
+timeout: failed to run command ‘runenv’: No such file or directory
+EXIT_CODE=127
+
+===== go vet (iast/integration/testapp) =====
+COMMAND: go -C iast/integration/testapp vet ./...
+timeout: failed to run command ‘runenv’: No such file or directory
+EXIT_CODE=127
+
+===== go vet (benchmarks/overhead) =====
+COMMAND: go -C benchmarks/overhead vet ./...
+timeout: failed to run command ‘runenv’: No such file or directory
+EXIT_CODE=127
+
+===== checklocks root =====
+COMMAND: go tool checklocks ./...
+timeout: failed to run command ‘runenv’: No such file or directory
+EXIT_CODE=127
+
+===== golangci-lint requested linters =====
+COMMAND: golangci-lint run ./... --enable=gosec,errorlint,bodyclose,nilerr,unparam,gocritic,prealloc,unconvert,wastedassign
+timeout: failed to run command ‘runenv’: No such file or directory
+EXIT_CODE=127
+
+===== golangci-lint defaults fallback (requested flags failed) =====
+COMMAND: golangci-lint run ./...
+timeout: failed to run command ‘runenv’: No such file or directory
+EXIT_CODE=127
+
+===== staticcheck =====
+COMMAND: go run honnef.co/go/tools/cmd/staticcheck@latest ./...
+timeout: failed to run command ‘runenv’: No such file or directory
+EXIT_CODE=127
+
+===== govulncheck =====
+COMMAND: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+timeout: failed to run command ‘runenv’: No such file or directory
+EXIT_CODE=127
+
+===== deadcode =====
+COMMAND: go run golang.org/x/tools/cmd/deadcode@latest -test ./...
+timeout: failed to run command ‘runenv’: No such file or directory
+EXIT_CODE=127
+
+===== RETRY AFTER RUNNER WRAPPER FIX =====
+
+===== gofmt -l all Go files =====
+EXIT_CODE=0
+
+===== go vet (.) =====
+COMMAND: go -C . vet ./...
+go: downloading go1.26.6 (darwin/arm64)
+go: downloading github.com/DataDog/dd-trace-go/v2 v2.11.0-rc.1
+go: downloading github.com/DataDog/orchestrion v1.12.2-0.20260828141217-23afa71d6dcb
+go: downloading github.com/stretchr/testify v1.12.1
+go: downloading golang.org/x/crypto v0.57.0
+go: downloading github.com/tinylib/msgp v1.6.4
+go: downloading github.com/google/uuid v1.6.0
+go: downloading golang.org/x/net v0.58.0
+go: downloading github.com/puzpuzpuz/xsync/v4 v4.5.0
+go: downloading github.com/DataDog/go-sqllexer v0.2.4
+go: downloading github.com/philhofer/fwd v1.2.0
+go: downloading go.yaml.in/yaml/v3 v3.0.5
+go: downloading golang.org/x/text v0.42.0
+go: downloading golang.org/x/mod v0.41.0
+go: downloading github.com/DataDog/sketches-go v1.4.8
+go: downloading google.golang.org/protobuf v1.36.12
+go: downloading github.com/DataDog/datadog-agent/pkg/trace/traceutil v0.82.2
+go: downloading github.com/DataDog/datadog-agent/pkg/remoteconfig/state v0.82.2
+go: downloading github.com/DataDog/datadog-go/v5 v5.9.1
+go: downloading github.com/DataDog/datadog-agent/pkg/obfuscate v0.82.2
+go: downloading go.opentelemetry.io/collector/pdata/pprofile v0.159.0
+go: downloading github.com/DataDog/go-libddwaf/v5 v5.0.1
+go: downloading github.com/DataDog/datadog-agent/pkg/trace v0.82.2
+go: downloading github.com/DataDog/datadog-agent/pkg/proto v0.82.2
+go: downloading github.com/DataDog/datadog-agent/pkg/trace/stats v0.82.2
+go: downloading github.com/DataDog/go-runtime-metrics-internal v0.0.4-0.20260317103029-7c129975f019
+go: downloading github.com/cihub/seelog v0.0.0-20170130134532-f561c5e57575
+go: downloading go.opentelemetry.io/proto/otlp v1.11.0
+go: downloading go.opentelemetry.io/collector/pdata v1.65.0
+go: downloading golang.org/x/exp v0.0.0-20260813180055-c1d0aacb2297
+go: downloading golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da
+go: downloading github.com/trailofbits/go-mutexasserts v0.0.0-20250514102930-c1f3d2e37561
+go: downloading golang.org/x/sys v0.48.0
+go: downloading golang.org/x/time v0.15.0
+go: downloading github.com/DataDog/go-tuf v1.1.1-0.5.2
+go: downloading github.com/outcaste-io/ristretto v0.2.3
+go: downloading go.uber.org/atomic v1.11.0
+go: downloading github.com/cenkalti/backoff/v5 v5.0.3
+go: downloading github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10
+go: downloading github.com/DataDog/datadog-agent/pkg/trace/log v0.82.2
+go: downloading google.golang.org/genproto/googleapis/rpc v0.0.0-20260819154853-08b0e4226688
+go: downloading github.com/json-iterator/go v1.1.12
+go: downloading github.com/minio/simdjson-go v0.4.5
+go: downloading github.com/cespare/xxhash/v2 v2.3.0
+go: downloading github.com/dustin/go-humanize v1.0.1
+go: downloading github.com/pkg/errors v0.9.1
+go: downloading github.com/DataDog/datadog-agent/comp/core/tagger/origindetection v0.82.2
+go: downloading github.com/DataDog/datadog-agent/pkg/opentelemetry-mapping-go/otlp/attributes v0.82.2
+go: downloading github.com/shirou/gopsutil/v4 v4.26.7
+go: downloading go.uber.org/multierr v1.11.0
+go: downloading go.opentelemetry.io/collector/featuregate v1.65.0
+go: downloading github.com/ebitengine/purego v0.10.2
+go: downloading go.opentelemetry.io/otel v1.45.0
+go: downloading go.opentelemetry.io/otel/metric v1.45.0
+go: downloading go.opentelemetry.io/collector/component v1.65.0
+go: downloading github.com/hashicorp/go-version v1.9.0
+go: downloading github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd
+go: downloading github.com/modern-go/reflect2 v1.0.3-0.20250322232337-35a7c28c31ee
+go: downloading github.com/klauspost/compress v1.19.2
+go: downloading go.opentelemetry.io/otel/trace v1.45.0
+go: downloading go.uber.org/zap v1.28.0
+go: downloading github.com/tklauser/go-sysconf v0.4.0
+go: downloading github.com/secure-systems-lab/go-securesystemslib v0.11.1
+EXIT_CODE=0
+
+===== go vet (iast/database/sql/testapp) =====
+COMMAND: go -C iast/database/sql/testapp vet ./...
+EXIT_CODE=0
+
+===== go vet (iast/os/exec/testapp) =====
+COMMAND: go -C iast/os/exec/testapp vet ./...
+EXIT_CODE=0
+
+===== go vet (iast/integration/testapp) =====
+COMMAND: go -C iast/integration/testapp vet ./...
+EXIT_CODE=0
+
+===== go vet (benchmarks/overhead) =====
+COMMAND: go -C benchmarks/overhead vet ./...
+EXIT_CODE=0
+
+===== checklocks root =====
+COMMAND: go tool checklocks ./...
+go: downloading gvisor.dev/gvisor v0.0.0-20260820060304-5d1328306b1b
+go: downloading golang.org/x/tools v0.49.0
+go: downloading golang.org/x/sync v0.23.0
+
+===== checklocks root (bounded rerun to capture exit status) =====
+COMMAND: go tool checklocks ./...
+EXIT_CODE=0
+
+===== golangci-lint requested linters =====
+COMMAND: golangci-lint run ./... --enable=gosec,errorlint,bodyclose,nilerr,unparam,gocritic,prealloc,unconvert,wastedassign
+open /path/to: no such file or directory
+open /path/to: no such file or directory
+open /path/to: no such file or directory
+../../../../../tmp/ddiast-review/wt/base-static/iast/internal/propagationtest/writer.go:200:8: Error return value is not checked (errcheck)
+		write("plain!")
+		     ^
+../../../../../tmp/ddiast-review/wt/base-static/iast/internal/propagationtest/writer.go:290:14: Error return value of `buffer.Peek` is not checked (errcheck)
+		buffer.Peek(-1)
+		           ^
+../../../../../tmp/ddiast-review/wt/base-static/iast/net/http/http_test.go:346:27: Error return value of `response.Body.Close` is not checked (errcheck)
+	defer response.Body.Close()
+	                         ^
+../../../../../tmp/ddiast-review/wt/base-static/iast/net/http/http_test.go:504:21: Error return value of `response.Body.Close` is not checked (errcheck)
+	response.Body.Close()
+	                   ^
+../../../../../tmp/ddiast-review/wt/base-static/iast/net/http/http_test.go:525:21: Error return value of `response.Body.Close` is not checked (errcheck)
+	response.Body.Close()
+	                   ^
+../../../../../tmp/ddiast-review/wt/base-static/iast/net/http/http_test.go:544:18: Error return value of `conn.Close` is not checked (errcheck)
+	defer conn.Close()
+	                ^
+../../../../../tmp/ddiast-review/wt/base-static/iast/propagation/writer_test.go:275:17: Error return value of `buffer.Peek` is not checked (errcheck)
+					buffer.Peek(-1)
+					           ^
+../../../../../tmp/ddiast-review/wt/base-static/internal/model/vulnerability.go:37:16: Error return value of `binary.Write` is not checked (errcheck)
+			binary.Write(hasher, binary.LittleEndian, int64(location.Line))
+			            ^
+../../../../../tmp/ddiast-review/wt/base-static/internal/spans/orchestrion.go:41:3: ifElseChain: rewrite if-else to switch statement (gocritic)
+		if err != nil {
+		^
+../../../../../tmp/ddiast-review/wt/base-static/internal/taint/propagation/path_native_test.go:43:20: wrapperFunc: use strings.ReplaceAll method in `strings.Replace(managed, "b", "", -1)` (gocritic)
+	replacedNative := strings.Replace(managed, "b", "", -1)
+	                  ^
+../../../../../tmp/ddiast-review/wt/base-static/internal/taint/propagation/path_native_test.go:74:19: wrapperFunc: use strings.ReplaceAll method in `strings.Replace(managed, "missing", "value", -1)` (gocritic)
+	replaceNative := strings.Replace(managed, "missing", "value", -1)
+	                 ^
+../../../../../tmp/ddiast-review/wt/base-static/internal/taint/propagation/range_behavior_test.go:131:62: badCall: suspicious arg 0, probably meant -1 (gocritic)
+	unchanged := bytes.Replace(input, []byte("x"), replacement, 0)
+	                                                            ^
+../../../../../tmp/ddiast-review/wt/base-static/internal/taint/store/root.go:296:2: ifElseChain: rewrite if-else to switch statement (gocritic)
+	if o.owner.rootFreeN > 0 {
+	^
+../../../../../tmp/ddiast-review/wt/base-static/internal/vulnerability/stacktrace/stacktrace.go:42:3: ifElseChain: rewrite if-else to switch statement (gocritic)
+		if location.Class != "" && strings.HasPrefix(location.Class, "*") {
+		^
+../../../../../tmp/ddiast-review/wt/base-static/iast/crypto/cipher/cipher_test.go:12:2: G502: Blocklisted import crypto/des: weak cryptographic primitive (gosec)
+	"crypto/des"
+	^
+../../../../../tmp/ddiast-review/wt/base-static/iast/crypto/cipher/cipher_test.go:13:2: G503: Blocklisted import crypto/rc4: weak cryptographic primitive (gosec)
+	"crypto/rc4"
+	^
+../../../../../tmp/ddiast-review/wt/base-static/iast/crypto/hash/hash_test.go:11:2: G501: Blocklisted import crypto/md5: weak cryptographic primitive (gosec)
+	"crypto/md5"
+	^
+../../../../../tmp/ddiast-review/wt/base-static/iast/crypto/hash/hash_test.go:12:2: G505: Blocklisted import crypto/sha1: weak cryptographic primitive (gosec)
+	"crypto/sha1"
+	^
+../../../../../tmp/ddiast-review/wt/base-static/iast/crypto/hash/hash_test.go:28:2: G506: Blocklisted import golang.org/x/crypto/md4: deprecated and weak cryptographic primitive (gosec)
+	_ "golang.org/x/crypto/md4" // Make the MD4 implementation available
+	^
+../../../../../tmp/ddiast-review/wt/base-static/iast/internal/propagationtest/writer.go:190:31: G103: Use of unsafe calls should be audited (gosec)
+	before := [4]uintptr{uintptr(unsafe.Pointer(unsafe.SliceData(backing))), uintptr(buffer.Len()), uintptr(buffer.Cap()), uintptr(buffer.Available())}
+	                             ^
+../../../../../tmp/ddiast-review/wt/base-static/iast/internal/propagationtest/writer.go:206:30: G103: Use of unsafe calls should be audited (gosec)
+	after := [4]uintptr{uintptr(unsafe.Pointer(unsafe.SliceData(backing))), uintptr(buffer.Len()), uintptr(buffer.Cap()), uintptr(buffer.Available())}
+	                            ^
+../../../../../tmp/ddiast-review/wt/base-static/iast/net/http/http_test.go:252:29: G120: Unbounded form parsing in HTTP handlers can cause memory exhaustion (gosec)
+		_ = req.ParseMultipartForm(1 << 20)
+		                          ^
+../../../../../tmp/ddiast-review/wt/base-static/internal/config/config.go:75:33: G115: integer overflow conversion uint64 -> int (gosec)
+	VulnerabilitiesPerRequest = int(loader.UintFromEnvBounded(observer, EnvVarVulnerabilitiesPerRequest, 2, uint64(1), uint64(MaxVulnerabilitiesPerRequest)))
+	                               ^
+../../../../../tmp/ddiast-review/wt/base-static/internal/model/vulnerability.go:47:18: G115: integer overflow conversion uint32 -> int32 (gosec)
+		Hash:     int32(hasher.Sum32()),
+		               ^
+../../../../../tmp/ddiast-review/wt/base-static/internal/spans/annotation_weak_test.go:10:2: G502: Blocklisted import crypto/des: weak cryptographic primitive (gosec)
+	"crypto/des"
+	^
+../../../../../tmp/ddiast-review/wt/base-static/internal/spans/annotation_weak_test.go:11:2: G501: Blocklisted import crypto/md5: weak cryptographic primitive (gosec)
+	"crypto/md5"
+	^
+../../../../../tmp/ddiast-review/wt/base-static/internal/spans/annotation_weak_test.go:77:12: G401: Use of weak cryptographic primitive (gosec)
+	if got := md5.Sum([]byte("hello")); got != [md5.Size]byte{0x5d, 0x41, 0x40, 0x2a, 0xbc, 0x4b, 0x2a, 0x76, 0xb9, 0x71, 0x9d, 0x91, 0x10, 0x17, 0xc5, 0x92} {
+	          ^
+../../../../../tmp/ddiast-review/wt/base-static/internal/spans/annotation_weak_test.go:80:15: G405: Use of weak cryptographic primitive (gosec)
+	if _, err := des.NewCipher([]byte("bad")); err != des.KeySizeError(3) {
+	             ^
+../../../../../tmp/ddiast-review/wt/base-static/internal/taint/evidence/evidence.go:259:34: G115: integer overflow conversion int -> uint16 (gosec)
+			c.sourceIndexes[slot] = uint16(index + 1)
+			                              ^
+../../../../../tmp/ddiast-review/wt/base-static/internal/taint/evidence/evidence.go:262:17: G115: integer overflow conversion int -> uint16 (gosec)
+			return uint16(index), true
+			             ^
+../../../../../tmp/ddiast-review/wt/base-static/internal/taint/evidence/evidence.go:267:17: G115: integer overflow conversion int -> uint16 (gosec)
+			return uint16(index), true
+			             ^
+../../../../../tmp/ddiast-review/wt/base-static/internal/taint/evidence/evidence.go:423:93: G115: integer overflow conversion uint16 -> int16 (gosec)
+		s.parts = append(s.parts, Part{Start: current.start, Length: current.length, Source: int16(current.source), Marks: current.marks})
+		                                                                                          ^
+../../../../../tmp/ddiast-review/wt/base-static/internal/taint/jsonbridge/bridge.go:121:76: G115: integer overflow conversion int -> uint32 (gosec)
+	slot.document.Store(&document{original: slicePointer(data), length: uint32(len(data)), clone: clone})
+	                                                                          ^
+../../../../../tmp/ddiast-review/wt/base-static/internal/taint/jsonbridge/bridge.go:145:25: G115: integer overflow conversion int -> uint32 (gosec)
+		documentLength: uint32(len(original)),
+		                      ^
+../../../../../tmp/ddiast-review/wt/base-static/internal/taint/jsonbridge/bridge.go:146:25: G115: integer overflow conversion int -> uint32 (gosec)
+		offset:         uint32(start),
+		                      ^
+../../../../../tmp/ddiast-review/wt/base-static/internal/taint/jsonbridge/bridge.go:204:17: G103: Use of unsafe calls should be audited (gosec)
+	return uintptr(unsafe.Pointer(unsafe.SliceData(value)))
+	               ^
+../../../../../tmp/ddiast-review/wt/base-static/internal/taint/propagation/json.go:33:37: G115: integer overflow conversion uintptr -> uint32 (gosec)
+	return jsonStringHit(s, key, uint32(literalPointer-documentPointer), uint32(len(literal)), result)
+	                                   ^
+../../../../../tmp/ddiast-review/wt/base-static/internal/taint/propagation/owner_lifecycle_fuzz_test.go:144:15: G115: integer overflow conversion int -> byte (gosec)
+	raw[0] = byte(cycle)
+	             ^
+../../../../../tmp/ddiast-review/wt/base-static/internal/taint/propagation/propagation_test.go:160:28: G115: integer overflow conversion uint64 -> int (gosec)
+			want := wantAll[:min(int(limit), len(wantAll))]
+			                        ^
+../../../../../tmp/ddiast-review/wt/base-static/internal/taint/propagation/sequence_oracle_test.go:224:39: G115: integer overflow conversion int -> uint64 (gosec)
+		if value.Length == 0 || end > uint64(length) {
+		                                    ^
+../../../../../tmp/ddiast-review/wt/base-static/internal/taint/propagation/sequence_property_test.go:25:25: G115: integer overflow conversion uint64 -> byte (gosec)
+			encoded[index] = byte(random.Uint64())
+			                     ^
+../../../../../tmp/ddiast-review/wt/base-static/internal/taint/ranges/operations.go:157:21: G115: integer overflow conversion uint64 -> uint32 (gosec)
+			r.Length = uint32(total)
+			                 ^
+../../../../../tmp/ddiast-review/wt/base-static/internal/taint/ranges/operations.go:158:56: G115: integer overflow conversion uint64 -> uint32 (gosec)
+			return AdoptCanonical(dst, limit, []Range{r}, uint32(total))
+			                                                    ^
+../../../../../tmp/ddiast-review/wt/base-static/internal/taint/ranges/operations.go:165:35: G115: integer overflow conversion uint64 -> uint32 (gosec)
+		builder.appendSet(source, uint32(uint64(sourceLen)*uint64(i)))
+		                                ^
+../../../../../tmp/ddiast-review/wt/base-static/internal/taint/ranges/property_test.go:17:12: G404: Use of weak random number generator (math/rand or math/rand/v2 instead of crypto/rand) (gosec)
+	random := rand.New(rand.NewPCG(0x1A57, 0x600D))
+	          ^
+../../../../../tmp/ddiast-review/wt/base-static/internal/taint/ranges/property_test.go:32:24: G115: integer overflow conversion int -> uint8 (gosec)
+		limit := ranges.Limit(random.IntN(ranges.HardLimit) + 1)
+		                     ^
+../../../../../tmp/ddiast-review/wt/base-static/internal/taint/ranges/property_test.go:55:12: G404: Use of weak random number generator (math/rand or math/rand/v2 instead of crypto/rand) (gosec)
+	random := rand.New(rand.NewPCG(0x51CE, 0xC0FFEE))
+	          ^
+../../../../../tmp/ddiast-review/wt/base-static/internal/taint/ranges/property_test.go:64:46: G115: integer overflow conversion int -> uint8 (gosec)
+		outcome := ranges.Concat(&got, ranges.Limit(limit), &left, uint32(len(leftCells)), &right, uint32(len(rightCells)))
+		                                           ^
+../../../../../tmp/ddiast-review/wt/base-static/internal/taint/ranges/ranges.go:95:22: G115: integer overflow conversion int -> uint8 (gosec)
+	result.count = uint8(keep)
+	                    ^
+../../../../../tmp/ddiast-review/wt/base-static/internal/taint/redaction/analyzer.go:73:23: G602: slice index out of range (gosec)
+			previous := &values[output-1]
+			                   ^
+../../../../../tmp/ddiast-review/wt/base-static/internal/taint/redaction/source.go:63:53: G115: integer overflow conversion int -> int16 (gosec)
+		if !ok || part.Source < -1 || part.Source >= int16(snapshot.SourceCount()) {
+		                                                  ^
+../../../../../tmp/ddiast-review/wt/base-static/internal/taint/redaction/source.go:235:20: G115: integer overflow conversion int -> uint64 (gosec)
+	consumed := uint64(utf8.RuneCountInString(result))
+	                  ^
+../../../../../tmp/ddiast-review/wt/base-static/internal/taint/request/scope.go:154:7: G404: Use of weak random number generator (math/rand or math/rand/v2 instead of crypto/rand) (gosec)
+	case rand.IntN(100) < percent:
+	     ^
+../../../../../tmp/ddiast-review/wt/base-static/internal/taint/request/table.go:211:2: G104: Errors unhandled (gosec)
+	h.WriteByte(byte(origin))
+	^
+../../../../../tmp/ddiast-review/wt/base-static/internal/taint/request/table.go:212:2: G104: Errors unhandled (gosec)
+	h.WriteString(name)
+	^
+../../../../../tmp/ddiast-review/wt/base-static/internal/taint/request/table.go:213:2: G104: Errors unhandled (gosec)
+	h.WriteByte(0)
+	^
+../../../../../tmp/ddiast-review/wt/base-static/internal/taint/store/binding.go:246:12: G115: integer overflow conversion uint64 -> int (gosec)
+	return int(hash)
+	          ^
+../../../../../tmp/ddiast-review/wt/base-static/internal/taint/store/root.go:47:46: G115: integer overflow conversion uint64 -> uint8 (gosec)
+	if !ranges.AdoptCanonical(&set, ranges.Limit(config.MaxRangeCount), []ranges.Range{{Length: uint32(len(clone)), SourceID: source}}, uint32(len(clone))).Valid {
+	                                            ^
+../../../../../tmp/ddiast-review/wt/base-static/internal/taint/store/root.go:88:46: G115: integer overflow conversion uint64 -> uint8 (gosec)
+	if !ranges.AdoptCanonical(&set, ranges.Limit(config.MaxRangeCount), []ranges.Range{{Length: uint32(len(managed)), SourceID: source}}, uint32(len(managed))).Valid {
+	                                            ^
+../../../../../tmp/ddiast-review/wt/base-static/internal/taint/store/root.go:128:46: G115: integer overflow conversion uint64 -> uint8 (gosec)
+	if !ranges.AdoptCanonical(&set, ranges.Limit(config.MaxRangeCount), []ranges.Range{{Length: uint32(len(clone)), SourceID: source}}, uint32(cap(clone))).Valid {
+	                                            ^
+../../../../../tmp/ddiast-review/wt/base-static/internal/taint/store/value.go:274:26: G115: integer overflow conversion int -> uint64 (gosec)
+	shard.probeSum += uint64(probes)
+	                        ^
+../../../../../tmp/ddiast-review/wt/base-static/internal/taint/store/writer.go:539:26: G115: integer overflow conversion int -> int32 (gosec)
+		s.addWriterStates(int32(-count))
+		                       ^
+../../../../../tmp/ddiast-review/wt/base-static/internal/vulnerability/dedup/dedup_test.go:133:18: G115: integer overflow conversion int -> int32 (gosec)
+				hash := int32(worker*1_000 + index)
+				             ^
+../../../../../tmp/ddiast-review/wt/base-static/internal/vulnerability/tainted_dedup_test.go:39:10: G204: Subprocess launched with variable (gosec)
+		cmd := exec.CommandContext(ctx, executable, "-test.run=^TestCommitTaintedSkippedDedup$", "-test.v")
+		       ^
+../../../../../tmp/ddiast-review/wt/base-static/internal/taint/store/identity_test.go:37:2: ineffectual assignment to managed (ineffassign)
+	managed = ""
+	^
+../../../../../tmp/ddiast-review/wt/base-static/internal/taint/store/memory_test.go:26:2: ineffectual assignment to original (ineffassign)
+	original = ""
+	^
+../../../../../tmp/ddiast-review/wt/base-static/iast/encoding/json/json_test.go:41:29: SA1019: runtime.GOROOT has been deprecated since Go 1.24: The root used during the Go build will not be meaningful if the binary is copied to another machine. Use the system path to locate the “go” binary, and use “go env GOROOT” to find its GOROOT. (staticcheck)
+	directory := filepath.Join(runtime.GOROOT(), "src", "encoding", "json")
+	                           ^
+../../../../../tmp/ddiast-review/wt/base-static/iast/net/http/http_test.go:37:2: SA1019: "golang.org/x/net/http2/h2c" is deprecated: This package is deprecated. (staticcheck)
+	"golang.org/x/net/http2/h2c"
+	^
+../../../../../tmp/ddiast-review/wt/base-static/iast/net/http/http_test.go:539:31: SA1019: h2c.NewHandler is deprecated: Set the [http.Server] Protocols field to use unencrypted HTTP/2 instead. (staticcheck)
+	server := httptest.NewServer(h2c.NewHandler(http.HandlerFunc(upgradeEndpoint), new(http2.Server)))
+	                             ^
+../../../../../tmp/ddiast-review/wt/base-static/iast/net/http/http_test.go:700:34: SA1019: h2c.NewHandler is deprecated: Set the [http.Server] Protocols field to use unencrypted HTTP/2 instead. (staticcheck)
+				server := httptest.NewServer(h2c.NewHandler(handler, new(http2.Server)))
+				                             ^
+../../../../../tmp/ddiast-review/wt/base-static/iast/propagation/operators_contexts_test.go:54:15: QF1011: could omit type definedString from declaration; it will be inferred from the right-hand side (staticcheck)
+	var declared definedString = definedString(value)
+	             ^
+../../../../../tmp/ddiast-review/wt/base-static/iast/propagation/operators_slices_test.go:122:18: QF1011: could omit type definedString from declaration; it will be inferred from the right-hand side (staticcheck)
+	var namedResult definedString = definedString(byteValue)
+	                ^
+../../../../../tmp/ddiast-review/wt/base-static/internal/spans/annotation.go:71:8: QF1008: could remove embedded field "RWMutex" from selector (staticcheck)
+	if !a.RWMutex.TryLock() {
+	      ^
+../../../../../tmp/ddiast-review/wt/base-static/internal/spans/annotation.go:74:10: QF1008: could remove embedded field "RWMutex" from selector (staticcheck)
+	defer a.RWMutex.Unlock() // +checklocksforce: TryLock.
+	        ^
+../../../../../tmp/ddiast-review/wt/base-static/internal/spans/annotation.go:243:10: QF1008: could remove embedded field "RWMutex" from selector (staticcheck)
+	if !ann.RWMutex.TryLock() {
+	        ^
+../../../../../tmp/ddiast-review/wt/base-static/internal/spans/orchestrion.go:39:13: QF1008: could remove embedded field "Event" from selector (staticcheck)
+	if len(ann.Event.Vulnerabilities) > 0 {
+	           ^
+../../../../../tmp/ddiast-review/wt/base-static/internal/spans/tainted.go:69:27: QF1008: could remove embedded field "Event" from selector (staticcheck)
+	if a.closed.Load() || !a.Event.CanAddVulnerability(commit.Vulnerability) {
+	                         ^
+../../../../../tmp/ddiast-review/wt/base-static/internal/spans/tainted.go:72:11: QF1008: could remove embedded field "Event" from selector (staticcheck)
+	if len(a.Event.Sources) != len(a.sourceIdentities) {
+	         ^
+../../../../../tmp/ddiast-review/wt/base-static/internal/taint/request/scope_test.go:50:37: SA1012: do not pass a nil Context, even if a function permits it; pass context.TODO if you are unsure about which Context to use (staticcheck)
+	_, scope, created := request.Begin(nil)
+	                                   ^
+../../../../../tmp/ddiast-review/wt/base-static/internal/taint/store/writer.go:390:7: QF1001: could apply De Morgan's law (staticcheck)
+			if !(preserve && entry.pointer == pointer) && (entry.pointer == pointer || entry.kind == WriterBytesBuffer && overlaps(entry.view.Backing, uintptr(entry.view.Capacity), backing, capacity)) {
+			   ^
+../../../../../tmp/ddiast-review/wt/base-static/internal/taint/ranges/ranges.go:199:20: unnecessary conversion (unconvert)
+	return marks>>uint(constants.VulnerabilityTypeCount+1) == 0
+	                  ^
+../../../../../tmp/ddiast-review/wt/base-static/internal/taint/request/table.go:225:44: unnecessary conversion (unconvert)
+	return origin != 0 && uint(origin) <= uint(constants.OriginCount)
+	                                          ^
+../../../../../tmp/ddiast-review/wt/base-static/internal/taint/request/table_test.go:20:34: unnecessary conversion (unconvert)
+	return o != 0 && uint(o) <= uint(constants.OriginCount)
+	                                ^
+../../../../../tmp/ddiast-review/wt/base-static/iast/io/io_test.go:63:31: bodySource - result 0 (github.com/DataDog/dd-iast-go/taint.SourceValue) is never used (unparam)
+func bodySource(data []byte) (taint.SourceValue, bool) {
+                              ^
+../../../../../tmp/ddiast-review/wt/base-static/iast/net/http/http_test.go:323:41: testConfig - maxConcurrent always receives 1 (unparam)
+func testConfig(t *testing.T, sampling, maxConcurrent int) {
+                                        ^
+../../../../../tmp/ddiast-review/wt/base-static/internal/taint/ranges/benchmark_test.go:63:54: benchmarkSet - valueLen always receives 8 (unparam)
+func benchmarkSet(tb testing.TB, raw []ranges.Range, valueLen uint32) ranges.Set {
+                                                     ^
+../../../../../tmp/ddiast-review/wt/base-static/internal/taint/redaction/source_test.go:243:46: compositeSnapshot - source always receives "secret" (unparam)
+func compositeSnapshot(t *testing.T, prefix, source, suffix string) *evidence.Snapshot {
+                                             ^
+../../../../../tmp/ddiast-review/wt/base-static/internal/taint/store/root.go:323:71: (*Owner).publishRoot - charge is unused (unparam)
+func (o *Owner) publishRoot(rootID uint16, base uintptr, span uint32, charge int64, stringAnchor string, bytesAnchor []byte, set *ranges.Set) (uint32, bool) {
+                                                                      ^
+../../../../../tmp/ddiast-review/wt/base-static/internal/taint/store/writer.go:498:47: (*Owner).removeWriterLocked - release always receives true (unparam)
+func (o *Owner) removeWriterLocked(index int, release bool) {
+                                              ^
+89 issues:
+* errcheck: 8
+* gocritic: 6
+* gosec: 50
+* ineffassign: 2
+* staticcheck: 14
+* unconvert: 3
+* unparam: 6
+EXIT_CODE=1
+
+===== staticcheck =====
+COMMAND: go run honnef.co/go/tools/cmd/staticcheck@latest ./...
+go: downloading honnef.co/go/tools v0.8.1
+go: downloading golang.org/x/tools v0.44.1-0.20260420230617-19499e7caabc
+go: downloading golang.org/x/exp/typeparams v0.0.0-20231108232855-2478ac86f678
+go: downloading github.com/BurntSushi/toml v1.4.1-0.20240526193622-a339e1f7089c
+go: downloading golang.org/x/exp v0.0.0-20231110203233-9a3e6036ecaa
+go: downloading golang.org/x/sync v0.20.0
+go: downloading golang.org/x/mod v0.35.0
+iast/crypto/cipher/cipher_test.go:30:2: golang.org/x/crypto/blowfish is deprecated: any new system should use AES (from crypto/aes, if necessary in an AEAD mode like crypto/cipher.NewGCM) or XChaCha20-Poly1305 (from golang.org/x/crypto/chacha20poly1305).  (SA1019)
+iast/crypto/hash/hash_test.go:28:4: golang.org/x/crypto/md4 is deprecated: MD4 is cryptographically broken and should only be used where compatibility with legacy systems, not security, is the goal. Instead, use a secure hash like SHA-256 (from crypto/sha256).  (SA1019)
+iast/encoding/json/json_test.go:41:29: runtime.GOROOT has been deprecated since Go 1.24: The root used during the Go build will not be meaningful if the binary is copied to another machine. Use the system path to locate the “go” binary, and use “go env GOROOT” to find its GOROOT.  (SA1019)
+iast/net/http/http_test.go:37:2: golang.org/x/net/http2/h2c is deprecated: This package is deprecated.  (SA1019)
+iast/net/http/http_test.go:539:31: golang.org/x/net/http2/h2c.NewHandler is deprecated: Set the [http.Server] Protocols field to use unencrypted HTTP/2 instead.  (SA1019)
+iast/net/http/http_test.go:700:34: golang.org/x/net/http2/h2c.NewHandler is deprecated: Set the [http.Server] Protocols field to use unencrypted HTTP/2 instead.  (SA1019)
+internal/taint/propagation/range_behavior_test.go:131:62: calling bytes.Replace with n == 0 will return no results, did you mean -1? (SA1018)
+internal/taint/request/scope_test.go:50:37: do not pass a nil Context, even if a function permits it; pass context.TODO if you are unsure about which Context to use (SA1012)
+exit status 1
+EXIT_CODE=1
+
+===== govulncheck =====
+COMMAND: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+go: downloading golang.org/x/vuln v1.8.0
+go: downloading golang.org/x/telemetry v0.0.0-20260908163034-4bcc4b2ee518
+go: downloading golang.org/x/tools v0.50.0
+No vulnerabilities found.
+EXIT_CODE=0
+
+===== deadcode =====
+COMMAND: go run golang.org/x/tools/cmd/deadcode@latest -test ./...
+iast/crypto/cipher/cipher.go:20:6: unreachable func: ReportWeakCipher
+iast/crypto/hash/hash.go:18:6: unreachable func: ReportWeakHash
+iast/encoding/json/json.go:27:6: unreachable func: Activate
+iast/net/http/http.go:21:6: unreachable func: BindStartSpan
+iast/propagation/bytes.go:15:6: unreachable func: BytesClone
+iast/propagation/bytes.go:21:6: unreachable func: BytesJoin
+iast/propagation/bytes.go:27:6: unreachable func: BytesRepeat
+iast/propagation/bytes.go:33:6: unreachable func: BytesCut
+iast/propagation/bytes.go:41:6: unreachable func: BytesCutPrefix
+iast/propagation/bytes.go:48:6: unreachable func: BytesCutSuffix
+iast/propagation/bytes.go:55:6: unreachable func: BytesSplit
+iast/propagation/bytes.go:62:6: unreachable func: BytesSplitN
+iast/propagation/bytes.go:69:6: unreachable func: BytesSplitAfter
+iast/propagation/bytes.go:76:6: unreachable func: BytesSplitAfterN
+iast/propagation/bytes.go:83:6: unreachable func: BytesFields
+iast/propagation/bytes.go:90:6: unreachable func: BytesFieldsFunc
+iast/propagation/bytes.go:97:6: unreachable func: BytesTrim
+iast/propagation/bytes.go:104:6: unreachable func: BytesTrimSpace
+iast/propagation/bytes.go:111:6: unreachable func: BytesTrimLeft
+iast/propagation/bytes.go:118:6: unreachable func: BytesTrimRight
+iast/propagation/bytes.go:125:6: unreachable func: BytesTrimPrefix
+iast/propagation/bytes.go:132:6: unreachable func: BytesTrimSuffix
+iast/propagation/bytes.go:139:6: unreachable func: BytesTrimFunc
+iast/propagation/bytes.go:146:6: unreachable func: BytesTrimLeftFunc
+iast/propagation/bytes.go:153:6: unreachable func: BytesTrimRightFunc
+iast/propagation/bytes.go:160:6: unreachable func: BytesReplace
+iast/propagation/bytes.go:166:6: unreachable func: BytesReplaceAll
+iast/propagation/bytes.go:172:6: unreachable func: BytesToLower
+iast/propagation/bytes.go:177:6: unreachable func: BytesToUpper
+iast/propagation/bytes.go:182:6: unreachable func: BytesToTitle
+iast/propagation/bytes.go:187:6: unreachable func: BytesMap
+iast/propagation/bytes.go:192:6: unreachable func: BytesToValidUTF8
+iast/propagation/coarse.go:19:6: unreachable func: StringsToLower
+iast/propagation/coarse.go:24:6: unreachable func: StringsToUpper
+iast/propagation/coarse.go:29:6: unreachable func: StringsToTitle
+iast/propagation/coarse.go:34:6: unreachable func: StringsMap
+iast/propagation/coarse.go:39:6: unreachable func: StringsToValidUTF8
+iast/propagation/coarse.go:49:6: unreachable func: FmtSprint
+iast/propagation/coarse.go:54:6: unreachable func: FmtSprintf
+iast/propagation/coarse.go:59:6: unreachable func: FmtSprintln
+iast/propagation/coarse.go:64:6: unreachable func: URLQueryEscape
+iast/propagation/coarse.go:69:6: unreachable func: URLPathEscape
+iast/propagation/coarse.go:74:6: unreachable func: URLQueryUnescape
+iast/propagation/coarse.go:80:6: unreachable func: URLPathUnescape
+iast/propagation/coarse.go:86:6: unreachable func: StrconvQuote
+iast/propagation/coarse.go:91:6: unreachable func: StrconvQuoteToASCII
+iast/propagation/coarse.go:96:6: unreachable func: StrconvQuoteToGraphic
+iast/propagation/coarse.go:101:6: unreachable func: StrconvUnquote
+iast/propagation/operators.go:198:6: unreachable func: BytesToString
+iast/propagation/strings.go:19:6: unreachable func: StringsClone
+iast/propagation/strings.go:25:6: unreachable func: StringsCut
+iast/propagation/strings.go:33:6: unreachable func: StringsCutPrefix
+iast/propagation/strings.go:40:6: unreachable func: StringsCutSuffix
+iast/propagation/strings.go:47:6: unreachable func: StringsSplit
+iast/propagation/strings.go:54:6: unreachable func: StringsSplitN
+iast/propagation/strings.go:61:6: unreachable func: StringsSplitAfter
+iast/propagation/strings.go:68:6: unreachable func: StringsSplitAfterN
+iast/propagation/strings.go:75:6: unreachable func: StringsSplitSeq
+iast/propagation/strings.go:80:6: unreachable func: StringsSplitAfterSeq
+iast/propagation/strings.go:85:6: unreachable func: StringsLines
+iast/propagation/strings.go:90:6: unreachable func: StringsFields
+iast/propagation/strings.go:97:6: unreachable func: StringsFieldsFunc
+iast/propagation/strings.go:104:6: unreachable func: StringsFieldsSeq
+iast/propagation/strings.go:109:6: unreachable func: StringsFieldsFuncSeq
+iast/propagation/strings.go:113:6: unreachable func: stringWindowSeq
+iast/propagation/strings.go:127:6: unreachable func: StringsJoin
+iast/propagation/strings.go:133:6: unreachable func: StringsRepeat
+iast/propagation/strings.go:139:6: unreachable func: StringsReplace
+iast/propagation/strings.go:145:6: unreachable func: StringsReplaceAll
+iast/propagation/strings.go:152:6: unreachable func: ReplacerReplace
+iast/propagation/strings.go:158:6: unreachable func: StringsTrim
+iast/propagation/strings.go:165:6: unreachable func: StringsTrimSpace
+iast/propagation/strings.go:172:6: unreachable func: StringsTrimLeft
+iast/propagation/strings.go:179:6: unreachable func: StringsTrimRight
+iast/propagation/strings.go:186:6: unreachable func: StringsTrimPrefix
+iast/propagation/strings.go:193:6: unreachable func: StringsTrimSuffix
+iast/propagation/strings.go:200:6: unreachable func: StringsTrimFunc
+iast/propagation/strings.go:207:6: unreachable func: StringsTrimLeftFunc
+iast/propagation/strings.go:214:6: unreachable func: StringsTrimRightFunc
+internal/spans/annotation.go:151:6: unreachable func: BindScopeContext
+internal/taint/httpbridge/bridge.go:82:6: unreachable func: Eager
+internal/taint/httpbridge/bridge.go:96:6: unreachable func: Form
+internal/taint/httpbridge/bridge.go:105:6: unreachable func: Parameter
+internal/taint/httpbridge/bridge.go:114:6: unreachable func: MultipartParameter
+internal/taint/httpbridge/bridge.go:123:6: unreachable func: PathParameter
+internal/taint/httpbridge/bridge.go:132:6: unreachable func: Cookie
+internal/taint/httpbridge/bridge.go:141:6: unreachable func: Multipart
+internal/taint/httpbridge/bridge.go:150:6: unreachable func: Finish
+EXIT_CODE=0

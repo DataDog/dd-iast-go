@@ -1,0 +1,13 @@
+[
+  {
+    "id": "perf-hotpath-F2",
+    "verdict": "CONFIRMED",
+    "original_severity": "High",
+    "adjusted_severity": "High",
+    "reachable_default": true,
+    "documented_limitation": false,
+    "reason": "Writer wrappers gate only on WriterActive() (= any sampled request in the process, internal/taint/propagation/writer.go:23-25), so every Builder/Buffer op in every goroutine runs updateWriter while any owner is active. updateWriter zeroes a 6312-byte Snapshot and calls LookupWriterValue, which walks 64 owner records 187 KB apart plus writerPresent. Buffer does this twice, and Reset/String/WriteByte/WriteRune/Grow do it too, although the result is a no-op for clean input without writer state. Woven customer code: about 16.3 us/op vs about 0.31 us/op unwoven (about 50x). Internal API on Go 1.27.0: hook 1025 vs gated 117 ns (Builder), 1470 vs 65 ns (Buffer). The existing HasWriterStates/MayContain gate preserves provenance. Only the one-allocation writer anchor is documented as accepted.",
+    "evidence_path": ".omo/review/evidence/fx-perf-hotpath-F2/bench-woven.txt",
+    "repro_command": "In a private copy: cp .omo/review/evidence/fx-perf-hotpath-F2/{f2_render.go,f2_woven_test.go} benchmarks/overhead/ && cd benchmarks/overhead && GOTOOLCHAIN=go1.26.6 go test -run '^$' -bench '^BenchmarkF2WovenWriters$' -benchtime=300ms -count=3 -cpu=1,4 -benchmem . && GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -run '^$' -bench '^BenchmarkF2WovenWriters$' -benchtime=300ms -count=3 -cpu=1,4 -benchmem -timeout=25m . ; internal: cp .omo/review/evidence/fx-perf-hotpath-F2/f2_review_test.go iast/propagation/ && go test -run '^$' -bench '^BenchmarkF2Writer/' -benchtime=200ms -count=2 -benchmem -cpu=1 ./iast/propagation"
+  }
+]

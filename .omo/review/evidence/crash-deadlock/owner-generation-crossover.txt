@@ -1,0 +1,11 @@
+$ cd /tmp/ddiast-review/wt/crash-deadlock
+$ GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 REVIEW_STRESS=90s go test -count=1 -timeout=3m -run TestCrashDeadlockStaleHandleBindAfterSlotReuse -v ./internal/taint/store
+
+=== RUN   TestCrashDeadlockStaleHandleBindAfterSlotReuse
+    zz_crash_deadlock_repro_test.go:70: stale handle generation 50302 bound object into reused generation 50303
+    zz_crash_deadlock_repro_test.go:83: cycles=50323 workers=14 cross_generation_bindings=1
+    zz_crash_deadlock_repro_test.go:85: stale owner handle published a binding into a reused owner generation
+--- FAIL: TestCrashDeadlockStaleHandleBindAfterSlotReuse (12.75s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/store	13.107s
+FAIL

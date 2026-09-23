@@ -1,0 +1,7 @@
+goos: darwin
+goarch: arm64
+pkg: github.com/DataDog/dd-iast-go/benchmarks/overhead
+cpu: Apple M4 Max
+BenchmarkReproWeakHashQuotaExhausted-16    	   20000	       502.7 ns/op	      16 B/op	       1 allocs/op
+PASS
+ok  	github.com/DataDog/dd-iast-go/benchmarks/overhead	0.448s

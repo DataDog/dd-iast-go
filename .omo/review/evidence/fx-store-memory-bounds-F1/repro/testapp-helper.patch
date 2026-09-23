@@ -1,0 +1,23 @@
+diff --git a/iast/internal/propagationtest/writer.go b/iast/internal/propagationtest/writer.go
+--- a/iast/internal/propagationtest/writer.go
++++ b/iast/internal/propagationtest/writer.go
+@@ -93,10 +93,14 @@
+ func BufferString(input string) string {
+ 	var buffer bytes.Buffer
+ 	buffer.WriteString("prefix:")
+ 	buffer.WriteString(input)
+ 	buffer.Grow(128)
+ 	buffer.WriteByte('!')
+ 	return buffer.String()
+ }
+ 
++func BufferWriteStringTo(buffer *bytes.Buffer, input string) (int, error) {
++	return buffer.WriteString(input)
++}
++
+ func BufferBytes(input []byte) string {
+ 	var buffer bytes.Buffer
+ 	buffer.Write(input)
+ 	buffer.WriteRune('!')
+ 	return buffer.String()
+ }

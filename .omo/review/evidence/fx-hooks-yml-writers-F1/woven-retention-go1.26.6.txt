@@ -1,0 +1,6 @@
+=== RUN   TestFxBufferInteriorViewRetainsCallerAllocation
+    fx_retention_test.go:59: retained while owner active: 112 MiB (caller scratch allocations, all customer references dropped)
+    fx_retention_test.go:68: released by owner finish: 128 MiB
+--- PASS: TestFxBufferInteriorViewRetainsCallerAllocation (0.06s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/iast/propagation	0.745s

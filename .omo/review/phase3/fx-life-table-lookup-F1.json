@@ -1,0 +1,13 @@
+[
+  {
+    "id": "life-table-lookup-F1",
+    "verdict": "CONFIRMED",
+    "original_severity": "High",
+    "adjusted_severity": "High",
+    "reachable_default": true,
+    "documented_limitation": false,
+    "reason": "NUL-shifted tuples produce identical hash input for every seed. The independent FormValue/ManageParameter internal-API reproducer observed 32,896 probes on Go 1.26.6 and 1.27.0; full equality preserves distinct source identities.",
+    "evidence_path": ".omo/review/evidence/fx-life-table-lookup-F1/independent_go1.26.6.out.txt",
+    "repro_command": "cd /tmp/ddiast-review/wt/fx-life-table-lookup-F1 && GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 go test -race -count=1 -run '^TestFX_NULDelimiters_in_FormValue_create_a_full_probe_chain$' -v -timeout=5m ./internal/taint/request"
+  }
+]

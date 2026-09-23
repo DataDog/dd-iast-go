@@ -1,0 +1,29 @@
+# real tracer + fake agent, same woven binary (rebuilt with TestFxRealTracerAllocs; peak RSS 466 MB)
+
+### run=default env=[]
+=== RUN   TestFxRealTracerAllocs
+    zz_fx_life_spans_f4_test.go:160: DD_IAST_ENABLED="" DD_IAST_REQUEST_SAMPLING="" DD_IAST_STACK_TRACE_ENABLED=""
+    zz_fx_life_spans_f4_test.go:161: real tracer, md5.Sum outside any span: allocs/call=41.0; bench    75673	     16709 ns/op    11186 B/op	      45 allocs/op (timing indicative only, shared machine)
+--- PASS: TestFxRealTracerAllocs (2.30s)
+PASS
+
+### run=sampling0 env=[DD_IAST_REQUEST_SAMPLING=0]
+=== RUN   TestFxRealTracerAllocs
+    zz_fx_life_spans_f4_test.go:160: DD_IAST_ENABLED="" DD_IAST_REQUEST_SAMPLING="0" DD_IAST_STACK_TRACE_ENABLED=""
+    zz_fx_life_spans_f4_test.go:161: real tracer, md5.Sum outside any span: allocs/call=29.0; bench   162300	      9012 ns/op     6891 B/op	      33 allocs/op (timing indicative only, shared machine)
+--- PASS: TestFxRealTracerAllocs (1.80s)
+PASS
+
+### run=sampling100 env=[DD_IAST_REQUEST_SAMPLING=100]
+=== RUN   TestFxRealTracerAllocs
+    zz_fx_life_spans_f4_test.go:160: DD_IAST_ENABLED="" DD_IAST_REQUEST_SAMPLING="100" DD_IAST_STACK_TRACE_ENABLED=""
+    zz_fx_life_spans_f4_test.go:161: real tracer, md5.Sum outside any span: allocs/call=68.0; bench    49011	     22040 ns/op    20373 B/op	      74 allocs/op (timing indicative only, shared machine)
+--- PASS: TestFxRealTracerAllocs (1.45s)
+PASS
+
+### run=disabled env=[DD_IAST_ENABLED=false]
+=== RUN   TestFxRealTracerAllocs
+    zz_fx_life_spans_f4_test.go:160: DD_IAST_ENABLED="false" DD_IAST_REQUEST_SAMPLING="" DD_IAST_STACK_TRACE_ENABLED=""
+    zz_fx_life_spans_f4_test.go:161: real tracer, md5.Sum outside any span: allocs/call=0.0; bench  6604410	       197.8 ns/op        0 B/op	       0 allocs/op (timing indicative only, shared machine)
+--- PASS: TestFxRealTracerAllocs (1.61s)
+PASS

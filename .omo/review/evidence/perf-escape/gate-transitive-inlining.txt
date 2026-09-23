@@ -1,0 +1,65 @@
+# Repro: HasValues not inlined into iast/propagation generic instantiations unless the instantiating package imports operatorbridge.
+# importcfg: woven build $WORK/b001/importcfg of original HEAD code; compiler: go1.26.6 compile
+
+## y.go (no operatorbridge import)
+package y
+
+import iastprop "github.com/DataDog/dd-iast-go/iast/propagation"
+
+func Generic(b []byte) int { s := iastprop.BytesToString(b); return len(s) }
+
+func Cat(a, b string) int { k := iastprop.Concat2(a, b); return len(k) }
+
+/tmp/ddiast-review/wt/perf-escape/iast/propagation/operators.go:198:6: cannot inline propagation.BytesToString[go.shape.[]uint8]: function too complex: cost 131 exceeds budget 80
+/tmp/ddiast-review/wt/perf-escape/iast/propagation/operators.go:22:6: cannot inline propagation.concat2Result[go.shape.string]: function too complex: cost 126 exceeds budget 80
+/tmp/ddiast-review/wt/perf-escape/iast/propagation/operators.go:18:6: can inline propagation.Concat2[go.shape.string] with cost 69 as: func(*[2]uintptr, go.shape.string, go.shape.string) go.shape.string { return propagation.concat2Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.a + propagation.b) }
+/tmp/ddiast-review/wt/perf-escape/iast/propagation/operators.go:199:19: string(propagation.value) escapes to heap
+/tmp/ddiast-review/wt/perf-escape/iast/propagation/operators.go:19:30: propagation.a + propagation.b escapes to heap
+/tmp/ddiast-review/wt/perf-escape/iast/propagation/operators.go:18:6: propagation.a + propagation.b escapes to heap
+
+## z.go (same + blank import of operatorbridge)
+
+/tmp/ddiast-review/wt/perf-escape/iast/propagation/operators.go:198:6: cannot inline propagation.BytesToString[go.shape.[]uint8]: function too complex: cost 84 exceeds budget 80
+/tmp/ddiast-review/wt/perf-escape/iast/propagation/operators.go:22:6: can inline propagation.concat2Result[go.shape.string] with cost 79 as: func(*[3]uintptr, go.shape.string, go.shape.string, go.shape.string) go.shape.string { if !operatorbridge.HasValues() { return propagation.result }; return go.shape.string(propagation.Concat2(string(propagation.a), string(propagation.b), string(propagation.result))) }
+/tmp/ddiast-review/wt/perf-escape/iast/propagation/operators.go:18:6: cannot inline propagation.Concat2[go.shape.string]: function too complex: cost 91 exceeds budget 80
+/tmp/ddiast-review/wt/perf-escape/iast/propagation/operators.go:200:30: inlining call to operatorbridge.HasValues
+/tmp/ddiast-review/wt/perf-escape/iast/propagation/operators.go:23:30: inlining call to operatorbridge.HasValues
+/tmp/ddiast-review/wt/perf-escape/iast/propagation/operators.go:19:22: inlining call to operatorbridge.HasValues
+/tmp/ddiast-review/wt/perf-escape/iast/propagation/operators.go:199:19: string(propagation.value) escapes to heap
+/tmp/ddiast-review/wt/perf-escape/iast/propagation/operators.go:19:30: propagation.a + propagation.b escapes to heap
+
+## plain go build, go1.27.0 (GOTOOLCHAIN=local), package inlexp2 == y.go
+
+./iast/propagation/operators.go:198:6: cannot inline propagation.BytesToString[go.shape.[]uint8]: function too complex: cost 131 exceeds budget 80
+./iast/propagation/operators.go:22:6: cannot inline propagation.concat2Result[go.shape.string]: function too complex: cost 126 exceeds budget 80
+./iast/propagation/operators.go:18:6: can inline propagation.Concat2[go.shape.string] with cost 69 as: func(*[2]uintptr, go.shape.string, go.shape.string) go.shape.string { return propagation.concat2Result[go.shape.string]((*[3]uintptr)(propagation..dict[0]), propagation.a, propagation.b, propagation.a + propagation.b) }
+./iast/propagation/operators.go:199:19: string(propagation.value) escapes to heap
+./iast/propagation/operators.go:19:30: propagation.a + propagation.b escapes to heap
+./iast/propagation/operators.go:18:6: propagation.a + propagation.b escapes to heap
+
+
+## woven bench, original code: perfsample WITH gate.go (natural operatorbridge import) vs WITHOUT
+goos: darwin
+goarch: arm64
+pkg: github.com/DataDog/dd-iast-go/perfsample
+cpu: Apple M4 Max
+BenchmarkExtra/ConcatLocal2-16         	   20000	        24.68 ns/op	       3 B/op	       1 allocs/op
+BenchmarkExtra/ConcatLocal4-16         	   20000	        24.97 ns/op	       0 B/op	       0 allocs/op
+BenchmarkExtra/ConcatConvOperand-16    	   20000	        29.80 ns/op	       8 B/op	       2 allocs/op
+BenchmarkSample/ConcatLocal-16         	   20000	        22.38 ns/op	       8 B/op	       1 allocs/op
+BenchmarkSample/ConvLocal-16           	   20000	         9.533 ns/op	       3 B/op	       1 allocs/op
+PASS
+ok  	github.com/DataDog/dd-iast-go/perfsample	0.597s
+
+--- no gate ---
+goos: darwin
+goarch: arm64
+pkg: github.com/DataDog/dd-iast-go/perfsample
+cpu: Apple M4 Max
+BenchmarkExtra/ConcatLocal2-16         	   20000	        26.34 ns/op	       0 B/op	       0 allocs/op
+BenchmarkExtra/ConcatLocal4-16         	   20000	        37.58 ns/op	       0 B/op	       0 allocs/op
+BenchmarkExtra/ConcatConvOperand-16    	   20000	        37.00 ns/op	       3 B/op	       1 allocs/op
+BenchmarkSample/ConcatLocal-16         	   20000	        26.19 ns/op	       0 B/op	       0 allocs/op
+BenchmarkSample/ConvLocal-16           	   20000	        12.97 ns/op	       3 B/op	       1 allocs/op
+PASS
+ok  	github.com/DataDog/dd-iast-go/perfsample	0.413s

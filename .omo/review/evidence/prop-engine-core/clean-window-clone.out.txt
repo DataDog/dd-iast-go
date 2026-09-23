@@ -1,0 +1,14 @@
+Command (private copy, Go 1.26.6):
+GOTOOLCHAIN=go1.26.6 go test ./internal/taint/propagation -run '^TestWindowReviewCleanDerivedWindow_does_not_clone_result$' -count=1 -timeout=5m -v
+Exit status: 1
+
+=== RUN   TestWindowReviewCleanDerivedWindow_does_not_clone_result
+    zz_review_window_budget_test.go:89: clean input: result cloned=true, tainted=false
+    zz_review_window_budget_test.go:90:
+        	Error Trace:	/tmp/ddiast-review/wt/prop-engine-core/internal/taint/propagation/zz_review_window_budget_test.go:90
+        	Error:      	Should be true
+        	Test:       	TestWindowReviewCleanDerivedWindow_does_not_clone_result
+--- FAIL: TestWindowReviewCleanDerivedWindow_does_not_clone_result (0.01s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/propagation	0.508s
+FAIL

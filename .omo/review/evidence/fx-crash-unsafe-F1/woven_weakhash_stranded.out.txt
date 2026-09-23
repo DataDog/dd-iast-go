@@ -1,0 +1,6 @@
+$ cd /tmp/ddiast-review/wt/fx-crash-unsafe-F1 && /usr/bin/time -l env GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 GOCACHE=.gocache GOTMPDIR=.gotmp go tool orchestrion go test -count=1 -v -run 'TestWovenWeakHashFindingStrandedUnderFinishedRoot' -timeout=10m ./fxf1repro
+=== RUN   TestWovenWeakHashFindingStrandedUnderFinishedRoot
+    late_child_test.go:187: weak-hash finding stranded in an open annotation under a finished root; never emitted
+--- PASS: TestWovenWeakHashFindingStrandedUnderFinishedRoot (0.01s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/fxf1repro	0.630s

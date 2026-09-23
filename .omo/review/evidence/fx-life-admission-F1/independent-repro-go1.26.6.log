@@ -1,0 +1,30 @@
+Command:
+  cd /tmp/ddiast-review/wt/fx-life-admission-F1 &&
+  /usr/bin/time -l env GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 \
+    go tool orchestrion go test ./iast/net/http \
+    -run TestIndependentLifeAdmissionDisconnect -count=1 -v -timeout 4m
+
+Captured output:
+=== RUN   TestIndependentLifeAdmissionDisconnect
+    zz_life_admission_independent_test.go:103: independent repro: canceled handler still active=true; next decision=2 (Active=3, CapacityDropped=2)
+--- PASS: TestIndependentLifeAdmissionDisconnect (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/iast/net/http	0.790s
+       13.40 real         5.32 user         9.73 sys
+           374489088  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              454536  page reclaims
+               31219  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                3334  messages sent
+                3715  messages received
+               16022  signals received
+               14810  voluntary context switches
+              372294  involuntary context switches
+          5498158016  instructions retired
+          3811582514  cycles elapsed
+            40043240  peak memory footprint

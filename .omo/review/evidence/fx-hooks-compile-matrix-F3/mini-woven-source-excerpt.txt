@@ -1,0 +1,48 @@
+## /var/folders/zb/3gg9brcd3ys4_f10zztf2kq00000gp/T/go-build110868861/b001/orchestrion/src/synthetic/link_deps_imports.go
+package main
+
+import (
+	_ "github.com/DataDog/dd-iast-go/iast/crypto/cipher"
+	_ "github.com/DataDog/dd-iast-go/iast/crypto/hash"
+)
+## /var/folders/zb/3gg9brcd3ys4_f10zztf2kq00000gp/T/go-build110868861/b001/orchestrion/src/main/main.go
+//line /tmp/ddiast-review/wt/fx-hooks-compile-matrix-F3/app/cmd/mini/main.go:1:1
+package main
+
+//line <generated>:1
+import (
+	__orchestrion_iastsql "github.com/DataDog/dd-iast-go/iast/database/sql"
+	__orchestrion_iastjson "github.com/DataDog/dd-iast-go/iast/encoding/json"
+	__orchestrion_iastexec "github.com/DataDog/dd-iast-go/iast/os/exec"
+	__orchestrion_iastprop "github.com/DataDog/dd-iast-go/iast/propagation"
+	__orchestrion_tracer "github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
+)
+
+//line /tmp/ddiast-review/wt/fx-hooks-compile-matrix-F3/app/cmd/mini/main.go:3
+var name = "world"
+
+func main() {
+//line <generated>:1
+	{
+		defer __orchestrion_tracer.Stop()
+	}
+	{
+		_ = __orchestrion_iastexec.Report
+	}
+	{
+		_ = __orchestrion_iastjson.Activate
+	}
+	{
+		_ = __orchestrion_iastsql.Report
+	}
+//line /tmp/ddiast-review/wt/fx-hooks-compile-matrix-F3/app/cmd/mini/main.go:6
+	greeting :=
+//line <generated>:1
+		__orchestrion_iastprop.Concat2(
+//line /tmp/ddiast-review/wt/fx-hooks-compile-matrix-F3/app/cmd/mini/main.go:6
+			"hello ", name) // rebuild marker 2
+	println(greeting)
+}
+
+//line <generated>:1
+func init() { __orchestrion_tracer.Start(

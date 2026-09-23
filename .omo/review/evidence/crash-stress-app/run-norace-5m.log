@@ -1,0 +1,45 @@
+# cmd: /tmp/ddiast-review/wt/crash-stress-app/stress-norace -duration 5m -clients 256 -dumpdir /tmp/ddiast-review/wt/crash-stress-app/dumps-norace -agent 127.0.0.1:18132
+# env: DD_IAST_REQUEST_SAMPLING=100 DD_IAST_MAX_CONCURRENT_REQUESTS=64 DD_IAST_DEDUPLICATION_ENABLED=false DD_IAST_VULNERABILITIES_PER_REQUEST=8 GOTRACEBACK=all
+13:37:48.991286 woven=true go=go1.26.6 clients=256 duration=5m0s GOMAXPROCS=16 env: sampling=100 maxconc=64 dedup=false vulns=8
+13:38:04.423548 t= 15s done=4751 rps=317 analyzed=3558 sinkT=3341 sinkU=4182 sql=10386 exec=232 err=0 canc=240 oldest=2.792s gor=1061 heap=162MiB storeValues=7967 storeCharged=4447032 falseTaint=0 bleed=0/763 poolBleed=0 agentSQL=2725 agentCMD=70
+13:38:20.334553 t= 31s done=9290 rps=300 analyzed=7358 sinkT=6921 sinkU=8730 sql=20133 exec=453 err=0 canc=449 oldest=3.947s gor=1405 heap=106MiB storeValues=3011 storeCharged=2139760 falseTaint=0 bleed=0/2428 poolBleed=0 agentSQL=6384 agentCMD=175
+13:38:36.006733 t= 47s done=18130 rps=386 analyzed=13573 sinkT=12624 sinkU=16344 sql=38528 exec=896 err=0 canc=859 oldest=1.721s gor=1366 heap=150MiB storeValues=9626 storeCharged=6200216 falseTaint=0 bleed=0/7100 poolBleed=0 agentSQL=11173 agentCMD=316
+2026/09/23 13:38:48 Datadog Tracer v2.11.0-rc.1 ERROR: loading features: Get "http://127.0.0.1:18132/info": dial tcp 127.0.0.1:18132: connect: connection refused (occurred: 23 Sep 26 13:37 CEST)
+13:38:51.088065 t= 62s done=26330 rps=425 analyzed=19281 sinkT=17980 sinkU=23515 sql=55913 exec=1314 err=0 canc=1273 oldest=1.629s gor=1267 heap=238MiB storeValues=7738 storeCharged=6316368 falseTaint=0 bleed=0/12101 poolBleed=0 agentSQL=16498 agentCMD=465
+13:39:06.013901 t= 77s done=30571 rps=397 analyzed=22722 sinkT=21160 sinkU=27954 sql=65433 exec=1531 err=0 canc=1472 oldest=1.487s gor=1164 heap=92MiB storeValues=6912 storeCharged=507768 falseTaint=0 bleed=0/14989 poolBleed=0 agentSQL=20243 agentCMD=568
+13:39:22.157633 t= 93s done=35040 rps=377 analyzed=25688 sinkT=23900 sinkU=31761 sql=74957 exec=1776 err=0 canc=1714 oldest=5.338s gor=1233 heap=146MiB storeValues=3734 storeCharged=2387680 falseTaint=0 bleed=0/17961 poolBleed=0 agentSQL=23087 agentCMD=643
+13:39:27.936610 STALL: no progress for 0s, oldest in-flight 10.343588625s -> goroutine dump /tmp/ddiast-review/wt/crash-stress-app/dumps-norace/goroutines-1.txt
+13:39:38.215863 t=109s done=39173 rps=359 analyzed=28724 sinkT=26676 sinkU=35609 sql=83773 exec=1978 err=0 canc=1929 oldest=2.7s gor=1123 heap=196MiB storeValues=3093 storeCharged=532792 falseTaint=0 bleed=0/20689 poolBleed=0 agentSQL=25733 agentCMD=720
+13:39:53.032214 t=124s done=43700 rps=352 analyzed=32403 sinkT=30093 sinkU=40056 sql=93087 exec=2197 err=0 canc=2179 oldest=2.554s gor=1209 heap=164MiB storeValues=3384 storeCharged=267616 falseTaint=0 bleed=0/23428 poolBleed=0 agentSQL=29212 agentCMD=816
+13:40:09.292125 t=140s done=49974 rps=357 analyzed=36621 sinkT=34057 sinkU=45530 sql=106821 exec=2526 err=0 canc=2466 oldest=2.451s gor=1167 heap=168MiB storeValues=32 storeCharged=262872 falseTaint=0 bleed=0/27556 poolBleed=0 agentSQL=33075 agentCMD=928
+13:40:24.498435 t=155s done=54248 rps=350 analyzed=39601 sinkT=36829 sinkU=48910 sql=115713 exec=2738 err=0 canc=2666 oldest=2.63s gor=938 heap=129MiB storeValues=2346 storeCharged=2258864 falseTaint=0 bleed=0/30082 poolBleed=0 agentSQL=35545 agentCMD=994
+13:40:40.290613 t=171s done=58741 rps=344 analyzed=42164 sinkT=39241 sinkU=52112 sql=125038 exec=2966 err=0 canc=2840 oldest=4.361s gor=1417 heap=132MiB storeValues=4406 storeCharged=466816 falseTaint=0 bleed=0/32968 poolBleed=0 agentSQL=38229 agentCMD=1079
+13:40:55.280135 t=186s done=61227 rps=329 analyzed=44075 sinkT=41021 sinkU=54439 sql=130426 exec=3091 err=0 canc=2953 oldest=5.74s gor=1192 heap=133MiB storeValues=4253 storeCharged=450424 falseTaint=0 bleed=0/34679 poolBleed=0 agentSQL=39963 agentCMD=1121
+13:41:11.209538 t=202s done=64642 rps=320 analyzed=46759 sinkT=43502 sinkU=57802 sql=137395 exec=3267 err=0 canc=3127 oldest=4.023s gor=1253 heap=116MiB storeValues=5814 storeCharged=3283192 falseTaint=0 bleed=0/36986 poolBleed=0 agentSQL=42158 agentCMD=1200
+13:41:27.022435 t=218s done=67762 rps=311 analyzed=49076 sinkT=45736 sinkU=60872 sql=144444 exec=3444 err=0 canc=3273 oldest=2.625s gor=1349 heap=116MiB storeValues=11938 storeCharged=4229968 falseTaint=0 bleed=0/39145 poolBleed=0 agentSQL=44632 agentCMD=1267
+13:41:43.349972 t=234s done=71042 rps=304 analyzed=51268 sinkT=47814 sinkU=63515 sql=151487 exec=3632 err=0 canc=3435 oldest=3.879s gor=1138 heap=124MiB storeValues=4713 storeCharged=517824 falseTaint=0 bleed=0/41326 poolBleed=0 agentSQL=46616 agentCMD=1324
+13:41:59.201473 t=250s done=74119 rps=296 analyzed=53629 sinkT=50045 sinkU=66338 sql=157809 exec=3753 err=0 canc=3582 oldest=2.907s gor=1298 heap=108MiB storeValues=4024 storeCharged=579792 falseTaint=0 bleed=0/43303 poolBleed=0 agentSQL=48514 agentCMD=1375
+13:42:15.080712 t=266s done=77715 rps=292 analyzed=56559 sinkT=52762 sinkU=69792 sql=165362 exec=3952 err=0 canc=3759 oldest=9.869s gor=1185 heap=171MiB storeValues=5945 storeCharged=3467376 falseTaint=0 bleed=0/45611 poolBleed=0 agentSQL=51106 agentCMD=1451
+13:42:17.128591 STALL: no progress for 0s, oldest in-flight 10.869684625s -> goroutine dump /tmp/ddiast-review/wt/crash-stress-app/dumps-norace/goroutines-2.txt
+13:42:31.226621 t=282s done=81796 rps=290 analyzed=59506 sinkT=55465 sinkU=73503 sql=174163 exec=4170 err=0 canc=3982 oldest=7.135s gor=1312 heap=222MiB storeValues=6623 storeCharged=2347224 falseTaint=0 bleed=0/48231 poolBleed=0 agentSQL=54017 agentCMD=1543
+13:42:47.041086 t=298s done=87350 rps=293 analyzed=62909 sinkT=58679 sinkU=77544 sql=185669 exec=4417 err=0 canc=4288 oldest=1.781s gor=1017 heap=149MiB storeValues=1744 storeCharged=4400160 falseTaint=0 bleed=0/51586 poolBleed=0 agentSQL=57239 agentCMD=1640
+13:42:50.548632 load phase finished: 88371 requests in 5m1s
+13:42:52.638262 quiescent store: values=0 charged=0 acquireDrops=0
+13:42:52.674862 serial verification (T=tainted, A=active untainted, N=not analyzed): TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
+13:42:56.677642 SUMMARY requests=88371 analyzed=63268 sinkTainted=59022 sinkUntaintedActive=77977 sqlCalls=187614 execCalls=4476 clientErrors=0 cancelled=4320 intendedPanics=6811 lateDone=6614 stalls=2 falseTaint=0 bleed=0 (checks=52141) poolBleed=0 heapAfterGC=24MiB goroutines=24 agentPayloads=151 agentBytes=172581171 agentSQL=57597 agentCMD=1653
+13:42:56.677689 flow q       n=6685    avg=749.783ms  max=7.028073s  (vlen at max=21) activeSinks tainted=9497 untainted=91
+13:42:56.677714 flow h       n=6881    avg=728.327ms  max=7.385746s  (vlen at max=47) activeSinks tainted=4924 untainted=49
+13:42:56.677735 flow form    n=6902    avg=747.17ms   max=8.544945s  (vlen at max=39) activeSinks tainted=9928 untainted=60
+13:42:56.677753 flow json    n=6771    avg=808.377ms  max=7.125282s  (vlen at max=26) activeSinks tainted=3867 untainted=679
+13:42:56.677768 flow body    n=6713    avg=719.898ms  max=6.899829s  (vlen at max=52) activeSinks tainted=0 untainted=4848
+13:42:56.677807 flow cookie  n=6795    avg=730.047ms  max=6.954474s  (vlen at max=48) activeSinks tainted=4812 untainted=41
+13:42:56.677834 flow p       n=6699    avg=784.623ms  max=8.312996s  (vlen at max=9) activeSinks tainted=5322 untainted=29
+13:42:56.677842 flow buf     n=6858    avg=707.205ms  max=6.865833s  (vlen at max=49) activeSinks tainted=0 untainted=5009
+13:42:56.677850 flow fan     n=6774    avg=964.361ms  max=7.134705s  (vlen at max=49) activeSinks tainted=1592 untainted=37408
+13:42:56.677858 flow late    n=6705    avg=737.666ms  max=6.34458s   (vlen at max=50) activeSinks tainted=4831 untainted=27
+13:42:56.677865 flow abort   n=6908    avg=613.002ms  max=6.481492s  (vlen at max=8) activeSinks tainted=4931 untainted=18
+13:42:56.677870 flow big     n=6902    avg=1.171509s  max=7.990289s  (vlen at max=50) activeSinks tainted=0 untainted=5842
+13:42:56.677875 flow derive  n=6778    avg=984.913ms  max=12.392848s (vlen at max=57102) activeSinks tainted=9318 untainted=23876
+13:42:56.677881 RESULT: FAIL
+2026/09/23 13:42:56 Datadog Tracer v2.11.0-rc.1 ERROR: 9 traces dropped through payload queue, 1 additional messages skipped (first occurrence: 23 Sep 26 13:42 CEST)
+# exit=1 wall=309s

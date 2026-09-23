@@ -1,0 +1,193 @@
+goos: darwin
+goarch: arm64
+pkg: github.com/DataDog/dd-iast-go/iast/database/sql
+cpu: Apple M4 Max
+                     │ /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/.omo/review/evidence/bench/micro-plain.txt │ /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/.omo/review/evidence/bench/micro-woven.txt │
+                     │                                                sec/op                                                 │                                     sec/op                                       vs base              │
+ReportActiveClean-16                                                                                             6.545n ± 1%                                                                       6.334n ± 2%  -3.22% (p=0.001 n=8)
+
+                     │ /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/.omo/review/evidence/bench/micro-plain.txt │ /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/.omo/review/evidence/bench/micro-woven.txt │
+                     │                                                 B/op                                                  │                                        B/op                                         vs base           │
+ReportActiveClean-16                                                                                              0.000 ± 0%                                                                           0.000 ± 0%  ~ (p=1.000 n=8) ¹
+¹ all samples are equal
+
+                     │ /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/.omo/review/evidence/bench/micro-plain.txt │ /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/.omo/review/evidence/bench/micro-woven.txt │
+                     │                                               allocs/op                                               │                                     allocs/op                                       vs base           │
+ReportActiveClean-16                                                                                              0.000 ± 0%                                                                           0.000 ± 0%  ~ (p=1.000 n=8) ¹
+¹ all samples are equal
+
+pkg: github.com/DataDog/dd-iast-go/iast/encoding/json
+                      │ /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/.omo/review/evidence/bench/micro-plain.txt │ /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/.omo/review/evidence/bench/micro-woven.txt │
+                      │                                                sec/op                                                 │                                     sec/op                                      vs base               │
+LiteralInactive-16                                                                                                15.09n ± 1%                                                                      16.64n ± 1%  +10.24% (p=0.000 n=8)
+LiteralActiveClean-16                                                                                             15.08n ± 1%                                                                      16.73n ± 1%  +10.94% (p=0.000 n=8)
+geomean                                                                                                           15.09n                                                                           16.69n       +10.59%
+
+                      │ /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/.omo/review/evidence/bench/micro-plain.txt │ /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/.omo/review/evidence/bench/micro-woven.txt │
+                      │                                                 B/op                                                  │                                     B/op                                       vs base                │
+LiteralInactive-16                                                                                               0.000 ± 0%                                                                        0.000 ± 0%       ~ (p=1.000 n=8) ¹
+LiteralActiveClean-16                                                                                            0.000 ± 0%                                                                        0.000 ± 0%       ~ (p=1.000 n=8) ¹
+geomean                                                                                                                     ²                                                                                  +0.00%               ²
+¹ all samples are equal
+² summaries must be >0 to compute geomean
+
+                      │ /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/.omo/review/evidence/bench/micro-plain.txt │ /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/.omo/review/evidence/bench/micro-woven.txt │
+                      │                                               allocs/op                                               │                                   allocs/op                                    vs base                │
+LiteralInactive-16                                                                                               0.000 ± 0%                                                                        0.000 ± 0%       ~ (p=1.000 n=8) ¹
+LiteralActiveClean-16                                                                                            0.000 ± 0%                                                                        0.000 ± 0%       ~ (p=1.000 n=8) ¹
+geomean                                                                                                                     ²                                                                                  +0.00%               ²
+¹ all samples are equal
+² summaries must be >0 to compute geomean
+
+pkg: github.com/DataDog/dd-iast-go/iast/os/exec
+                     │ /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/.omo/review/evidence/bench/micro-plain.txt │ /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/.omo/review/evidence/bench/micro-woven.txt │
+                     │                                                sec/op                                                 │                                        sec/op                                         vs base         │
+ReportActiveClean-16                                                                                             11.40n ± 3%                                                                            11.44n ± 2%  ~ (p=0.739 n=8)
+
+                     │ /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/.omo/review/evidence/bench/micro-plain.txt │ /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/.omo/review/evidence/bench/micro-woven.txt │
+                     │                                                 B/op                                                  │                                        B/op                                         vs base           │
+ReportActiveClean-16                                                                                              0.000 ± 0%                                                                           0.000 ± 0%  ~ (p=1.000 n=8) ¹
+¹ all samples are equal
+
+                     │ /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/.omo/review/evidence/bench/micro-plain.txt │ /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/.omo/review/evidence/bench/micro-woven.txt │
+                     │                                               allocs/op                                               │                                     allocs/op                                       vs base           │
+ReportActiveClean-16                                                                                              0.000 ± 0%                                                                           0.000 ± 0%  ~ (p=1.000 n=8) ¹
+¹ all samples are equal
+
+pkg: github.com/DataDog/dd-iast-go/iast/propagation
+                                       │ /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/.omo/review/evidence/bench/micro-plain.txt │ /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/.omo/review/evidence/bench/micro-woven.txt │
+                                       │                                                sec/op                                                 │                                    sec/op                                      vs base                │
+OperatorConcat4Inactive-16                                                                                                         19.86n ± 1%                                                                     21.84n ± 2%   +10.00% (p=0.000 n=8)
+OperatorConcat4ActiveClean-16                                                                                                      18.96n ± 3%                                                                     20.48n ± 2%    +8.01% (p=0.000 n=8)
+OperatorConversionsInactive-16                                                                                                     7.770n ± 2%                                                                     8.680n ± 2%   +11.70% (p=0.000 n=8)
+OperatorOptimizedConversionExcluded-16                                                                                             1.746n ± 1%                                                                     1.671n ± 2%    -4.27% (p=0.000 n=8)
+OperatorSlicesInactive-16                                                                                                          1.768n ± 1%                                                                     3.670n ± 3%  +107.58% (p=0.000 n=8)
+geomean                                                                                                                            6.182n                                                                          7.505n        +21.40%
+
+                                       │ /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/.omo/review/evidence/bench/micro-plain.txt │ /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/.omo/review/evidence/bench/micro-woven.txt │
+                                       │                                                 B/op                                                  │                                     B/op                                       vs base                │
+OperatorConcat4Inactive-16                                                                                                        24.00 ± 0%                                                                        24.00 ± 0%       ~ (p=1.000 n=8) ¹
+OperatorConcat4ActiveClean-16                                                                                                     24.00 ± 0%                                                                        24.00 ± 0%       ~ (p=1.000 n=8) ¹
+OperatorConversionsInactive-16                                                                                                    24.00 ± 0%                                                                        24.00 ± 0%       ~ (p=1.000 n=8) ¹
+OperatorOptimizedConversionExcluded-16                                                                                            0.000 ± 0%                                                                        0.000 ± 0%       ~ (p=1.000 n=8) ¹
+OperatorSlicesInactive-16                                                                                                         0.000 ± 0%                                                                        0.000 ± 0%       ~ (p=1.000 n=8) ¹
+geomean                                                                                                                                      ²                                                                                  +0.00%               ²
+¹ all samples are equal
+² summaries must be >0 to compute geomean
+
+                                       │ /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/.omo/review/evidence/bench/micro-plain.txt │ /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/.omo/review/evidence/bench/micro-woven.txt │
+                                       │                                               allocs/op                                               │                                   allocs/op                                    vs base                │
+OperatorConcat4Inactive-16                                                                                                        1.000 ± 0%                                                                        1.000 ± 0%       ~ (p=1.000 n=8) ¹
+OperatorConcat4ActiveClean-16                                                                                                     1.000 ± 0%                                                                        1.000 ± 0%       ~ (p=1.000 n=8) ¹
+OperatorConversionsInactive-16                                                                                                    1.000 ± 0%                                                                        1.000 ± 0%       ~ (p=1.000 n=8) ¹
+OperatorOptimizedConversionExcluded-16                                                                                            0.000 ± 0%                                                                        0.000 ± 0%       ~ (p=1.000 n=8) ¹
+OperatorSlicesInactive-16                                                                                                         0.000 ± 0%                                                                        0.000 ± 0%       ~ (p=1.000 n=8) ¹
+geomean                                                                                                                                      ²                                                                                  +0.00%               ²
+¹ all samples are equal
+² summaries must be >0 to compute geomean
+
+pkg: github.com/DataDog/dd-iast-go/internal/taint/commandbridge
+                  │ /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/.omo/review/evidence/bench/micro-plain.txt │ /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/.omo/review/evidence/bench/micro-woven.txt │
+                  │                                                sec/op                                                 │                                     sec/op                                       vs base              │
+ReportInactive-16                                                                                             1.783n ± 3%                                                                       1.759n ± 1%  -1.35% (p=0.028 n=8)
+
+                  │ /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/.omo/review/evidence/bench/micro-plain.txt │ /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/.omo/review/evidence/bench/micro-woven.txt │
+                  │                                                 B/op                                                  │                                        B/op                                         vs base           │
+ReportInactive-16                                                                                              0.000 ± 0%                                                                           0.000 ± 0%  ~ (p=1.000 n=8) ¹
+¹ all samples are equal
+
+                  │ /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/.omo/review/evidence/bench/micro-plain.txt │ /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/.omo/review/evidence/bench/micro-woven.txt │
+                  │                                               allocs/op                                               │                                     allocs/op                                       vs base           │
+ReportInactive-16                                                                                              0.000 ± 0%                                                                           0.000 ± 0%  ~ (p=1.000 n=8) ¹
+¹ all samples are equal
+
+pkg: github.com/DataDog/dd-iast-go/internal/taint/evidence
+                     │ /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/.omo/review/evidence/bench/micro-plain.txt │ /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/.omo/review/evidence/bench/micro-woven.txt │
+                     │                                                sec/op                                                 │                                        sec/op                                         vs base         │
+CollectStringMiss-16                                                                                             1.792n ± 1%                                                                            1.774n ± 1%  ~ (p=0.195 n=8)
+
+                     │ /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/.omo/review/evidence/bench/micro-plain.txt │ /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/.omo/review/evidence/bench/micro-woven.txt │
+                     │                                                 B/op                                                  │                                        B/op                                         vs base           │
+CollectStringMiss-16                                                                                              0.000 ± 0%                                                                           0.000 ± 0%  ~ (p=1.000 n=8) ¹
+¹ all samples are equal
+
+                     │ /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/.omo/review/evidence/bench/micro-plain.txt │ /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/.omo/review/evidence/bench/micro-woven.txt │
+                     │                                               allocs/op                                               │                                     allocs/op                                       vs base           │
+CollectStringMiss-16                                                                                              0.000 ± 0%                                                                           0.000 ± 0%  ~ (p=1.000 n=8) ¹
+¹ all samples are equal
+
+pkg: github.com/DataDog/dd-iast-go/internal/taint/operatorbridge
+                  │ /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/.omo/review/evidence/bench/micro-plain.txt │ /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/.omo/review/evidence/bench/micro-woven.txt │
+                  │                                                sec/op                                                 │                                     sec/op                                       vs base              │
+HasValuesClean-16                                                                                             1.744n ± 2%                                                                       1.718n ± 2%  -1.49% (p=0.014 n=8)
+
+                  │ /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/.omo/review/evidence/bench/micro-plain.txt │ /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/.omo/review/evidence/bench/micro-woven.txt │
+                  │                                                 B/op                                                  │                                        B/op                                         vs base           │
+HasValuesClean-16                                                                                              0.000 ± 0%                                                                           0.000 ± 0%  ~ (p=1.000 n=8) ¹
+¹ all samples are equal
+
+                  │ /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/.omo/review/evidence/bench/micro-plain.txt │ /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/.omo/review/evidence/bench/micro-woven.txt │
+                  │                                               allocs/op                                               │                                     allocs/op                                       vs base           │
+HasValuesClean-16                                                                                              0.000 ± 0%                                                                           0.000 ± 0%  ~ (p=1.000 n=8) ¹
+¹ all samples are equal
+
+pkg: github.com/DataDog/dd-iast-go/internal/taint/ranges
+                        │ /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/.omo/review/evidence/bench/micro-plain.txt │ /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/.omo/review/evidence/bench/micro-woven.txt │
+                        │                                                sec/op                                                 │                                     sec/op                                       vs base              │
+CanonicalizeTwo-16                                                                                                  479.4n ± 3%                                                                       499.4n ± 3%  +4.16% (p=0.003 n=8)
+ConcatTwo-16                                                                                                        54.28n ± 1%                                                                       54.19n ± 1%       ~ (p=0.878 n=8)
+SliceTwo-16                                                                                                         52.48n ± 2%                                                                       52.02n ± 1%  -0.89% (p=0.001 n=8)
+ConcatFreshGoroutine-16                                                                                             934.1n ± 1%                                                                       927.8n ± 1%  -0.69% (p=0.036 n=8)
+geomean                                                                                                             189.0n                                                                            190.1n       +0.58%
+
+                        │ /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/.omo/review/evidence/bench/micro-plain.txt │ /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/.omo/review/evidence/bench/micro-woven.txt │
+                        │                                                 B/op                                                  │                                     B/op                                       vs base                │
+CanonicalizeTwo-16                                                                                                 0.000 ± 0%                                                                        0.000 ± 0%       ~ (p=1.000 n=8) ¹
+ConcatTwo-16                                                                                                       0.000 ± 0%                                                                        0.000 ± 0%       ~ (p=1.000 n=8) ¹
+SliceTwo-16                                                                                                        0.000 ± 0%                                                                        0.000 ± 0%       ~ (p=1.000 n=8) ¹
+ConcatFreshGoroutine-16                                                                                            152.0 ± 0%                                                                        152.0 ± 0%       ~ (p=1.000 n=8) ¹
+geomean                                                                                                                       ²                                                                                  +0.00%               ²
+¹ all samples are equal
+² summaries must be >0 to compute geomean
+
+                        │ /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/.omo/review/evidence/bench/micro-plain.txt │ /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/.omo/review/evidence/bench/micro-woven.txt │
+                        │                                               allocs/op                                               │                                   allocs/op                                    vs base                │
+CanonicalizeTwo-16                                                                                                 0.000 ± 0%                                                                        0.000 ± 0%       ~ (p=1.000 n=8) ¹
+ConcatTwo-16                                                                                                       0.000 ± 0%                                                                        0.000 ± 0%       ~ (p=1.000 n=8) ¹
+SliceTwo-16                                                                                                        0.000 ± 0%                                                                        0.000 ± 0%       ~ (p=1.000 n=8) ¹
+ConcatFreshGoroutine-16                                                                                            3.000 ± 0%                                                                        3.000 ± 0%       ~ (p=1.000 n=8) ¹
+geomean                                                                                                                       ²                                                                                  +0.00%               ²
+¹ all samples are equal
+² summaries must be >0 to compute geomean
+
+pkg: github.com/DataDog/dd-iast-go/internal/taint/redaction
+                                   │ /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/.omo/review/evidence/bench/micro-plain.txt │ /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/.omo/review/evidence/bench/micro-woven.txt │
+                                   │                                                sec/op                                                 │                                     sec/op                                       vs base              │
+AnalyzeSQL/typical-16                                                                                                          2.779µ ± 1%                                                                       2.802µ ± 4%       ~ (p=0.328 n=8)
+AnalyzeSQL/two_hundred_literals-16                                                                                             67.56µ ± 2%                                                                       66.14µ ± 1%  -2.11% (p=0.007 n=8)
+AnalyzeSQL/q_quote_flood-16                                                                                                    32.20µ ± 3%                                                                       31.90µ ± 4%       ~ (p=0.382 n=8)
+AnalyzeCommand-16                                                                                                              48.15n ± 2%                                                                       48.84n ± 1%       ~ (p=0.161 n=8)
+MappedPattern-16                                                                                                               16.25n ± 2%                                                                       15.98n ± 1%  -1.69% (p=0.006 n=8)
+geomean                                                                                                                        1.365µ                                                                            1.358µ       -0.50%
+
+                                   │ /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/.omo/review/evidence/bench/micro-plain.txt │ /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/.omo/review/evidence/bench/micro-woven.txt │
+                                   │                                                 B/op                                                  │                                     B/op                                       vs base                │
+AnalyzeSQL/typical-16                                                                                                       1.641Ki ± 0%                                                                      1.641Ki ± 0%       ~ (p=1.000 n=8) ¹
+AnalyzeSQL/two_hundred_literals-16                                                                                          33.89Ki ± 0%                                                                      33.89Ki ± 0%       ~ (p=1.000 n=8) ¹
+AnalyzeSQL/q_quote_flood-16                                                                                                 5.438Ki ± 0%                                                                      5.438Ki ± 0%       ~ (p=1.000 n=8) ¹
+AnalyzeCommand-16                                                                                                             72.00 ± 0%                                                                        72.00 ± 0%       ~ (p=1.000 n=8) ¹
+MappedPattern-16                                                                                                              0.000 ± 0%                                                                        0.000 ± 0%       ~ (p=1.000 n=8) ¹
+geomean                                                                                                                                  ²                                                                                  +0.00%               ²
+¹ all samples are equal
+² summaries must be >0 to compute geomean
+
+                                   │ /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/.omo/review/evidence/bench/micro-plain.txt │ /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/.omo/review/evidence/bench/micro-woven.txt │
+                                   │                                               allocs/op                                               │                                   allocs/op                                    vs base                │
+AnalyzeSQL/typical-16                                                                                                         21.00 ± 0%                                                                        21.00 ± 0%       ~ (p=1.000 n=8) ¹
+AnalyzeSQL/two_hundred_literals-16                                                                                            26.00 ± 0%                                                                        26.00 ± 0%       ~ (p=1.000 n=8) ¹
+AnalyzeSQL/q_quote_flood-16                                                                                                   8.000 ± 0%                                                                        8.000 ± 0%       ~ (p=1.000 n=8) ¹
+AnalyzeCommand-16                                                                                                             2.000 ± 0%                                                                        2.000 ± 0%       ~ (p=1.000 n=8) ¹
+MappedPattern-16                                                                                                              0.000 ± 0%                                                                        0.000 ± 0%       ~ (p=1.000 n=8) ¹
+geomean                                                                                                                                  ²                                                                                  +0.00%               ²
+¹ all samples are equal
+² summaries must be >0 to compute geomean

@@ -1,0 +1,10 @@
+revision=1661749eaca29636f5aba1f6f4598b0920b7f066
+go_version=go version go1.26.6 darwin/arm64
+goos=darwin
+goarch=arm64
+cpu_count=16
+count=1
+benchtime=2000x
+cpu=1
+bench=BenchmarkHTTPRoundTrip|BenchmarkRequestProcessing$|BenchmarkHealth
+sampling=0

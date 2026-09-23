@@ -1,0 +1,17 @@
+Command: cd /tmp/ddiast-review/wt/prop-bytes-exact && GOMAXPROCS=2 GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -p=2 -count=1 -timeout=4m -run '^TestReviewWoven' -v ./iast/propagation
+status: exited_1 exit_code: 1
+=== RUN   TestReviewWovenResliceWithinCapacity
+    zz_review_bytes_woven_test.go:47: woven=true input=true short=true result=false converted=false result="12345"
+    zz_review_bytes_woven_test.go:50: 
+        	Error Trace:	/tmp/ddiast-review/wt/prop-bytes-exact/iast/propagation/zz_review_bytes_woven_test.go:50
+        	Error:      	Should be true
+        	Test:       	TestReviewWovenResliceWithinCapacity
+        	Messages:   	supported reslice lost source provenance
+--- FAIL: TestReviewWovenResliceWithinCapacity (0.00s)
+=== RUN   TestReviewWovenBufferAliasLimitation
+    zz_review_bytes_woven_test.go:70: documented later-alias limitation: woven=true overwritten="CLEAN!!!" byteTainted=true convertedTainted=true
+--- PASS: TestReviewWovenBufferAliasLimitation (0.00s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/iast/propagation	0.782s
+FAIL
+exit status 1

@@ -1,0 +1,27 @@
+File: store.test
+Type: delay
+Time: 2026-09-23 12:02:30 CEST
+Showing nodes accounting for 54.65s, 99.71% of 54.80s total
+Dropped 301 nodes (cum <= 0.27s)
+Showing top 20 nodes out of 21
+      flat  flat%   sum%        cum   cum%
+    52.02s 94.92% 94.92%     52.12s 95.09%  sync.(*Mutex).Unlock /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/sync/mutex.go:65 (inline)
+     2.62s  4.79% 99.71%      2.62s  4.79%  runtime.unlock /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/lock_spinbit.go:261 (partial-inline)
+         0     0% 99.71%     51.85s 94.62%  github.com/DataDog/dd-iast-go/internal/taint/store.(*Owner).Finish /private/tmp/ddiast-review/wt/perf-contention/internal/taint/store/owner.go:203
+         0     0% 99.71%     51.84s 94.59%  github.com/DataDog/dd-iast-go/internal/taint/store.pcLifecycle.func1 /private/tmp/ddiast-review/wt/perf-contention/internal/taint/store/zz_perf_contention_test.go:244
+         0     0% 99.71%      0.39s  0.71%  runtime.asyncPreempt2.func1 /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/preempt.go:330
+         0     0% 99.71%      0.40s  0.72%  runtime.findRunnable /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/proc.go:3404
+         0     0% 99.71%      0.44s   0.8%  runtime.forEachP /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/proc.go:2112 (inline)
+         0     0% 99.71%      0.43s  0.79%  runtime.forEachPInternal /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/proc.go:2173
+         0     0% 99.71%      0.67s  1.22%  runtime.gcBgMarkWorker /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/mgc.go:1912
+         0     0% 99.71%      0.40s  0.73%  runtime.gcMarkDone /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/mgc.go:1042
+         0     0% 99.71%      0.40s  0.73%  runtime.gcMarkDone.forEachP.func5 /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/proc.go:2126
+         0     0% 99.71%      0.28s   0.5%  runtime.gcstopm /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/proc.go:3318
+         0     0% 99.71%      0.82s  1.50%  runtime.gopreempt_m /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/proc.go:4362 (inline)
+         0     0% 99.71%      0.53s  0.96%  runtime.goschedImpl /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/proc.go:4345
+         0     0% 99.71%      0.92s  1.67%  runtime.mcall /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:339
+         0     0% 99.71%      0.44s   0.8%  runtime.morestack /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:507
+         0     0% 99.71%      0.28s  0.51%  runtime.newobject /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/malloc.go:2157
+         0     0% 99.71%      0.43s  0.79%  runtime.newstack /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/stack.go:1174
+         0     0% 99.71%      0.83s  1.51%  runtime.schedule /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/proc.go:4164
+         0     0% 99.71%      1.03s  1.87%  runtime.systemstack /Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/runtime/asm_arm64.s:399

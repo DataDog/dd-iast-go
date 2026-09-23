@@ -1,0 +1,7 @@
+$ env GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 GOCACHE=/tmp/ddiast-review/wt/crash-unsafe/.gocache GOTMPDIR=/tmp/ddiast-review/wt/crash-unsafe/.gotmp go test -gcflags=all=-d=checkptr -timeout=15m ./internal/taint/store ./internal/taint/jsonbridge ./internal/taint/propagation ./internal/spans ./iast/propagation
+EXIT=0
+ok  	github.com/DataDog/dd-iast-go/internal/taint/store	2.470s
+ok  	github.com/DataDog/dd-iast-go/internal/taint/jsonbridge	0.970s
+ok  	github.com/DataDog/dd-iast-go/internal/taint/propagation	1.197s
+ok  	github.com/DataDog/dd-iast-go/internal/spans	1.140s
+ok  	github.com/DataDog/dd-iast-go/iast/propagation	0.957s

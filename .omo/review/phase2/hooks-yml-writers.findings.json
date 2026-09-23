@@ -1,0 +1,13 @@
+[
+  {
+    "id": "hooks-yml-writers-F1",
+    "severity": "High",
+    "category": "memory-bound",
+    "location": "iast/propagation/writer.go:213-216; internal/taint/store/writer.go:17-34,217-229",
+    "title": "Buffer writer anchors retain unbounded caller allocations",
+    "claim": "A small Buffer view backed by a large caller allocation retains the whole allocation through the writer's typed anchor and receiver while charging only its visible capacity; eight 16 MiB allocations remain live across GC with 128 bytes charged, so writer counts do not bound retained heap.",
+    "evidence_path": ".omo/review/evidence/hooks-yml-writers/retention.txt",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 go test -count=1 -timeout=5m ./internal/taint/store -run TestReviewBufferAnchorsExceedAdvertisedMemoryCeiling -v",
+    "needs_repro": false
+  }
+]

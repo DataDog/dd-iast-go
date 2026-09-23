@@ -1,0 +1,6 @@
+Command: cd go-sqlite3 && GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -vet=off -count=1 -timeout 15m .
+go version: go version go1.26.6 darwin/arm64
+
+ok  	github.com/mattn/go-sqlite3	4.219s
+
+Exit status: 0  (elapsed 14s)

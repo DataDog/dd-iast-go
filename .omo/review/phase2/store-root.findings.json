@@ -1,0 +1,68 @@
+[
+  {
+    "id": "store-root-F1",
+    "severity": "Medium",
+    "category": "leak",
+    "location": "internal/taint/store/root.go:370-375",
+    "title": "Contended rollback leaks root slot and charge until Finish; accumulates into request-wide false negatives",
+    "claim": "rollbackRoot uses rootsMu.TryLock and on failure keeps the rootID, rootCount and owner/process charge (and any published anchor) until Finish. Readers (Derive/putWindow, concurrent AdoptString, foreign Lookup) make it fail in correlation with the original failure; leaks exhaust the 2 MiB budget or 512 roots, and every later root in the request is dropped.",
+    "evidence_path": ".omo/review/evidence/store-root/zz_review_root_test.go",
+    "repro_command": "cd /tmp/ddiast-review/wt/store-root && cp .omo/review/evidence/store-root/zz_review_*_test.go internal/taint/store/ && GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 go test -count=1 -timeout 10m -run TestReview -v ./internal/taint/store/",
+    "needs_repro": false
+  },
+  {
+    "id": "store-root-F2",
+    "severity": "Low",
+    "category": "memory-bound",
+    "location": "internal/taint/store/limits.go:38-39",
+    "title": "sizeClasses table diverges from Go runtime (1088, 5392) and undercharges 80 sizes",
+    "claim": "Go 1.26.6/1.27 have classes 1024,1152 and 4864,5376,6144; sizes 1025-1088 and 5377-5392 are undercharged by up to 752 B (~12%).",
+    "evidence_path": ".omo/review/evidence/store-root/review-run.txt",
+    "repro_command": "cd /tmp/ddiast-review/wt/store-root && cp .omo/review/evidence/store-root/zz_review_*_test.go internal/taint/store/ && GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 go test -count=1 -timeout 10m -run TestReview -v ./internal/taint/store/",
+    "needs_repro": false
+  },
+  {
+    "id": "store-root-F3",
+    "severity": "Low",
+    "category": "doc",
+    "location": "internal/taint/store/root.go:120-121",
+    "title": "TaintBytes replacement zero-fills [len:cap] and breaks aliasing; public doc silent",
+    "claim": "The clone copies only len bytes but keeps cap, so the tail is zeros and appends no longer write the caller backing array; taint.TaintBytes documents only same length and capacity.",
+    "evidence_path": ".omo/review/evidence/store-root/review-run.txt",
+    "repro_command": "cd /tmp/ddiast-review/wt/store-root && cp .omo/review/evidence/store-root/zz_review_*_test.go internal/taint/store/ && GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 go test -count=1 -timeout 10m -run TestReview -v ./internal/taint/store/",
+    "needs_repro": false
+  },
+  {
+    "id": "store-root-F4",
+    "severity": "Low",
+    "category": "quality",
+    "location": "internal/taint/store/root.go:231-247",
+    "title": "Adopt pre-check rejections are not counted in drop telemetry",
+    "claim": "AdoptString/AdoptBytes return false for len<2, oversize, or invalid key without incrementing any drop counter, unlike the Taint* constructors.",
+    "evidence_path": null,
+    "repro_command": null,
+    "needs_repro": false
+  },
+  {
+    "id": "store-root-F5",
+    "severity": "Info",
+    "category": "doc",
+    "location": "internal/taint/store/mutation.go:25",
+    "title": "Root generations never advance in production; mutation invalidation path is test-only",
+    "claim": "PublishBytesMutation/claimMutation have no non-test caller, so every production root generation is 1; generation wrap/ABA is unreachable and the described mutation invalidation is not live.",
+    "evidence_path": null,
+    "repro_command": "rg -n 'PublishBytesMutation|claimMutation' --glob '*.go' --glob '!*_test.go'",
+    "needs_repro": false
+  },
+  {
+    "id": "store-root-F6",
+    "severity": "Info",
+    "category": "memory-bound",
+    "location": "internal/taint/store/root.go:354-361",
+    "title": "Process-wide overflow pool is first-come; one request can take all 256 blocks",
+    "claim": "Overflow blocks have no per-owner quota, so one owner can force other requests multi-range roots to truncate to 10 ranges (within the documented guarantee).",
+    "evidence_path": null,
+    "repro_command": null,
+    "needs_repro": false
+  }
+]

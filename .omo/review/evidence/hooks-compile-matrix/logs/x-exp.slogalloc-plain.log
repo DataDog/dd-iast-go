@@ -1,0 +1,45 @@
+Command: cd x-exp && GOTOOLCHAIN=go1.26.6 go test -count=1 -run Alloc -v ./slog/
+go version: go version go1.26.6 darwin/arm64
+
+=== RUN   TestAttrNoAlloc
+--- PASS: TestAttrNoAlloc (0.00s)
+=== RUN   TestAlloc
+=== RUN   TestAlloc/Info
+=== RUN   TestAlloc/Error
+=== RUN   TestAlloc/logger.Info
+=== RUN   TestAlloc/logger.Log
+=== RUN   TestAlloc/2_pairs
+=== RUN   TestAlloc/2_pairs_disabled_inline
+=== RUN   TestAlloc/2_pairs_disabled
+=== RUN   TestAlloc/9_kvs
+=== RUN   TestAlloc/pairs
+=== RUN   TestAlloc/attrs1
+=== RUN   TestAlloc/attrs3
+=== RUN   TestAlloc/attrs3_disabled
+=== RUN   TestAlloc/attrs6
+=== RUN   TestAlloc/attrs9
+--- PASS: TestAlloc (0.00s)
+    --- PASS: TestAlloc/Info (0.00s)
+    --- PASS: TestAlloc/Error (0.00s)
+    --- PASS: TestAlloc/logger.Info (0.00s)
+    --- PASS: TestAlloc/logger.Log (0.00s)
+    --- PASS: TestAlloc/2_pairs (0.00s)
+    --- PASS: TestAlloc/2_pairs_disabled_inline (0.00s)
+    --- PASS: TestAlloc/2_pairs_disabled (0.00s)
+    --- PASS: TestAlloc/9_kvs (0.00s)
+    --- PASS: TestAlloc/pairs (0.00s)
+    --- PASS: TestAlloc/attrs1 (0.00s)
+    --- PASS: TestAlloc/attrs3 (0.00s)
+    --- PASS: TestAlloc/attrs3_disabled (0.00s)
+    --- PASS: TestAlloc/attrs6 (0.00s)
+    --- PASS: TestAlloc/attrs9 (0.00s)
+=== RUN   TestTextHandlerAlloc
+--- PASS: TestTextHandlerAlloc (0.00s)
+=== RUN   TestValueNoAlloc
+--- PASS: TestValueNoAlloc (0.00s)
+=== RUN   TestAnyLevelAlloc
+--- PASS: TestAnyLevelAlloc (0.00s)
+PASS
+ok  	golang.org/x/exp/slog	0.433s
+
+Exit status: 0  (elapsed 1s)

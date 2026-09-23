@@ -1,0 +1,18 @@
+$ cd /tmp/ddiast-review/wt/life-admission
+$ GOTOOLCHAIN=go1.26.6 go tool orchestrion go test ./iast/net/http -run TestLifeAdmissionDisconnect -count=1 -v -timeout 4m
+=== RUN   TestLifeAdmissionDisconnect
+=== RUN   TestLifeAdmissionDisconnect/HTTP1
+    zz_life_admission_test.go:81: disconnected request still owns the single IAST slot
+    zz_life_admission_test.go:106: after disconnect: subsequent request decision=2 (Active=3, CapacityDropped=2)
+    zz_life_admission_test.go:108: disconnected request blocks IAST admission for all subsequent requests: got 2, want 3
+=== RUN   TestLifeAdmissionDisconnect/HTTP2
+    zz_life_admission_test.go:81: disconnected request still owns the single IAST slot
+    zz_life_admission_test.go:106: after disconnect: subsequent request decision=2 (Active=3, CapacityDropped=2)
+    zz_life_admission_test.go:108: disconnected request blocks IAST admission for all subsequent requests: got 2, want 3
+--- FAIL: TestLifeAdmissionDisconnect (0.01s)
+    --- FAIL: TestLifeAdmissionDisconnect/HTTP1 (0.00s)
+    --- FAIL: TestLifeAdmissionDisconnect/HTTP2 (0.01s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/iast/net/http	0.740s
+FAIL
+exit status 1

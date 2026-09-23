@@ -1,0 +1,57 @@
+[
+  {
+    "id": "store-stress-F1",
+    "severity": "High",
+    "category": "cross-request",
+    "location": "internal/taint/store/owner.go:127-149",
+    "title": "Stale owner handle passes beginWrite during slot reuse and publishes into the next request",
+    "claim": "alive() loads generation then state separately and Acquire (owner.go:53-59) never takes lifecycleMu, so a finished request's handle can pass beginWrite while the slot is reused; BindObject/BindObjectValue, UpdateWriter/AdoptBufferWriter and claimMutation then write into the new request's owner (writer state carries the old request's owner-local source IDs). Reached in production via Handle()->UpdateWriter (propagation/writer.go:110-132) and Handle()->BindObjectValue (request/reader.go:33-37).",
+    "evidence_path": ".omo/review/evidence/store-stress/stale-handle.out.txt",
+    "repro_command": "STALE_BUDGET=60s GOTOOLCHAIN=go1.26.6 go test -race -run '^TestReviewStale(HandleBinds|HandleWriter)' -count=1 -v ./internal/taint/store  (test file: .omo/review/evidence/store-stress/stale_review_test.go)",
+    "needs_repro": false
+  },
+  {
+    "id": "store-stress-F2",
+    "severity": "High",
+    "category": "false-negative",
+    "location": "internal/taint/store/value.go:147-193,225",
+    "title": "A fully occupied shard is permanently wedged after its owners finish",
+    "claim": "putWindow tombstones stale slots but refuses to insert without an empty slot inside ProbeLimit, and compact runs only after a successful insert; a shard with no empty slot can never accept an insert or compact again, dropping ~1/256 of all values for the process lifetime. Reproduced with 129 legitimately derived windows in one request; organic saturation reached 127/128 occupancy.",
+    "evidence_path": ".omo/review/evidence/store-stress/wedge.out.txt",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 go test -run '^TestReviewShardWedgeAfterOwnerFinish$' -count=1 -v ./internal/taint/store  (test file: .omo/review/evidence/store-stress/wedge_review_test.go)",
+    "needs_repro": false
+  },
+  {
+    "id": "store-stress-F3",
+    "severity": "Medium",
+    "category": "race",
+    "location": "internal/taint/store/owner.go:157-162",
+    "title": "Stale Finish can finish the owner that reused the slot",
+    "claim": "Finish checks generation then CASes state active->finishing in two steps; a stale second Finish racing slot reuse finishes the next request's owner. Production currently issues one store Finish per analysis (owner.Swap(nil)), but the doc contract is violated and request.Analysis.Finish repeats the pattern.",
+    "evidence_path": ".omo/review/evidence/store-stress/stale-handle.out.txt",
+    "repro_command": "STALE_BUDGET=60s GOTOOLCHAIN=go1.26.6 go test -run '^TestReviewStaleFinishKillsReusedSlot$' -count=1 -v ./internal/taint/store",
+    "needs_repro": false
+  },
+  {
+    "id": "store-stress-F4",
+    "severity": "Low",
+    "category": "memory-bound",
+    "location": "internal/taint/store/root.go:370-375",
+    "title": "Failed rollback leaks a reserved root slot and its charge until Finish",
+    "claim": "rollbackRoot uses TryLock; on contention the reserved root ID, rootCount and up to 192 KiB of request/process charge remain consumed until Finish, so repeated contention can exhaust a request's budget.",
+    "evidence_path": ".omo/review/evidence/store-stress/campaign/per-run-stats.txt",
+    "repro_command": null,
+    "needs_repro": false
+  },
+  {
+    "id": "store-stress-F5",
+    "severity": "Info",
+    "category": "test-gap",
+    "location": "internal/taint/store",
+    "title": "Adoptable randomized store stress harness",
+    "claim": "Model-checked randomized concurrent harness (owner churn, stale handles, mutation, writers, bindings, overflow, quiescent structural invariants), validated by three killed mutants; ready to adopt behind STORE_STRESS=1.",
+    "evidence_path": ".omo/review/evidence/store-stress/stress_review_test.go",
+    "repro_command": "STORE_STRESS=1 STRESS_SEED=1 STRESS_DURATION=30s GOMAXPROCS=16 GOTOOLCHAIN=go1.26.6 go test -race -run '^TestReviewStoreStress$' -count=1 -v ./internal/taint/store",
+    "needs_repro": false
+  }
+]

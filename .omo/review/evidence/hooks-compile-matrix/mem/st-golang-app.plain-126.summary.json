@@ -1,0 +1,113 @@
+{
+ "peak_tree_rss_kb": 4116304,
+ "peak_tree_at_s": 32.6,
+ "peak_tree_top": [
+  [
+   595600,
+   [
+    "link",
+    ""
+   ]
+  ],
+  [
+   595312,
+   [
+    "link",
+    ""
+   ]
+  ],
+  [
+   591776,
+   [
+    "link",
+    ""
+   ]
+  ],
+  [
+   560304,
+   [
+    "link",
+    ""
+   ]
+  ],
+  [
+   548928,
+   [
+    "link",
+    ""
+   ]
+  ],
+  [
+   259296,
+   [
+    "dsymutil",
+    ""
+   ]
+  ]
+ ],
+ "top_process_peaks_kb": [
+  [
+   "(clang) ",
+   823232
+  ],
+  [
+   "link ",
+   688064
+  ],
+  [
+   "clang ",
+   631808
+  ],
+  [
+   "dsymutil ",
+   369744
+  ],
+  [
+   "compile github.com/ugorji/go/codec",
+   234176
+  ],
+  [
+   "compile go.opentelemetry.io/collector/pdata/internal",
+   200432
+  ],
+  [
+   "(compile) ",
+   199296
+  ],
+  [
+   "compile net/http",
+   151328
+  ],
+  [
+   "compile github.com/DataDog/dd-trace-go/v2/ddtrace/tracer",
+   130144
+  ],
+  [
+   "compile golang.org/x/net/http2",
+   124272
+  ],
+  [
+   "compile github.com/IBM/sarama",
+   122528
+  ],
+  [
+   "compile google.golang.org/protobuf/internal/impl",
+   115824
+  ],
+  [
+   "(ld) ",
+   112128
+  ],
+  [
+   "compile net",
+   99168
+  ],
+  [
+   "compile google.golang.org/grpc",
+   96848
+  ]
+ ],
+ "samples": 35,
+ "killed_at_limit": false,
+ "duration_s": 40.8
+}

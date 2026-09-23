@@ -1,0 +1,27 @@
+WORK=/tmp/ddiast-review/wt/hooks-yml-operators/tmp/go-build2931951813
+# github.com/DataDog/dd-iast-go/reviewoperators/constantlen
+panic: assignment to entry in nil map
+
+goroutine 1 [running]:
+github.com/DataDog/orchestrion/internal/toolexec/aspect.Weaver.OnCompile({{0x29fbcb96244?, 0x2?}, {0x0?, 0x10513360c?}}, {0x1062de6a8, 0x29fbcd30500}, 0x29fbce8c690)
+	/Users/eliott.bouhana/go/pkg/mod/github.com/!data!dog/orchestrion@v1.12.2-0.20260828141217-23afa71d6dcb/internal/toolexec/aspect/oncompile.go:195 +0x17ac
+github.com/DataDog/orchestrion/internal/toolexec/proxy.ProcessCommand[...](...)
+	/Users/eliott.bouhana/go/pkg/mod/github.com/!data!dog/orchestrion@v1.12.2-0.20260828141217-23afa71d6dcb/internal/toolexec/proxy/proxy.go:78
+github.com/DataDog/orchestrion/internal/cmd.init.func8(0x29fbcd36700)
+	/Users/eliott.bouhana/go/pkg/mod/github.com/!data!dog/orchestrion@v1.12.2-0.20260828141217-23afa71d6dcb/internal/cmd/toolexec.go:93 +0x4c4
+github.com/urfave/cli/v2.(*Command).Run(0x1064c4f40, 0x29fbcd36700, {0x29fbcb8f600, 0x15, 0x15})
+	/Users/eliott.bouhana/go/pkg/mod/github.com/urfave/cli/v2@v2.27.7/command.go:276 +0x580
+github.com/urfave/cli/v2.(*Command).Run(0x29fbcb8f1e0, 0x29fbcd36480, {0x29fbcc5c000, 0x16, 0x16})
+	/Users/eliott.bouhana/go/pkg/mod/github.com/urfave/cli/v2@v2.27.7/command.go:269 +0x774
+github.com/urfave/cli/v2.(*App).RunContext(0x29fbcefa600, {0x1062de3d0, 0x10650ed20}, {0x29fbcc5c000, 0x16, 0x16})
+	/Users/eliott.bouhana/go/pkg/mod/github.com/urfave/cli/v2@v2.27.7/app.go:333 +0x4bc
+main.main()
+	/Users/eliott.bouhana/go/pkg/mod/github.com/!data!dog/orchestrion@v1.12.2-0.20260828141217-23afa71d6dcb/main.go:218 +0xe9c
+# github.com/DataDog/dd-iast-go/reviewoperators [github.com/DataDog/dd-iast-go/reviewoperators.test]
+<generated>:1: float64 does not satisfy "github.com/DataDog/dd-iast-go/iast/propagation".integer (float64 missing in ~int | ~int8 | ~int16 | ~int32 | ~int64 | ~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64 | ~uintptr)
+<generated>:1: complex128 does not satisfy "github.com/DataDog/dd-iast-go/iast/propagation".integer (complex128 missing in ~int | ~int8 | ~int16 | ~int32 | ~int64 | ~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64 | ~uintptr)
+exit status 2
+FAIL	github.com/DataDog/dd-iast-go/reviewoperators [build failed]
+FAIL	github.com/DataDog/dd-iast-go/reviewoperators/constantlen [build failed]
+FAIL
+exit status 1

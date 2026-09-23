@@ -1,0 +1,14 @@
+=== RUN   TestReviewFxF1NegativeDecisionsStarveActive
+    zz_review_fx_f1_test.go:110: inflight_sampled_out=0 active_scope=true request_span _dd.iast.enabled=1 request_span_has_SQLi_event=true orphan_spans=0 orphan_spans_with_event=0
+    zz_review_fx_f1_test.go:110: inflight_sampled_out=1 active_scope=true request_span _dd.iast.enabled=1 request_span_has_SQLi_event=true orphan_spans=0 orphan_spans_with_event=0
+    zz_review_fx_f1_test.go:110: inflight_sampled_out=2 active_scope=true request_span _dd.iast.enabled=0 request_span_has_SQLi_event=false orphan_spans=1 orphan_spans_with_event=0
+    zz_review_fx_f1_test.go:113: BUG: admitted (permit-holding) request with a tainted SQL sink reported NOTHING when 2 sampled-out requests were in flight
+--- FAIL: TestReviewFxF1NegativeDecisionsStarveActive (0.01s)
+=== RUN   TestReviewFxF1DefaultConfigLossRate
+    zz_review_fx_f1_test.go:201: default config: requests=400 admitted(active scope)=126 reported_on_request_span=60 lost_on_request_span=66 orphan_spans=66 orphan_spans_with_event=38
+    zz_review_fx_f1_test.go:204: BUG: 28 admitted requests with a tainted SQL sink produced no finding anywhere
+--- FAIL: TestReviewFxF1DefaultConfigLossRate (0.05s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/testapps/integration	0.999s
+FAIL
+exit status 1

@@ -1,0 +1,12 @@
+$ DD_IAST_REQUEST_SAMPLING=100 DD_IAST_MAX_CONCURRENT_REQUESTS=64 ./wbench   # built with: go tool orchestrion go build ./cmd/wbench (GOTOOLCHAIN=go1.26.6)
+woven=true DD_IAST_MAX_CONCURRENT_REQUESTS=64
+  no request                         opened=0 writerbridge.Active=false
+  1 active request, no writer        opened=1 writerbridge.Active=false
+  1 active request with writer       opened=1 writerbridge.Active=true
+  64 active requests with writers    opened=64 writerbridge.Active=true
+json.Marshal (no request ctx) no request                         median=   72722 ns/op  x1.00  samples=[15721 51107 72722 90159 107941]
+json.Marshal (no request ctx) 1 active request, no writer        median=   66425 ns/op  x0.91  samples=[15505 31089 66425 70629 120884]
+json.Marshal (no request ctx) 1 active request with writer       median=  651813 ns/op  x8.96  samples=[191377 553960 651813 1035626 1128946]
+json.Marshal (no request ctx) 64 active requests with writers    median= 5688782 ns/op  x78.23  samples=[1798496 2127708 5688782 7204428 10788898]
+2026/09/23 13:37:21 Datadog Tracer v2.11.0-rc.1 ERROR: loading features: Get "http://127.0.0.1:1/info": dial tcp 127.0.0.1:1: connect: connection refused (occurred: 23 Sep 26 13:36 CEST)
+# exit=0

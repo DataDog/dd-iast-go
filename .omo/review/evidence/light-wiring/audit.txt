@@ -1,0 +1,61 @@
+Static wiring audit — light-wiring
+
+Repository inventory:
+  Bun.Glob("**/orchestrion.yml") returned 12 manifests:
+  internal/spans/orchestrion.yml
+  taint/orchestrion.yml
+  iast/os/exec/orchestrion.yml
+  iast/propagation/orchestrion.yml
+  iast/encoding/json/orchestrion.yml
+  iast/io/orchestrion.yml
+  iast/net/http/orchestrion.yml
+  iast/net/url/orchestrion.yml
+  iast/crypto/cipher/orchestrion.yml
+  iast/crypto/hash/orchestrion.yml
+  iast/bufio/orchestrion.yml
+  iast/database/sql/orchestrion.yml
+
+orchestrion.tool.go directly blank-imports all 10 iast manifest packages:
+  iast/bufio
+  iast/crypto/cipher
+  iast/crypto/hash
+  iast/database/sql
+  iast/encoding/json
+  iast/io
+  iast/net/http
+  iast/net/url
+  iast/os/exec
+  iast/propagation
+It also blank-imports taint. internal/spans is a Go dependency of
+iast/net/http (iast/net/http/http.go); it is not an iast package and the
+iast/AGENTS.md direct-import rule does not apply to it.
+
+README.md Vulnerability Types rows marked implemented:
+  Command injection -> github.com/DataDog/dd-iast-go/iast/os/exec
+  SQL injection -> github.com/DataDog/dd-iast-go/iast/database/sql
+  Weak cipher -> github.com/DataDog/dd-iast-go/iast/crypto/cipher
+  Weak hash -> github.com/DataDog/dd-iast-go/iast/crypto/hash
+These match the instrumented vulnerability types in the inspected manifests.
+
+Initial main-checkout `git status --porcelain` output: empty.
+Designated private-copy and report/evidence targets were absent before work.
+
+Scoped generation check, run in /tmp/ddiast-review/wt/light-wiring:
+  Command: GOTOOLCHAIN=go1.26.6 go generate orchestrion.tool.go
+  Exit code: 0
+  Key stdout:
+    removing unnecessary import of "github.com/DataDog/dd-trace-go/orchestrion/all/v2":
+    ... replacement directory ../../contrib/99designs/gqlgen does not exist
+  Key stderr:
+    go: downloading github.com/DataDog/dd-trace-go/orchestrion/all/v2 v2.11.0-rc.1
+    go: downloading github.com/DataDog/dd-trace-go/contrib/99designs/gqlgen/v2 v2.11.0-rc.1
+
+Go's download messages mean the shared Go module cache may have been written
+outside the authorized paths. No attempt was made to inspect or remove those
+cache entries.
+
+The generation command added a blank import of
+github.com/DataDog/dd-trace-go/orchestrion/all/v2 to the private copy's
+orchestrion.tool.go. The checked-in main-copy file was not modified. This
+generated delta and the dependency replacement warning are recorded as an
+open validation limitation, not as an iast stale-import finding.

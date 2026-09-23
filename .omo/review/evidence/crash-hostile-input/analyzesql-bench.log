@@ -1,0 +1,9 @@
+goos: darwin
+goarch: arm64
+pkg: github.com/DataDog/dd-iast-go/internal/taint/redaction
+cpu: Apple M4 Max
+BenchmarkHostileAnalyzeSQL30KB-16    	      50	    822940 ns/op	  36.50 MB/s
+BenchmarkHostileAnalyzeSQL30KB-16    	      50	    792617 ns/op	  37.90 MB/s
+BenchmarkHostileAnalyzeSQL30KB-16    	      50	    821942 ns/op	  36.55 MB/s
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/redaction	1.058s

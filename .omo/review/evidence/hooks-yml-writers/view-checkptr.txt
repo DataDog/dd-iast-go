@@ -1,0 +1,17 @@
+Command (from /tmp/ddiast-review/wt/hooks-yml-writers):
+GOTOOLCHAIN=go1.26.6 go test -count=1 -timeout=10m -gcflags=all=-d=checkptr=2 ./iast/propagation -run TestReviewBufferViewBackingWithInteriorSlice -v
+
+=== RUN   TestReviewBufferViewBackingWithInteriorSlice
+=== RUN   TestReviewBufferViewBackingWithInteriorSlice/initial
+=== RUN   TestReviewBufferViewBackingWithInteriorSlice/write
+=== RUN   TestReviewBufferViewBackingWithInteriorSlice/compact
+=== RUN   TestReviewBufferViewBackingWithInteriorSlice/truncate
+=== RUN   TestReviewBufferViewBackingWithInteriorSlice/reset
+--- PASS: TestReviewBufferViewBackingWithInteriorSlice (0.00s)
+    --- PASS: TestReviewBufferViewBackingWithInteriorSlice/initial (0.00s)
+    --- PASS: TestReviewBufferViewBackingWithInteriorSlice/write (0.00s)
+    --- PASS: TestReviewBufferViewBackingWithInteriorSlice/compact (0.00s)
+    --- PASS: TestReviewBufferViewBackingWithInteriorSlice/truncate (0.00s)
+    --- PASS: TestReviewBufferViewBackingWithInteriorSlice/reset (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/iast/propagation	0.478s

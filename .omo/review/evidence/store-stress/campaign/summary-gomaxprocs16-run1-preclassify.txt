@@ -1,0 +1,13 @@
+GOMAXPROCS=16 seed=552064050 rc=0 races=0 violations=0 panics=0 seed=552064050 workers=53 collide=false ops=284398
+GOMAXPROCS=16 seed=616197717 rc=0 races=0 violations=0 panics=0 seed=616197717 workers=35 collide=false ops=191695
+GOMAXPROCS=16 seed=387200398 rc=0 races=0 violations=0 panics=0 seed=387200398 workers=45 collide=false ops=203355
+GOMAXPROCS=16 seed=613161072 rc=0 races=0 violations=0 panics=0 seed=613161072 workers=50 collide=true ops=312450
+GOMAXPROCS=16 seed=413275690 rc=0 races=0 violations=0 panics=0 seed=413275690 workers=57 collide=false ops=249147
+GOMAXPROCS=16 seed=481602350 rc=1 races=0 violations=1 panics=0 seed=481602350 workers=52 collide=false ops=106504
+GOMAXPROCS=16 seed=60652178 rc=0 races=0 violations=0 panics=0 seed=60652178 workers=58 collide=false ops=458838
+GOMAXPROCS=16 seed=85438873 rc=0 races=0 violations=0 panics=0 seed=85438873 workers=57 collide=false ops=696141
+GOMAXPROCS=16 seed=110280547 rc=0 races=0 violations=0 panics=0 seed=110280547 workers=57 collide=false ops=914394
+GOMAXPROCS=16 seed=848097242 rc=0 races=0 violations=0 panics=0 seed=848097242 workers=46 collide=false ops=798468
+GOMAXPROCS=16 seed=489990909 rc=0 races=0 violations=0 panics=0 seed=489990909 workers=44 collide=false ops=356048
+GOMAXPROCS=16 seed=168585590 rc=1 races=0 violations=1 panics=0 seed=168585590 workers=40 collide=false ops=55243
+GOMAXPROCS=16 seed=149485474 rc=0 races=0 violations=0 panics=0 seed=149485474 workers=60 collide=false ops=569460

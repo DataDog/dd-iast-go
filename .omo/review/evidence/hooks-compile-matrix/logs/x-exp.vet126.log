@@ -1,0 +1,7 @@
+Command: cd x-exp && GOTOOLCHAIN=go1.26.6 go vet ./...
+go version: go version go1.26.6 darwin/arm64
+
+slog/internal/buffer/buffer.go:49:18: method WriteByte(c byte) should have signature WriteByte(byte) error
+trace/flightrecorder.go:279:26: method WriteTo(w io.Writer) (total int, err error) should have signature WriteTo(io.Writer) (int64, error)
+
+Exit status: 1  (elapsed 16s)

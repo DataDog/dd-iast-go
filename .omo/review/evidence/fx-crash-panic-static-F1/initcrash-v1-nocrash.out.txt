@@ -1,0 +1,23 @@
+# Variant 1 (NON-crashing layout) — documents the init-order window boundary
+# util package deps: crypto/sha1 + encoding/hex only; main also imports crypto/md5.
+# Result: hook fires during util.init but BEFORE internal/config initializes,
+# so config.Enabled is still false and vulnerability.Report returns at report.go:37.
+$ cd <copy>/_repro/initcrash && GOFLAGS='-p=4 -mod=mod' GOTOOLCHAIN=go1.26.6 go tool orchestrion go build -o initcrash . && ./initcrash
+EXIT=0
+--- stdout ---
+init fingerprint: 857b42d86f0e
+runtime md5 ok: b4a61925
+
+--- inittrace (filtered) ---
+init github.com/puzpuzpuz/xsync/v4 @3.1 ms, 0.002 ms clock, 0 bytes, 0 allocs
+init github.com/DataDog/dd-iast-go/internal/instrumentation/telemetry @3.2 ms, 0.003 ms clock, 1904 bytes, 8 allocs
+init github.com/acme/initcrash/util @3.3 ms, 0.003 ms clock, 248 bytes, 5 allocs
+init github.com/DataDog/dd-iast-go/internal/config @30 ms, 0.35 ms clock, 73952 bytes, 444 allocs
+init github.com/DataDog/dd-iast-go/internal/taint/request @30 ms, 0.005 ms clock, 168 bytes, 6 allocs
+init github.com/DataDog/dd-iast-go/internal/taint/propagation @30 ms, 0 ms clock, 8 bytes, 1 allocs
+init github.com/DataDog/dd-iast-go/iast/encoding/json @30 ms, 0 ms clock, 16 bytes, 1 allocs
+init github.com/DataDog/dd-iast-go/iast/propagation @31 ms, 0 ms clock, 0 bytes, 0 allocs
+init github.com/DataDog/dd-iast-go/internal/instrumentation @33 ms, 0.003 ms clock, 312 bytes, 10 allocs
+init github.com/DataDog/dd-iast-go/internal/spans @33 ms, 0.013 ms clock, 10024 bytes, 27 allocs
+init github.com/DataDog/dd-iast-go/iast/database/sql @34 ms, 0.008 ms clock, 8 bytes, 1 allocs
+init github.com/DataDog/dd-iast-go/iast/os/exec @34 ms, 0.002 ms clock, 8 bytes, 1 allocs

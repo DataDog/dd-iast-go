@@ -1,0 +1,10 @@
+Command: cd /tmp/ddiast-review/wt/prop-writer && GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -timeout 10m -count=1 -run "^TestReviewBufferConsumptionDropsRemainingRanges$" -v ./iast/propagation
+Exit status: 0
+=== RUN   TestReviewBufferConsumptionDropsRemainingRanges
+=== RUN   TestReviewBufferConsumptionDropsRemainingRanges/Read
+=== RUN   TestReviewBufferConsumptionDropsRemainingRanges/Next
+--- PASS: TestReviewBufferConsumptionDropsRemainingRanges (0.00s)
+    --- PASS: TestReviewBufferConsumptionDropsRemainingRanges/Read (0.00s)
+    --- PASS: TestReviewBufferConsumptionDropsRemainingRanges/Next (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/iast/propagation	0.735s

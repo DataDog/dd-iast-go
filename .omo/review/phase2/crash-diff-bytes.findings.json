@@ -1,0 +1,35 @@
+[
+  {
+    "id": "crash-diff-bytes-F1",
+    "severity": "High",
+    "category": "false-positive",
+    "location": "iast/propagation/writer.go:202-205; internal/taint/store/writer.go:23-27,234-259,448-462; internal/taint/propagation/writer.go:191-230",
+    "title": "Unanchored strings.Builder writer view publishes stale request taint on clean content after an unwoven reset and GC address reuse (independent reproduction of store-identity-gc-F1)",
+    "claim": "builderView records only (data pointer, len, cap) with no Anchor, and strings.Builder has no native invalidation hook. After a woven WriteString(tainted), a zero-value reinitialisation (*w = T{}) or any reset the wrapper does not see leaves the writer record alive while the old backing becomes collectable. A later clean write through fmt.Fprintf(&w.sb, ...) (io.Writer path, not wrapped) can receive the same address with equal len/cap; the woven w.sb.String() then matches the stale view in SnapshotWriter and publishes the old source's ranges over fully clean bytes. Conditional on address reuse this happened 6/6 times.",
+    "evidence_path": ".omo/review/evidence/crash-diff-bytes/repro-builder-stale-woven-go1.26.6.txt",
+    "repro_command": "cd <private copy> && GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -count=1 -v -run TestReproBuilderStaleTaintRealistic ./iast/internal/zzdiffbytes  (test: evidence/crash-diff-bytes/harness__iast__internal__zzdiffbytes__repro_builder_test.go)",
+    "needs_repro": false
+  },
+  {
+    "id": "crash-diff-bytes-F2",
+    "severity": "Low",
+    "category": "doc",
+    "location": "internal/taint/propagation/bytes_exact.go:17-18,38-51; README.md:34",
+    "title": "bytes.Join with more than 16 elements switches to coarse whole-value provenance (clean elements and separators tainted; taint in elements past index 14 ignored), but README lists Join as supported without the caveat",
+    "claim": "joinBytesHit inspects only the first 15 elements plus the separator when len(elements) > maxInputs and then taints the entire result coarsely. The woven fuzzer observed 40/40 over-taint reports, all with 17-19 elements (range [0,len) over clean parts); none with <=16 elements. Behavior is intentional per the code comment but README.md:34 advertises Join as a byte copy without mentioning the coarse fallback or the ignored tail.",
+    "evidence_path": ".omo/review/evidence/crash-diff-bytes/woven-deterministic-run1-go1.26.6.txt",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -count=1 -v -run TestDiffBytesFnDeterministic ./iast/internal/zzdiffbytes (with the Join >16 oracle exemption removed)",
+    "needs_repro": false
+  },
+  {
+    "id": "crash-diff-bytes-F3",
+    "severity": "Low",
+    "category": "doc",
+    "location": "iast/propagation/writer.go:219-224; README.md:72",
+    "title": "Writer tracking is bounded by capacity, not content: once a Builder/Buffer capacity exceeds 64 KiB every later write through it is untracked (bytes.Buffer.Reset keeps the capacity, so a pooled buffer is permanently blind)",
+    "claim": "writerView returns an invalid view when capacity > MaxRootBytes, so UpdateWriter drops state regardless of how few bytes are written. In supported-only op sequences, including one Grow(70000) raised String() taint loss from 0 to 1,188/8,352 (Buffer) and 726/7,570 (Builder) for values of len>=2. README.md:72 says '64 KiB of charged visible capacity', which is accurate but does not tell users that a reused buffer which once grew past 64 KiB (common with sync.Pool) never tracks again.",
+    "evidence_path": ".omo/review/evidence/crash-diff-bytes/supported-only-with-grow70000-lost-log.txt",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -count=1 -v -run TestDiffWritersSupportedOnly ./iast/internal/zzdiffbytes  vs the same with DIFF_NO_BIG_GROW=1 (supported-only-no-big-grow.txt)",
+    "needs_repro": false
+  }
+]

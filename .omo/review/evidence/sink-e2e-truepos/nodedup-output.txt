@@ -1,0 +1,149 @@
+=== PASS sql-sprintf (http 200, channel=meta_struct.iast, enabled=1, keep=2)
+    evidence: [SELECT id FROM users ORDER BY name; DROP TABLE users#0]
+    source: origin=http.request.parameter name=col value=name; DROP TABLE users pattern=<nil> redacted=<nil>
+=== PASS sql-sprintf-literal (http 200, channel=meta_struct.iast, enabled=1, keep=2)
+    evidence: [************************************************#0]
+    source: origin=http.request.parameter name=name value=<nil> pattern=abcdefghijkl redacted=true
+=== PASS sql-concat (http 200, channel=meta_struct.iast, enabled=1, keep=2)
+    evidence: SELECT id FROM users ORDER BY [name; DROP TABLE users#0] LIMIT **
+    source: origin=http.request.parameter name=col value=name; DROP TABLE users pattern=<nil> redacted=<nil>
+=== PASS sql-concat-literal (http 200, channel=meta_struct.iast, enabled=1, keep=2)
+    evidence: SELECT id FROM users WHERE name = '[abcdefghijkl#0]' AND active = *
+    source: origin=http.request.parameter name=name value=<nil> pattern=abcdefghijkl redacted=true
+=== PASS sql-builder (http 200, channel=meta_struct.iast, enabled=1, keep=2)
+    evidence: SELECT id FROM users ORDER BY [name; DROP TABLE users#0] DESC
+    source: origin=http.request.parameter name=col value=name; DROP TABLE users pattern=<nil> redacted=<nil>
+=== PASS sql-json-decoder (http 200, channel=meta_struct.iast, enabled=1, keep=2)
+    evidence: SELECT id FROM users ORDER BY [name; DROP TABLE users#0]
+    source: origin=http.request.body name=<nil> value={"col":"name; DROP TABLE users"} pattern=<nil> redacted=<nil>
+=== PASS sql-json-unmarshal (http 200, channel=meta_struct.iast, enabled=1, keep=2)
+    evidence: SELECT id FROM users ORDER BY [name; DROP TABLE users#0]
+    source: origin=http.request.body name=<nil> value={"col":"name; DROP TABLE users"} pattern=<nil> redacted=<nil>
+=== PASS sql-header (http 200, channel=meta_struct.iast, enabled=1, keep=2)
+    evidence: SELECT id FROM users ORDER BY [name; DROP TABLE users#0]
+    source: origin=http.request.header name=X-Sort value=name; DROP TABLE users pattern=<nil> redacted=<nil>
+=== PASS sql-cookie (http 200, channel=meta_struct.iast, enabled=1, keep=2)
+    evidence: SELECT id FROM users ORDER BY [name--x#0]
+    source: origin=http.request.cookie.value name=sort value=name--x pattern=<nil> redacted=<nil>
+=== PASS sql-form (http 200, channel=meta_struct.iast, enabled=1, keep=2)
+    evidence: SELECT id FROM users ORDER BY [name; DROP TABLE users#0]
+    source: origin=http.request.parameter name=col value=name; DROP TABLE users pattern=<nil> redacted=<nil>
+=== PASS sql-path (http 200, channel=meta_struct.iast, enabled=1, keep=2)
+    evidence: SELECT id FROM users ORDER BY [name--x#0]
+    source: origin=http.request.path.parameter name=col value=name--x pattern=<nil> redacted=<nil>
+=== PASS sql-two-sources (http 200, channel=meta_struct.iast, enabled=1, keep=2)
+    evidence: SELECT [secret_col#0] FROM [users_tbl#1]
+    source: origin=http.request.parameter name=col value=secret_col pattern=<nil> redacted=<nil>
+    source: origin=http.request.parameter name=table value=users_tbl pattern=<nil> redacted=<nil>
+=== PASS sql-prepare (http 200, channel=meta_struct.iast, enabled=1, keep=2)
+    evidence: SELECT id FROM users ORDER BY [name; DROP TABLE users#0]
+    evidence: SELECT id FROM users ORDER BY [name; DROP TABLE users#0]
+    source: origin=http.request.parameter name=col value=name; DROP TABLE users pattern=<nil> redacted=<nil>
+=== PASS sql-redact-name (http 200, channel=meta_struct.iast, enabled=1, keep=2)
+    evidence: SELECT id FROM users ORDER BY [abcdefghijklmn#0]
+    source: origin=http.request.parameter name=password value=<nil> pattern=abcdefghijklmn redacted=true
+=== PASS sql-comment (http 200, channel=meta_struct.iast, enabled=1, keep=2)
+    evidence: SELECT id FROM users /* api_key=sk_live_CLEANCOMMENT */ ORDER BY [name /* token=ghp_TAINTEDSECRETINCOMMENT */#0]
+    source: origin=http.request.parameter name=col value=name /* token=ghp_TAINTEDSECRETINCOMMENT */ pattern=<nil> redacted=<nil>
+=== PASS sql-literal-func (http 200, channel=meta_struct.iast, enabled=1, keep=2)
+    evidence: SELECT id FROM users ORDER BY [name; DROP TABLE users#0]
+    source: origin=http.request.parameter name=col value=name; DROP TABLE users pattern=<nil> redacted=<nil>
+=== PASS sql-inline-concat (http 200, channel=meta_struct.iast, enabled=1, keep=2)
+    evidence: SELECT id FROM users ORDER BY [name; DROP TABLE users#0]
+    source: origin=http.request.parameter name=col value=name; DROP TABLE users pattern=<nil> redacted=<nil>
+=== PASS sql-inline-sprintf (http 200, channel=meta_struct.iast, enabled=1, keep=2)
+    evidence: [SELECT id FROM users ORDER BY name; DROP TABLE users#0]
+    source: origin=http.request.parameter name=col value=name; DROP TABLE users pattern=<nil> redacted=<nil>
+=== PASS doc-fn-sql-plus-assign (http 200, channel=none, enabled=1, keep=1)
+=== PASS sql-noctx (http 200, channel=meta_struct.iast, enabled=1, keep=2)
+    evidence: SELECT id FROM users ORDER BY [name; DROP TABLE users#0]
+    source: origin=http.request.parameter name=col value=name; DROP TABLE users pattern=<nil> redacted=<nil>
+=== PASS sql-body-string (http 200, channel=meta_struct.iast, enabled=1, keep=2)
+    evidence: SELECT id FROM users ORDER BY [name; DROP TABLE users#0]
+    source: origin=http.request.body name=<nil> value=name; DROP TABLE users pattern=<nil> redacted=<nil>
+=== PASS sql-multipart (http 200, channel=meta_struct.iast, enabled=1, keep=2)
+    evidence: SELECT id FROM users ORDER BY [name; DROP TABLE users#0]
+    source: origin=http.request.multipart.parameter name=col value=name; DROP TABLE users pattern=<nil> redacted=<nil>
+=== PASS sql-method-handler (http 200, channel=meta_struct.iast, enabled=1, keep=2)
+    evidence: SELECT id FROM users ORDER BY [name; DROP TABLE users#0]
+    source: origin=http.request.parameter name=col value=name; DROP TABLE users pattern=<nil> redacted=<nil>
+=== PASS sql-transform (http 200, channel=meta_struct.iast, enabled=1, keep=2)
+    evidence: SELECT id FROM users ORDER BY [name; drop table users#0]
+    source: origin=http.request.parameter name=col value=  NAME; DROP TABLE users   pattern=<nil> redacted=<nil>
+=== PASS sql-query-index (http 200, channel=meta_struct.iast, enabled=1, keep=2)
+    evidence: SELECT id FROM users ORDER BY [name; DROP TABLE users#0]
+    source: origin=http.request.parameter name=col value=name; DROP TABLE users pattern=<nil> redacted=<nil>
+=== PASS sql-json-map (http 200, channel=meta_struct.iast, enabled=1, keep=2)
+    evidence: SELECT id FROM users ORDER BY [name; DROP TABLE users#0]
+    source: origin=http.request.body name=<nil> value={"col":"name; DROP TABLE users"} pattern=<nil> redacted=<nil>
+=== PASS sql-validated-string (http 200, channel=meta_struct.iast, enabled=1, keep=2)
+    evidence: SELECT name FROM users WHERE id = [ab#0]
+    source: origin=http.request.parameter name=id value=<nil> pattern=ab redacted=true
+=== PASS sql-goroutine (http 200, channel=meta_struct.iast, enabled=1, keep=2)
+    evidence: SELECT id FROM users ORDER BY [name; DROP TABLE users#0]
+    source: origin=http.request.parameter name=col value=name; DROP TABLE users pattern=<nil> redacted=<nil>
+=== PASS neg-sql-allowlist (http 200, channel=none, enabled=1, keep=1)
+=== PASS neg-sql-branch (http 200, channel=none, enabled=1, keep=1)
+=== PASS cmd-inline-concat (http 200, channel=meta_struct.iast, enabled=1, keep=2)
+    evidence: sh *********[abcdefgh#0]
+    source: origin=http.request.parameter name=dir value=<nil> pattern=abcdefgh redacted=true
+=== PASS cmd-join (http 200, channel=meta_struct.iast, enabled=1, keep=2)
+    evidence: sh *********[abcdefgh#0]
+    source: origin=http.request.parameter name=dir value=<nil> pattern=abcdefgh redacted=true
+=== PASS neg-fp-builder-reset (http 200, channel=none, enabled=1, keep=1)
+=== PASS sql-buffer-shared-a (http 200, channel=meta_struct.iast, enabled=1, keep=2)
+    evidence: SELECT id FROM users ORDER BY [name; DROP TABLE users#0]
+    source: origin=http.request.parameter name=col value=name; DROP TABLE users pattern=<nil> redacted=<nil>
+=== PASS neg-fp-buffer-shared-b (http 200, channel=none, enabled=1, keep=1)
+=== PASS neg-fp-json-clean-doc (http 200, channel=none, enabled=1, keep=1)
+=== PASS neg-fp-query-set (http 200, channel=none, enabled=1, keep=1)
+=== PASS neg-fp-header-set (http 200, channel=none, enabled=1, keep=1)
+=== PASS neg-fp-replace-all (http 200, channel=none, enabled=1, keep=1)
+=== FAIL obs-fp-sprintf-hex (http 200, channel=meta_struct.iast, enabled=1, keep=2)
+    evidence: [*************************************************************#0]
+    source: origin=http.request.parameter name=name value=<nil> pattern=abcdefghijkl redacted=true
+    FAIL: types map[SQL_INJECTION:1] want map[]
+=== FAIL neg-fp-sprintf-type (http 200, channel=meta_struct.iast, enabled=1, keep=2)
+    evidence: [SELECT id FROM users /* string */#0]
+    source: origin=http.request.parameter name=name value=x' OR '1'='1 pattern=<nil> redacted=<nil>
+    FAIL: types map[SQL_INJECTION:1] want map[]
+=== PASS neg-fp-sprintf-len (http 200, channel=none, enabled=1, keep=1)
+=== FAIL doc-fp-body-overwrite (http 200, channel=meta_struct.iast, enabled=1, keep=2)
+    evidence: [SELECT id FROM users ORDER BY name#0]
+    source: origin=http.request.body name=<nil> value=name; DROP TABLE users; -------xxx pattern=<nil> redacted=<nil>
+    FAIL: types map[SQL_INJECTION:1] want map[]
+=== PASS sql-urlpath (http 200, channel=meta_struct.iast, enabled=1, keep=2)
+    evidence: SELECT id FROM users ORDER BY [name--x#0]
+    source: origin=http.request.path name=<nil> value=/sql/urlpath/name--x pattern=<nil> redacted=<nil>
+=== PASS sql-rawquery (http 200, channel=meta_struct.iast, enabled=1, keep=2)
+    evidence: SELECT id FROM users WHERE [abcdefghijkl#0]
+    source: origin=http.request.query name=<nil> value=<nil> pattern=abcdefghijkl redacted=true
+=== PASS sql-header-index (http 200, channel=meta_struct.iast, enabled=1, keep=2)
+    evidence: SELECT id FROM users ORDER BY [name; DROP TABLE users#0]
+    source: origin=http.request.header name=X-Sort value=name; DROP TABLE users pattern=<nil> redacted=<nil>
+=== PASS sql-auth-header (http 200, channel=meta_struct.iast, enabled=1, keep=2)
+    evidence: SELECT id FROM sessions WHERE token = [hijklmnopqr#0]
+    source: origin=http.request.header name=Authorization value=<nil> pattern=abcdefghijklmnopqr redacted=true
+=== PASS sql-login-control (http 200, channel=meta_struct.iast, enabled=1, keep=2)
+    evidence: SELECT id FROM users WHERE name = '[abcde#0]' AND pw_hash = '***********************' AND tenant = **
+    source: origin=http.request.parameter name=user value=<nil> pattern=abcde redacted=true
+=== PASS sql-login-comment-injection (http 200, channel=meta_struct.iast, enabled=1, keep=2)
+    evidence: SELECT id FROM users WHERE name = '[abcdefghi#0]' AND pw_hash = 'app-secret-literal-7f3a' AND tenant = 42
+    source: origin=http.request.parameter name=user value=<nil> pattern=abcdefghi redacted=true
+=== PASS sql-login-block-comment-injection (http 200, channel=meta_struct.iast, enabled=1, keep=2)
+    evidence: ***********************************[abcdefghi#0]*********************************************************
+    source: origin=http.request.parameter name=user value=<nil> pattern=abcdefghi redacted=true
+=== PASS neg-sql-safe-param (http 200, channel=none, enabled=1, keep=1)
+=== PASS neg-sql-atoi (http 200, channel=none, enabled=1, keep=1)
+=== PASS neg-sql-clean-literal (http 200, channel=none, enabled=1, keep=1)
+=== PASS neg-leak-set (http 200, channel=none, enabled=1, keep=1)
+=== PASS neg-leak-use (http 200, channel=none, enabled=1, keep=1)
+=== PASS cmd-shell (http 200, channel=meta_struct.iast, enabled=1, keep=2)
+    evidence: sh ***[abcdefghijklmnopqrstu#0]
+    source: origin=http.request.parameter name=cmd value=<nil> pattern=abcdefghijklmnopqrstu redacted=true
+=== PASS cmd-arg (http 200, channel=meta_struct.iast, enabled=1, keep=2)
+    evidence: ls ***[abcdefgh#0]
+    source: origin=http.request.parameter name=file value=<nil> pattern=abcdefgh redacted=true
+=== PASS neg-cmd-safe (http 200, channel=none, enabled=1, keep=1)
+=== PASS neg-cmd-atoi (http 200, channel=none, enabled=1, keep=1)
+TOTAL FAILS=3 cases=59 mode=agent

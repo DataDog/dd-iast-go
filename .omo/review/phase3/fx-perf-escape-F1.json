@@ -1,0 +1,13 @@
+[
+  {
+    "id": "perf-escape-F1",
+    "verdict": "CONFIRMED",
+    "original_severity": "High",
+    "adjusted_severity": "High",
+    "reachable_default": true,
+    "documented_limitation": false,
+    "reason": "An independently woven Go 1.26.6 root-package fixture allocates once per short local or locally consumed returned []byte-to-string conversion versus zero allocations in plain Go. The same allocation persists with DD_IAST_ENABLED=false and DD_IAST_REQUEST_SAMPLING=0. Compiler diagnostics show that the generic wrapper costs 131 against the inlining budget of 80 and its conversion escapes before the taint gate. Empty conversions are an exception to the finding's literal 'every' phrasing. README instead advertises allocation-preserving conversions, and the unconditional hot-path allocation violates the product cost rule.",
+    "evidence_path": ".omo/review/evidence/fx-perf-escape-F1/",
+    "repro_command": "Place evidence/fx-perf-escape-F1/repro.go and repro_test.go under <copy>/reviewf1/; cd <copy> && GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 go test -timeout 10m -count=1 -run '^Test(Short|Empty)ByteConversionAllocation$' -bench '^BenchmarkShortHeaderConversion$' -benchtime=20000x -benchmem -v ./reviewf1 && GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 /usr/bin/time -l go tool orchestrion go test -timeout 10m -count=1 -run '^Test(Short|Empty)ByteConversionAllocation$' -bench '^BenchmarkShortHeaderConversion$' -benchtime=20000x -benchmem -v ./reviewf1"
+  }
+]

@@ -1,0 +1,27 @@
+ok  	github.com/DataDog/dd-iast-go/internal/config	0.494s
+ok  	github.com/DataDog/dd-iast-go/internal/config/loader	0.838s
+ok  	github.com/DataDog/dd-iast-go/internal/config/parser	1.074s
+?   	github.com/DataDog/dd-iast-go/internal/instrumentation	[no test files]
+ok  	github.com/DataDog/dd-iast-go/internal/instrumentation/telemetry	1.330s
+ok  	github.com/DataDog/dd-iast-go/internal/model	0.992s
+ok  	github.com/DataDog/dd-iast-go/internal/model/constants	0.406s
+ok  	github.com/DataDog/dd-iast-go/internal/model/truncation	1.123s
+ok  	github.com/DataDog/dd-iast-go/internal/spans	2.428s
+ok  	github.com/DataDog/dd-iast-go/internal/taint/commandbridge	1.206s
+ok  	github.com/DataDog/dd-iast-go/internal/taint/evidence	2.578s
+ok  	github.com/DataDog/dd-iast-go/internal/taint/httpbridge	1.496s
+ok  	github.com/DataDog/dd-iast-go/internal/taint/iobridge	2.188s
+ok  	github.com/DataDog/dd-iast-go/internal/taint/jsonbridge	4.547s
+ok  	github.com/DataDog/dd-iast-go/internal/taint/operatorbridge	3.156s
+ok  	github.com/DataDog/dd-iast-go/internal/taint/propagation	3.118s
+ok  	github.com/DataDog/dd-iast-go/internal/taint/ranges	5.075s
+ok  	github.com/DataDog/dd-iast-go/internal/taint/redaction	3.765s
+ok  	github.com/DataDog/dd-iast-go/internal/taint/request	4.050s
+ok  	github.com/DataDog/dd-iast-go/internal/taint/scopebridge	4.167s
+ok  	github.com/DataDog/dd-iast-go/internal/taint/sqlbridge	5.236s
+ok  	github.com/DataDog/dd-iast-go/internal/taint/store	6.897s
+ok  	github.com/DataDog/dd-iast-go/internal/taint/urlbridge	5.096s
+ok  	github.com/DataDog/dd-iast-go/internal/taint/writerbridge	5.278s
+ok  	github.com/DataDog/dd-iast-go/internal/vulnerability	5.820s
+ok  	github.com/DataDog/dd-iast-go/internal/vulnerability/dedup	5.324s
+ok  	github.com/DataDog/dd-iast-go/internal/vulnerability/stacktrace	4.937s

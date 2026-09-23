@@ -1,0 +1,13 @@
+=== RUN   TestReviewSpanPoolRecycledRootInheritsStaleAnnotation
+=== RUN   TestReviewSpanPoolRecycledRootInheritsStaleAnnotation/sampled-bleed
+    review_pool_internal_test.go:98: attempts=1 recycledSameObject=true newRootSpanID=4077504151775653209 scopeActive=true BindScope==stale:true staleSampled=true vulnerabilitiesAlreadyOnNewRequest=1
+    review_pool_internal_test.go:102: BUG (cross-request bleed): new request root inherited trace A's annotation carrying 1 foreign finding(s)
+=== RUN   TestReviewSpanPoolRecycledRootInheritsStaleAnnotation/negative-starve
+    review_pool_internal_test.go:98: attempts=1 recycledSameObject=true newRootSpanID=4384454869305971499 scopeActive=true BindScope==stale:false staleSampled=false vulnerabilitiesAlreadyOnNewRequest=0
+    review_pool_internal_test.go:104: BUG (false negative): active admitted request inherited trace A's negative decision; BindScope returned nil
+--- FAIL: TestReviewSpanPoolRecycledRootInheritsStaleAnnotation (0.19s)
+    --- FAIL: TestReviewSpanPoolRecycledRootInheritsStaleAnnotation/sampled-bleed (0.17s)
+    --- FAIL: TestReviewSpanPoolRecycledRootInheritsStaleAnnotation/negative-starve (0.02s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/internal/spans	0.795s
+FAIL

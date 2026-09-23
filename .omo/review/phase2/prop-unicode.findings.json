@@ -1,0 +1,35 @@
+[
+  {
+    "id": "prop-unicode-F1",
+    "severity": "Medium",
+    "category": "provenance",
+    "location": "internal/taint/propagation/string_coarse.go:49-67; internal/taint/propagation/bytes_exact.go:382-399",
+    "title": "Non-ASCII case conversion collapses the whole value to the first source",
+    "claim": "CaseString/CaseBytes use exact ranges only for ASCII equal-length input; any non-ASCII byte yields one [0,len) range with the first source ID, attributing clean template bytes to user input and dropping later sources, although unicode case mapping is rune-for-rune and exactly mappable.",
+    "evidence_path": ".omo/review/evidence/prop-unicode/directed-go1.26.6.txt",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 go test -count=1 -run TestReviewCase -v ./internal/taint/propagation/ (with .omo/review/evidence/prop-unicode/zz_review_unicode_test.go copied into internal/taint/propagation/)",
+    "needs_repro": false
+  },
+  {
+    "id": "prop-unicode-F2",
+    "severity": "Low",
+    "category": "provenance",
+    "location": "iast/propagation/coarse.go:38-46",
+    "title": "strings.ToValidUTF8 is coarse although an exact segment mapper exists for bytes",
+    "claim": "StringsToValidUTF8 publishes one whole-value range with the first source on any repair, while bytes.ToValidUTF8 maps copied/replacement segments exactly for the same data.",
+    "evidence_path": ".omo/review/evidence/prop-unicode/directed-go1.26.6.txt",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 go test -count=1 -run TestReviewToValidUTF8StringVsBytes -v ./internal/taint/propagation/",
+    "needs_repro": false
+  },
+  {
+    "id": "prop-unicode-F3",
+    "severity": "Low",
+    "category": "false-negative",
+    "location": "iast/propagation/orchestrion.yml:661-686,1012-1037; README.md:31,34",
+    "title": "ToUpperSpecial/ToLowerSpecial/ToTitleSpecial/Title are not woven although README advertises case conversion",
+    "claim": "Only ToLower/ToUpper/ToTitle have aspects; locale-aware *Special variants and Title in strings and bytes silently drop taint.",
+    "evidence_path": null,
+    "repro_command": null,
+    "needs_repro": false
+  }
+]

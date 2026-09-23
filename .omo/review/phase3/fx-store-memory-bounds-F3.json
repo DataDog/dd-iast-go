@@ -1,0 +1,13 @@
+[
+  {
+    "id": "store-memory-bounds-F3",
+    "verdict": "CONFIRMED",
+    "original_severity": "High",
+    "adjusted_severity": "High",
+    "reachable_default": true,
+    "documented_limitation": false,
+    "reason": "Ordinary sampled SQL reporting can retain a full sink snapshot through short evidence strings. At supported maximum limits, the independent reproduction added 137895936 HeapInuse bytes (5.48x the 24 MiB ceiling) and released it at span finish. The README documents reader/writer anchor retention, not report evidence parts.",
+    "evidence_path": ".omo/review/evidence/fx-store-memory-bounds-F3/01-independent-sql-retention.txt",
+    "repro_command": "cd /tmp/ddiast-review/wt/fx-store-memory-bounds-F3 && env GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 DD_IAST_REQUEST_SAMPLING=100 DD_IAST_MAX_CONCURRENT_REQUESTS=64 DD_IAST_MAX_RANGE_COUNT=64 DD_IAST_VULNERABILITIES_PER_REQUEST=64 DD_IAST_REDACTION_ENABLED=true DD_IAST_TRUNCATION_MAX_VALUE=250 timeout 900 go test -count=1 -timeout 12m -v -run '^TestIndependentF3SQLSnapshotRetention$' ./internal/taint/store"
+  }
+]

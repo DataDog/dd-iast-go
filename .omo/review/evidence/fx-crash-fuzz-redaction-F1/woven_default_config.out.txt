@@ -1,0 +1,37 @@
+Command: cd <copy>/iast/integration/testapp && cp <evidence>/woven_zz_fx3_chain.go ./zz_fx3_chain.go && cp <evidence>/woven_zz_fx3_test.go ./zz_fx3_test.go && env GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 /usr/bin/time -l go tool orchestrion go test -count=1 -timeout=20m -run TestFx3 -v .
+(HEAD 2e23b46, default redaction name/value patterns, query built with '+' in non-test app code)
+
+=== RUN   TestFx3WovenOracleQuoteDesync
+    zz_fx3_test.go:45: note="(urgent) call me back" query="INSERT INTO tickets(state,prio,note,email) VALUES ('Q','1','(urgent) call me back','jane.doe@example.com')"
+    zz_fx3_test.go:46:   sources=[{"origin":"http.request.parameter","name":"note","value":"(urgent) call me back"},{"origin":"http.request.parameter","name":"email","value":"jane.doe@example.com"}]
+    zz_fx3_test.go:49:   evidence={"valueParts":[{"value":"INSERT INTO tickets(state,prio,note,email) VALUES ('Q',"},{"pattern":"***","redacted":true},{"value":",'"},{"value":"(urgent) call me back","source":0},{"value":"'"},{"pattern":"*","redacted":true},{"value":"'"},{"value":"jane.doe@example.com","source":1},{"value":"'"},{"pattern":"*","redacted":true}]}
+    zz_fx3_test.go:52:   LEAK: raw user value in evidence
+    zz_fx3_test.go:57:   LEAK: raw user value in sources
+    zz_fx3_test.go:45: note="urgent call me back" query="INSERT INTO tickets(state,prio,note,email) VALUES ('Q','1','urgent call me back','jane.doe@example.com')"
+    zz_fx3_test.go:46:   sources=[{"origin":"http.request.parameter","name":"note","pattern":"abcdefghijklmnopqrs","redacted":true},{"origin":"http.request.parameter","name":"email","pattern":"abcdefghijklmnopqrst","redacted":true}]
+    zz_fx3_test.go:49:   evidence={"valueParts":[{"value":"INSERT INTO tickets(state,prio,note,email) VALUES ('"},{"pattern":"*","redacted":true},{"value":"','"},{"pattern":"*","redacted":true},{"value":"','"},{"pattern":"abcdefghijklmnopqrs","redacted":true,"source":0},{"value":"','"},{"pattern":"abcdefghijklmnopqrst","redacted":true,"source":1},{"value":"')"}]}
+    zz_fx3_test.go:61: 2 leaks of SQL-literal user values with default redaction config
+--- FAIL: TestFx3WovenOracleQuoteDesync (0.15s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/testapps/integration	1.041s
+FAIL
+exit status 1
+      159.86 real        85.11 user        58.10 sys
+           354664448  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+             5074785  page reclaims
+              229960  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                6980  messages sent
+                7276  messages received
+               63145  signals received
+               47216  voluntary context switches
+             1385219  involuntary context switches
+          5654538521  instructions retired
+          4407249823  cycles elapsed
+            55493376  peak memory footprint
+EXIT=1

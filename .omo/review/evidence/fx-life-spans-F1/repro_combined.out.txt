@@ -1,0 +1,32 @@
+=== RUN   TestFxLifeSpansF1DefaultConfigCrowdOutDropsTaintedFinding
+    zz_fx_life_spans_f1_repro_test.go:142: trial 0 request 0: decision=1 active=false bindNil=true stored=true bindOrder=2 attemptedSink=false reported=false weakKept=false
+    zz_fx_life_spans_f1_repro_test.go:142: trial 0 request 1: decision=1 active=false bindNil=true stored=false bindOrder=3 attemptedSink=false reported=false weakKept=false
+    zz_fx_life_spans_f1_repro_test.go:142: trial 0 request 2: decision=1 active=false bindNil=true stored=true bindOrder=1 attemptedSink=false reported=false weakKept=false
+    zz_fx_life_spans_f1_repro_test.go:142: trial 1 request 0: decision=3 active=true bindNil=false stored=true bindOrder=2 attemptedSink=true reported=true weakKept=true
+    zz_fx_life_spans_f1_repro_test.go:142: trial 1 request 1: decision=3 active=true bindNil=false stored=true bindOrder=3 attemptedSink=true reported=true weakKept=true
+    zz_fx_life_spans_f1_repro_test.go:142: trial 1 request 2: decision=1 active=false bindNil=true stored=true bindOrder=1 attemptedSink=false reported=false weakKept=false
+    zz_fx_life_spans_f1_repro_test.go:142: trial 2 request 0: decision=1 active=false bindNil=true stored=true bindOrder=1 attemptedSink=false reported=false weakKept=false
+    zz_fx_life_spans_f1_repro_test.go:142: trial 2 request 1: decision=1 active=false bindNil=true stored=true bindOrder=2 attemptedSink=false reported=false weakKept=false
+    zz_fx_life_spans_f1_repro_test.go:142: trial 2 request 2: decision=3 active=true bindNil=true stored=false bindOrder=3 attemptedSink=true reported=false weakKept=false
+    zz_fx_life_spans_f1_repro_test.go:173: crowded trial request 0: decision=1 active=false bindNil=true attemptedSink=false taintedReported=false weakKept=false
+    zz_fx_life_spans_f1_repro_test.go:173: crowded trial request 1: decision=1 active=false bindNil=true attemptedSink=false taintedReported=false weakKept=false
+    zz_fx_life_spans_f1_repro_test.go:173: crowded trial request 2: decision=3 active=true bindNil=true attemptedSink=true taintedReported=false weakKept=false
+    zz_fx_life_spans_f1_repro_test.go:176: crowded trial emitted 2 orphan spans named "vulnerability"
+    zz_fx_life_spans_f1_repro_test.go:177: crowded-out active request span _dd.iast.enabled tag=0
+--- PASS: TestFxLifeSpansF1DefaultConfigCrowdOutDropsTaintedFinding (0.03s)
+=== RUN   TestReviewNegativeDecisionsCrowdOutActiveRequest
+    zz_review_lifespans_test.go:53: sampled-out request 0 bound (negative decision stored)
+    zz_review_lifespans_test.go:53: sampled-out request 1 bound (negative decision stored)
+    zz_review_lifespans_test.go:62: active request: scope.Active()=true decision=3 BindScope annotation nil=true
+    zz_review_lifespans_test.go:67: ReportTainted first=false second(dedup)=false
+    zz_review_lifespans_test.go:69: weak-sink annotation for active request sampled=false
+    zz_review_lifespans_test.go:80: finished span name="vulnerability" enabled=1 has_iast_json=false
+    zz_review_lifespans_test.go:80: finished span name="vulnerability" enabled=1 has_iast_json=false
+    zz_review_lifespans_test.go:80: finished span name="active-request" enabled=0 has_iast_json=false
+    zz_review_lifespans_test.go:80: finished span name="sampled-out-request" enabled=0 has_iast_json=false
+    zz_review_lifespans_test.go:80: finished span name="sampled-out-request" enabled=0 has_iast_json=false
+    zz_review_lifespans_test.go:95: BUG: active request annotation nil=true enabled tag=0 event on request span=false orphan spans=2 (want non-nil, 1, true, 0)
+--- FAIL: TestReviewNegativeDecisionsCrowdOutActiveRequest (0.01s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/internal/vulnerability	0.899s
+FAIL

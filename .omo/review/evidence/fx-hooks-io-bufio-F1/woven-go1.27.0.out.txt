@@ -1,0 +1,27 @@
+$ cd /tmp/ddiast-review/wt/fx-hooks-io-bufio-F1/iast/integration/testapp && GOFLAGS=-p=4 GOTOOLCHAIN=go1.27.0 /usr/bin/time -l timeout 1500 go tool orchestrion go test -count=1 -timeout 15m -v -run TestFxF1 . 2>&1
+# encoding/json
+$WORK/b104/orchestrion/src/encoding/json/<generated>:2: dec.r undefined (type *Decoder has no field or method r)
+$WORK/b104/orchestrion/src/encoding/json/<generated>:2: dec.d undefined (type *Decoder has no field or method d)
+$WORK/b104/orchestrion/src/encoding/json/<generated>:3: dec.d undefined (type *Decoder has no field or method d)
+exit status 2
+FAIL	github.com/DataDog/dd-iast-go/testapps/integration [build failed]
+FAIL
+exit status 1
+      111.44 real        73.78 user        57.30 sys
+           291749888  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+             6513564  page reclaims
+              244751  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                7015  messages sent
+                7443  messages received
+               57814  signals received
+               28202  voluntary context switches
+             1155696  involuntary context switches
+            20020347  instructions retired
+            18704907  cycles elapsed
+             1212728  peak memory footprint

@@ -1,0 +1,22 @@
+13:15:22.231769 woven=false go=go1.26.6 clients=256 duration=30s GOMAXPROCS=16 env: sampling=100 maxconc=64 dedup=false vulns=8
+13:15:38.329559 t= 16s done=24649 rps=1541 analyzed=0 sinkT=0 sinkU=0 sql=52386 exec=1197 err=0 canc=1244 oldest=973ms gor=1170 heap=105MiB storeValues=0 storeCharged=0 falseTaint=0 bleed=0/11165 poolBleed=0 agentSQL=0 agentCMD=0
+13:15:52.623797 load phase finished: 39647 requests in 30s
+13:15:54.234616 t= 32s done=39647 rps=1239 analyzed=0 sinkT=0 sinkU=0 sql=83921 exec=1930 err=0 canc=1947 oldest=0s gor=5 heap=51MiB storeValues=0 storeCharged=0 falseTaint=0 bleed=0/20098 poolBleed=0 agentSQL=0 agentCMD=0
+13:15:54.631157 quiescent store: values=0 charged=0 acquireDrops=0
+13:15:54.640170 serial verification (T=tainted, A=active untainted, N=not analyzed): NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN
+13:15:54.640185 FAIL: serial verification not all T
+13:15:58.643957 SUMMARY requests=39647 analyzed=0 sinkTainted=0 sinkUntaintedActive=0 sqlCalls=83921 execCalls=1930 clientErrors=0 cancelled=1947 intendedPanics=2941 lateDone=3043 stalls=0 falseTaint=0 bleed=0 (checks=20098) poolBleed=0 heapAfterGC=5MiB goroutines=7 agentPayloads=0 agentBytes=0 agentSQL=0 agentCMD=0
+13:15:58.644016 flow q       n=3184    avg=172.957ms  max=1.089164s  (vlen at max=22)
+13:15:58.644035 flow h       n=2979    avg=156.328ms  max=1.021623s  (vlen at max=21)
+13:15:58.644046 flow form    n=3028    avg=183.114ms  max=1.000974s  (vlen at max=42)
+13:15:58.644057 flow json    n=3002    avg=158.797ms  max=984.88ms   (vlen at max=10)
+13:15:58.644064 flow body    n=3090    avg=163.891ms  max=1.070307s  (vlen at max=19)
+13:15:58.644071 flow cookie  n=3114    avg=160.361ms  max=979.731ms  (vlen at max=67201)
+13:15:58.644089 flow p       n=3037    avg=164.844ms  max=953.197ms  (vlen at max=7)
+13:15:58.644100 flow buf     n=3148    avg=161.513ms  max=903.542ms  (vlen at max=7)
+13:15:58.644106 flow fan     n=2985    avg=221.774ms  max=1.075597s  (vlen at max=38156)
+13:15:58.644112 flow late    n=3107    avg=161.586ms  max=892.972ms  (vlen at max=21)
+13:15:58.644128 flow abort   n=3000    avg=124.985ms  max=868.557ms  (vlen at max=23)
+13:15:58.644134 flow big     n=2949    avg=265.795ms  max=1.151006s  (vlen at max=13)
+13:15:58.644140 flow derive  n=3024    avg=227.817ms  max=1.439985s  (vlen at max=62260)
+13:15:58.644145 RESULT: FAIL

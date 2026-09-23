@@ -1,0 +1,154 @@
+=== RUN   TestNativeOperatorConcatsAllAdvertisedArities
+=== RUN   TestNativeOperatorConcatsAllAdvertisedArities/concat_2
+=== RUN   TestNativeOperatorConcatsAllAdvertisedArities/concat_3
+=== RUN   TestNativeOperatorConcatsAllAdvertisedArities/concat_4
+=== RUN   TestNativeOperatorConcatsAllAdvertisedArities/concat_5
+=== RUN   TestNativeOperatorConcatsAllAdvertisedArities/concat_6
+=== RUN   TestNativeOperatorConcatsAllAdvertisedArities/concat_7
+=== RUN   TestNativeOperatorConcatsAllAdvertisedArities/concat_8
+=== RUN   TestNativeOperatorConcatsAllAdvertisedArities/concat_9
+=== RUN   TestNativeOperatorConcatsAllAdvertisedArities/concat_10
+=== RUN   TestNativeOperatorConcatsAllAdvertisedArities/concat_11
+=== RUN   TestNativeOperatorConcatsAllAdvertisedArities/concat_12
+=== RUN   TestNativeOperatorConcatsAllAdvertisedArities/concat_13
+=== RUN   TestNativeOperatorConcatsAllAdvertisedArities/concat_14
+=== RUN   TestNativeOperatorConcatsAllAdvertisedArities/concat_15
+=== RUN   TestNativeOperatorConcatsAllAdvertisedArities/concat_16
+--- PASS: TestNativeOperatorConcatsAllAdvertisedArities (0.00s)
+    --- PASS: TestNativeOperatorConcatsAllAdvertisedArities/concat_2 (0.00s)
+    --- PASS: TestNativeOperatorConcatsAllAdvertisedArities/concat_3 (0.00s)
+    --- PASS: TestNativeOperatorConcatsAllAdvertisedArities/concat_4 (0.00s)
+    --- PASS: TestNativeOperatorConcatsAllAdvertisedArities/concat_5 (0.00s)
+    --- PASS: TestNativeOperatorConcatsAllAdvertisedArities/concat_6 (0.00s)
+    --- PASS: TestNativeOperatorConcatsAllAdvertisedArities/concat_7 (0.00s)
+    --- PASS: TestNativeOperatorConcatsAllAdvertisedArities/concat_8 (0.00s)
+    --- PASS: TestNativeOperatorConcatsAllAdvertisedArities/concat_9 (0.00s)
+    --- PASS: TestNativeOperatorConcatsAllAdvertisedArities/concat_10 (0.00s)
+    --- PASS: TestNativeOperatorConcatsAllAdvertisedArities/concat_11 (0.00s)
+    --- PASS: TestNativeOperatorConcatsAllAdvertisedArities/concat_12 (0.00s)
+    --- PASS: TestNativeOperatorConcatsAllAdvertisedArities/concat_13 (0.00s)
+    --- PASS: TestNativeOperatorConcatsAllAdvertisedArities/concat_14 (0.00s)
+    --- PASS: TestNativeOperatorConcatsAllAdvertisedArities/concat_15 (0.00s)
+    --- PASS: TestNativeOperatorConcatsAllAdvertisedArities/concat_16 (0.00s)
+=== RUN   TestNativeBytesToStringConversionForms
+=== RUN   TestNativeBytesToStringConversionForms/assignment
+=== RUN   TestNativeBytesToStringConversionForms/declaration
+=== RUN   TestNativeBytesToStringConversionForms/return
+=== RUN   TestNativeBytesToStringConversionForms/generic
+--- PASS: TestNativeBytesToStringConversionForms (0.00s)
+    --- PASS: TestNativeBytesToStringConversionForms/assignment (0.00s)
+    --- PASS: TestNativeBytesToStringConversionForms/declaration (0.00s)
+    --- PASS: TestNativeBytesToStringConversionForms/return (0.00s)
+    --- PASS: TestNativeBytesToStringConversionForms/generic (0.00s)
+=== RUN   TestUnsupportedNativeOperatorContextsDoNotInventProvenance
+--- PASS: TestUnsupportedNativeOperatorContextsDoNotInventProvenance (0.00s)
+=== RUN   TestOperatorConcatAndSlices
+=== RUN   TestOperatorConcatAndSlices/native_string_slice_all
+=== RUN   TestOperatorConcatAndSlices/native_string_slice_low
+=== RUN   TestOperatorConcatAndSlices/native_string_slice_high
+=== RUN   TestOperatorConcatAndSlices/native_string_slice_bounds
+=== RUN   TestOperatorConcatAndSlices/native_byte_slice_all
+=== RUN   TestOperatorConcatAndSlices/native_byte_slice_low
+=== RUN   TestOperatorConcatAndSlices/native_byte_slice_high
+=== RUN   TestOperatorConcatAndSlices/native_byte_slice_bounds
+=== RUN   TestOperatorConcatAndSlices/native_byte_slice_full
+=== RUN   TestOperatorConcatAndSlices/native_byte_slice_full_zero
+--- PASS: TestOperatorConcatAndSlices (0.00s)
+    --- PASS: TestOperatorConcatAndSlices/native_string_slice_all (0.00s)
+    --- PASS: TestOperatorConcatAndSlices/native_string_slice_low (0.00s)
+    --- PASS: TestOperatorConcatAndSlices/native_string_slice_high (0.00s)
+    --- PASS: TestOperatorConcatAndSlices/native_string_slice_bounds (0.00s)
+    --- PASS: TestOperatorConcatAndSlices/native_byte_slice_all (0.00s)
+    --- PASS: TestOperatorConcatAndSlices/native_byte_slice_low (0.00s)
+    --- PASS: TestOperatorConcatAndSlices/native_byte_slice_high (0.00s)
+    --- PASS: TestOperatorConcatAndSlices/native_byte_slice_bounds (0.00s)
+    --- PASS: TestOperatorConcatAndSlices/native_byte_slice_full (0.00s)
+    --- PASS: TestOperatorConcatAndSlices/native_byte_slice_full_zero (0.00s)
+=== RUN   TestOperatorWrappersInactive
+=== RUN   TestOperatorWrappersInactive/Concat2
+=== RUN   TestOperatorWrappersInactive/Concat3
+=== RUN   TestOperatorWrappersInactive/Concat4
+=== RUN   TestOperatorWrappersInactive/Concat5
+=== RUN   TestOperatorWrappersInactive/Concat6
+=== RUN   TestOperatorWrappersInactive/Concat7
+=== RUN   TestOperatorWrappersInactive/Concat8
+=== RUN   TestOperatorWrappersInactive/Concat9
+=== RUN   TestOperatorWrappersInactive/Concat10
+=== RUN   TestOperatorWrappersInactive/Concat11
+=== RUN   TestOperatorWrappersInactive/Concat12
+=== RUN   TestOperatorWrappersInactive/Concat13
+=== RUN   TestOperatorWrappersInactive/Concat14
+=== RUN   TestOperatorWrappersInactive/Concat15
+=== RUN   TestOperatorWrappersInactive/Concat16
+--- PASS: TestOperatorWrappersInactive (0.00s)
+    --- PASS: TestOperatorWrappersInactive/Concat2 (0.00s)
+    --- PASS: TestOperatorWrappersInactive/Concat3 (0.00s)
+    --- PASS: TestOperatorWrappersInactive/Concat4 (0.00s)
+    --- PASS: TestOperatorWrappersInactive/Concat5 (0.00s)
+    --- PASS: TestOperatorWrappersInactive/Concat6 (0.00s)
+    --- PASS: TestOperatorWrappersInactive/Concat7 (0.00s)
+    --- PASS: TestOperatorWrappersInactive/Concat8 (0.00s)
+    --- PASS: TestOperatorWrappersInactive/Concat9 (0.00s)
+    --- PASS: TestOperatorWrappersInactive/Concat10 (0.00s)
+    --- PASS: TestOperatorWrappersInactive/Concat11 (0.00s)
+    --- PASS: TestOperatorWrappersInactive/Concat12 (0.00s)
+    --- PASS: TestOperatorWrappersInactive/Concat13 (0.00s)
+    --- PASS: TestOperatorWrappersInactive/Concat14 (0.00s)
+    --- PASS: TestOperatorWrappersInactive/Concat15 (0.00s)
+    --- PASS: TestOperatorWrappersInactive/Concat16 (0.00s)
+=== RUN   TestOperatorWrappersPropagateAllAritiesAndSlices
+=== RUN   TestOperatorWrappersPropagateAllAritiesAndSlices/Concat2
+=== RUN   TestOperatorWrappersPropagateAllAritiesAndSlices/Concat3
+=== RUN   TestOperatorWrappersPropagateAllAritiesAndSlices/Concat4
+=== RUN   TestOperatorWrappersPropagateAllAritiesAndSlices/Concat5
+=== RUN   TestOperatorWrappersPropagateAllAritiesAndSlices/Concat6
+=== RUN   TestOperatorWrappersPropagateAllAritiesAndSlices/Concat7
+=== RUN   TestOperatorWrappersPropagateAllAritiesAndSlices/Concat8
+=== RUN   TestOperatorWrappersPropagateAllAritiesAndSlices/Concat9
+=== RUN   TestOperatorWrappersPropagateAllAritiesAndSlices/Concat10
+=== RUN   TestOperatorWrappersPropagateAllAritiesAndSlices/Concat11
+=== RUN   TestOperatorWrappersPropagateAllAritiesAndSlices/Concat12
+=== RUN   TestOperatorWrappersPropagateAllAritiesAndSlices/Concat13
+=== RUN   TestOperatorWrappersPropagateAllAritiesAndSlices/Concat14
+=== RUN   TestOperatorWrappersPropagateAllAritiesAndSlices/Concat15
+=== RUN   TestOperatorWrappersPropagateAllAritiesAndSlices/Concat16
+=== RUN   TestOperatorWrappersPropagateAllAritiesAndSlices/string_low
+=== RUN   TestOperatorWrappersPropagateAllAritiesAndSlices/string_high
+=== RUN   TestOperatorWrappersPropagateAllAritiesAndSlices/string_bounds
+=== RUN   TestOperatorWrappersPropagateAllAritiesAndSlices/string_all
+=== RUN   TestOperatorWrappersPropagateAllAritiesAndSlices/bytes_all
+=== RUN   TestOperatorWrappersPropagateAllAritiesAndSlices/bytes_low
+=== RUN   TestOperatorWrappersPropagateAllAritiesAndSlices/bytes_high
+=== RUN   TestOperatorWrappersPropagateAllAritiesAndSlices/bytes_bounds
+=== RUN   TestOperatorWrappersPropagateAllAritiesAndSlices/bytes_full
+=== RUN   TestOperatorWrappersPropagateAllAritiesAndSlices/bytes_full_zero
+--- PASS: TestOperatorWrappersPropagateAllAritiesAndSlices (0.00s)
+    --- PASS: TestOperatorWrappersPropagateAllAritiesAndSlices/Concat2 (0.00s)
+    --- PASS: TestOperatorWrappersPropagateAllAritiesAndSlices/Concat3 (0.00s)
+    --- PASS: TestOperatorWrappersPropagateAllAritiesAndSlices/Concat4 (0.00s)
+    --- PASS: TestOperatorWrappersPropagateAllAritiesAndSlices/Concat5 (0.00s)
+    --- PASS: TestOperatorWrappersPropagateAllAritiesAndSlices/Concat6 (0.00s)
+    --- PASS: TestOperatorWrappersPropagateAllAritiesAndSlices/Concat7 (0.00s)
+    --- PASS: TestOperatorWrappersPropagateAllAritiesAndSlices/Concat8 (0.00s)
+    --- PASS: TestOperatorWrappersPropagateAllAritiesAndSlices/Concat9 (0.00s)
+    --- PASS: TestOperatorWrappersPropagateAllAritiesAndSlices/Concat10 (0.00s)
+    --- PASS: TestOperatorWrappersPropagateAllAritiesAndSlices/Concat11 (0.00s)
+    --- PASS: TestOperatorWrappersPropagateAllAritiesAndSlices/Concat12 (0.00s)
+    --- PASS: TestOperatorWrappersPropagateAllAritiesAndSlices/Concat13 (0.00s)
+    --- PASS: TestOperatorWrappersPropagateAllAritiesAndSlices/Concat14 (0.00s)
+    --- PASS: TestOperatorWrappersPropagateAllAritiesAndSlices/Concat15 (0.00s)
+    --- PASS: TestOperatorWrappersPropagateAllAritiesAndSlices/Concat16 (0.00s)
+    --- PASS: TestOperatorWrappersPropagateAllAritiesAndSlices/string_low (0.00s)
+    --- PASS: TestOperatorWrappersPropagateAllAritiesAndSlices/string_high (0.00s)
+    --- PASS: TestOperatorWrappersPropagateAllAritiesAndSlices/string_bounds (0.00s)
+    --- PASS: TestOperatorWrappersPropagateAllAritiesAndSlices/string_all (0.00s)
+    --- PASS: TestOperatorWrappersPropagateAllAritiesAndSlices/bytes_all (0.00s)
+    --- PASS: TestOperatorWrappersPropagateAllAritiesAndSlices/bytes_low (0.00s)
+    --- PASS: TestOperatorWrappersPropagateAllAritiesAndSlices/bytes_high (0.00s)
+    --- PASS: TestOperatorWrappersPropagateAllAritiesAndSlices/bytes_bounds (0.00s)
+    --- PASS: TestOperatorWrappersPropagateAllAritiesAndSlices/bytes_full (0.00s)
+    --- PASS: TestOperatorWrappersPropagateAllAritiesAndSlices/bytes_full_zero (0.00s)
+=== RUN   TestOperatorEvaluationAndPanicSemantics
+--- PASS: TestOperatorEvaluationAndPanicSemantics (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/iast/propagation	0.796s

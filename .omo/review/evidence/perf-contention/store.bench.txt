@@ -1,0 +1,102 @@
+goos: darwin
+goarch: arm64
+pkg: github.com/DataDog/dd-iast-go/internal/taint/store
+cpu: Apple M4 Max
+BenchmarkPCMayContainHit                  	 1761334	       180.7 ns/op	         0 miss/op
+BenchmarkPCMayContainHit                  	10916138	        91.22 ns/op	         0 miss/op
+BenchmarkPCMayContainHit                  	 7022059	        63.05 ns/op	         0 miss/op
+BenchmarkPCMayContainHit-4                	 9360066	        45.75 ns/op	         0 miss/op
+BenchmarkPCMayContainHit-4                	15351648	        36.49 ns/op	         0 miss/op
+BenchmarkPCMayContainHit-4                	 8067994	        34.63 ns/op	         0 miss/op
+BenchmarkPCMayContainHit-8                	10970864	        30.87 ns/op	         0 miss/op
+BenchmarkPCMayContainHit-8                	 9455406	        23.39 ns/op	         0 miss/op
+BenchmarkPCMayContainHit-8                	10756623	        23.45 ns/op	         0 miss/op
+BenchmarkPCMayContainHit-16               	14542882	        30.74 ns/op	         0 miss/op
+BenchmarkPCMayContainHit-16               	 9389176	        22.46 ns/op	         0 miss/op
+BenchmarkPCMayContainHit-16               	 6970850	        40.18 ns/op	         0 miss/op
+BenchmarkPCLookupHit                      	  446524	      1459 ns/op	         0 miss/op
+BenchmarkPCLookupHit                      	  500241	      1947 ns/op	         0 miss/op
+BenchmarkPCLookupHit                      	  400400	      1324 ns/op	         0 miss/op
+BenchmarkPCLookupHit-4                    	  850660	       340.1 ns/op	         0 miss/op
+BenchmarkPCLookupHit-4                    	  775214	       499.6 ns/op	         0 miss/op
+BenchmarkPCLookupHit-4                    	  657804	       413.1 ns/op	         0 miss/op
+BenchmarkPCLookupHit-8                    	  514014	       398.8 ns/op	         0 miss/op
+BenchmarkPCLookupHit-8                    	  501576	       456.7 ns/op	         0 miss/op
+BenchmarkPCLookupHit-8                    	  569884	       384.0 ns/op	         0 miss/op
+BenchmarkPCLookupHit-16                   	  492648	       493.0 ns/op	         0 miss/op
+BenchmarkPCLookupHit-16                   	  617577	       325.3 ns/op	         0 miss/op
+BenchmarkPCLookupHit-16                   	  735000	       372.0 ns/op	         0 miss/op
+BenchmarkPCLookupSameKey                  	  318022	      1537 ns/op	         0 miss/op
+BenchmarkPCLookupSameKey                  	  229804	      1706 ns/op	         0 miss/op
+BenchmarkPCLookupSameKey                  	  314641	      1568 ns/op	         0 miss/op
+BenchmarkPCLookupSameKey-4                	  528808	       943.5 ns/op	         0 miss/op
+BenchmarkPCLookupSameKey-4                	  377828	       569.6 ns/op	         0 miss/op
+BenchmarkPCLookupSameKey-4                	  611757	       370.2 ns/op	         0 miss/op
+BenchmarkPCLookupSameKey-8                	  604252	       387.6 ns/op	         0 miss/op
+BenchmarkPCLookupSameKey-8                	  667099	       491.5 ns/op	         0 miss/op
+BenchmarkPCLookupSameKey-8                	  742749	       361.2 ns/op	         0 miss/op
+BenchmarkPCLookupSameKey-16               	  473919	       458.6 ns/op	         0 miss/op
+BenchmarkPCLookupSameKey-16               	  630542	       370.4 ns/op	         0 miss/op
+BenchmarkPCLookupSameKey-16               	  697772	       363.3 ns/op	         0 miss/op
+BenchmarkPCDeriveOwnOwner                 	 4075563	       122.6 ns/op	         0 contention/op	         0 fail/op
+BenchmarkPCDeriveOwnOwner                 	 4508064	        78.15 ns/op	         0 contention/op	         0 fail/op
+BenchmarkPCDeriveOwnOwner                 	 4871925	        49.99 ns/op	         0 contention/op	         0 fail/op
+BenchmarkPCDeriveOwnOwner-4               	 9891032	        44.35 ns/op	         0.007145 contention/op	         0.007145 fail/op
+BenchmarkPCDeriveOwnOwner-4               	 6796555	        51.86 ns/op	         0.01177 contention/op	         0.01177 fail/op
+BenchmarkPCDeriveOwnOwner-4               	 6498194	        32.23 ns/op	         0.01138 contention/op	         0.01138 fail/op
+BenchmarkPCDeriveOwnOwner-8               	 9586704	        30.24 ns/op	         0.01970 contention/op	         0.01970 fail/op
+BenchmarkPCDeriveOwnOwner-8               	 8334750	        26.43 ns/op	         0.02906 contention/op	         0.02906 fail/op
+BenchmarkPCDeriveOwnOwner-8               	10349150	        25.41 ns/op	         0.01841 contention/op	         0.01841 fail/op
+BenchmarkPCDeriveOwnOwner-16              	 8375452	        24.15 ns/op	         0.03980 contention/op	         0.03980 fail/op
+BenchmarkPCDeriveOwnOwner-16              	13207956	        26.98 ns/op	         0.03674 contention/op	         0.03674 fail/op
+BenchmarkPCDeriveOwnOwner-16              	 7564345	        29.27 ns/op	         0.04659 contention/op	         0.04659 fail/op
+BenchmarkPCMixedReadWrite                 	  692122	       697.7 ns/op	         0 readmiss/read	         0 writefail/op
+BenchmarkPCMixedReadWrite                 	  659053	       578.4 ns/op	         0 readmiss/read	         0 writefail/op
+BenchmarkPCMixedReadWrite                 	  905944	       467.6 ns/op	         0 readmiss/read	         0 writefail/op
+BenchmarkPCMixedReadWrite-4               	 2291997	       198.4 ns/op	         0.0007757 readmiss/read	         0.001648 writefail/op
+BenchmarkPCMixedReadWrite-4               	 1614753	       299.0 ns/op	         0.001927 readmiss/read	         0.0004682 writefail/op
+BenchmarkPCMixedReadWrite-4               	 2116645	       166.3 ns/op	         0.0003591 readmiss/read	         0.0007101 writefail/op
+BenchmarkPCMixedReadWrite-8               	 2202672	       183.2 ns/op	         0.0004749 readmiss/read	         0.001889 writefail/op
+BenchmarkPCMixedReadWrite-8               	 3758168	        92.76 ns/op	         0.002063 readmiss/read	         0.003312 writefail/op
+BenchmarkPCMixedReadWrite-8               	 2303460	       105.0 ns/op	         0.001575 readmiss/read	         0.003130 writefail/op
+BenchmarkPCMixedReadWrite-16              	 5945683	        67.74 ns/op	         0.003780 readmiss/read	         0.007203 writefail/op
+BenchmarkPCMixedReadWrite-16              	 4064226	       119.0 ns/op	         0.001607 readmiss/read	         0.005516 writefail/op
+BenchmarkPCMixedReadWrite-16              	 2416592	       113.1 ns/op	         0.001713 readmiss/read	         0.007530 writefail/op
+BenchmarkPCRequestLifecycle               	   14019	     44214 ns/op	         0 acqfail/op	         0 contention/op	         0 derivefail/op	         0 lookupmiss/op	         0 rangetrunc/op	         0 srcfail/op
+BenchmarkPCRequestLifecycle               	    9344	     34238 ns/op	         0 acqfail/op	         0 contention/op	         0 derivefail/op	         0 lookupmiss/op	         0 rangetrunc/op	         0 srcfail/op
+BenchmarkPCRequestLifecycle               	   12586	     22914 ns/op	         0 acqfail/op	         0 contention/op	         0 derivefail/op	         0 lookupmiss/op	         0 rangetrunc/op	         0 srcfail/op
+BenchmarkPCRequestLifecycle-4             	  133875	      1735 ns/op	         0.8726 acqfail/op	         0.004781 contention/op	         0.002517 derivefail/op	         0.002629 lookupmiss/op	         0 rangetrunc/op	         0.002263 srcfail/op
+BenchmarkPCRequestLifecycle-4             	  190189	      1829 ns/op	         0.8771 acqfail/op	         0.003991 contention/op	         0.002035 derivefail/op	         0.002098 lookupmiss/op	         0 rangetrunc/op	         0.001956 srcfail/op
+BenchmarkPCRequestLifecycle-4             	  325106	      1145 ns/op	         0.9043 acqfail/op	         0.003325 contention/op	         0.001719 derivefail/op	         0.001766 lookupmiss/op	         0 rangetrunc/op	         0.001606 srcfail/op
+BenchmarkPCRequestLifecycle-8             	  474861	       868.6 ns/op	         0.9052 acqfail/op	         0.006920 contention/op	         0.003473 derivefail/op	         0.003586 lookupmiss/op	         0 rangetrunc/op	         0.003447 srcfail/op
+BenchmarkPCRequestLifecycle-8             	 1000000	       646.4 ns/op	         0.9353 acqfail/op	         0.004679 contention/op	         0.002403 derivefail/op	         0.002463 lookupmiss/op	         0 rangetrunc/op	         0.002276 srcfail/op
+BenchmarkPCRequestLifecycle-8             	  639302	       568.9 ns/op	         0.9508 acqfail/op	         0.003288 contention/op	         0.001644 derivefail/op	         0.001697 lookupmiss/op	         0 rangetrunc/op	         0.001644 srcfail/op
+BenchmarkPCRequestLifecycle-16            	 1000000	       492.2 ns/op	         0.9494 acqfail/op	         0.005524 contention/op	         0.002752 derivefail/op	         0.002799 lookupmiss/op	         0 rangetrunc/op	         0.002772 srcfail/op
+BenchmarkPCRequestLifecycle-16            	  849854	       503.5 ns/op	         0.9432 acqfail/op	         0.006572 contention/op	         0.003251 derivefail/op	         0.003308 lookupmiss/op	         0 rangetrunc/op	         0.003321 srcfail/op
+BenchmarkPCRequestLifecycle-16            	  836194	       409.4 ns/op	         0.9710 acqfail/op	         0.002923 contention/op	         0.001435 derivefail/op	         0.001467 lookupmiss/op	         0 rangetrunc/op	         0.001488 srcfail/op
+BenchmarkPCRequestLifecycleOverflow       	   22408	     10408 ns/op	         0 acqfail/op	         0 contention/op	         0 derivefail/op	         0 lookupmiss/op	         0 rangetrunc/op	         0 srcfail/op
+BenchmarkPCRequestLifecycleOverflow       	   18786	     27369 ns/op	         0 acqfail/op	         0 contention/op	         0 derivefail/op	         0 lookupmiss/op	         0 rangetrunc/op	         0 srcfail/op
+BenchmarkPCRequestLifecycleOverflow       	   10396	     20433 ns/op	         0 acqfail/op	         0 contention/op	         0 derivefail/op	         0 lookupmiss/op	         0 rangetrunc/op	         0 srcfail/op
+BenchmarkPCRequestLifecycleOverflow-4     	   67908	      4358 ns/op	         0.7725 acqfail/op	         0.004359 contention/op	         0.002297 derivefail/op	         0.002341 lookupmiss/op	         0.09941 rangetrunc/op	         0.002062 srcfail/op
+BenchmarkPCRequestLifecycleOverflow-4     	  201466	      2381 ns/op	         0.8525 acqfail/op	         0.002864 contention/op	         0.001504 derivefail/op	         0.001524 lookupmiss/op	         0.08189 rangetrunc/op	         0.001360 srcfail/op
+BenchmarkPCRequestLifecycleOverflow-4     	   62106	      7187 ns/op	         0.4288 acqfail/op	         0.009065 contention/op	         0.004331 derivefail/op	         0.004396 lookupmiss/op	         0.5039 rangetrunc/op	         0.004734 srcfail/op
+BenchmarkPCRequestLifecycleOverflow-8     	   79399	      4136 ns/op	         0.5674 acqfail/op	         0.01634 contention/op	         0.007935 derivefail/op	         0.008111 lookupmiss/op	         0.7855 rangetrunc/op	         0.008401 srcfail/op
+BenchmarkPCRequestLifecycleOverflow-8     	  254287	      1252 ns/op	         0.9553 acqfail/op	         0.001266 contention/op	         0.0006528 derivefail/op	         0.0006685 lookupmiss/op	         0.02292 rangetrunc/op	         0.0006135 srcfail/op
+BenchmarkPCRequestLifecycleOverflow-8     	  202698	      5624 ns/op	         0.7532 acqfail/op	         0.004174 contention/op	         0.001993 derivefail/op	         0.002042 lookupmiss/op	         0.1430 rangetrunc/op	         0.002181 srcfail/op
+BenchmarkPCRequestLifecycleOverflow-16    	 1000000	      1256 ns/op	         0.9344 acqfail/op	         0.001072 contention/op	         0.0005100 derivefail/op	         0.0005170 lookupmiss/op	         0.04426 rangetrunc/op	         0.0005620 srcfail/op
+BenchmarkPCRequestLifecycleOverflow-16    	  733813	       820.1 ns/op	         0.9608 acqfail/op	         0.001145 contention/op	         0.0005533 derivefail/op	         0.0005533 lookupmiss/op	         0.01871 rangetrunc/op	         0.0005914 srcfail/op
+BenchmarkPCRequestLifecycleOverflow-16    	  412000	       872.2 ns/op	         0.9391 acqfail/op	         0.001575 contention/op	         0.0007840 derivefail/op	         0.0007888 lookupmiss/op	         0.03592 rangetrunc/op	         0.0007913 srcfail/op
+BenchmarkPCFinishSerial                   	  107491	      2185 ns/op
+BenchmarkPCFinishSerial                   	   89605	      4953 ns/op
+BenchmarkPCFinishSerial                   	  128338	      2785 ns/op
+BenchmarkPCFinishSerial-4                 	   56019	      4819 ns/op
+BenchmarkPCFinishSerial-4                 	  142977	      1633 ns/op
+BenchmarkPCFinishSerial-4                 	  144277	      1975 ns/op
+BenchmarkPCFinishSerial-8                 	  158076	      5308 ns/op
+BenchmarkPCFinishSerial-8                 	  167194	      7099 ns/op
+BenchmarkPCFinishSerial-8                 	    8977	     33342 ns/op
+BenchmarkPCFinishSerial-16                	   44275	     11370 ns/op
+BenchmarkPCFinishSerial-16                	  158956	      8043 ns/op
+BenchmarkPCFinishSerial-16                	  140394	     10200 ns/op
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/store	62.665s

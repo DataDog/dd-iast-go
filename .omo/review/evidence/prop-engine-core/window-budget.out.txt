@@ -1,0 +1,32 @@
+Command (private copy, Go 1.26.6):
+GOTOOLCHAIN=go1.26.6 go test ./internal/taint/propagation -run '^(TestReview(String|Bytes)Split_retains_last_nonempty_field_after_empty_fields|TestReviewEmptyWindows_do_not_count_as_dropped_provenance)$' -count=1 -timeout=5m -v
+Exit status: 1
+
+=== RUN   TestReviewStringSplit_retains_last_nonempty_field_after_empty_fields
+    zz_review_window_budget_test.go:31: string last field="attack", tainted=false
+    zz_review_window_budget_test.go:32:
+        	Error Trace:	/tmp/ddiast-review/wt/prop-engine-core/internal/taint/propagation/zz_review_window_budget_test.go:32
+        	Error:      	Should be true
+        	Test:       	TestReviewStringSplit_retains_last_nonempty_field_after_empty_fields
+        	Messages:   	the first nonempty field must keep provenance
+--- FAIL: TestReviewStringSplit_retains_last_nonempty_field_after_empty_fields (0.00s)
+=== RUN   TestReviewBytesSplit_retains_last_nonempty_field_after_empty_fields
+    zz_review_window_budget_test.go:51: bytes last field="attack", tainted=false
+    zz_review_window_budget_test.go:52:
+        	Error Trace:	/tmp/ddiast-review/wt/prop-engine-core/internal/taint/propagation/zz_review_window_budget_test.go:52
+        	Error:      	Should be true
+        	Test:       	TestReviewBytesSplit_retains_last_nonempty_field_after_empty_fields
+        	Messages:   	the first nonempty field must keep provenance
+--- FAIL: TestReviewBytesSplit_retains_last_nonempty_field_after_empty_fields (0.00s)
+=== RUN   TestReviewEmptyWindows_do_not_count_as_dropped_provenance
+    zz_review_window_budget_test.go:69: empty windows: dropped counter before=2 after=3
+    zz_review_window_budget_test.go:70:
+        	Error Trace:	/tmp/ddiast-review/wt/prop-engine-core/internal/taint/propagation/zz_review_window_budget_test.go:70
+        	Error:      	Not equal:
+        	            	expected: 0x2
+        	            	actual  : 0x3
+        	Test:       	TestReviewEmptyWindows_do_not_count_as_dropped_provenance
+--- FAIL: TestReviewEmptyWindows_do_not_count_as_dropped_provenance (0.00s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/propagation	0.381s
+FAIL

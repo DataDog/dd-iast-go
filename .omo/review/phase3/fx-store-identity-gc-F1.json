@@ -1,0 +1,24 @@
+[
+  {
+    "id": "store-identity-gc-F1",
+    "verdict": "CONFIRMED",
+    "original_severity": "High",
+    "adjusted_severity": "High",
+    "reachable_default": true,
+    "documented_limitation": false,
+    "reason": "An un-woven Builder reset can release its tracked but unanchored backing; a same-address, same-length, same-capacity clean rewrite then matches the old writer view and inherits stale ranges. The direct wrapper reproduction failed deterministically on Go 1.26.6, and the independent woven cross-request reproduction confirms the same mechanism on the supported source/writer/sink surface.",
+    "evidence_path": ".omo/review/evidence/fx-store-identity-gc-F1/zz_independent_builder_woven_test.go; .omo/review/evidence/fx-store-identity-gc-F1/independent-woven-go1.26.6.out.txt",
+    "repro_command": "cd iast/integration/testapp && GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -count=1 -timeout 15m -run TestIndependentPooledBuilderBleedsAcrossWovenRequests -v ."
+  },
+  {
+    "id": "life-cross-request-F2",
+    "verdict": "CONFIRMED",
+    "original_severity": "High",
+    "adjusted_severity": "High",
+    "reachable_default": true,
+    "documented_limitation": false,
+    "reason": "This is the same unanchored Builder-view bug as store-identity-gc-F1. In the independent woven reproduction, concurrent request B executed a clean constant SQL query that was tainted with request A's parameter and emitted one SQL finding on B's span.",
+    "evidence_path": ".omo/review/evidence/fx-store-identity-gc-F1/zz_independent_builder_woven_test.go; .omo/review/evidence/fx-store-identity-gc-F1/independent-woven-go1.26.6.out.txt",
+    "repro_command": "cd iast/integration/testapp && GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -count=1 -timeout 15m -run TestIndependentPooledBuilderBleedsAcrossWovenRequests -v ."
+  }
+]

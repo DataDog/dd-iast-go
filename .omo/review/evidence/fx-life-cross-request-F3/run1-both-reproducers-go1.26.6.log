@@ -1,0 +1,46 @@
+=== RUN   TestF3PooledNewBufferCrossRequest
+=== RUN   TestF3PooledNewBufferCrossRequest/concurrent-bleed
+    zz_f3repro_test.go:108: B: query="SELECT status FROM users" tainted=true
+    zz_f3repro_test.go:152: span f3.b: {"sources":[{"origin":"http.request.parameter","name":"uid","value":"1' OR '1'='1' --xxxxxxxx"}],"vulnerabilities":[{"type":"SQL_INJECTION","hash":-2128055613,"evidence":{"valueParts":[{"value":"SELECT status FROM users","source":0}]},"location":{"spanId":380160769705706413,"path":"/tmp/ddiast-review/wt/fx-life-cross-request-F3/iast/integration/testapp/zz_f3repro_test.go","line":109,"method":"github.com/DataDog/dd-iast-go/testapps/integration_test.TestF3PooledNewBufferCrossRequest.func1.3","stackId":"d744dedd-0556-4429-a0f2-529a137bea77"}}]}
+    zz_f3repro_test.go:162: CROSS-REQUEST BLEED: request B executed the constant query "SELECT status FROM users" but its span reports 1 vulnerabilities with sources [http.request.parameter:uid="1' OR '1'='1' --xxxxxxxx"]
+=== RUN   TestF3PooledNewBufferCrossRequest/sequential-control
+    zz_f3repro_test.go:108: B: query="SELECT status FROM users" tainted=false
+    zz_f3repro_test.go:152: span f3.b: 
+--- FAIL: TestF3PooledNewBufferCrossRequest (0.11s)
+    --- FAIL: TestF3PooledNewBufferCrossRequest/concurrent-bleed (0.04s)
+    --- PASS: TestF3PooledNewBufferCrossRequest/sequential-control (0.06s)
+=== RUN   TestReviewPooledSliceNewBufferViewAcrossRequests
+=== RUN   TestReviewPooledSliceNewBufferViewAcrossRequests/concurrent
+    zz_review_crossreq_test.go:405: B: query="SELECT id FROM customers" tainted=true ranges=[[0,+24) origin=http.request.parameter name="q" value="x' OR '1'='1' --comment!"]
+    zz_review_crossreq_test.go:390: span review.b: _dd.iast.enabled=1 _dd.iast.json={"sources":[{"origin":"http.request.parameter","name":"q","value":"x' OR '1'='1' --comment!"}],"vulnerabilities":[{"type":"SQL_INJECTION","hash":-1899194901,"evidence":{"valueParts":[{"value":"SELECT id FROM customers","source":0}]},"location":{"spanId":4085525701640023060,"path":"/tmp/ddiast-review/wt/fx-life-cross-request-F3/iast/integration/testapp/zz_review_crossreq_test.go","line":201,"method":"github.com/DataDog/dd-iast-go/testapps/integration_test.reviewExec","stackId":"e88f57b9-b262-4128-a0a8-5aaf873a7a08"}}]}
+    zz_review_crossreq_test.go:390: span review.a: _dd.iast.enabled=1 _dd.iast.json=
+    zz_review_crossreq_test.go:410: CROSS-REQUEST BLEED (concurrent): request B executed the constant query "SELECT id FROM customers" but its span reports 1 vulnerabilities with sources [http.request.parameter:q="x' OR '1'='1' --comment!"]
+=== RUN   TestReviewPooledSliceNewBufferViewAcrossRequests/sequential-A-finished
+    zz_review_crossreq_test.go:405: B: query="SELECT id FROM customers" tainted=false ranges=[]
+    zz_review_crossreq_test.go:390: span review.a: _dd.iast.enabled=1 _dd.iast.json=
+    zz_review_crossreq_test.go:390: span review.b: _dd.iast.enabled=1 _dd.iast.json=
+--- FAIL: TestReviewPooledSliceNewBufferViewAcrossRequests (0.02s)
+    --- FAIL: TestReviewPooledSliceNewBufferViewAcrossRequests/concurrent (0.01s)
+    --- PASS: TestReviewPooledSliceNewBufferViewAcrossRequests/sequential-A-finished (0.01s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/testapps/integration	0.970s
+FAIL
+exit status 1
+       25.60 real         5.64 user        11.24 sys
+           370982912  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              382373  page reclaims
+               28856  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                2490  messages sent
+                2512  messages received
+                8710  signals received
+               15466  voluntary context switches
+              193569  involuntary context switches
+          4785125184  instructions retired
+          3263820202  cycles elapsed
+            81019648  peak memory footprint

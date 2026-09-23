@@ -1,0 +1,11 @@
+=== RUN   TestReviewOperationsAgainstPerByteOracle
+    oracle_review_test.go:260: seed=20260923 cases=100000 per-op=map[0:5882 1:5952 10:5875 11:6043 12:5952 13:5985 14:5911 15:5678 16:5868 2:5775 3:5786 4:5974 5:5840 6:5966 7:5836 8:5826 9:5851]
+--- PASS: TestReviewOperationsAgainstPerByteOracle (1.60s)
+=== RUN   TestReviewRepeatHugeCountBoundedAndExact
+--- PASS: TestReviewRepeatHugeCountBoundedAndExact (0.00s)
+=== RUN   TestReviewUint32Boundaries
+--- PASS: TestReviewUint32Boundaries (0.00s)
+=== RUN   TestReviewCanonicalizeWorstCaseFragmentation
+--- PASS: TestReviewCanonicalizeWorstCaseFragmentation (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/ranges	2.017s

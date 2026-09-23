@@ -1,0 +1,20 @@
+$ env GOFLAGS=-p=4 GOTOOLCHAIN=go1.27.0 GOEXPERIMENT=nojsonv2 /usr/bin/time -l go -C /tmp/ddiast-review/wt/fx-sink-json-sources-F1/review-json-f1 tool orchestrion go build .
+       66.64 real       106.15 user        91.68 sys
+           431538176  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+             6823549  page reclaims
+              194740  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+               11462  messages sent
+               12557  messages received
+               86842  signals received
+               41699  voluntary context switches
+             1729684  involuntary context switches
+          6350322223  instructions retired
+          3618266686  cycles elapsed
+            38584944  peak memory footprint
+WOVEN_127_LEGACY_EXIT=0

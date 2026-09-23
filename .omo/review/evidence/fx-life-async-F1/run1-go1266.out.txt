@@ -1,0 +1,42 @@
+=== RUN   TestFxURLQueryBehindStdlibRouting
+=== RUN   TestFxURLQueryBehindStdlibRouting/control:_ServeMux,_URL.Query
+    fxurl_test.go:88: FX status=204 value="widget' OR '1'='1" valueTainted=false rawQueryTainted=false queryTainted=false SQLi_reported=1
+=== RUN   TestFxURLQueryBehindStdlibRouting/ServeMux_+_http.StripPrefix_sub-router,_URL.Query
+    fxurl_test.go:88: FX status=204 value="widget' OR '1'='1" valueTainted=false rawQueryTainted=false queryTainted=false SQLi_reported=0
+    fxurl_test.go:92: FALSE NEGATIVE: SQLi from ?name= reported 0 times, want 1
+=== RUN   TestFxURLQueryBehindStdlibRouting/ServeMux_+_http.StripPrefix_sub-router,_FormValue
+    fxurl_test.go:88: FX status=204 value="widget' OR '1'='1" valueTainted=false rawQueryTainted=false queryTainted=false SQLi_reported=1
+=== RUN   TestFxURLQueryBehindStdlibRouting/Request.Clone_middleware,_URL.Query
+    fxurl_test.go:88: FX status=204 value="widget' OR '1'='1" valueTainted=false rawQueryTainted=false queryTainted=false SQLi_reported=0
+    fxurl_test.go:92: FALSE NEGATIVE: SQLi from ?name= reported 0 times, want 1
+=== RUN   TestFxURLQueryBehindStdlibRouting/http.TimeoutHandler_(shallow_copy,_same_*URL),_URL.Query
+    fxurl_test.go:88: FX status=204 value="widget' OR '1'='1" valueTainted=false rawQueryTainted=false queryTainted=false SQLi_reported=1
+--- FAIL: TestFxURLQueryBehindStdlibRouting (0.05s)
+    --- PASS: TestFxURLQueryBehindStdlibRouting/control:_ServeMux,_URL.Query (0.01s)
+    --- FAIL: TestFxURLQueryBehindStdlibRouting/ServeMux_+_http.StripPrefix_sub-router,_URL.Query (0.01s)
+    --- PASS: TestFxURLQueryBehindStdlibRouting/ServeMux_+_http.StripPrefix_sub-router,_FormValue (0.01s)
+    --- FAIL: TestFxURLQueryBehindStdlibRouting/Request.Clone_middleware,_URL.Query (0.01s)
+    --- PASS: TestFxURLQueryBehindStdlibRouting/http.TimeoutHandler_(shallow_copy,_same_*URL),_URL.Query (0.01s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/testapps/integration	0.858s
+FAIL
+exit status 1
+      156.88 real       107.53 user        93.19 sys
+           362725376  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+             6759802  page reclaims
+              326000  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                9119  messages sent
+                9348  messages received
+               95018  signals received
+               59087  voluntary context switches
+             2123136  involuntary context switches
+            20907675  instructions retired
+            13847753  cycles elapsed
+             1212728  peak memory footprint
+EXIT=1

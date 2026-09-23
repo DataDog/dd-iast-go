@@ -1,0 +1,14 @@
+# with candidate_fix.diff applied
+$ go test -count=1 -run TestReviewTombstoned -v ./internal/taint/store/
+=== RUN   TestReviewTombstonedProbeWindowDropsWithFreeCapacity
+    zz_review_tombstone_test.go:45: owner A derived 64/64 start-0 windows in shard 0
+    zz_review_tombstone_test.go:46: owner A 65th start-0 window accepted=false (expected false: window genuinely full of live slots)
+    zz_review_tombstone_test.go:48: after A.Finish: ProcessValues=0
+    zz_review_tombstone_test.go:63: owner B start-0 derives=[true true true] fullDrops=0 tombstones=0 maxTombstones=0 processValues=4
+    zz_review_tombstone_test.go:69: unrelated start-100 derive=true compactions=1
+    zz_review_tombstone_test.go:70: retry start-0 derive after compaction=true
+--- PASS: TestReviewTombstonedProbeWindowDropsWithFreeCapacity (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/store	0.414s
+$ go test -count=1 -race ./internal/taint/store/
+ok  	github.com/DataDog/dd-iast-go/internal/taint/store	10.457s

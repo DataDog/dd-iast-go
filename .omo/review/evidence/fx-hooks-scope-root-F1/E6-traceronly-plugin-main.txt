@@ -1,0 +1,27 @@
+$ cd $WT/fx/traceronly
+$ GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4  go tool orchestrion go build -buildmode=plugin -o ../out/traceronly-pluginmain.so ./cmd/pluginmain
+# example.com/app/cmd/pluginmain
+resolving "github.com/DataDog/dd-trace-go/v2/ddtrace/tracer": -: cannot find package "github.com/DataDog/dd-trace-go/v2/ddtrace/tracer" in any of:
+	/Users/eliott.bouhana/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.6.darwin-arm64/src/github.com/DataDog/dd-trace-go/v2/ddtrace/tracer (from $GOROOT)
+	/Users/eliott.bouhana/go/src/github.com/DataDog/dd-trace-go/v2/ddtrace/tracer (from $GOPATH)
+exit status 1
+       77.67 real        88.85 user        35.54 sys
+           253853696  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+             3891560  page reclaims
+              173311  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                5707  messages sent
+                5817  messages received
+               45332  signals received
+               21973  voluntary context switches
+              941924  involuntary context switches
+          4655817571  instructions retired
+          3237294499  cycles elapsed
+            69354264  peak memory footprint
+
+exit status: 1

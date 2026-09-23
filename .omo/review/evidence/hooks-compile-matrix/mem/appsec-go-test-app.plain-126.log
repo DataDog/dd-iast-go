@@ -1,0 +1,6 @@
+Command: cd appsec-go-test-app && GOTOOLCHAIN=go1.26.6 GOCACHE=/tmp/ddiast-review/wt/hooks-compile-matrix/gocache-cur /usr/bin/time -l timeout 1320 go build ./...
+go version: go version go1.26.6 darwin/arm64
+start: Wed Sep 23 14:23:58 CEST 2026
+14:23  up 11 days, 21:02, 4 users, load averages: 25.49 28.26 46.26
+Exit status: 0
+end: Wed Sep 23 14:24:16 CEST 2026

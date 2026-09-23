@@ -1,0 +1,29 @@
+diff --git a/manifests/golang.yml b/manifests/golang.yml
+index baef48bb0..69797115f 100644
+--- a/manifests/golang.yml
++++ b/manifests/golang.yml
+@@ -198,13 +198,14 @@ manifest:
+   tests/appsec/iast/sink/test_unvalidated_redirect_forward.py::TestUnvalidatedForward: missing_feature
+   tests/appsec/iast/sink/test_unvalidated_redirect_forward.py::TestUnvalidatedForward_ExtendedLocation: missing_feature
+   tests/appsec/iast/sink/test_unvalidated_redirect_forward.py::TestUnvalidatedForward_StackTrace: missing_feature
+-  tests/appsec/iast/sink/test_weak_cipher.py::TestWeakCipher: missing_feature
+-  tests/appsec/iast/sink/test_weak_cipher.py::TestWeakCipher_ExtendedLocation: missing_feature
+-  tests/appsec/iast/sink/test_weak_cipher.py::TestWeakCipher_StackTrace: missing_feature
+-  tests/appsec/iast/sink/test_weak_hash.py::TestDeduplication: missing_feature
+-  tests/appsec/iast/sink/test_weak_hash.py::TestWeakHash: missing_feature
+-  tests/appsec/iast/sink/test_weak_hash.py::TestWeakHash_ExtendedLocation: missing_feature
+-  tests/appsec/iast/sink/test_weak_hash.py::TestWeakHash_StackTrace: missing_feature
++  tests/appsec/iast/sink/test_weak_cipher.py::TestWeakCipher:
++    - weblog_declaration:
++        "*": missing_feature
++        net-http-orchestrion: v2.11.0-dev
++  tests/appsec/iast/sink/test_weak_hash.py:
++    - weblog_declaration:
++        "*": missing_feature
++        net-http-orchestrion: v2.11.0-dev
+   tests/appsec/iast/sink/test_weak_randomness.py::TestWeakRandomness: missing_feature
+   tests/appsec/iast/sink/test_weak_randomness.py::TestWeakRandomness_ExtendedLocation: missing_feature
+   tests/appsec/iast/sink/test_weak_randomness.py::TestWeakRandomness_StackTrace: missing_feature
+
+$ grep test_weak_cipher manifests/golang.yml @4dcd3b8
+201:  tests/appsec/iast/sink/test_weak_cipher.py::TestWeakCipher:

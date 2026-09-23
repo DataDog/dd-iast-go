@@ -1,0 +1,8 @@
+exit=1
+=== RUN   TestIndependentShardWedge
+    wedge_independent_test.go:90: independent wedge: attempted initial slots [0 64 32] accepted=[false false false]; shard0 live=0 tombstones=128 empty=0 compactions=0
+    wedge_independent_test.go:95: shard 0 remains permanently wedged after finished owners
+--- FAIL: TestIndependentShardWedge (0.04s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/store	1.031s
+FAIL

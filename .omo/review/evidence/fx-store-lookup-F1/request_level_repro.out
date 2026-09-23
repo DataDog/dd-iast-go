@@ -1,0 +1,41 @@
+$ cd /tmp/ddiast-review/wt/fx-store-lookup-F1 && GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go test -timeout 15m ./internal/taint/request -run '^TestFx' -count=1 -v
+(request-level body-adoption surface: ReadAllBytes/CloneReaderBytes adopt ONE shared result allocation
+ into every owner bound to the input reader; the test drives analysis.adoptBodyBytes, the exact function
+ those woven paths call, for five concurrent analyses on one shared allocation)
+=== RUN   TestFxSharedBodyResultLosesLiveOwnerAfterFourStaleMatches
+    fx_stale_fanout_request_test.go:47: snapshot entries for the live owner's key: 0
+    fx_stale_fanout_request_test.go:48: 
+        	Error Trace:	/private/tmp/ddiast-review/wt/fx-store-lookup-F1/internal/taint/request/fx_stale_fanout_request_test.go:48
+        	Error:      	Not equal: 
+        	            	expected: 1
+        	            	actual  : 0
+        	Test:       	TestFxSharedBodyResultLosesLiveOwnerAfterFourStaleMatches
+        	Messages:   	the fifth live owner's body taint must survive four stale same-key slots
+--- FAIL: TestFxSharedBodyResultLosesLiveOwnerAfterFourStaleMatches (0.00s)
+=== RUN   TestFxControlFourSharedOwnersKeepLiveOwner
+--- PASS: TestFxControlFourSharedOwnersKeepLiveOwner (0.00s)
+=== RUN   TestFxControlDefaultConcurrencySharedOwnerKeepsTaint
+--- PASS: TestFxControlDefaultConcurrencySharedOwnerKeepsTaint (0.00s)
+=== RUN   TestFxControlFreshPerRequestBuffersUnaffected
+--- PASS: TestFxControlFreshPerRequestBuffersUnaffected (0.00s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/request	1.304s
+FAIL
+
+Interpretation:
+- FAIL   ...FourStaleMatches: with five concurrent analyses adopting one shared
+  body result, four of them finishing leaves four stale same-key slots; Lookup's
+  four-entry candidate budget is consumed by the stale slots, validation drops
+  them all, and the fifth live owner's body taint is lost (snapshot entries: 0).
+- PASS   ...FourSharedOwnersKeepLiveOwner: with only four adopters total, the
+  live owner fits inside the candidate budget.
+- PASS   ...DefaultConcurrencySharedOwnerKeepsTaint: under the DEFAULT admission
+  bound (2 concurrent analyses) the shared result keeps its live owner's taint.
+- PASS   ...FreshPerRequestBuffersUnaffected: distinct per-request allocations
+  (the ordinary io.ReadAll shape) are unaffected.
+
+Caveat verified against HEAD 2e23b46: woven ReadAllBytes/CloneReaderBytes cap
+their owner discovery at [MaxSnapshotOwners]store.OwnerRef (reader.go:48,71;
+binding.go:158-163), so customer-reachable code adopts one address for at most
+FOUR owners; the five-adopter state here is constructed through the internal
+analysis.adoptBodyBytes API, which those woven paths call per bound owner.

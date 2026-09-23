@@ -1,0 +1,14 @@
+=== RUN   TestReviewProbeHeapGrowthSequence
+    review_probe_heap_test.go:42: seq round=1 heapInuse=15540224 delta=0 charged=0/0 values=0/0
+    review_probe_heap_test.go:42: seq round=2 heapInuse=15540224 delta=0 charged=0/0 values=0/0
+    review_probe_heap_test.go:42: seq round=3 heapInuse=15540224 delta=0 charged=0/0 values=0/0
+    review_probe_heap_test.go:42: seq round=4 heapInuse=15540224 delta=0 charged=0/0 values=0/0
+--- PASS: TestReviewProbeHeapGrowthSequence (25.90s)
+=== RUN   TestReviewProbeHeapGrowthLifecycle
+    review_probe_heap_test.go:65: life round=1 heapInuse=112779264 delta=69435392 cleanupsRegistered~210000 charged=0 values=0
+    review_probe_heap_test.go:65: life round=2 heapInuse=182616064 delta=139272192 cleanupsRegistered~360000 charged=0 values=0
+    review_probe_heap_test.go:65: life round=3 heapInuse=251748352 delta=208404480 cleanupsRegistered~510000 charged=0 values=0
+    review_probe_heap_test.go:65: life round=4 heapInuse=321028096 delta=277684224 cleanupsRegistered~660000 charged=0 values=0
+--- PASS: TestReviewProbeHeapGrowthLifecycle (1.94s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/propagation	28.491s

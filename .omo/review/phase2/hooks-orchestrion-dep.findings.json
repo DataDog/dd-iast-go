@@ -1,0 +1,57 @@
+[
+  {
+    "id": "hooks-orchestrion-dep-F1",
+    "severity": "Critical",
+    "category": "behavior-change",
+    "location": "iast/propagation/orchestrion.yml:343-370; orchestrion/internal/injector/aspect/join/slice_expression.go:63-94",
+    "title": "Operator advice evaluates expressions Go leaves unevaluated",
+    "claim": "A wrapped string slice in a constant array len operand is evaluated and panics although native Go does not evaluate that slice.",
+    "evidence_path": ".omo/review/evidence/hooks-orchestrion-dep/run-results.txt",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=2 go tool orchestrion go test -timeout 4m -count=1 -run '^TestArrayLengthLeavesSliceUnevaluated$' -v ./review_operator_arraylength",
+    "needs_repro": false
+  },
+  {
+    "id": "hooks-orchestrion-dep-F2",
+    "severity": "Critical",
+    "category": "compile-break",
+    "location": "orchestrion/internal/injector/aspect/join/slice_expression.go:69-77; iast/propagation/orchestrion.yml:360-370",
+    "title": "Legal integral floating slice index produces a generic type error",
+    "claim": "The matcher rewrites value[1.0:] despite the bound being contextually typed int, generating a generic call that infers disallowed float64.",
+    "evidence_path": ".omo/review/evidence/hooks-orchestrion-dep/run-results.txt",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=2 go tool orchestrion go test -timeout 4m -count=1 -run '^TestReviewIntegralUntypedFloatBound$' -v ./iast/propagation",
+    "needs_repro": false
+  },
+  {
+    "id": "hooks-orchestrion-dep-F3",
+    "severity": "Critical",
+    "category": "compile-break",
+    "location": "orchestrion/internal/toolexec/aspect/oncompile.go:190-195; orchestrion/internal/toolexec/importcfg/importcfg.go:52-83",
+    "title": "Injected operator import panics on import-free packages",
+    "claim": "The new operator advice injects an import into an import-free package; OnCompile assigns it to an uninitialized import-configuration map and aborts compilation.",
+    "evidence_path": ".omo/review/evidence/hooks-orchestrion-dep/run-results.txt",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=2 go tool orchestrion go test -timeout 4m -count=1 ./review_operator_noimports",
+    "needs_repro": false
+  },
+  {
+    "id": "hooks-orchestrion-dep-F4",
+    "severity": "High",
+    "category": "provenance",
+    "location": "orchestrion/internal/injector/typed/coretype.go:60-104; iast/propagation/orchestrion.yml:12-31,343-405",
+    "title": "Core-type resolution loses valid intersected generic constraints",
+    "claim": "Early rejection of a mixed union ignores a later embedded constraint that narrows the final type set to a string or byte-slice core type, dropping taint on three supported operations.",
+    "evidence_path": ".omo/review/evidence/hooks-orchestrion-dep/run-results.txt",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=2 go tool orchestrion go test -timeout 4m -count=1 -run '^TestReviewIntersectionCoreTypeRetainsProvenance$' -v ./iast/propagation",
+    "needs_repro": false
+  },
+  {
+    "id": "hooks-orchestrion-dep-F5",
+    "severity": "Medium",
+    "category": "config",
+    "location": "go.mod:13",
+    "title": "Production dependency is pinned to a changes-requested PR",
+    "claim": "Orchestrion PR #881 remains unmerged with changes requested; dd-iast-go's immutable pseudo-version will not receive corrections until explicitly repinned and revalidated.",
+    "evidence_path": ".omo/review/evidence/hooks-orchestrion-dep/run-results.txt",
+    "repro_command": "gh pr view 881 -R DataDog/orchestrion --json state,reviewDecision,headRefOid,mergedAt,url --jq '{state,reviewDecision,headRefOid,mergedAt,url}'",
+    "needs_repro": false
+  }
+]

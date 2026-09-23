@@ -1,0 +1,7 @@
+Command:
+  cd /tmp/ddiast-review/wt/base-test-127/iast/integration/testapp
+  GOTOOLCHAIN=go1.25.9 go tool orchestrion go build ./cmd/bootstrap
+
+Exit status: 1
+
+go: go.mod requires go >= 1.26.6 (running go 1.25.9; GOTOOLCHAIN=go1.25.9)

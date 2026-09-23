@@ -1,0 +1,5 @@
+=== RUN   TestFxStaleHandleUpdateWriterCrossGeneration
+    fx_verify_test.go:184: slot_cycles=1004887 workers=14 stale_writer_write_succeeded=0 cross_generation_writer_writes=0
+--- PASS: TestFxStaleHandleUpdateWriterCrossGeneration (60.05s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/store	60.585s

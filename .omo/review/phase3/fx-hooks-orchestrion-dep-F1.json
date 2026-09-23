@@ -1,0 +1,13 @@
+[
+ {
+  "id": "hooks-orchestrion-dep-F1",
+  "verdict": "CONFIRMED",
+  "original_severity": "Critical",
+  "adjusted_severity": "High",
+  "reachable_default": true,
+  "documented_limitation": false,
+  "reason": "Independently reproduced on Go 1.26.6 woven builds: wrapping slice or concat expressions inside len/cap/range array operands makes Go evaluate operands the spec leaves unevaluated. Result: runtime panics (4 shapes, including array-pointer conversion and range) and compile errors in const and array-length contexts. unsafe.Sizeof control unaffected. Rule-1 violation independent of the IAST gate. Downgraded one step because every trigger is an uncommon construct. The Go 1.27.0 check was blocked by an unrelated encoding/json weaving failure.",
+  "evidence_path": ".omo/review/evidence/fx-hooks-orchestrion-dep-F1/run-results.txt",
+  "repro_command": "GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go tool orchestrion go test -timeout 10m -count=1 -v ./fxunevaluated ./fxconstctx  # files from .omo/review/evidence/fx-hooks-orchestrion-dep-F1/ placed in fxunevaluated/ and fxconstctx/ at the module root"
+ }
+]

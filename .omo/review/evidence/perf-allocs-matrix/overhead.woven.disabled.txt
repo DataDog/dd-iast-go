@@ -1,0 +1,44 @@
+goos: darwin
+goarch: arm64
+pkg: github.com/DataDog/dd-iast-go/benchmarks/overhead
+cpu: Apple M4 Max
+BenchmarkBytesBufferCopies/read-16        	    2000	       476.7 ns/op	      56 B/op	       2 allocs/op
+BenchmarkBytesBufferCopies/write-16       	    2000	      3466 ns/op	      64 B/op	       2 allocs/op
+BenchmarkBytesBufferCopies/active-unrelated-16         	    2000	       396.8 ns/op	       0 B/op	       0 allocs/op
+BenchmarkPropagationActiveUntainted/StringWindow-16    	    2000	         8.875 ns/op	       0 B/op	       0 allocs/op
+BenchmarkPropagationActiveUntainted/StringWindows-16   	    2000	        73.15 ns/op	      48 B/op	       1 allocs/op
+BenchmarkPropagationActiveUntainted/StringCopy-16      	    2000	        25.56 ns/op	       8 B/op	       1 allocs/op
+BenchmarkPropagationActiveUntainted/StringCoarse-16    	    2000	        75.08 ns/op	       8 B/op	       1 allocs/op
+BenchmarkPropagationActiveUntainted/ByteWindow-16      	    2000	         7.396 ns/op	       0 B/op	       0 allocs/op
+BenchmarkPropagationActiveUntainted/ByteCopy-16        	    2000	        17.71 ns/op	       8 B/op	       1 allocs/op
+BenchmarkStringsBuilder-16                             	    2000	        39.06 ns/op	      24 B/op	       2 allocs/op
+BenchmarkBytesBuffer-16                                	    2000	       148.0 ns/op	      80 B/op	       2 allocs/op
+BenchmarkBytesClone-16                                 	    2000	        24.44 ns/op	      24 B/op	       1 allocs/op
+BenchmarkBytesTrimSpace-16                             	    2000	         3.708 ns/op	       0 B/op	       0 allocs/op
+BenchmarkBytesSplit-16                                 	    2000	        74.42 ns/op	      80 B/op	       1 allocs/op
+BenchmarkBytesJoin-16                                  	    2000	        66.79 ns/op	      16 B/op	       1 allocs/op
+BenchmarkBytesRepeat-16                                	    2000	        30.96 ns/op	      16 B/op	       1 allocs/op
+BenchmarkBytesReplaceAll-16                            	    2000	        71.56 ns/op	      16 B/op	       1 allocs/op
+BenchmarkBytesToLower-16                               	    2000	        84.42 ns/op	      16 B/op	       1 allocs/op
+BenchmarkBytesMap-16                                   	    2000	        63.27 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStringsClone-16                               	    2000	        18.71 ns/op	      24 B/op	       1 allocs/op
+BenchmarkStringsTrimSpace-16                           	    2000	         4.646 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStringsToLower-16                             	    2000	        58.88 ns/op	      16 B/op	       1 allocs/op
+BenchmarkFmtSprintf-16                                 	    2000	        94.85 ns/op	      17 B/op	       1 allocs/op
+BenchmarkURLQueryEscape-16                             	    2000	        41.98 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStrconvQuote-16                               	    2000	       128.3 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStringsJoin-16                                	    2000	        48.75 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStringsRepeat-16                              	    2000	        35.62 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStringsReplaceAll-16                          	    2000	        89.48 ns/op	      16 B/op	       1 allocs/op
+BenchmarkStringsSplitSeq-16                            	    2000	        37.23 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStringsSplit-16                               	    2000	        72.33 ns/op	      48 B/op	       1 allocs/op
+BenchmarkHealth-16                                     	    2000	      2169 ns/op	    6115 B/op	      19 allocs/op
+BenchmarkRequestProcessing-16                          	    2000	      5297 ns/op	    8798 B/op	      47 allocs/op
+BenchmarkRequestProcessingParallel-16                  	    2000	      2970 ns/op	    8804 B/op	      47 allocs/op
+BenchmarkHTTPRoundTrip-16                              	    2000	    256192 ns/op	   34485 B/op	     416 allocs/op
+BenchmarkWeakHashNoActiveSpan-16                       	    2000	       215.1 ns/op	       0 B/op	       0 allocs/op
+BenchmarkWeakHashActiveSpan-16                         	    2000	      5202 ns/op	    5416 B/op	      56 allocs/op
+BenchmarkWeakCipherNoActiveSpan-16                     	    2000	       670.4 ns/op	     128 B/op	       1 allocs/op
+BenchmarkWeakCipherActiveSpan-16                       	    2000	      7100 ns/op	    5544 B/op	      57 allocs/op
+PASS
+ok  	github.com/DataDog/dd-iast-go/benchmarks/overhead	1.391s

@@ -1,0 +1,35 @@
+[
+  {
+    "id": "prop-ranges-fuzz-F1",
+    "severity": "Medium",
+    "category": "config",
+    "location": "internal/taint/propagation/propagation.go:415,692; internal/taint/request/reader.go:110; inherited at internal/taint/propagation/string_exact.go:72, bytes_exact.go:58",
+    "title": "The configured range limit is lost after coarse propagation or duplicate body adoption",
+    "claim": "CoarseString/CoarseBytes and the duplicate io.ReadAll body path adopt with ranges.DefaultLimit (10) instead of config.MaxRangeCount. Later exact operations inherit the first owner entry's per-Set limit, so after one coarse step the cap becomes 10 regardless of DD_IAST_MAX_RANGE_COUNT. With 64 configured, ranges and sources are dropped; with 2 configured, 6 ranges are kept. The store's 64 hard cap still holds.",
+    "evidence_path": "/Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/.omo/review/evidence/prop-ranges-fuzz/zz_review_range_limit_test.go",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 go test -count=1 -run TestReviewCoarseResetsConfiguredRangeLimit -v ./internal/taint/propagation/",
+    "needs_repro": false
+  },
+  {
+    "id": "prop-ranges-fuzz-F2",
+    "severity": "Low",
+    "category": "test-gap",
+    "location": "internal/taint/ranges/fuzz_test.go:14-90; internal/taint/ranges/property_test.go:16-139",
+    "title": "The shipped fuzz targets are nearly vacuous, and half the algebra has no oracle coverage",
+    "claim": "FuzzSliceAndCopy uses a single full-coverage base and checks only validity, with no oracle. FuzzCanonicalize never sets Marks. No oracle covers Compose, Coarse, Shift, Copy, the Mark functions, AdoptCanonical rejection, dst aliasing, or input immutability. The new harness found no defect in these paths.",
+    "evidence_path": "/Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/.omo/review/evidence/prop-ranges-fuzz/oracle_review_test.go",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 go test -count=1 -run TestReview -v ./internal/taint/ranges/",
+    "needs_repro": false
+  },
+  {
+    "id": "prop-ranges-fuzz-F3",
+    "severity": "Low",
+    "category": "perf",
+    "location": "internal/taint/ranges/canonical.go:15-45",
+    "title": "Canonicalize is exported, unused in production, and needs a 29 KiB stack frame",
+    "claim": "No non-test caller exists. Three [383]Range scratch arrays give a $29312 frame, against $1600 for Concat/Slice, so a future hot-path caller would force stack growth.",
+    "evidence_path": null,
+    "repro_command": "GOTOOLCHAIN=go1.26.6 go build -gcflags=-S ./internal/taint/ranges 2>&1 | grep 'TEXT.*ranges.Canonicalize(SB)'",
+    "needs_repro": false
+  }
+]

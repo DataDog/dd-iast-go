@@ -1,0 +1,19 @@
+go version go1.27.0 darwin/arm64
+=== ./internal/buildinfo
+panic: assignment to entry in nil map
+	/Users/eliott.bouhana/go/pkg/mod/github.com/!data!dog/orchestrion@v1.12.2-0.20260828141217-23afa71d6dcb/internal/toolexec/aspect/oncompile.go:195 +0x173c
+           308723712  maximum resident set size
+exit=1
+=== ./internal/textutil
+panic: assignment to entry in nil map
+	/Users/eliott.bouhana/go/pkg/mod/github.com/!data!dog/orchestrion@v1.12.2-0.20260828141217-23afa71d6dcb/internal/toolexec/aspect/oncompile.go:195 +0x173c
+            60309504  maximum resident set size
+exit=1
+=== ./internal/bconv
+panic: assignment to entry in nil map
+	/Users/eliott.bouhana/go/pkg/mod/github.com/!data!dog/orchestrion@v1.12.2-0.20260828141217-23afa71d6dcb/internal/toolexec/aspect/oncompile.go:195 +0x173c
+            60735488  maximum resident set size
+exit=1
+=== ./internal/buildinfo2
+            61112320  maximum resident set size
+exit=0

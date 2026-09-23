@@ -1,0 +1,13 @@
+[
+  {
+    "id": "light-model-F1",
+    "severity": "Low",
+    "category": "test-gap",
+    "location": "internal/model/event_test.go:88,115",
+    "title": "Round-trip fixture references a nonexistent source",
+    "claim": "The round-trip fixture has one source but assigns SourceIndex 3, so it verifies serialization of an invalid reference rather than a valid event relationship.",
+    "evidence_path": null,
+    "repro_command": null,
+    "needs_repro": false
+  }
+]

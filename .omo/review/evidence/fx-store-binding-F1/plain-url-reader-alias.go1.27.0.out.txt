@@ -1,0 +1,11 @@
+Command (from /tmp/ddiast-review/wt/fx-store-binding-F1, finder test installed as internal/taint/request/store_binding_review_test.go):
+GOFLAGS=-p=4 GOTOOLCHAIN=go1.27.0 go test -run TestReviewURLBindingSurvivesReaderAtSameAddress -count=1 -v -timeout=3m ./internal/taint/request
+
+=== RUN   TestReviewURLBindingSurvivesReaderAtSameAddress
+    store_binding_review_test.go:56: URL bindings=0 reader bindings=1 query tainted=false query="attack"
+    store_binding_review_test.go:60: URL.Query source lost when reader shares the URL's address
+--- FAIL: TestReviewURLBindingSurvivesReaderAtSameAddress (0.00s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/request	0.434s
+FAIL
+go version go1.27.0 darwin/arm64

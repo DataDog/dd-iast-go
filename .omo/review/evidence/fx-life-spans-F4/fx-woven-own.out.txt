@@ -1,0 +1,82 @@
+# woven build: cd benchmarks/overhead && GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go tool orchestrion go test -c -o fx.test .  (HEAD 2e23b46; peak RSS 426 MB)
+
+### run=default env=[] exit=0
+=== RUN   TestFxOrphanPerCallOutsideSpan
+    zz_fx_life_spans_f4_test.go:90: DD_IAST_ENABLED="" DD_IAST_REQUEST_SAMPLING="" DD_IAST_STACK_TRACE_ENABLED=""
+    zz_fx_life_spans_f4_test.go:91: background worker: 500 md5.Sum + 500 sha1.Sum calls (2 call sites) -> finished spans=1000 names=map[vulnerability:1000]
+    zz_fx_life_spans_f4_test.go:92: spans carrying _dd.iast.json=287, forced-keep (_sampling_priority_v1=2)=287, vulnerabilities=287, distinct type/hash=2
+    zz_fx_life_spans_f4_test.go:94:   finding WEAK_HASH/-526029345 emitted 138 times
+    zz_fx_life_spans_f4_test.go:94:   finding WEAK_HASH/126497080 emitted 149 times
+    zz_fx_life_spans_f4_test.go:99: allocs per md5.Sum outside any span (averaged over 1000 calls): 69.0
+    zz_fx_life_spans_f4_test.go:100: spans finished during alloc measurement: 1001
+--- PASS: TestFxOrphanPerCallOutsideSpan (0.07s)
+=== RUN   TestFxInRequestRepeatedCalls
+    zz_fx_life_spans_f4_test.go:130: DD_IAST_ENABLED="" DD_IAST_REQUEST_SAMPLING="" DD_IAST_STACK_TRACE_ENABLED=""
+    zz_fx_life_spans_f4_test.go:131: one woven HTTP request doing 1002 md5.Sum calls at one site -> spans=2 names=map[http.request:2] withPayload=1 vulnerabilities=2 distinct=map[WEAK_HASH/-1508375541:1 WEAK_HASH/1322396919:1]
+    zz_fx_life_spans_f4_test.go:132: allocs: first call=27, later (already-recorded) calls avg over 1000=28.0
+--- PASS: TestFxInRequestRepeatedCalls (0.14s)
+PASS
+
+### run=sampling100 env=[DD_IAST_REQUEST_SAMPLING=100] exit=0
+=== RUN   TestFxOrphanPerCallOutsideSpan
+    zz_fx_life_spans_f4_test.go:90: DD_IAST_ENABLED="" DD_IAST_REQUEST_SAMPLING="100" DD_IAST_STACK_TRACE_ENABLED=""
+    zz_fx_life_spans_f4_test.go:91: background worker: 500 md5.Sum + 500 sha1.Sum calls (2 call sites) -> finished spans=1000 names=map[vulnerability:1000]
+    zz_fx_life_spans_f4_test.go:92: spans carrying _dd.iast.json=1000, forced-keep (_sampling_priority_v1=2)=1000, vulnerabilities=1000, distinct type/hash=2
+    zz_fx_life_spans_f4_test.go:94:   finding WEAK_HASH/126497080 emitted 500 times
+    zz_fx_life_spans_f4_test.go:94:   finding WEAK_HASH/-526029345 emitted 500 times
+    zz_fx_life_spans_f4_test.go:99: allocs per md5.Sum outside any span (averaged over 1000 calls): 97.0
+    zz_fx_life_spans_f4_test.go:100: spans finished during alloc measurement: 1001
+--- PASS: TestFxOrphanPerCallOutsideSpan (0.36s)
+=== RUN   TestFxInRequestRepeatedCalls
+    zz_fx_life_spans_f4_test.go:130: DD_IAST_ENABLED="" DD_IAST_REQUEST_SAMPLING="100" DD_IAST_STACK_TRACE_ENABLED=""
+    zz_fx_life_spans_f4_test.go:131: one woven HTTP request doing 1002 md5.Sum calls at one site -> spans=2 names=map[http.request:2] withPayload=1 vulnerabilities=2 distinct=map[WEAK_HASH/-1508375541:1 WEAK_HASH/1322396919:1]
+    zz_fx_life_spans_f4_test.go:132: allocs: first call=27, later (already-recorded) calls avg over 1000=28.0
+--- PASS: TestFxInRequestRepeatedCalls (0.12s)
+PASS
+
+### run=sampling0 env=[DD_IAST_REQUEST_SAMPLING=0] exit=0
+=== RUN   TestFxOrphanPerCallOutsideSpan
+    zz_fx_life_spans_f4_test.go:90: DD_IAST_ENABLED="" DD_IAST_REQUEST_SAMPLING="0" DD_IAST_STACK_TRACE_ENABLED=""
+    zz_fx_life_spans_f4_test.go:91: background worker: 500 md5.Sum + 500 sha1.Sum calls (2 call sites) -> finished spans=1000 names=map[vulnerability:1000]
+    zz_fx_life_spans_f4_test.go:92: spans carrying _dd.iast.json=0, forced-keep (_sampling_priority_v1=2)=0, vulnerabilities=0, distinct type/hash=0
+    zz_fx_life_spans_f4_test.go:99: allocs per md5.Sum outside any span (averaged over 1000 calls): 59.0
+    zz_fx_life_spans_f4_test.go:100: spans finished during alloc measurement: 1001
+--- PASS: TestFxOrphanPerCallOutsideSpan (0.07s)
+=== RUN   TestFxInRequestRepeatedCalls
+    zz_fx_life_spans_f4_test.go:130: DD_IAST_ENABLED="" DD_IAST_REQUEST_SAMPLING="0" DD_IAST_STACK_TRACE_ENABLED=""
+    zz_fx_life_spans_f4_test.go:131: one woven HTTP request doing 1002 md5.Sum calls at one site -> spans=2 names=map[http.request:2] withPayload=0 vulnerabilities=0 distinct=map[]
+    zz_fx_life_spans_f4_test.go:132: allocs: first call=1, later (already-recorded) calls avg over 1000=1.0
+--- PASS: TestFxInRequestRepeatedCalls (0.01s)
+PASS
+
+### run=stackoff-s100 env=[DD_IAST_REQUEST_SAMPLING=100 DD_IAST_STACK_TRACE_ENABLED=false] exit=0
+=== RUN   TestFxOrphanPerCallOutsideSpan
+    zz_fx_life_spans_f4_test.go:90: DD_IAST_ENABLED="" DD_IAST_REQUEST_SAMPLING="100" DD_IAST_STACK_TRACE_ENABLED="false"
+    zz_fx_life_spans_f4_test.go:91: background worker: 500 md5.Sum + 500 sha1.Sum calls (2 call sites) -> finished spans=1000 names=map[vulnerability:1000]
+    zz_fx_life_spans_f4_test.go:92: spans carrying _dd.iast.json=1000, forced-keep (_sampling_priority_v1=2)=1000, vulnerabilities=1000, distinct type/hash=2
+    zz_fx_life_spans_f4_test.go:94:   finding WEAK_HASH/126497080 emitted 500 times
+    zz_fx_life_spans_f4_test.go:94:   finding WEAK_HASH/-526029345 emitted 500 times
+    zz_fx_life_spans_f4_test.go:99: allocs per md5.Sum outside any span (averaged over 1000 calls): 91.0
+    zz_fx_life_spans_f4_test.go:100: spans finished during alloc measurement: 1001
+--- PASS: TestFxOrphanPerCallOutsideSpan (0.08s)
+=== RUN   TestFxInRequestRepeatedCalls
+    zz_fx_life_spans_f4_test.go:130: DD_IAST_ENABLED="" DD_IAST_REQUEST_SAMPLING="100" DD_IAST_STACK_TRACE_ENABLED="false"
+    zz_fx_life_spans_f4_test.go:131: one woven HTTP request doing 1002 md5.Sum calls at one site -> spans=2 names=map[http.request:2] withPayload=1 vulnerabilities=2 distinct=map[WEAK_HASH/-1508375541:1 WEAK_HASH/1322396919:1]
+    zz_fx_life_spans_f4_test.go:132: allocs: first call=21, later (already-recorded) calls avg over 1000=28.0
+--- PASS: TestFxInRequestRepeatedCalls (0.03s)
+PASS
+
+### run=disabled env=[DD_IAST_ENABLED=false] exit=0
+=== RUN   TestFxOrphanPerCallOutsideSpan
+    zz_fx_life_spans_f4_test.go:90: DD_IAST_ENABLED="false" DD_IAST_REQUEST_SAMPLING="" DD_IAST_STACK_TRACE_ENABLED=""
+    zz_fx_life_spans_f4_test.go:91: background worker: 500 md5.Sum + 500 sha1.Sum calls (2 call sites) -> finished spans=0 names=map[]
+    zz_fx_life_spans_f4_test.go:92: spans carrying _dd.iast.json=0, forced-keep (_sampling_priority_v1=2)=0, vulnerabilities=0, distinct type/hash=0
+    zz_fx_life_spans_f4_test.go:99: allocs per md5.Sum outside any span (averaged over 1000 calls): 0.0
+    zz_fx_life_spans_f4_test.go:100: spans finished during alloc measurement: 0
+--- PASS: TestFxOrphanPerCallOutsideSpan (0.01s)
+=== RUN   TestFxInRequestRepeatedCalls
+    zz_fx_life_spans_f4_test.go:130: DD_IAST_ENABLED="false" DD_IAST_REQUEST_SAMPLING="" DD_IAST_STACK_TRACE_ENABLED=""
+    zz_fx_life_spans_f4_test.go:131: one woven HTTP request doing 1002 md5.Sum calls at one site -> spans=2 names=map[http.request:2] withPayload=0 vulnerabilities=0 distinct=map[]
+    zz_fx_life_spans_f4_test.go:132: allocs: first call=0, later (already-recorded) calls avg over 1000=0.0
+--- PASS: TestFxInRequestRepeatedCalls (0.01s)
+PASS

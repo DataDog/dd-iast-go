@@ -1,0 +1,41 @@
+=== RUN   TestFxBuilderABA
+=== RUN   TestFxBuilderABA/zero-assign+io.WriteString/24
+    builder_aba_test.go:107: RESULT variant=zero-assign+io.WriteString size=24 requests=20 addressReused=0 falsePositiveWhenReused=0 falsePositiveWithoutReuse=0
+=== RUN   TestFxBuilderABA/zero-assign+io.WriteString/200
+    builder_aba_test.go:107: RESULT variant=zero-assign+io.WriteString size=200 requests=20 addressReused=0 falsePositiveWhenReused=0 falsePositiveWithoutReuse=0
+=== RUN   TestFxBuilderABA/methodvalue-Reset+fmt.Fprint/24
+    builder_aba_test.go:107: RESULT variant=methodvalue-Reset+fmt.Fprint size=24 requests=20 addressReused=0 falsePositiveWhenReused=0 falsePositiveWithoutReuse=0
+=== RUN   TestFxBuilderABA/methodvalue-Reset+fmt.Fprint/200
+    builder_aba_test.go:107: RESULT variant=methodvalue-Reset+fmt.Fprint size=200 requests=20 addressReused=0 falsePositiveWhenReused=0 falsePositiveWithoutReuse=0
+=== RUN   TestFxBuilderABA/CONTROL-direct-Reset+io.WriteString/24
+    builder_aba_test.go:107: RESULT variant=CONTROL-direct-Reset+io.WriteString size=24 requests=20 addressReused=20 falsePositiveWhenReused=0 falsePositiveWithoutReuse=0
+=== RUN   TestFxBuilderABA/CONTROL-direct-Reset+io.WriteString/200
+    builder_aba_test.go:107: RESULT variant=CONTROL-direct-Reset+io.WriteString size=200 requests=20 addressReused=20 falsePositiveWhenReused=0 falsePositiveWithoutReuse=0
+--- PASS: TestFxBuilderABA (0.34s)
+    --- PASS: TestFxBuilderABA/zero-assign+io.WriteString/24 (0.06s)
+    --- PASS: TestFxBuilderABA/zero-assign+io.WriteString/200 (0.06s)
+    --- PASS: TestFxBuilderABA/methodvalue-Reset+fmt.Fprint/24 (0.08s)
+    --- PASS: TestFxBuilderABA/methodvalue-Reset+fmt.Fprint/200 (0.10s)
+    --- PASS: TestFxBuilderABA/CONTROL-direct-Reset+io.WriteString/24 (0.03s)
+    --- PASS: TestFxBuilderABA/CONTROL-direct-Reset+io.WriteString/200 (0.01s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/iast/internal/zzfx	0.872s
+      988.58 real        44.52 user        74.76 sys
+           324976640  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+             2572593  page reclaims
+               96507  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                3709  messages sent
+                4044  messages received
+               42456  signals received
+               16374  voluntary context switches
+              954299  involuntary context switches
+          5659352236  instructions retired
+          4361234643  cycles elapsed
+            51692264  peak memory footprint
+EXIT=0

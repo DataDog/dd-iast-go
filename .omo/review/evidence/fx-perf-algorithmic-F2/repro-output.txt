@@ -1,0 +1,45 @@
+Private copy: /tmp/ddiast-review/wt/fx-perf-algorithmic-F2 (removed after verification)
+Reproducer: review_collision_independent_test.go, copied into internal/taint/evidence/ in the private copy.
+The following lines were captured from this node's Go test output; unrelated RUN lines are omitted.
+occupiedComparisonsByIndex is the test's arithmetic prediction from the independently
+calculated initial slot and the verified linear-probe implementation, not an instrumented counter.
+All other IAST configuration is left at its default; sampling alone is forced to 100%
+inside the test to avoid a nondeterministic 30% sampling decision.
+
+Command (private copy):
+env GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 go test -mod=readonly -run "^TestReviewCollision" -v -bench "^BenchmarkReviewIndependent(CommandCollectionLong|IndexOnly)$" -benchmem -benchtime=300ms -count=2 -cpu=1 -timeout 5m ./internal/taint/evidence
+
+    review_collision_independent_test.go:108: case=distinct count=32 firstSlot=194 occupiedComparisonsByIndex=0 sources=32 parts=63 args=32 defaultMaxRanges=10
+    review_collision_independent_test.go:108: case=colliding count=32 firstSlot=0 occupiedComparisonsByIndex=496 sources=32 parts=63 args=32 defaultMaxRanges=10
+    review_collision_independent_test.go:108: case=distinct count=128 firstSlot=194 occupiedComparisonsByIndex=0 sources=128 parts=255 args=128 defaultMaxRanges=10
+    review_collision_independent_test.go:108: case=colliding count=128 firstSlot=0 occupiedComparisonsByIndex=8128 sources=128 parts=255 args=128 defaultMaxRanges=10
+    review_collision_independent_test.go:108: case=distinct count=256 firstSlot=194 occupiedComparisonsByIndex=0 sources=256 parts=511 args=256 defaultMaxRanges=10
+    review_collision_independent_test.go:108: case=colliding count=256 firstSlot=0 occupiedComparisonsByIndex=32640 sources=256 parts=511 args=256 defaultMaxRanges=10
+    review_collision_independent_test.go:125: commonPrefixBytes=100 sourceValueBytes=107 commandBytes=27647 firstSlot=0 occupiedComparisonsByIndex=32640 sources=256 parts=511
+    review_collision_independent_test.go:139: commonPrefixBytes=247 sourceValueBytes=254 commandBytes=65279 firstSlot=0 occupiedComparisonsByIndex=32640 sources=256 parts=511
+--- PASS: TestReviewCollisionThroughDefaultCommandCollection (0.02s)
+--- PASS: TestReviewCollisionWithCommonPrefixWithinCommandAnalyzerLimit (0.03s)
+--- PASS: TestReviewCollisionNearCommandCollectorBound (0.06s)
+BenchmarkReviewIndependentCommandCollectionLong/prefix=100/distinct         	    1539	    254159 ns/op	  103392 B/op	     519 allocs/op
+BenchmarkReviewIndependentCommandCollectionLong/prefix=100/distinct         	    1056	    351291 ns/op	  103392 B/op	     519 allocs/op
+BenchmarkReviewIndependentCommandCollectionLong/prefix=100/colliding        	     780	    619832 ns/op	  103392 B/op	     519 allocs/op
+BenchmarkReviewIndependentCommandCollectionLong/prefix=100/colliding        	     892	    669694 ns/op	  103392 B/op	     519 allocs/op
+BenchmarkReviewIndependentCommandCollectionLong/prefix=247/distinct         	     942	    396023 ns/op	  177120 B/op	     519 allocs/op
+BenchmarkReviewIndependentCommandCollectionLong/prefix=247/distinct         	    1207	    336827 ns/op	  177120 B/op	     519 allocs/op
+BenchmarkReviewIndependentCommandCollectionLong/prefix=247/colliding        	     523	    691351 ns/op	  177120 B/op	     519 allocs/op
+BenchmarkReviewIndependentCommandCollectionLong/prefix=247/colliding        	     559	    648822 ns/op	  177120 B/op	     519 allocs/op
+BenchmarkReviewIndependentIndexOnly/distinct                                	    6579	     53240 ns/op	   28928 B/op	     512 allocs/op
+BenchmarkReviewIndependentIndexOnly/distinct                                	    7534	     46765 ns/op	   28928 B/op	     512 allocs/op
+BenchmarkReviewIndependentIndexOnly/colliding                               	    1795	    287047 ns/op	   28928 B/op	     512 allocs/op
+BenchmarkReviewIndependentIndexOnly/colliding                               	    1354	    274751 ns/op	   28928 B/op	     512 allocs/op
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/evidence	5.948s
+
+Command (private copy, supported newer compiler):
+env GOFLAGS=-p=4 GOTOOLCHAIN=go1.27.0 go test -mod=readonly -run "^TestReviewCollision" -v -count=1 -timeout 5m ./internal/taint/evidence
+
+    review_collision_independent_test.go:108: case=colliding count=256 firstSlot=0 occupiedComparisonsByIndex=32640 sources=256 parts=511 args=256 defaultMaxRanges=10
+    review_collision_independent_test.go:125: commonPrefixBytes=100 sourceValueBytes=107 commandBytes=27647 firstSlot=0 occupiedComparisonsByIndex=32640 sources=256 parts=511
+    review_collision_independent_test.go:139: commonPrefixBytes=247 sourceValueBytes=254 commandBytes=65279 firstSlot=0 occupiedComparisonsByIndex=32640 sources=256 parts=511
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/evidence	0.674s

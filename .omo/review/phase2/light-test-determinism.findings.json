@@ -1,0 +1,13 @@
+[
+  {
+    "id": "light-test-determinism-F1",
+    "severity": "Low",
+    "category": "test-gap",
+    "location": "internal/taint/store/identity_test.go:43-58",
+    "title": "Address-reuse assertion can be skipped",
+    "claim": "The stale-entry check only runs if the allocator reuses the old address within MaxRootsPerOwner allocations. Otherwise the test calls t.Skip, so this lifecycle assertion is conditional on allocator behavior and can provide no coverage in that run.",
+    "evidence_path": ".omo/review/evidence/light-test-determinism/address-reuse-test.txt",
+    "repro_command": null,
+    "needs_repro": false
+  }
+]

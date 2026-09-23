@@ -1,0 +1,33 @@
+fuzz: elapsed: 0s, gathering baseline coverage: 0/235 completed
+fuzz: elapsed: 0s, gathering baseline coverage: 235/235 completed, now fuzzing with 2 workers
+fuzz: elapsed: 3s, execs: 7540 (2512/sec), new interesting: 29 (total: 264)
+fuzz: elapsed: 6s, execs: 8937 (466/sec), new interesting: 31 (total: 266)
+fuzz: elapsed: 9s, execs: 8937 (0/sec), new interesting: 31 (total: 266)
+fuzz: elapsed: 12s, execs: 8937 (0/sec), new interesting: 31 (total: 266)
+fuzz: elapsed: 14s, execs: 8961 (12/sec), new interesting: 31 (total: 266)
+--- FAIL: FuzzExactStringOps (14.10s)
+    fuzzing process hung or terminated unexpectedly while minimizing: EOF
+    Failing input written to testdata/fuzz/FuzzExactStringOps/fefb142c47516c03
+    To re-run:
+    go test -run=FuzzExactStringOps/fefb142c47516c03
+FAIL
+exit status 1
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/propagation	14.550s
+       15.00 real        24.83 user         6.43 sys
+          1468170240  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              197742  page reclaims
+                 695  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+              102746  signals received
+                8687  voluntary context switches
+              358421  involuntary context switches
+          2885971094  instructions retired
+          1564776396  cycles elapsed
+            25232080  peak memory footprint

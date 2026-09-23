@@ -1,0 +1,33 @@
+# res-digest: Orchestrion PR #858 research digest and dd-iast-go checks
+Verdict: The research's two failure classes are pinning leaks and process-wide over-taint latches. dd-iast-go avoids both by design. Its invalidate-before-release, owner ABA, saturation-drop, cheap-gate, and alias-routing paths are statically sound. The main research-reproduced risk that remains open is stale taint on in-place-mutated byte roots and buffer spare capacity. That risk is documented but unmeasured. One Low finding (long-lived handlers hold analysis permits).
+Scope covered: phase1/research/{runtime,injector,shadow,cases}.md and the sibling res-*.md reports. In dd-iast-go at 2e23b46: README.md; internal/taint/store/{limits,store,value,lookup,root,mutation,owner}.go (read in full), writer.go (lock and invalidation paths), race_test.go; iast/propagation/operators.go; internal/taint/propagation/{propagation.go:1-240,476-520, conversion.go, string_exact.go:1-120, string_coarse.go:1-110}; internal/taint/request/{scope.go:55-224, owner.go:60-120,250-282, reader.go}; iast/net/http/orchestrion.yml:1-50; iast/propagation/orchestrion.yml:290-365. Static review only. Nothing was built or run, so no private copy was created.
+Deliverable: `phase1/research/00-digest.md` (comparison table, 25 consolidated checks by component, prioritised risks).
+
+## Findings
+### res-digest-F1: Long-lived sampled handlers hold one of the two default analysis permits for their whole lifetime
+- Severity: Low
+- Category: config
+- Location: iast/net/http/orchestrion.yml:29-33; internal/taint/request/owner.go:65-80,259-273; internal/taint/request/scope.go:91-101
+- Claim: The analysis permit is acquired in `serverHandler.ServeHTTP` and released only by the deferred `iasthttpbridge.Finish` when the handler returns. With the README defaults (`DD_IAST_MAX_CONCURRENT_REQUESTS=2`, 30% sampling), two sampled long-lived handlers are enough to make every other request `DecisionCapacityDropped` until those connections close. Examples of long-lived handlers are SSE, websocket upgrades whose handler blocks, long polling, and streaming gRPC-gateway. This is not permanent and not a leak, which is why it is not High. But it can silently disable IAST for hours on streaming services, and the README does not mention it. dd-trace-java uses the same permit-per-request model, so this is a conscious trade-off rather than a defect.
+- Evidence: static reasoning only (NEEDS-REPRO). Begin/`defer Finish` is at orchestrion.yml:29-33. The permit bitmask CAS is at owner.go:65-80, and it is released only in `Analysis.Finish` (owner.go:272). Capacity-drop decision: scope.go:95-98.
+- Fix: Document it in README "Runtime Configuration" and "Cost Control". Optionally, skip or release analysis on a detected upgrade or hijack, or cap the analysis duration.
+
+## Checked and found correct
+- Invalidation happens before anchor release. `Owner.Finish` CASes `stateActive`->`stateFinishing` (owner.go:162), then takes `lifecycleMu.Lock` (165), and only then clears `stringAnchor`/`bytesAnchor` (191-192). `Lookup` accepts a window only with `stateActive` under `lifecycleMu.TryRLock` (lookup.go:148-155). A freed address therefore cannot match (research pitfall 1 and R3).
+- Owner-slot ABA. `ownerGen` is a `uint64` incremented on every Acquire (owner.go:53). `Entry.Handle` checks gen, state, and ID (lookup.go:35-44). `beginWrite`/`alive` recheck gen and state under the lifecycle RLock (owner.go:127-149). Stale slots are rejected by `stale()` (value.go:231-243).
+- Anchors cannot be recycled within an owner. Anchors are dropped only by `rollbackRoot` and Finish. `PublishBytesMutation` requires the same base and span (mutation.go:51). The generation restart in `rollbackRoot` (root.go:391) is safe because rollback runs only when `putWindow` failed and no `RootRef` escaped.
+- Byte mutation fails safe. `claimMutation` bumps the root generation by CAS before any lock that could fail (mutation.go:30,79-99), so a failed publish never restores pre-mutation ranges (R8).
+- Writers fail safe. TryLock failure sets `writerDirty` (writer.go:127-128,159-160,273-274,298-299). `SnapshotWriter` refuses a dirty owner or a view mismatch (writer.go:241-258). Resets and truncations outside hooks are therefore detected (R16).
+- Runtime-shared addresses. Sources clone (root.go:40,80,120,162) and refuse `len<2` (27-30). `""+s`-style aliases are derived, not adopted (string_exact.go:25-40, string_coarse.go:42-45, propagation.go:163-165). `BytesToString` refuses `len<2`, and its `string(value)` result escapes to the heap (iast/propagation/operators.go:198-204; conversion.go:16).
+- Exact span. The window is `len` for strings and `cap` for bytes, never the size-class charge (root.go:51,132,236,247; value.go:35-49) (R11).
+- No process-wide saturation latch (R7, research F3). Grep for `atomic.Bool` in internal/: only the per-owner `writerDirty`, `request/owner.go` `active`, `spans` `closed`, and test seams.
+- The cheap gate comes first (R10). `HasValues()` is checked before the internal call (operators.go:23-26). Internal code checks `ActiveStore()`, then `MayContain`, then a noinline slow path (propagation.go:141-173).
+- Finish is deferred at the HTTP entry, so it runs on panic (net/http orchestrion.yml:33). Permit and owner failure paths return the permit bit (request/owner.go:84-92).
+- A same-value concurrency test exists for Derive, Lookup, Finish, and mutation (store/race_test.go:16-86).
+
+## Not covered / open questions
+- P1, not reproduced here: stale ranges after an in-place write to a tracked byte root or window, and the research `bytes.Buffer` spare-capacity sequence (internal `Reset` in `Read`, a shorter clean write, then `ReadFrom`). Needs an instrumented reproducer against `iast/propagation/writer.go` and a direct `copy(window, clean)` before a sink. `ReadAllBytes` adopts the application-owned `io.ReadAll` slice (reader.go:67-88,116,119). Digest check 12.
+- Adopting an already-tracked key again (reader.go:106-117 `AddDuplicate` with the same slice, or propagation/writer.go:235) repoints the slot (value.go:172-187) and charges the same allocation twice. This is bounded, but I did not verify whether it is reachable.
+- The remaining `AdoptString`/`AdoptBytes` result callers were not audited against stdlib fast paths that return the input unchanged or a subslice (digest check 9).
+- `MayContain` returns true for stale slots until they are lazily reclaimed (lookup.go:97). The slow-path hit rate after owner churn was not measured.
+- Finish followed by re-Acquire of the same owner slot while stale goroutines still publish is not in race_test.go. This is a test gap for other nodes.

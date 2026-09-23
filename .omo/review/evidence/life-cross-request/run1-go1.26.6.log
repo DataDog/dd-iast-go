@@ -1,0 +1,88 @@
+=== RUN   TestReviewPooledReadAllSliceAcrossRequests
+=== RUN   TestReviewPooledReadAllSliceAcrossRequests/concurrent-same-length
+    zz_review_crossreq_test.go:247: B: query="SELECT id FROM customers" tainted=true ranges=[[0,+24) origin=http.request.body name="" value="x' OR '1'='1' --comment!"]
+    zz_review_crossreq_test.go:231: span review.b: _dd.iast.enabled=1 _dd.iast.json={"sources":[{"origin":"http.request.body","value":"x' OR '1'='1' --comment!"}],"vulnerabilities":[{"type":"SQL_INJECTION","hash":1083549354,"evidence":{"valueParts":[{"value":"SELECT id FROM customers","source":0}]},"location":{"spanId":5744086694215387552,"path":"/tmp/ddiast-review/wt/life-cross-request/iast/integration/testapp/zz_review_crossreq_test.go","line":201,"method":"github.com/DataDog/dd-iast-go/testapps/integration_test.reviewExec","stackId":"1077d139-22d8-4d15-8352-ed5f6af09b7e"}}]}
+    zz_review_crossreq_test.go:231: span review.a: _dd.iast.enabled=1 _dd.iast.json=
+    zz_review_crossreq_test.go:252: CROSS-REQUEST BLEED (concurrent-same-length): request B executed the constant query "SELECT id FROM customers" but its span reports 1 vulnerabilities with sources [http.request.body:="x' OR '1'='1' --comment!"]
+=== RUN   TestReviewPooledReadAllSliceAcrossRequests/concurrent-different-length
+    zz_review_crossreq_test.go:247: B: query="SELECT id FROM customers " tainted=false ranges=[]
+    zz_review_crossreq_test.go:231: span review.b: _dd.iast.enabled=1 _dd.iast.json=
+    zz_review_crossreq_test.go:231: span review.a: _dd.iast.enabled=1 _dd.iast.json=
+=== RUN   TestReviewPooledReadAllSliceAcrossRequests/sequential-A-finished
+    zz_review_crossreq_test.go:247: B: query="SELECT id FROM customers" tainted=false ranges=[]
+    zz_review_crossreq_test.go:231: span review.a: _dd.iast.enabled=1 _dd.iast.json=
+    zz_review_crossreq_test.go:231: span review.b: _dd.iast.enabled=1 _dd.iast.json=
+--- FAIL: TestReviewPooledReadAllSliceAcrossRequests (0.03s)
+    --- FAIL: TestReviewPooledReadAllSliceAcrossRequests/concurrent-same-length (0.01s)
+    --- PASS: TestReviewPooledReadAllSliceAcrossRequests/concurrent-different-length (0.01s)
+    --- PASS: TestReviewPooledReadAllSliceAcrossRequests/sequential-A-finished (0.01s)
+=== RUN   TestReviewPooledBuilderAcrossRequestsAfterGC
+=== RUN   TestReviewPooledBuilderAcrossRequestsAfterGC/concurrent
+    zz_review_crossreq_test.go:310: B: backing 0x17d9b7958918 (len 24 cap 24) reused after 29 clean writes; query="SELECT id FROM customers" tainted=true ranges=[[0,+24) origin=http.request.parameter name="q" value="x' OR '1'='1' --comment!"]
+    zz_review_crossreq_test.go:276: span review.b: _dd.iast.enabled=1 _dd.iast.json={"sources":[{"origin":"http.request.parameter","name":"q","value":"x' OR '1'='1' --comment!"}],"vulnerabilities":[{"type":"SQL_INJECTION","hash":1083549354,"evidence":{"valueParts":[{"value":"SELECT id FROM customers","source":0}]},"location":{"spanId":1297116584471229330,"path":"/tmp/ddiast-review/wt/life-cross-request/iast/integration/testapp/zz_review_crossreq_test.go","line":201,"method":"github.com/DataDog/dd-iast-go/testapps/integration_test.reviewExec","stackId":"1efcf4d5-f4e7-4a0a-9da5-daa47039a87b"}}]}
+    zz_review_crossreq_test.go:276: span review.a: _dd.iast.enabled=1 _dd.iast.json=
+    zz_review_crossreq_test.go:316: CROSS-REQUEST BLEED (concurrent): request B executed the constant query "SELECT id FROM customers" but its span reports 1 vulnerabilities with sources [http.request.parameter:q="x' OR '1'='1' --comment!"]
+=== RUN   TestReviewPooledBuilderAcrossRequestsAfterGC/sequential-A-finished
+    zz_review_crossreq_test.go:310: B: backing 0x17d9b7959608 (len 24 cap 24) reused after 54 clean writes; query="SELECT id FROM customers" tainted=false ranges=[]
+    zz_review_crossreq_test.go:276: span review.a: _dd.iast.enabled=1 _dd.iast.json=
+    zz_review_crossreq_test.go:276: span review.b: _dd.iast.enabled=1 _dd.iast.json=
+--- FAIL: TestReviewPooledBuilderAcrossRequestsAfterGC (0.02s)
+    --- FAIL: TestReviewPooledBuilderAcrossRequestsAfterGC/concurrent (0.01s)
+    --- PASS: TestReviewPooledBuilderAcrossRequestsAfterGC/sequential-A-finished (0.01s)
+=== RUN   TestReviewPooledBufferAcrossRequests
+=== RUN   TestReviewPooledBufferAcrossRequests/woven-reset
+    zz_review_crossreq_test.go:364: B: query="SELECT id FROM customers" tainted=false ranges=[]
+    zz_review_crossreq_test.go:347: span review.b: _dd.iast.enabled=1 _dd.iast.json=
+    zz_review_crossreq_test.go:347: span review.a: _dd.iast.enabled=1 _dd.iast.json=
+=== RUN   TestReviewPooledBufferAcrossRequests/unwoven-reset-unwoven-write
+    zz_review_crossreq_test.go:364: B: query="SELECT id FROM customers" tainted=false ranges=[]
+    zz_review_crossreq_test.go:347: span review.b: _dd.iast.enabled=1 _dd.iast.json=
+    zz_review_crossreq_test.go:347: span review.a: _dd.iast.enabled=1 _dd.iast.json=
+=== RUN   TestReviewPooledBufferAcrossRequests/no-reset-truncate-via-dependency
+    zz_review_crossreq_test.go:364: B: query="SELECT id FROM customers" tainted=false ranges=[]
+    zz_review_crossreq_test.go:347: span review.b: _dd.iast.enabled=1 _dd.iast.json=
+    zz_review_crossreq_test.go:347: span review.a: _dd.iast.enabled=1 _dd.iast.json=
+--- PASS: TestReviewPooledBufferAcrossRequests (0.03s)
+    --- PASS: TestReviewPooledBufferAcrossRequests/woven-reset (0.01s)
+    --- PASS: TestReviewPooledBufferAcrossRequests/unwoven-reset-unwoven-write (0.01s)
+    --- PASS: TestReviewPooledBufferAcrossRequests/no-reset-truncate-via-dependency (0.01s)
+=== RUN   TestReviewPooledSliceNewBufferViewAcrossRequests
+=== RUN   TestReviewPooledSliceNewBufferViewAcrossRequests/concurrent
+    zz_review_crossreq_test.go:405: B: query="SELECT id FROM customers" tainted=true ranges=[[0,+24) origin=http.request.parameter name="q" value="x' OR '1'='1' --comment!"]
+    zz_review_crossreq_test.go:390: span review.b: _dd.iast.enabled=1 _dd.iast.json={"sources":[{"origin":"http.request.parameter","name":"q","value":"x' OR '1'='1' --comment!"}],"vulnerabilities":[{"type":"SQL_INJECTION","hash":1083549354,"evidence":{"valueParts":[{"value":"SELECT id FROM customers","source":0}]},"location":{"spanId":5777796980177871655,"path":"/tmp/ddiast-review/wt/life-cross-request/iast/integration/testapp/zz_review_crossreq_test.go","line":201,"method":"github.com/DataDog/dd-iast-go/testapps/integration_test.reviewExec","stackId":"234a29ac-3017-4fee-9be5-d76d70da4c5e"}}]}
+    zz_review_crossreq_test.go:390: span review.a: _dd.iast.enabled=1 _dd.iast.json=
+    zz_review_crossreq_test.go:410: CROSS-REQUEST BLEED (concurrent): request B executed the constant query "SELECT id FROM customers" but its span reports 1 vulnerabilities with sources [http.request.parameter:q="x' OR '1'='1' --comment!"]
+=== RUN   TestReviewPooledSliceNewBufferViewAcrossRequests/sequential-A-finished
+    zz_review_crossreq_test.go:405: B: query="SELECT id FROM customers" tainted=false ranges=[]
+    zz_review_crossreq_test.go:390: span review.a: _dd.iast.enabled=1 _dd.iast.json=
+    zz_review_crossreq_test.go:390: span review.b: _dd.iast.enabled=1 _dd.iast.json=
+--- FAIL: TestReviewPooledSliceNewBufferViewAcrossRequests (0.02s)
+    --- FAIL: TestReviewPooledSliceNewBufferViewAcrossRequests/concurrent (0.01s)
+    --- PASS: TestReviewPooledSliceNewBufferViewAcrossRequests/sequential-A-finished (0.01s)
+=== RUN   TestReviewReadAllAddressReuseAfterFinish
+    zz_review_crossreq_test.go:450: B: A's body address 0x17d9b7c56400 (cap 512) reused after 1 allocations; query="SELECT id FROM customers" tainted=false
+    zz_review_crossreq_test.go:423: span review.a: _dd.iast.enabled=1 _dd.iast.json=
+    zz_review_crossreq_test.go:423: span review.b: _dd.iast.enabled=1 _dd.iast.json=
+--- PASS: TestReviewReadAllAddressReuseAfterFinish (0.01s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/testapps/integration	0.679s
+FAIL
+exit status 1
+       28.73 real        78.91 user        47.21 sys
+           360235008  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+             8781991  page reclaims
+              347009  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+               11988  messages sent
+               12562  messages received
+              100068  signals received
+               51906  voluntary context switches
+             1508509  involuntary context switches
+          5650946544  instructions retired
+          3154696826  cycles elapsed
+            38535888  peak memory footprint

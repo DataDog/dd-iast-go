@@ -1,0 +1,14 @@
+Command:
+  cd /tmp/ddiast-review/wt/fx-hooks-yml-operators-F4
+  GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 DD_IAST_ENABLED=false go test -timeout 3m -count=1 -v ./reviewf4
+
+=== RUN   TestDisabledOperatorAllocationParity
+=== RUN   TestDisabledOperatorAllocationParity/concat-in-len
+    f4_test.go:66: native=0 injected=0 allocations/op
+=== RUN   TestDisabledOperatorAllocationParity/concat-in-comparison
+    f4_test.go:66: native=0 injected=0 allocations/op
+=== RUN   TestDisabledOperatorAllocationParity/conversion-used-by-len
+    f4_test.go:66: native=0 injected=0 allocations/op
+--- PASS: TestDisabledOperatorAllocationParity (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/reviewf4	0.429s

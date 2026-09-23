@@ -1,0 +1,7 @@
+=== RUN   TestReviewRollbackLeakNaturalContention
+    zz_review_root_test.go:165: 20 rounds x (60 TaintString + 180 AdoptString on 3 goroutines) with 4 concurrent derivers: leaked root slots=305, charged bytes without a live root=41408
+    zz_review_root_test.go:167: REPRO: rollback contention leaked 305 root reservations
+--- FAIL: TestReviewRollbackLeakNaturalContention (0.03s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/store	0.442s
+FAIL

@@ -1,0 +1,5 @@
+=== RUN   TestFxStaleHandleBindCrossGeneration
+    fx_verify_test.go:102: slot_cycles=714030 workers=14 stale_bind_succeeded=0 cross_generation_bindings=0
+--- PASS: TestFxStaleHandleBindCrossGeneration (60.32s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/store	60.567s

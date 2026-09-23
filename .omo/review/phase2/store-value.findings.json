@@ -1,0 +1,68 @@
+[
+  {
+    "id": "store-value-F1",
+    "severity": "Medium",
+    "category": "false-negative",
+    "location": "internal/taint/store/value.go:147-193",
+    "title": "Tombstones in a probe window with no empty slot are never reused, so inserts are dropped as full",
+    "claim": "putWindow inserts into firstTombstone only when it later reaches an empty slot. A 64-slot window of live slots and tombstones, including stale slots the same scan just reclaimed, drops the insert as full. The comment claiming a duplicate risk is wrong: every insertion path places keys within ProbeLimit of their start. Compaction runs only after a successful insert, so the window stays unusable until an unrelated key succeeds, and taint is silently lost for a fresh request after a saturated window drains.",
+    "evidence_path": ".omo/review/evidence/store-value/tombstone_window.out.txt",
+    "repro_command": "cp .omo/review/evidence/store-value/zz_review_tombstone_test.go internal/taint/store/ && GOTOOLCHAIN=go1.26.6 go test -count=1 -run TestReviewTombstoned -v ./internal/taint/store/",
+    "needs_repro": false
+  },
+  {
+    "id": "store-value-F2",
+    "severity": "Low",
+    "category": "memory-bound",
+    "location": "internal/taint/store/value.go:172-186",
+    "title": "Repointing an existing slot concurrently with a mutation claim undercounts value counters",
+    "claim": "The same-owner repoint path reserves quota on the new root without adjusting owner/store values. A concurrent claimMutation on the old root, or a stale slot left unreclaimed while the owner is finishing, subtracts the slot from values while it is still counted in the new root quota. Limits can be exceeded by one per race until Finish reconciles.",
+    "evidence_path": null,
+    "repro_command": null,
+    "needs_repro": false
+  },
+  {
+    "id": "store-value-F3",
+    "severity": "Low",
+    "category": "perf",
+    "location": "internal/taint/store/value.go:225-227,281-313",
+    "title": "An aborted compaction is retried on every successful insert into the shard",
+    "claim": "After compact aborts, tombstones stay at 32 or more, so every later successful insert in that shard reruns a full 128x64-probe compaction under the shard write lock on the hot path.",
+    "evidence_path": null,
+    "repro_command": null,
+    "needs_repro": false
+  },
+  {
+    "id": "store-value-F4",
+    "severity": "Low",
+    "category": "quality",
+    "location": "internal/taint/store/value.go:10-17",
+    "title": "Test seams are read on every production keyHash call",
+    "claim": "The forceCollision atomic.Bool is loaded on every keyHash call (MayContain, Lookup, putWindow, compact). It is a test hook in the hottest path that can collapse the index to one slot.",
+    "evidence_path": null,
+    "repro_command": null,
+    "needs_repro": false
+  },
+  {
+    "id": "store-value-F5",
+    "severity": "Info",
+    "category": "false-negative",
+    "location": "internal/taint/store/lookup.go:118-137",
+    "title": "Stale slots use up Lookup's four-window budget before validation",
+    "claim": "Lookup keeps the first four key matches before validating generation. Unreclaimed stale slots can displace a live owner window as fanout. This is rare and needs at least five owners on one address.",
+    "evidence_path": null,
+    "repro_command": null,
+    "needs_repro": false
+  },
+  {
+    "id": "store-value-F6",
+    "severity": "Info",
+    "category": "quality",
+    "location": "internal/taint/store/value.go:75-95",
+    "title": "Root-generation comparisons are not wrap-aware",
+    "claim": "The uint32 root generation wraps to 1 in claimMutation, and reserveRootValue compares with <. ABA is possible only after 2^32 mutations of one root within one request, so it is unreachable in practice.",
+    "evidence_path": null,
+    "repro_command": null,
+    "needs_repro": false
+  }
+]

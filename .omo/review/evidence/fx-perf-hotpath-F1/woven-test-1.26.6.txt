@@ -1,0 +1,57 @@
+=== RUN   TestNoOwnerAllocationParity
+    sequence_test.go:45: toolchain=go1.26.6 woven=true enabled=true sampling=30 max_concurrent=2 no_owner=true
+=== RUN   TestNoOwnerAllocationParity/SplitSeq
+    sequence_test.go:57: native=2 direct=3 extra=1 allocs/call
+    sequence_test.go:59: no-owner allocation regression: native 2, direct 3
+=== RUN   TestNoOwnerAllocationParity/SplitAfterSeq
+    sequence_test.go:57: native=2 direct=3 extra=1 allocs/call
+    sequence_test.go:59: no-owner allocation regression: native 2, direct 3
+=== RUN   TestNoOwnerAllocationParity/Lines
+    sequence_test.go:57: native=2 direct=3 extra=1 allocs/call
+    sequence_test.go:59: no-owner allocation regression: native 2, direct 3
+=== RUN   TestNoOwnerAllocationParity/FieldsSeq
+    sequence_test.go:57: native=1 direct=2 extra=1 allocs/call
+    sequence_test.go:59: no-owner allocation regression: native 1, direct 2
+=== RUN   TestNoOwnerAllocationParity/FieldsFuncSeq
+    sequence_test.go:57: native=1 direct=2 extra=1 allocs/call
+    sequence_test.go:59: no-owner allocation regression: native 1, direct 2
+--- FAIL: TestNoOwnerAllocationParity (0.00s)
+    --- FAIL: TestNoOwnerAllocationParity/SplitSeq (0.00s)
+    --- FAIL: TestNoOwnerAllocationParity/SplitAfterSeq (0.00s)
+    --- FAIL: TestNoOwnerAllocationParity/Lines (0.00s)
+    --- FAIL: TestNoOwnerAllocationParity/FieldsSeq (0.00s)
+    --- FAIL: TestNoOwnerAllocationParity/FieldsFuncSeq (0.00s)
+=== RUN   TestSequenceValues
+=== RUN   TestSequenceValues/SplitSeq
+=== RUN   TestSequenceValues/SplitAfterSeq
+=== RUN   TestSequenceValues/Lines
+=== RUN   TestSequenceValues/FieldsSeq
+=== RUN   TestSequenceValues/FieldsFuncSeq
+--- PASS: TestSequenceValues (0.00s)
+    --- PASS: TestSequenceValues/SplitSeq (0.00s)
+    --- PASS: TestSequenceValues/SplitAfterSeq (0.00s)
+    --- PASS: TestSequenceValues/Lines (0.00s)
+    --- PASS: TestSequenceValues/FieldsSeq (0.00s)
+    --- PASS: TestSequenceValues/FieldsFuncSeq (0.00s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/iast/seqreview	0.343s
+FAIL
+exit status 1
+       25.99 real        43.32 user        52.11 sys
+           316899328  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+             2575451  page reclaims
+               98488  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                3752  messages sent
+                4083  messages received
+               41228  signals received
+               27050  voluntary context switches
+              730403  involuntary context switches
+          6004732607  instructions retired
+          3346654611  cycles elapsed
+            39240448  peak memory footprint

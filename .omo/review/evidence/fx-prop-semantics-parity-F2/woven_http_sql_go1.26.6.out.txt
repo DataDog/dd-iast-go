@@ -1,0 +1,13 @@
+Command:
+cd /tmp/ddiast-review/wt/fx-prop-semantics-parity-F2/iast/integration/testapp && GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 /usr/bin/time -l go tool orchestrion go test -timeout 8m -count=1 -run '^TestHTTPQuery_SprintfZeroPrecision_reportsCleanSQL$' -v .
+
+Output:
+=== RUN   TestHTTPQuery_SprintfZeroPrecision_reportsCleanSQL
+    fx_prop_semantics_parity_f2_test.go:43: query="SELECT 40 + 2 /*  */" query_tainted=true clean_control_tainted=false sql_findings=1
+--- PASS: TestHTTPQuery_SprintfZeroPrecision_reportsCleanSQL (0.01s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/testapps/integration	0.813s
+
+Selected time output:
+       10.64 real         4.85 user         7.31 sys
+           364789760  maximum resident set size

@@ -1,0 +1,13 @@
+Command:
+GOTOOLCHAIN=go1.26.6 go test -run '^$' -bench '^Benchmark(Disabled|SampledOut)(Server|Application)Hook$' -benchmem -benchtime=100000x -cpu=1
+
+goos: darwin
+goarch: arm64
+pkg: github.com/DataDog/dd-iast-go/benchmarks/overhead
+cpu: Apple M4 Max
+BenchmarkDisabledServerHook          100000        24.89 ns/op       0 B/op       0 allocs/op
+BenchmarkSampledOutServerHook        100000       386.0 ns/op     432 B/op       3 allocs/op
+BenchmarkDisabledApplicationHook     100000        11.59 ns/op       0 B/op       0 allocs/op
+BenchmarkSampledOutApplicationHook   100000       162.4 ns/op     112 B/op       2 allocs/op
+PASS
+ok      github.com/DataDog/dd-iast-go/benchmarks/overhead  0.954s

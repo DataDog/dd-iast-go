@@ -1,0 +1,12 @@
+2026/09/23 16:04:22 Datadog Tracer v2.11.0-rc.1 WARN: invalid value for DD_IAST_TELEMETRY_VERBOSITY: off
+=== RUN   TestFxWeakHashOrphanPerCallNoProcessDedup
+    zz_fx_weakhash_test.go:73: sampling=100%: 200 identical weak-hash calls -> 200 orphan spans started+finished, 200 sampled events, 200 WEAK_HASH findings total
+--- PASS: TestFxWeakHashOrphanPerCallNoProcessDedup (0.05s)
+=== RUN   TestFxWeakHashOrphanSpanBeforeSampling
+    zz_fx_weakhash_test.go:106: sampling=0%: 100 weak-hash calls emitted 100 orphan spans, 0 carrying an IAST payload
+--- PASS: TestFxWeakHashOrphanSpanBeforeSampling (0.01s)
+=== RUN   TestFxWeakHashAllocsPerCall
+    zz_fx_weakhash_test.go:136: allocations per nil-ctx weak-hash report: stack_traces=on 92, stack_traces=off 85
+--- PASS: TestFxWeakHashAllocsPerCall (0.02s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/vulnerability	1.207s

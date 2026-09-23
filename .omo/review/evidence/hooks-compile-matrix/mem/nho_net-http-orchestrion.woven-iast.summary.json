@@ -1,0 +1,112 @@
+{
+ "peak_tree_rss_kb": 1437952,
+ "peak_tree_at_s": 66.6,
+ "peak_tree_top": [
+  [
+   211072,
+   [
+    "compile",
+    "github.com/Shopify/sarama"
+   ]
+  ],
+  [
+   157952,
+   [
+    "orchestrion-toolexec/compile",
+    "github.com/Shopify/sarama"
+   ]
+  ],
+  [
+   115024,
+   [
+    "compile",
+    "go.opentelemetry.io/otel/sdk/metric"
+   ]
+  ],
+  [
+   95808,
+   [
+    "compile",
+    "github.com/DataDog/dd-trace-go/v2/internal/appsec/emitter/waf"
+   ]
+  ],
+  [
+   85296,
+   [
+    "clang",
+    ""
+   ]
+  ],
+  [
+   84576,
+   [
+    "orchestrion-toolexec/compile",
+    "google.golang.org/grpc"
+   ]
+  ]
+ ],
+ "top_process_peaks_kb": [
+  [
+   "compile github.com/nats-io/nats-server/v2/server",
+   932112
+  ],
+  [
+   "link ",
+   722640
+  ],
+  [
+   "clang ",
+   681200
+  ],
+  [
+   "dsymutil ",
+   373104
+  ],
+  [
+   "orchestrion-toolexec/compile runtime",
+   287168
+  ],
+  [
+   "(compile) ",
+   250176
+  ],
+  [
+   "compile github.com/DataDog/dd-trace-go/v2/ddtrace/tracer",
+   221840
+  ],
+  [
+   "compile github.com/Shopify/sarama",
+   211072
+  ],
+  [
+   "compile go.opentelemetry.io/collector/pdata/internal",
+   185328
+  ],
+  [
+   "orchestrion-toolexec/compile github.com/Shopify/sarama",
+   157952
+  ],
+  [
+   "compile google.golang.org/protobuf/internal/impl",
+   149376
+  ],
+  [
+   "compile runtime",
+   138592
+  ],
+  [
+   "orchestrion: ",
+   137664
+  ],
+  [
+   "orchestrion-toolexec/compile net/http",
+   137664
+  ],
+  [
+   "compile github.com/json-iterator/go",
+   126768
+  ]
+ ],
+ "samples": 96,
+ "duration_s": 118.7
+}

@@ -1,0 +1,68 @@
+[
+  {
+    "id": "store-writer-F1",
+    "severity": "High",
+    "category": "cross-request",
+    "location": "internal/taint/store/writer.go:85-96,372-383,412-433",
+    "title": "Unrelated writer activity in another request wipes an owner's entire writer state",
+    "claim": "writerPresent treats an odd writerVersion as a possible match and callers dirty the owner on TryLock failure, so any concurrent writer wrapper or Buffer hook in another request wipes all Builder/Buffer taint of an owner that is inside a writer critical section (399/400 lost vs 0/400 control).",
+    "evidence_path": ".omo/review/evidence/store-writer/zz_review_writer_crossreq_test.go",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 go test -count=1 -run TestReviewCrossRequest -v ./iast/propagation/",
+    "needs_repro": false
+  },
+  {
+    "id": "store-writer-F2",
+    "severity": "High",
+    "category": "false-positive",
+    "location": "internal/taint/store/writer.go:23-34,257-261,448-451; iast/propagation/writer.go:202-205",
+    "title": "strings.Builder view ABA after GC address reuse reports clean content as tainted",
+    "claim": "Builder entries are validated only by numeric (pointer,len,cap) with no backing anchor; after an unwrapped reset/refill, GC reuses the address and a clean String() is published with stale taint.",
+    "evidence_path": ".omo/review/evidence/store-writer/zz_review_builder_aba_test.go",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 go test -count=5 -run TestReviewBuilderABA -v ./iast/propagation/",
+    "needs_repro": false
+  },
+  {
+    "id": "store-writer-F3",
+    "severity": "Medium",
+    "category": "false-negative",
+    "location": "internal/taint/propagation/writer.go:215-237",
+    "title": "Repeated String() on an unchanged tracked writer burns the request root budget",
+    "claim": "Each String() on a tracked writer publishes a new root even when unchanged; after 511 calls the 512-root budget is exhausted and later provenance in the request is dropped.",
+    "evidence_path": ".omo/review/evidence/store-writer/zz_review_builder_budget_test.go",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 go test -count=1 -run TestReviewRepeatedBuilderString -v ./iast/propagation/",
+    "needs_repro": false
+  },
+  {
+    "id": "store-writer-F4",
+    "severity": "Low",
+    "category": "memory-bound",
+    "location": "internal/taint/store/writer.go:104-107; internal/taint/propagation/writer.go:123-133",
+    "title": "The 4-owners-per-receiver limit is soft, and exceeding it wipes a whole owner",
+    "claim": "updateWriter second loop can add a 5th owner for a receiver; the next lookup dirties that owner, wiping all its writers.",
+    "evidence_path": null,
+    "repro_command": null,
+    "needs_repro": false
+  },
+  {
+    "id": "store-writer-F5",
+    "severity": "Low",
+    "category": "perf",
+    "location": "internal/taint/store/writer.go:85,241-251",
+    "title": "A dirty owner keeps stale entries, charges and the process fast gate until it next writes",
+    "claim": "LookupWriterValue skips dirty owners so their entries and writerbridge.Active() persist until the owner next writes or finishes, keeping all bytes.Buffer hooks on the slow path.",
+    "evidence_path": null,
+    "repro_command": null,
+    "needs_repro": false
+  },
+  {
+    "id": "store-writer-F6",
+    "severity": "Low",
+    "category": "quality",
+    "location": "internal/taint/store/writer.go:93-96,380-383",
+    "title": "Dirtying on lock failure is not counted",
+    "claim": "These dirty paths do not increment drops.contention, hiding F1 from telemetry.",
+    "evidence_path": ".omo/review/evidence/store-writer/poisoning-store.out.txt",
+    "repro_command": "GOTOOLCHAIN=go1.26.6 go test -count=1 -run TestReviewUnrelated -v ./internal/taint/store/",
+    "needs_repro": false
+  }
+]

@@ -1,0 +1,20 @@
+Command:
+  cd /tmp/ddiast-review/wt/fx-hooks-yml-operators-F4
+  GOFLAGS=-p=4 REVIEW_WOVEN=1 GOTOOLCHAIN=go1.26.6 DD_IAST_ENABLED=false /usr/bin/time -l go tool orchestrion go test -timeout 3m -count=1 -v ./reviewf4
+
+=== RUN   TestDisabledOperatorAllocationParity
+=== RUN   TestDisabledOperatorAllocationParity/concat-in-len
+    f4_test.go:66: native=0 injected=1 allocations/op
+    f4_test.go:68: disabled instrumentation changes allocation count
+=== RUN   TestDisabledOperatorAllocationParity/concat-in-comparison
+    f4_test.go:66: native=0 injected=1 allocations/op
+    f4_test.go:68: disabled instrumentation changes allocation count
+=== RUN   TestDisabledOperatorAllocationParity/conversion-used-by-len
+    f4_test.go:66: native=0 injected=1 allocations/op
+    f4_test.go:68: disabled instrumentation changes allocation count
+--- FAIL: TestDisabledOperatorAllocationParity (0.00s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/reviewf4	0.467s
+FAIL
+exit status 1
+       327499776  maximum resident set size

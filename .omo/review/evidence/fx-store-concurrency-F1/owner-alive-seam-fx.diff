@@ -1,0 +1,17 @@
+--- /tmp/owner-head.go	2026-09-23 18:03:00
++++ internal/taint/store/owner.go	2026-09-23 17:59:44
+@@ -125,7 +125,13 @@
+ }
+ 
+ func (o *Owner) alive() bool {
+-	return !o.Disabled() && o.gen == o.owner.generation.Load() && ownerState(o.owner.state.Load()) == stateActive
++	if o.Disabled() || o.gen != o.owner.generation.Load() {
++		return false
++	}
++	if hook := fxReviewSeamOnce.Load(); hook != nil {
++		(*hook)()
++	}
++	return ownerState(o.owner.state.Load()) == stateActive
+ }
+ 
+ func (o *Owner) beginWrite() bool {

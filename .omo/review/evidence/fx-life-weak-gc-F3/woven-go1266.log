@@ -1,0 +1,46 @@
+$ cd iast/integration/testapp && GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 /usr/bin/time -l go tool orchestrion go test -count=1 -timeout 10m -run 'TestReviewF3WovenSpanPool' -v .
+=== RUN   TestReviewF3WovenSpanPool
+=== RUN   TestReviewF3WovenSpanPool/control-no-late-span
+    review_f3_pool_test.go:294: variant=control-no-late-span requestsB=1 recycledRootA=true resource=request-B-0 scopeActive=true ExistingForSpan(found)=true vulnsOnArrival=0
+    review_f3_pool_test.go:296: agent span request-B-0: meta[_dd.iast.enabled]=<nil> metrics[_dd.iast.enabled]=1 iastEvent={"sources":[{"origin":"http.request.parameter","name":"colB","value":"bb_from_request_B"}],"vulnerabilities":[{"type":"SQL_INJECTION","hash":-1189989629,"evidence":{"valueParts":[{"value":"SELECT bb FROM tableB","source":0}]},"location":{"spanId":4793607313219895828,"path":"/tmp/ddiast-review/wt/fx-life-weak-gc-F3/iast/integration/testapp/review_f3_pool_test.go","line":197,"method":"github.com/DataDog/dd-iast-go/testapps/integration_test.runF3.func2","stackId":"56e8cbe3-d71a-4369-81ae-b5680f123a53"}}]}
+    review_f3_pool_test.go:298: orphan 'vulnerability' spans carrying request B's finding: 0 []
+=== RUN   TestReviewF3WovenSpanPool/negative-after-request
+    review_f3_pool_test.go:236: late goroutine: late.Root()==rootA:true late.Root()==nil:false scopeActive=false ExistingForSpan(late)=true sampled=false ExistingForSpan(rootA)=true sampled=false
+    review_f3_pool_test.go:239: attemptA=1 lateSpanIsRecycledRootAObject=false
+    review_f3_pool_test.go:294: variant=negative-after-request requestsB=1 recycledRootA=true resource=request-B-0 scopeActive=true ExistingForSpan(found)=true vulnsOnArrival=0
+    review_f3_pool_test.go:296: agent span request-B-0: meta[_dd.iast.enabled]=<nil> metrics[_dd.iast.enabled]=<nil> iastEvent=
+    review_f3_pool_test.go:298: orphan 'vulnerability' spans carrying request B's finding: 0 []
+    review_f3_pool_test.go:310: BUG: request B's own SQL injection is not attached to request B's span (payload empty)
+=== RUN   TestReviewF3WovenSpanPool/sampled-bleed
+    review_f3_pool_test.go:294: variant=sampled-bleed requestsB=1 recycledRootA=true resource=request-B-0 scopeActive=true ExistingForSpan(found)=true vulnsOnArrival=1
+    review_f3_pool_test.go:296: agent span request-B-0: meta[_dd.iast.enabled]=<nil> metrics[_dd.iast.enabled]=<nil> iastEvent={"sources":[{"origin":"http.request.parameter","name":"colA","value":"aa_from_request_A"}],"vulnerabilities":[{"type":"SQL_INJECTION","hash":971618792,"evidence":{"valueParts":[{"value":"SELECT aa FROM tableA","source":0}]},"location":{"spanId":8389056266225086059,"path":"/tmp/ddiast-review/wt/fx-life-weak-gc-F3/iast/integration/testapp/review_f3_pool_test.go","line":166,"method":"github.com/DataDog/dd-iast-go/testapps/integration_test.runF3.func2","stackId":"96b62e6f-85f3-4563-80a9-98bcc35ed621"}}]}
+    review_f3_pool_test.go:298: orphan 'vulnerability' spans carrying request B's finding: 0 []
+    review_f3_pool_test.go:314: BUG (cross-request bleed): request B's root arrived with 1 finding(s) from request A
+    review_f3_pool_test.go:317: BUG (cross-request bleed): agent received request B's span request-B-0 carrying request A's finding
+--- FAIL: TestReviewF3WovenSpanPool (10.24s)
+    --- PASS: TestReviewF3WovenSpanPool/control-no-late-span (5.17s)
+    --- FAIL: TestReviewF3WovenSpanPool/negative-after-request (5.04s)
+    --- FAIL: TestReviewF3WovenSpanPool/sampled-bleed (0.03s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/testapps/integration	10.542s
+FAIL
+exit status 1
+       13.35 real         2.74 user         6.21 sys
+           379961344  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              300624  page reclaims
+               13188  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                2535  messages sent
+                2462  messages received
+               10184  signals received
+                7647  voluntary context switches
+              141525  involuntary context switches
+          4962108386  instructions retired
+          8992151725  cycles elapsed
+            48513768  peak memory footprint
+go version go1.27.0 darwin/arm64

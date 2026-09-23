@@ -1,0 +1,15 @@
+Command:
+cd /tmp/ddiast-review/wt/fx-prop-writer-F1 && GOTOOLCHAIN=go1.27.0 GOFLAGS=-p=4 /usr/bin/time -l go tool orchestrion go test -timeout 10m -count=1 -run '^TestFXPropWriterF1ConfiguredOwnerFanout$' -v ./iast/propagation
+
+Exit status: 1
+
+FAIL	github.com/DataDog/dd-iast-go/iast/propagation [build failed]
+# encoding/json
+$WORK/b104/orchestrion/src/encoding/json/<generated>:2: dec.r undefined (type *Decoder has no field or method r)
+$WORK/b104/orchestrion/src/encoding/json/<generated>:2: dec.d undefined (type *Decoder has no field or method d)
+$WORK/b104/orchestrion/src/encoding/json/<generated>:3: dec.d undefined (type *Decoder has no field or method d)
+exit status 2
+exit status 1
+       51.30 real        57.99 user        42.78 sys
+           329793536  maximum resident set size
+            39092800  peak memory footprint

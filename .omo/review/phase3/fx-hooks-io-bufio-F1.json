@@ -1,0 +1,13 @@
+[
+  {
+    "id": "hooks-io-bufio-F1",
+    "verdict": "CONFIRMED",
+    "original_severity": "High",
+    "adjusted_severity": "High",
+    "reachable_default": true,
+    "documented_limitation": false,
+    "reason": "bufio.Reader.Reset and LimitedReader.R reassignment are unhooked; reader bindings are keyed only by wrapper address and live until owner finish. Independent woven net/http + database/sql reproducer (Go 1.26.6): a bufio.Reader built over r.Body then Reset onto a clean constant yields SQL_INJECTION with an http.request.body source equal to the constant (fresh-reader control clean); a pooled reader created by active request A and reused by request B taints B's clean internal query and publishes it as A's source (ownerA.sources 1->2, ownerB 0). Binding ends at owner finish (reset-after-finish untainted). Sub-claim refuted: sampled-out/unadmitted requests do not report (tainted.go:45-47); only scope-less contexts report onto the foreign owner's span. Go 1.27.0 untestable: all woven builds fail in the encoding/json aspect (separate issue).",
+    "evidence_path": ".omo/review/evidence/fx-hooks-io-bufio-F1/e2e-go1.26.6.out.txt",
+    "repro_command": "cp .omo/review/evidence/fx-hooks-io-bufio-F1/testapp_zz_fx_reset.go iast/integration/testapp/zz_fx_reset.go && cp .omo/review/evidence/fx-hooks-io-bufio-F1/testapp_zz_fx_reset_reader_test.go iast/integration/testapp/zz_fx_reset_reader_test.go && cd iast/integration/testapp && GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -timeout 15m -count=1 -v -run TestFX ."
+  }
+]

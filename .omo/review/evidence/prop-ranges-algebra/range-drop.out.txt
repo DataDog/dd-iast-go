@@ -1,0 +1,16 @@
+Command (private copy):
+GOTOOLCHAIN=go1.26.6 go test -timeout 5m -count=1 -run ^TestReview_JoinRecordsRangeTruncationWhenEleventhRangeIsDropped$ -v ./internal/taint/propagation
+
+=== RUN   TestReview_JoinRecordsRangeTruncationWhenEleventhRangeIsDropped
+    zz_review_range_drop_test.go:30: result ranges=10; owner range drops=0 -> 0; propagation drops=0 -> 0
+    zz_review_range_drop_test.go:35:
+        	Error Trace:	/tmp/ddiast-review/wt/prop-ranges-algebra/internal/taint/propagation/zz_review_range_drop_test.go:35
+        	Error:      	Should be true
+        	Test:       	TestReview_JoinRecordsRangeTruncationWhenEleventhRangeIsDropped
+        	Messages:   	the eleventh range was discarded without recording a range drop
+--- FAIL: TestReview_JoinRecordsRangeTruncationWhenEleventhRangeIsDropped (0.00s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/propagation	0.402s
+FAIL
+
+Exit code: 1

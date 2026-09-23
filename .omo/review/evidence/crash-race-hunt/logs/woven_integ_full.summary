@@ -1,0 +1,7 @@
+=== iast/integration/testapp: go tool orchestrion go test -race -count=5 -skip TestRaceHuntParseFormReparse -timeout 24m ./...
+exit=0 secs=132
+races=/tmp/ddiast-review/wt/crash-race-hunt/_logs/woven_integ_full.out:0,/tmp/ddiast-review/wt/crash-race-hunt/_logs/woven_integ_full.time:0
+checkptr=/tmp/ddiast-review/wt/crash-race-hunt/_logs/woven_integ_full.out:0,/tmp/ddiast-review/wt/crash-race-hunt/_logs/woven_integ_full.time:0
+      1 ok  	github.com/DataDog/dd-iast-go/testapps/integration	117.169s
+           442826752  maximum resident set size
+            38601424  peak memory footprint

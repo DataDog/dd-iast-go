@@ -1,0 +1,91 @@
+=== RUN   TestWeavingPreflight
+    operators_test.go:34: woven=false
+--- PASS: TestWeavingPreflight (0.00s)
+=== RUN   TestEvaluationOrderAndTypes
+--- PASS: TestEvaluationOrderAndTypes (0.00s)
+=== RUN   TestSlicePanicParity
+=== RUN   TestSlicePanicParity/{-1_2_3}
+    operators_test.go:82: string: runtime.boundsError: runtime error: slice bounds out of range [-1:]
+    operators_test.go:82: bytes: runtime.boundsError: runtime error: slice bounds out of range [-1:]
+    operators_test.go:82: full: runtime.boundsError: runtime error: slice bounds out of range [-1::]
+    operators_test.go:82: low: 
+    operators_test.go:82: zero: 
+=== RUN   TestSlicePanicParity/{0_5_6}
+    operators_test.go:82: string: runtime.boundsError: runtime error: slice bounds out of range [:5] with length 4
+    operators_test.go:82: bytes: runtime.boundsError: runtime error: slice bounds out of range [:5] with capacity 4
+    operators_test.go:82: full: runtime.boundsError: runtime error: slice bounds out of range [::6] with capacity 4
+    operators_test.go:82: low: runtime.boundsError: runtime error: slice bounds out of range [5:4]
+    operators_test.go:82: zero: runtime.boundsError: runtime error: slice bounds out of range [::6] with capacity 4
+=== RUN   TestSlicePanicParity/{3_2_4}
+    operators_test.go:82: string: runtime.boundsError: runtime error: slice bounds out of range [3:2]
+    operators_test.go:82: bytes: runtime.boundsError: runtime error: slice bounds out of range [3:2]
+    operators_test.go:82: full: runtime.boundsError: runtime error: slice bounds out of range [3:2:]
+    operators_test.go:82: low: 
+    operators_test.go:82: zero: 
+=== RUN   TestSlicePanicParity/{1_3_2}
+    operators_test.go:82: string: 
+    operators_test.go:82: bytes: 
+    operators_test.go:82: full: runtime.boundsError: runtime error: slice bounds out of range [:3:2]
+    operators_test.go:82: low: 
+    operators_test.go:82: zero: runtime.boundsError: runtime error: slice bounds out of range [:3:2]
+=== RUN   TestSlicePanicParity/{1_3_9}
+    operators_test.go:82: string: 
+    operators_test.go:82: bytes: 
+    operators_test.go:82: full: runtime.boundsError: runtime error: slice bounds out of range [::9] with capacity 4
+    operators_test.go:82: low: 
+    operators_test.go:82: zero: runtime.boundsError: runtime error: slice bounds out of range [::9] with capacity 4
+=== RUN   TestSlicePanicParity/{0_18446744073709551615_4}
+    operators_test.go:82: string: runtime.boundsError: runtime error: slice bounds out of range [:18446744073709551615] with length 4
+    operators_test.go:82: bytes: runtime.boundsError: runtime error: slice bounds out of range [:18446744073709551615] with capacity 4
+    operators_test.go:82: full: runtime.boundsError: runtime error: slice bounds out of range [:18446744073709551615:4]
+    operators_test.go:82: low: runtime.boundsError: runtime error: slice bounds out of range [18446744073709551615:4]
+    operators_test.go:82: zero: runtime.boundsError: runtime error: slice bounds out of range [:18446744073709551615:4]
+=== RUN   TestSlicePanicParity/{9_10_4}
+    operators_test.go:82: string: runtime.boundsError: runtime error: slice bounds out of range [:10] with length 4
+    operators_test.go:82: bytes: runtime.boundsError: runtime error: slice bounds out of range [:10] with capacity 4
+    operators_test.go:82: full: runtime.boundsError: runtime error: slice bounds out of range [:10:4]
+    operators_test.go:82: low: runtime.boundsError: runtime error: slice bounds out of range [10:4]
+    operators_test.go:82: zero: runtime.boundsError: runtime error: slice bounds out of range [:10:4]
+--- PASS: TestSlicePanicParity (0.00s)
+    --- PASS: TestSlicePanicParity/{-1_2_3} (0.00s)
+    --- PASS: TestSlicePanicParity/{0_5_6} (0.00s)
+    --- PASS: TestSlicePanicParity/{3_2_4} (0.00s)
+    --- PASS: TestSlicePanicParity/{1_3_2} (0.00s)
+    --- PASS: TestSlicePanicParity/{1_3_9} (0.00s)
+    --- PASS: TestSlicePanicParity/{0_18446744073709551615_4} (0.00s)
+    --- PASS: TestSlicePanicParity/{9_10_4} (0.00s)
+=== RUN   TestUnevaluatedArrayOperands
+=== RUN   TestUnevaluatedArrayOperands/range=false
+    operators_test.go:99: got=1 want=1 panic=""
+=== RUN   TestUnevaluatedArrayOperands/range=true
+    operators_test.go:99: got=1 want=1 panic=""
+--- PASS: TestUnevaluatedArrayOperands (0.00s)
+    --- PASS: TestUnevaluatedArrayOperands/range=false (0.00s)
+    --- PASS: TestUnevaluatedArrayOperands/range=true (0.00s)
+=== RUN   TestInactiveAllocations
+=== RUN   TestInactiveAllocations/concat_len
+    operators_test.go:124: native=0 woven=0 allocations/op
+=== RUN   TestInactiveAllocations/concat_compare
+    operators_test.go:124: native=0 woven=0 allocations/op
+=== RUN   TestInactiveAllocations/conversion_local
+    operators_test.go:124: native=0 woven=0 allocations/op
+=== RUN   TestInactiveAllocations/conversion_compare_excluded
+    operators_test.go:124: native=0 woven=0 allocations/op
+=== RUN   TestInactiveAllocations/conversion_map_excluded
+    operators_test.go:124: native=0 woven=0 allocations/op
+--- PASS: TestInactiveAllocations (0.01s)
+    --- PASS: TestInactiveAllocations/concat_len (0.00s)
+    --- PASS: TestInactiveAllocations/concat_compare (0.00s)
+    --- PASS: TestInactiveAllocations/conversion_local (0.01s)
+    --- PASS: TestInactiveAllocations/conversion_compare_excluded (0.01s)
+    --- PASS: TestInactiveAllocations/conversion_map_excluded (0.00s)
+=== RUN   TestExactProvenanceAndCleanControls
+--- PASS: TestExactProvenanceAndCleanControls (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/reviewoperators	0.535s
+?   	github.com/DataDog/dd-iast-go/reviewoperators/constantlen	[no test files]
+=== RUN   TestIntegralUntypedBounds
+--- PASS: TestIntegralUntypedBounds (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/reviewoperators/floatbounds	0.878s
+?   	github.com/DataDog/dd-iast-go/reviewoperators/noimports	[no test files]

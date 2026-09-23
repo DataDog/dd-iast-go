@@ -1,0 +1,17 @@
+=== RUN   TestReviewLateLazySourcesDuringNextRequest
+    lifeasync_review_test.go:557: late lazy on A while B live: query=false form=false header=false cookie=false (B value tainted=true)
+    lifeasync_review_test.go:562: span "iast.review.request" value="A" vulns=0
+    lifeasync_review_test.go:562: span "iast.review.request" value="B" vulns=0
+--- PASS: TestReviewLateLazySourcesDuringNextRequest (0.01s)
+=== RUN   TestReviewLateLazySourcesDuringNextRequest
+    lifeasync_review_test.go:557: late lazy on A while B live: query=false form=false header=false cookie=false (B value tainted=true)
+    lifeasync_review_test.go:562: span "iast.review.request" value="A" vulns=0
+    lifeasync_review_test.go:562: span "iast.review.request" value="B" vulns=0
+--- PASS: TestReviewLateLazySourcesDuringNextRequest (0.01s)
+=== RUN   TestReviewLateLazySourcesDuringNextRequest
+    lifeasync_review_test.go:557: late lazy on A while B live: query=false form=false header=false cookie=false (B value tainted=true)
+    lifeasync_review_test.go:562: span "iast.review.request" value="A" vulns=0
+    lifeasync_review_test.go:562: span "iast.review.request" value="B" vulns=0
+--- PASS: TestReviewLateLazySourcesDuringNextRequest (0.01s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/testapps/integration	1.745s

@@ -1,0 +1,6 @@
+# pre-fix, REVIEW_SERIAL=1 REVIEW_COUNT=40, bridge.go instrumented with counters (see fix-and-diagnostics.diff)
+    zz_review_json_test.go:121: sizeof(json.Decoder)=304 offset(d)=40
+    zz_review_json_test.go:176: diag: docNoReader=0 docNoClone=0 docStored=32 litMapped=8 enter=487 noSlot=447 inactive=447 noDoc=32 docMismatch=0
+    zz_review_json_test.go:177: decoders=40 distinctStartBuckets=8 buckets=map[5:5 13:5 21:5 29:5 37:5 45:5 53:5 61:5] occupiedWhileBlocked=32 taintedResults=8
+--- PASS: TestReviewConcurrentHeapDecodersHashCapacity (0.00s)
+# (enter/noSlot/inactive include unrelated harness JSON decoded outside requests; 40 literals found a slot: 8 mapped, 32 had no document)

@@ -1,0 +1,35 @@
+[
+  {
+    "id": "perf-hotpath-F1",
+    "severity": "High",
+    "category": "perf",
+    "location": "iast/propagation/strings.go:75-119",
+    "title": "Lazy string iterators allocate a wrapper with no owner",
+    "claim": "The returned lazy sequence gets an extra capturing closure before an owner/activity check; an escaping SplitSeq adds 32 B and one allocation per call in inactive mode.",
+    "evidence_path": ".omo/review/evidence/perf-hotpath/bench.txt",
+    "repro_command": "Copy .omo/review/evidence/perf-hotpath/hotpath_review_test.go into iast/propagation/hotpath_review_test.go in a private checkout; GOTOOLCHAIN=go1.26.6 go test -run '^$' -bench '^BenchmarkHotPathReview/(no-owner|active-clean)/(join-empty|split-seq)' -benchtime=100ms -count=1 -benchmem -timeout=15m ./iast/propagation",
+    "needs_repro": false
+  },
+  {
+    "id": "perf-hotpath-F2",
+    "severity": "High",
+    "category": "perf",
+    "location": "iast/propagation/writer.go:29-35,104-129",
+    "title": "Clean writer writes scan owner slots without taint or writer state",
+    "claim": "WriterActive gates on owner rather than value or writer state; with one clean owner every builder/buffer write enters writer bookkeeping, including 64-owner-slot lookups even with no tracked writer.",
+    "evidence_path": ".omo/review/evidence/perf-hotpath/bench.txt",
+    "repro_command": "Copy .omo/review/evidence/perf-hotpath/hotpath_review_test.go into iast/propagation/hotpath_review_test.go in a private checkout; GOTOOLCHAIN=go1.26.6 go test -run '^$' -bench '^BenchmarkHotPathReview/(no-owner|active-clean)/(split-seq-consumed|builder|buffer)/' -benchtime=100ms -count=1 -benchmem -timeout=15m ./iast/propagation",
+    "needs_repro": false
+  },
+  {
+    "id": "perf-hotpath-F3",
+    "severity": "Medium",
+    "category": "perf",
+    "location": "internal/taint/propagation/string_exact.go:21-48",
+    "title": "Empty-separator Join rescans every element before activity gate",
+    "claim": "JoinString scans all elements to detect one alias before ActiveStore; all-empty, no-owner inputs take an extra O(n) pass for no possible taint.",
+    "evidence_path": ".omo/review/evidence/perf-hotpath/bench.txt",
+    "repro_command": "Copy .omo/review/evidence/perf-hotpath/hotpath_review_test.go into iast/propagation/hotpath_review_test.go in a private checkout; GOTOOLCHAIN=go1.26.6 go test -run '^$' -bench '^BenchmarkHotPathReview/(no-owner|active-clean)/(join-empty|split-seq)' -benchtime=100ms -count=1 -benchmem -timeout=15m ./iast/propagation",
+    "needs_repro": false
+  }
+]

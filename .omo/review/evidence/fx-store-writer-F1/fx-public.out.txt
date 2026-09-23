@@ -1,0 +1,28 @@
+===== bug-run rc=1 =====
+=== RUN   TestFxF1CrossRequestBuilderTaintWipedByUnrelatedBuffer
+    zz_fx_f1_crossreq_test.go:61: FX-F1: ops=300 lost-taint=225 A-unrelated-buffer-writes=5654
+    zz_fx_f1_crossreq_test.go:63: BUG: request B lost builder taint on 225/300 checks while unrelated request A wrote clean data into its own buffer
+--- FAIL: TestFxF1CrossRequestBuilderTaintWipedByUnrelatedBuffer (0.01s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/iast/propagation	0.405s
+FAIL
+
+===== bug-run-2 rc=1 =====
+=== RUN   TestFxF1CrossRequestBuilderTaintWipedByUnrelatedBuffer
+    zz_fx_f1_crossreq_test.go:61: FX-F1: ops=300 lost-taint=3 A-unrelated-buffer-writes=38172
+    zz_fx_f1_crossreq_test.go:63: BUG: request B lost builder taint on 3/300 checks while unrelated request A wrote clean data into its own buffer
+--- FAIL: TestFxF1CrossRequestBuilderTaintWipedByUnrelatedBuffer (0.18s)
+=== RUN   TestFxF1CrossRequestBuilderTaintWipedByUnrelatedBuffer
+    zz_fx_f1_crossreq_test.go:61: FX-F1: ops=300 lost-taint=175 A-unrelated-buffer-writes=14011
+    zz_fx_f1_crossreq_test.go:63: BUG: request B lost builder taint on 175/300 checks while unrelated request A wrote clean data into its own buffer
+--- FAIL: TestFxF1CrossRequestBuilderTaintWipedByUnrelatedBuffer (0.03s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/iast/propagation	0.473s
+FAIL
+
+===== control rc=0 =====
+=== RUN   TestFxF1CrossRequestBuilderTaintWipedByUnrelatedBuffer
+    zz_fx_f1_crossreq_test.go:61: FX-F1: ops=300 lost-taint=0 A-unrelated-buffer-writes=0
+--- PASS: TestFxF1CrossRequestBuilderTaintWipedByUnrelatedBuffer (0.01s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/iast/propagation	0.222s

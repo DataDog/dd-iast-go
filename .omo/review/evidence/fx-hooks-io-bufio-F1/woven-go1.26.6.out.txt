@@ -1,0 +1,36 @@
+$ cd /tmp/ddiast-review/wt/fx-hooks-io-bufio-F1/iast/integration/testapp && GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 /usr/bin/time -l timeout 1500 go tool orchestrion go test -count=1 -timeout 15m -v -run TestFxF1 . 2>&1
+=== RUN   TestFxF1PooledBufioReaderCrossOwner
+    zz_fx_f1_test.go:93: case=/d(background) data=SELECT name FROM constant_table tainted=true ranges=http.request.body=SELECT name FROM constant_table
+    zz_fx_f1_test.go:99: case=/e(after-A-finish) tainted=false
+    zz_fx_f1_test.go:102: case=/a data=body-of-request-A tainted=true ranges=http.request.body=body-of-request-A
+    zz_fx_f1_test.go:102: case=/c0 data=SELECT name FROM constant_table tainted=false
+    zz_fx_f1_test.go:102: case=/b data=SELECT * FROM t WHERE name = 'body-of-B' tainted=true ranges=http.request.body=SELECT * FROM t WHERE name = 'body-of-B'
+    zz_fx_f1_test.go:102: case=/c data=SELECT name FROM constant_table tainted=true ranges=http.request.body=SELECT name FROM constant_table
+    zz_fx_f1_test.go:107: span=req/c0 event=<none>
+    zz_fx_f1_test.go:115: span=req/b vuln=SQL_INJECTION
+    zz_fx_f1_test.go:119: span=req/b source={"origin":"http.request.body","pattern":"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMN","redacted":true}
+    zz_fx_f1_test.go:115: span=req/c vuln=SQL_INJECTION
+    zz_fx_f1_test.go:119: span=req/c source={"origin":"http.request.body","value":"SELECT name FROM constant_table"}
+    zz_fx_f1_test.go:115: span=req/a vuln=SQL_INJECTION
+    zz_fx_f1_test.go:119: span=req/a source={"origin":"http.request.body","value":"SELECT name FROM constant_table"}
+--- PASS: TestFxF1PooledBufioReaderCrossOwner (0.01s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/testapps/integration	0.631s
+       41.51 real         5.78 user        10.85 sys
+           367001600  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              384428  page reclaims
+               29354  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                2486  messages sent
+                2513  messages received
+                9200  signals received
+               22217  voluntary context switches
+              194040  involuntary context switches
+            22440806  instructions retired
+            15904840  cycles elapsed
+             1212728  peak memory footprint

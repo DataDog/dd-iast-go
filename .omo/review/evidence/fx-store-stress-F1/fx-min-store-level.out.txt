@@ -1,0 +1,21 @@
+$ cd /tmp/ddiast-review/wt/fx-store-stress-F1   (private copy of HEAD 2e23b46; test file fx_stale_min_test.go placed at internal/taint/store/)
+$ FX_BUDGET=60s GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go test -run 'TestFXStaleOwnerPublishesIntoReusedSlot' -count=1 -v -timeout 8m ./internal/taint/store
+=== RUN   TestFXStaleOwnerPublishesIntoReusedSlot
+    fx_stale_min_test.go:96: iteration 1390: object bound only through FINISHED request A (gen 2781) is bound to NEW request B (gen 2782, id 2782): cross-request binding bleed
+--- FAIL: TestFXStaleOwnerPublishesIntoReusedSlot (46.26s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/store	46.778s
+FAIL
+
+Notes (fx-store-stress-F1 verifier):
+- This is MY OWN minimal store-level reproducer (independent of the phase-2
+  stale_review_test.go): no pre-filling of the other 63 owner slots is needed,
+  because on a fresh store owner slot 0 is both the first slot Acquire takes and
+  the first dead/unused candidate on every later Acquire, so plain
+  acquire/finish cycling reuses slot 0 deterministically. Spinner goroutines
+  hold request A's raw *Owner handle (the same kind of handle
+  request.Analysis holds via slot.owner) and call store.BindObjectValue /
+  Owner.UpdateWriter in a loop while A's Finish and B's Acquire complete.
+- Hit at iteration 1390 in 46s on a busy 16-core machine, plain build (no
+  -race). The same run also exercises Owner.UpdateWriter on the same stale
+  handle; the bind assertion fired first.

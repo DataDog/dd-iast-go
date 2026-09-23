@@ -1,0 +1,15 @@
+$ env GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 GOCACHE=/tmp/ddiast-review/wt/fx-crash-unsafe-F1/.gocache GOTMPDIR=/tmp/ddiast-review/wt/fx-crash-unsafe-F1/.gotmp go test -count=1 -v -run 'TestFX|TestReproFinishedRoot' -timeout=5m ./internal/spans
+EXIT=1 (finder's reproducer fails by design; both verifier tests pass)
+=== RUN   TestReproFinishedRootAcceptsReplacementFromLiveChild
+    finder_repro_test.go:58: live child recreated an open annotation for an already-finished root
+    finder_repro_test.go:70: post-child-finish root-key replacement retained=true closed=false
+--- FAIL: TestReproFinishedRootAcceptsReplacementFromLiveChild (0.01s)
+=== RUN   TestFXLiveChildRecreatesOpenAnnotationAfterRootFinish
+    fx_f1_repro_test.go:100: finding stranded: root-key replacement retained=true closed=false vulns=1
+--- PASS: TestFXLiveChildRecreatesOpenAnnotationAfterRootFinish (0.01s)
+=== RUN   TestFXFinishedRootReplacementLeaksAdmissionSlot
+    fx_f1_repro_test.go:166: fresh request denied IAST analysis: max concurrent requests reached (leaked slots)
+--- PASS: TestFXFinishedRootReplacementLeaksAdmissionSlot (0.01s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/internal/spans	0.736s
+FAIL

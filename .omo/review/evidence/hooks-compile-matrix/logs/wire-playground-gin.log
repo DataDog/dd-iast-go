@@ -1,0 +1,69 @@
+go: upgraded go 1.26.0 => 1.26.6
+go: upgraded github.com/DataDog/datadog-agent/comp/core/tagger/origindetection v0.80.4 => v0.82.2
+go: upgraded github.com/DataDog/datadog-agent/pkg/obfuscate v0.80.4 => v0.82.2
+go: upgraded github.com/DataDog/datadog-agent/pkg/opentelemetry-mapping-go/otlp/attributes v0.80.4 => v0.82.2
+go: upgraded github.com/DataDog/datadog-agent/pkg/proto v0.80.4 => v0.82.2
+go: upgraded github.com/DataDog/datadog-agent/pkg/remoteconfig/state v0.80.4 => v0.82.2
+go: upgraded github.com/DataDog/datadog-agent/pkg/trace v0.80.4 => v0.82.2
+go: upgraded github.com/DataDog/datadog-agent/pkg/trace/log v0.80.4 => v0.82.2
+go: upgraded github.com/DataDog/datadog-agent/pkg/trace/stats v0.80.4 => v0.82.2
+go: upgraded github.com/DataDog/datadog-agent/pkg/trace/traceutil v0.80.4 => v0.82.2
+go: upgraded github.com/DataDog/datadog-go/v5 v5.9.0 => v5.9.1
+go: upgraded github.com/DataDog/dd-trace-go/v2 v2.10.0-rc.1.0.20260708135804-c8b3f24a6a8d => v2.11.0-rc.1
+go: upgraded github.com/DataDog/go-libddwaf/v5 v5.0.0 => v5.0.1
+go: upgraded github.com/DataDog/go-sqllexer v0.2.2 => v0.2.4
+go: upgraded github.com/DataDog/orchestrion v1.11.0 => v1.12.2-0.20260828141217-23afa71d6dcb
+go: upgraded github.com/antithesishq/antithesis-sdk-go v0.7.0 => v0.7.2
+go: upgraded github.com/charmbracelet/x/ansi v0.11.7 => v0.11.8
+go: upgraded github.com/ebitengine/purego v0.10.1 => v0.10.2
+go: upgraded github.com/klauspost/compress v1.19.0 => v1.19.2
+go: upgraded github.com/lucasb-eyer/go-colorful v1.4.0 => v1.4.1
+go: upgraded github.com/lufia/plan9stats v0.0.0-20260627054121-477a66015f15 => v0.0.0-20260802145828-341c2f0c90b5
+go: upgraded github.com/mattn/go-colorable v0.1.14 => v0.1.15
+go: upgraded github.com/mattn/go-isatty v0.0.22 => v0.0.24
+go: upgraded github.com/mattn/go-runewidth v0.0.23 => v0.0.28
+go: upgraded github.com/nats-io/jwt/v2 v2.8.1 => v2.8.2
+go: upgraded github.com/nats-io/nats-server/v2 v2.14.0 => v2.14.5
+go: upgraded github.com/nats-io/nats.go v1.52.0 => v1.53.1
+go: upgraded github.com/nats-io/nkeys v0.4.15 => v0.4.16
+go: upgraded github.com/petermattis/goid v0.0.0-20260701081913-4f67fd55d3b4 => v0.0.0-20260820044319-269ab09b5261
+go: upgraded github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 => v0.0.0-20260805114148-88456608a4f6
+go: upgraded github.com/secure-systems-lab/go-securesystemslib v0.11.0 => v0.11.1
+go: upgraded github.com/shirou/gopsutil/v4 v4.26.6 => v4.26.7
+go: upgraded github.com/stretchr/testify v1.11.1 => v1.12.1
+go: upgraded github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e => v1.0.0
+go: upgraded go.opentelemetry.io/collector/component v1.61.0 => v1.65.0
+go: upgraded go.opentelemetry.io/collector/featuregate v1.61.0 => v1.65.0
+go: upgraded go.opentelemetry.io/collector/pdata v1.61.0 => v1.65.0
+go: upgraded go.opentelemetry.io/collector/pdata/pprofile v0.155.0 => v0.159.0
+go: upgraded go.opentelemetry.io/otel v1.44.0 => v1.45.0
+go: upgraded go.opentelemetry.io/otel/metric v1.44.0 => v1.45.0
+go: upgraded go.opentelemetry.io/otel/trace v1.44.0 => v1.45.0
+go: upgraded go.opentelemetry.io/proto/otlp v1.10.0 => v1.11.0
+go: upgraded go.yaml.in/yaml/v3 v3.0.4 => v3.0.5
+go: upgraded golang.org/x/crypto v0.53.0 => v0.57.0
+go: upgraded golang.org/x/exp v0.0.0-20260611194520-c48552f49976 => v0.0.0-20260813180055-c1d0aacb2297
+go: upgraded golang.org/x/mod v0.37.0 => v0.41.0
+go: upgraded golang.org/x/net v0.56.0 => v0.58.0
+go: upgraded golang.org/x/sync v0.21.0 => v0.23.0
+go: upgraded golang.org/x/sys v0.46.0 => v0.48.0
+go: upgraded golang.org/x/term v0.44.0 => v0.46.0
+go: upgraded golang.org/x/text v0.38.0 => v0.42.0
+go: upgraded golang.org/x/tools v0.46.0 => v0.49.0
+go: upgraded google.golang.org/genproto/googleapis/rpc v0.0.0-20260630182238-925bb5da69e7 => v0.0.0-20260819154853-08b0e4226688
+go: upgraded google.golang.org/protobuf v1.36.11 => v1.36.12
+--- go.mod key lines
+go 1.26.6
+	github.com/DataDog/dd-trace-go/v2 v2.11.0-rc.1
+	github.com/DataDog/dd-iast-go v0.0.0-00010101000000-000000000000
+	github.com/DataDog/orchestrion v1.12.2-0.20260828141217-23afa71d6dcb
+replace github.com/DataDog/dd-iast-go => /tmp/ddiast-review/wt/hooks-compile-matrix/dd-iast-go
+--- tool.go
+	_ "github.com/DataDog/dd-iast-go" // integration
+	_ "github.com/DataDog/orchestrion" // integration
+	//_ "github.com/DataDog/dd-trace-go/contrib/gin-gonic/gin/v2" // integration
+	_ "github.com/DataDog/dd-trace-go/contrib/net/http/v2" // integration
+	_ "github.com/DataDog/dd-trace-go/v2/contrib/os"       // integration
+	_ "github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"   // integration
+	_ "github.com/DataDog/dd-trace-go/v2/orchestrion"      // integration
+	_ "github.com/DataDog/dd-trace-go/v2/profiler"         // integration

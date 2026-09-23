@@ -1,0 +1,13 @@
+[
+ {
+  "id": "hooks-orchestrion-dep-F3",
+  "verdict": "CONFIRMED",
+  "original_severity": "Critical",
+  "adjusted_severity": "Critical",
+  "reachable_default": true,
+  "documented_limitation": false,
+  "reason": "Independent customer-style module: an import-free root package containing `\"Hello, \" + name + \"!\"` makes `go tool orchestrion go build` panic with 'assignment to entry in nil map' at pinned Orchestrion oncompile.go:195 on Go 1.26.6 and 1.27.0; the plain build works, and a control with one import weaves (Concat3 linked) and runs correctly. Root cause: importcfg.parse allocates PackageFile lazily (importcfg.go:79-82) and OnCompile writes to it unconditionally (oncompile.go:195). The Orchestrion bug is pre-existing, and dd-iast-go's root-scoped operator aspects make it reachable. Same root cause as hooks-yml-operators-F3.",
+  "evidence_path": ".omo/review/evidence/fx-hooks-orchestrion-dep-F3/run-output.txt",
+  "repro_command": "cd iast/reviewf3app (sources in .omo/review/evidence/fx-hooks-orchestrion-dep-F3/customer-app) && GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go tool orchestrion go build ./cmd/app"
+ }
+]

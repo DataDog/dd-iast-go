@@ -1,0 +1,57 @@
+[
+  {
+    "id": "perf-allocs-matrix-F1",
+    "severity": "High",
+    "category": "perf",
+    "location": "internal/vulnerability/report.go:56-105",
+    "title": "Weak-hash/weak-cipher sinks run the full report path on every call, after the finding is already recorded",
+    "claim": "vulnerability.Report has no cheap gate between the config.Enabled check and the expensive work: every call generates a UUID, captures a dd-trace-go stack trace and builds a model.Vulnerability before CanAddVulnerability drops it on the per-request quota (default 2) or event-local hash dedup, also emitting a telemetry log record per dropped call. 1000 md5.Sum calls inside one sampled request publish exactly one WEAK_HASH vulnerability while all 1000 pay 6767-9380 ns/op, 9825 B/op and 28 allocs/op versus 119.0 ns/op and 0 allocs plain.",
+    "evidence_path": ".omo/review/evidence/perf-allocs-matrix/repro-weakhash.woven-sampling100.txt",
+    "repro_command": "cp .omo/review/evidence/perf-allocs-matrix/repro/zz_repro_weakhash_test.go .omo/review/evidence/perf-allocs-matrix/repro/zz_repro_quota_test.go benchmarks/overhead/ && cd benchmarks/overhead && DD_IAST_REQUEST_SAMPLING=100 go tool orchestrion go test -run '^$' -bench 'BenchmarkReproWeakHashQuotaExhausted$' -benchmem -benchtime=20000x -count=1 . && DD_IAST_REQUEST_SAMPLING=100 go tool orchestrion go test -run TestReproWeakHashQuotaDiscardsWork -v -count=1 .",
+    "needs_repro": false
+  },
+  {
+    "id": "perf-allocs-matrix-F2",
+    "severity": "Medium",
+    "category": "perf",
+    "location": "internal/spans/annotation.go:198-213",
+    "title": "Sampled-out requests allocate a fresh 3200-byte annotation instead of the existing shared sentinel",
+    "claim": "BindScope allocates a full 3200-byte Annotation (embedding model.Event plus fixed sourceIndex/eventSourceIndexes arrays) for requests it then rejects, only to record that the request is not sampled, although the package already owns an immutable nonSampledAnnotation sentinel used at annotation.go:120,144,175. Against the control build with identical weaving, a sampled-out HTTP round trip costs +9 allocs/op and +3976 B/op, and spans.BindScope.func1 is the largest IAST allocation site in the sampled-out profile at 15.05 MB (8.09% of all bytes).",
+    "evidence_path": ".omo/review/evidence/perf-allocs-matrix/http-sampled-out.pprof-space.txt",
+    "repro_command": "cd benchmarks/overhead && go run ./runner -count=1 -benchtime=2000x -cpu=1 -sampling=0 -bench 'BenchmarkHTTPRoundTrip' -outputdir=/tmp/out && DD_IAST_REQUEST_SAMPLING=0 go tool orchestrion go test -run '^$' -bench 'BenchmarkHTTPRoundTrip$' -benchmem -benchtime=4000x -count=1 -memprofile=/tmp/http0.pprof .",
+    "needs_repro": false
+  },
+  {
+    "id": "perf-allocs-matrix-F3",
+    "severity": "Medium",
+    "category": "perf",
+    "location": "internal/vulnerability/report.go:44-52",
+    "title": "The orphan vulnerability span is created and finished before any sampling check",
+    "claim": "Report starts and finishes a real tracer span via spans.NewOrphanVulnerabilitySpan before AnnotationForContext decides whether anything will be reported, so weak-hash and weak-cipher calls made outside a span create one span per call even when IAST request sampling is 0: 100 md5.Sum calls emit 100 finished spans, none carrying an IAST payload. On the same woven binary BenchmarkWeakHashNoActiveSpan costs 4 allocs/128 B per call at both default sampling and sampling=0, against 0 allocs in the control build and with DD_IAST_ENABLED=false.",
+    "evidence_path": ".omo/review/evidence/perf-allocs-matrix/repro-orphan.txt",
+    "repro_command": "cp .omo/review/evidence/perf-allocs-matrix/repro/zz_repro_quota_test.go benchmarks/overhead/ && cd benchmarks/overhead && DD_IAST_REQUEST_SAMPLING=0 go tool orchestrion go test -run 'TestReproOrphanSpanWhenSampledOut' -v -count=1 .",
+    "needs_repro": false
+  },
+  {
+    "id": "perf-allocs-matrix-F4",
+    "severity": "Info",
+    "category": "perf",
+    "location": "benchmarks/overhead/overhead_test.go:317-347",
+    "title": "Full-analysis HTTP request cost recorded as a baseline (+96 allocs/op, +6.9 KB/op)",
+    "claim": "With identical weaving and sampling=100, a full HTTP round trip costs 510 allocs/40904 B against control 414 allocs/33988 B, while Health, RequestProcessing and RequestProcessingParallel remain allocation-identical to control, so the delta is the request-source tainting path rather than fixed weaving overhead.",
+    "evidence_path": ".omo/review/evidence/perf-allocs-matrix/runner/iast.txt",
+    "repro_command": "cd benchmarks/overhead && go run ./runner -count=1 -benchtime=2000x -cpu=1 -outputdir=/tmp/out",
+    "needs_repro": false
+  },
+  {
+    "id": "perf-allocs-matrix-F5",
+    "severity": "Low",
+    "category": "quality",
+    "location": "benchmarks/overhead/runner/main.go:532-536",
+    "title": "The overhead benchmark runner aborts when the source tree has no git metadata",
+    "claim": "writeMetadata runs git rev-parse HEAD and propagates the error, so the runner fails with 'run git: exit status 128' after both variants are already built and validated when it is executed from an exported, vendored or rsync'd tree, discarding the full build and leaving control.txt and iast.txt empty.",
+    "evidence_path": ".omo/review/evidence/perf-allocs-matrix/runner.log",
+    "repro_command": "rsync -a --exclude .git <repo>/ /tmp/copy/ && cd /tmp/copy/benchmarks/overhead && go run ./runner -count=1 -benchtime=100x",
+    "needs_repro": false
+  }
+]

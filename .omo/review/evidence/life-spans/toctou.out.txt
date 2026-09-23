@@ -1,0 +1,7 @@
+=== RUN   TestReviewStoreCapacityTOCTOU
+    zz_review_internal_test.go:44: configured cap=2, max observed annotation store size=7
+    zz_review_internal_test.go:46: BUG: store exceeded MaxConcurrentRequests: 7 > 2
+--- FAIL: TestReviewStoreCapacityTOCTOU (0.04s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/internal/spans	0.472s
+FAIL

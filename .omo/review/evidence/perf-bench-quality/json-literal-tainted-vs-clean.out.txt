@@ -1,0 +1,10 @@
+$ GOTOOLCHAIN=go1.26.6 go test -run=NONE -bench='BenchmarkLiteral' -benchmem -benchtime=200000x ./iast/encoding/json/...
+goos: darwin
+goarch: arm64
+pkg: github.com/DataDog/dd-iast-go/iast/encoding/json
+cpu: Apple M4 Max
+BenchmarkLiteralInactive-16         	  200000	        28.53 ns/op	       0 B/op	       0 allocs/op
+BenchmarkLiteralActiveClean-16      	  200000	        34.29 ns/op	       0 B/op	       0 allocs/op
+BenchmarkLiteralActiveTainted-16    	  200000	        57.20 ns/op	       0 B/op	       0 allocs/op
+PASS
+ok  	github.com/DataDog/dd-iast-go/iast/encoding/json	1.070s

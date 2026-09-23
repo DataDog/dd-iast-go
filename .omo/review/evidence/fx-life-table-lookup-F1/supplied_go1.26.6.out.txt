@@ -1,0 +1,14 @@
+Command:
+cd /tmp/ddiast-review/wt/fx-life-table-lookup-F1 && GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 go test -race -count=1 -run '^TestReview' -v -timeout=5m ./internal/taint/request
+
+Captured output (exit 1; the first test intentionally fails its <=64 threshold):
+=== RUN   TestReviewHashDelimiterCollision
+    zz_review_collision_test.go:50: distinct tuples=256; first hash slot=142; final insertion probes=256; total insertion probes=32896
+    zz_review_collision_test.go:53: adversarial source tuple needs 256 probes (target <=64)
+--- FAIL: TestReviewHashDelimiterCollision (0.00s)
+=== RUN   TestReviewCollisionReachableThroughLiveAnalysis
+    zz_review_collision_test.go:88: live request admitted all 256 colliding sources
+--- PASS: TestReviewCollisionReachableThroughLiveAnalysis (0.10s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/request	0.817s
+FAIL

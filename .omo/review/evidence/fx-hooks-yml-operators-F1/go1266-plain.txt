@@ -1,0 +1,18 @@
+Runtime baseline command, from the private copy:
+GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=2 DD_IAST_ENABLED=false go test -timeout 3m -count=1 -v ./reviewfxoperators ./reviewfxoperators/constantlen
+
+Captured output:
+=== RUN   TestLenDoesNotEvaluateArrayElement
+--- PASS: TestLenDoesNotEvaluateArrayElement (0.00s)
+=== RUN   TestRangeDoesNotEvaluateArrayElement
+--- PASS: TestRangeDoesNotEvaluateArrayElement (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/reviewfxoperators	0.317s
+?   	github.com/DataDog/dd-iast-go/reviewfxoperators/constantlen	[no test files]
+PLAIN_EXIT=0
+
+After changing the constant-length fixture to use `var text string`, plain
+Go 1.26.6 also compiled it:
+go version go1.26.6 darwin/arm64
+?   	github.com/DataDog/dd-iast-go/reviewfxoperators/constantlen	[no test files]
+PLAIN_CONST_EXIT=0

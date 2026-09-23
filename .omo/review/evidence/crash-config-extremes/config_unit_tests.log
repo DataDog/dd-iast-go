@@ -1,0 +1,138 @@
+=== RUN   TestDefaultRedactionPatternsMatchAcceptedSensitiveForms
+--- PASS: TestDefaultRedactionPatternsMatchAcceptedSensitiveForms (0.00s)
+=== RUN   TestObserveReplaysWarningsAndEnvironment
+--- PASS: TestObserveReplaysWarningsAndEnvironment (0.00s)
+=== RUN   TestObserveReplaysInitialConfiguration
+--- PASS: TestObserveReplaysInitialConfiguration (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/config	(cached)
+=== RUN   TestFromEnvWithFallback
+=== RUN   TestFromEnvWithFallback/default
+=== RUN   TestFromEnvWithFallback/fallback
+=== RUN   TestFromEnvWithFallback/canonical
+=== RUN   TestFromEnvWithFallback/invalid_canonical_wins
+=== RUN   TestFromEnvWithFallback/invalid_fallback
+--- PASS: TestFromEnvWithFallback (0.00s)
+    --- PASS: TestFromEnvWithFallback/default (0.00s)
+    --- PASS: TestFromEnvWithFallback/fallback (0.00s)
+    --- PASS: TestFromEnvWithFallback/canonical (0.00s)
+    --- PASS: TestFromEnvWithFallback/invalid_canonical_wins (0.00s)
+    --- PASS: TestFromEnvWithFallback/invalid_fallback (0.00s)
+=== RUN   TestBoolFromEnv
+=== RUN   TestBoolFromEnv/default
+=== RUN   TestBoolFromEnv/environment
+=== RUN   TestBoolFromEnv/invalid
+--- PASS: TestBoolFromEnv (0.00s)
+    --- PASS: TestBoolFromEnv/default (0.00s)
+    --- PASS: TestBoolFromEnv/environment (0.00s)
+    --- PASS: TestBoolFromEnv/invalid (0.00s)
+=== RUN   TestUintFromEnv
+=== RUN   TestUintFromEnv/environment
+=== RUN   TestUintFromEnv/invalid
+--- PASS: TestUintFromEnv (0.00s)
+    --- PASS: TestUintFromEnv/environment (0.00s)
+    --- PASS: TestUintFromEnv/invalid (0.00s)
+=== RUN   TestUintFromEnvBounded
+=== RUN   TestUintFromEnvBounded/within_bounds
+=== RUN   TestUintFromEnvBounded/below_minimum
+=== RUN   TestUintFromEnvBounded/above_maximum
+=== RUN   TestUintFromEnvBounded/invalid_uses_default
+--- PASS: TestUintFromEnvBounded (0.00s)
+    --- PASS: TestUintFromEnvBounded/within_bounds (0.00s)
+    --- PASS: TestUintFromEnvBounded/below_minimum (0.00s)
+    --- PASS: TestUintFromEnvBounded/above_maximum (0.00s)
+    --- PASS: TestUintFromEnvBounded/invalid_uses_default (0.00s)
+=== RUN   TestFromEnv
+=== RUN   TestFromEnv/environment
+=== RUN   TestFromEnv/invalid
+--- PASS: TestFromEnv (0.00s)
+    --- PASS: TestFromEnv/environment (0.00s)
+    --- PASS: TestFromEnv/invalid (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/config/loader	(cached)
+=== RUN   TestParseLogLevel
+=== RUN   TestParseLogLevel/off
+=== RUN   TestParseLogLevel/mandatory
+=== RUN   TestParseLogLevel/information
+=== RUN   TestParseLogLevel/debug
+=== RUN   TestParseLogLevel/lowercase_rejected
+=== RUN   TestParseLogLevel/mixed_case_rejected
+=== RUN   TestParseLogLevel/unknown_value_rejected
+=== RUN   TestParseLogLevel/empty_value_rejected
+--- PASS: TestParseLogLevel (0.00s)
+    --- PASS: TestParseLogLevel/off (0.00s)
+    --- PASS: TestParseLogLevel/mandatory (0.00s)
+    --- PASS: TestParseLogLevel/information (0.00s)
+    --- PASS: TestParseLogLevel/debug (0.00s)
+    --- PASS: TestParseLogLevel/lowercase_rejected (0.00s)
+    --- PASS: TestParseLogLevel/mixed_case_rejected (0.00s)
+    --- PASS: TestParseLogLevel/unknown_value_rejected (0.00s)
+    --- PASS: TestParseLogLevel/empty_value_rejected (0.00s)
+=== RUN   TestParseRegexp
+=== RUN   TestParseRegexp/valid_pattern
+=== RUN   TestParseRegexp/invalid_pattern
+=== RUN   TestParseRegexp/empty_pattern
+--- PASS: TestParseRegexp (0.00s)
+    --- PASS: TestParseRegexp/valid_pattern (0.00s)
+    --- PASS: TestParseRegexp/invalid_pattern (0.00s)
+    --- PASS: TestParseRegexp/empty_pattern (0.00s)
+=== RUN   TestBoolFromEnv
+=== RUN   TestBoolFromEnv/unset_uses_true_default
+=== RUN   TestBoolFromEnv/unset_uses_false_default
+=== RUN   TestBoolFromEnv/true_accepted
+=== RUN   TestBoolFromEnv/false_accepted
+=== RUN   TestBoolFromEnv/numeric_one_accepted
+=== RUN   TestBoolFromEnv/numeric_zero_accepted
+=== RUN   TestBoolFromEnv/empty_falls_back
+=== RUN   TestBoolFromEnv/malformed_falls_back
+--- PASS: TestBoolFromEnv (0.00s)
+    --- PASS: TestBoolFromEnv/unset_uses_true_default (0.00s)
+    --- PASS: TestBoolFromEnv/unset_uses_false_default (0.00s)
+    --- PASS: TestBoolFromEnv/true_accepted (0.00s)
+    --- PASS: TestBoolFromEnv/false_accepted (0.00s)
+    --- PASS: TestBoolFromEnv/numeric_one_accepted (0.00s)
+    --- PASS: TestBoolFromEnv/numeric_zero_accepted (0.00s)
+    --- PASS: TestBoolFromEnv/empty_falls_back (0.00s)
+    --- PASS: TestBoolFromEnv/malformed_falls_back (0.00s)
+=== RUN   TestUintFromEnv
+=== RUN   TestUintFromEnv/unset_uses_default
+=== RUN   TestUintFromEnv/valid_value
+=== RUN   TestUintFromEnv/zero
+=== RUN   TestUintFromEnv/empty_falls_back
+=== RUN   TestUintFromEnv/malformed_falls_back
+=== RUN   TestUintFromEnv/negative_falls_back
+=== RUN   TestUintFromEnv/overflow_falls_back
+=== RUN   TestUintFromEnv/max_uint64
+--- PASS: TestUintFromEnv (0.00s)
+    --- PASS: TestUintFromEnv/unset_uses_default (0.00s)
+    --- PASS: TestUintFromEnv/valid_value (0.00s)
+    --- PASS: TestUintFromEnv/zero (0.00s)
+    --- PASS: TestUintFromEnv/empty_falls_back (0.00s)
+    --- PASS: TestUintFromEnv/malformed_falls_back (0.00s)
+    --- PASS: TestUintFromEnv/negative_falls_back (0.00s)
+    --- PASS: TestUintFromEnv/overflow_falls_back (0.00s)
+    --- PASS: TestUintFromEnv/max_uint64 (0.00s)
+=== RUN   TestClampUnsigned
+=== RUN   TestClampUnsigned/within_bounds
+=== RUN   TestClampUnsigned/at_lower_bound
+=== RUN   TestClampUnsigned/at_upper_bound
+=== RUN   TestClampUnsigned/below_minimum
+=== RUN   TestClampUnsigned/above_maximum
+--- PASS: TestClampUnsigned (0.00s)
+    --- PASS: TestClampUnsigned/within_bounds (0.00s)
+    --- PASS: TestClampUnsigned/at_lower_bound (0.00s)
+    --- PASS: TestClampUnsigned/at_upper_bound (0.00s)
+    --- PASS: TestClampUnsigned/below_minimum (0.00s)
+    --- PASS: TestClampUnsigned/above_maximum (0.00s)
+=== RUN   TestFromEnv
+=== RUN   TestFromEnv/unset_uses_default
+=== RUN   TestFromEnv/valid_value
+=== RUN   TestFromEnv/parse_failure
+--- PASS: TestFromEnv (0.00s)
+    --- PASS: TestFromEnv/unset_uses_default (0.00s)
+    --- PASS: TestFromEnv/valid_value (0.00s)
+    --- PASS: TestFromEnv/parse_failure (0.00s)
+=== RUN   TestFromEnvEmptyRegexpMatchesEverything
+--- PASS: TestFromEnvEmptyRegexpMatchesEverything (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/config/parser	(cached)

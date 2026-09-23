@@ -1,0 +1,97 @@
+{
+ "peak_tree_rss_kb": 501744,
+ "peak_tree_at_s": 3.7,
+ "peak_tree_top": [
+  [
+   127136,
+   [
+    "compile",
+    "net"
+   ]
+  ],
+  [
+   119744,
+   [
+    "(compile)",
+    ""
+   ]
+  ],
+  [
+   63168,
+   [
+    "compile",
+    "golang.org/x/tools/internal/stdlib"
+   ]
+  ],
+  [
+   56352,
+   [
+    "compile",
+    "encoding/json"
+   ]
+  ],
+  [
+   39248,
+   [
+    "go",
+    ""
+   ]
+  ],
+  [
+   31984,
+   [
+    "(compile)",
+    ""
+   ]
+  ]
+ ],
+ "top_process_peaks_kb": [
+  [
+   "compile runtime",
+   147744
+  ],
+  [
+   "compile net",
+   127136
+  ],
+  [
+   "(compile) ",
+   119744
+  ],
+  [
+   "link ",
+   104288
+  ],
+  [
+   "compile golang.org/x/tools/internal/stdlib",
+   63168
+  ],
+  [
+   "compile encoding/json",
+   56352
+  ],
+  [
+   "go ",
+   40208
+  ],
+  [
+   "(clang) ",
+   16416
+  ],
+  [
+   "cgo ",
+   10528
+  ],
+  [
+   "timeout ",
+   1584
+  ],
+  [
+   "time ",
+   1232
+  ]
+ ],
+ "samples": 6,
+ "killed_at_limit": false,
+ "duration_s": 6.8
+}

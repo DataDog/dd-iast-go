@@ -1,0 +1,24 @@
+[
+  {
+    "id": "sink-parity-F1",
+    "severity": "High",
+    "category": "redaction",
+    "location": "internal/taint/redaction/source.go:188-208",
+    "title": "Truncation removes a required value from tainted evidence",
+    "claim": "A tainted SQL evidence part starting after the 250-character truncation budget serializes with source and truncated but without the value required by the shared IAST schema.",
+    "evidence_path": ".omo/review/evidence/sink-parity/schema_parity_test.go",
+    "repro_command": "cp .omo/review/evidence/sink-parity/schema_parity_test.go /tmp/ddiast-review/wt/sink-parity/internal/taint/redaction/schema_parity_test.go && cd /tmp/ddiast-review/wt/sink-parity && GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 go test -timeout 5m -run '^TestTaintedPartAtTruncationBoundaryHasRequiredValue$' -count=1 -v ./internal/taint/redaction",
+    "needs_repro": false
+  },
+  {
+    "id": "sink-parity-F2",
+    "severity": "Medium",
+    "category": "test-gap",
+    "location": "system-tests/tests/appsec/iast/test_vulnerability_schema.py:13-21",
+    "title": "Schema test skips the normal Go meta-struct payload",
+    "claim": "The schema test only validates _dd.iast.json, while Go normally emits iast under meta_struct, so it skips Go reports on the normal path.",
+    "evidence_path": null,
+    "repro_command": null,
+    "needs_repro": true
+  }
+]

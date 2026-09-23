@@ -1,0 +1,113 @@
+{
+ "peak_tree_rss_kb": 1009872,
+ "peak_tree_at_s": 19.1,
+ "peak_tree_top": [
+  [
+   61984,
+   [
+    "orchestrion:tool orchestrion",
+    ""
+   ]
+  ],
+  [
+   44144,
+   [
+    "orchestrion:go build",
+    ""
+   ]
+  ],
+  [
+   39184,
+   [
+    "orchestrion:",
+    ""
+   ]
+  ],
+  [
+   39104,
+   [
+    "orchestrion:",
+    ""
+   ]
+  ],
+  [
+   39072,
+   [
+    "orchestrion:",
+    ""
+   ]
+  ],
+  [
+   38768,
+   [
+    "orchestrion:",
+    ""
+   ]
+  ]
+ ],
+ "top_process_peaks_kb": [
+  [
+   "compile github.com/nats-io/nats-server/v2/server",
+   804592
+  ],
+  [
+   "link ",
+   555632
+  ],
+  [
+   "compile runtime",
+   278896
+  ],
+  [
+   "orchestrion-toolexec/compile runtime",
+   257632
+  ],
+  [
+   "(compile) ",
+   189712
+  ],
+  [
+   "(ld) ",
+   135856
+  ],
+  [
+   "compile net",
+   120992
+  ],
+  [
+   "orchestrion-toolexec/compile github.com/samber/lo",
+   112464
+  ],
+  [
+   "compile encoding/json/v2",
+   92864
+  ],
+  [
+   "compile google.golang.org/protobuf/internal/impl",
+   87008
+  ],
+  [
+   "compile github.com/DataDog/datadog-agent/pkg/proto/pbgo/trace",
+   64272
+  ],
+  [
+   "orchestrion:tool orchestrion ",
+   61984
+  ],
+  [
+   "compile github.com/nats-io/nats.go",
+   53168
+  ],
+  [
+   "compile github.com/xeipuuv/gojsonschema",
+   47792
+  ],
+  [
+   "orchestrion:go build ",
+   44656
+  ]
+ ],
+ "samples": 31,
+ "killed_at_limit": false,
+ "duration_s": 36.2
+}

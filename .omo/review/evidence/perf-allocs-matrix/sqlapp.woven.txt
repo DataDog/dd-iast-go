@@ -1,0 +1,8 @@
+goos: darwin
+goarch: arm64
+pkg: github.com/DataDog/dd-iast-go/testapps/database-sql
+cpu: Apple M4 Max
+BenchmarkStmtExecContextInactive-16    	    2000	       262.3 ns/op	      96 B/op	       3 allocs/op
+PASS
+ok  	github.com/DataDog/dd-iast-go/testapps/database-sql	0.781s
+?   	github.com/DataDog/dd-iast-go/testapps/database-sql/cmd/bootstrap	[no test files]

@@ -1,0 +1,7 @@
+=== RUN   TestFxAnchorWovenSurface
+    zz_fx_anchor_repro_test.go:180: woven surface: bound=true retained=116031488 charge=0
+    zz_fx_anchor_repro_test.go:184: woven surface active: retained=116031488 incrementalCharge=0
+    zz_fx_anchor_repro_test.go:188: woven finish: heap=15360000 charge=0
+--- PASS: TestFxAnchorWovenSurface (0.34s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/store	0.930s

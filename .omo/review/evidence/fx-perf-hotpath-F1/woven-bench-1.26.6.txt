@@ -1,0 +1,35 @@
+goos: darwin
+goarch: arm64
+pkg: github.com/DataDog/dd-iast-go/iast/seqreview
+cpu: Apple M4 Max
+BenchmarkEscapingSequence/SplitSeq/native-16         	   10000	        34.53 ns/op	      64 B/op	       2 allocs/op
+BenchmarkEscapingSequence/SplitSeq/direct-16         	   10000	        97.99 ns/op	      96 B/op	       3 allocs/op
+BenchmarkEscapingSequence/SplitAfterSeq/native-16    	   10000	        64.47 ns/op	      64 B/op	       2 allocs/op
+BenchmarkEscapingSequence/SplitAfterSeq/direct-16    	   10000	        45.80 ns/op	      96 B/op	       3 allocs/op
+BenchmarkEscapingSequence/Lines/native-16            	   10000	        57.62 ns/op	      32 B/op	       2 allocs/op
+BenchmarkEscapingSequence/Lines/direct-16            	   10000	        90.48 ns/op	      64 B/op	       3 allocs/op
+BenchmarkEscapingSequence/FieldsSeq/native-16        	   10000	        32.68 ns/op	      24 B/op	       1 allocs/op
+BenchmarkEscapingSequence/FieldsSeq/direct-16        	   10000	        31.85 ns/op	      56 B/op	       2 allocs/op
+BenchmarkEscapingSequence/FieldsFuncSeq/native-16    	   10000	        36.88 ns/op	      32 B/op	       1 allocs/op
+BenchmarkEscapingSequence/FieldsFuncSeq/direct-16    	   10000	        55.91 ns/op	      64 B/op	       2 allocs/op
+BenchmarkImmediateSplit-16                           	   10000	        38.94 ns/op	       0 B/op	       0 allocs/op
+PASS
+ok  	github.com/DataDog/dd-iast-go/iast/seqreview	0.294s
+        6.19 real         1.90 user         3.28 sys
+           105725952  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              175899  page reclaims
+                5346  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                 320  messages sent
+                 315  messages received
+                4135  signals received
+                5571  voluntary context switches
+              104523  involuntary context switches
+          5753513168  instructions retired
+          3255701346  cycles elapsed
+            39404240  peak memory footprint

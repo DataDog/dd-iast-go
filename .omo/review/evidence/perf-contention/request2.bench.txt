@@ -1,0 +1,51 @@
+goos: darwin
+goarch: arm64
+pkg: github.com/DataDog/dd-iast-go/internal/taint/request
+cpu: Apple M4 Max
+BenchmarkPCBeginRequestFinish               	   10000	     22464 ns/op	         0 capdrop/op	         0 storeacqdrop/op	         0 storedrop/permitted	         0 taintfail/op	         0 visitmiss/visit
+BenchmarkPCBeginRequestFinish               	   10000	     24221 ns/op	         0 capdrop/op	         0 storeacqdrop/op	         0 storedrop/permitted	         0 taintfail/op	         0 visitmiss/visit
+BenchmarkPCBeginRequestFinish               	   16420	     60019 ns/op	         0 capdrop/op	         0 storeacqdrop/op	         0 storedrop/permitted	         0 taintfail/op	         0 visitmiss/visit
+BenchmarkPCBeginRequestFinish-2             	   10000	     20386 ns/op	         0.05620 capdrop/op	         0.05620 storeacqdrop/op	         0.05620 storedrop/permitted	         0.001600 taintfail/op	         0.0001060 visitmiss/visit
+BenchmarkPCBeginRequestFinish-2             	  135100	     15867 ns/op	         0.3876 capdrop/op	         0.3876 storeacqdrop/op	         0.3876 storedrop/permitted	         0.001665 taintfail/op	         0.0001844 visitmiss/visit
+BenchmarkPCBeginRequestFinish-2             	   32067	      6511 ns/op	         0.6002 capdrop/op	         0.6002 storeacqdrop/op	         0.6002 storedrop/permitted	         0.001216 taintfail/op	         0.0001463 visitmiss/visit
+BenchmarkPCBeginRequestFinish-4             	   47986	      6000 ns/op	         0.6946 capdrop/op	         0.6946 storeacqdrop/op	         0.6946 storedrop/permitted	         0.003293 taintfail/op	         0.0002477 visitmiss/visit
+BenchmarkPCBeginRequestFinish-4             	   11146	     19067 ns/op	         0.1596 capdrop/op	         0.1596 storeacqdrop/op	         0.1596 storedrop/permitted	         0.007626 taintfail/op	         0.0004008 visitmiss/visit
+BenchmarkPCBeginRequestFinish-4             	   27471	      9817 ns/op	         0.6097 capdrop/op	         0.6097 storeacqdrop/op	         0.6097 storedrop/permitted	         0.004587 taintfail/op	         0.0003269 visitmiss/visit
+BenchmarkPCBeginRequestFinish-8             	   52062	      4505 ns/op	         0.7051 capdrop/op	         0.7051 storeacqdrop/op	         0.7051 storedrop/permitted	         0.004629 taintfail/op	         0.0005057 visitmiss/visit
+BenchmarkPCBeginRequestFinish-8             	  159441	      3781 ns/op	         0.7768 capdrop/op	         0.7768 storeacqdrop/op	         0.7768 storedrop/permitted	         0.003399 taintfail/op	         0.0005525 visitmiss/visit
+BenchmarkPCBeginRequestFinish-8             	  134625	      4832 ns/op	         0.6428 capdrop/op	         0.6428 storeacqdrop/op	         0.6428 storedrop/permitted	         0.005252 taintfail/op	         0.0004974 visitmiss/visit
+BenchmarkPCBeginRequestFinish-16            	   72235	      2851 ns/op	         0.6021 capdrop/op	         0.6021 storeacqdrop/op	         0.6021 storedrop/permitted	         0.01036 taintfail/op	         0.0009294 visitmiss/visit
+BenchmarkPCBeginRequestFinish-16            	  166052	      2431 ns/op	         0.7937 capdrop/op	         0.7937 storeacqdrop/op	         0.7937 storedrop/permitted	         0.003939 taintfail/op	         0.0006511 visitmiss/visit
+BenchmarkPCBeginRequestFinish-16            	  115419	      3358 ns/op	         0.7033 capdrop/op	         0.7033 storeacqdrop/op	         0.7033 storedrop/permitted	         0.004306 taintfail/op	         0.0006400 visitmiss/visit
+BenchmarkPCBeginRequestFinishDefault2       	    7060	     80491 ns/op	         0 capdrop/op	         0 storeacqdrop/op	         0 storedrop/permitted	         0 taintfail/op	         0 visitmiss/visit
+BenchmarkPCBeginRequestFinishDefault2       	   10000	     58577 ns/op	         0 capdrop/op	         0 storeacqdrop/op	         0 storedrop/permitted	         0 taintfail/op	         0 visitmiss/visit
+BenchmarkPCBeginRequestFinishDefault2       	    9446	     35768 ns/op	         0 capdrop/op	         0 storeacqdrop/op	         0 storedrop/permitted	         0 taintfail/op	         0 visitmiss/visit
+BenchmarkPCBeginRequestFinishDefault2-2     	   24855	      9786 ns/op	         0.1837 capdrop/op	         0.1837 storeacqdrop/op	         0.1837 storedrop/permitted	         0.002414 taintfail/op	         0.0002650 visitmiss/visit
+BenchmarkPCBeginRequestFinishDefault2-2     	   38212	      8921 ns/op	         0.1768 capdrop/op	         0.1768 storeacqdrop/op	         0.1768 storedrop/permitted	         0.003036 taintfail/op	         0.0002783 visitmiss/visit
+BenchmarkPCBeginRequestFinishDefault2-2     	   26793	      9055 ns/op	         0.03370 capdrop/op	         0.03370 storeacqdrop/op	         0.03370 storedrop/permitted	         0.004441 taintfail/op	         0.0003527 visitmiss/visit
+BenchmarkPCBeginRequestFinishDefault2-4     	 1915724	       121.8 ns/op	         0.9895 capdrop/op	         0.001891 storeacqdrop/op	         0.1521 storedrop/permitted	         0.0000475 taintfail/op	         0.0002786 visitmiss/visit
+BenchmarkPCBeginRequestFinishDefault2-4     	 1781745	       135.5 ns/op	         0.9900 capdrop/op	         0.003135 storeacqdrop/op	         0.2388 storedrop/permitted	         0.0000443 taintfail/op	         0.0002318 visitmiss/visit
+BenchmarkPCBeginRequestFinishDefault2-4     	 1523227	       167.4 ns/op	         0.9905 capdrop/op	         0.001329 storeacqdrop/op	         0.1232 storedrop/permitted	         0.0000164 taintfail/op	         0.0000955 visitmiss/visit
+BenchmarkPCBeginRequestFinishDefault2-8     	 1861524	       117.1 ns/op	         0.9928 capdrop/op	         0.004924 storeacqdrop/op	         0.4055 storedrop/permitted	         0.0000199 taintfail/op	         0.0001861 visitmiss/visit
+BenchmarkPCBeginRequestFinishDefault2-8     	 2205374	       108.3 ns/op	         0.9928 capdrop/op	         0.001134 storeacqdrop/op	         0.1366 storedrop/permitted	         0.0000258 taintfail/op	         0.0001504 visitmiss/visit
+BenchmarkPCBeginRequestFinishDefault2-8     	 2209819	       111.0 ns/op	         0.9922 capdrop/op	         0.005774 storeacqdrop/op	         0.4245 storedrop/permitted	         0.0000222 taintfail/op	         0.0001880 visitmiss/visit
+BenchmarkPCBeginRequestFinishDefault2-16    	 2123089	       112.1 ns/op	         0.9945 capdrop/op	         0.002670 storeacqdrop/op	         0.3281 storedrop/permitted	         0.0000089 taintfail/op	         0.0000646 visitmiss/visit
+BenchmarkPCBeginRequestFinishDefault2-16    	 2231496	        95.37 ns/op	         0.9947 capdrop/op	         0.0008228 storeacqdrop/op	         0.1349 storedrop/permitted	         0.0000040 taintfail/op	         0.0000319 visitmiss/visit
+BenchmarkPCBeginRequestFinishDefault2-16    	 2465260	        95.29 ns/op	         0.9947 capdrop/op	         0.001356 storeacqdrop/op	         0.2025 storedrop/permitted	         0.0000057 taintfail/op	         0.0001044 visitmiss/visit
+BenchmarkPCIntraRequestVisitOnly            	  270806	       816.7 ns/op	         0 visitmiss/visit
+BenchmarkPCIntraRequestVisitOnly            	  319042	       763.7 ns/op	         0 visitmiss/visit
+BenchmarkPCIntraRequestVisitOnly            	  337310	       772.9 ns/op	         0 visitmiss/visit
+BenchmarkPCIntraRequestVisitOnly-2          	  466658	       540.3 ns/op	         0.0004179 visitmiss/visit
+BenchmarkPCIntraRequestVisitOnly-2          	  440608	       544.5 ns/op	         0.0009487 visitmiss/visit
+BenchmarkPCIntraRequestVisitOnly-2          	  453332	       562.0 ns/op	         0.0007191 visitmiss/visit
+BenchmarkPCIntraRequestVisitOnly-4          	  687072	       329.0 ns/op	         0.02590 visitmiss/visit
+BenchmarkPCIntraRequestVisitOnly-4          	  700578	       382.8 ns/op	         0.06702 visitmiss/visit
+BenchmarkPCIntraRequestVisitOnly-4          	  638884	       372.6 ns/op	         0.04480 visitmiss/visit
+BenchmarkPCIntraRequestVisitOnly-8          	  704274	       352.8 ns/op	         0.06167 visitmiss/visit
+BenchmarkPCIntraRequestVisitOnly-8          	  703704	       471.9 ns/op	         0.1272 visitmiss/visit
+BenchmarkPCIntraRequestVisitOnly-8          	  463096	       444.6 ns/op	         0.05622 visitmiss/visit
+BenchmarkPCIntraRequestVisitOnly-16         	  557588	       417.1 ns/op	         0.09156 visitmiss/visit
+BenchmarkPCIntraRequestVisitOnly-16         	  771014	       365.3 ns/op	         0.3300 visitmiss/visit
+BenchmarkPCIntraRequestVisitOnly-16         	  554533	       422.8 ns/op	         0.1978 visitmiss/visit
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/request	22.667s

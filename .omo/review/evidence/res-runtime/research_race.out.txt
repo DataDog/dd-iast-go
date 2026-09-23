@@ -1,0 +1,3 @@
+$ cd <git archive of orchestrion eliottness/iast-testing runtime/taint + branch go.mod/go.sum> && GOFLAGS=-mod=mod go test -race -count=1 ./runtime/taint/
+ok  	github.com/DataDog/orchestrion/runtime/taint	9.490s
+(exit 0; run before zz_review_stale_test.go was added)

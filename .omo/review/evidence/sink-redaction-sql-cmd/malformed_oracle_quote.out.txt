@@ -1,0 +1,10 @@
+Command:
+  cd /tmp/ddiast-review/wt/sink-redaction-sql-cmd && env GOFLAGS=-p=4 GOTOOLCHAIN=go1.26.6 go test -count=1 -timeout=15m ./internal/taint/redaction -run '^TestReviewMalformedLiteralContainingOracleQuoteDoesNotExposeSuffix$'
+
+Output:
+--- FAIL: TestReviewMalformedLiteralContainingOracleQuoteDoesNotExposeSuffix (0.00s)
+    review_sql_reproducer_test.go:21: status=0 masked="SELECT '?q'[?]' suffix'" intervals=[]redaction.Interval{redaction.Interval{Start:0x8, Length:0x7}, redaction.Interval{Start:0x12, Length:0x6}} build-ok=true source-redacted=false source-value="suffix"
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/redaction	0.762s
+FAIL
+Failed with exit code 1

@@ -1,0 +1,41 @@
+$ cd /tmp/ddiast-review/wt/fx-hooks-yml-operators-F3 && export GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 && go version && /usr/bin/time -l timeout 1400 go tool orchestrion go build -o /dev/null ./fx3/cmd/app 2>&1
+go version go1.26.6 darwin/arm64
+# github.com/DataDog/dd-iast-go/fx3/greet
+panic: assignment to entry in nil map
+
+goroutine 1 [running]:
+github.com/DataDog/orchestrion/internal/toolexec/aspect.Weaver.OnCompile({{0x2dafa3d703d4?, 0x2?}, {0x0?, 0x1011bf60c?}}, {0x10236a6a8, 0x2dafa4023ec0}, 0x2dafa3f33c20)
+	/Users/eliott.bouhana/go/pkg/mod/github.com/!data!dog/orchestrion@v1.12.2-0.20260828141217-23afa71d6dcb/internal/toolexec/aspect/oncompile.go:195 +0x17ac
+github.com/DataDog/orchestrion/internal/toolexec/proxy.ProcessCommand[...](...)
+	/Users/eliott.bouhana/go/pkg/mod/github.com/!data!dog/orchestrion@v1.12.2-0.20260828141217-23afa71d6dcb/internal/toolexec/proxy/proxy.go:78
+github.com/DataDog/orchestrion/internal/cmd.init.func8(0x2dafa4230180)
+	/Users/eliott.bouhana/go/pkg/mod/github.com/!data!dog/orchestrion@v1.12.2-0.20260828141217-23afa71d6dcb/internal/cmd/toolexec.go:93 +0x4c4
+github.com/urfave/cli/v2.(*Command).Run(0x102550f40, 0x2dafa4230180, {0x2dafa3e598c0, 0x15, 0x15})
+	/Users/eliott.bouhana/go/pkg/mod/github.com/urfave/cli/v2@v2.27.7/command.go:276 +0x580
+github.com/urfave/cli/v2.(*Command).Run(0x2dafa3e594a0, 0x2dafa422be00, {0x2dafa3e58000, 0x16, 0x16})
+	/Users/eliott.bouhana/go/pkg/mod/github.com/urfave/cli/v2@v2.27.7/command.go:269 +0x774
+github.com/urfave/cli/v2.(*App).RunContext(0x2dafa4068c00, {0x10236a3d0, 0x10259ad20}, {0x2dafa3e58000, 0x16, 0x16})
+	/Users/eliott.bouhana/go/pkg/mod/github.com/urfave/cli/v2@v2.27.7/app.go:333 +0x4bc
+main.main()
+	/Users/eliott.bouhana/go/pkg/mod/github.com/!data!dog/orchestrion@v1.12.2-0.20260828141217-23afa71d6dcb/main.go:218 +0xe9c
+exit status 1
+       10.97 real         7.84 user        32.90 sys
+           128204800  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              322178  page reclaims
+                5387  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                 268  messages sent
+                 295  messages received
+               27252  signals received
+               19742  voluntary context switches
+              212704  involuntary context switches
+            19256522  instructions retired
+             9471494  cycles elapsed
+             1212728  peak memory footprint
+
+[exit 1]

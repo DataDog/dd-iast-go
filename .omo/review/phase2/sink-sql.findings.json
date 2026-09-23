@@ -1,0 +1,13 @@
+[
+  {
+    "id": "sink-sql-F1",
+    "severity": "Medium",
+    "category": "test-gap",
+    "location": "iast/database/sql/testapp/sql_test.go:63-100",
+    "title": "Missing persistent tests for delegated SQL calls and driver.Valuer",
+    "claim": "Checked-in integration tests omit non-context DB/Tx/Stmt and most QueryRow delegations and do not test driver.Valuer parameter success or error behavior. The private woven reproducer passes, but the checked-in suite does not guard these risk paths against future regression.",
+    "evidence_path": ".omo/review/evidence/sink-sql/review-sql-output.txt",
+    "repro_command": "cd /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go && mkdir -p /tmp/ddiast-review/wt && rsync -a --exclude .git --exclude .omo ./ /tmp/ddiast-review/wt/sink-sql/ && cp .omo/review/evidence/sink-sql/review_sql_test.go /tmp/ddiast-review/wt/sink-sql/iast/database/sql/testapp/review_sql_test.go && cd /tmp/ddiast-review/wt/sink-sql/iast/database/sql/testapp && GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -timeout 10m -count=1 -run TestReviewSQL -v .",
+    "needs_repro": false
+  }
+]

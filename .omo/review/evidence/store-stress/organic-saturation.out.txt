@@ -1,0 +1,18 @@
+$ ORGANIC_WAVES=600 ORGANIC_OWNERS=4 go test -run '^TestReviewOrganicShardSaturation$' -count=1 -v ./internal/taint/store
+=== RUN   TestReviewOrganicShardSaturation
+    wedge_review_test.go:187: organic: waves=600 owners=4 firstFullWave=-1 worst fully-occupied shards=0 worst max occupancy=123/128 full-drops=6 stats={Compactions:75264 CompactAborts:0 OverflowFree:256 Tombstones:1710 MaxTombstones:29 ProbeCount:9811242 AverageProbe:2.870188911862535 MaxProbe:64}
+--- PASS: TestReviewOrganicShardSaturation (1.56s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/store	1.830s
+$ ORGANIC_WAVES=600 ORGANIC_OWNERS=2 go test -run '^TestReviewOrganicShardSaturation$' -count=1 -v ./internal/taint/store
+=== RUN   TestReviewOrganicShardSaturation
+    wedge_review_test.go:187: organic: waves=600 owners=2 firstFullWave=-1 worst fully-occupied shards=0 worst max occupancy=111/128 full-drops=0 stats={Compactions:34671 CompactAborts:0 OverflowFree:256 Tombstones:2306 MaxTombstones:31 ProbeCount:4905600 AverageProbe:2.3389921722113503 MaxProbe:38}
+--- PASS: TestReviewOrganicShardSaturation (0.57s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/store	0.848s
+$ ORGANIC_WAVES=1500 ORGANIC_OWNERS=4 go test -run '^TestReviewOrganicRollingSaturation$' -count=1 -v ./internal/taint/store
+=== RUN   TestReviewOrganicRollingSaturation
+    wedge_review_test.go:247: rolling: steps=1500 owners=4 worstOcc=127/128 maxFullShards=0 firstFullStep=-1 wedgedAfterDrain=0 stats={Compactions:54246 CompactAborts:0 OverflowFree:256 Tombstones:2324 MaxTombstones:30 ProbeCount:6134988 AverageProbe:5.46811909004549 MaxProbe:64}
+--- PASS: TestReviewOrganicRollingSaturation (0.92s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/store	1.128s

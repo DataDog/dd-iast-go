@@ -1,0 +1,12 @@
+$ GOTOOLCHAIN=go1.26.6 go test -count=1 -run 'TestReviewCase|TestReviewToValid' -v ./internal/taint/propagation/
+=== RUN   TestReviewCaseCoarsensWholeQuery
+    zz_review_unicode_test.go:747: name="bob" input ranges=[{34 3 1 0} {50 4 2 0}] -> ToUpper ranges=[{34 3 1 0} {50 4 2 0}] (len=55)
+    zz_review_unicode_test.go:747: name="josé" input ranges=[{34 5 1 0} {52 4 2 0}] -> ToUpper ranges=[{0 57 1 0}] (len=57)
+--- PASS: TestReviewCaseCoarsensWholeQuery (0.00s)
+=== RUN   TestReviewToValidUTF8StringVsBytes
+    zz_review_unicode_test.go:770: input ranges=[{34 4 1 0} {51 4 2 0}]
+    zz_review_unicode_test.go:771: strings.ToValidUTF8 ranges=[{0 56 1 0}]
+    zz_review_unicode_test.go:772: bytes.ToValidUTF8   ranges=[{34 3 1 0} {51 4 2 0}]
+--- PASS: TestReviewToValidUTF8StringVsBytes (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/propagation	0.499s

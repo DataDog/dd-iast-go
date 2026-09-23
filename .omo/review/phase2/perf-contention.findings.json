@@ -1,0 +1,57 @@
+[
+  {
+    "id": "perf-contention-F1",
+    "severity": "High",
+    "category": "false-negative",
+    "location": "internal/taint/store/owner.go:24-61; internal/taint/request/owner.go:83-86; internal/taint/request/scope.go:95-98",
+    "title": "Global ownerMu TryLock in Store.Acquire drops sampled requests despite free capacity",
+    "claim": "After winning a permit, Store.Acquire TryLocks the process-global ownerMu (critical section: owner scan + clearing 8 writer records ~13 KiB); any concurrent Acquire makes the request DecisionCapacityDropped with free owners. Measured: 15-41% of permitted requests dropped at default max=2, 39-70% at max=64; silent, no telemetry.",
+    "evidence_path": ".omo/review/evidence/perf-contention/store_zz_perf_contention_test.go",
+    "repro_command": "go test -run TestPCAcquireDroppedWithFreeCapacity -v ./internal/taint/store && go test -run '^$' -bench 'PCBeginRequestFinish' -benchtime=200ms -count=3 -cpu=1,2,4,8,16 ./internal/taint/request",
+    "needs_repro": false
+  },
+  {
+    "id": "perf-contention-F2",
+    "severity": "Medium",
+    "category": "false-negative",
+    "location": "internal/taint/request/lookup.go:143-157; internal/taint/request/owner.go:25,139,173,206,235,247",
+    "title": "Exclusive sourceMu TryLock on the read path makes concurrent same-request visitors see tainted values as clean",
+    "claim": "copySources (every VisitString/IsTaintedString hit, including sink evidence collection) TryLocks the per-slot plain Mutex; concurrent readers of the same request miss each other (0.07%/4.5%/6.2%/19.8% of visits at 2/4/8/16 goroutines; 91-99% when racing source adds).",
+    "evidence_path": ".omo/review/evidence/perf-contention/request_zz_perf_contention_test.go",
+    "repro_command": "go test -run TestPCConcurrentVisitorSeesClean -v ./internal/taint/request && go test -run '^$' -bench 'PCIntraRequest' -cpu=1,2,4,8,16 ./internal/taint/request",
+    "needs_repro": false
+  },
+  {
+    "id": "perf-contention-F3",
+    "severity": "Medium",
+    "category": "perf",
+    "location": "internal/taint/store/owner.go:181-203; internal/taint/store/overflow.go:8-18; internal/taint/store/root.go:354-358",
+    "title": "Owner.Finish holds global overflowMu over the full 512-root loop, serializing finishes and truncating other requests' ranges",
+    "claim": "Finish takes the blocking global overflowMu while clearing all 512 roots (~160 KiB) regardless of use; it is 95-99% of mutex delay in all profiles, and concurrent allocateOverflow TryLock failures silently truncate >10-range roots to 10 (10-14% of multi-range publishes when DD_IAST_MAX_RANGE_COUNT>10).",
+    "evidence_path": ".omo/review/evidence/perf-contention/store.mutex.top.txt",
+    "repro_command": "go test -run TestPCOverflowTruncatedDuringOtherFinish -v ./internal/taint/store && go test -run '^$' -bench PCRequestLifecycleOverflow -cpu=1,4,8,16 -mutexprofile=m.pprof ./internal/taint/store",
+    "needs_repro": false
+  },
+  {
+    "id": "perf-contention-F4",
+    "severity": "Low",
+    "category": "false-negative",
+    "location": "internal/taint/store/value.go:116-138; internal/taint/store/lookup.go:87-89,114-116,148-159; internal/taint/store/owner.go:119-125",
+    "title": "By-design shard/owner TryLock drops are small but invisible (no telemetry)",
+    "claim": "Measured: 0.9-2.1% of requests lose a source to shard contention, 1-4% of derives dropped in tight loops, 0.08-0.17% of reads miss with concurrent writers; owner Counters() and AcquireDrops() have no production caller.",
+    "evidence_path": ".omo/review/evidence/perf-contention/store2.bench.txt",
+    "repro_command": "go test -run '^$' -bench 'PCDeriveOwnOwner|PCMixedReadWrite|PCRequestLifecycle$' -cpu=1,4,8,16 ./internal/taint/store",
+    "needs_repro": false
+  },
+  {
+    "id": "perf-contention-F5",
+    "severity": "Low",
+    "category": "perf",
+    "location": "internal/taint/store/lookup.go:68-76,111,167-194",
+    "title": "Lookup slow path ~16x MayContain cost due to 1.5 KiB ranges.Set copies",
+    "claim": "Serial Lookup hit ~1.2-1.5 us vs 91 ns MayContain: snapshot reset and several full ranges.Set temporaries copy ~8-12 KiB per owner hit.",
+    "evidence_path": ".omo/review/evidence/perf-contention/store.bench.txt",
+    "repro_command": "go test -run '^$' -bench 'PCLookupHit|PCMayContainHit' -cpu=1 -count=3 ./internal/taint/store",
+    "needs_repro": false
+  }
+]

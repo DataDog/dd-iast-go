@@ -1,0 +1,8 @@
+=== RUN   TestReviewProbeHeapGrowthLifecycle
+    review_probe_heap_test.go:68: life round=1 heapInuse=15458304 delta=0 cleanupsRegistered~210000 charged=0 values=0
+    review_probe_heap_test.go:68: life round=2 heapInuse=15458304 delta=0 cleanupsRegistered~360000 charged=0 values=0
+    review_probe_heap_test.go:68: life round=3 heapInuse=15458304 delta=0 cleanupsRegistered~510000 charged=0 values=0
+    review_probe_heap_test.go:68: life round=4 heapInuse=15458304 delta=0 cleanupsRegistered~660000 charged=0 values=0
+--- PASS: TestReviewProbeHeapGrowthLifecycle (2.71s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/propagation	3.353s

@@ -1,0 +1,17 @@
+With the private copy's orchestrion.tool.go replaced by
+fixtures/go1270-propagation-only/orchestrion.tool.go:
+GOTOOLCHAIN=local GOFLAGS=-p=2 DD_IAST_ENABLED=false REVIEW_WOVEN=1 go tool orchestrion go test -work -timeout 3m -count=1 -v ./reviewfxoperators
+
+Captured output:
+go version go1.27.0 darwin/arm64
+=== RUN   TestLenDoesNotEvaluateArrayElement
+    operators_test.go:10: len evaluated the array element: runtime error: slice bounds out of range [:99] with length 3
+--- FAIL: TestLenDoesNotEvaluateArrayElement (0.00s)
+=== RUN   TestRangeDoesNotEvaluateArrayElement
+    operators_test.go:25: range evaluated the array element: runtime error: slice bounds out of range [:99] with length 3
+--- FAIL: TestRangeDoesNotEvaluateArrayElement (0.00s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/reviewfxoperators	0.342s
+GO1270_WOVEN_RUNTIME_ISOLATED_EXIT=1
+49.88 real 27.36 user 44.03 sys
+306905088 maximum resident set size

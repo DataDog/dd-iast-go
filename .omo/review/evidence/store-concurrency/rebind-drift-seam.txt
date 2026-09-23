@@ -1,0 +1,42 @@
+$ cd <seam copy> && GOTOOLCHAIN=go1.26.6 go test -race -run TestReviewSeamRebindMutationDrift -count=1 -v ./internal/taint/store/
+
+=== RUN   TestReviewSeamRebindMutationDrift
+    zz_review_seam_drift_test.go:22: claimMutation(r1) inside rebind window: true
+    zz_review_seam_drift_test.go:24: r1={ID:0 Generation:1} r2={ID:1 Generation:1} adopt2=true
+    zz_review_seam_drift_test.go:25: after rebind: owner_values=0 process_values=0 r2_quota_count=1 (one live key)
+    zz_review_seam_drift_test.go:27: after PublishBytesMutation(r2)->{ID:1 Generation:2} ok=true: owner_values=0 process_values=0
+    zz_review_seam_drift_test.go:29: value counters drifted: owner=0 process=0, want 1 live key
+    zz_review_seam_drift_test.go:32: after Finish: process_values=0
+--- FAIL: TestReviewSeamRebindMutationDrift (0.00s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/store	0.698s
+FAIL
+
+
+# Seam diff:
+--- /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/internal/taint/store/value.go	2026-09-23 11:18:59
++++ /tmp/ddiast-review/wt/store-concurrency/seam/internal/taint/store/value.go	2026-09-23 15:04:40
+@@ -10,6 +10,9 @@
+ var forceCollision atomic.Bool      // test seam
+ var forceWriterLockFail atomic.Bool // test seam
+ 
++// reviewRebindHook is a REVIEW-ONLY scheduling seam.
++var reviewRebindHook func()
++
+ func keyHash(key Key) uint64 {
+ 	if forceCollision.Load() {
+ 		return 0
+@@ -176,6 +179,10 @@
+ 					o.owner.drops.full.Add(1)
+ 					return false
+ 				}
++				if hook := reviewRebindHook; hook != nil {
++					reviewRebindHook = nil
++					hook()
++				}
+ 				if slot.rootID < MaxRootsPerOwner {
+ 					releaseRootValue(&o.owner.roots[slot.rootID], slot.rootGen)
+ 				}
+
+
+# Natural stress (unmodified code, 30s, TestReviewRebindConcurrentMutationDrift): iterations=210665 no drift observed

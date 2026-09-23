@@ -1,0 +1,16 @@
+$ cd /tmp/ddiast-review/wt/fx-store-stress-F1   (private copy of HEAD 2e23b46)
+$ cp /Users/eliott.bouhana/go/src/github.com/DataDog/dd-iast-go/.omo/review/evidence/store-stress/stale_review_test.go internal/taint/store/
+$ STALE_BUDGET=60s GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 timeout 300 go test -race -run '^TestReviewStale(HandleBinds|HandleWriter)' -count=1 -v ./internal/taint/store
+=== RUN   TestReviewStaleHandleBindsIntoReusedSlot
+    stale_review_test.go:96: iteration 505: object bound only through the FINISHED request's handle (gen 1012) is bound to the NEW request (idx=0 gen=1013, id=1076); bindings=1
+--- FAIL: TestReviewStaleHandleBindsIntoReusedSlot (3.67s)
+=== RUN   TestReviewStaleHandleWriterStateBleedsIntoNextRequest
+    stale_review_test.go:217: iteration 362: builder written only through FINISHED request gen 726 is tracked by NEW request gen 727 (id 790); snapshot=true ranges=1 first={Start:0 Length:4 SourceID:7 Marks:0} (source 7 is request A's owner-local ID, now resolved in B's source table); B charged=64 writers=1
+--- FAIL: TestReviewStaleHandleWriterStateBleedsIntoNextRequest (2.31s)
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/store	6.528s
+FAIL
+
+(fx-store-stress-F1 verifier: independent re-run of the phase-2 reproducer in my
+private copy; reproduces within seconds under -race, matching the phase-2
+evidence.)

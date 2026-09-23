@@ -1,0 +1,158 @@
+Environment: darwin/arm64; GOTOOLCHAIN=go1.26.6 (and go1.27.0 where noted); GOFLAGS=-p=4 (woven runs wrapped in /usr/bin/time -l); working directory /tmp/ddiast-review/wt/fx-hooks-orchestrion-dep-F2, a private copy of dd-iast-go HEAD 2e23b46. Commands run sequentially in the foreground with explicit timeouts.
+
+Independent reproducers (also copied into this evidence directory):
+- probe_f2_legality/probe.go: proves all bound shapes below compile as plain Go (untyped integral float and complex constants are legal slice bounds per the Go spec).
+- review_f2_str, review_f2_bytes, review_f2_complex: customer-shaped woven test packages using inline integral untyped float / complex constant slice bounds.
+- review_f2_direct: the exact generic call the weave template generates, built with plain go, on both toolchains.
+
+
+===== PLAIN go1.26.6: legality probe build =====
+$ GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go build ./probe_f2_legality 2>&1; echo EXIT=$?
+EXIT=0
+
+
+===== PLAIN go1.26.6: all three reproducer packages =====
+$ GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go test -timeout 4m -count=1 -v ./review_f2_str ./review_f2_bytes ./review_f2_complex 2>&1; echo EXIT=$?
+=== RUN   TestFloatBoundsString
+--- PASS: TestFloatBoundsString (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/review_f2_str	0.493s
+=== RUN   TestFloatBoundsBytes
+--- PASS: TestFloatBoundsBytes (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/review_f2_bytes	0.632s
+=== RUN   TestComplexBoundString
+--- PASS: TestComplexBoundString (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/review_f2_complex	0.945s
+EXIT=0
+
+
+===== WOVEN go1.26.6: string package =====
+$ /usr/bin/time -l sh -c 'GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go tool orchestrion go test -timeout 4m -count=1 -v ./review_f2_str' 2>&1; echo EXIT=$?
+# github.com/DataDog/dd-iast-go/review_f2_str [github.com/DataDog/dd-iast-go/review_f2_str.test]
+<generated>:1: float64 does not satisfy "github.com/DataDog/dd-iast-go/iast/propagation".integer (float64 missing in ~int | ~int8 | ~int16 | ~int32 | ~int64 | ~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64 | ~uintptr)
+exit status 2
+FAIL	github.com/DataDog/dd-iast-go/review_f2_str [build failed]
+FAIL
+exit status 1
+       61.39 real        43.85 user        59.41 sys
+           334708736  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+             2408467  page reclaims
+               84368  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                3350  messages sent
+                3674  messages received
+               41864  signals received
+               16943  voluntary context switches
+              772989  involuntary context switches
+          4856041379  instructions retired
+          2670901314  cycles elapsed
+            64439016  peak memory footprint
+EXIT=1
+
+
+===== WOVEN go1.26.6: bytes package =====
+$ /usr/bin/time -l sh -c 'GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go tool orchestrion go test -timeout 4m -count=1 -v ./review_f2_bytes' 2>&1; echo EXIT=$?
+# github.com/DataDog/dd-iast-go/review_f2_bytes [github.com/DataDog/dd-iast-go/review_f2_bytes.test]
+<generated>:1: float64 does not satisfy "github.com/DataDog/dd-iast-go/iast/propagation".integer (float64 missing in ~int | ~int8 | ~int16 | ~int32 | ~int64 | ~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64 | ~uintptr)
+exit status 2
+FAIL	github.com/DataDog/dd-iast-go/review_f2_bytes [build failed]
+FAIL
+exit status 1
+        2.96 real         2.17 user         5.89 sys
+            62488576  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              179424  page reclaims
+                2057  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                  36  messages sent
+                  40  messages received
+                8990  signals received
+               13558  voluntary context switches
+              114258  involuntary context switches
+          5564332451  instructions retired
+          4303087947  cycles elapsed
+            42173160  peak memory footprint
+EXIT=1
+
+
+===== WOVEN go1.26.6: complex-bound package =====
+$ /usr/bin/time -l sh -c 'GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go tool orchestrion go test -timeout 4m -count=1 -v ./review_f2_complex' 2>&1; echo EXIT=$?
+# github.com/DataDog/dd-iast-go/review_f2_complex [github.com/DataDog/dd-iast-go/review_f2_complex.test]
+<generated>:1: complex128 does not satisfy "github.com/DataDog/dd-iast-go/iast/propagation".integer (complex128 missing in ~int | ~int8 | ~int16 | ~int32 | ~int64 | ~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64 | ~uintptr)
+exit status 2
+FAIL	github.com/DataDog/dd-iast-go/review_f2_complex [build failed]
+FAIL
+exit status 1
+        3.34 real         2.35 user         5.81 sys
+            70696960  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              180811  page reclaims
+                2041  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                  36  messages sent
+                  40  messages received
+                9695  signals received
+                5732  voluntary context switches
+              125150  involuntary context switches
+          5083086039  instructions retired
+          5029511225  cycles elapsed
+            50807528  peak memory footprint
+EXIT=1
+
+
+===== DIRECT generic call, plain go1.26.6 =====
+$ GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go build -o /tmp/f2direct_a ./review_f2_direct 2>&1; echo EXIT=$?
+# github.com/DataDog/dd-iast-go/review_f2_direct
+review_f2_direct/main.go:14:40: float64 does not satisfy "github.com/DataDog/dd-iast-go/iast/propagation".integer (float64 missing in ~int | ~int8 | ~int16 | ~int32 | ~int64 | ~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64 | ~uintptr)
+EXIT=1
+
+
+===== DIRECT generic call, plain go1.27.0 =====
+$ GOTOOLCHAIN=go1.27.0 GOFLAGS=-p=4 go build -o /tmp/f2direct_b ./review_f2_direct 2>&1; echo EXIT=$?
+# github.com/DataDog/dd-iast-go/review_f2_direct
+review_f2_direct/main.go:14:40: float64 does not satisfy "github.com/DataDog/dd-iast-go/iast/propagation".integer (float64 missing in ~int | ~int8 | ~int16 | ~int32 | ~int64 | ~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64 | ~uintptr)
+EXIT=1
+
+
+===== WOVEN go1.27.0: string package (fails earlier for an unrelated reason) =====
+$ GOTOOLCHAIN=go1.27.0 GOFLAGS=-p=4 go tool orchestrion go test -timeout 4m -count=1 -v ./review_f2_str 2>&1 | head -12; echo EXIT=$?
+# encoding/json
+$WORK/b104/orchestrion/src/encoding/json/<generated>:2: dec.r undefined (type *Decoder has no field or method r)
+$WORK/b104/orchestrion/src/encoding/json/<generated>:2: dec.d undefined (type *Decoder has no field or method d)
+$WORK/b104/orchestrion/src/encoding/json/<generated>:3: dec.d undefined (type *Decoder has no field or method d)
+exit status 2
+# github.com/DataDog/dd-iast-go/review_f2_str [github.com/DataDog/dd-iast-go/review_f2_str.test]
+resolving woven dependency on github.com/DataDog/dd-iast-go/iast/propagation: -: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+-: # encoding/json
+sending never-build-twice request: exit status 2
+EXIT=0
+
+
+===== FINDER'S REPRODUCER RE-RUN, go1.26.6 (their exact command, my private copy) =====
+$ GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=2 go tool orchestrion go test -timeout 4m -count=1 -run '^TestReviewIntegralUntypedFloatBound$' -v ./iast/propagation
+<generated>:1: float64 does not satisfy "github.com/DataDog/dd-iast-go/iast/propagation".integer (float64 missing in ~int | ~int8 | ~int16 | ~int32 | ~int64 | ~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64 | ~uintptr)
+exit status 2
+FAIL	github.com/DataDog/dd-iast-go/iast/propagation [build failed]
+FAIL
+exit status 1
+           145326080  maximum resident set size
+
+(Plain 'go test' of the same test passes: --- PASS, exit 0 — see the finder's run-results case 2; verified earlier this session.)

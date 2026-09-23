@@ -1,0 +1,68 @@
+Reproducer by fx-hooks-orchestrion-dep-F3 (independent of finder). darwin/arm64, private copy /tmp/ddiast-review/wt/fx-hooks-orchestrion-dep-F3.
+Layout: customer-app/ placed at <repo>/iast/reviewf3app (go.mod replace dd-iast-go => ../.., go.sum copied from iast/os/exec/testapp).
+customer-app/greet/greet.go = import-free package (bug); greet_control.go.txt = same package with `import "strings"` (control).
+Commands run with cwd=iast/reviewf3app. Peak RSS of woven build (1.26.6): 330153984 bytes (~315 MB).
+
+$ GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go build -o /tmp/ddiast-review/wt/fx-hooks-orchestrion-dep-F3/app-plain ./cmd/app && /tmp/ddiast-review/wt/fx-hooks-orchestrion-dep-F3/app-plain there
+Hello, there!
+exit 0
+
+$ GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 /usr/bin/time -l go tool orchestrion go build -o /tmp/ddiast-review/wt/fx-hooks-orchestrion-dep-F3/app-woven ./cmd/app 2>&1 | grep -v '^ *[0-9]* *[a-z].*\(page\|block\|messages\|signals\|context\|swaps\|instructions\|cycles\|footprint\)' ; echo pipe=${PIPESTATUS[0]}
+# example.com/customer/greet
+panic: assignment to entry in nil map
+
+goroutine 1 [running]:
+github.com/DataDog/orchestrion/internal/toolexec/aspect.Weaver.OnCompile({{0x2e0f95318464?, 0x2?}, {0x0?, 0x10330360c?}}, {0x1044ae6a8, 0x2e0f9558c840}, 0x2e0f9550d4a0)
+	/Users/eliott.bouhana/go/pkg/mod/github.com/!data!dog/orchestrion@v1.12.2-0.20260828141217-23afa71d6dcb/internal/toolexec/aspect/oncompile.go:195 +0x17ac
+github.com/DataDog/orchestrion/internal/toolexec/proxy.ProcessCommand[...](...)
+	/Users/eliott.bouhana/go/pkg/mod/github.com/!data!dog/orchestrion@v1.12.2-0.20260828141217-23afa71d6dcb/internal/toolexec/proxy/proxy.go:78
+github.com/DataDog/orchestrion/internal/cmd.init.func8(0x2e0f9559e380)
+	/Users/eliott.bouhana/go/pkg/mod/github.com/!data!dog/orchestrion@v1.12.2-0.20260828141217-23afa71d6dcb/internal/cmd/toolexec.go:93 +0x4c4
+github.com/urfave/cli/v2.(*Command).Run(0x104694f40, 0x2e0f9559e380, {0x2e0f9541c580, 0x15, 0x15})
+	/Users/eliott.bouhana/go/pkg/mod/github.com/urfave/cli/v2@v2.27.7/command.go:276 +0x580
+github.com/urfave/cli/v2.(*Command).Run(0x2e0f9541c160, 0x2e0f9559e0c0, {0x2e0f95310160, 0x16, 0x16})
+	/Users/eliott.bouhana/go/pkg/mod/github.com/urfave/cli/v2@v2.27.7/command.go:269 +0x774
+github.com/urfave/cli/v2.(*App).RunContext(0x2e0f95650c00, {0x1044ae3d0, 0x1046ded20}, {0x2e0f95310160, 0x16, 0x16})
+	/Users/eliott.bouhana/go/pkg/mod/github.com/urfave/cli/v2@v2.27.7/app.go:333 +0x4bc
+main.main()
+	/Users/eliott.bouhana/go/pkg/mod/github.com/!data!dog/orchestrion@v1.12.2-0.20260828141217-23afa71d6dcb/main.go:218 +0xe9c
+exit status 1
+       55.81 real        24.10 user        15.99 sys
+           330153984  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+             1636285  page reclaims
+               69113  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                1539  messages sent
+                1498  messages received
+               14357  signals received
+          4526810643  instructions retired
+          3311791067  cycles elapsed
+pipe=1
+exit 0
+
+$ GOTOOLCHAIN=go1.27.0 GOFLAGS=-p=4 go tool orchestrion go build -o /tmp/ddiast-review/wt/fx-hooks-orchestrion-dep-F3/app-woven27 ./cmd/app 2>&1 | head -8; echo pipe=${PIPESTATUS[0]}
+# example.com/customer/greet
+panic: assignment to entry in nil map
+
+goroutine 1 [running]:
+github.com/DataDog/orchestrion/internal/toolexec/aspect.Weaver.OnCompile({{0x7265ddfc2494?, 0x2?}, {0x0?, 0x105c7c274?}}, {0x106e3b4b0, 0x7265de42cee0}, 0x7265de155590)
+	/Users/eliott.bouhana/go/pkg/mod/github.com/!data!dog/orchestrion@v1.12.2-0.20260828141217-23afa71d6dcb/internal/toolexec/aspect/oncompile.go:195 +0x173c
+github.com/DataDog/orchestrion/internal/toolexec/proxy.ProcessCommand[...](...)
+	/Users/eliott.bouhana/go/pkg/mod/github.com/!data!dog/orchestrion@v1.12.2-0.20260828141217-23afa71d6dcb/internal/toolexec/proxy/proxy.go:78
+pipe=141
+exit 0
+
+CONTROL (greet imports strings):
+$ GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go tool orchestrion go build -o /tmp/ddiast-review/wt/fx-hooks-orchestrion-dep-F3/app-control ./cmd/app 2>&1 | head -8; echo pipe=${PIPESTATUS[0]}; /tmp/ddiast-review/wt/fx-hooks-orchestrion-dep-F3/app-control there; strings /tmp/ddiast-review/wt/fx-hooks-orchestrion-dep-F3/app-control | grep -c 'iast/propagation.Concat3'
+pipe=0
+Hello, there!
+1
+2026/09/23 18:13:39 Datadog Tracer v2.11.0-rc.1 WARN: DIAGNOSTICS Unable to reach agent intake: Post "http://localhost:8126/v0.4/traces": dial tcp 127.0.0.1:8126: connect: connection refused
+2026/09/23 18:13:39 Datadog Tracer v2.11.0-rc.1 INFO: DATADOG TRACER CONFIGURATION {...truncated...}
+2026/09/23 18:13:39 Datadog Tracer v2.11.0-rc.1 ERROR: loading features: Get "http://localhost:8126/info": dial tcp 127.0.0.1:8126: connect: connection refused (occurred: 23 Sep 26 18:13 CEST)
+exit 0

@@ -1,0 +1,129 @@
+ok  	github.com/DataDog/dd-iast-go/iast/bufio	0.547s
+ok  	github.com/DataDog/dd-iast-go/iast/crypto/cipher	0.843s
+ok  	github.com/DataDog/dd-iast-go/iast/crypto/hash	1.292s
+ok  	github.com/DataDog/dd-iast-go/iast/database/sql	1.590s
+ok  	github.com/DataDog/dd-iast-go/iast/encoding/json	1.194s
+?   	github.com/DataDog/dd-iast-go/iast/internal/propagationtest	[no test files]
+ok  	github.com/DataDog/dd-iast-go/iast/io	0.538s
+ok  	github.com/DataDog/dd-iast-go/iast/net/http	0.942s
+?   	github.com/DataDog/dd-iast-go/iast/net/url	[no test files]
+ok  	github.com/DataDog/dd-iast-go/iast/os/exec	1.438s
+ok  	github.com/DataDog/dd-iast-go/iast/propagation	1.487s
+ok  	github.com/DataDog/dd-iast-go/internal/config	0.818s
+ok  	github.com/DataDog/dd-iast-go/internal/config/loader	0.657s
+ok  	github.com/DataDog/dd-iast-go/internal/config/parser	0.900s
+?   	github.com/DataDog/dd-iast-go/internal/instrumentation	[no test files]
+ok  	github.com/DataDog/dd-iast-go/internal/instrumentation/telemetry	1.044s
+ok  	github.com/DataDog/dd-iast-go/internal/model	1.284s
+ok  	github.com/DataDog/dd-iast-go/internal/model/constants	1.030s
+ok  	github.com/DataDog/dd-iast-go/internal/model/truncation	0.996s
+ok  	github.com/DataDog/dd-iast-go/internal/spans	2.089s
+ok  	github.com/DataDog/dd-iast-go/internal/taint/commandbridge	1.665s
+ok  	github.com/DataDog/dd-iast-go/internal/taint/evidence	1.550s
+ok  	github.com/DataDog/dd-iast-go/internal/taint/httpbridge	0.754s
+ok  	github.com/DataDog/dd-iast-go/internal/taint/iobridge	0.446s
+ok  	github.com/DataDog/dd-iast-go/internal/taint/jsonbridge	0.520s
+ok  	github.com/DataDog/dd-iast-go/internal/taint/operatorbridge	0.539s
+--- FAIL: TestByteExactOpsNoActiveAndUntaintedAreAllocationFree (0.00s)
+    bytes_exact_test.go:336: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-race-hunt/internal/taint/propagation/bytes_exact_test.go:336
+        	Error:      	Should be zero, but was 1
+        	Test:       	TestByteExactOpsNoActiveAndUntaintedAreAllocationFree
+--- FAIL: TestByteExactOpsNoActiveAndUntaintedAreAllocationFree (0.01s)
+    bytes_exact_test.go:336: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-race-hunt/internal/taint/propagation/bytes_exact_test.go:336
+        	Error:      	Should be zero, but was 1
+        	Test:       	TestByteExactOpsNoActiveAndUntaintedAreAllocationFree
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/propagation	5.774s
+ok  	github.com/DataDog/dd-iast-go/internal/taint/ranges	6.017s
+ok  	github.com/DataDog/dd-iast-go/internal/taint/redaction	0.880s
+--- FAIL: TestManagedLazyMapIsIdempotentAndAllocationFree (0.00s)
+    internal_test.go:102: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-race-hunt/internal/taint/request/internal_test.go:102
+        	Error:      	Should be zero, but was 2
+        	Test:       	TestManagedLazyMapIsIdempotentAndAllocationFree
+--- FAIL: TestPrepareBytesDoesNotAllocateOnDuplicate (0.00s)
+    internal_test.go:332: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-race-hunt/internal/taint/request/internal_test.go:332
+        	Error:      	Should be zero, but was 1
+        	Test:       	TestPrepareBytesDoesNotAllocateOnDuplicate
+--- FAIL: TestHashDoesNotAllocate (0.00s)
+    internal_test.go:349: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-race-hunt/internal/taint/request/internal_test.go:349
+        	Error:      	Not equal: 
+        	            	expected: 0
+        	            	actual  : 1
+        	Test:       	TestHashDoesNotAllocate
+--- FAIL: TestAddDuplicateNoAlloc (0.12s)
+    table_test.go:231: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-race-hunt/internal/taint/request/table_test.go:231
+        	Error:      	Not equal: 
+        	            	expected: 0
+        	            	actual  : 1
+        	Test:       	TestAddDuplicateNoAlloc
+        	Messages:   	duplicate lookup must not allocate
+--- FAIL: TestAddFullNoAlloc (0.00s)
+    table_test.go:242: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-race-hunt/internal/taint/request/table_test.go:242
+        	Error:      	Not equal: 
+        	            	expected: 0
+        	            	actual  : 1
+        	Test:       	TestAddFullNoAlloc
+        	Messages:   	capacity rejection must not allocate
+--- FAIL: TestManagedLazyMapIsIdempotentAndAllocationFree (0.01s)
+    internal_test.go:102: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-race-hunt/internal/taint/request/internal_test.go:102
+        	Error:      	Should be zero, but was 2
+        	Test:       	TestManagedLazyMapIsIdempotentAndAllocationFree
+--- FAIL: TestPrepareBytesDoesNotAllocateOnDuplicate (0.00s)
+    internal_test.go:332: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-race-hunt/internal/taint/request/internal_test.go:332
+        	Error:      	Should be zero, but was 1
+        	Test:       	TestPrepareBytesDoesNotAllocateOnDuplicate
+--- FAIL: TestHashDoesNotAllocate (0.00s)
+    internal_test.go:349: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-race-hunt/internal/taint/request/internal_test.go:349
+        	Error:      	Not equal: 
+        	            	expected: 0
+        	            	actual  : 1
+        	Test:       	TestHashDoesNotAllocate
+--- FAIL: TestAddDuplicateNoAlloc (0.05s)
+    table_test.go:231: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-race-hunt/internal/taint/request/table_test.go:231
+        	Error:      	Not equal: 
+        	            	expected: 0
+        	            	actual  : 1
+        	Test:       	TestAddDuplicateNoAlloc
+        	Messages:   	duplicate lookup must not allocate
+--- FAIL: TestAddFullNoAlloc (0.00s)
+    table_test.go:242: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-race-hunt/internal/taint/request/table_test.go:242
+        	Error:      	Not equal: 
+        	            	expected: 0
+        	            	actual  : 1
+        	Test:       	TestAddFullNoAlloc
+        	Messages:   	capacity rejection must not allocate
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/request	2.468s
+ok  	github.com/DataDog/dd-iast-go/internal/taint/scopebridge	0.424s
+ok  	github.com/DataDog/dd-iast-go/internal/taint/sqlbridge	0.905s
+--- FAIL: TestDynamicObjectBinding (0.01s)
+    store_test.go:203: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-race-hunt/internal/taint/store/store_test.go:203
+        	Error:      	Should be zero, but was 1
+        	Test:       	TestDynamicObjectBinding
+--- FAIL: TestDynamicObjectBinding (0.00s)
+    store_test.go:203: 
+        	Error Trace:	/tmp/ddiast-review/wt/crash-race-hunt/internal/taint/store/store_test.go:203
+        	Error:      	Should be zero, but was 1
+        	Test:       	TestDynamicObjectBinding
+FAIL
+FAIL	github.com/DataDog/dd-iast-go/internal/taint/store	18.213s
+ok  	github.com/DataDog/dd-iast-go/internal/taint/urlbridge	0.553s
+ok  	github.com/DataDog/dd-iast-go/internal/taint/writerbridge	0.502s
+ok  	github.com/DataDog/dd-iast-go/internal/vulnerability	2.120s
+ok  	github.com/DataDog/dd-iast-go/internal/vulnerability/dedup	0.919s
+ok  	github.com/DataDog/dd-iast-go/internal/vulnerability/stacktrace	1.234s
+ok  	github.com/DataDog/dd-iast-go/taint	0.936s
+FAIL

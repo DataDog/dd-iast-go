@@ -1,0 +1,24 @@
+[
+ {
+  "id": "crash-diff-bytes-F1",
+  "verdict": "CONFIRMED",
+  "original_severity": "High",
+  "adjusted_severity": "High",
+  "reachable_default": true,
+  "documented_limitation": false,
+  "reason": "Independent woven HTTP->builder->database/sql reproducer: a clean server-side query produced a real SQL_INJECTION report attributed to the request parameter whenever the unanchored builder backing address was reused (88/88, 163/163, 1/1, 1/1; 0 without reuse). The woven-Reset control gave 0 reports and the anchor fix removed the effect. It is not documented: README documents only misses for indirect calls and stale ranges for byte aliases. Probabilistic trigger (same builder in one request, unhooked reset+refill, equal len/cap, GC, slot reuse). Root cause: iast/propagation/writer.go:202-205 builderView sets no Anchor.",
+  "evidence_path": ".omo/review/evidence/fx-crash-diff-bytes-F1/repro-woven-http-sql-go1.26.6.txt",
+  "repro_command": "cd iast/integration/testapp && GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go tool orchestrion go test -count=3 -v -timeout 15m -run TestReviewBuilderABAFalseSQLi . (after copying evidence/fx-crash-diff-bytes-F1/iast__integration__testapp__zz_review_builder_aba{,_test}.go into iast/integration/testapp/)"
+ },
+ {
+  "id": "store-writer-F2",
+  "verdict": "CONFIRMED",
+  "original_severity": "High",
+  "adjusted_severity": "High",
+  "reachable_default": true,
+  "documented_limitation": false,
+  "reason": "Duplicate of crash-diff-bytes-F1 (same root cause: unanchored builderView, iast/propagation/writer.go:202-205, numeric view match at internal/taint/store/writer.go:257,448-451). Independent woven HTTP->builder->database/sql reproducer: a clean server-side query produced a real SQL_INJECTION report attributed to the request parameter whenever the unanchored builder backing address was reused (88/88, 163/163, 1/1, 1/1; 0 without reuse). The woven-Reset control gave 0 reports and the anchor fix removed the effect. It is not documented: README documents only misses for indirect calls and stale ranges for byte aliases. Probabilistic trigger (same builder in one request, unhooked reset+refill, equal len/cap, GC, slot reuse).",
+  "evidence_path": ".omo/review/evidence/fx-crash-diff-bytes-F1/repro-woven-http-sql-go1.26.6.txt",
+  "repro_command": "cd iast/integration/testapp && GOTOOLCHAIN=go1.26.6 GOFLAGS=-p=4 go tool orchestrion go test -count=3 -v -timeout 15m -run TestReviewBuilderABAFalseSQLi . (after copying evidence/fx-crash-diff-bytes-F1/iast__integration__testapp__zz_review_builder_aba{,_test}.go into iast/integration/testapp/)"
+ }
+]

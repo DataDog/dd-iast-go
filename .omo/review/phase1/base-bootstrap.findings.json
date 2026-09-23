@@ -1,0 +1,13 @@
+[
+  {
+    "id": "base-bootstrap-F1",
+    "severity": "Info",
+    "category": "perf",
+    "location": "iast/database/sql/testapp/cmd/bootstrap/symbols.txt:1-2",
+    "title": "Woven bootstrap binaries are ~12.7x larger than plain builds (~20.4 MB overhead each)",
+    "claim": "Weaving adds ~20.4 MB of static binary size per executable (woven ~22.1 MB vs plain ~1.75 MB). The observed woven build times were 6.410, 230.515, and 92.342 seconds; plain times were 1.314, 1.369, and 0.392 seconds. These are single observations on a shared machine, not representative benchmarks.",
+    "evidence_path": ".omo/review/evidence/base-bootstrap/measurements.log",
+    "repro_command": "cd <private-copy>/iast/database/sql/testapp && GOTOOLCHAIN=go1.26.6 go tool orchestrion go build -o /tmp/iast-bootstrap ./cmd/bootstrap && GOTOOLCHAIN=go1.26.6 go build -o /tmp/iast-bootstrap-plain ./cmd/bootstrap && wc -c /tmp/iast-bootstrap /tmp/iast-bootstrap-plain",
+    "needs_repro": false
+  }
+]

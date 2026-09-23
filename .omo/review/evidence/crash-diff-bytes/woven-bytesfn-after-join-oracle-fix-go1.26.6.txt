@@ -1,0 +1,535 @@
+=== RUN   TestDiffBytesFnDeterministic
+    diff_test.go:476: bytesfn: woven=true iterations=3000 DIGEST=ad3db86df207a8b1
+    diff_test.go:483:   stat fn.Clone                                                     1519
+    diff_test.go:483:   stat fn.Clone.A.expected                                          398
+    diff_test.go:483:   stat fn.Clone.A.lost                                              58
+    diff_test.go:483:   stat fn.Cut                                                       1482
+    diff_test.go:483:   stat fn.Cut.A.window.expected                                     247
+    diff_test.go:483:   stat fn.Cut.B.window.expected                                     197
+    diff_test.go:483:   stat fn.CutPrefix                                                 1480
+    diff_test.go:483:   stat fn.CutPrefix.A.window.expected                               386
+    diff_test.go:483:   stat fn.CutSuffix                                                 1546
+    diff_test.go:483:   stat fn.CutSuffix.A.window.expected                               397
+    diff_test.go:483:   stat fn.Fields                                                    1490
+    diff_test.go:483:   stat fn.Fields.L.window.expected                                  554
+    diff_test.go:483:   stat fn.FieldsFunc                                                1492
+    diff_test.go:483:   stat fn.FieldsFunc.L.window.expected                              651
+    diff_test.go:483:   stat fn.Join                                                      1467
+    diff_test.go:483:   stat fn.Join.A.coarse.expected                                    106
+    diff_test.go:483:   stat fn.Join.A.expected                                           488
+    diff_test.go:483:   stat fn.Join.A.lost                                               3
+    diff_test.go:483:   stat fn.Join.A.partial                                            7
+    diff_test.go:483:   stat fn.Map                                                       1483
+    diff_test.go:483:   stat fn.Map.A.expected                                            480
+    diff_test.go:483:   stat fn.Map.A.lost                                                81
+    diff_test.go:483:   stat fn.Repeat                                                    1425
+    diff_test.go:483:   stat fn.Repeat.A.expected                                         201
+    diff_test.go:483:   stat fn.Repeat.A.lost                                             2
+    diff_test.go:483:   stat fn.Replace                                                   1471
+    diff_test.go:483:   stat fn.Replace.A.expected                                        510
+    diff_test.go:483:   stat fn.Replace.A.lost                                            58
+    diff_test.go:483:   stat fn.ReplaceAll                                                1550
+    diff_test.go:483:   stat fn.ReplaceAll.A.expected                                     516
+    diff_test.go:483:   stat fn.ReplaceAll.A.lost                                         52
+    diff_test.go:483:   stat fn.Split                                                     1490
+    diff_test.go:483:   stat fn.Split.L.window.expected                                   1253
+    diff_test.go:483:   stat fn.SplitAfter                                                1460
+    diff_test.go:483:   stat fn.SplitAfter.L.window.expected                              1249
+    diff_test.go:483:   stat fn.SplitAfterN                                               1524
+    diff_test.go:483:   stat fn.SplitAfterN.L.window.expected                             825
+    diff_test.go:483:   stat fn.SplitN                                                    1485
+    diff_test.go:483:   stat fn.SplitN.L.window.expected                                  924
+    diff_test.go:483:   stat fn.ToLower                                                   1564
+    diff_test.go:483:   stat fn.ToLower.A.expected                                        531
+    diff_test.go:483:   stat fn.ToLower.A.lost                                            117
+    diff_test.go:483:   stat fn.ToTitle                                                   1472
+    diff_test.go:483:   stat fn.ToTitle.A.expected                                        469
+    diff_test.go:483:   stat fn.ToTitle.A.lost                                            106
+    diff_test.go:483:   stat fn.ToUpper                                                   1427
+    diff_test.go:483:   stat fn.ToUpper.A.expected                                        444
+    diff_test.go:483:   stat fn.ToUpper.A.lost                                            77
+    diff_test.go:483:   stat fn.ToValidUTF8                                               1587
+    diff_test.go:483:   stat fn.ToValidUTF8.A.expected                                    495
+    diff_test.go:483:   stat fn.ToValidUTF8.A.lost                                        124
+    diff_test.go:483:   stat fn.Trim                                                      1553
+    diff_test.go:483:   stat fn.Trim.A.window.expected                                    402
+    diff_test.go:483:   stat fn.TrimFunc                                                  1486
+    diff_test.go:483:   stat fn.TrimFunc.A.window.expected                                350
+    diff_test.go:483:   stat fn.TrimLeft                                                  1528
+    diff_test.go:483:   stat fn.TrimLeft.A.window.expected                                407
+    diff_test.go:483:   stat fn.TrimLeftFunc                                              1488
+    diff_test.go:483:   stat fn.TrimLeftFunc.A.window.expected                            383
+    diff_test.go:483:   stat fn.TrimPrefix                                                1528
+    diff_test.go:483:   stat fn.TrimPrefix.A.window.expected                              414
+    diff_test.go:483:   stat fn.TrimRight                                                 1558
+    diff_test.go:483:   stat fn.TrimRight.A.window.expected                               389
+    diff_test.go:483:   stat fn.TrimRightFunc                                             1509
+    diff_test.go:483:   stat fn.TrimRightFunc.A.window.expected                           400
+    diff_test.go:483:   stat fn.TrimSpace                                                 1481
+    diff_test.go:483:   stat fn.TrimSpace.A.window.expected                               390
+    diff_test.go:483:   stat fn.TrimSuffix                                                1509
+    diff_test.go:483:   stat fn.TrimSuffix.A.window.expected                              404
+    diff_test.go:483:   stat fn.panic.Repeat.E:runtime error: makeslice: len out of range 22
+    diff_test.go:483:   stat fn.panic.Repeat.S:bytes: Repeat output length overflow       77
+    diff_test.go:483:   stat fn.panic.Repeat.S:bytes: negative Repeat count               405
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [10:0] 4
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [10:1] 5
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [10:2] 6
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [10:3] 6
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [10:4] 12
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [10:5] 2
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [10:6] 9
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [10:7] 7
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [10:8] 6
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [10:9] 2
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [11:0] 2
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [11:10] 2
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [11:1] 1
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [11:2] 3
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [11:3] 2
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [11:5] 1
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [11:6] 3
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [11:7] 1
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [11:9] 3
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [12:10] 3
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [12:11] 1
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [12:1] 1
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [12:2] 1
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [12:4] 2
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [12:8] 1
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [13:0] 3
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [13:11] 1
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [13:2] 2
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [13:3] 1
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [13:4] 2
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [13:5] 2
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [13:7] 1
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [13:8] 3
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [14:0] 1
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [14:11] 3
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [14:12] 2
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [14:1] 1
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [14:4] 1
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [14:5] 4
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [14:7] 3
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [14:9] 1
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [15:10] 1
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [15:11] 1
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [15:13] 1
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [15:14] 3
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [15:2] 4
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [15:3] 1
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [15:4] 2
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [15:6] 1
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [15:7] 3
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [15:9] 2
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [16:0] 4
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [16:10] 1
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [16:13] 1
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [16:1] 1
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [16:2] 1
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [16:3] 2
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [16:4] 1
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [16:5] 1
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [16:7] 1
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [16:8] 2
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [16:9] 3
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [17:10] 3
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [17:13] 3
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [17:14] 1
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [17:15] 3
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [17:2] 2
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [17:3] 1
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [17:4] 1
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [18:15] 1
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [18:1] 2
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [18:2] 4
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [18:5] 1
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [18:7] 1
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [18:8] 1
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [19:10] 2
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [19:17] 1
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [19:3] 1
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [19:5] 1
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [1:0] 39
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [20:4] 1
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [20:8] 1
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [20:9] 1
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [21:18] 1
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [21:2] 1
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [21:4] 1
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [21:7] 1
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [22:1] 1
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [22:2] 1
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [22:3] 1
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [22:4] 1
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [23:0] 1
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [23:13] 1
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [23:4] 1
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [24:10] 1
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [24:16] 1
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [25:20] 1
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [25:23] 1
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [25:3] 1
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [25:8] 1
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [26:12] 1
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [26:19] 1
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [2:0] 45
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [2:1] 5
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [3:0] 10
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [3:1] 10
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [3:2] 8
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [4:0] 8
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [4:1] 9
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [4:2] 10
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [4:3] 7
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [5:0] 6
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [5:1] 12
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [5:2] 7
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [5:3] 10
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [5:4] 7
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [6:0] 11
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [6:1] 3
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [6:2] 6
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [6:3] 12
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [6:4] 9
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [6:5] 5
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [7:0] 7
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [7:1] 2
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [7:2] 3
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [7:3] 7
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [7:4] 8
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [7:5] 10
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [7:6] 6
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [8:0] 3
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [8:1] 3
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [8:2] 6
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [8:3] 2
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [8:4] 4
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [8:5] 6
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [8:6] 10
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [8:7] 6
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [9:0] 8
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [9:1] 3
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [9:2] 4
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [9:3] 9
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [9:4] 5
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [9:5] 7
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [9:6] 9
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [9:7] 6
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [9:8] 8
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [:10] with capacity 8 52
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [:12] with capacity 11 2
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [:14] with capacity 12 1
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [:15] with capacity 13 2
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [:15] with capacity 14 1
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [:17] with capacity 16 14
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [:18] with capacity 16 18
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [:1] with capacity 0 102
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [:21] with capacity 20 1
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [:25] with capacity 24 5
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [:26] with capacity 24 8
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [:2] with capacity 0 115
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [:2] with capacity 1 4
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [:34] with capacity 32 1
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [:3] with capacity 1 9
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [:3] with capacity 2 2
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [:4] with capacity 2 6
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [:4] with capacity 3 2
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [:5] with capacity 3 1
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [:5] with capacity 4 2
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [:6] with capacity 4 2
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [:6] with capacity 5 2
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [:7] with capacity 5 2
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [:7] with capacity 6 2
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [:8] with capacity 6 1
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [:8] with capacity 7 1
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [:9] with capacity 7 2
+    diff_test.go:483:   stat fn.panic.slice2.E:runtime error: slice bounds out of range [:9] with capacity 8 45
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [10:0:] 3
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [10:1:] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [10:2:] 4
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [10:3:] 10
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [10:4:] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [10:5:] 3
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [10:6:] 2
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [10:7:] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [11:0:] 2
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [11:1:] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [11:3:] 3
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [11:4:] 2
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [11:5:] 2
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [12:1:] 2
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [12:3:] 2
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [12:4:] 2
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [12:5:] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [12:6:] 3
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [12:7:] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [12:8:] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [13:0:] 2
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [13:12:] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [13:2:] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [13:5:] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [13:9:] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [14:0:] 2
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [14:12:] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [14:13:] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [14:1:] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [14:4:] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [14:6:] 2
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [14:7:] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [14:9:] 2
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [15:0:] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [15:10:] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [15:1:] 2
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [15:2:] 2
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [15:3:] 2
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [15:6:] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [16:0:] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [16:10:] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [16:1:] 2
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [16:2:] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [16:3:] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [16:7:] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [17:5:] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [17:8:] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [18:0:] 2
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [18:1:] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [18:2:] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [19:0:] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [1:0:] 20
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [21:1:] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [21:5:] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [22:0:] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [23:10:] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [24:0:] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [25:2:] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [25:9:] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [2:0:] 21
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [2:1:] 6
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [3:0:] 9
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [3:1:] 6
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [3:2:] 5
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [4:0:] 6
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [4:1:] 5
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [4:2:] 4
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [4:3:] 4
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [5:0:] 8
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [5:1:] 6
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [5:2:] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [5:3:] 8
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [5:4:] 8
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [6:0:] 3
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [6:1:] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [6:2:] 5
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [6:3:] 5
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [6:4:] 3
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [6:5:] 2
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [7:0:] 6
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [7:1:] 7
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [7:2:] 3
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [7:4:] 5
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [7:5:] 2
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [7:6:] 2
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [8:0:] 5
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [8:1:] 4
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [8:2:] 4
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [8:3:] 5
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [8:4:] 2
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [8:5:] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [8:6:] 2
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [8:7:] 2
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [9:0:] 4
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [9:1:] 3
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [9:2:] 5
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [9:3:] 5
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [9:4:] 6
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [9:5:] 4
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [9:7:] 3
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [9:8:] 2
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:10:0] 10
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:10:1] 7
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:10:2] 5
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:10:3] 5
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:10:4] 5
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:10:5] 8
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:10:6] 5
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:10:7] 9
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:10:8] 5
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:11:0] 2
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:11:2] 2
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:11:4] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:11:6] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:11:7] 2
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:11:8] 2
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:12:11] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:12:1] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:12:2] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:12:3] 3
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:12:6] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:12:7] 2
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:12:8] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:13:0] 2
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:13:10] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:13:1] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:13:2] 2
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:13:4] 2
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:13:5] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:13:7] 3
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:13:8] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:13:9] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:14:10] 3
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:14:11] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:14:13] 2
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:14:1] 2
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:14:2] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:14:3] 2
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:14:6] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:14:9] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:15:0] 2
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:15:10] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:15:11] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:15:12] 3
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:15:13] 4
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:15:1] 2
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:15:2] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:15:4] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:15:5] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:15:6] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:15:8] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:15:9] 2
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:16:10] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:16:11] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:16:12] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:16:13] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:16:14] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:16:15] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:16:1] 3
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:16:4] 2
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:16:5] 4
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:16:7] 2
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:16:9] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:17:0] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:17:11] 2
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:17:12] 2
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:17:14] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:17:15] 3
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:17:16] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:17:1] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:17:2] 2
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:17:3] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:17:8] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:18:0] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:18:11] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:18:12] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:18:13] 7
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:18:14] 3
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:18:16] 2
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:18:2] 4
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:18:4] 2
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:18:7] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:19:12] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:19:16] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:19:4] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:1:0] 46
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:20:11] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:20:5] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:21:14] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:21:8] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:22:18] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:22:3] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:22:6] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:23:11] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:23:15] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:24:10] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:24:16] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:25:8] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:26:13] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:26:18] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:26:19] 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:2:0] 55
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:2:1] 12
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:3:0] 5
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:3:1] 7
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:3:2] 5
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:4:0] 18
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:4:1] 11
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:4:2] 11
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:4:3] 8
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:5:0] 5
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:5:1] 14
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:5:2] 14
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:5:3] 6
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:5:4] 4
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:6:0] 5
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:6:1] 4
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:6:2] 9
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:6:3] 6
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:6:4] 13
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:6:5] 9
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:7:0] 3
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:7:1] 3
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:7:2] 10
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:7:3] 8
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:7:4] 3
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:7:5] 7
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:7:6] 8
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:8:0] 10
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:8:1] 3
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:8:2] 6
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:8:3] 7
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:8:4] 8
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:8:5] 6
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:8:6] 4
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:8:7] 3
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:9:0] 5
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:9:1] 3
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:9:2] 10
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:9:3] 8
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:9:4] 7
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:9:5] 9
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:9:6] 8
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:9:7] 7
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [:9:8] 8
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [::10] with capacity 8 39
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [::11] with capacity 10 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [::12] with capacity 10 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [::12] with capacity 11 2
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [::13] with capacity 11 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [::13] with capacity 12 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [::14] with capacity 12 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [::15] with capacity 14 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [::16] with capacity 15 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [::17] with capacity 16 19
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [::18] with capacity 16 17
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [::1] with capacity 0 116
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [::25] with capacity 24 2
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [::26] with capacity 24 5
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [::2] with capacity 0 103
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [::2] with capacity 1 6
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [::3] with capacity 1 4
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [::3] with capacity 2 6
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [::4] with capacity 2 4
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [::4] with capacity 3 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [::5] with capacity 3 5
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [::6] with capacity 4 2
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [::7] with capacity 5 2
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [::7] with capacity 6 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [::8] with capacity 6 3
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [::8] with capacity 7 1
+    diff_test.go:483:   stat fn.panic.slice3.E:runtime error: slice bounds out of range [::9] with capacity 8 53
+    diff_test.go:483:   stat fn.slice2                                                    1477
+    diff_test.go:483:   stat fn.slice2.A.window.expected                                  111
+    diff_test.go:483:   stat fn.slice2.A.window.lost                                      23
+    diff_test.go:483:   stat fn.slice3                                                    1479
+    diff_test.go:483:   stat fn.slice3.A.window.expected                                  38
+    diff_test.go:483:   stat fn.slice3.A.window.lost                                      6
+    diff_test.go:483:   stat fn.string()                                                  1518
+    diff_test.go:483:   stat fn.string().S.expected                                       400
+    diff_test.go:483:   stat fn.string().S.lost                                           37
+--- PASS: TestDiffBytesFnDeterministic (0.40s)
+=== RUN   TestProbeBuilderStaleViewReuse
+    probe_test.go:63: iterations=2000 backingAddressReused=0 falsePositives=0
+--- PASS: TestProbeBuilderStaleViewReuse (1.02s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/iast/internal/zzdiffbytes	1.873s

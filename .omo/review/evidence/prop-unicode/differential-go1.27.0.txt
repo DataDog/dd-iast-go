@@ -1,0 +1,157 @@
+go version go1.27.0 darwin/arm64
+=== RUN   TestReviewUnicodeDifferential
+    zz_review_unicode_test.go:615: seed=1 cases=2200000 failures=0
+    zz_review_unicode_test.go:622: tainted-expected PathEscape                   87417
+    zz_review_unicode_test.go:622: tainted-expected PathUnescape                 64687
+    zz_review_unicode_test.go:622: tainted-expected QueryEscape                  87417
+    zz_review_unicode_test.go:622: tainted-expected QueryUnescape                64687
+    zz_review_unicode_test.go:622: tainted-expected Quote                        87417
+    zz_review_unicode_test.go:622: tainted-expected QuoteToASCII                 87417
+    zz_review_unicode_test.go:622: tainted-expected QuoteToGraphic               87417
+    zz_review_unicode_test.go:622: tainted-expected Unquote                      49209
+    zz_review_unicode_test.go:622: tainted-expected bytes.Map/dropA              8662
+    zz_review_unicode_test.go:622: tainted-expected bytes.Map/dropMulti          6975
+    zz_review_unicode_test.go:622: tainted-expected bytes.Map/expand             8917
+    zz_review_unicode_test.go:622: tainted-expected bytes.Map/identity           8622
+    zz_review_unicode_test.go:622: tainted-expected bytes.Map/lower              8729
+    zz_review_unicode_test.go:622: tainted-expected bytes.Map/shrink             8425
+    zz_review_unicode_test.go:622: tainted-expected bytes.Map/surrogate          8729
+    zz_review_unicode_test.go:622: tainted-expected bytes.Map/title              8661
+    zz_review_unicode_test.go:622: tainted-expected bytes.Map/toobig             8786
+    zz_review_unicode_test.go:622: tainted-expected bytes.Map/upper              8623
+    zz_review_unicode_test.go:622: tainted-expected bytes.Replace                87442
+    zz_review_unicode_test.go:622: tainted-expected bytes.ToLower                87090
+    zz_review_unicode_test.go:622: tainted-expected bytes.ToTitle                87093
+    zz_review_unicode_test.go:622: tainted-expected bytes.ToUpper                87093
+    zz_review_unicode_test.go:622: tainted-expected bytes.ToValidUTF8            86862
+    zz_review_unicode_test.go:622: tainted-expected strings.Join                 89891
+    zz_review_unicode_test.go:622: tainted-expected strings.Map/dropA            8662
+    zz_review_unicode_test.go:622: tainted-expected strings.Map/dropMulti        6975
+    zz_review_unicode_test.go:622: tainted-expected strings.Map/expand           8917
+    zz_review_unicode_test.go:622: tainted-expected strings.Map/identity         8622
+    zz_review_unicode_test.go:622: tainted-expected strings.Map/lower            8729
+    zz_review_unicode_test.go:622: tainted-expected strings.Map/shrink           8425
+    zz_review_unicode_test.go:622: tainted-expected strings.Map/surrogate        8729
+    zz_review_unicode_test.go:622: tainted-expected strings.Map/title            8661
+    zz_review_unicode_test.go:622: tainted-expected strings.Map/toobig           8786
+    zz_review_unicode_test.go:622: tainted-expected strings.Map/upper            8623
+    zz_review_unicode_test.go:622: tainted-expected strings.Repeat               65614
+    zz_review_unicode_test.go:622: tainted-expected strings.Replace              87447
+    zz_review_unicode_test.go:622: tainted-expected strings.ToLower              87090
+    zz_review_unicode_test.go:622: tainted-expected strings.ToTitle              87093
+    zz_review_unicode_test.go:622: tainted-expected strings.ToUpper              87093
+    zz_review_unicode_test.go:622: tainted-expected strings.ToValidUTF8          87483
+--- PASS: TestReviewUnicodeDifferential (2.95s)
+=== RUN   TestReviewUnicodeBoundaries
+    zz_review_unicode_test.go:721: boundary cases=2645 failures=0 tainted=map[bytes.Replace:1272 bytes.ToValidUTF8:78 strings.Replace:1272 strings.ToLower:5]
+--- PASS: TestReviewUnicodeBoundaries (0.01s)
+=== RUN   TestReviewCaseCoarsensWholeQuery
+    zz_review_unicode_test.go:747: name="bob" input ranges=[{34 3 1 0} {50 4 2 0}] -> ToUpper ranges=[{34 3 1 0} {50 4 2 0}] (len=55)
+    zz_review_unicode_test.go:747: name="josé" input ranges=[{34 5 1 0} {52 4 2 0}] -> ToUpper ranges=[{0 57 1 0}] (len=57)
+--- PASS: TestReviewCaseCoarsensWholeQuery (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/propagation	3.387s
+=== RUN   TestReviewUnicodeDifferential
+    zz_review_unicode_test.go:615: seed=2 cases=2200000 failures=0
+    zz_review_unicode_test.go:622: tainted-expected PathEscape                   87487
+    zz_review_unicode_test.go:622: tainted-expected PathUnescape                 64856
+    zz_review_unicode_test.go:622: tainted-expected QueryEscape                  87487
+    zz_review_unicode_test.go:622: tainted-expected QueryUnescape                64856
+    zz_review_unicode_test.go:622: tainted-expected Quote                        87487
+    zz_review_unicode_test.go:622: tainted-expected QuoteToASCII                 87487
+    zz_review_unicode_test.go:622: tainted-expected QuoteToGraphic               87487
+    zz_review_unicode_test.go:622: tainted-expected Unquote                      49503
+    zz_review_unicode_test.go:622: tainted-expected bytes.Map/dropA              8630
+    zz_review_unicode_test.go:622: tainted-expected bytes.Map/dropMulti          6928
+    zz_review_unicode_test.go:622: tainted-expected bytes.Map/expand             8808
+    zz_review_unicode_test.go:622: tainted-expected bytes.Map/identity           8794
+    zz_review_unicode_test.go:622: tainted-expected bytes.Map/lower              8742
+    zz_review_unicode_test.go:622: tainted-expected bytes.Map/shrink             8366
+    zz_review_unicode_test.go:622: tainted-expected bytes.Map/surrogate          8697
+    zz_review_unicode_test.go:622: tainted-expected bytes.Map/title              8795
+    zz_review_unicode_test.go:622: tainted-expected bytes.Map/toobig             8778
+    zz_review_unicode_test.go:622: tainted-expected bytes.Map/upper              8694
+    zz_review_unicode_test.go:622: tainted-expected bytes.Replace                87580
+    zz_review_unicode_test.go:622: tainted-expected bytes.ToLower                87173
+    zz_review_unicode_test.go:622: tainted-expected bytes.ToTitle                87194
+    zz_review_unicode_test.go:622: tainted-expected bytes.ToUpper                87194
+    zz_review_unicode_test.go:622: tainted-expected bytes.ToValidUTF8            86957
+    zz_review_unicode_test.go:622: tainted-expected strings.Join                 89974
+    zz_review_unicode_test.go:622: tainted-expected strings.Map/dropA            8630
+    zz_review_unicode_test.go:622: tainted-expected strings.Map/dropMulti        6928
+    zz_review_unicode_test.go:622: tainted-expected strings.Map/expand           8808
+    zz_review_unicode_test.go:622: tainted-expected strings.Map/identity         8794
+    zz_review_unicode_test.go:622: tainted-expected strings.Map/lower            8742
+    zz_review_unicode_test.go:622: tainted-expected strings.Map/shrink           8366
+    zz_review_unicode_test.go:622: tainted-expected strings.Map/surrogate        8697
+    zz_review_unicode_test.go:622: tainted-expected strings.Map/title            8795
+    zz_review_unicode_test.go:622: tainted-expected strings.Map/toobig           8778
+    zz_review_unicode_test.go:622: tainted-expected strings.Map/upper            8694
+    zz_review_unicode_test.go:622: tainted-expected strings.Repeat               65556
+    zz_review_unicode_test.go:622: tainted-expected strings.Replace              87580
+    zz_review_unicode_test.go:622: tainted-expected strings.ToLower              87173
+    zz_review_unicode_test.go:622: tainted-expected strings.ToTitle              87194
+    zz_review_unicode_test.go:622: tainted-expected strings.ToUpper              87194
+    zz_review_unicode_test.go:622: tainted-expected strings.ToValidUTF8          87580
+--- PASS: TestReviewUnicodeDifferential (2.90s)
+=== RUN   TestReviewUnicodeBoundaries
+    zz_review_unicode_test.go:721: boundary cases=2645 failures=0 tainted=map[bytes.Replace:1272 bytes.ToValidUTF8:78 strings.Replace:1272 strings.ToLower:5]
+--- PASS: TestReviewUnicodeBoundaries (0.01s)
+=== RUN   TestReviewCaseCoarsensWholeQuery
+    zz_review_unicode_test.go:747: name="bob" input ranges=[{34 3 1 0} {50 4 2 0}] -> ToUpper ranges=[{34 3 1 0} {50 4 2 0}] (len=55)
+    zz_review_unicode_test.go:747: name="josé" input ranges=[{34 5 1 0} {52 4 2 0}] -> ToUpper ranges=[{0 57 1 0}] (len=57)
+--- PASS: TestReviewCaseCoarsensWholeQuery (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/propagation	3.145s
+=== RUN   TestReviewUnicodeDifferential
+    zz_review_unicode_test.go:615: seed=3 cases=2200000 failures=0
+    zz_review_unicode_test.go:622: tainted-expected PathEscape                   87493
+    zz_review_unicode_test.go:622: tainted-expected PathUnescape                 64742
+    zz_review_unicode_test.go:622: tainted-expected QueryEscape                  87493
+    zz_review_unicode_test.go:622: tainted-expected QueryUnescape                64742
+    zz_review_unicode_test.go:622: tainted-expected Quote                        87493
+    zz_review_unicode_test.go:622: tainted-expected QuoteToASCII                 87493
+    zz_review_unicode_test.go:622: tainted-expected QuoteToGraphic               87493
+    zz_review_unicode_test.go:622: tainted-expected Unquote                      49172
+    zz_review_unicode_test.go:622: tainted-expected bytes.Map/dropA              8578
+    zz_review_unicode_test.go:622: tainted-expected bytes.Map/dropMulti          6748
+    zz_review_unicode_test.go:622: tainted-expected bytes.Map/expand             8823
+    zz_review_unicode_test.go:622: tainted-expected bytes.Map/identity           8717
+    zz_review_unicode_test.go:622: tainted-expected bytes.Map/lower              8657
+    zz_review_unicode_test.go:622: tainted-expected bytes.Map/shrink             8414
+    zz_review_unicode_test.go:622: tainted-expected bytes.Map/surrogate          8718
+    zz_review_unicode_test.go:622: tainted-expected bytes.Map/title              8694
+    zz_review_unicode_test.go:622: tainted-expected bytes.Map/toobig             8897
+    zz_review_unicode_test.go:622: tainted-expected bytes.Map/upper              8934
+    zz_review_unicode_test.go:622: tainted-expected bytes.Replace                87597
+    zz_review_unicode_test.go:622: tainted-expected bytes.ToLower                87176
+    zz_review_unicode_test.go:622: tainted-expected bytes.ToTitle                87193
+    zz_review_unicode_test.go:622: tainted-expected bytes.ToUpper                87193
+    zz_review_unicode_test.go:622: tainted-expected bytes.ToValidUTF8            86968
+    zz_review_unicode_test.go:622: tainted-expected strings.Join                 90025
+    zz_review_unicode_test.go:622: tainted-expected strings.Map/dropA            8578
+    zz_review_unicode_test.go:622: tainted-expected strings.Map/dropMulti        6748
+    zz_review_unicode_test.go:622: tainted-expected strings.Map/expand           8823
+    zz_review_unicode_test.go:622: tainted-expected strings.Map/identity         8717
+    zz_review_unicode_test.go:622: tainted-expected strings.Map/lower            8657
+    zz_review_unicode_test.go:622: tainted-expected strings.Map/shrink           8414
+    zz_review_unicode_test.go:622: tainted-expected strings.Map/surrogate        8718
+    zz_review_unicode_test.go:622: tainted-expected strings.Map/title            8694
+    zz_review_unicode_test.go:622: tainted-expected strings.Map/toobig           8897
+    zz_review_unicode_test.go:622: tainted-expected strings.Map/upper            8934
+    zz_review_unicode_test.go:622: tainted-expected strings.Repeat               65648
+    zz_review_unicode_test.go:622: tainted-expected strings.Replace              87599
+    zz_review_unicode_test.go:622: tainted-expected strings.ToLower              87176
+    zz_review_unicode_test.go:622: tainted-expected strings.ToTitle              87193
+    zz_review_unicode_test.go:622: tainted-expected strings.ToUpper              87193
+    zz_review_unicode_test.go:622: tainted-expected strings.ToValidUTF8          87531
+--- PASS: TestReviewUnicodeDifferential (2.90s)
+=== RUN   TestReviewUnicodeBoundaries
+    zz_review_unicode_test.go:721: boundary cases=2645 failures=0 tainted=map[bytes.Replace:1272 bytes.ToValidUTF8:78 strings.Replace:1272 strings.ToLower:5]
+--- PASS: TestReviewUnicodeBoundaries (0.01s)
+=== RUN   TestReviewCaseCoarsensWholeQuery
+    zz_review_unicode_test.go:747: name="bob" input ranges=[{34 3 1 0} {50 4 2 0}] -> ToUpper ranges=[{34 3 1 0} {50 4 2 0}] (len=55)
+    zz_review_unicode_test.go:747: name="josé" input ranges=[{34 5 1 0} {52 4 2 0}] -> ToUpper ranges=[{0 57 1 0}] (len=57)
+--- PASS: TestReviewCaseCoarsensWholeQuery (0.00s)
+PASS
+ok  	github.com/DataDog/dd-iast-go/internal/taint/propagation	3.122s

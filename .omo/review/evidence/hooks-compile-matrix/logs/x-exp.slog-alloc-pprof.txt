@@ -1,0 +1,5 @@
+$ cd x-exp && GOTOOLCHAIN=go1.26.6 go tool orchestrion go test -count=1 -run ^TestTextHandlerAlloc$ -memprofile slog.mem.out -memprofilerate=1 ./slog/
+$ go tool pprof -sample_index=alloc_objects -list handleState..appendKey slog.test slog.mem.out
+ROUTINE ======================== golang.org/x/exp/slog.(*handleState).appendKey in /tmp/ddiast-review/wt/hooks-compile-matrix/x-exp/slog/handler.go
+        10         10 (flat, cum)  3.55% of Total
+        10         10    480:		s.appendString(string(*s.prefix) + key)

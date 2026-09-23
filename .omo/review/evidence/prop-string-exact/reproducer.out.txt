@@ -1,0 +1,34 @@
+$ cd /tmp/ddiast-review/wt/prop-string-exact && GOTOOLCHAIN=go1.26.6 go test -timeout 5m -count=1 -run '^TestReviewStringsSplitTaintedFirstNonEmptyAfterEmptyPrefix$' -v ./iast/propagation
+=== RUN   TestReviewStringsSplitTaintedFirstNonEmptyAfterEmptyPrefix
+    zz_review_splitranges_test.go:22:
+        Error:       Should be true
+        Test:        TestReviewStringsSplitTaintedFirstNonEmptyAfterEmptyPrefix
+        Messages:    first non-empty result loses taint
+--- FAIL: TestReviewStringsSplitTaintedFirstNonEmptyAfterEmptyPrefix (0.00s)
+FAIL
+FAIL    github.com/DataDog/dd-iast-go/iast/propagation    0.591s
+FAIL
+exit: 1
+
+$ cd /tmp/ddiast-review/wt/prop-string-exact && GOTOOLCHAIN=go1.26.6 go test -timeout 5m -count=1 -run '^TestReview' -v ./internal/taint/propagation
+=== RUN   TestReviewSplitEmptyPrefixPreservesFirstNonEmptyWindow
+    zz_review_prop_string_exact_test.go:27:
+        Error:       Not equal:
+                    expected: []ranges.Range{ranges.Range{Start:0x0, Length:0x6, SourceID:0x7, Marks:0x0}}
+                    actual  : []ranges.Range(nil)
+        Test:        TestReviewSplitEmptyPrefixPreservesFirstNonEmptyWindow
+--- FAIL: TestReviewSplitEmptyPrefixPreservesFirstNonEmptyWindow (0.00s)
+=== RUN   TestReviewReplaceEmptyOldAndOverlappingMatches
+=== RUN   TestReviewReplaceEmptyOldAndOverlappingMatches/count_zero_ignores_replacement
+=== RUN   TestReviewReplaceEmptyOldAndOverlappingMatches/negative_count_uses_nonoverlapping_matches
+=== RUN   TestReviewReplaceEmptyOldAndOverlappingMatches/single_match_keeps_the_unmapped_suffix
+=== RUN   TestReviewReplaceEmptyOldAndOverlappingMatches/empty_old_inserts_around_UTF8_rune_boundaries
+--- PASS: TestReviewReplaceEmptyOldAndOverlappingMatches (0.00s)
+    --- PASS: TestReviewReplaceEmptyOldAndOverlappingMatches/count_zero_ignores_replacement (0.00s)
+    --- PASS: TestReviewReplaceEmptyOldAndOverlappingMatches/negative_count_uses_nonoverlapping_matches (0.00s)
+    --- PASS: TestReviewReplaceEmptyOldAndOverlappingMatches/single_match_keeps_the_unmapped_suffix (0.00s)
+    --- PASS: TestReviewReplaceEmptyOldAndOverlappingMatches/empty_old_inserts_around_UTF8_rune_boundaries (0.00s)
+FAIL
+FAIL    github.com/DataDog/dd-iast-go/internal/taint/propagation    0.583s
+FAIL
+exit: 1

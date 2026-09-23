@@ -1,0 +1,42 @@
+File: memprobe-woven
+Type: alloc_space
+Time: 2026-09-23 15:19:11 CEST
+Showing nodes accounting for 211187.35kB, 138.10% of 152921kB total
+Dropped 473 nodes (cum <= 764.60kB)
+Showing top 35 nodes out of 75
+      flat  flat%   sum%        cum   cum%
+  139247kB 91.06% 91.06%   139247kB 91.06%  internal/stringslite.Clone (inline)
+13391.16kB  8.76% 99.82% 16373.39kB 10.71%  github.com/DataDog/dd-iast-go/internal/spans.(*Annotation).TryCommitTainted
+   13080kB  8.55% 108.37%    13080kB  8.55%  github.com/DataDog/dd-iast-go/internal/taint/store.New (inline)
+ 8692.31kB  5.68% 114.05%  8692.31kB  5.68%  github.com/DataDog/dd-trace-go/v2/internal/stacktrace.newQueue[go.shape.struct { PC uintptr; Func *runtime.Func; Function string; File string; Line int; runtime.startLine int; Entry uintptr; runtime.funcInfo runtime.funcInfo }] (inline)
+ 8521.88kB  5.57% 119.63% 11547.14kB  7.55%  github.com/DataDog/dd-trace-go/v2/internal/stacktrace.(*framesIterator).capture
+ 3948.75kB  2.58% 122.21%  3991.36kB  2.61%  github.com/DataDog/dd-iast-go/internal/taint/redaction.buildParts
+-2793.66kB  1.83% 120.38% 219880.73kB 143.79%  main.handleWorst
+ 2733.75kB  1.79% 122.17%  2733.75kB  1.79%  github.com/tinylib/msgp/msgp.Require (inline)
+ 2543.94kB  1.66% 123.83%  2543.94kB  1.66%  internal/bytealg.MakeNoZero
+ 2386.12kB  1.56% 125.39%  2386.12kB  1.56%  github.com/DataDog/dd-trace-go/v2/internal/stacktrace.newQueue[go.shape.struct { Text string "msg:\"text,omitempty\""; File string "msg:\"file,omitempty\""; Namespace string "msg:\"namespace,omitempty\""; ClassName string "msg:\"class_name,omitempty\""; Function string "msg:\"function,omitempty\""; Index uint32 "msg:\"id\""; Line uint32 "msg:\"line,omitempty\""; Column uint32 "msg:\"column,omitempty\"" }] (inline)
+ 2377.27kB  1.55% 126.95%  2784.62kB  1.82%  encoding/json.Marshal
+ 2362.50kB  1.54% 128.49%     4725kB  3.09%  github.com/DataDog/dd-iast-go/iast/propagation.Concat11[go.shape.string]
+ 2300.91kB  1.50% 130.00%  2300.91kB  1.50%  github.com/DataDog/go-sqllexer.New
+ 2045.25kB  1.34% 131.33%  4737.23kB  3.10%  github.com/DataDog/dd-iast-go/internal/taint/redaction.AnalyzeSQL
+ 1956.23kB  1.28% 132.61%  1956.23kB  1.28%  github.com/DataDog/dd-iast-go/iast/propagation.Concat2[go.shape.string] (inline)
+ 1619.16kB  1.06% 133.67%  1619.16kB  1.06%  github.com/DataDog/dd-iast-go/internal/vulnerability.SkipWhile.matchesNamespace (inline)
+ 1582.03kB  1.03% 134.71%  5544.28kB  3.63%  github.com/DataDog/dd-iast-go/internal/taint/evidence.(*collector).finish
+ 1474.88kB  0.96% 135.67%  4019.62kB  2.63%  github.com/DataDog/dd-iast-go/internal/taint/redaction.buildWireSources
+ 1394.09kB  0.91% 136.58%  1394.09kB  0.91%  github.com/DataDog/dd-iast-go/internal/spans.redactSourceOccurrences
+     840kB  0.55% 137.13%    13920kB  9.10%  github.com/DataDog/dd-iast-go/internal/taint/request.NewManager (inline)
+  681.75kB  0.45% 137.58%  9374.06kB  6.13%  github.com/DataDog/dd-trace-go/v2/internal/stacktrace.iterator (inline)
+  540.42kB  0.35% 137.93%  9717.34kB  6.35%  github.com/DataDog/dd-iast-go/internal/spans.Finished
+ -514.94kB  0.34% 137.59% -2985.36kB  1.95%  main.buildRequest
+  362.18kB  0.24% 137.83% 21283.38kB 13.92%  github.com/DataDog/dd-trace-go/v2/internal/stacktrace.NewEvent
+  263.25kB  0.17% 138.00%  2564.16kB  1.68%  github.com/DataDog/dd-iast-go/internal/taint/redaction.scanSQLSegment
+  127.83kB 0.084% 138.09% 21453.82kB 14.03%  github.com/DataDog/dd-trace-go/v2/instrumentation.(*Instrumentation).CaptureStackTrace
+   19.93kB 0.013% 138.10% 216944.26kB 141.87%  main.main
+    1.69kB 0.0011% 138.10%  8966.62kB  5.86%  github.com/DataDog/dd-iast-go/internal/taint/redaction.BuildWithSensitive
+    1.69kB 0.0011% 138.10% 13924.22kB  9.11%  github.com/DataDog/dd-iast-go/internal/taint/request.begin
+         0     0% 138.10% 62158.68kB 40.65%  database/sql.(*DB).QueryContext
+         0     0% 138.10% -2992.16kB  1.96%  encoding/json.mapEncoder.encode
+         0     0% 138.10%  3487.58kB  2.28%  encoding/json.ptrEncoder.encode
+         0     0% 138.10%  3487.58kB  2.28%  encoding/json.structEncoder.encode
+         0     0% 138.10% 62158.68kB 40.65%  github.com/DataDog/dd-iast-go/iast/database/sql.Report
+         0     0% 138.10%  2813.91kB  1.84%  github.com/DataDog/dd-iast-go/iast/propagation.BuilderWriteString
