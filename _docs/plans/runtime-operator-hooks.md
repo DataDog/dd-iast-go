@@ -2,9 +2,9 @@
 
 ## Status
 
-- **State:** draft, revised after critic rounds 1, 2, 3, 5, 6 and 7 (see appendices A to F) and after the user answers Q2-Q9 (section 12)
+- **State:** approved; revised after critic rounds 1, 2, 3, 5, 6, 7, 8 and 9 (see appendices A to G, and H.6 for round 9), after the user answers Q2-Q9 (section 12), and after step 2 (the hook template is now variant D, without `defer`; section 2.2 and appendix H)
 - **Replaces:** the operator part of [taint-tracking-net-http-sqli-cmdi-phase-6.md](./taint-tracking-net-http-sqli-cmdi-phase-6.md) (sections 3.2, 3.3, 3.4, 4.1, 4.2, 4.3 and 10)
-- **Evidence:** prototype `/tmp/concathook` (`REPORT.md`, v1 and v2 sections, and `artifacts/`); Go sources of go1.26.6 and go1.27.1
+- **Evidence:** prototype `/tmp/concathook` (`REPORT.md`, v1 and v2 sections, and `artifacts/`); step 2 gate `/tmp/concathook-gate/REPORT.md` (with the section "Performance investigation (gate off)", artifacts in `/tmp/concathook-gate/artifacts/perf/`, module `/tmp/concathook-gate-perf/D-atomic`); Go sources of go1.26.6 and go1.27.1
 - **Toolchains:** Go 1.26.6 (the `go` line of every `go.mod`) and Go 1.27.1. Supported: go1.26.x and go1.27.x only (Q3, section 3.10)
 - **Orchestrion target:** v1.13.1 (decided from facts, section 6.3)
 
@@ -102,22 +102,119 @@ dd-trace-go v2.11.0-rc.1 already weaves `runtime` with released Orchestrion (`in
 
 Every application that uses dd-trace-go with Orchestrion already rebuilds `runtime`. This plan adds more aspects to the same rebuild.
 
-## 2. Prototype evidence (summary of `/tmp/concathook/REPORT.md`)
+## 2. Prototype evidence and hook template
+
+### 2.1 Phase 0 prototype (summary of `/tmp/concathook/REPORT.md`)
 
 - Released Orchestrion v1.13.1 can weave `runtime.concatstrings` and `runtime.concatbytes`.
-- `{{ .Function.Result 0 }}` names the unnamed result `__result__0`. A `defer` reads it. Phase 0 section 4.1 said that result values are not observable. That statement is not correct: `fieldAt` in `internal/injector/aspect/advice/code/dot_function.go` gives the name `__result__N` to unnamed results. The function is identical in the current pin (v1.12.2-0.20260828141217-23afa71d6dcb) and in v1.13.1 (checked with `diff`). v1.4.0 has it too. Thus this capability does not depend on the Orchestrion version.
+- Historical correction. Phase 0 section 4.1 said that result values are not observable (Phase 0 claim (a)). That statement is not correct: `fieldAt` in `internal/injector/aspect/advice/code/dot_function.go` gives the name `__result__N` to unnamed results, so `{{ .Function.Result 0 }}` gives `__result__0`. The function is identical in the current pin (v1.12.2-0.20260828141217-23afa71d6dcb) and in v1.13.1 (checked with `diff`). v1.4.0 has it too. The v1 and v2 prototypes used it: a `defer` read the result. The template of this plan (variant D, section 2.2) does **not** use it: the wrapper gets the result as a normal return value. The runtime functions keep their unnamed results.
 - A bodyless `//go:noescape` linknamed declaration keeps escape analysis the same: `concatstring2..5` still say `[]string{...} does not escape`. (This removes Phase 0 blocker (b).)
-- Gate off: **0 extra allocations, 0 extra bytes**, approx. +0.5 to +1.4 ns for each concat (open-coded defer and one load).
-- v2 pre-check: if `buf != nil` and one operand is tainted, the hook sets `buf = nil`. Then the runtime puts a short result on the heap, and the defer can see it. Cost with gate on and clean operands: approx. +4.6 ns (go1.27.1) / +5.3 ns (go1.26.6) for each short non-escaping concat. Cost with a tainted operand: 0 -> 1 allocation (<= 32 B), approx. +11 ns.
-- `atomic.Load` from `internal/runtime/atomic` (Orchestrion alias `__orchestrion_atomic`) costs less than 1 ns on arm64. It is not measurable.
+- Gate off with the `defer` template: **0 extra allocations, 0 extra bytes**, approx. +0.5 to +1.4 ns for each concat in the Phase 0 runs. Step 2 measured up to +4.4 ns for conversions with the same template, and found that the `defer` is the cause (appendix H). Variant D removes the `defer`.
+- v2 pre-check: if `buf != nil` and one operand is tainted, the hook sets `buf = nil`. Then the runtime puts a short result on the heap, and the result hook can see it. Cost with gate on and clean operands: approx. +4.6 ns (go1.27.1) / +5.3 ns (go1.26.6) for each short non-escaping concat. Cost with a tainted operand: 0 -> 1 allocation (<= 32 B), approx. +11 ns.
+- `atomic.Load` from `internal/runtime/atomic` (Orchestrion alias `__orchestrion_atomic`) costs less than 1 ns on arm64. It is not measurable (step 2 variant C: no difference against a plain load).
 - Results in a stack buffer are detected with `stringDataOnStack` and skipped. A negative control proved that the test detects this.
 - Pass on go1.27.1 and go1.26.6, with and without `-race`.
-- Not tested: amd64, `-gcflags=all=-N -l`, the GLS aspect in the same build.
+- Not tested in Phase 0: amd64, `-gcflags=all=-N -l`, the GLS aspect in the same build. Step 2 tested all three (appendix H).
 
-Prototype YAML (v2, the base for this plan). The prototype also has a `concat-decls` aspect (`inject-declarations` with `links:`) that declares `__dd_iast_concat_gate uint32`, the bodyless `//go:linkname` + `//go:noescape` functions `__dd_iast_concat_hook(res string, a []string)` and `__dd_iast_concat_pre(a []string) bool`, and the check `__dd_iast_concat_ok()` (`gp == gp.m.curg && gp.m.locks == 0`; section 3.3 extends it).
+### 2.2 Hook template: variant D (no `defer`)
+
+Source: `/tmp/concathook-gate/artifacts/perf/yaml/D-atomic.orchestrion.yml` (generated by `artifacts/perf/gen.py` from one table of the 6 functions). Step 2 selected it (appendix H). Critic round 9 moved the context check before the wrapper call and added the signature assertions (appendix H.6). Step 5 copies it into `iast/runtime/orchestrion.yml`.
+
+How it works, for each hooked function `<fn>`:
+
+1. **Outer entry** (prepended statements in `runtime.<fn>`): one atomic load of the gate. Gate 0: the original body runs. This is the only added work with the gate off. The frame, the prologue and the result of `<fn>` do not change (appendix H).
+2. Gate not 0: read the bypass token of the current `g`. Token 1: this is an inner entry (item 4). Token 0: call the `//go:nosplit` context check `__dd_iast_ok()` (3.3). It returns false: the original body runs directly (no wrapper frame, no token, no bridge call). It returns true: `return __dd_iast_<fn>(args)`.
+3. **Wrapper** `__dd_iast_<fn>` (`//go:noinline`, in the shared declarations, section 3.5): the pre-check with the guard (3.2.1, 3.4) and `buf = nil` on a hit; set the bypass token; call the original function through the alias `__dd_iast_orig_<fn>`; clear the token; call the result hook with the guard when the result is not on the stack. The wrapper has no context check: its only caller called `__dd_iast_ok()` immediately before.
+4. **Inner entry** (the same prepended statements, in the call from the wrapper): the gate is not 0 and the token is 1, so it clears the token and runs the original body. It does not call `__dd_iast_ok()`.
+
+Rules that this template depends on:
+
+- **Context check before the wrapper** (3.3, critic round 9): the wrapper is a normal function, so it has a stack check at entry. On `g0` or `gsignal`, a failed stack check calls `morestack`, and `morestack` on `g0` or `gsignal` is fatal (`runtime/asm_arm64.s` and `asm_amd64.s` call `badmorestackg0` / `badmorestackgsignal`, `runtime/proc.go`: a fatal error). Thus the prepended code calls `__dd_iast_ok()` **before** the wrapper, and when the context is not safe, no frame with a stack check is added. `__dd_iast_ok()` is `//go:nosplit` and has no call (`getg()` is a compiler intrinsic; `mp.preemptoff == ""` is a length compare), so it cannot grow the stack. Step 2 disassembly (go1.26.6 and go1.27.1, arm64): it is inlined into all 6 functions with default flags; with `-gcflags=all=-N -l` it is a leaf function with no frame, no stack check and no call. Test: 9.1 item 15.
+- **Alias rule** (3.8, 3.9, R3, R21): the wrapper calls the original function **only** through a body-less `//go:linkname __dd_iast_orig_<fn> runtime.<fn>` + `//go:noescape` declaration. It never calls `<fn>` directly.
+- **Bypass token rules** (3.4.2): set immediately before the inner call, consumed at the inner entry, cleared again by the wrapper after the inner call.
+- **Signature check** (3.9 item 6): the alias and the wrapper repeat the signature of `<fn>`. Three compile-time assertions for each function (`<fn>`, the alias, the wrapper, all assigned to one func type) make a signature change or a mismatch a build failure.
+- **Q2 switch in a nested `if`** (4.3): `stringtoslicebyte` and `stringtoslicerune` check `s2sGate` in an `if` inside the gate check, not with `&&`, so that their gate-off path stays `LDARW` + `CBZW`.
+- No `{{ .Function.Result 0 }}` and no result renaming. The escape comparison (3.8) needs no `__result__0` normalization.
+
+YAML (concat; the other five functions follow the same pattern, sections 4.2, 4.3, 4.5; full file in the artifact):
 
 ```yaml
-  - id: concatstrings
+  - id: iast-runtime-decls
+    join-point:
+      struct-definition: runtime.g
+    advice:
+      - add-struct-field:
+          name: __dd_iast_in_hook
+          type: uint8
+      - add-struct-field:
+          name: __dd_iast_bypass
+          type: uint8
+      - add-blank-import: unsafe
+      - inject-declarations:
+          links:
+            - github.com/DataDog/dd-iast-go/internal/taint/runtimebridge # prototype: example.com/gate/bridge
+          template: |-
+            //go:linkname __dd_iast_rt_gate __dd_iast_rt.gate
+            var __dd_iast_rt_gate uint32
+
+            //go:linkname __dd_iast_rt_s2s_gate __dd_iast_rt.s2s_gate
+            var __dd_iast_rt_s2s_gate uint32
+
+            //go:linkname __dd_iast_rt_concat_pre __dd_iast_rt.concat_pre
+            //go:noescape
+            func __dd_iast_rt_concat_pre(a []string) bool
+
+            //go:linkname __dd_iast_rt_concat_hook __dd_iast_rt.concat_hook
+            //go:noescape
+            func __dd_iast_rt_concat_hook(res string, a []string)
+
+            // ... the other 8 bridge declarations (concat_bytes_hook, bytes_pre,
+            // from_bytes, str_pre, to_bytes, runes_pre, from_runes, to_runes)
+
+            //go:nosplit
+            func __dd_iast_ok() bool {
+              gp := getg()
+              mp := gp.m
+              return gp == mp.curg && mp.locks == 0 && mp.mallocing == 0 && mp.preemptoff == "" && gp.__dd_iast_in_hook == 0
+            }
+
+            //go:linkname __dd_iast_orig_concatstrings runtime.concatstrings
+            //go:noescape
+            func __dd_iast_orig_concatstrings(buf *tmpBuf, a []string) string
+
+            var _ func(*tmpBuf, []string) string = concatstrings
+            var _ func(*tmpBuf, []string) string = __dd_iast_orig_concatstrings
+            var _ func(*tmpBuf, []string) string = __dd_iast_concatstrings
+
+            // The only caller is the prepended code of the original function, after
+            // __dd_iast_ok() returned true. Thus this function has no context check.
+            //go:noinline
+            func __dd_iast_concatstrings(buf *tmpBuf, a []string) string {
+              gp := getg()
+              if buf != nil {
+                gp.__dd_iast_in_hook = 1
+                hit := __dd_iast_rt_concat_pre(a)
+                gp.__dd_iast_in_hook = 0
+                if hit {
+                  buf = nil
+                }
+              }
+              gp.__dd_iast_bypass = 1
+              r := __dd_iast_orig_concatstrings(buf, a)
+              gp.__dd_iast_bypass = 0
+              if len(r) != 0 && !stringDataOnStack(r) {
+                gp.__dd_iast_in_hook = 1
+                __dd_iast_rt_concat_hook(r, a)
+                gp.__dd_iast_in_hook = 0
+              }
+              return r
+            }
+
+            // ... alias, 3 assertions and wrapper for concatbytes,
+            // slicebytetostring, stringtoslicebyte, slicerunetostring,
+            // stringtoslicerune
+
+  - id: iast-concatstrings
     join-point:
       all-of:
         - import-path: runtime
@@ -131,20 +228,43 @@ Prototype YAML (v2, the base for this plan). The prototype also has a `concat-de
           template: |-
             {{- $buf := .Function.Argument 0 -}}
             {{- $a := .Function.Argument 1 -}}
-            {{- $r := .Function.Result 0 -}}
-            if {{ $buf }} != nil && atomic.Load(&__dd_iast_concat_gate) != 0 && __dd_iast_concat_ok() && __dd_iast_concat_pre({{ $a }}) {
-              {{ $buf }} = nil
-            }
-            defer func() {
-              if atomic.Load(&__dd_iast_concat_gate) != 0 && len({{ $r }}) != 0 && __dd_iast_concat_ok() && !stringDataOnStack({{ $r }}) {
-                __dd_iast_concat_hook({{ $r }}, {{ $a }})
+            if atomic.Load(&__dd_iast_rt_gate) != 0 {
+              if __dd_iast_gp := getg(); __dd_iast_gp.__dd_iast_bypass != 0 {
+                __dd_iast_gp.__dd_iast_bypass = 0
+              } else if __dd_iast_ok() {
+                return __dd_iast_concatstrings({{ $buf }}, {{ $a }})
               }
-            }()
+            }
 ```
 
-Generated code (woven `runtime/string.go`, go1.27.1): Orchestrion renames the result to `__result__0`, and adds the import as `__orchestrion_atomic`. See `/tmp/concathook/REPORT.md` for the full text.
+Generated code (woven go1.27.1, checked again after critic round 9; the files `artifacts/perf/D-atomic-woven-string.go.txt` and `D-atomic-woven-runtime2.go.txt` show the first D). The result is not renamed, and Orchestrion adds the import as `__orchestrion_atomic`:
 
-This plan changes the prototype template in three places: the guard is set around each bridge call (3.4), `__dd_iast_ok` has more checks (3.3), and `pre` confirms before `buf = nil` (3.2.1).
+```go
+// runtime/string.go
+func concatstrings(buf *tmpBuf, a []string) string {
+//line <generated>:1
+	{
+		if __orchestrion_atomic.Load(&__dd_iast_rt_gate) != 0 {
+			if __dd_iast_gp := getg(); __dd_iast_gp.__dd_iast_bypass != 0 {
+				__dd_iast_gp.__dd_iast_bypass = 0
+			} else if __dd_iast_ok() {
+				return __dd_iast_concatstrings(buf, a)
+			}
+		}
+	}
+//line /opt/homebrew/Cellar/go/1.27.1/libexec/src/runtime/string.go:30
+	idx := 0
+	... original body ...
+
+// runtime/runtime2.go (type g)
+	__dd_iast_in_hook uint8
+	__dd_iast_bypass  uint8
+	__dd_gls_v2       any
+```
+
+Gate-off machine code (arm64, `stringtoslicebyte`, go1.27.1 and go1.26.6): `ADRP` + `ADD` + `LDARW` of the gate, then `CBZW` to the original body. Nothing else. The inlined `__dd_iast_ok()` adds 12 instructions to the gate-on branch only; the frame sizes do not change (appendix H.6).
+
+Changes in step 5 against the step 2 artifact: `links:` names `internal/taint/runtimebridge`; the real bridge implements `confirm` (3.2.1). (The context check before the wrapper and the signature assertions are in the artifact since critic round 9.)
 
 ## 3. Design A: concatenation hook
 
@@ -169,7 +289,7 @@ Rules:
 2. The gate is a zero-initialized BSS `uint32`. It is correct before any `init` function runs: zero means "off".
 3. The gate mirrors "the process store has at least one **indexed root**" (a root with `indexed == true`, section 5.2.2). After step 3 there is no value table and no value counter (section 5.4), so `indexedRoots` is the only activity counter of the store. The store keeps `indexedRoots atomic.Int32` and binds it to `gate` in `Store.BindRuntimeBridge()` (rule 6). Publication order (5.2.2): increment `indexedRoots` **before** `indexed = true` is stored; decrement it only **after** `indexed = false` is stored and the refs are removed. Thus, while a reader validates a ref under `rootsMu.TryRLock` with `indexed == true`, `indexedRoots > 0`. A mutation does not change `indexedRoots` (5.2.3). The other bridges that read the value counter today also move to `indexedRoots` in step 3: `jsonbridge.BindActiveValues(store.ActiveValues())` becomes `jsonbridge.BindActiveValues(store.IndexedRoots())`, and `operatorbridge` (deleted in step 5) replaces `addOperatorValues`.
 4. The untainted path (`pre` before a filter hit, and the first checks of `hook`) does not allocate, does not concat, does not lock, has no `defer`, and does not call a `func` value. It reads the interior filter (section 5.2) inline.
-5. Every path that runs store code (`confirm` after a filter hit, and the tainted-path callbacks) is a `//go:noinline` bridge function with `defer` + `recover`. The runtime side sets the per-g guard (section 3.4) before **each** bridge call (`pre` and `hook`) and clears it after. If no binding is installed, the bridge function returns.
+5. Every path that runs store code (`confirm` after a filter hit, and the tainted-path callbacks) is a `//go:noinline` bridge function with `defer` + `recover`. The runtime-side wrapper (section 2.2) sets the per-g guard (section 3.4) before **each** bridge call (`pre` and `hook`) and clears it after. (The `defer` rule applies to the bridge, not to the runtime side: the woven runtime has no `defer`, section 2.2.) If no binding is installed, the bridge function returns.
 6. **One binding for the gate, the filter and the callbacks.** The bridge holds `binding atomic.Pointer[Binding]`. `Binding` contains the filter pointer, the `confirm` function (section 3.2.1) and the tainted-path callbacks. Only `request.defaultManager` (`internal/taint/request/scope.go:46-60`) calls `manager.store.BindRuntimeBridge()`. That function does `binding.CompareAndSwap(nil, b)`, then stores the string-to-slice switch word (section 4.4), then binds the store's `indexedRoots` counter to `gate` (rule 3). A second call returns `false` and changes nothing. `store.New()` does not install anything. Thus a test store, or any store other than the process store, never changes `gate` and is never visible to the hooks. The gate can be non-zero only after the binding is stored, so `pre` and `hook` always read a filter of the same store that changes the gate.
 
 #### 3.2.1 Pre-check must not allocate for clean operands
@@ -186,7 +306,7 @@ Rule: `pre` returns `true` only when a **live, validated** root contains an oper
    - `confirmUnknown`: a `TryRLock` failed. Counter `preContention`.
 4. `pre` returns `true` for `confirmTainted` and for `confirmUnknown`. Contention thus costs at most one heap allocation (<= 32 B). It does not lose taint. A recovered panic also returns `true` (counter `hookPanic`).
 5. `confirm` takes `uintptr`, not a pointer. Thus it cannot keep the operand live and it cannot make the operand escape (section 3.8).
-6. Remaining race: the owner finishes between `pre` and the defer. Then one heap allocation happens for an operand that was tainted when `pre` ran. This is correct and bounded. A counter `preStale` records it.
+6. Remaining race: the owner finishes between `pre` and the result hook. Then one heap allocation happens for an operand that was tainted when `pre` ran. This is correct and bounded. A counter `preStale` records it.
 
 Cost: filter miss: two loads for each operand. Filter hit: one `confirmSlow` call (one open-coded defer, <= 40 probed entries, <= 64 range checks; target <= 50 ns), 0 allocations. The rate of filter hits depends on the index load (section 5.3, benchmark under sparse, typical and full load in section 9.2).
 
@@ -260,11 +380,10 @@ func confirmSlow(b *Binding, a []string) (hit bool) {
 }
 ```
 
-Runtime-side shape of the pre-check (the concat template in section 2 changes to this):
+Runtime-side shape of the pre-check: it is in the wrapper `__dd_iast_concatstrings` of section 2.2 (called only after the context check passed, 3.3), before the inner call:
 
 ```go
-if buf != nil && atomic.Load(&__dd_iast_rt_gate) != 0 && __dd_iast_ok() {
-	gp := getg()
+if buf != nil {
 	gp.__dd_iast_in_hook = 1
 	hit := __dd_iast_rt_concat_pre(a)
 	gp.__dd_iast_in_hook = 0
@@ -278,7 +397,11 @@ if buf != nil && atomic.Load(&__dd_iast_rt_gate) != 0 && __dd_iast_ok() {
 
 ### 3.3 Runtime context checks
 
-The runtime side calls the bridge only when all of these are true:
+The prepended code of `<fn>` (section 2.2) does this check **before** it calls the wrapper, when the gate is not 0 and the bypass token is 0. Only when all of these are true does it call the wrapper, and thus the bridge. When the check is false, the original body runs directly: no wrapper call, no token, no bridge call. The gate-off path and the inner entry (token 1) do not run this check.
+
+Why before the wrapper (critic round 9): the wrapper is a normal Go function with a stack check at entry. On `g0` or `gsignal`, a failed stack check calls `morestack`, and `morestack` on `g0` or `gsignal` is fatal (`runtime/asm_arm64.s` and `asm_amd64.s` call `badmorestackg0` / `badmorestackgsignal` in `runtime/proc.go`: "fatal: morestack on g0", a fatal error that `recover` cannot stop). If the check ran inside the wrapper (the first variant D), a hooked function that runs near the end of a `g0` stack would crash the process only because the gate is on. `__dd_iast_ok()` itself cannot grow the stack: it is `//go:nosplit` and has no call (`getg()` is an intrinsic; the other operations are loads and compares). The linker's nosplit check covers its frame (none with default flags: it is inlined; none with `-N -l`: it is a leaf with no frame, step 2 disassembly). Step 2 test: 9.1 item 15.
+
+The check stays true until the wrapper body starts. Between the check and the first statement of the wrapper, only the stack check of the wrapper runs. On a user goroutine, `morestack` there can grow the stack or preempt the goroutine. `newstack` preempts only when `m.locks`, `m.mallocing` and `m.preemptoff` are clear; after a move to another M, the goroutine is `curg` of that M, the new M holds no lock for it, and the guard is a field of the goroutine. Thus the result of the check is still correct in the wrapper.
 
 - `gp == gp.m.curg`: not on `g0` or `gsignal` (no system stack, no signal handler).
 - `gp.m.locks == 0`: not while the runtime holds a lock or does `acquirem`.
@@ -298,33 +421,66 @@ func __dd_iast_ok() bool {
 
 Field names (`m.curg`, `m.locks`) are runtime internals. If Go renames them, the woven runtime does not compile. That failure is loud, and it is the wanted result. Step 6 adds a check for each supported Go version.
 
-### 3.4 Recursion guard
+### 3.4 Recursion guard and bypass token
 
-The tainted path runs store code. That code can concat strings, convert `[]byte` to `string`, or allocate. Such calls enter the hook again.
-
-Decision: add one field to `runtime.g` with the GLS precedent:
+Decision: add two fields to `runtime.g` with the GLS precedent, in the shared declarations aspect (section 2.2, 3.5):
 
 ```yaml
-  - id: iast-runtime-g-guard
+  - id: iast-runtime-decls
     join-point:
       struct-definition: runtime.g
     advice:
       - add-struct-field:
           name: __dd_iast_in_hook
           type: uint8
+      - add-struct-field:
+          name: __dd_iast_bypass
+          type: uint8
 ```
 
-The runtime-side template sets `gp.__dd_iast_in_hook = 1` before **every** bridge call (`pre`, `hook`, and the conversion equivalents) and sets it to 0 after. The context check (section 3.3) returns false when the field is not 0. The field is per goroutine, so no atomic is necessary. A panic inside the bridge must not leave the field at 1: every bridge function that runs store code recovers (section 3.2 rule 5), so the call always returns and the runtime side always clears the field. The filter-only part of `pre` cannot panic (it reads `a[i]` for `i < len(a)` and a fixed-size array with a masked index).
+Step 2 generated `__dd_iast_in_hook uint8`, `__dd_iast_bypass uint8` and the GLS field `__dd_gls_v2 any` next to each other in one `type g` (appendix H). Every `g` has its own fields, also `g0` and `gsignal`. Only code that runs on that `g` reads or writes them, so no atomic is necessary.
+
+#### 3.4.1 Recursion guard `__dd_iast_in_hook`
+
+The tainted path runs store code. That code can concat strings, convert `[]byte` to `string`, or allocate. Such calls enter the hook again.
+
+The wrapper (section 2.2) sets `gp.__dd_iast_in_hook = 1` before **every** bridge call (`pre`, `hook`, and the conversion equivalents) and sets it to 0 after. The context check (section 3.3) returns false when the field is not 0. A panic inside the bridge must not leave the field at 1: every bridge function that runs store code recovers (section 3.2 rule 5), so the call always returns and the wrapper always clears the field. The filter-only part of `pre` cannot panic (it reads `a[i]` for `i < len(a)` and a fixed-size array with a masked index).
 
 Second protection: the bridge's untainted path has no concat and no conversion (9.1 item 8 checks it).
 
 Tests (woven build): a test-only `confirm` that panics: `pre` returns `true`, the guard is 0 after the call, and the next concat runs the hook normally. A test-only `confirm` that does a concat and a `string(b)`: the nested operations do not enter the bridge (`hookEntries` unchanged).
 
+#### 3.4.2 Bypass token `__dd_iast_bypass`
+
+Purpose: the wrapper calls the original function again (the inner call). The token tells the inner entry to run the original body, and not the wrapper again. The token is a one-shot message from the wrapper to the next entry on the same `g`. It is not a lock and not a recursion guard.
+
+Rules:
+
+1. **Set:** only a wrapper sets the token to 1. It does this immediately before the inner call, with no other statement between them. A wrapper runs only after `__dd_iast_ok()` returned true in the outer entry (2.2 item 2, critic round 9), thus only on a user goroutine (`gp == gp.m.curg`); the token of `g0` and `gsignal` is never set. When the context check fails, no token is set: the original body runs directly. Between the store and the inner entry, no Go code of this `g` runs: only the call and the stack check. `morestack` runs on `g0`, and `g0` has its own token.
+2. **Consume:** at the inner entry, the prepended statements read the gate. When the gate is not 0, they read the token **before** the context check: they see the token, set it to 0, and run the original body (no `__dd_iast_ok()` call). Thus in the normal case the token is 1 only from the store to the inner entry, and it is 0 while the original body runs. Only the next hooked entry on the same `g` can consume it, and in the normal case that entry is the inner call.
+3. **Clear after the call (decision for a gate change):** the wrapper sets the token to 0 again after the inner call returns, unconditionally. Reason: the gate can change to 0 between the outer entry and the inner entry. Then the inner entry does not read the token (the token check is inside `if gate != 0`), and the original body runs with the token at 1. The clear after the call removes it. The same applies to the Q2 switch `s2sGate` (the nested `if` after the gate check in `stringtoslicebyte` and `stringtoslicerune`, 4.3); it is stored once at bind time, so it does not change in practice. Thus, when a wrapper returns, the token is always 0. The step 2 YAML does this (`gp.__dd_iast_bypass = 0` after each `__dd_iast_orig_<fn>` call).
+4. **Remaining stale-token cases:** (a) the gate changes to 0 before the inner entry **and** the original body panics (only a fault on an invalid pointer is recoverable in these bodies; the other errors are `throw`); (b) the gate changes to 0 before the inner entry, then to non-zero again, and the original body runs a hooked function on the same `g`. In both cases the token stays 1 for one more entry. That entry runs the original body without the wrapper and clears the token: **one missed propagation** for this `g`. No crash, no wrong taint, no leak. If the goroutine exits first, the runtime reuses the `g` record (`gfget` does not clear our fields), and the first hooked call of the next goroutine on it can miss once. Same bound. No counter records this loss: a counter would add work to the gate-on path of every call.
+5. **Panic when the gate stays on:** the inner entry already consumed the token, so a panic in the original body leaves nothing.
+6. **Guard interaction:** the token is always 0 when a wrapper calls the bridge (`pre` runs before the store; the result hook runs after the clear). A nested hooked call inside the bridge thus sees token 0 at its outer entry and calls `__dd_iast_ok()`, which returns false (guard set). The original body then runs directly: no wrapper, no token, no bridge call, no extra frame. There is no loop: a wrapper is entered only when the guard is 0, and an inner entry never calls a wrapper while its token is 1. (The first variant D entered the wrapper here and took a token path inside it: two more frames. Critic round 9 removed that path.)
+7. **Stack results:** the wrapper calls the result hook only when the result is not on the stack (`!stringDataOnStack(r)`, or a 1-byte string view of the slice data for `[]byte` and `[]rune` results), as before (section 3.8).
+
+Rejected alternative: clear the token at every entry, also when the gate is 0 (read the token before the gate). It removes case 4, but it adds a `getg()` and one load to the gate-off path, which was not measured. Case 4 needs a gate change inside a window of a few instructions; the loss is one propagation.
+
+Tests (woven build, step 5):
+
+- Gate change: a test-only `pre` stores 0 in the gate and returns `false`; the test stores the gate value back after the operation. The next hookable operation on the same goroutine enters the bridge (`hookEntries` +2 for a concat). Run it for each of the 6 functions. Negative control (9.1 item 5): remove the clear after the inner call; the test must fail.
+- Stale-token bound: the same gate change, then a fault in the original body (for example `string(b)` of an invalid pointer with `n > 1`), recovered by the test. With the gate on again, at most 1 of the next 2 hookable operations on the goroutine does not enter the bridge.
+- Sequence: 1 000 mixed operations with the gate on, on one goroutine, each one enters the bridge (no lost token).
+- Nesting: the `confirm` and callback tests of 3.4.1 run with all 6 operations nested; the stack-growth test of 3.8 stays green.
+- System stack (critic round 9): the `g0` test of 9.1 item 15 (no wrapper, no token and no bridge call on `g0`).
+
 ### 3.5 Where to inject the declarations
 
 Prototype risk 4: if `concatstrings` is renamed, the declarations aspect does not match, and the other aspects reference undefined names. The runtime build then fails with an unclear error.
 
-Decision: inject all shared declarations (`gate`, bridge function declarations, `__dd_iast_ok`) on a join point that always exists and that the GLS aspect also uses: `struct-definition: runtime.g`. Each function aspect then references only these names. The names use the prefix `__dd_iast_rt_` (for example `__dd_iast_rt_gate`, `__dd_iast_ok`). The linker symbols use `__dd_iast_rt.<name>`.
+Decision: inject all shared declarations on a join point that always exists and that the GLS aspect also uses: `struct-definition: runtime.g` (aspect `iast-runtime-decls`, section 2.2). They are: the two `runtime.g` fields (3.4), `add-blank-import: unsafe` (the wrappers use `unsafe.String`), the gate variables, the 11 bridge function declarations, `__dd_iast_ok`, and for each of the 6 hooked functions the alias `__dd_iast_orig_<fn>`, the wrapper `__dd_iast_<fn>` and the 3 signature assertions (3.9 item 6). Each function aspect then references only these names. Names: `__dd_iast_rt_<name>` for the bridge pulls (linker symbols `__dd_iast_rt.<name>`), `__dd_iast_ok`, `__dd_iast_<fn>` for the wrappers, `__dd_iast_orig_<fn>` for the aliases (linker symbol `runtime.<fn>`, 3.9 item 5).
+
+The wrappers refer to `tmpBuf`, `tmpStringBufSize` and `stringDataOnStack` (R3). If Go renames one of them, the runtime does not compile (loud).
 
 ### 3.6 Hook behavior on the result
 
@@ -333,7 +489,7 @@ In `concat(result, operands)` on the tainted path:
 1. `len(result) == 0`: return (empty is never tainted).
 2. `len(result) > store.MaxRootBytes`: record a `bytes` drop and return.
 3. **Identity fast path:** `concatstrings` returns `a[idx]` when only one operand is not empty (`count == 1`). If the data pointer and length of `result` equal one operand, return. The interior lookup (section 5) already finds the operand's taint.
-4. `stringDataOnStack(result)`: the runtime side already skips it. With the v2 pre-check, a tainted operand never gives a stack result.
+4. `stringDataOnStack(result)`: the wrapper already skips it (section 2.2). With the v2 pre-check, a tainted operand never gives a stack result.
 5. Otherwise the result is a fresh allocation from `rawstring(l)` (strings) or `rawbyteslice(l)` (bytes). `mallocgc` returns the allocation base. The result is complete: it starts at the base and nobody else holds it yet. This is the "audited" case that `Owner.AdoptString` and `Owner.AdoptBytes` require. Adopt it. Do not clone it.
 6. Ranges: for each contributing owner, compose the operand ranges shifted by the cumulative operand lengths. Reuse the logic of `joinStringHit` (`string_exact.go`) with an empty separator and without `strings.Clone`. Share the same result between at most `MaxSnapshotOwners` owners, as `publishStringCopy` does today.
 7. More than 16 operands: do **not** reuse `coarseStringHit`. It inspects only the first `maxInputs` (16) inputs (`propagation.go:363-378`), and `joinStringHit` keeps only 15 (`string_exact.go:51-65`). A taint in operand 17 or later is lost. Add `coarseConcatHit(result, operands)`: it scans **all** operands with `MayContain` + `Lookup` (the operand count is fixed by the source code; no allocation), keeps at most `MaxSnapshotOwners` owners, and gives each owner one coarse range over `[0, len(result))` with the `limit` of the first match. It records a `ranges` drop because the ranges are not exact. Tests: 17 operands with only operand 17 tainted; 40 operands with only operand 40 tainted; 5 owners (the fifth is a `fanout` drop).
@@ -350,6 +506,8 @@ Rule for `count == 1` with `buf == nil`: the runtime copies a stack operand to t
 
 The runtime side declares the bridge functions without a body and with `//go:noescape`. The compiler trusts this declaration and does not analyze the bridge body. Thus the bridge must obey this contract. A violation is memory corruption, not only a wrong taint.
 
+**Alias rule (variant D).** The wrapper calls the original function through the body-less alias `__dd_iast_orig_<fn>` (`//go:linkname __dd_iast_orig_<fn> runtime.<fn>` + `//go:noescape`), never directly. Evidence (step 2 investigation, appendix H): with a direct call `concatstrings(buf, a)`, the wrapper and `<fn>` are one recursive escape-analysis batch. Then the compiler reports `leaking param: buf` (heap) in place of `leaking param: buf to result ~r0 level=0` for all 6 functions and for `concatstring2..5` / `concatbyte2..5`. The escape comparison failed in all 6 cells (and in a 30-line reproduction). With the alias, the escape tags of `<fn>` come from its own body only, and they are identical to the unwoven runtime (6/6 cells). The `//go:noescape` of the alias is not exact (`buf` flows to the result). This is safe only because: (1) it changes only the tags that the compiler uses at call sites of the alias; (2) the only call site of the alias is the wrapper; (3) the only caller of the wrapper is the prepended code of `<fn>`, which passes its own arguments and returns the result directly; the escape tags of `<fn>` (from its body) already describe that flow for the callers of `<fn>`. Thus no code outside `runtime` sees the inexact tags. A new call site of an alias or of a wrapper is not permitted.
+
 | Argument | What the bridge can do | What the bridge must never do |
 |---|---|---|
 | `a []string` (operands) in `pre` and `hook` | read `len`, data pointers as `uintptr`, and bytes during the call | keep `a`, its backing array, or any operand after return; pass an operand as a pointer or `string` to code that can keep it |
@@ -358,13 +516,13 @@ The runtime side declares the bridge functions without a body and with `//go:noe
 
 Why the result rule is safe:
 
-1. The runtime side calls `hook` only when `!stringDataOnStack(result)`. So the result is in the heap (from `rawstring` / `rawbyteslice`) or it is a heap operand (the `count == 1` identity case, where the bridge returns before it keeps anything, section 3.6 step 3).
+1. The wrapper calls `hook` only when `!stringDataOnStack(result)`. So the result is in the heap (from `rawstring` / `rawbyteslice`) or it is a heap operand (the `count == 1` identity case, where the bridge returns before it keeps anything, section 3.6 step 3).
 2. A heap object that `rootRecord.stringAnchor` / `bytesAnchor` holds is a normal GC root through a Go pointer. The GC keeps it. Stack growth does not move heap memory.
 3. Operands can be in a stack `tmpBuf` of an earlier concat. The bridge functions are normal Go functions, so the stack can grow and move during the call. When the stack moves, the runtime updates Go pointers in frames, but not `uintptr` values. Thus the bridge converts each operand to a `Key` (`uintptr` + length) once, and after that it never reads operand bytes through the `Key`. A stale stack `Key` is only a lookup key. No root contains stack memory (roots are heap allocations, section 1.3), so such a key gives a miss and nothing more.
 
 Checks (step 2, step 5 and the step 6 CI job, on go1.26.6 and go1.27.x, with default flags and with `-gcflags=all=-N -l`):
 
-- Compare `-gcflags=runtime=-m=2` output for every hooked function and for `concatstring2..5`, `concatbyte2..5`, `slicebytetostring`, `stringtoslicebyte`, `slicerunetostring`, `stringtoslicerune` between the woven and the unwoven runtime. The escape lines must be identical.
+- Compare `-gcflags=runtime=-m` output (step 2 compared it; step 5 adds `-m=2`) for every hooked function and for `concatstring2..5`, `concatbyte2..5`, `slicebytetostring`, `stringtoslicebyte`, `slicerunetostring`, `stringtoslicerune` between the woven and the unwoven runtime (the `string.go` lines inside these functions, sorted). The only normalization: remove the column (Orchestrion `//line` directives have no column). With variant D the result is not renamed, so no `__result__0` replacement is necessary. The escape lines must be identical. This comparison is a required CI check (9.4): it is the guard of the alias rule. Negative control: the wrapper calls `runtime.<fn>` directly; the comparison must fail (`leaking param: buf`).
 - Stack-result test: a non-escaping clean concat stays on the stack (`stringDataOnStack` is true) and is never adopted.
 - Stack-growth test: a tainted operand from a stack `tmpBuf`, a deep recursion that forces stack growth during the tainted path (a test-only callback), then `runtime.GC()` twice. No crash, and no store entry points into a stack range.
 - Heap-retention test: a tainted concat result, all other references dropped, `runtime.GC()` twice, then lookup of the adopted root: the data is unchanged and the ranges are correct.
@@ -386,12 +544,22 @@ Contract for this plan:
 2. No name is in `blockedLinknames`. A check in the step 6 CI job greps the list of each supported toolchain for the `__dd_iast_rt` prefix.
 3. The symbol prefix `__dd_iast_rt.` has no package path. It cannot collide with a real package.
 4. Test for each toolchain: `go tool orchestrion go build -ldflags=-checklinkname=1` of `cmd/bootstrap` and of the `cmd/nohook` fixture. Both must link and run.
+5. **Self-linkname aliases (variant D).** Inside `runtime`, `//go:linkname __dd_iast_orig_<fn> runtime.<fn>` pulls a std symbol that has no push `//go:linkname`. The check permits it because the reference and the definition are in the same package: `if r.unit.Lib.Pkg == pkg { return }` (go1.27.1 line 2551, go1.26.6 line 2530; the code comment says "assembly reference from same package", but the test compares only the package). This test runs before the push-linkname test. The 6 names `runtime.concatstrings`, `runtime.concatbytes`, `runtime.slicebytetostring`, `runtime.stringtoslicebyte`, `runtime.slicerunetostring`, `runtime.stringtoslicerune` are not in `blockedLinknames` of go1.26.6 or go1.27.1 (0 matches in `loader.go`). The step 2 D cells passed `-ldflags=-checklinkname=1` on go1.26.6 and go1.27.1 (default, `-race`, `-N -l`). The item 2 grep also checks these 6 names.
+6. **Signature assertions (in the step 2 artifact since critic round 9).** The alias has no body, so the compiler does not compare its signature with `runtime.<fn>`. A different signature (for example a new argument in a later Go release) gives an ABI mismatch when the gate is on: memory corruption. Rule: the shared declarations contain, for each hooked function, 3 assignments of the original, the alias and the wrapper to **one** func type (the signature of `<fn>` in the supported releases):
+
+   ```go
+   var _ func(*tmpBuf, []string) string = concatstrings
+   var _ func(*tmpBuf, []string) string = __dd_iast_orig_concatstrings
+   var _ func(*tmpBuf, []string) string = __dd_iast_concatstrings
+   ```
+
+   (the same for the other 5, with their types; `stringtoslicerune` uses `func(*[tmpStringBufSize]rune, string) []rune`). Then a signature change or a rename of `<fn>`, and an alias or a wrapper that does not repeat the signature exactly, are compile errors of the woven runtime (loud, R3). Step 2 (critic round 9): the escape comparison stays identical (67 / 67 / 58 lines) and all 6 darwin/arm64 cells pass with the assertions. Negative control: an alias of `slicebytetostring` with one more `int` argument (and the wrapper call changed to match) fails to compile with the assertions (`cannot use __dd_iast_orig_slicebytetostring (value of type func(buf *tmpBuf, ptr *byte, n int, extra int) string) as func(*tmpBuf, *byte, int) string value`); without the alias assertion the same build compiles silently (the ABI mismatch that the rule prevents).
 
 ### 3.10 Supported Go versions (Q3)
 
 Supported: go1.26.x and go1.27.x only. The `go 1.26.6` line of `go.mod` already refuses older toolchains. CI tests go1.26.6 and the latest go1.27.x (section 9.4).
 
-For a newer toolchain (go1.28 and later), the file `internal/taint/runtimebridge/unsupported.go` (`//go:build go1.28`) makes `BindRuntimeBridge` return `false` and increments a counter `unsupportedGo`. Then the gates stay 0, and each hook costs one atomic load. Interior lookup (section 5) still works, because it does not use the hooks. Concat and conversion propagation is then off. There is no build-time or startup warning (user decision, section 12, "Go 1.28+"); only the `unsupportedGo` counter records it. If the woven runtime does not compile on the new toolchain (a renamed runtime field, R3), the build fails loudly; the build tag cannot prevent this.
+For a newer toolchain (go1.28 and later), the file `internal/taint/runtimebridge/unsupported.go` (`//go:build go1.28`) makes `BindRuntimeBridge` return `false` and increments a counter `unsupportedGo`. Then the gates stay 0, and each hook costs one atomic load. Interior lookup (section 5) still works, because it does not use the hooks. Concat and conversion propagation is then off. There is no build-time or startup warning (user decision, section 12, "Go 1.28+"); only the `unsupportedGo` counter records it. If the woven runtime does not compile on the new toolchain (a renamed runtime field, or a changed signature of a hooked function caught by the assertions of 3.9 item 6, R3), the build fails loudly; the build tag cannot prevent this. With the gate at 0, the wrappers are never called, so a signature change on go1.28+ without the assertion would be harmless; the assertion makes it a build failure. This is the chosen trade-off: on a supported toolchain, a silent ABI mismatch is not acceptable.
 
 ## 4. Design B: conversion hooks
 
@@ -423,6 +591,8 @@ The alias forms (`...TMP`) are **not** misses after section 5: their data pointe
 
 ### 4.2 `slicebytetostring`
 
+Variant D (section 2.2). Prepended statements:
+
 ```yaml
   - id: iast-slicebytetostring
     join-point:
@@ -439,24 +609,48 @@ The alias forms (`...TMP`) are **not** misses after section 5: their data pointe
             {{- $buf := .Function.Argument 0 -}}
             {{- $ptr := .Function.Argument 1 -}}
             {{- $n := .Function.Argument 2 -}}
-            {{- $r := .Function.Result 0 -}}
-            if {{ $buf }} != nil && {{ $n }} > 1 && atomic.Load(&__dd_iast_rt_gate) != 0 && __dd_iast_ok() {
-              __dd_iast_gp := getg()
-              __dd_iast_gp.__dd_iast_in_hook = 1
-              __dd_iast_hit := __dd_iast_rt_bytes_pre({{ $ptr }}, {{ $n }})
-              __dd_iast_gp.__dd_iast_in_hook = 0
-              if __dd_iast_hit {
-                {{ $buf }} = nil
+            if atomic.Load(&__dd_iast_rt_gate) != 0 {
+              if __dd_iast_gp := getg(); __dd_iast_gp.__dd_iast_bypass != 0 {
+                __dd_iast_gp.__dd_iast_bypass = 0
+              } else if __dd_iast_ok() {
+                return __dd_iast_slicebytetostring({{ $buf }}, {{ $ptr }}, {{ $n }})
               }
             }
-            defer func() {
-              if len({{ $r }}) > 1 && atomic.Load(&__dd_iast_rt_gate) != 0 && __dd_iast_ok() && !stringDataOnStack({{ $r }}) {
-                __dd_iast_gp := getg()
-                __dd_iast_gp.__dd_iast_in_hook = 1
-                __dd_iast_rt_from_bytes({{ $r }}, {{ $ptr }}, {{ $n }})
-                __dd_iast_gp.__dd_iast_in_hook = 0
-              }
-            }()
+```
+
+Alias, signature assertions and wrapper (in `iast-runtime-decls`, section 3.5):
+
+```go
+//go:linkname __dd_iast_orig_slicebytetostring runtime.slicebytetostring
+//go:noescape
+func __dd_iast_orig_slicebytetostring(buf *tmpBuf, ptr *byte, n int) string
+
+var _ func(*tmpBuf, *byte, int) string = slicebytetostring
+var _ func(*tmpBuf, *byte, int) string = __dd_iast_orig_slicebytetostring
+var _ func(*tmpBuf, *byte, int) string = __dd_iast_slicebytetostring
+
+// Called only after __dd_iast_ok() returned true (no context check here).
+//go:noinline
+func __dd_iast_slicebytetostring(buf *tmpBuf, ptr *byte, n int) string {
+	gp := getg()
+	if buf != nil && n > 1 {
+		gp.__dd_iast_in_hook = 1
+		hit := __dd_iast_rt_bytes_pre(ptr, n)
+		gp.__dd_iast_in_hook = 0
+		if hit {
+			buf = nil
+		}
+	}
+	gp.__dd_iast_bypass = 1
+	r := __dd_iast_orig_slicebytetostring(buf, ptr, n)
+	gp.__dd_iast_bypass = 0
+	if len(r) > 1 && !stringDataOnStack(r) {
+		gp.__dd_iast_in_hook = 1
+		__dd_iast_rt_from_bytes(r, ptr, n)
+		gp.__dd_iast_in_hook = 0
+	}
+	return r
+}
 ```
 
 Notes:
@@ -464,10 +658,11 @@ Notes:
 - `n == 1` returns a pointer into the static table `staticuint64s`. That result is shared by all goroutines. Never adopt it. The `len > 1` check excludes it. One-byte results lose taint (the same as the current `BytesToString`, which requires `len >= 2`).
 - `__dd_iast_rt_bytes_pre` obeys section 3.2.1: filter check, then `confirm`. It returns `true` only for a validated live match.
 - The bridge gives the result the input's window ranges and adopts it as a string root. Reuse `internal/taint/propagation/conversion.go` (`BytesToString`) without the `len(input) != len(result)` recheck.
+- Under `-race`, `slicebytetostring` calls `racereadrangepc` with the caller PC. With the gate on, that caller is the wrapper (step 2, appendix H). A race report then names the wrapper. This occurs only with the gate on.
 
 ### 4.3 `stringtoslicebyte`
 
-Same shape, with one more condition at the start of the pre-check and of the defer: `atomic.Load(&__dd_iast_rt_s2s_gate) != 0` (the Q2 switch, section 4.4). The pre-check sets `buf = nil` when `s` is tainted. The defer calls `__dd_iast_rt_to_bytes(result, s)` when `len(result) > 1` and the result is not on the stack (use `unsafe.String(unsafe.SliceData(r), len(r))` with `stringDataOnStack`, as the prototype does for `concatbytes`).
+Same shape as 4.2. The prepended statements check the Q2 switch (section 4.4) in a nested `if` directly inside the gate check: `if atomic.Load(&__dd_iast_rt_gate) != 0 { if atomic.Load(&__dd_iast_rt_s2s_gate) != 0 { ... } }`. With the switch off, the wrapper is not called. Use the nested `if`, not `gate != 0 && s2s != 0`: with the context check before the wrapper (2.2), the `&&` form makes the compiler keep the condition as a bool (`CSET` + `TBZ`), so the gate-off path gets 2 more instructions and one more taken branch; `s2r-stack` measured approx. +1.1 ns more in its fast mode (step 2, critic round 9, appendix H.6). The nested form gives the gate-off path `LDARW` + `CBZW` only, as for the other 4 functions. The wrapper `__dd_iast_stringtoslicebyte(buf *tmpBuf, s string) []byte` sets `buf = nil` when `buf != nil`, `len(s) > 1` and `__dd_iast_rt_str_pre(s)` returns `true`. After the inner call, it calls `__dd_iast_rt_to_bytes(r, s)` when `len(r) > 1` and `!stringDataOnStack(unsafe.String(unsafe.SliceData(r), 1))` (a 1-byte string view of the slice data, as for `concatbytes`).
 
 `rawbyteslice(len(s))` returns `cap = roundupsize(len)`. `AdoptBytes` uses `cap` as span and charge. This is correct.
 
@@ -487,27 +682,27 @@ Today string-to-`[]byte` propagation does not exist. Phase 6 section 10 removed 
 - `internal/config/config.go`: constant `EnvVarStringToSlicePropagationEnabled`, variable `StringToSlicePropagationEnabled bool`, read in `load` with `loader.BoolFromEnv(observer, EnvVarStringToSlicePropagationEnabled, true)`. `internal/config/init.go` loads it at package `init`, before any request.
 - The bridge cannot import `config` (rule 1 of 3.2). `request.defaultManager` passes the value: `manager.store.BindRuntimeBridge(runtimebridge.Options{StringToSlice: config.StringToSlicePropagationEnabled})`. `BindRuntimeBridge` stores 1 in `s2sGate` when the value is true (3.2 rule 6). Zero (the BSS value) means off.
 - The switch gates the `stringtoslicebyte` and `stringtoslicerune` hooks (both results are mutable). It does not gate `[]byte(a + b)` (`concatbytes`): that result is also mutable, but it is concat propagation, which exists today.
-- Cost when off: one more atomic load in the woven runtime, after the main gate. No bridge call, no `buf = nil`, no defer body work.
+- Cost when off: one more atomic load in the woven runtime, after the main gate. No wrapper call, no bridge call, no `buf = nil`. Step 2 measured +0.0 to +0.5 ns for this case with variant D (appendix H; `s2r-heap` is noise-limited).
 - The value is read once. A change needs a process restart, the same as the other `DD_IAST_*` settings.
 - Tests: with the switch off, `[]byte(tainted)` and `[]rune(tainted)` are not tainted, a short result stays on the stack (0 extra allocations), and `hookEntries` does not change; `string(b)` and concat still propagate.
 
 ### 4.5 Rune conversions (Q6)
 
-Two more aspects in `iast/runtime/orchestrion.yml`, with the shape of section 4.2:
+Two more aspects in `iast/runtime/orchestrion.yml`, with the variant D shape of section 4.2 (prepended gate check, alias `__dd_iast_orig_<fn>`, wrapper `__dd_iast_<fn>`). `stringtoslicerune` has the Q2 switch in a nested `if`, as in 4.3. The alias of `stringtoslicerune` is `func __dd_iast_orig_stringtoslicerune(buf *[tmpStringBufSize]rune, s string) []rune`.
 
-| Function | Pre-check input | Stack case | Defer condition | Callback |
+| Function | Pre-check input (in the wrapper) | Stack case | Result-hook condition (in the wrapper, after the inner call) | Callback |
 |---|---|---|---|---|
-| `stringtoslicerune(buf *[32]rune, s string) []rune` | `(StringData(s), len(s))`; also requires `s2sGate != 0` | `buf != nil` and at most 32 runes | `len(r) != 0`, `s2sGate != 0`, and the rune array is not on the stack (`stringDataOnStack` of a 1-byte string view of `&r[0]`) | `toRunes(r, s)` |
-| `slicerunetostring(buf *tmpBuf, a []rune) string` | `(&a[0], 4*len(a))` | `buf != nil` and the encoded size + 3 <= 32 | `len(result) > 1` and `!stringDataOnStack(result)` | `fromRunes(result, a)`; the charge uses `len(a)`, not `len(result)` (next list) |
+| `stringtoslicerune(buf *[32]rune, s string) []rune` | `__dd_iast_rt_str_pre(s)` when `buf != nil` and `len(s) != 0`; the wrapper runs only when `s2sGate != 0` | `buf != nil` and at most 32 runes | `len(r) != 0` and the rune array is not on the stack (`stringDataOnStack` of a 1-byte string view of `&r[0]`) | `toRunes(r, s)` |
+| `slicerunetostring(buf *tmpBuf, a []rune) string` | `__dd_iast_rt_runes_pre(a)` (bytes `(&a[0], 4*len(a))`) when `buf != nil` and `len(a) != 0` | `buf != nil` and the encoded size + 3 <= 32 | `len(result) > 1` and `!stringDataOnStack(result)` | `fromRunes(result, a)`; the charge uses `len(a)`, not `len(result)` (next list) |
 
 Store model:
 
 - New `KindRunes`. A `[]rune` root uses **byte** coordinates of the rune array: rune `i` is bytes `[4i, 4i+4)`. Thus `rs[i:j]` has data pointer `base + 4i` and length `4(j-i)`, and the interior lookup (section 5) finds it with no special case.
 - `Owner.AdoptRunes(value []rune, set)`: span and charge are `4*cap(value)`. It must be <= `MaxRootBytes` (at most 16 384 runes); a larger result is a `bytes` drop. The anchor is `bytesAnchor = unsafe.Slice((*byte)(unsafe.Pointer(unsafe.SliceData(value))), 4*cap(value))`. Both types are pointer-free, so this pointer keeps the allocation live, and `rootRecord` needs no new field.
 - `slicerunetostring` allocates `rawstringtmp(buf, size1+3)` from a first pass over `a`, and returns `s[:size2]` from a second pass (go1.26.6 and go1.27.1 `runtime/string.go`, identical bodies). If another goroutine changes the runes of `a` between the two passes, `size2` can be much smaller than `size1`. Thus `len(result) + 3` is **not** a bound on the allocation, and a charge from `len(result)` can be too small without limit (critic round 5, finding 3).
-- The advice cannot read `size1`: `prepend-statements` runs before `size1` is declared, and a deferred closure cannot refer to a local that is declared later. `b` (the `rawstring` slice with the full length) has the same problem.
+- The advice cannot read `size1`: the wrapper sees only the arguments and the returned result of `slicerunetostring`, not its locals. `b` (the `rawstring` slice with the full length) has the same problem.
 - Decision: the charge comes from a value that cannot change during the call. `len(a)` is a copy of the slice header in the argument, and the runtime body does not assign `a`. `encoderune` writes at most 4 bytes (3 for an invalid rune or a surrogate), so `size1 <= 4*len(a)` for all rune values, before or after a change. Thus the allocation is at most `sizeClass(4*len(a) + 3)`.
-- Add `Owner.AdoptStringAlloc(value string, allocBound int, set)`: span `len(value)`, charge `sizeClass(allocBound)`. It refuses (`bytes` drop) when `allocBound > MaxRootBytes` or `allocBound < len(value) + 3`. The `fromRunes` callback passes `allocBound = 4*len(input) + 3`, where `input` is the `a` argument captured by the deferred closure. The bridge signature `fromRunes(result string, input []rune)` (3.2) does not change.
+- Add `Owner.AdoptStringAlloc(value string, allocBound int, set)`: span `len(value)`, charge `sizeClass(allocBound)`. It refuses (`bytes` drop) when `allocBound > MaxRootBytes` or `allocBound < len(value) + 3`. The `fromRunes` callback passes `allocBound = 4*len(input) + 3`, where `input` is the `a` argument that the wrapper passes to the callback. The bridge signature `fromRunes(result string, input []rune)` (3.2) does not change.
 - Cost of this bound: the charge can be up to approx. 4 x the real allocation (1 000 ASCII runes: charge 4 096 B, real 1 024 B). This uses the request byte quota faster; it never under-charges. The largest adopted `[]rune` input becomes 16 383 runes (`4*16 383 + 3 = 65 535 <= MaxRootBytes`).
 - Rejected alternative: read the real object size with `spanOfHeap(p).elemsize` in the woven runtime. It is exact, but it adds one more internal runtime symbol and field (R3). Keep it as an option if step 7 shows that the over-charge refuses roots.
 
@@ -847,15 +1042,15 @@ Still open after this plan:
 
 | # | Risk | Mitigation |
 |---|---|---|
-| R1 | **Process-wide overhead.** Every non-constant concat and every `string(b)` / `[]byte(s)` in the process runs the hook: stdlib, dd-trace-go and dd-iast-go code too. | Gate off: < 1.5 ns, 0 allocations. Gate on only while an indexed root exists (section 3.2 rule 3). Numeric gates in section 9.3. |
+| R1 | **Process-wide overhead.** Every non-constant concat and every `string(b)` / `[]byte(s)` in the process runs the hook: stdlib, dd-trace-go and dd-iast-go code too. | Gate off (variant D, darwin/arm64, step 2): <= +0.54 ns resolved median, 0 allocations (appendix H); amd64 is measured in step 7. Gate on only while an indexed root exists (section 3.2 rule 3). Numeric gates in section 9.3. |
 | R2 | **No caller filter.** A runtime hook cannot exclude `dd-iast-go/internal/**` or dd-trace-go. | Recursion guard (section 3.4). Tracer strings are clean unless they contain tainted data, and then taint is correct. |
-| R3 | **Runtime internal symbols.** `concatstrings`, `concatbytes`, `slicebytetostring`, `stringtoslicebyte`, `slicerunetostring`, `stringtoslicerune` are compiler-coupled entry points and stable. `stringDataOnStack`, `getg`, `m.curg`, `m.locks`, `tmpBuf` are less stable. | A rename of a helper or field: the runtime does not compile (loud). A rename of an entry point: the join point silently matches nothing (fail open). CI woven test for each supported Go version asserts that each hook fires (section 8.1). |
+| R3 | **Runtime internal symbols.** `concatstrings`, `concatbytes`, `slicebytetostring`, `stringtoslicebyte`, `slicerunetostring`, `stringtoslicerune` are compiler-coupled entry points and stable. `stringDataOnStack`, `getg`, `m.curg`, `m.locks`, `tmpBuf`, `tmpStringBufSize` are less stable. Variant D also repeats the signature of each entry point in a body-less alias `//go:linkname __dd_iast_orig_<fn> runtime.<fn>` + `//go:noescape` (section 2.2). | A rename of a helper or field: the runtime does not compile (loud). A rename or a signature change of an entry point: the signature assertions (3.9 item 6) make it a compile error (loud); without them, a rename would silently match nothing and a signature change would be an ABI mismatch. **Alias rule:** the wrapper calls the original function only through the alias, never directly (a direct call changes the escape tags to `leaking param: buf`, 3.8); the alias and the wrapper have no other call site. The escape comparison is a required CI check (9.4). CI woven test for each supported Go version asserts that each hook fires (section 9.1 item 1). |
 | R4 | **Linkname policy.** The design depends on two linker rules: references to non-std definitions are not checked, and push-linknamed definitions are permitted (section 3.9). | Explicit `-ldflags=-checklinkname=1` link test for each toolchain (section 9.4). A Go change breaks it loudly at link time. |
 | R5 | **`buf = nil` trick.** Correct because every runtime caller accepts `buf == nil` (the compiler passes nil for escaping results). | A test for each Go version checks that the tainted stack case gives 1 allocation and correct taint (prototype `TestAllocsTaintedStack`). |
 | R6 | **Whole-cache rebuild.** Weaving `runtime` invalidates the build cache for the full graph. | The GLS aspect already does this. No new cost for dd-trace-go users. |
-| R7 | **Interaction with the GLS aspect.** Both add a field to `runtime.g` and inject declarations into `runtime`. | Step 2 builds the prototype with dd-trace-go GLS in the same binary. Names use the `__dd_iast_` prefix. |
-| R8 | **amd64 not tested.** | CI runs on linux/amd64. Step 2 adds an amd64 run before any other step continues. |
-| R9 | **`-gcflags=all=-N -l`.** No inlining: `concatstring2..5` are real calls, and the defer is not open-coded. Escape analysis can differ. | Step 2 and the step 6 CI job run the woven tests with `-N -l`. Only correctness is required there, not overhead. |
+| R7 | **Interaction with the GLS aspect.** Both add a field to `runtime.g` and inject declarations into `runtime`. | Done in step 2: one binary with dd-trace-go GLS and our aspects; both fields are in the woven `runtime.g`; `TestGLSCoexists` passes (appendix H). Names use the `__dd_iast_` prefix. |
+| R8 | **amd64 only partly tested.** Step 2 passed all functional cells on linux/amd64 (under Rosetta emulation) with the `defer` template. Variant D was run only on darwin/arm64 (functional and performance). The D gate-off path on amd64 is `MOVL gate(SB)` + `TESTL` + `JNE`; the same cost is expected, but not measured. | Step 5 runs the D woven tests on linux/amd64 before the commit. Step 6 CI runs all cells on native linux/amd64 (and can report a gate-off benchmark, optional). Step 7 measures the 9.3 gate-off row on native amd64. |
+| R9 | **`-gcflags=all=-N -l`.** No inlining: `concatstring2..5` are real calls, and the wrapper is a real call in all builds. Escape analysis can differ. | Step 2 passed `-N -l` with the `defer` template (4 platform x Go pairs) and with variant D (darwin/arm64, 2 Go versions); escape lines identical (58 lines). The step 6 CI job runs the woven tests with `-N -l`. Only correctness is required there, not overhead. |
 | R10 | **`-race`.** The runtime is not race-instrumented. `slicebytetostringtmp` is called only in instrumented builds. | The gate uses `internal/runtime/atomic` (no formal data race). `-race` woven tests run in CI. |
 | R11 | **Panic in the hook.** | Every bridge function that runs store code (`confirmSlow`, tainted-path callbacks) recovers, with the guard set (3.2 rule 5, 3.4). `__dd_iast_ok` excludes the states where `gopanic` throws (3.3). The filter-only path has no operation that can panic (loops only over `a`, masked array index). |
 | R12 | **More allocations with taint.** Each tainted short non-escaping concat or conversion adds one allocation (<= 32 B). | Only on the tainted path. Accepted. |
@@ -866,6 +1061,9 @@ Still open after this plan:
 | R17 | **Every sink lookup pays the interior path** (critic round 5). Before step 3, a sink check was one exact probe. After step 3, `MayContain` computes two hashes and loads two filter buckets; on a filter hit, `Lookup` takes up to two `TryRLock` and scans up to two 40-entry windows (one for each tier), then validates the refs under `rootsMu.TryRLock`. Under a full index most clean pointers hit the filter (5.3), so most sink checks pay the probes. | Measured by the sink check benchmark of 9.2 (`request/lookup.go` path, before step 3 vs after, sparse / typical / full load, clean and tainted values). Gates: the `MayContain` rows of 9.3 and the HTTP overhead gate. If the full-load cost fails a gate, stop (section 11); options: a larger filter or a per-tier filter. |
 | R18 | **Rune conversion over-charge** (4.5). `string(rs)` charges `sizeClass(4*len(rs)+3)`, up to approx. 4 x the real allocation. | Never an under-charge. Only on the tainted path. Step 7 reports the charged bytes; `spanOfHeap` is the fallback option. |
 | R19 | **Re-adoption by one owner** (5.2.2 Extension; corrected in critic rounds 6 and 7). The old table kept one slot for each exact (owner, pointer, length, kind) key, so adoptions at different lengths kept both values tainted. The round 5 rule ("latest root wins") and the round 6 "mutable rule" (the new bytes adoption wins on `[0, cap)`) removed taint without a tracked mutation; both are withdrawn. Now a re-adoption extends the one root of this owner and allocation with the union rule, for all kinds. Remaining trade-offs: (1) on bytes that both adoptions describe, the new ranges win, so the provenance can change (taint is never lost); (2) bytes that the application rewrote without a tracked mutation keep their old taint (over-taint, accepted with Q2 and R13); (3) the merged set can reach the range cap, and the tail is dropped (`drops.ranges`); (4) a concurrent re-adoption fails with `contention` (root refused); (5) after a failed mutation, the root is a miss until `Finish`, and a re-adoption of it by the same owner is refused (`contention`). The old table gave that re-adoption a new slot; this loss occurs only after a failed mutation (itself a counted loss). | Extension in place with the union rule; one generation for all ranges of the root (5.2.2 "Mutation and extension"). Tests in 5.3 (longer then shorter, cap, union for bytes, concurrent), the race test and reader order test of 5.2.2, and negative controls (9.1 item 5). |
+| R20 | **Bypass token** (variant D, 3.4.2). A stale token makes one hooked call on a `g` skip the wrapper. This occurs only when the gate changes to 0 between the outer entry and the inner entry, and then the original body panics or runs a hooked function after the gate changes back. | One missed propagation for each such event, not counted. No crash and no wrong taint. The wrapper clears the token after every inner call (3.4.2 rule 3). Gate-change test and negative control (3.4.2, 9.1 items 5 and 14). |
+| R21 | **Inexact `//go:noescape` on the aliases** (3.8). `buf` flows to the result, but the alias says "no escape". | Safe only with the alias rule (R3): the alias has one call site (the wrapper) and the wrapper has one caller (the prepended code of the same function). The escape comparison (woven vs unwoven, identical lines) is a required CI check in every cell (9.4). Negative control: a direct call changes the comparison (9.1 item 5). |
+| R22 | **Gate-on cost of variant D.** Two more frames (wrapper and inner call) and a second gate read on each gate-on call. Step 2 (stub bridge): heap concat with clean operands is +0.4 to +1.4 ns slower than the `defer` template; stack concat and `string(b)` are equal; `r2s-stack` is approx. 3 ns faster. Stack traces and profiles with the gate on show the wrapper frame. | The 9.3 gate-on rows stay; step 7 measures them with the real bridge. |
 
 ## 9. Validation gates
 
@@ -879,10 +1077,10 @@ Section 9.4 gives the matrix for the woven tests.
 4. **Slice cases (store only, no hook):** `s[i:j]`, `s[i:]`, `s[:j]`, `b[i:j:k]`, one-byte windows, empty windows, a window that crosses a granule (both tiers), a 256 B and a 257 B root (tier boundary), a 64 KiB root, a window of a finished owner (must miss), the density and shared-allocation tests of 5.3 (including the extension and union tests), the rollback tests, the mutation-extension race test and the reader order test of 5.2.2, the mutation tests of 5.2.3 (including extended roots), and `TestStoreFootprint` (5.2.1).
 4b. **No false negative in the pre-check** (woven build, short non-escaping concat, `string(b)`, `[]byte(s)`, `string(rs)` and `[]rune(s)` with a tainted operand):
    - forced `indexFull` and forced `fanout` (test-only hooks): the root admission fails, the source value is **not** tainted, and no lookup reports it. Thus no live root is invisible to the filter.
-   - forced shard contention in `confirm` (failed `TryRLock`): `confirm` returns `confirmUnknown`, `pre` returns `true`, the result is on the heap, and the defer adopts it (1 allocation, taint kept).
+   - forced shard contention in `confirm` (failed `TryRLock`): `confirm` returns `confirmUnknown`, `pre` returns `true`, the result is on the heap, and the result hook adopts it (1 allocation, taint kept).
    - a clean subwindow of a sparse tainted root (taint on bytes 0-3 of a 64-byte root, operand `root[10:20]`): `pre` returns `false`, 0 allocations, the result stays on the stack.
    - a tainted subwindow of the same root (`root[2:6]`): `pre` returns `true`, the result has the correct ranges.
-5. **Negative controls** (each must make a test fail, then be restored): remove `stringDataOnStack`; remove the `buf = nil` block; remove the recursion guard (test must detect re-entry); remove the filter decrement in `Finish` (filter test must detect the leak); remove `confirm` from `pre` (the clean-filter-hit allocation test must fail); remove the range-overlap scan from `confirm` (the sparse-root test of 4b must fail); make admission ignore an index failure (the forced `indexFull` test of 4b must fail); remove the rollback loop (the failure-injection test must fail); make `claimMutation` decrement `indexedRoots` (gate test (a) of 5.2.3 must fail); ignore `s2sGate` in the `stringtoslicebyte` template (the switch-off test must fail); make the extension commit set `R.setGen = R.generation.Load()` (the mutation-extension race test of 5.2.2 must fail); read tier L before tier S (the reader order test of 5.2.2 must fail); replace the union with "latest adoption wins" (the longer-then-shorter test and the bytes union test of 5.3 must fail); remove check (b) of 5.2.2 step 5 (the concurrent cross-tier first adoption test must fail).
+5. **Negative controls** (each must make a test fail, then be restored): remove `stringDataOnStack`; in the wrappers, replace `buf = nil` with `_ = buf` (step 2 on variant D: 9 tests fail: forced-heap, runes, panic, unknown, recursion, stack growth, allocs); remove the `__dd_iast_in_hook` check from `__dd_iast_ok` (step 2 on variant D: `TestRecursionGuard` fails); remove the `s2sGate` check (the nested `if`) from the string-to-slice aspects (step 2 on variant D: `TestS2SGateOff` fails); make the wrappers call `runtime.<fn>` directly in place of the alias `__dd_iast_orig_<fn>` (step 2, first D build: the escape comparison fails in all 6 cells with `leaking param: buf`); remove the clear of the bypass token after the inner call (the gate-change test of 3.4.2 must fail); move the `__dd_iast_ok()` check from the prepended code back into the wrapper (the first variant D; step 2, critic round 9: the gate-on child of the system-stack test, item 15, crashes with "fatal: morestack on g0" in `__dd_iast_concatstrings`); in one alias, add an argument and remove the alias signature assertion (step 2: the build then compiles silently; with the assertion it is a compile error, 3.9 item 6); remove the filter decrement in `Finish` (filter test must detect the leak); remove `confirm` from `pre` (the clean-filter-hit allocation test must fail); remove the range-overlap scan from `confirm` (the sparse-root test of 4b must fail); make admission ignore an index failure (the forced `indexFull` test of 4b must fail); remove the rollback loop (the failure-injection test must fail); make `claimMutation` decrement `indexedRoots` (gate test (a) of 5.2.3 must fail); make the extension commit set `R.setGen = R.generation.Load()` (the mutation-extension race test of 5.2.2 must fail); read tier L before tier S (the reader order test of 5.2.2 must fail); replace the union with "latest adoption wins" (the longer-then-shorter test and the bytes union test of 5.3 must fail); remove check (b) of 5.2.2 step 5 (the concurrent cross-tier first adoption test must fail).
 6b. **Independent stores:** two stores from `store.New()` plus the process store, used concurrently under `-race`. Taint in a non-process store never changes `gate`, never changes the bridge filter, and is never seen by a hook. After the process store is bound, `BindRuntimeBridge()` on a second store returns `false`, and the bridge still uses the gate, filter, `confirm` and callbacks of the first store (a tainted value of the second store is not seen by a hook; a tainted value of the first store still is).
 6c. **Escape and GC** (section 3.8): all listed checks.
 6. **Address reuse:** taint, finish the owner, force GC, allocate many same-size strings, assert that none is tainted.
@@ -895,7 +1093,13 @@ Section 9.4 gives the matrix for the woven tests.
 10. **Link without import:** a binary that does not import `runtimebridge` links and runs (prototype `cmd/nohook`).
 11. **Link check:** section 3.9 item 4.
 12. **Callback panic:** section 3.8 panic test, in the woven build.
-13. **`confirm` panic and nesting:** the tests of section 3.4 (a panic in `confirm`; a concat and a conversion inside `confirm`).
+13. **`confirm` panic and nesting:** the tests of section 3.4.1 (a panic in `confirm`; a concat and a conversion inside `confirm`).
+14. **Bypass token:** the tests of section 3.4.2 (gate change for each of the 6 functions, stale-token bound, 1 000-operation sequence, nesting).
+15. **System stack, `g0` (critic round 9, step 2 prototype `g0test/g0_test.go`):** user code cannot reach `g0` or `gsignal` (`os/signal` handlers run on a normal goroutine: `signal.Notify` sends on a channel; no public API runs a user function on the system stack). The test thus pulls `runtime.systemstack` with a test-only `//go:linkname` (its own package, `-ldflags=-checklinkname=0`, 9.4 item 3b). It runs itself again as a subprocess (environment variable) on a thread that is not `m0` (the main goroutine is locked to `m0` in `init`; all other threads have the same `g0` layout):
+    1. Control, depth 0, gate on: the 6 hooked operations (concat, `[]byte(a+b)`, `string(b)`, `[]byte(s)`, `string(rs)`, `[]rune(s)`, all with a stack `tmpBuf`) on `g0` give 0 bridge entries; the same operations on the goroutine give 6 (woven, gate on).
+    2. Calibration, gate off: binary search of the largest recursion depth `D` on `g0` (32 B frames; 48 B with `-N -l`) before the operations, where the child exits 0; `D + 1` must crash with "morestack on g0". Both sides are run again once (stable edge). Thus at `D` the free `g0` stack is less than one frame.
+    3. Gate on at depth `D`: the child must exit 0, with 0 bridge entries on `g0` and 6 on the goroutine. This proves that the gate-on path adds no frame with a stack check on `g0`.
+    Step 2 result: pass in all 6 darwin/arm64 cells (`D` = 16 306 default, 16 281 `-race`, 10 867 `-N -l`, the same on go1.26.6 and go1.27.1). Negative control: item 5. `gsignal` is not tested: no test-only path runs a hooked operation on it without a runtime change; `__dd_iast_ok()` rejects it with the same `gp == gp.m.curg` check. Step 5 moves this test into the real module.
 
 ### 9.2 Benchmarks
 
@@ -915,7 +1119,7 @@ Median of 8 runs, `-benchmem`, `benchstat`, go1.26.6 and go1.27.x:
 
 | Case | Gate |
 |---|---|
-| Gate off, any concat or conversion | 0 extra allocations; <= +2 ns |
+| Gate off, any concat or conversion | 0 extra allocations; <= +2 ns (variant D, darwin/arm64, step 2: <= +0.54 ns resolved median; amd64 not measured yet, step 7) |
 | Gate on, clean, escaping (`buf == nil`) | 0 extra allocations; <= +3 ns |
 | Gate on, clean, stack buffer, filter miss | 0 extra allocations; <= +8 ns |
 | Gate on, clean, stack buffer, filter hit | 0 extra allocations; <= +50 ns for each operand that hits |
@@ -943,9 +1147,15 @@ New job `woven-runtime` in `.github/workflows/ci.yml`, root module only. Package
 
 2 x 2 x 3 = 12 cells. One more cell: Go `1.27.x`, linux/amd64, default mode, with `go tool orchestrion` replaced by `go run github.com/DataDog/orchestrion@latest` (section 6.3). Total: **13 cells**.
 
-Each cell also runs: the link check (section 3.9 item 4), the `-m=2` escape comparison (section 3.8), and the `blockedLinknames` grep.
+Each cell also runs these required checks (a failure fails the cell):
 
-Budget: not known yet. Step 2 measures the wall time of one cell of each mode (cold and warm build cache, with the escape comparison and the link checks) and records it in `REPORT.md`. Step 6 sets `timeout-minutes` to 2 x the measured time. The user accepted all 13 cells (Q8). If the `ubuntu-24.04-arm` runner is not available for this repository, step 6 stops for user review (section 11); it does not remove the row.
+1. **Escape comparison** (section 3.8): `-gcflags=runtime=-m` and `-m=2` output of the woven and the unwoven runtime, for the `string.go` lines inside the 6 hooked functions, `concatstring2..5` and `concatbyte2..5`, sorted, with only the column removed. The lines must be identical. This is the guard of the alias rule (R3, R21). Step 2 reference counts for `-m`: 67 lines (default and `-race`), 58 lines (`-N -l`).
+2. **Link check** (section 3.9 item 4) with `-ldflags=-checklinkname=1`. It also covers the self-linkname aliases (3.9 item 5).
+3. **`blockedLinknames` grep** of the toolchain `loader.go`: no `__dd_iast` name and none of the 6 `runtime.<fn>` names of the aliases (3.9 items 2 and 5).
+3b. **System-stack test** (9.1 item 15): its own test package (for example `iast/runtime/internal/g0test`), run with `-ldflags=-checklinkname=0` because of its test-only pull of `runtime.systemstack`. The other packages keep the default link check. Step 2 time: under 1 s in each darwin/arm64 cell (approx. 40 subprocess runs).
+4. Optional (not a gate): on linux/amd64, default mode, the gate-off benchmark of 9.2 (unwoven vs woven, interleaved), reported in the job summary. CI runners are noisy, so step 7 keeps the gate measurement.
+
+Budget (measured in step 2, `REPORT.md` "Timings"): the largest cold cell is 264 s (linux/amd64 under Rosetta, go1.27.1, `-race`); warm cells are 53 to 70 s; darwin/arm64 warm cells are 26 to 45 s. Most of the cold time is the woven build of the test binary (approx. 110 s) and the `withhook` link (approx. 70 s). Step 6 sets `timeout-minutes: 9` (2 x 264 s, rounded up), plus the module download time if the CI module cache is empty. Native CI runners can differ from the Rosetta times; step 6 adjusts the value to 2 x the first measured CI time. The user accepted all 13 cells (Q8). If the `ubuntu-24.04-arm` runner is not available for this repository, step 6 stops for user review (section 11); it does not remove the row.
 
 The existing `Unit Tests` step (lines 124-149) adds `-race` to the woven `go tool orchestrion go test` run of the root module.
 
@@ -959,11 +1169,9 @@ Order rule: the runtime hooks are built and tested only with the **released** Or
 
 Done during critic round 1. Result: v1.13.1 (section 6.3).
 
-### Step 2 (1.75 days): harden the prototype (early gate, no commit in this repository)
+### Step 2 (done): harden the prototype (early gate, no commit in this repository)
 
-- Copy `/tmp/concathook` into a throw-away module (Orchestrion v1.13.1). Build **one** binary with all of these: dd-trace-go GLS (R7), declarations on `struct-definition: runtime.g` (section 3.5), the `runtime.g` guard field set around every bridge call (section 3.4), the full `__dd_iast_ok` (section 3.3), the binding with a stub `confirm` and `confirmSlow` with `recover` (section 3.2.1), the concat aspects, the `slicebytetostring` and `stringtoslicebyte` aspects, the `slicerunetostring` and `stringtoslicerune` aspects (section 4.5, with stub callbacks), and the `s2sGate` word (section 4.4).
-- Run on darwin/arm64 (local) and linux/amd64 (container or CI) (R8), each in default, `-race` and `-gcflags=all=-N -l` (R9) mode, on go1.26.6 and go1.27.1. Run the escape comparison and the link check (sections 3.8, 3.9). Measure the time of one CI cell of each mode (section 9.4).
-- **Exit (gate):** all prototype tests pass in all 12 combinations; the escape lines are identical (including `slicerunetostring` and `stringtoslicerune`); the rune hooks fire in the heap and stack cases; with `s2sGate == 0`, `[]byte(s)` and `[]rune(s)` do not enter the bridge; the `confirm` panic test passes; benchmark and timing tables updated in `REPORT.md`. If any combination fails, stop (section 11). Steps 3 to 7 do not start before this gate passes.
+Result: **gate passed** ([`/tmp/concathook-gate/REPORT.md`](/tmp/concathook-gate/REPORT.md); summary in appendix H). One binary (Orchestrion v1.13.1, dd-trace-go v2.11.0-rc.1 GLS, declarations on `runtime.g`, guard field, full `__dd_iast_ok`, binding with a stub `confirm`, all 6 hooked functions, `s2sGate`) passed all 12 combinations (darwin/arm64 and linux/amd64 under Rosetta, go1.26.6 and go1.27.1, default / `-race` / `-N -l`): 14 woven tests, unwoven build, `-checklinkname=1` link of `withhook` and `nohook`, `blockedLinknames` grep, identical escape lines, 3 negative controls fail as expected. No stop condition of section 11 occurred. The gate-off time of the `defer` template was above the 9.3 limit of +2 ns for some conversions on arm64 (up to +4.4 ns). The performance investigation found the cause (the `defer`: closure build, indirect call to a closure with its own frame and stack check, approx. 80 B more frame) and selected **variant D** (no `defer`, wrapper with a bypass token, section 2.2): gate off <= +0.54 ns resolved median, 0 extra allocations, 6/6 correctness cells on darwin/arm64 (go1.26.6 and go1.27.1, default / `-race` / `-N -l`) with identical escape output. Critic round 9 (appendix H.6): the context check now runs before the wrapper call (a wrapper on `g0` could hit a fatal `morestack`), with 3 signature assertions for each function and a nested `s2sGate` `if`; 6/6 darwin/arm64 cells pass with the new system-stack test, and the gate-off cost stays <= +0.46 ns resolved median on go1.26.6 and go1.27.1. Not done in step 2: variant D on linux/amd64 (functional and performance), `-m=2` comparison. Steps 5, 6 and 7 do them. Measured cell times are in 9.4.
 
 ### Step 3 (5.5 days): interior-pointer index replaces the value table (one commit)
 
@@ -984,27 +1192,29 @@ Done during critic round 1. Result: v1.13.1 (section 6.3).
 - Unit tests call the bridge functions directly (no weaving): items 2 and 3 of 9.1 as direct calls (with the rune mapping tests of 4.5), 6b, 9, the `confirm` tests of 4b, the callback panic test, and config tests for the switch (default `true`, `false` parsed, invalid value falls back to the default like the other `BoolFromEnv` settings).
 - **Exit:** all tests pass; `go list -deps` check passes; no change in woven behavior (the AST aspects still run).
 
-### Step 5 (2.75 days): swap AST aspects for runtime hooks (one commit)
+### Step 5 (3 days): swap AST aspects for runtime hooks (one commit)
 
 Work in local stages; commit only when every stage passes. No stage is committed alone.
 
 - 5a. Delete the YAML aspects (section 6.1), the Go code (section 6.2) and `operatorbridge`. Apply section 6.3 to all five modules and section 6.4 (except the CI matrix).
-- 5b. Add `iast/runtime/orchestrion.yml` with the concat aspects and the shared declarations.
-- 5c. Add the `slicebytetostring`, `stringtoslicebyte`, `slicerunetostring` and `stringtoslicerune` aspects (sections 4.2, 4.3, 4.5), with the `s2sGate` check on the two string-to-slice aspects.
-- 5d. Move the woven operator tests to `iast/runtime` (section 6.2). Add the C4 fixtures (section 9.1 item 7), the `wrap-expression` audit test (section 7), and the woven rune and switch-off tests (sections 4.4, 4.5). Delete `operatorActive` and update `TestStoreFootprint` (5.2.1).
-- **Exit:** the `grep` in section 6.1 prints nothing; `go list -m github.com/DataDog/orchestrion` prints `v1.13.1` in all five modules; section 9.1 items 1-4b, 6b, 6c, 7-13 pass on go1.26.6 and go1.27.1, default and `-race`; concat and conversion benchmark gates pass.
+- 5b. Add `iast/runtime/orchestrion.yml` from the variant D artifact (`/tmp/concathook-gate/artifacts/perf/yaml/D-atomic.orchestrion.yml`, section 2.2): the shared declarations aspect `iast-runtime-decls` (two `runtime.g` fields, bridge declarations, `__dd_iast_ok`, the 6 aliases and wrappers) and the concat aspects. Change `links:` to `github.com/DataDog/dd-iast-go/internal/taint/runtimebridge`. Keep the context check before the wrapper call (2.2, 3.3) and the 3 signature assertions for each function (3.9 item 6); both are in the artifact since critic round 9. Move the system-stack test (9.1 item 15) into the module.
+- 5c. Add the `slicebytetostring`, `stringtoslicebyte`, `slicerunetostring` and `stringtoslicerune` aspects (sections 4.2, 4.3, 4.5), with the `s2sGate` check in a nested `if` of the two string-to-slice aspects (4.3).
+- 5d. Move the woven operator tests to `iast/runtime` (section 6.2). Add the C4 fixtures (section 9.1 item 7), the `wrap-expression` audit test (section 7), the woven rune and switch-off tests (sections 4.4, 4.5), and the bypass token tests (3.4.2, 9.1 item 14). Delete `operatorActive` and update `TestStoreFootprint` (5.2.1).
+- 5e. Run the escape comparison with `-m` and `-m=2` (3.8), the link checks (3.9), and the negative controls of variant D (9.1 item 5: `_ = buf`, guard check, `s2sGate`, direct call in place of the alias, token clear after the inner call). Run the woven tests of variant D on linux/amd64 (container or CI branch run), default and `-race` (R8).
+- **Exit:** the `grep` in section 6.1 prints nothing; `go list -m github.com/DataDog/orchestrion` prints `v1.13.1` in all five modules; section 9.1 items 1-4b, 6b, 6c, 7-14 pass on go1.26.6 and go1.27.1, default and `-race`, on darwin/arm64 and linux/amd64; the escape lines are identical; concat and conversion benchmark gates pass on darwin/arm64.
 
 ### Step 6 (1 day): CI matrix (one commit)
 
-- Add the `woven-runtime` job (section 9.4, all 13 cells) with the timeouts measured in step 2. Check that `ubuntu-24.04-arm` is available for this repository; if not, stop (section 11).
+- Add the `woven-runtime` job (section 9.4, all 13 cells) with the timeouts measured in step 2 (`timeout-minutes: 9`, then 2 x the first CI time) and the required checks of 9.4 (escape comparison, link check, `blockedLinknames` grep). Optional: the gate-off benchmark report on linux/amd64 (9.4 item 4). Check that `ubuntu-24.04-arm` is available for this repository; if not, stop (section 11).
 - **Exit:** CI is green on the branch; system-tests pass.
 
-### Step 7 (half a day): measure and report
+### Step 7 (0.75 day): measure and report
 
-- Run section 9.2. Fill the result table in a new "Implementation result" section of this plan.
+- Run section 9.2 on darwin/arm64 and on native linux/amd64 (not Rosetta). The gate-off rows of variant D on amd64 are measured here for the first time (R8). Use the interleaved method of appendix H (rotating order, >= 20 runs, difference of medians with a bootstrap 95 % CI); for `s2r-heap` use >= 40 runs or the stack rows (noise, appendix H).
+- Fill the result table in a new "Implementation result" section of this plan.
 - **Exit:** every gate in section 9.3 passes, or the plan stops for review.
 
-Total: approx. 13 working days (1.75 + 5.5 + 1.5 + 2.75 + 1 + 0.5). Compared with the earlier 10 days: +1 day for the value-table removal (Q4), +0.75 day for the rune hooks (Q6), +0.25 day for the Q2 switch, +0.25 day for the window-helper removal, +0.5 day for the replace protocol and the removal of 41 wrappers with their aspects (critic round 5), +0.25 day for the merge rule and its tests (critic round 6). Critic round 7 replaces the round 6 merge with a simpler in-place extension (no `next`, no redirect, no reader rule) and adds two race tests; the estimate does not change.
+Total remaining: approx. 11.75 working days (steps 3 to 7: 5.5 + 1.5 + 3 + 1 + 0.75). Step 2 (1.75 days) is done. Step 2 changes: step 5 +0.25 day (variant D template, bypass token tests, signature assertions, amd64 run), step 7 +0.25 day (native amd64 measurement). Before step 2, the total was approx. 13 working days (1.75 + 5.5 + 1.5 + 2.75 + 1 + 0.5). Compared with the earlier 10 days: +1 day for the value-table removal (Q4), +0.75 day for the rune hooks (Q6), +0.25 day for the Q2 switch, +0.25 day for the window-helper removal, +0.5 day for the replace protocol and the removal of 41 wrappers with their aspects (critic round 5), +0.25 day for the merge rule and its tests (critic round 6). Critic round 7 replaces the round 6 merge with a simpler in-place extension (no `next`, no redirect, no reader rule) and adds two race tests; the estimate does not change.
 
 ## 11. Stop conditions
 
@@ -1013,12 +1223,13 @@ Stop for user review if any of these occur:
 - a hook adds an allocation or a new escape with the gate off;
 - the woven runtime fails to build on a supported Go version or architecture;
 - the GLS aspect and these aspects conflict;
-- the recursion guard cannot be proven;
+- the recursion guard or the bypass token rules (3.4) cannot be proven;
 - a numeric gate in section 9.3 fails;
 - the source-root admission loss (old vs new, 9.2) is more than the Q9 gate (sparse 0 points, stressed 1 point; 9.3);
 - the `ubuntu-24.04-arm` runner is not available (Q8 requires all 13 cells);
-- a woven combination of the step 2 gate fails;
-- Orchestrion v1.13.1 cannot carry `imports:` in `runtime`, or two `struct-definition: runtime.g` aspects (GLS and ours) in one build (`{{ .Function.Result 0 }}` is proven, section 2);
+- a woven combination of variant D fails (step 5 on linux/amd64, or a step 6 CI cell), or the escape comparison of variant D is not identical;
+- the gate-off cost of variant D on native amd64 (step 7) is above +2 ns (9.3);
+- Orchestrion v1.13.1 cannot carry `imports:` in `runtime`, or two `struct-definition: runtime.g` aspects (GLS and ours) in one build (both proven in step 2, appendix H);
 - `confirm` cannot meet 0 allocations, or the rollback protocol (5.2.2) cannot be proven free of leaks under `-race`;
 - any test of section 9.1 item 4b shows a tainted operand that `pre` reports as clean.
 
@@ -1035,6 +1246,7 @@ Q1 (Orchestrion target) is closed: dd-trace-go v2.11.0-rc.1 has no Orchestrion r
 - **Q8.** The full 13-cell CI matrix is required; a missing arm64 runner stops the plan. Applied: 9.4, step 6, section 11.
 - **Go 1.28+.** On an unsupported newer toolchain the hooks stay off silently: no build error, no warning, only the `unsupportedGo` counter. Applied: 3.10.
 - **Window helpers.** Delete the 4 empty window helpers and their 39 call sites in this change (step 3). Applied: 5.4, 7, step 3.
+- **Signature assertions.** Accepted: the woven runtime asserts the signature of each hooked function at compile time. A signature change then fails the build, also on go1.28+ (this is the one exception to "Go 1.28+: hooks off silently"). Applied: 3.9 item 6, 3.10, R3, step 5.
 - **Q9.** Loss budget is a gate: sparse 0 points, stressed <= 1 point, saturated reported only. Applied: R14, 9.3, step 3 exit, section 11.
 
 ## Appendix A. Critic round 1 responses
@@ -1046,7 +1258,7 @@ Q1 (Orchestrion target) is closed: dd-trace-go v2.11.0-rc.1 has no Orchestrion r
 | 3 | Byte mutation makes index generations stale | Fixed: entries store identity, validation reads the current generation and `setGen` (5.2.3). Evidence: `PublishBytesMutation` keeps `base` and `span` (`mutation.go:50`). |
 | 4 | 32-probe limit loses small roots | Fixed: two tiers (64 B / 4 KiB) with hard density bounds 33 / 17, probe window 40 (5.2.1); 128-root and 33-root tests. |
 | 5 | More than 16 operands miss late operands | Fixed: `coarseConcatHit` scans all operands (3.6 step 7). Evidence: `propagation.go:363-378`, `string_exact.go:51-65`. |
-| 6 | Step order; pin cannot give `Result 0` | Fact part rejected: `fieldAt` is identical in the pin and in v1.13.1 (`diff` of `dot_function.go`), so the pin **can** name results. The plan text of section 2 (from Phase 0) was wrong and is corrected. Order part accepted. Round 2 changed it again: the AST removal, the repin and all runtime hooks are one commit (step 5), so no commit loses propagation (appendix B, R1#6). |
+| 6 | Step order; pin cannot give `Result 0` | Fact part rejected: `fieldAt` is identical in the pin and in v1.13.1 (`diff` of `dot_function.go`), so the pin **can** name results. The plan text of section 2 (from Phase 0) was wrong and is corrected (now section 2.1; variant D no longer uses result names). Order part accepted. Round 2 changed it again: the AST removal, the repin and all runtime hooks are one commit (step 5), so no commit loses propagation (appendix B, R1#6). |
 | 7 | Global filter can point at another store | Fixed: one binding set only by the process manager, `CompareAndSwap` (3.2 rule 6); independent-store test (9.1 item 6b). |
 | 8 | Escape and GC safety not proven | Fixed: contract table, proof and checks (3.8). |
 | 9 | dd-trace-go has no Orchestrion requirement | Fixed: facts recorded, Q1 closed, v1.13.1 selected (6.3). |
@@ -1120,3 +1332,123 @@ No finding of round 7 is rejected.
 | # | Finding | Response |
 |---|---|---|
 | 1 | A reader can load the tier L filter bucket before an S->L extension, probe tier S after E5, and skip tier L on the old bucket value | Accepted. The reader completes tier S (filter load and probe) before it loads the tier L bucket; `confirm` uses the same order (5.2.4 step 2, 5.2.2 "Reader order"). Second negative control added. |
+
+## Appendix H. Step 2 results and variant D
+
+Source: [`/tmp/concathook-gate/REPORT.md`](/tmp/concathook-gate/REPORT.md) (sections "Verdict" to "Remaining risks", and "Performance investigation (gate off)"). Artifacts: `/tmp/concathook-gate/artifacts/` and `/tmp/concathook-gate/artifacts/perf/` (YAML of each variant in `yaml/`, generator `gen.py`, woven sources `D-atomic-woven-*.go.txt`, disassembly in `disasm/`, benchmark data in `results/`, cell logs in `cells/`). Module of variant D: `/tmp/concathook-gate-perf/D-atomic`.
+
+### H.1 Step 2 gate (template with `defer`)
+
+- Verdict: **PASS**. 12/12 combinations: darwin/arm64 and linux/amd64 (Rosetta, a real amd64 run under emulation), go1.26.6 and go1.27.1, default / `-race` / `-gcflags=all=-N -l`.
+- Each cell: 14 woven tests (a skip is a failure), unwoven build, `-ldflags=-checklinkname=1` link and run of `cmd/withhook` and `cmd/nohook`, `blockedLinknames` grep, escape comparison (67 / 67 / 58 lines identical).
+- GLS and our aspects both use `struct-definition: runtime.g` in one build with no conflict. `imports:` works in `runtime`.
+- Negative controls fail as expected: `buf = nil` removed (8 tests), guard check removed (`TestRecursionGuard`), `s2s_gate` check removed (`TestS2SGateOff`).
+- Two test defects were found and fixed (not hook defects). One of them proved the plan 3.8 case "a stale stack key is only a miss, no crash".
+- Early warning: gate-off time above +2 ns in some runs for `r2s-stack` (+4.4 ns), `s2r-stack` (+3.2 ns), `s2b-stack` (+2.9 ns), `concat-heap` (+2.0 ns), darwin/arm64.
+
+### H.2 Cause: the `defer`
+
+Disassembly (go1.27.1, darwin/arm64). The compiler open-codes the `defer`, but the gate check is inside the closure. Thus the gate-off path runs, on every call: the result gets a stack home (zeroed at entry, stored at each `return`, loaded again); the closure slot and the defer bits are zeroed and the closure is built (4 to 6 stores); at exit, an indirect call to `func1`, which has its own stack check and frame, and only then loads the gate. The arguments are spilled before the pre-check branch. The frame grows by 80 B in all 6 functions; `stringtoslicebyte` goes from 64 to 144 B, above `StackSmall` (128), so its stack check gets one more instruction. Inlining is not the cause: none of the 6 functions is inlinable, woven or not.
+
+| Function | Frame bytes: unwoven / `defer` / **D** | Instructions: unwoven / `defer` / **D** |
+|---|---|---|
+| `concatstrings` | 112 / 192 / **128** | 120 / 192 / **132** |
+| `concatbytes` | 112 / 192 / **112** | 100 / 176 / **112** |
+| `slicebytetostring` | 48 / 128 / **48** | 64 / 136 / **76** |
+| `stringtoslicebyte` | 64 / 144 / **64** | 48 / 124 / **64** |
+| `slicerunetostring` | 128 / 208 / **128** | 88 / 152 / **100** |
+| `stringtoslicerune` | 80 / 160 / **80** | 100 / 176 / **116** |
+
+### H.3 Variants
+
+| Variant | Shape | Result |
+|---|---|---|
+| base | the `defer` template of the step 2 gate (Phase 0 v2 shape, with the guard and the full `__dd_iast_ok`) | above +2 ns for `s2b-stack` and `r2s-stack` (95 % CI above 2) |
+| A | `if gate != 0 { pre-check; defer ... }` | still open-coded; the defer state and the larger frame stay; +1.1 to +1.4 ns for conversions, little margin |
+| B | A with `//go:noinline` helpers | no gain over A (`defer f(&r, x)` is a closure too) |
+| C | plain load in place of `atomic.Load` | no measurable difference; keep `atomic.Load` |
+| **D** | no `defer`; outer gate check; wrapper with bypass token and alias (section 2.2) | gate-off cost at the noise floor (0.0 to 0.5 ns) |
+
+Two details of D are necessary:
+
+1. **Alias.** The first D build called `runtime.<fn>` directly from the wrapper. The escape comparison failed in all 6 cells (`leaking param: buf` in place of `leaking param: buf to result ~r0 level=0`, for the 6 functions and `concatstring2..5` / `concatbyte2..5`; reproduced in a 30-line package). The body-less `//go:linkname` + `//go:noescape` alias fixes it (identical lines, 6/6 cells). `-checklinkname=1` accepts the same-package pull (3.9 item 5).
+2. **One-shot token** `__dd_iast_bypass uint8` (3.4.2). No body copy in the YAML: the wrapper calls the original function again, and the token makes that inner call skip the hook.
+
+### H.4 Gate off, delta vs unwoven, ns
+
+These are the numbers of the first D (context check in the wrapper). H.6 has the numbers after critic round 9 (the template of section 2.2).
+
+Method: `go test -c` binaries (unwoven, `defer` template, D-atomic), one round runs every binary once in a rotating order, 20 rounds x `-benchtime=1s`, darwin/arm64 (Apple M5 Pro). Delta = difference of medians; D with a bootstrap 95 % CI (4 000 resamples). Heap cases store the result in a global; stack cases return only `len` (result <= 32 B). Conversions: 40 elements (heap), 11 or 12 elements (stack). Allocations: identical to unwoven in every cell (1 for heap, 0 for stack).
+
+| Case | go1.27.1 unwoven | go1.27.1 `defer` | go1.27.1 **D** [95 % CI] | go1.26.6 unwoven | go1.26.6 `defer` | go1.26.6 **D** [95 % CI] |
+|---|---:|---:|---:|---:|---:|---:|
+| concat2-heap | 13.51 | +1.75 | **+0.51** [+0.22, +0.74] | 15.18 | +1.31 | **+0.29** [-0.26, +1.01] |
+| concat4-heap | 17.07 | +1.48 | **+0.54** [+0.19, +0.70] | 18.91 | +1.00 | **-0.08** [-0.43, +0.44] |
+| concat6-heap | 21.50 | +1.29 | **+0.39** [+0.06, +0.64] | 23.30 | +1.39 | **+0.15** [-0.56, +0.54] |
+| concat16-heap | 46.90 | +0.34 | **-0.58** [-1.41, +0.06] | 49.34 | +2.91 | **+0.86** [-0.68, +1.39] |
+| concat2-stack | 8.21 | +1.01 | **-0.17** [-0.37, +0.04] | 7.67 | +1.46 | **+0.42** [-0.06, +0.64] |
+| concat4-stack | 11.46 | +1.06 | **+0.14** [-0.03, +0.33] | 11.38 | +1.32 | **+0.07** [-0.19, +0.33] |
+| concat6-stack | 17.93 | +1.11 | **+0.22** [-0.41, +0.55] | 18.16 | +0.73 | **-0.37** [-0.87, +0.05] |
+| concat16-stack | 42.64 | +1.09 | **-1.23** [-2.12, -0.30] | 42.14 | +1.45 | **-0.48** [-1.61, +0.24] |
+| b2s-heap | 9.18 | +1.67 | **+0.10** [+0.03, +0.19] | 10.44 | +1.42 | **-0.02** [-0.18, +0.30] |
+| b2s-stack | 2.77 | +1.57 | **+0.18** [+0.12, +0.22] | 2.77 | +1.34 | **+0.15** [+0.13, +0.22] |
+| s2b-heap | 10.84 | +1.89 | **+0.05** [-0.04, +0.12] | 11.91 | +2.06 | **+0.02** [-0.22, +0.31] |
+| s2b-stack | 2.55 | +2.17 | **+0.45** [+0.45, +0.47] | 2.57 | +2.18 | **+0.23** [+0.20, +0.27] |
+| r2s-heap | 94.37 | +0.91 | **-0.44** [-0.63, +0.19] | 95.27 | +2.09 | **-1.17** [-5.64, +0.62] |
+| r2s-stack | 24.83 | +2.48 | **+0.39** [+0.36, +0.44] | 25.17 | +2.15 | **+0.32** [-0.45, +0.86] |
+| s2r-heap | 39.17 | +2.35 | **+1.63** [-0.87, +3.32] | 43.81 | -0.36 | **-1.77** [-4.14, +0.44] |
+| s2r-stack | 10.28 | +1.13 | **+0.16** [-0.52, +1.07] | 10.71 | +1.41 | **-0.22** [-0.92, +1.02] |
+
+Reading: the worst resolved D median is +0.54 ns (`concat4-heap`, go1.27.1). `s2r-heap` is noise-limited: the unwoven baseline moves between 37.4 and 44.8 ns in one set; 40 more runs gave D +0.74 [-1.76, +3.17], and with `GOGC=off GOMEMLIMIT=1GiB` +0.60 [-2.52, +2.56]. The D code of `stringtoslicerune` is the same 4 instructions as for the other functions.
+
+Gate on, Q2 switch off (9.3 row "<= +2 ns"), D: go1.27.1 `s2b-heap` +0.11, `s2b-stack` +0.45, `s2r-heap` +1.78 [-0.81, +3.91], `s2r-stack` -0.44; go1.26.6 +0.03 / +0.23 / -3.35 / -0.30. The `defer` template: +1.2 to +2.2.
+
+Gate on, clean operands (stub bridge with 2 test counter atomics for each entry, not a 9.3 measurement): D is +0.4 to +1.4 ns slower than the `defer` template for heap concat, equal for stack concat and `string(b)`, and approx. 3 ns faster for `r2s-stack` (R22).
+
+### H.5 Correctness of D
+
+- First D: `cell.sh` with D-atomic, darwin/arm64, go1.26.6 and go1.27.1, default / `-race` / `-N -l`: **6/6 PASS** (14 woven tests, unwoven build, both links with `-checklinkname=1`, `blockedLinknames` grep, escape lines identical: 67 / 67 / 58).
+- Negative controls on D: `buf = nil` -> `_ = buf`: 9 tests fail; `in_hook` check removed from `__dd_iast_ok`: `TestRecursionGuard` fails; `s2s_gate` check removed: `TestS2SGateOff` fails. The first D build (direct call, no alias) is the escape negative control.
+- Not done: D on linux/amd64 (step 5 and step 6), D performance on amd64 (step 7), `-m=2` comparison (step 5).
+- After critic round 9: H.6.
+
+### H.6 Critic round 9: context check before the wrapper
+
+Source: [`/tmp/concathook-gate/REPORT.md`](/tmp/concathook-gate/REPORT.md), section "Critic round 9". Data: `/tmp/concathook-gate-perf/D-atomic/_perf/` (`cells/`, `results/fix-*`, `results/s2r-*`, `bin/`). Test: `/tmp/concathook-gate-perf/D-atomic/g0test/g0_test.go`.
+
+| # | Finding | Response |
+|---|---|---|
+| MAJOR | With the gate on, the prepended code called the `//go:noinline` wrapper before `__dd_iast_ok()` checked `g0` / `gsignal`. The wrapper has a stack check at entry, and `morestack` on `g0` or `gsignal` is fatal. | Accepted. The prepended code reads the token, then calls the `//go:nosplit` `__dd_iast_ok()`, and calls the wrapper only when it is true; otherwise the original body runs directly (2.2 items 2-3, 3.3). The wrapper has no context check. Token rules re-checked (3.4.2 rules 1, 2, 6): the token is read before the check, so only the inner call consumes it; only a wrapper sets it, thus never on `g0` / `gsignal`; the wrapper clears it after the inner call. A nested operation in the bridge now runs the original body directly (no extra frames). `__dd_iast_ok()` cannot grow the stack: inlined (default flags) or a leaf with no frame, no stack check and no call (`-N -l`), go1.26.6 and go1.27.1 disassembly. New test 9.1 item 15 and negative control (9.1 item 5). |
+| MINOR | The signature assertions checked only `<fn>`, not the alias and the wrapper. | Accepted. 3 assertions for each function, all to one func type (3.9 item 6). Negative control: an alias with one more argument is a compile error; without the alias assertion it compiles silently. |
+| - | Found while measuring the fix: `gate != 0 && s2s != 0` in the new shape was compiled as a bool (`CSET` + `MOVD ZR` + `TBZ`) in `stringtoslicebyte` / `stringtoslicerune`: 2 more instructions on the gate-off path; `s2r-stack` fast mode +1.1 ns (minimum 10.3 vs 9.3 ns in 4 sets). | The `s2sGate` check is a nested `if` (4.3). Gate-off path again `LDARW` + `CBZW` in all 6 functions. |
+
+Correctness (darwin/arm64, `cell.sh`, go1.26.6 and go1.27.1, default / `-race` / `-N -l`): **6/6 PASS**. Each cell: 14 woven tests and the system-stack test (15 PASS), unwoven build (also of the system-stack test), `-checklinkname=1` link and run of `withhook` and `nohook`, `blockedLinknames` grep, escape lines identical (67 / 67 / 58). System-stack calibration edge `D`: 16 306 (default), 16 281 (`-race`), 10 867 (`-N -l`), the same on both Go versions. At `D` with the gate on: exit 0, 0 bridge entries on `g0`, 6 on the goroutine.
+
+Negative controls: the first D template (check in the wrapper): the system-stack test fails in go1.27.1 default, `-race`, `-N -l` and go1.26.6 default (child: "fatal: morestack on g0", in `__dd_iast_concatstrings`). On the new template: `buf = nil` -> `_ = buf`: 9 tests fail; `in_hook` check removed: `TestRecursionGuard` fails; `s2s` check removed: `TestS2SGateOff` fails.
+
+Machine code: frame sizes unchanged (128 / 112 / 48 / 64 / 128 / 80 B, table H.2); each function has 12 more instructions than the first D, all in the gate-on branch.
+
+Gate off, delta vs unwoven, median ns [95 % CI], same method as H.4 (20 interleaved rounds x 1 s; `s2r-*` 40 rounds). Allocations identical to unwoven.
+
+| Case | go1.27.1 first D | go1.27.1 **fixed D** | go1.26.6 first D | go1.26.6 **fixed D** |
+|---|---:|---:|---:|---:|
+| concat2-heap | +0.52 | **+0.31** [+0.10, +0.58] | +0.45 | **+0.22** [+0.02, +0.47] |
+| concat4-heap | +0.50 | **+0.25** [+0.07, +0.50] | +0.41 | **+0.46** [+0.22, +0.63] |
+| concat6-heap | +0.41 | **+0.11** [-0.17, +0.39] | +0.18 | **+0.29** [-0.09, +0.53] |
+| concat16-heap | -0.86 | **-1.24** [-2.16, -0.69] | +0.16 | **-1.42** [-2.04, -0.55] |
+| concat2-stack | +0.04 | **-0.03** [-0.24, +0.17] | +0.52 | **+0.30** [+0.10, +0.66] |
+| concat4-stack | +0.13 | **+0.28** [+0.13, +0.46] | +0.26 | **+0.35** [+0.20, +0.53] |
+| concat6-stack | -0.07 | **+0.34** [-0.01, +0.80] | -0.11 | **+0.04** [-0.21, +0.24] |
+| concat16-stack | -1.49 | **-0.15** [-1.68, +0.59] | -0.67 | **-1.27** [-2.38, -0.60] |
+| b2s-heap | +0.11 | **+0.13** [+0.03, +0.21] | +0.07 | **+0.19** [+0.05, +0.31] |
+| b2s-stack | +0.17 | **+0.10** [+0.06, +0.21] | +0.23 | **+0.18** [+0.13, +0.21] |
+| s2b-heap | -0.04 | **-0.05** [-0.12, +0.12] | +0.01 | **+0.10** [-0.01, +0.16] |
+| s2b-stack | +0.45 | **+0.23** [+0.23, +0.24] | +0.24 | **+0.24** [+0.23, +0.25] |
+| r2s-heap | -0.55 | **+0.69** [-0.35, +6.97] (a) | -0.87 | **+0.25** [-0.26, +0.73] |
+| r2s-stack | +0.31 | **+0.38** [+0.20, +0.74] | +0.32 | **+0.34** [+0.29, +0.38] |
+| s2r-heap | +0.31 | **-1.41** [-4.12, +1.07] | +0.63 | **-1.80** [-2.89, +0.75] |
+| s2r-stack | -0.43 | **-0.26** [-1.14, +0.87] | +0.61 | **-0.09** [-1.20, +0.78] |
+
+(a) 8 of 20 runs at 100 to 121 ns (background load); the other 12 are as unwoven.
+
+Reading: the worst resolved median is +0.46 ns (`concat4-heap`, go1.26.6). All 16 cases stay within the 9.3 gate of +2 ns on both Go versions. Q2 switch off (gate on): go1.27.1 +0.04 / +0.24 / +0.64 / +0.48, go1.26.6 +0.16 / +0.24 / -2.03 / -0.37 (`s2b-heap` / `s2b-stack` / `s2r-heap` / `s2r-stack`). Gate on with clean operands was not measured again.
