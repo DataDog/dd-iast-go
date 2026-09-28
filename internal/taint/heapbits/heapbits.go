@@ -1,0 +1,123 @@
+// Unless explicitly stated otherwise all files in this repository are licensed
+// under the Apache License Version 2.0.
+// This product includes software developed at Datadog (https://www.datadoghq.com/).
+// Copyright 2026-present Datadog, Inc.
+
+// Package heapbits stores one taint bit for each byte of heap memory, next to
+// the metadata of the Go allocator.
+//
+// The storage is in the Go runtime. The aspects in orchestrion.yml add it when
+// the application is built with Orchestrion. Without these aspects (or on a
+// platform that is not supported), all functions of this package do nothing
+// and report "not tainted".
+//
+// The bits describe memory, not values. A copy of tainted bytes is not
+// tainted. Only heap memory can be tainted: stack memory, global variables and
+// read-only data are refused. The runtime clears the bits of an object when
+// the garbage collector frees it, so that a new object at the same address
+// does not get old taint.
+package heapbits
+
+import (
+	"runtime"
+	"unsafe"
+)
+
+// The runtime (woven by the aspects of orchestrion.yml) defines these
+// variables with a push linkname. Without weaving, they stay nil.
+//
+// The functions take uintptr values (not pointers). A call through a function
+// variable makes pointer arguments escape to the heap, and then the values
+// that the application checks would move to the heap.
+var (
+	//go:linkname rtSet __dd_iast_heapbits.set
+	rtSet func(p, n uintptr) bool
+
+	//go:linkname rtClear __dd_iast_heapbits.clear
+	rtClear func(p, n uintptr)
+
+	//go:linkname rtAny __dd_iast_heapbits.any
+	rtAny func(p, n uintptr) bool
+
+	//go:linkname rtEnabled __dd_iast_heapbits.enabled
+	rtEnabled func() bool
+)
+
+// Enabled reports whether the runtime was woven and the platform is
+// supported.
+func Enabled() bool {
+	return rtEnabled != nil && rtEnabled()
+}
+
+// Set taints the n bytes at p. It returns false and changes no bit when n is
+// 0, when the range wraps the address space, when the range is not inside one
+// allocation slot of an in-use heap span (stack, global, off-heap or user
+// arena memory, or a range that crosses into a neighbour object), when the
+// runtime cannot allocate the storage for the bits, or when the feature is
+// not enabled.
+//
+// The range must be the memory of one Go value (the data of one string or
+// slice). The runtime checks the allocation slot, but several small
+// pointer-free values can share one 16-byte slot (the tiny allocator); inside
+// such a slot, it cannot check the bounds of each value. The String and Bytes
+// helpers always give correct ranges.
+func Set(p unsafe.Pointer, n uintptr) bool {
+	if rtSet == nil || n == 0 {
+		return false
+	}
+	ok := rtSet(uintptr(p), n)
+	runtime.KeepAlive(p)
+	return ok
+}
+
+// Clear removes the taint of the n bytes at p. It ignores a range that [Set]
+// would refuse, except that Clear never allocates. The same rule as for Set
+// applies to the range.
+func Clear(p unsafe.Pointer, n uintptr) {
+	if rtClear == nil || n == 0 {
+		return
+	}
+	rtClear(uintptr(p), n)
+	runtime.KeepAlive(p)
+}
+
+// Any reports whether one of the n bytes at p is tainted. It is safe for all
+// addresses.
+func Any(p unsafe.Pointer, n uintptr) bool {
+	if rtAny == nil || n == 0 {
+		return false
+	}
+	ok := rtAny(uintptr(p), n)
+	runtime.KeepAlive(p)
+	return ok
+}
+
+// SetString taints all bytes of s. See [Set].
+func SetString(s string) bool {
+	return Set(unsafe.Pointer(unsafe.StringData(s)), uintptr(len(s)))
+}
+
+// SetBytes taints all bytes of b. See [Set].
+func SetBytes(b []byte) bool {
+	return Set(unsafe.Pointer(unsafe.SliceData(b)), uintptr(len(b)))
+}
+
+// ClearString removes the taint of all bytes of s. See [Clear].
+func ClearString(s string) {
+	Clear(unsafe.Pointer(unsafe.StringData(s)), uintptr(len(s)))
+}
+
+// ClearBytes removes the taint of all bytes of b. See [Clear].
+func ClearBytes(b []byte) {
+	Clear(unsafe.Pointer(unsafe.SliceData(b)), uintptr(len(b)))
+}
+
+// AnyString reports whether one byte of s is tainted. See [Any].
+func AnyString(s string) bool {
+	return Any(unsafe.Pointer(unsafe.StringData(s)), uintptr(len(s)))
+}
+
+// AnyBytes reports whether one byte of b is tainted. See [Any].
+func AnyBytes(b []byte) bool {
+	return Any(unsafe.Pointer(unsafe.SliceData(b)), uintptr(len(b)))
+}

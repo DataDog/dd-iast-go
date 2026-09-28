@@ -16,7 +16,8 @@
   fixed in this version, appendix D). The critic listed these 2 fixes as the
   only remaining items.
 - **User review: done** (section 10). Phase 1 is approved.
-- **Phase 1 (production heap bits): this plan. Next: step 1 of section 9.**
+- **Phase 1 (production heap bits): in progress.** Step 1 of section 9 is
+  done. Next: step 2.
 - Phases 2 to 4 (stack values, origins and marks, propagation): outline only
   (section 8). Each one gets its own plan after phase 1.
 
@@ -235,6 +236,7 @@ use of the bits by the `taint` package.
 | `internal/taint/heapbits/orchestrion.yml` | The runtime aspects (from the PoC) |
 | `internal/taint/heapbits/heapbits.go` | Go API over the linknamed variables |
 | `internal/taint/heapbits/*_test.go` | Behavior tests (external test package `heapbits_test`) |
+| `internal/taint/heapbits/heapbitstest/` | Test knobs and counters of the woven runtime (tests only) |
 | `internal/taint/heapbits/drift_test.go` | Source inventory of the runtime (section 6.2) |
 | `internal/taint/heapbits/bench_test.go` | Micro benchmarks |
 | `orchestrion.tool.go` | Add the import of `internal/taint/heapbits` |
@@ -252,10 +254,13 @@ package heapbits
 func Enabled() bool
 
 // Set taints [p, p+n). All or nothing: it returns false and changes no bit
-// when n is 0, p+n overflows, the range is not in one in-use heap span (stack,
-// global, off-heap, user arena), the platform is not supported, the chunk
+// when n is 0, p+n overflows, the range is not inside one allocation slot of
+// an in-use heap span (stack, global, off-heap, user arena, or a range that
+// crosses into a neighbour object), the platform is not supported, the chunk
 // quota is reached, or another goroutine is allocating a chunk that the range
-// needs (no wait: drop).
+// needs (no wait: drop). The range must be the memory of one Go value: inside
+// a 16-byte tiny-allocator slot, the runtime cannot check the bounds of each
+// value.
 func Set(p unsafe.Pointer, n uintptr) bool
 
 // Clear removes the taint of [p, p+n). It never allocates. Non-heap ranges and
@@ -717,8 +722,12 @@ in the `taint` package as the first check of every operation.
 
 ## 9. Steps and time estimates (phase 1)
 
-1. Move the PoC to `internal/taint/heapbits`, add the import in
-   `orchestrion.tool.go`, pass the existing tests: **0.5 day**.
+1. **(Done.)** Move the PoC to `internal/taint/heapbits`, add the import in
+   `orchestrion.tool.go`, pass the existing tests: **0.5 day**. Also done in
+   this step: the `Enabled()` function, the platform and sanitizer gate of the
+   allocator (3.5), `KeepAlive` in all wrappers (5.3, rule "Liveness"), and
+   the test that fails when a woven build on a supported platform is not
+   enabled (6.3).
 2. Pointer safety (5.3): classifiers, workers with work units and
    checkpoints, own arena lookup, `KeepAlive`, stack probe and its negative
    control, generated-code check, progress test: **2 days**.
