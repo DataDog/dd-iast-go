@@ -37,18 +37,18 @@ func TestHTTPTransformedQueryToSQL(t *testing.T) {
 		chain := testapp.BuildSQLChain(values.Get("column"), values.Get("table"))
 		assert.Equal(t, "id", chain.Column)
 		assert.Equal(t, "customers", chain.Table)
-		assertChainRanges(t, chain.Column, []taint.Range{{Length: 2, Source: columnSource}})
-		assertChainRanges(t, chain.Table, []taint.Range{{Length: 9, Source: tableSource}})
+		assertChainRanges(t, ctx, chain.Column, []taint.Range{{Length: 2, Source: columnSource}})
+		assertChainRanges(t, ctx, chain.Table, []taint.Range{{Length: 9, Source: tableSource}})
 
 		assert.Equal(t, expectedQuery, chain.Joined)
-		assertChainRanges(t, chain.Joined, []taint.Range{
+		assertChainRanges(t, ctx, chain.Joined, []taint.Range{
 			{Start: 7, Length: 2, Source: columnSource},
 			{Start: 15, Length: 9, Source: tableSource},
 		})
 
 		// Formatting is coarse: the first contributing source owns the result.
 		assert.Equal(t, expectedQuery, chain.Query)
-		assertChainRanges(t, chain.Query, []taint.Range{
+		assertChainRanges(t, ctx, chain.Query, []taint.Range{
 			{Length: uint32(len(expectedQuery)), Source: columnSource},
 		})
 		stmt, err := db.PrepareContext(ctx, chain.Query)
@@ -76,10 +76,10 @@ func TestHTTPTransformedQueryToSQL(t *testing.T) {
 	}
 }
 
-func assertChainRanges(t *testing.T, value string, expected []taint.Range) {
+func assertChainRanges(t *testing.T, ctx context.Context, value string, expected []taint.Range) {
 	t.Helper()
 	count := 0
-	taint.VisitString(value, func(found taint.Range) bool {
+	taint.VisitString(ctx, value, func(found taint.Range) bool {
 		if count >= len(expected) {
 			t.Errorf("unexpected range for %q: %#v", value, found)
 			count++

@@ -49,7 +49,7 @@ func markWriterString(t *testing.T, input string, mark taint.VulnerabilityType) 
 func requireExactWriterRanges(t *testing.T, value string, expected ...expectedWriterRange) {
 	t.Helper()
 	var observed []taint.Range
-	require.True(t, taint.VisitString(value, func(r taint.Range) bool {
+	require.True(t, visitString(value, func(r taint.Range) bool {
 		observed = append(observed, r)
 		return true
 	}))

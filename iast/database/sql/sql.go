@@ -34,7 +34,7 @@ var sqlSkip = vulnerability.SkipWhile{
 func Report(ctx context.Context, query string, kind sqlbridge.Kind) {
 	_ = kind
 	telemetry.ExecutedSink.SqlInjection.Add(1)
-	snapshot, status := evidence.CollectString(query, constants.VulnerabilityTypeSqlInjection)
+	snapshot, status := vulnerability.CollectString(ctx, query, constants.VulnerabilityTypeSqlInjection)
 	if status != evidence.StatusCollected {
 		return
 	}

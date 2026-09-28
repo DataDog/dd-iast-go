@@ -115,7 +115,9 @@ func TestCollectorCanonicalOrderingAndOverlap(t *testing.T) {
 		{Start: 0, Length: 2, Source: 0},
 		{Start: 2, Length: 3, Source: 1},
 		{Start: 5, Length: 2, Source: 2},
-		{Start: 7, Length: 3, Source: -1},
+		// The snapshot has more than one owner: every part without a
+		// source is foreign (see Snapshot.ForOwner).
+		{Start: 7, Length: 3, Source: -1, Foreign: true},
 	}
 	for index, expected := range want {
 		left, _ := first.PartAt(index)

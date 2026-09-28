@@ -39,7 +39,7 @@ func TestBufferCopyReadProvenance(t *testing.T) {
 func requireBufferSource(t *testing.T, value string, start, length uint32, source string) {
 	t.Helper()
 	var observed []taint.Range
-	require.True(t, taint.VisitString(value, func(r taint.Range) bool {
+	require.True(t, visitString(value, func(r taint.Range) bool {
 		observed = append(observed, r)
 		return true
 	}))
@@ -72,7 +72,7 @@ func TestBufferPeekOverwrite(t *testing.T) {
 func requireWriterRange(t *testing.T, value string, start, length uint32) {
 	t.Helper()
 	var observed []taint.Range
-	require.True(t, taint.VisitString(value, func(r taint.Range) bool {
+	require.True(t, visitString(value, func(r taint.Range) bool {
 		observed = append(observed, r)
 		return true
 	}))
@@ -162,7 +162,7 @@ func TestBufferCopyAppendSeparateOwners(t *testing.T) {
 	require.Equal(t, 6, n)
 	require.Equal(t, "attacksecond", result)
 	var observed []taint.Range
-	require.True(t, taint.VisitString(result, func(r taint.Range) bool {
+	require.True(t, visitString(result, func(r taint.Range) bool {
 		observed = append(observed, r)
 		return true
 	}))
@@ -344,7 +344,7 @@ func TestBufferCopyPreservesSecureMarks(t *testing.T) {
 	require.NoError(t, err)
 	for _, result := range []string{read, written} {
 		count := 0
-		require.True(t, taint.VisitString(result, func(r taint.Range) bool {
+		require.True(t, visitString(result, func(r taint.Range) bool {
 			count++
 			require.Zero(t, r.Start)
 			require.Equal(t, uint32(6), r.Length)

@@ -36,15 +36,15 @@ func TestHTTPTransformedCommandReportsOnlyOnAttempt(t *testing.T) {
 			event := requestEvent(t, func(ctx context.Context, r *http.Request) {
 				chain := testapp.BuildCommandChain(r.URL.Query().Get("path"))
 				assert.Equal(t, "/definitely-not-present-dd-iast", chain.Trimmed)
-				assertChainRanges(t, chain.Trimmed, []taint.Range{{Length: 31, Source: source}})
+				assertChainRanges(t, ctx, chain.Trimmed, []taint.Range{{Length: 31, Source: source}})
 				assert.Equal(t, "/definitely-missing-dd-iast", chain.Replaced)
 				expected := []taint.Range{
 					{Length: 12, Source: source},
 					{Start: 19, Length: 8, Source: source},
 				}
-				assertChainRanges(t, chain.Replaced, expected)
+				assertChainRanges(t, ctx, chain.Replaced, expected)
 				assert.Equal(t, "/definitely-missing-dd-iast-chain", chain.Path)
-				assertChainRanges(t, chain.Path, expected)
+				assertChainRanges(t, ctx, chain.Path, expected)
 				command := exec.CommandContext(ctx, chain.Path)
 				if attempt {
 					assert.ErrorIs(t, command.Run(), os.ErrNotExist)

@@ -54,7 +54,7 @@ func TestTaintStringAndVisit(t *testing.T) {
 	require.True(t, taint.IsTaintedString(managed))
 
 	calls := 0
-	visited := taint.VisitString(managed, func(got taint.Range) bool {
+	visited := taint.VisitString(ctx, managed, func(got taint.Range) bool {
 		calls++
 		require.Equal(t, uint32(0), got.Start)
 		require.Equal(t, uint32(len(managed)), got.Length)
@@ -67,7 +67,7 @@ func TestTaintStringAndVisit(t *testing.T) {
 	})
 	require.True(t, visited)
 	require.Equal(t, 1, calls)
-	require.False(t, taint.VisitString(managed, nil))
+	require.False(t, taint.VisitString(ctx, managed, nil))
 
 	scope.Finish()
 	require.False(t, taint.IsTaintedString(managed))
@@ -89,7 +89,7 @@ func TestTaintBytesCopiesImmutableSourceValue(t *testing.T) {
 	require.True(t, taint.IsTaintedBytes(managed))
 	var got taint.Range
 	calls := 0
-	require.True(t, taint.VisitBytes(managed, func(r taint.Range) bool {
+	require.True(t, taint.VisitBytes(ctx, managed, func(r taint.Range) bool {
 		calls++
 		got = r
 		return false
@@ -141,7 +141,7 @@ func TestVisitRaceFinishReturnsCompleteSourceOrNothing(t *testing.T) {
 	go func() {
 		defer wait.Done()
 		for range 1_000 {
-			taint.VisitString(managed, func(got taint.Range) bool {
+			taint.VisitString(ctx, managed, func(got taint.Range) bool {
 				if got.Source.Origin != taint.OriginHttpRequestParameter || got.Source.Name != "query" || got.Source.Value != "attacker" {
 					invalid.Store(true)
 				}
@@ -180,7 +180,7 @@ func TestLookupDoesNotAllocate(t *testing.T) {
 		taint.IsTaintedString(managed)
 	}))
 	require.Zero(t, testing.AllocsPerRun(100, func() {
-		taint.VisitString(managed, noOpVisitor)
+		taint.VisitString(ctx, managed, noOpVisitor)
 	}))
 	clean := namedString("not-tainted")
 	require.Zero(t, testing.AllocsPerRun(100, func() {
@@ -218,7 +218,7 @@ func BenchmarkStringLookup(b *testing.B) {
 	b.Run("visit", func(b *testing.B) {
 		b.ReportAllocs()
 		for b.Loop() {
-			taint.VisitString(managed, noOpVisitor)
+			taint.VisitString(ctx, managed, noOpVisitor)
 		}
 	})
 	scope.Finish()

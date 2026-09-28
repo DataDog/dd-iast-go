@@ -32,6 +32,7 @@ func activeBytes(t *testing.T, value []byte) []byte {
 		config.MaxConcurrentRequests = previousMax
 	})
 	ctx, scope, created := request.Begin(context.Background())
+	trackContext(t, ctx)
 	require.True(t, created)
 	t.Cleanup(scope.Finish)
 	return taint.TaintBytes(ctx, taint.Source{Origin: taint.OriginHttpRequestBody, Name: "body"}, value)
@@ -44,7 +45,7 @@ func requireTaintedBytes(t *testing.T, values ...[]byte) {
 			continue
 		}
 		var observed []taint.Range
-		require.Truef(t, taint.VisitBytes(value, func(r taint.Range) bool {
+		require.Truef(t, visitBytes(value, func(r taint.Range) bool {
 			observed = append(observed, r)
 			return true
 		}), "value %q is not tainted", value)

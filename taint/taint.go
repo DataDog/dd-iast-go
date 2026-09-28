@@ -164,28 +164,50 @@ func IsTaintedBytes[T ~[]byte](value T) bool {
 	return request.IsTaintedBytes([]byte(value))
 }
 
-// VisitString synchronously visits complete live ranges. The callback returns
-// true to continue or false to stop. VisitString returns true if it delivered
-// at least one range, including when the callback stopped early.
-func VisitString[T ~string](value T, visit func(Range) bool) bool {
+// VisitString synchronously visits the complete live ranges of value that
+// belong to the request of ctx. It never visits a range of a different
+// request, also when value is shared by more than one request. The callback
+// returns true to continue or false to stop. VisitString returns true if it
+// delivered at least one range, including when the callback stopped early. It
+// returns false when ctx has no active request analysis.
+func VisitString[T ~string](ctx context.Context, value T, visit func(Range) bool) bool {
 	if visit == nil {
 		return false
 	}
-	return request.VisitString(string(value), func(resolved request.ResolvedRange) bool {
+	owner, ok := contextOwner(ctx)
+	if !ok {
+		return false
+	}
+	return request.VisitStringOwner(string(value), owner, func(resolved request.ResolvedRange) bool {
 		return visit(publicRange(resolved))
-	})
+	}, nil)
 }
 
-// VisitBytes synchronously visits complete live ranges. The callback returns
-// true to continue or false to stop. VisitBytes returns true if it delivered at
-// least one range, including when the callback stopped early.
-func VisitBytes[T ~[]byte](value T, visit func(Range) bool) bool {
+// VisitBytes synchronously visits the complete live ranges of value that
+// belong to the request of ctx. It never visits a range of a different
+// request, also when value is shared by more than one request. The callback
+// returns true to continue or false to stop. VisitBytes returns true if it
+// delivered at least one range, including when the callback stopped early. It
+// returns false when ctx has no active request analysis.
+func VisitBytes[T ~[]byte](ctx context.Context, value T, visit func(Range) bool) bool {
 	if visit == nil {
 		return false
 	}
-	return request.VisitBytes([]byte(value), func(resolved request.ResolvedRange) bool {
+	owner, ok := contextOwner(ctx)
+	if !ok {
+		return false
+	}
+	return request.VisitBytesOwner([]byte(value), owner, func(resolved request.ResolvedRange) bool {
 		return visit(publicRange(resolved))
-	})
+	}, nil)
+}
+
+func contextOwner(ctx context.Context) (request.Owner, bool) {
+	analysis, ok := request.FromContext(ctx).Analysis()
+	if !ok {
+		return request.Owner{}, false
+	}
+	return analysis.Owner()
 }
 
 func publicRange(resolved request.ResolvedRange) Range {

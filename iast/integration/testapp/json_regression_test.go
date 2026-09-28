@@ -67,7 +67,7 @@ func TestJSONDecoderMoreThanEightDocuments(t *testing.T) {
 		body.WriteString(documents[index])
 	}
 	observed := make(chan bool, 1)
-	serveRequest(t, strings.NewReader(body.String()), func(_ context.Context, r *http.Request) {
+	serveRequest(t, strings.NewReader(body.String()), func(ctx context.Context, r *http.Request) {
 		reader := &oneDocumentReader{reader: r.Body}
 		taintrequest.PropagateReader(r.Body, reader)
 		ok := true
@@ -78,7 +78,7 @@ func TestJSONDecoderMoreThanEightDocuments(t *testing.T) {
 			}
 			err := json.NewDecoder(reader).Decode(&destination)
 			source := ""
-			taint.VisitString(destination.Value, func(found taint.Range) bool {
+			taint.VisitString(ctx, destination.Value, func(found taint.Range) bool {
 				source = found.Source.Value
 				return false
 			})

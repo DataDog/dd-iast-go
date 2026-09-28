@@ -105,6 +105,35 @@ When no traced span is available, each tainted report creates a separate orphan
 event. In that case, `DD_IAST_VULNERABILITIES_PER_REQUEST` limits each event but
 does not limit the total findings from one request.
 
+### Request isolation
+
+More than one request can share one value (for example, a cached string that
+two requests use). A report contains the ranges, sources, and evidence of one
+request only: the request of the sink context. When the sink context has no
+request, one request is selected in a fixed order. The bytes of the other
+requests (also bytes that are safe for the vulnerability type) are shown only
+as redaction markers (`*`), also when redaction is disabled. Bytes that are in
+a range of the reported request are not masked, also when a range of a
+different request has the same bytes: these bytes come from a source value of
+the reported request. An event gets the reports of one request only; when a
+span event has the reports of a different request, the report goes to an
+orphan event. Report deduplication (by vulnerability type and location) is
+process-wide, so a report of one request can remove the same report of a
+different request.
+
+Known limit: a redaction marker has one `*` for each masked byte. Thus a report
+shows that a different request has data in the value, and the length and
+position of this data. It does not show the data.
+
+Known limit: when a different request finishes before the report is made, its
+taint is not tracked any more. Its bytes are then shown as untainted text, like
+any other untainted text in the value (for example, a value read from a
+database).
+
+`taint.VisitString` and `taint.VisitBytes` take a `context.Context`. They visit
+only the ranges of the request of this context, and return `false` when the
+context has no active request analysis.
+
 ## Cost Control
 
 Taint tracking has non-trivial associated cost; both in terms of memory and

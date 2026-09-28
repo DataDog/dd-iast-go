@@ -44,7 +44,7 @@ func TestJSONDestinationClassesPreserveTheirContracts(t *testing.T) {
 		for _, value := range []string{
 			string(destination.Array[0]), string(destination.Array[1]), destination.Slice[0], destination.Named["key"],
 		} {
-			assertChainRanges(t, value, []taint.Range{{Length: uint32(len(value)), Source: source}})
+			assertChainRanges(t, ctx, value, []taint.Range{{Length: uint32(len(value)), Source: source}})
 		}
 
 		assert.Equal(t, []byte("secret"), destination.Bytes)
@@ -68,10 +68,10 @@ func TestJSONDestinationClassesPreserveTheirContracts(t *testing.T) {
 			unsupported = append(unsupported, key, text)
 		}
 		for _, value := range unsupported {
-			assertChainRanges(t, value, nil)
+			assertChainRanges(t, ctx, value, nil)
 			chain := testapp.BuildSQLChain("id!", value)
 			assert.Equal(t, "SELECT id FROM "+value, chain.Query)
-			assertChainRanges(t, chain.Query, nil)
+			assertChainRanges(t, ctx, chain.Query, nil)
 			_, err := db.ExecContext(ctx, chain.Query)
 			assert.NoError(t, err)
 		}

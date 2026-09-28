@@ -32,7 +32,7 @@ func TestCleanJSONReaderChainDoesNotReport(t *testing.T) {
 		}
 		assert.Equal(t, testapp.JSONName("customers"), chain.Document.Quoted)
 		assert.Equal(t, "SELECT id FROM customers", chain.Query)
-		assertChainRanges(t, chain.Query, nil)
+		assertChainRanges(t, ctx, chain.Query, nil)
 		_, err = db.ExecContext(ctx, chain.Query)
 		assert.NoError(t, err)
 	}, nil)
@@ -54,7 +54,7 @@ func TestUnsupportedJSONValueDoesNotInventSinkProvenance(t *testing.T) {
 		assert.Equal(t, customString("sanitized"), destination.Value)
 		chain := testapp.BuildSQLChain("id!", string(destination.Value))
 		assert.Equal(t, "SELECT id FROM sanitized", chain.Query)
-		assertChainRanges(t, chain.Query, nil)
+		assertChainRanges(t, ctx, chain.Query, nil)
 		_, err := db.ExecContext(ctx, chain.Query)
 		assert.NoError(t, err)
 	}, nil)
@@ -93,7 +93,7 @@ func TestRepeatedJSONLiteralsKeepSeparateSourcesAndMarks(t *testing.T) {
 			return
 		}
 		var secureMarks taint.Marks
-		taint.VisitBytes(first, func(found taint.Range) bool {
+		taint.VisitBytes(ctx, first, func(found taint.Range) bool {
 			secureMarks = found.Marks
 			return false
 		})
@@ -105,7 +105,7 @@ func TestRepeatedJSONLiteralsKeepSeparateSourcesAndMarks(t *testing.T) {
 		}
 		assert.Equal(t, testapp.JSONName("same"), decoded.First)
 		assert.Equal(t, "same", decoded.Second)
-		assertChainRanges(t, string(decoded.First), []taint.Range{{
+		assertChainRanges(t, ctx, string(decoded.First), []taint.Range{{
 			Length: 4,
 			Source: taint.SourceValue{
 				Source: taint.Source{Origin: taint.OriginHttpRequestBody, Name: "first"},
@@ -113,7 +113,7 @@ func TestRepeatedJSONLiteralsKeepSeparateSourcesAndMarks(t *testing.T) {
 			},
 			Marks: secureMarks,
 		}})
-		assertChainRanges(t, decoded.Second, []taint.Range{{
+		assertChainRanges(t, ctx, decoded.Second, []taint.Range{{
 			Length: 4,
 			Source: taint.SourceValue{
 				Source: taint.Source{Origin: taint.OriginHttpRequestBody, Name: "second"},

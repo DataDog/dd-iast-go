@@ -594,7 +594,7 @@ type candidate struct {
 
 // probe copies the refs of the entries of key that contain [p, p+n). It
 // reports false when the shard lock is contended.
-func (s *Store) probe(key, p uintptr, n uint32, out *[maxProbeRefs]candidate, count int) (int, bool) {
+func (s *Store) probe(key, p uintptr, n uint32, out *[maxProbeRefs]candidate, count int, overflow *bool) (int, bool) {
 	shard, home := s.shardOf(indexHash(key))
 	if !shard.mu.TryRLock() {
 		return count, false
@@ -610,6 +610,7 @@ func (s *Store) probe(key, p uintptr, n uint32, out *[maxProbeRefs]candidate, co
 			for i := 0; i < int(entry.n); i++ {
 				if count >= len(out) {
 					s.drops.fanout.Add(1)
+					*overflow = true
 					break
 				}
 				out[count] = candidate{base: entry.base, ref: entry.refs[i]}
@@ -623,16 +624,17 @@ func (s *Store) probe(key, p uintptr, n uint32, out *[maxProbeRefs]candidate, co
 
 // probeBoth reads tier S completely (filter and probe), then tier L (plan
 // section 5.2.4 step 2). It reports false when a shard lock is contended.
-func (s *Store) probeBoth(p uintptr, n uint32, out *[maxProbeRefs]candidate) (int, bool) {
-	count, acquired := 0, true
+// overflow is true when out had no space for a ref.
+func (s *Store) probeBoth(p uintptr, n uint32, out *[maxProbeRefs]candidate) (count int, acquired, overflow bool) {
+	acquired = true
 	if key := granuleKey(p, false); s.filterHit(key) {
-		count, acquired = s.probe(key, p, n, out, count)
+		count, acquired = s.probe(key, p, n, out, count, &overflow)
 	}
 	runHook(hookReaderTiers, 0)
 	if key := granuleKey(p, true); s.filterHit(key) {
 		var ok bool
-		count, ok = s.probe(key, p, n, out, count)
+		count, ok = s.probe(key, p, n, out, count, &overflow)
 		acquired = acquired && ok
 	}
-	return count, acquired
+	return count, acquired, overflow
 }

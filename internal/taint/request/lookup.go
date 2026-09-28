@@ -31,7 +31,22 @@ func VisitString(value string, visit func(ResolvedRange) bool) bool {
 	if !ok {
 		return false
 	}
-	return visitKey(key, visit)
+	return visitKey(key, visit, nil)
+}
+
+// VisitStringHidden is [VisitString] with hidden. When hidden is not nil, it
+// gets each byte interval of value that can contain bytes of an owner, but
+// that visit does not get: the ranges of an owner whose sources cannot be
+// copied, and the complete value when the lookup can have skipped an owner
+// (see [store.Snapshot.Partial]). The owner of a hidden interval is not
+// known. When visit returns false, the visit stops and hidden can miss
+// intervals.
+func VisitStringHidden(value string, visit func(ResolvedRange) bool, hidden func(start, length uint32)) bool {
+	key, ok := store.StringKey(value)
+	if !ok {
+		return false
+	}
+	return visitKey(key, visit, hidden)
 }
 
 // VisitBytes visits complete live provenance for value. It returns true if it
@@ -41,7 +56,47 @@ func VisitBytes(value []byte, visit func(ResolvedRange) bool) bool {
 	if !ok {
 		return false
 	}
-	return visitKey(key, visit)
+	return visitKey(key, visit, nil)
+}
+
+// Owner identifies one generation-validated store owner: the store owner slot
+// index, ID, and generation of one request analysis.
+type Owner struct {
+	ID         uint64
+	Generation uint64
+	Index      uint8
+}
+
+// Owner returns the live store owner of a.
+func (a Analysis) Owner() (Owner, bool) {
+	index, id, generation, ok := a.Identity()
+	return Owner{ID: id, Generation: generation, Index: index}, ok
+}
+
+// VisitStringOwner visits the complete live provenance of value that owner
+// has. It returns true if it delivered at least one range of owner. It does
+// not copy a source of a different owner. See [VisitBytesOwner] for foreign.
+func VisitStringOwner(value string, owner Owner, visit func(ResolvedRange) bool, foreign func(start, length uint32)) bool {
+	key, ok := store.StringKey(value)
+	if !ok {
+		return false
+	}
+	return visitKeyOwner(key, owner, visit, foreign)
+}
+
+// VisitBytesOwner visits the complete live provenance of value that owner has.
+// It returns true if it delivered at least one range of owner. It does not
+// copy a source of a different owner. When foreign is not nil, it gets the
+// byte interval of each range of a different owner (also a range with secure
+// marks). When the lookup can have skipped an owner (see
+// [store.Snapshot.Partial]), foreign also gets the complete value: an unknown
+// owner can have bytes in it.
+func VisitBytesOwner(value []byte, owner Owner, visit func(ResolvedRange) bool, foreign func(start, length uint32)) bool {
+	key, ok := store.BytesKey(value)
+	if !ok {
+		return false
+	}
+	return visitKeyOwner(key, owner, visit, foreign)
 }
 
 // IsTaintedString reports whether value has complete live provenance.
@@ -56,37 +111,54 @@ func IsTaintedBytes(value []byte) bool {
 
 func stopAfterFirst(ResolvedRange) bool { return false }
 
-// isManagedString reports whether value is the complete managed root of a
-// source of a live owner. A tainted window of another root (for example a query
-// value inside the raw query string) is not a managed source: the interior
-// index finds its taint, but it has the provenance of the other root.
-func isManagedString(value string) bool {
+// isManagedSource reports whether value is the complete managed root of a
+// string source of the owner of a. Only then can a lazy source hook skip source
+// management. These values are not managed sources of a:
+//   - a tainted window of a different root (for example a query value in the raw
+//     query string): it has the provenance of the other root;
+//   - a complete root of a different owner: the source is of a different request;
+//   - a complete propagated root of a: it is tainted, but it is not a source.
+//
+// The cheap store filter check comes first.
+func (a Analysis) isManagedSource(value string) bool {
 	key, ok := store.StringKey(value)
-	if !ok {
+	if !ok || !a.Active() || a.manager.used.Load() == 0 || !a.manager.store.MayContain(key) {
 		return false
 	}
-	manager := processManager.Load()
-	if manager == nil || manager.used.Load() == 0 || !manager.store.MayContain(key) {
-		return false
-	}
-	return isManagedKeyHit(manager.store, key)
+	return a.isManagedSourceHit(key, value)
 }
 
 //go:noinline
-func isManagedKeyHit(s *store.Store, key store.Key) bool {
+func (a Analysis) isManagedSourceHit(key store.Key, value string) bool {
+	ownerIndex, ownerID, ownerGen, ok := a.Identity()
+	if !ok {
+		return false
+	}
 	var snapshot store.Snapshot
-	if !s.Lookup(key, &snapshot) {
+	if !a.manager.store.Lookup(key, &snapshot) {
 		return false
 	}
 	for i := 0; i < snapshot.Len(); i++ {
-		if entry, ok := snapshot.At(i); ok && entry.WholeRoot {
-			return true
+		entry, ok := snapshot.At(i)
+		if !ok || !entry.WholeRoot || entry.OwnerIndex != ownerIndex || entry.OwnerID != ownerID || entry.OwnerGen != ownerGen {
+			continue
 		}
+		// A source root has one range over the complete value.
+		if entry.Ranges.Len() != 1 {
+			return false
+		}
+		var compact [1]ranges.Range
+		if entry.Ranges.CopyTo(compact[:]) != 1 || compact[0].Start != 0 || compact[0].Length != uint32(len(value)) {
+			return false
+		}
+		source, ok := a.Source(compact[0].SourceID)
+		// The source value of a string source is its managed root.
+		return ok && source.Kind == SourceString && sameStringBacking(source.Value, value)
 	}
 	return false
 }
 
-func visitKey(key store.Key, visit func(ResolvedRange) bool) bool {
+func visitKey(key store.Key, visit func(ResolvedRange) bool, hidden func(start, length uint32)) bool {
 	if visit == nil {
 		return false
 	}
@@ -99,7 +171,21 @@ func visitKey(key store.Key, visit func(ResolvedRange) bool) bool {
 	if manager.store.Confirm(key.Pointer, key.Length) == store.ConfirmClean {
 		return false
 	}
-	return visitKeyHit(manager, key, visit)
+	return visitKeyHit(manager, key, visit, hidden)
+}
+
+func visitKeyOwner(key store.Key, owner Owner, visit func(ResolvedRange) bool, foreign func(start, length uint32)) bool {
+	if visit == nil || owner.ID == 0 || owner.Generation == 0 {
+		return false
+	}
+	manager := processManager.Load()
+	if manager == nil || manager.used.Load() == 0 || !manager.store.MayContain(key) {
+		return false
+	}
+	if manager.store.Confirm(key.Pointer, key.Length) == store.ConfirmClean {
+		return false
+	}
+	return visitKeyOwnerHit(manager, key, owner, visit, foreign)
 }
 
 // ActiveStore returns the process taint store when at least one analysis is
@@ -114,10 +200,13 @@ func ActiveStore() *store.Store {
 }
 
 //go:noinline
-func visitKeyHit(manager *Manager, key store.Key, visit func(ResolvedRange) bool) bool {
+func visitKeyHit(manager *Manager, key store.Key, visit func(ResolvedRange) bool, hidden func(start, length uint32)) bool {
 	var snapshot store.Snapshot
 	if !manager.store.Lookup(key, &snapshot) {
 		return false
+	}
+	if hidden != nil && snapshot.Partial() {
+		hidden(0, key.Length)
 	}
 	delivered := false
 	for ownerIndex := 0; ownerIndex < snapshot.Len(); ownerIndex++ {
@@ -125,8 +214,13 @@ func visitKeyHit(manager *Manager, key store.Key, visit func(ResolvedRange) bool
 		if !ok {
 			continue
 		}
-		entryDelivered, keepGoing := deliverEntry(manager, entry, visit)
+		entryDelivered, keepGoing, copied := deliverEntry(manager, entry, visit)
 		delivered = delivered || entryDelivered
+		if !copied && hidden != nil {
+			// The bytes of entry are not visited. They can be data of a
+			// different owner. deliverForeign copies no source.
+			deliverForeign(entry, hidden)
+		}
 		if !keepGoing {
 			return delivered
 		}
@@ -135,11 +229,56 @@ func visitKeyHit(manager *Manager, key store.Key, visit func(ResolvedRange) bool
 }
 
 //go:noinline
-func deliverEntry(manager *Manager, entry *store.Entry, visit func(ResolvedRange) bool) (delivered, keepGoing bool) {
+func visitKeyOwnerHit(manager *Manager, key store.Key, owner Owner, visit func(ResolvedRange) bool, foreign func(start, length uint32)) bool {
+	var snapshot store.Snapshot
+	if !manager.store.Lookup(key, &snapshot) {
+		return false
+	}
+	if foreign != nil && snapshot.Partial() {
+		foreign(0, key.Length)
+	}
+	delivered := false
+	for ownerIndex := 0; ownerIndex < snapshot.Len(); ownerIndex++ {
+		entry, ok := snapshot.At(ownerIndex)
+		if !ok {
+			continue
+		}
+		if entry.OwnerIndex != owner.Index || entry.OwnerID != owner.ID || entry.OwnerGen != owner.Generation {
+			if foreign != nil {
+				deliverForeign(entry, foreign)
+			}
+			continue
+		}
+		entryDelivered, keepGoing, _ := deliverEntry(manager, entry, visit)
+		delivered = delivered || entryDelivered
+		// A lookup has one entry for each owner. The other entries are only
+		// necessary for foreign.
+		if !keepGoing && foreign == nil {
+			return delivered
+		}
+	}
+	return delivered
+}
+
+// deliverForeign gives the byte intervals of entry to foreign. It copies no
+// source: the source table of a different owner is not necessary.
+func deliverForeign(entry *store.Entry, foreign func(start, length uint32)) {
+	var compact [ranges.HardLimit]ranges.Range
+	count := entry.Ranges.CopyTo(compact[:])
+	for i := 0; i < count; i++ {
+		foreign(compact[i].Start, compact[i].Length)
+	}
+}
+
+// deliverEntry gives the ranges of entry to visit. copied is false when the
+// sources of entry cannot be copied: then visit gets no range of entry.
+//
+//go:noinline
+func deliverEntry(manager *Manager, entry *store.Entry, visit func(ResolvedRange) bool) (delivered, keepGoing, copied bool) {
 	var compact [ranges.HardLimit]ranges.Range
 	count := entry.Ranges.CopyTo(compact[:])
 	if count == 0 {
-		return false, true
+		return false, true, true
 	}
 	var ids [ranges.HardLimit]SourceID
 	for i := 0; i < count; i++ {
@@ -147,7 +286,7 @@ func deliverEntry(manager *Manager, entry *store.Entry, visit func(ResolvedRange
 	}
 	var sources [ranges.HardLimit]Source
 	if !manager.copySources(entry.OwnerIndex, entry.OwnerID, entry.OwnerGen, ids[:count], sources[:count]) {
-		return false, true
+		return false, true, false
 	}
 	for i := 0; i < count; i++ {
 		delivered = true
@@ -161,10 +300,10 @@ func deliverEntry(manager *Manager, entry *store.Entry, visit func(ResolvedRange
 			OwnerIndex:   entry.OwnerIndex,
 			RangeOrdinal: uint8(i),
 		}) {
-			return true, false
+			return true, false, true
 		}
 	}
-	return delivered, true
+	return delivered, true, true
 }
 
 func (m *Manager) copySources(ownerIndex uint8, ownerID, ownerGen uint64, ids []SourceID, dst []Source) bool {

@@ -44,6 +44,15 @@ func (e *Entry) Handle(s *Store) (Owner, bool) {
 type Snapshot struct {
 	entries [MaxSnapshotOwners]Entry
 	count   uint8
+	partial bool
+}
+
+// Partial reports whether the lookup can have skipped the contribution of an
+// owner: an index shard or an owner lock was contended, or the fan-out bound
+// was reached. Then an owner that is not in the snapshot can have bytes in the
+// value.
+func (s *Snapshot) Partial() bool {
+	return s != nil && s.partial
 }
 
 // Len returns the number of complete entries.
@@ -70,6 +79,7 @@ func (s *Snapshot) reset() {
 		s.entries[i] = Entry{}
 	}
 	s.count = 0
+	s.partial = false
 }
 
 // MayContain reports whether a root can contain key. It reads only the two
@@ -112,10 +122,11 @@ func (s *Store) Lookup(key Key, out *Snapshot) bool {
 	}
 	out.reset()
 	var candidates [maxProbeRefs]candidate
-	count, acquired := s.probeBoth(key.Pointer, key.Length, &candidates)
+	count, acquired, overflow := s.probeBoth(key.Pointer, key.Length, &candidates)
 	if !acquired {
 		s.drops.contention.Add(1)
 	}
+	out.partial = !acquired || overflow
 	for i := 0; i < count; i++ {
 		s.lookupCandidate(key, candidates[i], out)
 	}
@@ -138,10 +149,12 @@ func (s *Store) lookupCandidate(key Key, c candidate, out *Snapshot) {
 	}
 	if out.count >= MaxSnapshotOwners {
 		owner.drops.fanout.Add(1)
+		out.partial = true
 		return
 	}
 	if !owner.lifecycleMu.TryRLock() {
 		owner.drops.contention.Add(1)
+		out.partial = true
 		return
 	}
 	ownerGen := owner.generation.Load()
@@ -151,6 +164,7 @@ func (s *Store) lookupCandidate(key Key, c candidate, out *Snapshot) {
 	}
 	if !owner.rootsMu.TryRLock() {
 		owner.drops.contention.Add(1)
+		out.partial = true
 		owner.lifecycleMu.RUnlock() // +checklocksforce: TryRLock.
 		return
 	}
@@ -252,7 +266,7 @@ func (s *Store) Confirm(p uintptr, n uint32) ConfirmResult {
 		return ConfirmClean
 	}
 	var candidates [maxProbeRefs]candidate
-	count, acquired := s.probeBoth(p, n, &candidates)
+	count, acquired, _ := s.probeBoth(p, n, &candidates)
 	result := ConfirmClean
 	if !acquired {
 		s.drops.preContention.Add(1)

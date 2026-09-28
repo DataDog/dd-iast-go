@@ -40,9 +40,13 @@ func BuildSources(snapshot *evidence.Snapshot) (Result, bool) {
 // intervals. Intervals must be sorted, non-overlapping, non-empty, in bounds,
 // and no more numerous than MaxSensitiveIntervals. fullySensitive is the
 // conservative fallback for analyzer failure. Sink intervals are ignored when
-// redaction is disabled. Invalid snapshot data or intervals return false.
+// redaction is disabled. Invalid snapshot data or intervals return false. A
+// snapshot of more than one owner returns false: a report must not mix the
+// provenance of different requests (see evidence.Snapshot.ForOwner). A
+// foreign part (see evidence.Part.Foreign) is always a redaction marker, also
+// when redaction is disabled: its bytes can be data of a different request.
 func BuildWithSensitive(snapshot *evidence.Snapshot, intervals []Interval, fullySensitive bool) (Result, bool) {
-	if snapshot == nil || snapshot.SourceCount() > spans.MaxEventSources || snapshot.PartCount() > evidence.MaxParts || !validIntervals(snapshot.Value(), intervals) {
+	if snapshot == nil || snapshot.OwnerCount() > 1 || snapshot.SourceCount() > spans.MaxEventSources || snapshot.PartCount() > evidence.MaxParts || !validIntervals(snapshot.Value(), intervals) {
 		return Result{}, false
 	}
 	if !config.RedactionEnabled {
@@ -60,7 +64,7 @@ func BuildWithSensitive(snapshot *evidence.Snapshot, intervals []Interval, fully
 	}
 	for index := 0; index < snapshot.PartCount(); index++ {
 		part, ok := snapshot.PartAt(index)
-		if !ok || part.Source < -1 || part.Source >= int16(snapshot.SourceCount()) {
+		if !ok || part.Source < -1 || part.Source >= int16(snapshot.SourceCount()) || part.Foreign && part.Source >= 0 {
 			return Result{}, false
 		}
 		if part.Source >= 0 && !sensitive[part.Source] && overlapsSensitive(part.Start, part.Length, intervals) {
@@ -131,12 +135,12 @@ func buildParts(snapshot *evidence.Snapshot, sensitive []bool, patterns []string
 			return nil, false, false
 		}
 		partEnd := part.Start + part.Length
-		if fullySensitive || part.Source >= 0 && sensitive[part.Source] {
+		if fullySensitive || part.Foreign || part.Source >= 0 && sensitive[part.Source] {
 			if len(parts) >= evidence.MaxParts {
 				return nil, true, true
 			}
 			value, _ := snapshot.PartValue(part)
-			output, truncated, valid := buildPart(snapshot, part, value, fullySensitive, sensitive, patterns, &remainingComparisons, &remainingCharacters)
+			output, truncated, valid := buildPart(snapshot, part, value, fullySensitive || part.Foreign, sensitive, patterns, &remainingComparisons, &remainingCharacters)
 			if !valid {
 				return nil, false, false
 			}

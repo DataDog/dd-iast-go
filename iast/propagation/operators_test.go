@@ -94,6 +94,7 @@ func TestOperatorWrappersPropagateAllAritiesAndSlices(t *testing.T) {
 		config.Enabled, config.RequestSamplingPct, config.MaxConcurrentRequests = oldEnabled, oldSampling, oldMax
 	})
 	ctx, _, created := request.Begin(context.Background())
+	trackContext(t, ctx)
 	require.True(t, created)
 	t.Cleanup(func() { request.FinishContext(ctx, true) })
 

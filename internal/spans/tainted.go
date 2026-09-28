@@ -49,6 +49,17 @@ type TaintedSource struct {
 type TaintedCommit struct {
 	Vulnerability model.Vulnerability
 	Sources       []TaintedSource
+	// Owner is the one request owner of the evidence. When Owner.ID is not
+	// zero, the commit claims the annotation for Owner when it has no owner,
+	// and fails when the annotation has a different owner.
+	Owner CommitOwner
+}
+
+// CommitOwner is the store owner identity of the evidence of one commit.
+type CommitOwner struct {
+	ID         uint64
+	Generation uint64
+	Index      uint8
 }
 
 // TryCommitTainted transactionally merges sources and vulnerability into a
@@ -56,7 +67,14 @@ type TaintedCommit struct {
 // all bounds are reserved and receives the private vulnerability copy that will
 // be published. It must not re-lock or finish the annotation. A callback panic
 // is recovered, logged, and rolls the transaction back. The method returns
-// false on invalid input, contention, closure, duplication, or capacity.
+// false on invalid input, contention, closure, duplication, capacity, or a
+// different annotation owner (see TaintedCommit.Owner). The owner check and
+// claim are one atomic change of the annotation owner. They occur with the
+// annotation locked, after all bounds are reserved and before beforeCommit.
+// After the claim, a bind of a different owner fails, so the event cannot get
+// the reports of two owners. When beforeCommit panics, the commit removes the
+// claim that it made, if the owner is still this claim: the annotation then
+// has no owner again. A bind of the same owner during beforeCommit stays.
 // +checklocksignore
 func (a *Annotation) TryCommitTainted(commit *TaintedCommit, beforeCommit func(*model.Vulnerability)) (committed bool) {
 	if a == nil || commit == nil || !a.Sampled || len(commit.Sources) > MaxEventSources {
@@ -141,6 +159,14 @@ func (a *Annotation) TryCommitTainted(commit *TaintedCommit, beforeCommit func(*
 	if !reserveEventSourceBytes(additionalBytes) {
 		return false
 	}
+	var claimed *annotationOwner
+	if commit.Owner.ID != 0 {
+		var ok bool
+		if claimed, ok = a.claimOwner(commit.Owner.Index, commit.Owner.ID, commit.Owner.Generation); !ok {
+			processEventSourceBytes.Add(-additionalBytes)
+			return false
+		}
+	}
 	reserved := additionalBytes
 	defer func() {
 		if recovered := recover(); recovered != nil {
@@ -149,6 +175,9 @@ func (a *Annotation) TryCommitTainted(commit *TaintedCommit, beforeCommit func(*
 		}
 		if !committed {
 			processEventSourceBytes.Add(-reserved)
+			// The failed commit adds no report. Its claim must not stop
+			// a bind of a different owner.
+			a.releaseClaim(claimed)
 		}
 	}()
 	if beforeCommit != nil {

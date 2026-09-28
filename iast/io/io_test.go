@@ -60,10 +60,10 @@ func activeContext(t *testing.T) (context.Context, *request.Scope) {
 	return ctx, scope
 }
 
-func bodySource(data []byte) (taint.SourceValue, bool) {
+func bodySource(ctx context.Context, data []byte) (taint.SourceValue, bool) {
 	var source taint.SourceValue
 	found := false
-	taint.VisitBytes(data, func(r taint.Range) bool {
+	taint.VisitBytes(ctx, data, func(r taint.Range) bool {
 		if r.Source.Origin == taint.OriginHttpRequestBody {
 			source = r.Source
 			found = true
@@ -74,10 +74,10 @@ func bodySource(data []byte) (taint.SourceValue, bool) {
 	return source, found
 }
 
-func requireBodyRange(t *testing.T, data []byte, sourceValue string) {
+func requireBodyRange(t *testing.T, ctx context.Context, data []byte, sourceValue string) {
 	t.Helper()
 	var observed []taint.Range
-	require.True(t, taint.VisitBytes(data, func(r taint.Range) bool {
+	require.True(t, taint.VisitBytes(ctx, data, func(r taint.Range) bool {
 		observed = append(observed, r)
 		return true
 	}))
@@ -111,7 +111,7 @@ func TestReadAllThroughSupportedWrappers(t *testing.T) {
 	require.Equal(t, "request-body", side.String())
 	require.False(t, taint.IsTaintedString(side.String()), "TeeReader must not bind its side writer")
 	require.Equal(t, 1, input.reads, "ReadAll must not add reads")
-	requireBodyRange(t, data, "request-body")
+	requireBodyRange(t, ctx, data, "request-body")
 }
 
 func TestMultiReaderInspectionBoundAndCleanup(t *testing.T) {
@@ -135,7 +135,7 @@ func TestMultiReaderInspectionBoundAndCleanup(t *testing.T) {
 	data, err := io.ReadAll(composed)
 	require.NoError(t, err)
 	require.Equal(t, []byte("included-excluded"), data)
-	requireBodyRange(t, data, "included-excluded")
+	requireBodyRange(t, includedCtx, data, "included-excluded")
 	includedAnalysis, ok := includedScope.Analysis()
 	require.True(t, ok)
 	require.Equal(t, 1, includedAnalysis.SourceCount())
@@ -159,7 +159,7 @@ func TestReadAllEOFWithData(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, []byte("request-body"), data)
 	require.Equal(t, 1, input.reads)
-	_, found := bodySource(data)
+	_, found := bodySource(ctx, data)
 	require.True(t, found)
 }
 
@@ -172,7 +172,7 @@ func TestOversizedBufferedReaderDropsProvenance(t *testing.T) {
 	require.True(t, request.BindReader(ctx, input))
 	data, err := io.ReadAll(bufio.NewReaderSize(input, 8192))
 	require.NoError(t, err)
-	_, found := bodySource(data)
+	_, found := bodySource(ctx, data)
 	require.False(t, found)
 }
 
@@ -199,7 +199,7 @@ func TestReadAllBodySizeBound(t *testing.T) {
 			data, err := io.ReadAll(input)
 			require.NoError(t, err)
 			require.Len(t, data, test.size)
-			_, tainted := bodySource(data)
+			_, tainted := bodySource(ctx, data)
 			require.Equal(t, test.tainted, tainted)
 		})
 	}

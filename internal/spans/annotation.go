@@ -53,6 +53,120 @@ type Annotation struct {
 
 	// RequestTainted is the number of tainted elemets at the end of the request.
 	RequestTainted atomic.Uint64
+
+	// owner is the one request owner of this annotation: the first request
+	// scope bound to it (see BindScope), or the owner of the first report
+	// committed to it (see TryCommitTainted). The identity does not change
+	// after it is set: only a claimed owner can become the bound owner with
+	// the same identity. One exception: a commit that fails after its claim
+	// sets the owner to nil again, when the owner is still this claim (see
+	// releaseClaim). The annotation has no report of this owner then. It is
+	// nil for an annotation of no request.
+	owner atomic.Pointer[annotationOwner]
+}
+
+// annotationOwner is the store owner identity of one request analysis.
+type annotationOwner struct {
+	id         uint64
+	generation uint64
+	index      uint8
+	// bound is true when a request scope of this owner was bound to the
+	// annotation. It is false when a report claimed the annotation.
+	bound bool
+}
+
+func (o *annotationOwner) is(index uint8, id, generation uint64) bool {
+	return o.index == index && o.id == id && o.generation == generation
+}
+
+// Owner returns the identity of the first request owner bound to a with
+// BindScope. It returns false when no request scope was bound to a, also
+// when a report claimed a for its owner. The owner can be finished: the
+// caller must compare the identity with live taint data.
+func (a *Annotation) Owner() (index uint8, id, generation uint64, ok bool) {
+	if a == nil {
+		return 0, 0, 0, false
+	}
+	owner := a.owner.Load()
+	if owner == nil || !owner.bound {
+		return 0, 0, 0, false
+	}
+	return owner.index, owner.id, owner.generation, true
+}
+
+// OwnedBy reports whether a can get the reports of the given request owner:
+// a has no request owner, or its request owner (bound or claimed) is this
+// owner. The result changes from true to false when a different owner claims
+// a or is bound to a. It changes back to true only when the commit of this
+// claim fails (see releaseClaim). A commit must use TaintedCommit.Owner to
+// check the owner atomically.
+func (a *Annotation) OwnedBy(index uint8, id, generation uint64) bool {
+	if a == nil {
+		return false
+	}
+	owner := a.owner.Load()
+	return owner == nil || owner.is(index, id, generation)
+}
+
+// HasOwner reports whether the request owner of a (bound or claimed) is the
+// given owner. It returns false when a has no request owner.
+func (a *Annotation) HasOwner(index uint8, id, generation uint64) bool {
+	if a == nil {
+		return false
+	}
+	owner := a.owner.Load()
+	return owner != nil && owner.is(index, id, generation)
+}
+
+// bindOwner sets the bound request owner of a. It returns false when a has a
+// different request owner.
+func (a *Annotation) bindOwner(index uint8, id, generation uint64) bool {
+	var bound *annotationOwner
+	for {
+		current := a.owner.Load()
+		if current != nil {
+			if !current.is(index, id, generation) {
+				return false
+			}
+			if current.bound {
+				return true
+			}
+		}
+		if bound == nil {
+			bound = &annotationOwner{id: id, generation: generation, index: index, bound: true}
+		}
+		// Only nil and a claimed owner with the same identity change to the
+		// bound owner. Thus the loop stops after at most two changes.
+		if a.owner.CompareAndSwap(current, bound) {
+			return true
+		}
+	}
+}
+
+// claimOwner makes the given owner the request owner of a when a has no
+// owner. It returns false when a has a different request owner. claimed is
+// the new owner value when this call set the owner, and nil when a already
+// had this owner (see releaseClaim).
+func (a *Annotation) claimOwner(index uint8, id, generation uint64) (claimed *annotationOwner, ok bool) {
+	current := a.owner.Load()
+	if current == nil {
+		claimed = &annotationOwner{id: id, generation: generation, index: index}
+		if a.owner.CompareAndSwap(nil, claimed) {
+			return claimed, true
+		}
+		// A different goroutine set the owner first.
+		current = a.owner.Load()
+	}
+	return nil, current != nil && current.is(index, id, generation)
+}
+
+// releaseClaim removes the owner claimed by a failed commit. It changes the
+// owner of a only when it is still claimed (the value that claimOwner set): a
+// bind of the same owner after the claim stays.
+func (a *Annotation) releaseClaim(claimed *annotationOwner) {
+	if claimed != nil {
+		a.owner.CompareAndSwap(claimed, nil)
+	}
 }
 
 // Closed reports whether span finishing has closed the annotation.

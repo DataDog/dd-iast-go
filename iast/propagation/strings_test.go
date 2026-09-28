@@ -47,6 +47,7 @@ func activeStringSource(t *testing.T, name, value string) string {
 		config.MaxConcurrentRequests = previousMax
 	})
 	ctx, scope, created := request.Begin(context.Background())
+	trackContext(t, ctx)
 	require.True(t, created)
 	t.Cleanup(scope.Finish)
 	return taint.TaintString(ctx, taint.Source{Origin: taint.OriginHttpRequestParameter, Name: name}, value)
@@ -59,7 +60,7 @@ func requireTaintedStrings(t *testing.T, values ...string) {
 			continue
 		}
 		var observed []taint.Range
-		require.Truef(t, taint.VisitString(value, func(r taint.Range) bool {
+		require.Truef(t, visitString(value, func(r taint.Range) bool {
 			observed = append(observed, r)
 			return true
 		}), "value %q is not tainted", value)
@@ -190,7 +191,7 @@ func TestCoarseFormattingRecordsBoundedDrops(t *testing.T) {
 			require.Equal(t, test.want, got)
 			require.Equal(t, before+1, telemetry.DroppedPropagation.Load())
 			sources := make(map[string]bool)
-			require.True(t, taint.VisitString(got, func(observed taint.Range) bool {
+			require.True(t, visitString(got, func(observed taint.Range) bool {
 				sources[observed.Source.Name] = true
 				return true
 			}))

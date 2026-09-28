@@ -49,6 +49,7 @@ func beginNativePropagation(t *testing.T) context.Context {
 	config.RequestSamplingPct = 100
 	config.MaxConcurrentRequests = 64
 	ctx, scope, created := request.Begin(context.Background())
+	trackContext(t, ctx)
 	require.True(t, created)
 	t.Cleanup(func() {
 		scope.Finish()
@@ -198,7 +199,7 @@ func nativeMarkBits(t *testing.T, vulnerabilities []taint.VulnerabilityType) uin
 func requireNativeStringRanges(t *testing.T, value string, want ...nativeExpectedRange) {
 	t.Helper()
 	index := 0
-	tainted := taint.VisitString(value, func(got taint.Range) bool {
+	tainted := visitString(value, func(got taint.Range) bool {
 		require.Less(t, index, len(want))
 		requireNativeRange(t, got, want[index])
 		index++
@@ -211,7 +212,7 @@ func requireNativeStringRanges(t *testing.T, value string, want ...nativeExpecte
 func requireNativeByteRanges(t *testing.T, value []byte, want ...nativeExpectedRange) {
 	t.Helper()
 	index := 0
-	tainted := taint.VisitBytes(value, func(got taint.Range) bool {
+	tainted := visitBytes(value, func(got taint.Range) bool {
 		require.Less(t, index, len(want))
 		requireNativeRange(t, got, want[index])
 		index++

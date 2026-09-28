@@ -96,7 +96,7 @@ func TestAutomaticNewReaderDelegationAndCleanup(t *testing.T) {
 	require.Equal(t, []byte("request-body"), data)
 	require.Equal(t, len("request-body"), input.Len(), "propagation must not read input")
 	var observed []taint.Range
-	require.True(t, taint.VisitBytes(data, func(r taint.Range) bool {
+	require.True(t, taint.VisitBytes(ctx, data, func(r taint.Range) bool {
 		observed = append(observed, r)
 		return true
 	}))

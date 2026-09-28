@@ -38,6 +38,13 @@ func bindOwnerSpan(scope *request.Scope, root *tracer.Span, annotation *Annotati
 	if !ok || int(index) >= len(ownerSpans) {
 		return
 	}
+	if !annotation.bindOwner(index, id, generation) {
+		// The first owner stays: one request root span has one owner. The
+		// root span is of a different request (or has a report of a
+		// different request). Do not bind this owner to it: its reports must
+		// not go to the event of the other request.
+		return
+	}
 	current := ownerSpans[index].Load()
 	if current != nil && current.id == id && current.generation == generation && current.annotation != nil && !current.annotation.Closed() && current.root.Value() != nil {
 		return

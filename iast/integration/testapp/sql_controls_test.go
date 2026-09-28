@@ -27,7 +27,7 @@ func TestHTTPTransformedSQLBoundArgumentDoesNotReport(t *testing.T) {
 	event := requestEvent(t, func(ctx context.Context, r *http.Request) {
 		chain := testapp.BuildSQLChain(r.URL.Query().Get("column"), "customers")
 		assert.Equal(t, "SELECT id FROM customers", chain.Query)
-		assertChainRanges(t, chain.Query, []taint.Range{{
+		assertChainRanges(t, ctx, chain.Query, []taint.Range{{
 			Length: 24,
 			Source: taint.SourceValue{
 				Source: taint.Source{Origin: taint.OriginHttpRequestParameter, Name: "column"},
@@ -60,7 +60,7 @@ func TestSQLChainIntersectsSeededSecureMarks(t *testing.T) {
 				chain := testapp.BuildSQLChain(column, table)
 				assert.Equal(t, "SELECT id FROM customers", chain.Query)
 				count := 0
-				taint.VisitString(chain.Query, func(found taint.Range) bool {
+				taint.VisitString(ctx, chain.Query, func(found taint.Range) bool {
 					count++
 					assert.Zero(t, found.Start)
 					assert.Equal(t, uint32(24), found.Length)

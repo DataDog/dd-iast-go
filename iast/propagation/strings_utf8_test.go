@@ -76,7 +76,7 @@ func TestToValidUTF8UsesOnlyContributingProvenance(t *testing.T) {
 			got := testapp.ToValidUTF8(value, replacement)
 			require.Equal(t, want, got)
 			gotSources := make(map[string]string)
-			tainted := taint.VisitString(got, func(observed taint.Range) bool {
+			tainted := visitString(got, func(observed taint.Range) bool {
 				require.Zero(t, observed.Start)
 				require.Equal(t, uint32(len(got)), observed.Length)
 				gotSources[observed.Source.Name] = observed.Source.Value

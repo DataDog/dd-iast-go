@@ -53,7 +53,7 @@ func Report(ctx context.Context, argv []string) {
 			return
 		}
 	}
-	snapshot, status := evidence.CollectJoinedStrings(argv, " ", value, constants.VulnerabilityTypeCommandInjection)
+	snapshot, status := vulnerability.CollectJoinedStrings(ctx, argv, " ", value, constants.VulnerabilityTypeCommandInjection)
 	if status != evidence.StatusCollected {
 		return
 	}

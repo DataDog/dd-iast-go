@@ -39,7 +39,7 @@ func TestReaderBindingAdmissionLimitKeepsNativeData(t *testing.T) {
 	included, err := io.ReadAll(lastIncluded)
 	require.NoError(t, err)
 	require.Equal(t, []byte("request-body"), included)
-	requireBodyRange(t, included, "request-body")
+	requireBodyRange(t, ctx, included, "request-body")
 
 	input.Reset("request-body")
 	excluded, err := io.ReadAll(firstExcluded)

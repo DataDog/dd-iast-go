@@ -110,9 +110,9 @@ func boundEndpoint(w http.ResponseWriter, req *http.Request) {
 		query := req.URL.Query()
 		for name, values := range query {
 			if name == "query" {
-				got.QueryNameTainted = taintedFrom(name, taint.OriginHttpRequestParameterName)
+				got.QueryNameTainted = taintedFrom(req.Context(), name, taint.OriginHttpRequestParameterName)
 				if len(values) != 0 {
-					got.QueryValueTainted = taintedFrom(values[0], taint.OriginHttpRequestParameter)
+					got.QueryValueTainted = taintedFrom(req.Context(), values[0], taint.OriginHttpRequestParameter)
 				}
 			}
 		}
@@ -121,17 +121,17 @@ func boundEndpoint(w http.ResponseWriter, req *http.Request) {
 		_ = req.ParseForm()
 		for name, values := range req.Form {
 			if name == "form" {
-				got.FormNameTainted = taintedFrom(name, taint.OriginHttpRequestParameterName)
+				got.FormNameTainted = taintedFrom(req.Context(), name, taint.OriginHttpRequestParameterName)
 				if len(values) != 0 {
-					got.FormValueTainted = taintedFrom(values[0], taint.OriginHttpRequestParameter)
+					got.FormValueTainted = taintedFrom(req.Context(), values[0], taint.OriginHttpRequestParameter)
 				}
 			}
 		}
-		got.PostFormTainted = taintedFrom(req.PostFormValue("form"), taint.OriginHttpRequestParameter)
-		got.PathValueTainted = taintedFrom(req.PathValue("user"), taint.OriginHttpRequestPathParameter)
+		got.PostFormTainted = taintedFrom(req.Context(), req.PostFormValue("form"), taint.OriginHttpRequestParameter)
+		got.PathValueTainted = taintedFrom(req.Context(), req.PathValue("user"), taint.OriginHttpRequestPathParameter)
 		if cookie, err := req.Cookie("session"); err == nil {
-			got.CookieNameTainted = taintedFrom(cookie.Name, taint.OriginHttpRequestCookieName)
-			got.CookieValueTainted = taintedFrom(cookie.Value, taint.OriginHttpRequestCookieValue)
+			got.CookieNameTainted = taintedFrom(req.Context(), cookie.Name, taint.OriginHttpRequestCookieName)
+			got.CookieValueTainted = taintedFrom(req.Context(), cookie.Value, taint.OriginHttpRequestCookieValue)
 		}
 		_ = req.Cookies()
 		_ = req.CookiesNamed("session")
@@ -157,7 +157,7 @@ func directBodyEndpoint(w http.ResponseWriter, req *http.Request) {
 	n, _ := req.Body.Read(data)
 	data = data[:n]
 	_ = json.NewEncoder(w).Encode(bodyObservation{
-		Value: string(data), Tainted: taintedBytesFrom(data, taint.OriginHttpRequestBody),
+		Value: string(data), Tainted: taintedBytesFrom(req.Context(), data, taint.OriginHttpRequestBody),
 	})
 }
 
@@ -165,13 +165,13 @@ func bodyEndpoint(w http.ResponseWriter, req *http.Request) {
 	reader := http.MaxBytesReader(w, req.Body, store.MaxRootBytes)
 	data, _ := io.ReadAll(reader)
 	_ = json.NewEncoder(w).Encode(bodyObservation{
-		Value: string(data), Tainted: taintedBytesFrom(data, taint.OriginHttpRequestBody),
+		Value: string(data), Tainted: taintedBytesFrom(req.Context(), data, taint.OriginHttpRequestBody),
 	})
 }
 
-func taintedBytesFrom(value []byte, origin taint.Origin) bool {
+func taintedBytesFrom(ctx context.Context, value []byte, origin taint.Origin) bool {
 	found := false
-	taint.VisitBytes(value, func(r taint.Range) bool {
+	taint.VisitBytes(ctx, value, func(r taint.Range) bool {
 		found = found || r.Source.Origin == origin
 		return !found
 	})
@@ -229,9 +229,9 @@ func upgradeEndpoint(w http.ResponseWriter, req *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func taintedFrom(value string, origin taint.Origin) bool {
+func taintedFrom(ctx context.Context, value string, origin taint.Origin) bool {
 	found := false
-	taint.VisitString(value, func(r taint.Range) bool {
+	taint.VisitString(ctx, value, func(r taint.Range) bool {
 		found = found || r.Source.Origin == origin
 		return !found
 	})
@@ -255,13 +255,13 @@ func multipartEndpoint(w http.ResponseWriter, req *http.Request) {
 		}
 		for name, values := range req.MultipartForm.Value {
 			if name == "upload-field" {
-				got.NameTainted = taintedFrom(name, taint.OriginHttpRequestMultipartParameter)
+				got.NameTainted = taintedFrom(req.Context(), name, taint.OriginHttpRequestMultipartParameter)
 				if len(values) != 0 {
-					got.ValueTainted = taintedFrom(values[0], taint.OriginHttpRequestMultipartParameter)
+					got.ValueTainted = taintedFrom(req.Context(), values[0], taint.OriginHttpRequestMultipartParameter)
 				}
 			}
 		}
-		got.FormValueTainted = taintedFrom(req.FormValue("upload-field"), taint.OriginHttpRequestMultipartParameter)
+		got.FormValueTainted = taintedFrom(req.Context(), req.FormValue("upload-field"), taint.OriginHttpRequestMultipartParameter)
 		if iteration == 0 {
 			if scope := request.FromContext(req.Context()); scope != nil {
 				if analysis, ok := scope.Analysis(); ok {
@@ -285,9 +285,9 @@ type sourceObservation struct {
 	SourceCount int          `json:"source_count"`
 }
 
-func observeSource(value string) sourceObservation {
+func observeSource(ctx context.Context, value string) sourceObservation {
 	got := sourceObservation{Value: value}
-	taint.VisitString(value, func(r taint.Range) bool {
+	taint.VisitString(ctx, value, func(r taint.Range) bool {
 		got.Origin = r.Source.Origin
 		got.Name = r.Source.Name
 		got.SourceCount++
@@ -305,10 +305,10 @@ type multipartFallbackObservation struct {
 
 func multipartFallbackEndpoint(w http.ResponseWriter, req *http.Request) {
 	_ = json.NewEncoder(w).Encode(multipartFallbackObservation{
-		FormQuery:     observeSource(req.FormValue("form-query")),
-		FormMultipart: observeSource(req.FormValue("form-multipart")),
-		PostMultipart: observeSource(req.PostFormValue("post-multipart")),
-		EqualValue:    observeSource(req.FormValue("equal-value")),
+		FormQuery:     observeSource(req.Context(), req.FormValue("form-query")),
+		FormMultipart: observeSource(req.Context(), req.FormValue("form-multipart")),
+		PostMultipart: observeSource(req.Context(), req.PostFormValue("post-multipart")),
+		EqualValue:    observeSource(req.Context(), req.FormValue("equal-value")),
 	})
 }
 

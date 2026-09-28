@@ -53,10 +53,10 @@ func TestHTTPBodyReaderJSONWriterToSQL(t *testing.T) {
 		for _, value := range []string{
 			string(chain.Document.First), chain.Document.Second, chain.Document.Escaped, string(chain.Document.Quoted),
 		} {
-			assertChainRanges(t, value, []taint.Range{{Length: uint32(len(value)), Source: source}})
+			assertChainRanges(t, ctx, value, []taint.Range{{Length: uint32(len(value)), Source: source}})
 		}
 		assert.Equal(t, "SELECT id FROM customers", chain.Query)
-		assertChainRanges(t, chain.Query, []taint.Range{{Start: 15, Length: 9, Source: source}})
+		assertChainRanges(t, ctx, chain.Query, []taint.Range{{Start: 15, Length: 9, Source: source}})
 		var refs [store.MaxSnapshotOwners]store.OwnerRef
 		for _, reader := range chain.Readers {
 			assert.Equal(t, 1, request.LookupObject(reader, store.BindingReader, refs[:]))
