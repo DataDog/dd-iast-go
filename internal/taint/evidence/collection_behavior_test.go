@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	"github.com/DataDog/dd-iast-go/internal/model/constants"
-	"github.com/DataDog/dd-iast-go/internal/taint/propagation"
 	"github.com/DataDog/dd-iast-go/internal/taint/ranges"
 	"github.com/DataDog/dd-iast-go/internal/taint/request"
 	"github.com/DataDog/dd-iast-go/internal/taint/store"
@@ -63,7 +62,6 @@ func TestJoinedCollectionDropsCompleteReportAtSourceByteLimit(t *testing.T) {
 		source := taint.TaintString(ctx, taint.Source{Origin: constants.OriginHttpRequestParameter, Name: name}, strings.Repeat("x", store.MaxRootBytes))
 		require.True(t, request.IsTaintedString(source))
 		values[index] = source[:2]
-		propagation.StringWindow(source, values[index])
 	}
 	snapshot, status := CollectJoinedStrings(values, " ", strings.Join(values, " "), constants.VulnerabilityTypeSqlInjection)
 	require.Equal(t, StatusDropped, status)

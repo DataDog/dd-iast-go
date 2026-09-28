@@ -68,7 +68,9 @@ func TestStringWindowOperationsPreservePartialRangesAndMarks(t *testing.T) {
 	})
 }
 
-func TestStringWindowSequencesInspectOnlyFirstThirtyTwoResults(t *testing.T) {
+// TestStringWindowSequencesTaintEveryResult checks that every window that a
+// sequence yields is tainted: the interior index has no window limit.
+func TestStringWindowSequencesTaintEveryResult(t *testing.T) {
 	if !built.WithOrchestrion {
 		t.Skip("orchestrion is not enabled, use `go tool orchestrion go test`")
 	}
@@ -129,7 +131,10 @@ func TestStringWindowSequencesInspectOnlyFirstThirtyTwoResults(t *testing.T) {
 			requireNativeStringRanges(t, got[31],
 				nativeExpectedRange{length: 2, source: wantSource, marks: marks},
 			)
-			requireNativeStringRanges(t, got[32])
+			requireNativeStringRanges(t, got[32],
+				nativeExpectedRange{length: 2, source: wantSource, marks: marks},
+			)
+			requireNativeStringRanges(t, got[33])
 		})
 	}
 }

@@ -61,39 +61,36 @@ func TestRootCountLimit(t *testing.T) {
 	owner.Finish()
 }
 
-func TestRequestAndProcessValueLimits(t *testing.T) {
+func TestIndexCapacityLimitsProcessRoots(t *testing.T) {
 	store := New()
-	owners := make([]*Owner, ProcessValueLimit/RequestValueLimit)
-	for i := range owners {
-		owners[i] = store.Acquire()
-		fillOwnerValues(t, owners[i])
-		require.Equal(t, int32(RequestValueLimit), owners[i].Values())
+	owners := make([]*Owner, 0, MaxOwners)
+	admitted := 0
+	for range MaxOwners {
+		owner := store.Acquire()
+		require.False(t, owner.Disabled())
+		owners = append(owners, owner)
+		for range MaxRootsPerOwner {
+			// 16-byte roots use one tier S granule each.
+			if _, _, ok := owner.TaintString("0123456789abcdef", 0); ok {
+				admitted++
+			}
+		}
 	}
-	require.Equal(t, int32(ProcessValueLimit), store.ProcessValues())
-
-	extra := store.Acquire()
-	_, _, ok := extra.TaintString("process-value-limit", 0)
-	require.False(t, ok)
-	require.Greater(t, extra.Counters().Full, uint64(0))
+	stats := store.Stats()
+	require.Equal(t, int32(admitted), stats.IndexedRoots)
+	require.Equal(t, uint32(admitted), stats.IndexRefs)
+	require.LessOrEqual(t, admitted, IndexShards*IndexBucketsPerShard*IndexBucketSize)
+	require.Greater(t, admitted, MaxOwners*MaxRootsPerOwner*9/10, "the index must hold most of the roots")
+	refused := uint64(0)
+	for _, owner := range owners {
+		refused += owner.Counters().IndexFull
+	}
+	require.Equal(t, uint64(MaxOwners*MaxRootsPerOwner-admitted), refused)
+	requireFilterConsistent(t, store)
 	for _, owner := range owners {
 		owner.Finish()
 	}
-	extra.Finish()
-	require.Zero(t, store.ProcessValues())
-}
-
-func fillOwnerValues(t *testing.T, owner *Owner) {
-	t.Helper()
-	const roots = RequestValueLimit / MaxValuesPerRoot
-	for rootIndex := 0; rootIndex < roots; rootIndex++ {
-		managed, root, ok := owner.TaintBytes(make([]byte, 512), 0)
-		require.Truef(t, ok, "root %d", rootIndex)
-		for offset := 0; offset < MaxValuesPerRoot-1; offset++ {
-			key, valid := BytesKey(managed[offset : offset+2])
-			require.True(t, valid)
-			require.Truef(t, owner.Derive(key, root), "root %d offset %d", rootIndex, offset)
-		}
-	}
+	requireIndexEmpty(t, store)
 }
 
 func TestBindingLimit(t *testing.T) {

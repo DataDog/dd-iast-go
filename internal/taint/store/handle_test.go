@@ -61,18 +61,20 @@ func TestEntryHandleRevalidatesOwner(t *testing.T) {
 func TestEntryHandlePublishesIntoLiveOwnerOnly(t *testing.T) {
 	s := New()
 	owner := s.Acquire()
-	managed, root, ok := owner.TaintString("attacker-value", 0)
+	managed, _, ok := owner.TaintString("attacker-value", 0)
 	require.True(t, ok)
 	key, _ := StringKey(managed)
 	var snapshot Snapshot
 	require.True(t, s.Lookup(key, &snapshot))
 	entry, _ := snapshot.At(0)
 
-	// A live handle can derive a new window into the same root.
+	// A live handle can publish into the same owner, and every window of the
+	// root is found.
 	subKey, _ := StringKey(managed[2:9])
 	handle, valid := entry.Handle(s)
 	require.True(t, valid)
-	require.True(t, handle.Derive(subKey, root))
+	_, _, ok = handle.TaintString("another-value", 0)
+	require.True(t, ok)
 	var sub Snapshot
 	require.True(t, s.Lookup(subKey, &sub))
 	require.Equal(t, 1, sub.Len())
@@ -93,7 +95,7 @@ func TestEntryHandlePublishesIntoLiveOwnerOnly(t *testing.T) {
 func TestEntryHandleConcurrentFinishIsSafe(t *testing.T) {
 	s := New()
 	owner := s.Acquire()
-	managed, root, ok := owner.TaintString(strings.Repeat("a", 32), 0)
+	managed, _, ok := owner.TaintString(strings.Repeat("a", 32), 0)
 	require.True(t, ok)
 	key, _ := StringKey(managed)
 
@@ -113,9 +115,10 @@ func TestEntryHandleConcurrentFinishIsSafe(t *testing.T) {
 					entry, _ := snapshot.At(j)
 					if handle, valid := entry.Handle(s); valid {
 						begin := (offset + i) % (len(managed) - 2)
-						subKey, subOK := StringKey(managed[begin : begin+2])
-						if subOK {
-							handle.Derive(subKey, root)
+						if subKey, subOK := StringKey(managed[begin : begin+2]); subOK {
+							var sub Snapshot
+							s.Lookup(subKey, &sub)
+							handle.TaintString(managed[begin:begin+2], 0)
 						}
 					}
 				}
@@ -130,5 +133,5 @@ func TestEntryHandleConcurrentFinishIsSafe(t *testing.T) {
 	}()
 	wait.Wait()
 	<-finished
-	require.Zero(t, s.ProcessValues())
+	requireIndexEmpty(t, s)
 }

@@ -51,7 +51,7 @@ var (
 		manager.store.BindWriterActive(writerbridge.ActiveCounter())
 		commandbridge.BindActiveOwners(&manager.used)
 		jsonbridge.BindActiveOwners(&manager.used)
-		jsonbridge.BindActiveValues(manager.store.ActiveValues())
+		jsonbridge.BindActiveValues(manager.store.IndexedRoots())
 		manager.store.BindOperatorActive(operatorbridge.ActiveValues())
 		sqlbridge.BindActiveOwners(&manager.used)
 		processManager.Store(manager)

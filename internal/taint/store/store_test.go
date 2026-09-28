@@ -16,8 +16,7 @@ import (
 )
 
 func TestLayoutBounds(t *testing.T) {
-	t.Logf("slot=%d root=%d owner=%d store=%d binding=%d", unsafe.Sizeof(valueSlot{}), unsafe.Sizeof(rootRecord{}), unsafe.Sizeof(owner{}), unsafe.Sizeof(Store{}), unsafe.Sizeof(binding{}))
-	require.Equal(t, uintptr(32), unsafe.Sizeof(valueSlot{}))
+	t.Logf("entry=%d root=%d owner=%d store=%d binding=%d", unsafe.Sizeof(indexEntry{}), unsafe.Sizeof(rootRecord{}), unsafe.Sizeof(owner{}), unsafe.Sizeof(Store{}), unsafe.Sizeof(binding{}))
 	require.LessOrEqual(t, unsafe.Sizeof(rootRecord{}), uintptr(320))
 	require.LessOrEqual(t, unsafe.Sizeof(Store{}), uintptr(14<<20), "fixed store must leave room for 8 MiB roots under the 24 MiB ceiling")
 }
@@ -43,22 +42,21 @@ func TestTaintLookupFinish(t *testing.T) {
 	owner.Finish()
 	require.Zero(t, owner.Charged())
 	require.Zero(t, store.ProcessCharged())
-	require.Zero(t, store.ProcessValues())
+	requireIndexEmpty(t, store)
 	require.True(t, store.Lookup(key, &snapshot))
 	require.Zero(t, snapshot.Len())
 }
 
-func TestDerivedSubstringUsesOneRoot(t *testing.T) {
+func TestInteriorSubstringUsesOneRoot(t *testing.T) {
 	store := New()
 	owner := store.Acquire()
-	managed, root, ok := owner.TaintString("0123456789abcdef", 0)
+	managed, _, ok := owner.TaintString("0123456789abcdef", 0)
 	require.True(t, ok)
 	charged := owner.Charged()
 
 	substring := managed[4:12]
 	key, ok := StringKey(substring)
 	require.True(t, ok)
-	require.True(t, owner.Derive(key, root))
 	require.Equal(t, charged, owner.Charged())
 
 	var snapshot Snapshot

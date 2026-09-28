@@ -13,5 +13,6 @@ var activeValues atomic.Int32
 // ActiveValues returns the counter owned by the process request store.
 func ActiveValues() *atomic.Int32 { return &activeValues }
 
-// HasValues reports whether any process-store value can carry provenance.
+// HasValues reports whether any process-store value can carry provenance. The
+// store mirrors its indexed-root counter into this counter.
 func HasValues() bool { return activeValues.Load() != 0 }

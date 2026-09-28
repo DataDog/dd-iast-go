@@ -12,35 +12,28 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestRootQuotaNeverRegressesGeneration(t *testing.T) {
-	var root rootRecord
-	root.valueQuota.Store(uint64(2)<<32 | 1)
-	require.False(t, reserveRootValue(&root, 1))
-	require.Equal(t, uint64(2)<<32|1, root.valueQuota.Load())
-}
-
-func TestDistinctMutationWindowsDoNotAccumulateCounters(t *testing.T) {
+func TestDistinctMutationWindowsDoNotAccumulateIndexState(t *testing.T) {
 	store := New()
 	owner := store.Acquire()
 	managed, root, ok := owner.TaintBytes(make([]byte, 32<<10), 0)
 	require.True(t, ok)
+	stats := store.Stats()
 
 	for generation := 0; generation < 60; generation++ {
 		for i := 0; i < 100; i++ {
 			offset := (generation*211 + i*17) % (len(managed) - 2)
 			key, valid := BytesKey(managed[offset : offset+2])
 			require.True(t, valid)
-			owner.Derive(key, root)
+			require.NotNilf(t, lookupRanges(t, store, key), "generation %d offset %d", generation, offset)
 		}
-		require.LessOrEqual(t, owner.Values(), int32(101))
 
 		managed[generation%len(managed)]++
 		var set ranges.Set
 		require.True(t, ranges.AdoptCanonical(&set, 10, []ranges.Range{{Length: uint32(len(managed)), SourceID: 0}}, uint32(cap(managed))).Valid)
 		root, ok = owner.PublishBytesMutation(root, managed, &set)
 		require.Truef(t, ok, "generation %d", generation)
-		require.Equal(t, int32(1), owner.Values(), "old generation counters must be reconciled at publication")
+		require.Equal(t, stats, store.Stats(), "a mutation does not change the index")
 	}
 	owner.Finish()
-	require.Zero(t, store.ProcessValues())
+	requireIndexEmpty(t, store)
 }

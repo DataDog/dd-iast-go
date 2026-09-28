@@ -43,7 +43,8 @@ var activeOwners atomic.Pointer[atomic.Uint64]
 var activeValues atomic.Pointer[atomic.Int32]
 var decoderStates [64]decoderSlot
 
-// BindActiveValues replaces the process active-value counter and returns the previous counter.
+// BindActiveValues replaces the process active-value counter (the number of
+// indexed roots of the process store) and returns the previous counter.
 func BindActiveValues(values *atomic.Int32) *atomic.Int32 { return activeValues.Swap(values) }
 
 // BindActiveOwners replaces the process request-owner bitset and returns the previous bitset.

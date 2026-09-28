@@ -6,31 +6,22 @@
 package store
 
 const (
-	MaxOwners           = 64
-	ProcessValueLimit   = 16_384
-	ProcessRootBytes    = 8 << 20
-	RequestValueLimit   = 4_096
-	RequestRootBytes    = 2 << 20
-	MaxRootBytes        = 64 << 10
-	MaxRootChargeBytes  = 3 * MaxRootBytes
-	MaxRootsPerOwner    = 512
-	MaxValuesPerRoot    = 256
-	GuaranteedRanges    = 10
-	MaxRanges           = 64
-	OverflowBlocks      = 256
-	Shards              = 256
-	SlotsPerShard       = 128
-	ProbeLimit          = 64
-	compactionThreshold = 32
-	overflowRanges      = MaxRanges - GuaranteedRanges
+	MaxOwners          = 64
+	ProcessRootBytes   = 8 << 20
+	RequestRootBytes   = 2 << 20
+	MaxRootBytes       = 64 << 10
+	MaxRootChargeBytes = 3 * MaxRootBytes
+	MaxRootsPerOwner   = 512
+	GuaranteedRanges   = 10
+	MaxRanges          = 64
+	OverflowBlocks     = 256
+	overflowRanges     = MaxRanges - GuaranteedRanges
 
 	// MaxWriters bounds the fixed per-owner writer-state table. It is independent
 	// of object bindings so a single bytes.Buffer can be a reader and a writer at
 	// once.
 	MaxWriters = 8
 )
-
-const tombstone = ^uintptr(0)
 
 var sizeClasses = [...]int{
 	8, 16, 24, 32, 48, 64, 80, 96, 112, 128, 144, 160, 176, 192, 208, 224, 240,

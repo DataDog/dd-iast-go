@@ -25,6 +25,9 @@ const (
 	KindInvalid Kind = iota
 	KindString
 	KindBytes
+	// KindRunes is a []rune value. Its key and its root use the byte
+	// coordinates of the rune array: rune i is bytes [4i, 4i+4).
+	KindRunes
 )
 
 type ownerState uint32
@@ -60,15 +63,14 @@ func BytesKey(value []byte) (Key, bool) {
 	return Key{Pointer: uintptr(unsafe.Pointer(unsafe.SliceData(value))), Length: uint32(len(value)), Kind: KindBytes}, true
 }
 
-type valueSlot struct {
-	pointer  uintptr
-	ownerGen uint64
-	length   uint32
-	rootOff  uint32
-	rootGen  uint32
-	rootID   uint16
-	ownerIdx uint8
-	kind     Kind
+// RunesKey returns a key for a non-empty rune slice whose byte size fits the
+// store. The key length is the byte length of the rune array (4 bytes for each
+// rune).
+func RunesKey(value []rune) (Key, bool) {
+	if len(value) == 0 || uint64(len(value)) > uint64(^uint32(0))/4 {
+		return Key{}, false
+	}
+	return Key{Pointer: uintptr(unsafe.Pointer(unsafe.SliceData(value))), Length: uint32(4 * len(value)), Kind: KindRunes}, true
 }
 
 type rootRecord struct {
@@ -78,26 +80,33 @@ type rootRecord struct {
 	span         uint32
 	generation   atomic.Uint32
 	setGen       uint32
-	valueQuota   atomic.Uint64 // generation in high 32 bits, count in low 32 bits
-	overflow     uint16        // block index + 1
+	overflow     uint16 // block index + 1
 	count        uint8
 	limit        ranges.Limit
-	inline       [GuaranteedRanges]ranges.Range
+	// indexed is true only after all index refs of this root are published
+	// (plan section 5.2.2). Lookups ignore a root that is not indexed. It is
+	// guarded by owner.rootsMu.
+	indexed bool
+	// kind is the kind of the first adoption of this root.
+	kind   Kind
+	inline [GuaranteedRanges]ranges.Range
 }
 
 type owner struct {
-	id             atomic.Uint64
-	generation     atomic.Uint64
-	state          atomic.Uint32
-	lifecycleMu    sync.RWMutex
-	rootsMu        sync.RWMutex
-	roots          [MaxRootsPerOwner]rootRecord
-	rootNext       uint16
-	rootFree       [MaxRootsPerOwner]uint16
-	rootFreeN      uint16
-	charged        atomic.Int64
-	values         atomic.Int32
-	rootCount      atomic.Int32
+	id          atomic.Uint64
+	generation  atomic.Uint64
+	state       atomic.Uint32
+	lifecycleMu sync.RWMutex
+	rootsMu     sync.RWMutex
+	roots       [MaxRootsPerOwner]rootRecord
+	rootNext    uint16
+	rootFree    [MaxRootsPerOwner]uint16
+	rootFreeN   uint16
+	charged     atomic.Int64
+	rootCount   atomic.Int32
+	// extending is true while an extension of a root of this owner runs
+	// (plan section 5.2.2, "Extension"). It is guarded by rootsMu.
+	extending      bool
 	bindings       bindingTable
 	writersMu      sync.RWMutex
 	writers        [MaxWriters]writerRecord
@@ -108,15 +117,6 @@ type owner struct {
 	writerDirty    atomic.Bool
 	writerVersion  atomic.Uint64
 	drops          dropCounters
-}
-
-type shard struct {
-	mu         sync.RWMutex
-	slots      [SlotsPerShard]valueSlot
-	tombstones uint16
-	probeSum   uint64
-	probeN     uint64
-	probeMax   uint8
 }
 
 type overflowBlock struct {
@@ -133,6 +133,18 @@ type dropCounters struct {
 	disabled   atomic.Uint64
 	oneByte    atomic.Uint64
 	fanout     atomic.Uint64
+	// indexFull counts root admissions that failed because the probe window
+	// of one granule key had no empty place.
+	indexFull atomic.Uint64
+	// preContention counts Confirm calls that returned ConfirmUnknown because
+	// a TryRLock failed.
+	preContention atomic.Uint64
+	// preStale counts runtime pre-checks that found a tainted operand whose
+	// owner finished before the result hook ran (runtime bridge, step 4).
+	preStale atomic.Uint64
+	// dupOwner counts lookup refs that were skipped because the snapshot
+	// already had a contribution of the same owner.
+	dupOwner atomic.Uint64
 }
 
 // Counters is a point-in-time loss snapshot.
@@ -146,29 +158,47 @@ type Counters struct {
 	Disabled   uint64
 	OneByte    uint64
 	Fanout     uint64
+	IndexFull  uint64
+	// PreContention counts Confirm results that are ConfirmUnknown.
+	PreContention uint64
+	PreStale      uint64
+	DupOwner      uint64
 }
 
 // Stats is a bounded store-health snapshot.
 type Stats struct {
-	Compactions   uint64
-	CompactAborts uint64
-	OverflowFree  uint16
-	Tombstones    uint32
-	MaxTombstones uint16
-	ProbeCount    uint64
-	AverageProbe  float64
-	MaxProbe      uint8
+	OverflowFree uint16
+	// IndexEntries is the number of interior index entries in use.
+	IndexEntries uint32
+	// IndexRefs is the number of owner refs in the interior index.
+	IndexRefs uint32
+	// MaxProbe is the largest bucket distance (0 to IndexBucketProbe-1) that
+	// an insert used since the store was created.
+	MaxProbe uint8
+	// FilterSum is the sum of all filter counters. It is equal to the number
+	// of published (ref, granule key) pairs.
+	FilterSum uint64
+	// IndexedRoots is the number of roots that have indexed == true.
+	IndexedRoots int32
 }
 
 // Store owns all fixed-capacity process storage.
 type Store struct {
-	shards         [Shards]shard
-	owners         [MaxOwners]owner
-	ownerMu        sync.Mutex
-	nextOwnerID    atomic.Uint64
-	acquireDrops   atomic.Uint64
-	charged        atomic.Int64
-	values         atomic.Int32
+	owners      [MaxOwners]owner
+	ownerMu     sync.Mutex
+	nextOwnerID atomic.Uint64
+	// drops counts events that no owner can own, for example a contended
+	// index shard in a reader.
+	drops        dropCounters
+	acquireDrops atomic.Uint64
+	charged      atomic.Int64
+	// indexedRoots is the number of roots with indexed == true. It is
+	// incremented before a root becomes indexed and decremented after it
+	// stops being indexed (plan section 5.2.2), so it is never lower than
+	// the number of visible roots.
+	indexedRoots atomic.Int32
+	// indexMaxProbe is the largest bucket distance that an insert used.
+	indexMaxProbe  atomic.Uint32
 	writerStates   atomic.Int32
 	writerActive   *atomic.Int32
 	operatorActive atomic.Pointer[atomic.Int32]
@@ -176,26 +206,30 @@ type Store struct {
 	overflowFree   [OverflowBlocks]uint16
 	overflowN      uint16
 	overflowMu     sync.Mutex
-	compactions    atomic.Uint64
-	compactAborts  atomic.Uint64
+	index          [IndexShards]indexShard
+	filter         [FilterBuckets]atomic.Uint32
 }
 
-// BindOperatorActive binds a mirror counter used by operator fast gates.
+// BindOperatorActive binds a mirror counter used by operator fast gates. The
+// store changes the mirror at the same time as the indexed-root counter.
 func (s *Store) BindOperatorActive(active *atomic.Int32) {
 	if active != nil {
 		s.operatorActive.Store(active)
 	}
 }
 
-func (s *Store) addOperatorValues(delta int32) {
+// addIndexedRoots changes the indexed-root counter and its operator mirror.
+func (s *Store) addIndexedRoots(delta int32) {
+	s.indexedRoots.Add(delta)
 	if active := s.operatorActive.Load(); active != nil {
 		active.Add(delta)
 	}
 }
 
-// ActiveValues returns the process value counter for allocation-free bridge gates.
-// Callers may only load the counter; the store owns all updates.
-func (s *Store) ActiveValues() *atomic.Int32 { return &s.values }
+// IndexedRoots returns the process indexed-root counter for allocation-free
+// bridge gates. It is not zero while a root is visible to lookups. Callers may
+// only load the counter; the store owns all updates.
+func (s *Store) IndexedRoots() *atomic.Int32 { return &s.indexedRoots }
 
 // New allocates and initializes a bounded store.
 func New() *Store {
@@ -223,13 +257,13 @@ func (s *Store) AcquireDrops() uint64 {
 	return s.acquireDrops.Load()
 }
 
-// ProcessValues returns value slots charged to live root generations. Stale
-// pointer-free slots remain physically resident until lazy reclamation.
-func (s *Store) ProcessValues() int32 {
+// Counters returns the store-wide loss counters: the events that no owner can
+// own (for example a contended index shard in a reader).
+func (s *Store) Counters() Counters {
 	if s == nil {
-		return 0
+		return Counters{}
 	}
-	return s.values.Load()
+	return snapshotDrops(&s.drops)
 }
 
 // Stats returns fixed-table health counters. It is intended for telemetry and
@@ -238,19 +272,23 @@ func (s *Store) Stats() Stats {
 	if s == nil {
 		return Stats{}
 	}
-	stats := Stats{Compactions: s.compactions.Load(), CompactAborts: s.compactAborts.Load()}
-	for i := range s.shards {
-		shard := &s.shards[i]
+	stats := Stats{IndexedRoots: s.indexedRoots.Load(), MaxProbe: uint8(s.indexMaxProbe.Load())}
+	for i := range s.index {
+		shard := &s.index[i]
 		shard.mu.RLock()
-		stats.Tombstones += uint32(shard.tombstones)
-		stats.MaxTombstones = max(stats.MaxTombstones, shard.tombstones)
-		stats.ProbeCount += shard.probeN
-		stats.AverageProbe += float64(shard.probeSum)
-		stats.MaxProbe = max(stats.MaxProbe, shard.probeMax)
+		for bucket := range shard.buckets {
+			for slot := range shard.buckets[bucket] {
+				entry := &shard.buckets[bucket][slot]
+				if entry.key != 0 {
+					stats.IndexEntries++
+					stats.IndexRefs += uint32(entry.n)
+				}
+			}
+		}
 		shard.mu.RUnlock()
 	}
-	if stats.ProbeCount != 0 {
-		stats.AverageProbe /= float64(stats.ProbeCount)
+	for i := range s.filter {
+		stats.FilterSum += uint64(s.filter[i].Load())
 	}
 	s.overflowMu.Lock()
 	stats.OverflowFree = s.overflowN
@@ -263,5 +301,7 @@ func snapshotDrops(d *dropCounters) Counters {
 		Full: d.full.Load(), Bytes: d.bytes.Load(), Ranges: d.ranges.Load(),
 		Contention: d.contention.Load(), Late: d.late.Load(), Stale: d.stale.Load(),
 		Disabled: d.disabled.Load(), OneByte: d.oneByte.Load(), Fanout: d.fanout.Load(),
+		IndexFull: d.indexFull.Load(), PreContention: d.preContention.Load(),
+		PreStale: d.preStale.Load(), DupOwner: d.dupOwner.Load(),
 	}
 }

@@ -9,7 +9,7 @@ import "github.com/DataDog/dd-iast-go/internal/instrumentation/telemetry"
 
 // instrumentedPropagationPoints is the number of named call-site and
 // standard-library invalidation point shapes registered by orchestrion.yml.
-const instrumentedPropagationPoints = 125
+const instrumentedPropagationPoints = 84
 
 func init() {
 	telemetry.InstrumentedPropagation += instrumentedPropagationPoints

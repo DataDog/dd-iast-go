@@ -26,15 +26,15 @@ func FuzzOwnerLifecycle(f *testing.F) {
 		taintStore, _ := beginScope(t)
 		cursor := newSequenceCursor(encoded)
 		baselineCharge := taintStore.ProcessCharged()
-		baselineValues := taintStore.ProcessValues()
+		baselineRoots := taintStore.IndexedRoots().Load()
 		cycles := 1 + cursor.indexOf(sequenceSteps)
 		for cycle := 0; cycle < cycles; cycle++ {
 			runOwnerLifecycleCycle(t, taintStore, cursor, cycle)
 			if got := taintStore.ProcessCharged(); got != baselineCharge {
 				t.Fatalf("cycle %d retained charge: got=%d want=%d", cycle, got, baselineCharge)
 			}
-			if got := taintStore.ProcessValues(); got != baselineValues {
-				t.Fatalf("cycle %d retained values: got=%d want=%d", cycle, got, baselineValues)
+			if got := taintStore.IndexedRoots().Load(); got != baselineRoots {
+				t.Fatalf("cycle %d retained indexed roots: got=%d want=%d", cycle, got, baselineRoots)
 			}
 		}
 	})

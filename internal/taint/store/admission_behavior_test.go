@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestRootAdmissionRollbackOnValueTableContention(t *testing.T) {
+func TestRootAdmissionRollbackOnIndexContention(t *testing.T) {
 	store := New()
 	owner := store.Acquire()
 	t.Cleanup(owner.Finish)
@@ -28,9 +28,9 @@ func TestRootAdmissionRollbackOnValueTableContention(t *testing.T) {
 	adopted := make([]byte, 4, 8)
 	copy(adopted, "data")
 	overflowValue := make([]byte, 22)
-	forceCollision.Store(true)
-	t.Cleanup(func() { forceCollision.Store(false) })
-	shard := &store.shards[0]
+	forceIndexCollision.Store(true)
+	t.Cleanup(func() { forceIndexCollision.Store(false) })
+	shard := &store.index[0]
 	shard.mu.Lock()
 	_, _, taintStringOK := owner.TaintString("value", 1)
 	_, _, _, sourceStringOK := owner.TaintSourceString("value", "name", 1)
@@ -50,59 +50,57 @@ func TestRootAdmissionRollbackOnValueTableContention(t *testing.T) {
 	require.Zero(t, owner.Charged())
 	require.Equal(t, uint16(OverflowBlocks), store.overflowN)
 	require.Zero(t, owner.owner.rootCount.Load())
-	require.Zero(t, owner.Values())
+	requireIndexEmpty(t, store)
 	require.Equal(t, uint64(7), owner.Counters().Contention)
 }
 
-func TestDerivedWindowBoundsQuotaAndGeneration(t *testing.T) {
+func TestInteriorWindowBoundsAndGeneration(t *testing.T) {
 	store := New()
 	owner := store.Acquire()
 	t.Cleanup(owner.Finish)
-	managed, root, ok := owner.TaintBytes(make([]byte, MaxValuesPerRoot+2), 1)
+	managed, root, ok := owner.TaintBytes(make([]byte, 258), 1)
 	require.True(t, ok)
 	base, ok := BytesKey(managed)
 	require.True(t, ok)
-	require.False(t, owner.Derive(Key{Pointer: base.Pointer - 1, Length: 2, Kind: KindBytes}, root))
-	require.False(t, owner.Derive(Key{Pointer: base.Pointer + uintptr(cap(managed)-1), Length: 2, Kind: KindBytes}, root))
+	// Windows outside the root are a miss.
+	require.Nil(t, lookupRanges(t, store, Key{Pointer: base.Pointer - 1, Length: 2, Kind: KindBytes}))
+	require.Nil(t, lookupRanges(t, store, Key{Pointer: base.Pointer + uintptr(cap(managed)-1), Length: 2, Kind: KindBytes}))
+	// Every window of the root is found with no derivation.
+	for offset := 0; offset+2 <= len(managed); offset++ {
+		key, valid := BytesKey(managed[offset : offset+2])
+		require.True(t, valid)
+		require.Equalf(t, []ranges.Range{{Length: 2, SourceID: 1}}, lookupRanges(t, store, key), "offset %d", offset)
+	}
 	contended, ok := BytesKey(managed[1:3])
 	require.True(t, ok)
 	owner.owner.rootsMu.Lock()
-	derived := owner.Derive(contended, root)
+	var snapshot Snapshot
+	found := store.Lookup(contended, &snapshot)
 	owner.owner.rootsMu.Unlock()
-	require.False(t, derived)
-	for offset := 1; offset < MaxValuesPerRoot; offset++ {
-		key, valid := BytesKey(managed[offset : offset+2])
-		require.True(t, valid)
-		require.Truef(t, owner.Derive(key, root), "offset %d", offset)
-	}
-	extra, ok := BytesKey(managed[MaxValuesPerRoot : MaxValuesPerRoot+2])
-	require.True(t, ok)
-	require.False(t, owner.Derive(extra, root))
-	require.Equal(t, int32(MaxValuesPerRoot), owner.Values())
+	require.True(t, found, "a busy owner is a safe miss, not a failed lookup")
+	require.Zero(t, snapshot.Len())
+
 	managed[0] = 1
 	var set ranges.Set
-	require.True(t, ranges.AdoptCanonical(&set, ranges.DefaultLimit, []ranges.Range{{Length: uint32(len(managed)), SourceID: 2}}, uint32(cap(managed))).Valid)
+	require.True(t, ranges.AdoptCanonical(&set, ranges.DefaultLimit, []ranges.Range{{Start: 2, Length: 2, SourceID: 2}}, uint32(cap(managed))).Valid)
 	next, ok := owner.PublishBytesMutation(root, managed, &set)
 	require.True(t, ok)
-	require.False(t, owner.Derive(contended, root))
-	require.True(t, owner.Derive(contended, next))
-	require.Equal(t, int32(2), owner.Values())
-	forceCollision.Store(true)
-	t.Cleanup(func() { forceCollision.Store(false) })
-	blocked, ok := BytesKey(managed[2:4])
-	require.True(t, ok)
-	shard := &store.shards[0]
+	require.Equal(t, root.ID, next.ID)
+	require.Equal(t, []ranges.Range{{Start: 1, Length: 1, SourceID: 2}}, lookupRanges(t, store, contended))
+
+	// A busy index shard fails the lookup.
+	shard, _ := store.shardOf(indexHash(granuleKey(contended.Pointer, true)))
 	shard.mu.Lock()
-	derived = owner.Derive(blocked, next)
+	found = store.Lookup(contended, &snapshot)
 	shard.mu.Unlock()
-	require.False(t, derived)
+	require.False(t, found)
+	require.Zero(t, snapshot.Len())
 	counters := owner.Counters()
-	require.GreaterOrEqual(t, counters.Full, uint64(3))
-	require.GreaterOrEqual(t, counters.Contention, uint64(2))
-	require.GreaterOrEqual(t, counters.Stale, uint64(1))
+	require.GreaterOrEqual(t, counters.Contention, uint64(1))
+	require.GreaterOrEqual(t, store.Counters().Contention, uint64(1))
 }
 
-func TestExistingWindowTransfersRootReservation(t *testing.T) {
+func TestRepeatedAdoptionExtendsOneRoot(t *testing.T) {
 	store := New()
 	owner := store.Acquire()
 	t.Cleanup(owner.Finish)
@@ -112,19 +110,16 @@ func TestExistingWindowTransfersRootReservation(t *testing.T) {
 	require.True(t, ranges.AdoptCanonical(&secondSet, ranges.DefaultLimit, []ranges.Range{{Start: 4, Length: 4, SourceID: 2}}, 8).Valid)
 	first, ok := owner.AdoptBytes(value, &firstSet)
 	require.True(t, ok)
+	stats := store.Stats()
 	second, ok := owner.AdoptBytes(value, &secondSet)
 	require.True(t, ok)
-	require.NotEqual(t, first.ID, second.ID)
-	require.Zero(t, uint32(owner.owner.roots[first.ID].valueQuota.Load()))
-	require.Equal(t, uint32(1), uint32(owner.owner.roots[second.ID].valueQuota.Load()))
-	require.Equal(t, int32(1), owner.Values())
+	require.Equal(t, first, second, "a second adoption extends the first root")
+	require.Equal(t, int32(1), owner.owner.rootCount.Load())
+	require.Equal(t, stats, store.Stats())
 	key, ok := BytesKey(value)
 	require.True(t, ok)
-	var snapshot Snapshot
-	require.True(t, store.Lookup(key, &snapshot))
-	entry, ok := snapshot.At(0)
-	require.True(t, ok)
-	require.Equal(t, []ranges.Range{{Start: 4, Length: 4, SourceID: 2}}, rangeSlice(&entry.Ranges))
+	require.Equal(t, []ranges.Range{{Length: 4, SourceID: 1}, {Start: 4, Length: 4, SourceID: 2}}, lookupRanges(t, store, key))
+	require.Equal(t, 2*sizeClass(8), owner.Charged(), "each adoption keeps its charge until Finish")
 }
 
 func TestSourceAdmissionsObserveRootByteQuota(t *testing.T) {
@@ -144,38 +139,34 @@ func TestSourceAdmissionsObserveRootByteQuota(t *testing.T) {
 	require.GreaterOrEqual(t, owner.Counters().Bytes, uint64(4))
 }
 
-func TestStaleOwnerRootAndLazyGenerationReclamation(t *testing.T) {
+func TestMutationKeepsInteriorWindowsAndFinishedOwnerRefuses(t *testing.T) {
 	store := New()
 	owner := store.Acquire()
-	forceCollision.Store(true)
-	t.Cleanup(func() { forceCollision.Store(false) })
 	managed, root, ok := owner.TaintBytes(make([]byte, 16), 1)
 	require.True(t, ok)
 	sibling, ok := BytesKey(managed[2:6])
 	require.True(t, ok)
-	require.True(t, owner.Derive(sibling, root))
+	require.Equal(t, []ranges.Range{{Length: 4, SourceID: 1}}, lookupRanges(t, store, sibling))
 
 	managed[0] = 1
 	var set ranges.Set
 	require.True(t, ranges.AdoptCanonical(&set, ranges.DefaultLimit, []ranges.Range{{Length: 16, SourceID: 2}}, 16).Valid)
 	next, ok := owner.PublishBytesMutation(root, managed, &set)
-	require.True(t, ok, "publishing the base lazily reclaims its old-generation slot")
-	require.True(t, owner.Derive(sibling, next), "publishing the sibling lazily reclaims its stale slot")
-	require.Equal(t, int32(2), owner.Values())
-
-	key, ok := BytesKey(managed)
 	require.True(t, ok)
-	require.False(t, owner.Derive(Key{}, next))
-	require.False(t, owner.Derive(key, RootRef{ID: MaxRootsPerOwner, Generation: next.Generation}))
-	require.False(t, owner.Derive(Key{Pointer: ^uintptr(0), Length: 2, Kind: KindBytes}, next))
-	require.False(t, owner.Derive(key, root))
+	require.Equal(t, []ranges.Range{{Length: 4, SourceID: 2}}, lookupRanges(t, store, sibling))
+	_, ok = owner.PublishBytesMutation(root, managed, &set)
+	require.False(t, ok, "a stale reference cannot claim the root")
+	require.Equal(t, []ranges.Range{{Length: 4, SourceID: 2}}, lookupRanges(t, store, sibling))
 	owner.Finish()
 
 	_, _, _, ok = owner.TaintSourceString("value", "name", 1)
 	require.False(t, ok)
 	_, ok = owner.AdoptBytes(managed, &set)
 	require.False(t, ok)
-	require.False(t, owner.Derive(key, next))
+	_, ok = owner.PublishBytesMutation(next, managed, &set)
+	require.False(t, ok)
+	require.Nil(t, lookupRanges(t, store, sibling))
+	requireIndexEmpty(t, store)
 }
 
 func TestOversizedStringAdmissionDoesNotReserveRoot(t *testing.T) {

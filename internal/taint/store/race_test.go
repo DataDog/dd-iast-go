@@ -16,7 +16,7 @@ import (
 func TestConcurrentReadersWritersAndFinish(t *testing.T) {
 	store := New()
 	owner := store.Acquire()
-	managed, root, ok := owner.TaintString("0123456789abcdefghijklmnopqrstuvwxyz", 0)
+	managed, _, ok := owner.TaintString("0123456789abcdefghijklmnopqrstuvwxyz", 0)
 	require.True(t, ok)
 	key, _ := StringKey(managed)
 
@@ -31,7 +31,9 @@ func TestConcurrentReadersWritersAndFinish(t *testing.T) {
 				begin := (offset + i) % (len(managed) - 2)
 				subKey, valid := StringKey(managed[begin : begin+2])
 				if valid {
-					owner.Derive(subKey, root)
+					var snapshot Snapshot
+					store.Lookup(subKey, &snapshot)
+					owner.TaintString(managed[begin:begin+2], 1)
 				}
 			}
 		}(worker)
@@ -51,7 +53,7 @@ func TestConcurrentReadersWritersAndFinish(t *testing.T) {
 	owner.Finish()
 	wait.Wait()
 	require.Zero(t, store.ProcessCharged())
-	require.Zero(t, store.ProcessValues())
+	requireIndexEmpty(t, store)
 }
 
 func TestLookupRacesMutationAndFinish(t *testing.T) {
@@ -82,5 +84,5 @@ func TestLookupRacesMutationAndFinish(t *testing.T) {
 	}()
 	wait.Wait()
 	owner.Finish()
-	require.Zero(t, store.ProcessValues())
+	requireIndexEmpty(t, store)
 }

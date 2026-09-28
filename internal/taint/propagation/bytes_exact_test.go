@@ -400,5 +400,6 @@ func TestByteExactOpsFinishRaceIsSafe(t *testing.T) {
 	}()
 	wait.Wait()
 	<-finished
-	require.Zero(t, s.ProcessValues())
+	require.Zero(t, s.IndexedRoots().Load())
+	require.Zero(t, s.Stats().FilterSum)
 }

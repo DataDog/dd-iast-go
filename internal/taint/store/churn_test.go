@@ -32,10 +32,9 @@ func TestMillionOperationChurn(t *testing.T) {
 		}
 		owner.Finish()
 	}
-	require.Zero(t, store.ProcessValues())
+	requireIndexEmpty(t, store)
 	require.Zero(t, store.ProcessCharged())
 	stats := store.Stats()
 	require.Equal(t, uint16(OverflowBlocks), stats.OverflowFree)
-	require.LessOrEqual(t, stats.MaxTombstones, uint16(SlotsPerShard))
-	require.LessOrEqual(t, stats.MaxProbe, uint8(ProbeLimit))
+	require.Less(t, stats.MaxProbe, uint8(IndexBucketProbe))
 }

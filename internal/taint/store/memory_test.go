@@ -21,21 +21,21 @@ func TestManySubstringsChargeOneManagedRoot(t *testing.T) {
 	var before runtime.MemStats
 	runtime.ReadMemStats(&before)
 
-	managed, root, ok := owner.TaintString(original, 0)
+	managed, _, ok := owner.TaintString(original, 0)
 	require.True(t, ok)
 	original = ""
-	for i := 0; i < MaxValuesPerRoot-1; i++ {
-		start := i % (len(managed) - 2)
+	for i := 0; i < 255; i++ {
+		start := i * 251 % (len(managed) - 2)
 		key, valid := StringKey(managed[start : start+2])
 		require.True(t, valid)
-		require.Truef(t, owner.Derive(key, root), "substring %d", i)
+		require.NotNilf(t, lookupRanges(t, store, key), "substring %d", i)
 	}
 	runtime.GC()
 	var after runtime.MemStats
 	runtime.ReadMemStats(&after)
 
 	require.Equal(t, int64(MaxRootBytes), owner.Charged())
-	require.Equal(t, int32(MaxValuesPerRoot), owner.Values())
+	require.Equal(t, int32(1), store.IndexedRoots().Load())
 	if after.HeapAlloc > before.HeapAlloc {
 		require.Less(t, after.HeapAlloc-before.HeapAlloc, uint64(256<<10), "substrings must not retain one parent per value")
 	}
@@ -47,19 +47,28 @@ func TestManySubstringsChargeOneManagedRoot(t *testing.T) {
 func TestProbeBoundDropsCollisionOverflow(t *testing.T) {
 	store := New()
 	owner := store.Acquire()
-	forceCollision.Store(true)
-	t.Cleanup(func() { forceCollision.Store(false) })
-	values := make([]string, ProbeLimit+1)
+	forceIndexCollision.Store(true)
+	t.Cleanup(func() { forceIndexCollision.Store(false) })
+	const window = IndexBucketProbe * IndexBucketSize
+	values := make([]string, window+1)
+	managed := make([]string, 0, window)
 	for i := range values {
-		values[i] = strings.Clone(strings.Repeat(string(rune('a'+i%20)), 2) + string(rune(i+100)))
-		_, _, ok := owner.TaintString(values[i], 0)
-		if i < ProbeLimit {
+		// Values of 16 bytes use one tier S granule each.
+		values[i] = strings.Repeat(string(rune('a'+i%20)), 15) + string(rune(i+40))
+		value, _, ok := owner.TaintString(values[i], 0)
+		if i < window {
 			require.Truef(t, ok, "value %d", i)
+			managed = append(managed, value)
 		} else {
 			require.False(t, ok)
 		}
 	}
-	require.Equal(t, int32(ProbeLimit), owner.Values())
+	require.Equal(t, int32(window), store.IndexedRoots().Load())
+	require.Equal(t, uint64(1), owner.Counters().IndexFull)
+	for _, value := range managed {
+		key, _ := StringKey(value)
+		require.NotNil(t, lookupRanges(t, store, key))
+	}
 	owner.Finish()
-	require.Zero(t, store.ProcessValues())
+	requireIndexEmpty(t, store)
 }

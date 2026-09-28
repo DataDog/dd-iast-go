@@ -32,7 +32,6 @@ func TestExactNativeTransformsPreserveRangesAndMarks(t *testing.T) {
 	}, lookupRanges(s, repeated))
 
 	window := input[1:3]
-	propagation.StringWindow(input, window)
 	require.Equal(t, []ranges.Range{{Start: 1, Length: 1, SourceID: 5, Marks: 0x6}}, lookupRanges(s, window))
 	joinedNative := strings.Join([]string{input}, "")
 	require.True(t, unsafe.StringData(joinedNative) == unsafe.StringData(input))
@@ -56,18 +55,18 @@ func TestExactNativeTransformsPreserveRangesAndMarks(t *testing.T) {
 	require.Equal(t, []ranges.Range{{Start: 1, Length: 2, SourceID: 8, Marks: 0xa}}, lookupRanges(s, converted))
 }
 
-func TestWindowFanoutClipsRangesAndDropsExcessSafely(t *testing.T) {
+func TestInteriorWindowsClipRangesWithNoWindowLimit(t *testing.T) {
 	s, _ := beginScope(t)
 	owner := acquireOwner(t, s)
 	input, _ := taintBytes(t, owner, []byte(strings.Repeat("abcd|", 34)+"abcd"), []ranges.Range{
 		{Start: 2, Length: 5, SourceID: 2, Marks: 0xc}, {Start: 160, Length: 4, SourceID: 4, Marks: 0x4},
 	})
 	outputs := bytes.Split(input, []byte("|"))
-	propagation.ByteWindows(input, outputs)
 	require.Equal(t, []ranges.Range{{Start: 2, Length: 2, SourceID: 2, Marks: 0xc}}, lookupByteRanges(s, outputs[0]))
 	require.Equal(t, []ranges.Range{{Length: 2, SourceID: 2, Marks: 0xc}}, lookupByteRanges(s, outputs[1]))
 	require.Empty(t, lookupByteRanges(s, outputs[2]))
-	require.Nil(t, lookupByteRanges(s, outputs[32]))
+	// The interior index has no window limit: the 33rd window is found.
+	require.Equal(t, []ranges.Range{{Length: 4, SourceID: 4, Marks: 0x4}}, lookupByteRanges(s, outputs[32]))
 }
 
 func TestCoarseOperationsIntersectSecureMarksPerOwner(t *testing.T) {
@@ -162,14 +161,10 @@ func TestSplitEmptyAndSingleByteWindowsPreserveProvenance(t *testing.T) {
 	owner := acquireOwner(t, s)
 	text, _ := taintString(t, owner, ",a", []ranges.Range{{Length: 2, SourceID: 51}})
 	textParts := strings.Split(text, ",")
-	propagation.StringWindows(text, textParts)
-	propagation.StringWindow(text, textParts[1])
 	require.Nil(t, lookupRanges(s, textParts[0]))
 	require.Equal(t, []ranges.Range{{Length: 1, SourceID: 51}}, lookupRanges(s, textParts[1]))
 	data, _ := taintBytes(t, owner, []byte(",a"), []ranges.Range{{Length: 2, SourceID: 52}})
 	parts := bytes.Split(data, []byte(","))
-	propagation.ByteWindows(data, parts)
-	propagation.ByteWindow(data, parts[1])
 	require.Nil(t, lookupByteRanges(s, parts[0]))
 	require.Equal(t, []ranges.Range{{Length: 1, SourceID: 52}}, lookupByteRanges(s, parts[1]))
 }

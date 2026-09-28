@@ -21,7 +21,7 @@ func TestLookupBusyLocksClearSnapshotAndRecover(t *testing.T) {
 	require.True(t, ok)
 	key, ok := StringKey(value)
 	require.True(t, ok)
-	shard := &store.shards[shardIndex(keyHash(key))]
+	shard, _ := store.shardOf(indexHash(granuleKey(key.Pointer, false)))
 	for index, test := range []struct {
 		name string
 		lock sync.Locker

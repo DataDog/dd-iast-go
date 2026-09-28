@@ -42,9 +42,6 @@ func TestPathEngineNoActiveStoreEntryPoints(t *testing.T) {
 	require.False(t, propagated)
 	require.True(t, unsafe.StringData(decoded) == unsafe.StringData(decodedNative))
 
-	byteWindows := [][]byte{byteInput[:1], byteInput[1:]}
-	propagation.ByteWindows(byteInput, byteWindows)
-
 	object := &struct{ value int }{value: 1}
 	before := store.WriterView{Pointer: 1, Length: 2, Capacity: 8}
 	after := store.WriterView{Pointer: 1, Length: 4, Capacity: 8}
@@ -124,7 +121,6 @@ func TestPathActiveUntaintedInputsRemainUnpublished(t *testing.T) {
 
 	cleanString := strings.Clone("clean-input")
 	stringWindow := cleanString[1:5]
-	propagation.StringWindow(cleanString, stringWindow)
 	require.Nil(t, lookupRanges(s, stringWindow))
 
 	casedNative := strings.ToUpper(cleanString)
@@ -134,7 +130,6 @@ func TestPathActiveUntaintedInputsRemainUnpublished(t *testing.T) {
 
 	cleanBytes := bytes.Clone([]byte("clean-input"))
 	byteWindows := [][]byte{cleanBytes[:3], cleanBytes[3:]}
-	propagation.ByteWindows(cleanBytes, byteWindows)
 	require.Nil(t, lookupByteRanges(s, byteWindows[0]))
 
 	byteCopyNative := bytes.Clone(cleanBytes)

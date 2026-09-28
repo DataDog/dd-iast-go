@@ -348,7 +348,7 @@ func mapValidUTF8Segments(input []byte) ([2*maxReplaceMatches + 1]replaceSegment
 }
 
 // CaseBytes propagates a Unicode case transform on bytes. An aliasing unchanged
-// result derives exact input ranges. ASCII inputs with unchanged byte length
+// result keeps exact input ranges through the interior index. ASCII inputs with unchanged byte length
 // keep exact positions. Other changed results use coarse ranges. The audited
 // caller must prove that a non-alias result starts at its allocation base and
 // that its capacity describes the complete retained allocation. CaseBytes adopts
@@ -376,7 +376,7 @@ func caseBytesHit(s *store.Store, key store.Key, input, result []byte) []byte {
 	}
 	recordExecuted()
 	if bytesAlias(input, result) {
-		deriveBytesWindow(result, &snapshot, s)
+		// The interior index finds a window of a live root with no extra work.
 		return result
 	}
 	exact := len(input) == len(result) && asciiBytes(input)

@@ -58,7 +58,7 @@ func ManageForm(ctx context.Context, form, postForm map[string][]string) (map[st
 
 // ManageParameter manages a lazily returned form/query parameter value.
 func ManageParameter(ctx context.Context, name, value string) string {
-	if len(value) < 2 || IsTaintedString(value) {
+	if len(value) < 2 || isManagedString(value) {
 		return value
 	}
 	analysis, ok := FromContext(ctx).Analysis()
@@ -75,7 +75,7 @@ func ManageParameter(ctx context.Context, name, value string) string {
 // ManageMultipartParameter manages a value returned from a multipart value
 // part when map-level management was dropped.
 func ManageMultipartParameter(ctx context.Context, name, value string) string {
-	if len(value) < 2 || IsTaintedString(value) {
+	if len(value) < 2 || isManagedString(value) {
 		return value
 	}
 	analysis, ok := FromContext(ctx).Analysis()
@@ -91,7 +91,7 @@ func ManageMultipartParameter(ctx context.Context, name, value string) string {
 
 // ManagePathParameter manages a value returned by Request.PathValue.
 func ManagePathParameter(ctx context.Context, name, value string) string {
-	if len(value) < 2 || IsTaintedString(value) {
+	if len(value) < 2 || isManagedString(value) {
 		return value
 	}
 	analysis, ok := FromContext(ctx).Analysis()
@@ -148,12 +148,12 @@ func ManageCookie(ctx context.Context, name, value *string) {
 		return
 	}
 	originalName := *name
-	if len(*value) >= 2 && !IsTaintedString(*value) {
+	if len(*value) >= 2 && !isManagedString(*value) {
 		if managed, ok := analysis.ManageString(constants.OriginHttpRequestCookieValue, originalName, *value); ok {
 			*value = managed
 		}
 	}
-	if len(originalName) >= 2 && !IsTaintedString(originalName) {
+	if len(originalName) >= 2 && !isManagedString(originalName) {
 		if managed, ok := analysis.ManageString(constants.OriginHttpRequestCookieName, originalName, originalName); ok {
 			*name = managed
 		}

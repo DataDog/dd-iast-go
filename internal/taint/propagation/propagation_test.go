@@ -106,15 +106,32 @@ func TestPropagationTelemetry(t *testing.T) {
 
 	result := propagation.CoarseString("prefix:"+input, input)
 	require.NotEmpty(t, lookupRanges(s, result))
-	outputs := make([]string, 33)
-	for index := range outputs {
-		outputs[index] = input[:2]
+	elements := make([]string, 17)
+	for index := range elements {
+		elements[index] = input
 	}
-	propagation.StringWindows(input, outputs)
+	joined := propagation.JoinString(elements, ",", strings.Join(elements, ","))
+	require.NotEmpty(t, lookupRanges(s, joined))
 
 	require.Equal(t, uint64(2), telemetry.ExecutedPropagation.Load())
-	require.Equal(t, uint64(1), telemetry.CoarsenedPropagation.Load())
+	require.Equal(t, uint64(2), telemetry.CoarsenedPropagation.Load())
 	require.Equal(t, uint64(1), telemetry.DroppedPropagation.Load())
+}
+
+// lookupRangesCount returns the number of ranges of the first contribution for
+// value in the process store, with no allocation.
+func lookupRangesCount(value string) int {
+	s := request.ActiveStore()
+	key, ok := store.StringKey(value)
+	if s == nil || !ok || !s.MayContain(key) {
+		return 0
+	}
+	var snapshot store.Snapshot
+	if !s.Lookup(key, &snapshot) || snapshot.Len() == 0 {
+		return 0
+	}
+	entry, _ := snapshot.At(0)
+	return entry.Ranges.Len()
 }
 
 func lookupByteRanges(s *store.Store, value []byte) []ranges.Range {
@@ -247,7 +264,9 @@ func TestNoActiveStoreIsNoOpAndAllocationFree(t *testing.T) {
 	require.Zero(t, allocs)
 
 	allocs = testing.AllocsPerRun(100, func() {
-		propagation.StringWindows(input, []string{input[:3], input[3:]})
+		if lookupRangesCount(input[:3]) != 0 {
+			panic("window is tainted with no active store")
+		}
 	})
 	require.Zero(t, allocs)
 
@@ -268,9 +287,10 @@ func TestUntaintedPathIsAllocationFree(t *testing.T) {
 	})
 	require.Zero(t, allocs)
 
-	windows := []string{untainted[:2], untainted[2:]}
 	allocs = testing.AllocsPerRun(100, func() {
-		propagation.StringWindows(untainted, windows)
+		if lookupRangesCount(untainted[:2]) != 0 {
+			panic("clean window is tainted")
+		}
 	})
 	require.Zero(t, allocs)
 	require.Nil(t, lookupRanges(s, untainted[:2]))
@@ -339,21 +359,16 @@ func TestPropagationGuardAndRejectionPaths(t *testing.T) {
 
 	clean := strings.Clone("clean-value")
 	require.Equal(t, clean, propagation.AdoptStringCopy("clean-value", clean))
-	propagation.StringWindow(managed, "")
 	require.Nil(t, lookupRanges(s, ""))
+	require.Equal(t, []ranges.Range{{Length: 4, SourceID: 4}}, lookupRanges(s, managed[:4]), "a window of a root is found")
 	nonAliasWindow := strings.Clone(managed[:4])
-	propagation.StringWindow(managed, nonAliasWindow)
 	require.Nil(t, lookupRanges(s, nonAliasWindow))
-	cleanWindow := "clean"
-	propagation.StringWindow("clean-value", cleanWindow)
-	require.Nil(t, lookupRanges(s, cleanWindow))
-	propagation.ByteWindow(managedBytes, nil)
+	require.Nil(t, lookupRanges(s, clean[:5]))
 	require.Nil(t, lookupByteRanges(s, nil))
+	require.Equal(t, []ranges.Range{{Length: 2, SourceID: 5}}, lookupByteRanges(s, managedBytes[:2]))
 	nonAliasByteWindow := append([]byte(nil), managedBytes[:2]...)
-	propagation.ByteWindow(managedBytes, nonAliasByteWindow)
 	require.Nil(t, lookupByteRanges(s, nonAliasByteWindow))
-	cleanByteWindow := []byte("cle")
-	propagation.ByteWindow([]byte("clean"), cleanByteWindow)
+	cleanByteWindow := []byte("clean")[:3]
 	require.Nil(t, lookupByteRanges(s, cleanByteWindow))
 
 	adopted := strings.Clone(managed)
@@ -439,31 +454,22 @@ func TestCopyBytesDerivesAliasAndAdoptsNonAlias(t *testing.T) {
 	require.Equal(t, []ranges.Range{{Length: uint32(len(fresh)), SourceID: 0}}, lookupByteRanges(s, fresh))
 }
 
-func TestStringWindowsPublishesAtMost32NonEmptyWindows(t *testing.T) {
+func TestEveryNonEmptyWindowIsFoundWithoutPublication(t *testing.T) {
 	s, _ := beginScope(t)
 	owner := acquireOwner(t, s)
 	input := strings.Repeat("0123456789", 4)
 	managed, _ := taintString(t, owner, input, []ranges.Range{{Length: 40, SourceID: 0}})
+	indexed := s.IndexedRoots().Load()
 
-	// Build 40 single-byte windows; only the first 32 non-empty ones publish.
-	windows := make([]string, 40)
-	for i := range windows {
-		windows[i] = managed[i : i+1]
+	// Every one-byte window is found, with no window limit.
+	for i := range 40 {
+		require.Equalf(t, []ranges.Range{{Length: 1, SourceID: 0}}, lookupRanges(s, managed[i:i+1]), "window %d", i)
 	}
-	propagation.StringWindows(managed, windows)
-	published := 0
-	for _, w := range windows {
-		if lookupRanges(s, w) != nil {
-			published++
-		}
-	}
-	require.Equal(t, 32, published, "exactly 32 windows must be published")
-	// The 33rd window must remain untainted.
-	require.Nil(t, lookupRanges(s, windows[32]))
+	require.Equal(t, indexed, s.IndexedRoots().Load(), "a window uses no index state")
 
 	// Empty outputs remain untainted.
-	propagation.StringWindows(managed, []string{"", managed[0:0]})
 	require.Nil(t, lookupRanges(s, ""))
+	require.Nil(t, lookupRanges(s, managed[0:0]))
 }
 
 func TestPartialSlicedRangesPreservedAndSliced(t *testing.T) {
@@ -479,7 +485,6 @@ func TestPartialSlicedRangesPreservedAndSliced(t *testing.T) {
 
 	// A sliced window derives only the intersecting range, shifted to the window.
 	window := managed[3:6] // bytes 3,4,5; only byte 5 (window offset 2) is tainted.
-	propagation.StringWindows(managed, []string{window})
 	require.Equal(t, []ranges.Range{{Start: 2, Length: 1, SourceID: 1}}, lookupRanges(s, window))
 }
 
@@ -636,10 +641,9 @@ func TestOneByteWindowDerivesButOneByteRootIsRejected(t *testing.T) {
 	owner := acquireOwner(t, s)
 	managed, _ := taintString(t, owner, "ab", []ranges.Range{{Length: 2, SourceID: 0}})
 
-	// A one-byte non-empty window derives from the existing root.
+	// A one-byte non-empty window of the existing root is found.
 	one := managed[:1]
-	propagation.StringWindows(managed, []string{one})
-	require.Equal(t, []ranges.Range{{Length: 1, SourceID: 0}}, lookupRanges(s, one), "one-byte windows derive")
+	require.Equal(t, []ranges.Range{{Length: 1, SourceID: 0}}, lookupRanges(s, one), "one-byte windows are found")
 
 	// A one-byte non-alias result cannot create a root and stays untainted.
 	fresh := "x"
@@ -862,7 +866,7 @@ func TestPropagationFinishRaceIsSafe(t *testing.T) {
 			<-start
 			for i := 0; i < 200; i++ {
 				propagation.CopyString(managed, fresh)
-				propagation.StringWindows(managed, []string{managed[:3], managed[3:7]})
+				lookupRanges(s, managed[3:7])
 			}
 		}()
 	}
@@ -876,7 +880,8 @@ func TestPropagationFinishRaceIsSafe(t *testing.T) {
 	wait.Wait()
 	<-finished
 	// The store must remain usable and consistent.
-	require.Zero(t, s.ProcessValues())
+	require.Zero(t, s.IndexedRoots().Load())
+	require.Zero(t, s.Stats().FilterSum)
 }
 
 func equalBytes(a, b []byte) bool {

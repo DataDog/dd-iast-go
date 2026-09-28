@@ -31,7 +31,7 @@ func TestFinishDrainsActiveWriterAndReleasesRoots(t *testing.T) {
 	owner.owner.lifecycleMu.RUnlock()
 	<-done
 	require.Zero(t, store.ProcessCharged())
-	require.Zero(t, store.ProcessValues())
+	requireIndexEmpty(t, store)
 }
 
 func BenchmarkFinishWithActiveWriter(b *testing.B) {

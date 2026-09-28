@@ -28,10 +28,11 @@ func TestStaleOwnerPrivateHelperLinkage(t *testing.T) {
 	require.Equal(t, 1, snapshot.Len())
 
 	owner.Finish()
-	deriveStringWindow(managed[:5], &snapshot, s)
+	publishStringCopy(strings.Clone(managed[:5]), uint32(len(managed)), &snapshot, s)
 
 	require.Zero(t, s.ProcessCharged())
-	require.Zero(t, s.ProcessValues())
+	require.Zero(t, s.IndexedRoots().Load())
+	require.Zero(t, s.Stats().FilterSum)
 }
 
 func TestPublishHelpersDropStaleAndPreserveLiveOwner(t *testing.T) {
@@ -84,7 +85,6 @@ func TestPublishHelpersDropStaleAndPreserveLiveOwner(t *testing.T) {
 	require.NotEqual(t, staleID, reused.ID())
 
 	stringWindow := sharedString[1:5]
-	deriveStringWindow(stringWindow, &stringSnapshot, s)
 	requireSingleStringOwner(t, s, stringWindow, live.ID(), ranges.Range{Length: uint32(len(stringWindow)), SourceID: 2, Marks: 0x6})
 
 	stringCopy := strings.Clone(sharedString)
@@ -96,7 +96,6 @@ func TestPublishHelpersDropStaleAndPreserveLiveOwner(t *testing.T) {
 	requireSingleStringOwner(t, s, stringRepeat, live.ID(), ranges.Range{Length: uint32(len(stringRepeat)), SourceID: 2, Marks: 0x6})
 
 	byteWindow := sharedBytes[1:5]
-	deriveBytesWindow(byteWindow, &byteSnapshot, s)
 	requireSingleByteOwner(t, s, byteWindow, live.ID(), ranges.Range{Length: uint32(len(byteWindow)), SourceID: 4, Marks: 0x2})
 
 	byteCopy := bytes.Clone(sharedBytes)
@@ -112,13 +111,13 @@ func TestPublishHelpersDropStaleAndPreserveLiveOwner(t *testing.T) {
 	requireSingleStringOwner(t, s, coarse, live.ID(), ranges.Range{Length: uint32(len(coarse)), SourceID: 2, Marks: 0x6})
 
 	require.Zero(t, reused.Charged(), "a stale snapshot must not publish into the reused owner slot")
-	require.Zero(t, reused.Values())
 	require.Equal(t, live.Charged(), s.ProcessCharged(), "only live-owner anchors may remain charged")
-	require.Equal(t, live.Values(), s.ProcessValues(), "only live-owner values may remain published")
+	require.Equal(t, int32(7), s.IndexedRoots().Load(), "only live-owner roots may remain indexed")
 
 	live.Finish()
 	require.Zero(t, s.ProcessCharged())
-	require.Zero(t, s.ProcessValues())
+	require.Zero(t, s.IndexedRoots().Load())
+	require.Zero(t, s.Stats().FilterSum)
 }
 
 func lookupStringSnapshot(t *testing.T, s *store.Store, value string) store.Snapshot {

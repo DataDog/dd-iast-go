@@ -56,12 +56,47 @@ func IsTaintedBytes(value []byte) bool {
 
 func stopAfterFirst(ResolvedRange) bool { return false }
 
+// isManagedString reports whether value is the complete managed root of a
+// source of a live owner. A tainted window of another root (for example a query
+// value inside the raw query string) is not a managed source: the interior
+// index finds its taint, but it has the provenance of the other root.
+func isManagedString(value string) bool {
+	key, ok := store.StringKey(value)
+	if !ok {
+		return false
+	}
+	manager := processManager.Load()
+	if manager == nil || manager.used.Load() == 0 || !manager.store.MayContain(key) {
+		return false
+	}
+	return isManagedKeyHit(manager.store, key)
+}
+
+//go:noinline
+func isManagedKeyHit(s *store.Store, key store.Key) bool {
+	var snapshot store.Snapshot
+	if !s.Lookup(key, &snapshot) {
+		return false
+	}
+	for i := 0; i < snapshot.Len(); i++ {
+		if entry, ok := snapshot.At(i); ok && entry.WholeRoot {
+			return true
+		}
+	}
+	return false
+}
+
 func visitKey(key store.Key, visit func(ResolvedRange) bool) bool {
 	if visit == nil {
 		return false
 	}
 	manager := processManager.Load()
 	if manager == nil || manager.used.Load() == 0 || !manager.store.MayContain(key) {
+		return false
+	}
+	// A filter hit is frequent under a high index load. Confirm rejects most
+	// clean values with no range copy and no large Snapshot on the stack.
+	if manager.store.Confirm(key.Pointer, key.Length) == store.ConfirmClean {
 		return false
 	}
 	return visitKeyHit(manager, key, visit)

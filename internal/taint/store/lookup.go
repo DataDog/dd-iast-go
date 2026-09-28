@@ -9,22 +9,19 @@ import "github.com/DataDog/dd-iast-go/internal/taint/ranges"
 
 const MaxSnapshotOwners = 4
 
-type lookupWindow struct {
-	ownerIdx uint8
-	ownerGen uint64
-	rootID   uint16
-	rootGen  uint32
-	rootOff  uint32
-	length   uint32
-}
-
 // Entry is an immutable owner-separated lookup result.
 type Entry struct {
 	OwnerID    uint64
 	OwnerGen   uint64
 	OwnerIndex uint8
-	Root       RootRef
-	Ranges     ranges.Set
+	// Kind is the kind of the first adoption of the root. A lookup ignores
+	// Key.Kind: a string view of a bytes root reads the same bytes.
+	Kind Kind
+	// WholeRoot is true when the key starts at the root base and has the
+	// root span: the value is the complete root, not a window of it.
+	WholeRoot bool
+	Root      RootRef
+	Ranges    ranges.Set
 }
 
 // Handle revalidates this entry against s and returns a live owner by value.
@@ -75,124 +72,259 @@ func (s *Snapshot) reset() {
 	s.count = 0
 }
 
-// MayContain reports whether the fixed index contains a candidate for key. It
-// performs no owner or root validation; callers must use Lookup after a hit.
-// Contention is a safe miss.
+// MayContain reports whether a root can contain key. It reads only the two
+// filter counters of the granule of key.Pointer (tier S first, then tier L),
+// with no lock. A false result proves that no visible root contains key: every
+// visible root is indexed and counted in the filter. Callers must use Lookup
+// after a true result.
 func (s *Store) MayContain(key Key) bool {
 	if s == nil || !validKey(key) {
 		return false
 	}
-	hash := keyHash(key)
-	shard := &s.shards[shardIndex(hash)]
-	if !shard.mu.TryRLock() {
-		return false
-	}
-	defer shard.mu.RUnlock() // +checklocksforce: TryRLock.
-	start := initialSlot(hash)
-	for probe := 0; probe < ProbeLimit; probe++ {
-		slot := &shard.slots[(start+uint8(probe))%SlotsPerShard]
-		if slot.pointer == 0 {
-			return false
-		}
-		if slot.pointer == key.Pointer && slot.length == key.Length && slot.kind == key.Kind {
-			return true
-		}
-	}
-	return false
+	return s.filterHit(granuleKey(key.Pointer, false)) || s.filterHit(granuleKey(key.Pointer, true))
 }
 
-// Lookup copies complete live owner contributions into out. It never returns
-// live root storage. The boolean is false only when the shard read lock could
-// not be acquired; an acquired lookup with no match returns true and Len zero.
+// IndexProbes returns the number of index shards that a Lookup of key reads:
+// one for each tier whose filter counter is not zero. It is for telemetry and
+// benchmarks, not for the propagation hot path.
+func (s *Store) IndexProbes(key Key) int {
+	if s == nil || !validKey(key) {
+		return 0
+	}
+	probes := 0
+	if s.filterHit(granuleKey(key.Pointer, false)) {
+		probes++
+	}
+	if s.filterHit(granuleKey(key.Pointer, true)) {
+		probes++
+	}
+	return probes
+}
+
+// Lookup copies complete live owner contributions for the value key into out:
+// for each owner, the ranges of its root that contains key, sliced to the
+// window of key. It never returns live root storage. The boolean is false only
+// when an index shard read lock could not be acquired and no contribution was
+// found; an acquired lookup with no match returns true and Len zero.
 func (s *Store) Lookup(key Key, out *Snapshot) bool {
 	if s == nil || out == nil || !validKey(key) {
 		return false
 	}
 	out.reset()
-	hash := keyHash(key)
-	shard := &s.shards[shardIndex(hash)]
-	if !shard.mu.TryRLock() {
-		return false
+	var candidates [maxProbeRefs]candidate
+	count, acquired := s.probeBoth(key.Pointer, key.Length, &candidates)
+	if !acquired {
+		s.drops.contention.Add(1)
 	}
-	var windows [MaxSnapshotOwners]lookupWindow
-	windowCount := 0
-	start := initialSlot(hash)
-	for probe := 0; probe < ProbeLimit; probe++ {
-		slot := &shard.slots[(start+uint8(probe))%SlotsPerShard]
-		if slot.pointer == 0 {
-			break
-		}
-		if slot.pointer == tombstone || slot.pointer != key.Pointer || slot.length != key.Length || slot.kind != key.Kind {
-			continue
-		}
-		if windowCount >= len(windows) {
-			if slot.ownerIdx < MaxOwners {
-				s.owners[slot.ownerIdx].drops.fanout.Add(1)
-			}
-			continue
-		}
-		windows[windowCount] = lookupWindow{
-			ownerIdx: slot.ownerIdx, ownerGen: slot.ownerGen, rootID: slot.rootID,
-			rootGen: slot.rootGen, rootOff: slot.rootOff, length: slot.length,
-		}
-		windowCount++
+	for i := 0; i < count; i++ {
+		s.lookupCandidate(key, candidates[i], out)
 	}
-	shard.mu.RUnlock() // +checklocksforce: TryRLock.
+	return acquired || out.count > 0
+}
 
-	for i := 0; i < windowCount; i++ {
-		window := windows[i]
-		if window.ownerIdx >= MaxOwners {
-			continue
+// lookupCandidate validates one copied ref (plan section 5.2.3) and appends
+// its window ranges to out. It keeps one contribution for each owner.
+func (s *Store) lookupCandidate(key Key, c candidate, out *Snapshot) {
+	ref := c.ref
+	if ref.ownerIdx >= MaxOwners || ref.rootID >= MaxRootsPerOwner {
+		return
+	}
+	owner := &s.owners[ref.ownerIdx]
+	for i := 0; i < int(out.count); i++ {
+		if out.entries[i].OwnerIndex == ref.ownerIdx {
+			owner.drops.dupOwner.Add(1)
+			return
 		}
-		owner := &s.owners[window.ownerIdx]
-		if !owner.lifecycleMu.TryRLock() {
-			owner.drops.contention.Add(1)
-			continue
+	}
+	if out.count >= MaxSnapshotOwners {
+		owner.drops.fanout.Add(1)
+		return
+	}
+	if !owner.lifecycleMu.TryRLock() {
+		owner.drops.contention.Add(1)
+		return
+	}
+	ownerGen := owner.generation.Load()
+	if uint32(ownerGen) != ref.ownerGen || ownerState(owner.state.Load()) != stateActive {
+		owner.lifecycleMu.RUnlock() // +checklocksforce: TryRLock.
+		return
+	}
+	if !owner.rootsMu.TryRLock() {
+		owner.drops.contention.Add(1)
+		owner.lifecycleMu.RUnlock() // +checklocksforce: TryRLock.
+		return
+	}
+	var window ranges.Set
+	root := &owner.roots[ref.rootID]
+	generation, valid := s.sliceRootLocked(root, c.base, key.Pointer, key.Length, &window)
+	whole := key.Pointer == root.base && key.Length == root.span
+	ownerID := owner.id.Load()
+	owner.rootsMu.RUnlock()     // +checklocksforce: TryRLock.
+	owner.lifecycleMu.RUnlock() // +checklocksforce: TryRLock.
+	if !valid || window.Len() == 0 {
+		return
+	}
+	entry := &out.entries[out.count]
+	entry.OwnerID = ownerID
+	entry.OwnerGen = ownerGen
+	entry.OwnerIndex = ref.ownerIdx
+	entry.Kind = ref.kind
+	entry.WholeRoot = whole
+	entry.Root = RootRef{ID: ref.rootID, Generation: generation}
+	entry.Ranges = window
+	out.count++
+}
+
+// validRootLocked checks that root is indexed, has the entry base, contains
+// [p, p+n), and has valid ranges now. The caller holds rootsMu for reading.
+func validRootLocked(root *rootRecord, base, p uintptr, n uint32) (uint32, uint32, bool) {
+	if !root.indexed || root.base != base {
+		return 0, 0, false
+	}
+	offset, inside := inWindow(p, n, base, root.span)
+	if !inside {
+		return 0, 0, false
+	}
+	generation := root.generation.Load()
+	if generation == 0 || root.setGen != generation || root.count == 0 {
+		return 0, 0, false
+	}
+	runHook(hookValidate, 0)
+	return offset, generation, true
+}
+
+// rootRangesLocked copies the stored ranges of root into dst. The caller holds
+// rootsMu.
+func (s *Store) rootRangesLocked(root *rootRecord, dst *[MaxRanges]ranges.Range) int {
+	count := int(root.count)
+	inlineCount := min(count, GuaranteedRanges)
+	copy(dst[:inlineCount], root.inline[:inlineCount])
+	if count > GuaranteedRanges {
+		if root.overflow == 0 {
+			return GuaranteedRanges
 		}
-		if owner.generation.Load() != window.ownerGen || ownerState(owner.state.Load()) != stateActive || window.rootID >= MaxRootsPerOwner {
-			owner.lifecycleMu.RUnlock() // +checklocksforce: TryRLock. // +checklocksforce: TryRLock.
-			continue
+		copy(dst[GuaranteedRanges:count], s.overflow[root.overflow-1].ranges[:count-GuaranteedRanges])
+	}
+	return count
+}
+
+// sliceRootLocked writes the ranges of root in the window [p, p+n) to dst.
+// The caller holds rootsMu for reading.
+func (s *Store) sliceRootLocked(root *rootRecord, base, p uintptr, n uint32, dst *ranges.Set) (uint32, bool) {
+	offset, generation, valid := validRootLocked(root, base, p, n)
+	if !valid {
+		return 0, false
+	}
+	var compact [MaxRanges]ranges.Range
+	count := s.rootRangesLocked(root, &compact)
+	var canonical ranges.Set
+	if !ranges.AdoptCanonical(&canonical, root.limit, compact[:count], root.span).Valid {
+		return 0, false
+	}
+	if !ranges.Slice(dst, root.limit, &canonical, root.span, offset, offset+n).Valid {
+		return 0, false
+	}
+	return generation, root.generation.Load() == generation && root.setGen == generation
+}
+
+// ConfirmResult is the result of Store.Confirm.
+type ConfirmResult uint8
+
+const (
+	// ConfirmClean: no live root contains the value, or no range of the root
+	// overlaps the value window.
+	ConfirmClean ConfirmResult = iota
+	// ConfirmTainted: a live root contains the value and one of its ranges
+	// overlaps the value window.
+	ConfirmTainted
+	// ConfirmUnknown: a TryRLock failed. A caller must treat the value as
+	// tainted when a false "clean" answer can lose taint.
+	ConfirmUnknown
+)
+
+// Confirm reports whether the value [p, p+n) is tainted (plan section 3.2.1).
+// It runs the interior probe and the validation of Lookup, then scans the root
+// ranges for an overlap with the value window. It does not allocate, does not
+// copy ranges, and never waits for a lock. It takes the data pointer as a
+// uintptr, so it cannot keep the value live.
+func (s *Store) Confirm(p uintptr, n uint32) ConfirmResult {
+	if s == nil || p == 0 || n == 0 {
+		return ConfirmClean
+	}
+	var candidates [maxProbeRefs]candidate
+	count, acquired := s.probeBoth(p, n, &candidates)
+	result := ConfirmClean
+	if !acquired {
+		s.drops.preContention.Add(1)
+		result = ConfirmUnknown
+	}
+	for i := 0; i < count; i++ {
+		switch s.confirmCandidate(p, n, candidates[i]) {
+		case ConfirmTainted:
+			return ConfirmTainted
+		case ConfirmUnknown:
+			result = ConfirmUnknown
 		}
-		if !owner.rootsMu.TryRLock() {
-			owner.drops.contention.Add(1)
-			owner.lifecycleMu.RUnlock() // +checklocksforce: TryRLock. // +checklocksforce: TryRLock.
-			continue
+	}
+	return result
+}
+
+func (s *Store) confirmCandidate(p uintptr, n uint32, c candidate) ConfirmResult {
+	ref := c.ref
+	if ref.ownerIdx >= MaxOwners || ref.rootID >= MaxRootsPerOwner {
+		return ConfirmClean
+	}
+	owner := &s.owners[ref.ownerIdx]
+	if !owner.lifecycleMu.TryRLock() {
+		owner.drops.preContention.Add(1)
+		return ConfirmUnknown
+	}
+	if uint32(owner.generation.Load()) != ref.ownerGen || ownerState(owner.state.Load()) != stateActive {
+		owner.lifecycleMu.RUnlock() // +checklocksforce: TryRLock.
+		return ConfirmClean
+	}
+	if !owner.rootsMu.TryRLock() {
+		owner.drops.preContention.Add(1)
+		owner.lifecycleMu.RUnlock() // +checklocksforce: TryRLock.
+		return ConfirmUnknown
+	}
+	result := ConfirmClean
+	root := &owner.roots[ref.rootID]
+	if offset, generation, valid := validRootLocked(root, c.base, p, n); valid {
+		if s.overlapLocked(root, offset, offset+n) {
+			result = ConfirmTainted
 		}
-		root := &owner.roots[window.rootID]
-		if root.generation.Load() != window.rootGen || root.setGen != window.rootGen || root.count == 0 {
-			owner.rootsMu.RUnlock()     // +checklocksforce: TryRLock. // +checklocksforce: TryRLock.
-			owner.lifecycleMu.RUnlock() // +checklocksforce: TryRLock. // +checklocksforce: TryRLock.
-			continue
+		if root.generation.Load() != generation {
+			// A mutation claimed the root during the scan. Its new ranges
+			// are not published yet.
+			result = ConfirmUnknown
 		}
-		var compact [MaxRanges]ranges.Range
-		count := int(root.count)
-		inlineCount := min(count, GuaranteedRanges)
-		copy(compact[:inlineCount], root.inline[:inlineCount])
-		if count > GuaranteedRanges {
-			if root.overflow == 0 {
-				count = GuaranteedRanges
-			} else {
-				copy(compact[GuaranteedRanges:count], s.overflow[root.overflow-1].ranges[:count-GuaranteedRanges])
+	}
+	owner.rootsMu.RUnlock()     // +checklocksforce: TryRLock.
+	owner.lifecycleMu.RUnlock() // +checklocksforce: TryRLock.
+	return result
+}
+
+// overlapLocked reports whether a stored range of root overlaps [low, high).
+// The caller holds rootsMu for reading.
+func (s *Store) overlapLocked(root *rootRecord, low, high uint32) bool {
+	count := int(root.count)
+	for i := 0; i < min(count, GuaranteedRanges); i++ {
+		if rangeOverlaps(root.inline[i], low, high) {
+			return true
+		}
+	}
+	if count > GuaranteedRanges && root.overflow != 0 {
+		block := &s.overflow[root.overflow-1]
+		for i := 0; i < count-GuaranteedRanges; i++ {
+			if rangeOverlaps(block.ranges[i], low, high) {
+				return true
 			}
 		}
-		var canonical ranges.Set
-		adopted := ranges.AdoptCanonical(&canonical, root.limit, compact[:count], root.span)
-		var windowSet ranges.Set
-		end := uint64(window.rootOff) + uint64(window.length)
-		valid := adopted.Valid && end <= uint64(root.span) && ranges.Slice(&windowSet, root.limit, &canonical, root.span, window.rootOff, uint32(end)).Valid && root.generation.Load() == window.rootGen && root.setGen == window.rootGen
-		ownerID := owner.id.Load()
-		owner.rootsMu.RUnlock()     // +checklocksforce: TryRLock.
-		owner.lifecycleMu.RUnlock() // +checklocksforce: TryRLock.
-		if !valid || out.count >= MaxSnapshotOwners {
-			continue
-		}
-		entry := &out.entries[out.count]
-		entry.OwnerID = ownerID
-		entry.OwnerGen = window.ownerGen
-		entry.OwnerIndex = window.ownerIdx
-		entry.Root = RootRef{ID: window.rootID, Generation: window.rootGen}
-		entry.Ranges = windowSet
-		out.count++
 	}
-	return true
+	return false
+}
+
+func rangeOverlaps(r ranges.Range, low, high uint32) bool {
+	return r.Length != 0 && r.Start < high && uint64(r.Start)+uint64(r.Length) > uint64(low)
 }

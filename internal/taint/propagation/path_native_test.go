@@ -14,7 +14,6 @@ import (
 
 	"github.com/DataDog/dd-iast-go/internal/taint/propagation"
 	"github.com/DataDog/dd-iast-go/internal/taint/ranges"
-	"github.com/DataDog/dd-iast-go/internal/taint/store"
 	"github.com/stretchr/testify/require"
 )
 
@@ -23,7 +22,6 @@ func TestPathOneBytePropagationResultsAreRejected(t *testing.T) {
 	owner := acquireOwner(t, s)
 	managed, _ := taintString(t, owner, "ab", []ranges.Range{{Length: 2, SourceID: 1}})
 	window := managed[:1]
-	propagation.StringWindow(managed, window)
 	require.Equal(t, []ranges.Range{{Length: 1, SourceID: 1}}, lookupRanges(s, window))
 	charged := owner.Charged()
 
@@ -111,7 +109,7 @@ func TestPathReplaceStringEmptyPatternBeyondExactBudget(t *testing.T) {
 	require.Equal(t, []ranges.Range{{Length: uint32(len(result)), SourceID: 5, Marks: 0xc}}, lookupRanges(s, result))
 }
 
-func TestPathSparseWindowListsStopAtInputBound(t *testing.T) {
+func TestPathSparseWindowsAreFoundWithoutIndexState(t *testing.T) {
 	t.Run("string", func(t *testing.T) {
 		s, _ := beginScope(t)
 		owner := acquireOwner(t, s)
@@ -123,12 +121,12 @@ func TestPathSparseWindowListsStopAtInputBound(t *testing.T) {
 			}
 		}
 		charged := owner.Charged()
+		indexed := s.IndexedRoots().Load()
 
-		propagation.StringWindows(input, outputs)
-
-		require.Equal(t, []ranges.Range{{Length: 1, SourceID: 6}}, lookupRanges(s, outputs[30]))
-		require.Nil(t, lookupRanges(s, outputs[32]), "the first output beyond the inspected index bound must not publish")
-		require.Equal(t, int32(17), owner.Values(), "one root plus sixteen sparse windows")
+		for index := 0; index < len(outputs); index += 2 {
+			require.Equalf(t, []ranges.Range{{Length: 1, SourceID: 6}}, lookupRanges(s, outputs[index]), "window %d", index)
+		}
+		require.Equal(t, indexed, s.IndexedRoots().Load(), "one root, sixteen and more windows found by interior lookup")
 		require.Equal(t, charged, owner.Charged(), "windows retain the existing root without a new charge")
 	})
 
@@ -143,12 +141,12 @@ func TestPathSparseWindowListsStopAtInputBound(t *testing.T) {
 			}
 		}
 		charged := owner.Charged()
+		indexed := s.IndexedRoots().Load()
 
-		propagation.ByteWindows(input, outputs)
-
-		require.Equal(t, []ranges.Range{{Length: 1, SourceID: 7}}, lookupByteRanges(s, outputs[30]))
-		require.Nil(t, lookupByteRanges(s, outputs[32]), "the first output beyond the inspected index bound must not publish")
-		require.Equal(t, int32(17), owner.Values(), "one root plus sixteen sparse windows")
+		for index := 0; index < len(outputs); index += 2 {
+			require.Equalf(t, []ranges.Range{{Length: 1, SourceID: 7}}, lookupByteRanges(s, outputs[index]), "window %d", index)
+		}
+		require.Equal(t, indexed, s.IndexedRoots().Load(), "one root, sixteen and more windows found by interior lookup")
 		require.Equal(t, charged, owner.Charged(), "windows retain the existing root without a new charge")
 	})
 }
@@ -157,21 +155,15 @@ func TestPathCleanDerivedWindowsDoNotPublish(t *testing.T) {
 	s, _ := beginScope(t)
 	owner := acquireOwner(t, s)
 
-	stringRoot, stringRef := taintString(t, owner, "xx-clean", []ranges.Range{{Length: 2, SourceID: 8, Marks: 0xe}})
+	stringRoot, _ := taintString(t, owner, "xx-clean", []ranges.Range{{Length: 2, SourceID: 8, Marks: 0xe}})
 	cleanString := stringRoot[3:]
-	stringKey, ok := store.StringKey(cleanString)
-	require.True(t, ok)
-	require.True(t, owner.Derive(stringKey, stringRef))
-	require.NotNil(t, lookupRanges(s, cleanString))
-	require.Empty(t, lookupRanges(s, cleanString))
+	// A clean window of a sparse root is a miss: Lookup skips an empty range
+	// set.
+	require.Nil(t, lookupRanges(s, cleanString))
 
-	byteRoot, byteRef := taintBytes(t, owner, []byte("xx-clean"), []ranges.Range{{Length: 2, SourceID: 9, Marks: 0xe}})
+	byteRoot, _ := taintBytes(t, owner, []byte("xx-clean"), []ranges.Range{{Length: 2, SourceID: 9, Marks: 0xe}})
 	cleanBytes := byteRoot[3:]
-	byteKey, ok := store.BytesKey(cleanBytes)
-	require.True(t, ok)
-	require.True(t, owner.Derive(byteKey, byteRef))
-	require.NotNil(t, lookupByteRanges(s, cleanBytes))
-	require.Empty(t, lookupByteRanges(s, cleanBytes))
+	require.Nil(t, lookupByteRanges(s, cleanBytes))
 	charged := owner.Charged()
 
 	joinedStringNative := strings.Join([]string{cleanString, "suffix"}, "-")

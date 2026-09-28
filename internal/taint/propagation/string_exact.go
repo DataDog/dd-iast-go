@@ -35,7 +35,8 @@ func JoinString(elements []string, separator, result string) string {
 			candidate = element
 		}
 		if candidate != "" && stringAlias(candidate, result) {
-			StringWindow(candidate, result)
+			// The result is a window of the only non-empty element. The
+			// interior index finds it with no extra work.
 			return result
 		}
 	}
@@ -115,7 +116,7 @@ func ReplaceString(input, old, replacement, result string, count int) string {
 		return result
 	}
 	if stringAlias(input, result) {
-		StringWindow(input, result)
+		// The interior index finds a window of a live root with no extra work.
 		return result
 	}
 	s := request.ActiveStore()

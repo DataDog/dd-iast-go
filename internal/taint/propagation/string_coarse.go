@@ -15,7 +15,7 @@ import (
 )
 
 // CaseString propagates a Unicode case transform. An aliasing unchanged result
-// derives exact input ranges. ASCII inputs with unchanged byte length keep exact
+// keeps exact input ranges through the interior index. ASCII inputs with unchanged byte length keep exact
 // positions. Other changed results use coarse ranges on an exact-length clone.
 func CaseString(input, result string) string {
 	if len(result) == 0 || len(result) > store.MaxRootBytes {
@@ -40,7 +40,7 @@ func caseStringHit(s *store.Store, key store.Key, input, result string) string {
 	}
 	recordExecuted()
 	if stringAlias(input, result) {
-		deriveStringWindow(result, &snapshot, s)
+		// The interior index finds a window of a live root with no extra work.
 		return result
 	}
 	if len(result) < 2 {

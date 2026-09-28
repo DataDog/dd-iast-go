@@ -27,16 +27,26 @@ Many of the functionality provided by this module relies on taint tracking:
 
 Category | Supported operations
 ---|---
-String windows | `Cut*`, `Split*`, `Fields*`, `Trim*`, `Lines`, and their sequence variants
+String windows | Every substring of a tracked value, with no instrumentation (for example the results of `Cut*`, `Split*`, `Fields*`, `Trim*`, `Lines`, and their sequence variants)
 String copies and transforms | Maximal `+` chains of 2–16 operands; string slicing; allocation-preserving `[]byte`-to-`string` assignments, declarations, and returns; `Clone`, `Join`, `Repeat`, `Replace*`, case conversion, `Map`, and `ToValidUTF8`
 Formatting and encoding | `fmt.Sprint*`, `net/url` escape and unescape functions, and `strconv` quote and unquote functions
-Byte windows | Two- and three-index `[]byte` slicing; `Cut*`, `Split*`, `Fields*`, and `Trim*`
+Byte windows | Every subslice of a tracked value, with no instrumentation (for example two- and three-index `[]byte` slicing, `Cut*`, `Split*`, `Fields*`, and `Trim*`)
 Byte copies and transforms | `Clone`, `Join`, `Repeat`, `Replace*`, case conversion, `Map`, and `ToValidUTF8`
 Stateful writers | Direct `strings.Builder` and `bytes.Buffer` writes, `Grow`, `Reset`, `Truncate`, and `String`; exact current `bytes.Buffer` value copies
 JSON decoding | Go 1.26 `json.Unmarshal` and `json.Decoder.Decode` string values in nested structs, arrays, slices, and typed map values, including named string types and `,string` fields
 
+Migration note: the exported window wrappers of `iast/propagation`
+(`StringsCut`, `StringsSplit*`, `StringsFields*`, `StringsTrim*`,
+`StringsLines`, `BytesCut`, `BytesSplit*`, `BytesFields*`, `BytesTrim*`, and
+the other wrappers that only returned a window of their input) are removed. A
+direct caller must call the standard-library function on the tracked value
+(for example `strings.Cut` in place of `propagation.StringsCut`). The taint
+store finds the provenance of the returned windows with no wrapper.
+
 Propagation instrumentation applies to direct calls in the application root.
-Calls through function or method values do not propagate input taint. Native
+Calls through function or method values do not propagate input taint, except
+for string and byte windows: the taint store finds the root of a window from
+its data pointer. Native
 `bytes.Buffer` hooks still invalidate tracked state for indirect mutations and
 mutable exposure. `Bytes`, `AvailableBuffer`, and `Peek` results remain
 untainted; accessing them invalidates tracked overlapping buffer views.

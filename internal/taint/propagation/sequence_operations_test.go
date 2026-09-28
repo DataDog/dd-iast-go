@@ -69,10 +69,8 @@ func sequenceWindow(tb testing.TB, cursor *sequenceCursor, input sequenceValue) 
 	}
 	if input.kind == sequenceString {
 		result.text = input.text[low:high]
-		propagation.StringWindow(input.text, result.text)
 	} else {
 		result.data = input.data[low:high]
-		propagation.ByteWindow(input.data, result.data)
 	}
 	result.normalizeAlias()
 	return result

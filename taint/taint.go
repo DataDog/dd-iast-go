@@ -117,8 +117,8 @@ type Range struct {
 // TaintString returns a managed replacement tainted across its complete byte
 // length. It returns value unchanged when analysis is inactive, the value or
 // source name exceeds 64 KiB, the value is shorter than two bytes, storage is
-// full, or bounded synchronization is contended. Derived substrings need a
-// propagation operation before identity lookup can recognize them.
+// full, or bounded synchronization is contended. Every substring of the
+// returned value is also tainted, with its part of the ranges.
 func TaintString[T ~string](ctx context.Context, source Source, value T) T {
 	scope := request.FromContext(ctx)
 	analysis, ok := scope.Analysis()
@@ -136,9 +136,9 @@ func TaintString[T ~string](ctx context.Context, source Source, value T) T {
 // capacity. Source metadata is copied separately and cannot change when the
 // returned bytes are mutated. It returns value unchanged under the same drop
 // conditions as TaintString and when the slice capacity exceeds 64 KiB, because
-// capacity is the retained and charged span. Reslicing or appending needs a
-// propagation or mutation operation before the changed window can be
-// recognized.
+// capacity is the retained and charged span. Every subslice of the returned
+// value in its capacity is also tainted, with its part of the ranges. Writes
+// into the value need a tracked mutation before the ranges change.
 func TaintBytes[T ~[]byte](ctx context.Context, source Source, value T) T {
 	scope := request.FromContext(ctx)
 	analysis, ok := scope.Analysis()

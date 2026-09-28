@@ -7,6 +7,7 @@ package store
 
 import (
 	"strings"
+	"unsafe"
 
 	"github.com/DataDog/dd-iast-go/internal/config"
 	"github.com/DataDog/dd-iast-go/internal/taint/ranges"
@@ -48,8 +49,8 @@ func (o *Owner) TaintString(value string, source ranges.SourceID) (string, RootR
 		o.rollbackRoot(rootID, charge)
 		return value, RootRef{}, false
 	}
-	generation, ok := o.publishRoot(rootID, key.Pointer, uint32(len(clone)), charge, clone, nil, &set)
-	if !ok || !o.putWindow(key, rootID, generation) {
+	generation, ok := o.publishRoot(rootID, key.Pointer, uint32(len(clone)), charge, clone, nil, &set, KindString)
+	if !ok || !o.indexRoot(rootID, generation, key.Pointer, uint32(len(clone)), KindString) {
 		o.rollbackRoot(rootID, charge)
 		return value, RootRef{}, false
 	}
@@ -89,8 +90,8 @@ func (o *Owner) TaintSourceString(value, name string, source ranges.SourceID) (m
 		o.rollbackRoot(rootID, charge)
 		return value, "", RootRef{}, false
 	}
-	generation, published := o.publishRoot(rootID, key.Pointer, uint32(len(managed)), charge, managed, nil, &set)
-	if !published || !o.putWindow(key, rootID, generation) {
+	generation, published := o.publishRoot(rootID, key.Pointer, uint32(len(managed)), charge, managed, nil, &set, KindString)
+	if !published || !o.indexRoot(rootID, generation, key.Pointer, uint32(len(managed)), KindString) {
 		o.rollbackRoot(rootID, charge)
 		return value, "", RootRef{}, false
 	}
@@ -129,8 +130,8 @@ func (o *Owner) TaintBytes(value []byte, source ranges.SourceID) ([]byte, RootRe
 		o.rollbackRoot(rootID, charge)
 		return value, RootRef{}, false
 	}
-	generation, ok := o.publishRoot(rootID, key.Pointer, uint32(cap(clone)), charge, "", clone, &set)
-	if !ok || !o.putWindow(key, rootID, generation) {
+	generation, ok := o.publishRoot(rootID, key.Pointer, uint32(cap(clone)), charge, "", clone, &set, KindBytes)
+	if !ok || !o.indexRoot(rootID, generation, key.Pointer, uint32(cap(clone)), KindBytes) {
 		o.rollbackRoot(rootID, charge)
 		return value, RootRef{}, false
 	}
@@ -173,8 +174,8 @@ func (o *Owner) TaintSourceBytes(value []byte, name string, source ranges.Source
 		o.rollbackRoot(rootID, charge)
 		return value, "", "", RootRef{}, false
 	}
-	generation, published := o.publishRoot(rootID, key.Pointer, uint32(cap(managed)), charge, "", managed, &set)
-	if !published || !o.putWindow(key, rootID, generation) {
+	generation, published := o.publishRoot(rootID, key.Pointer, uint32(cap(managed)), charge, "", managed, &set, KindBytes)
+	if !published || !o.indexRoot(rootID, generation, key.Pointer, uint32(cap(managed)), KindBytes) {
 		o.rollbackRoot(rootID, charge)
 		return value, "", "", RootRef{}, false
 	}
@@ -186,7 +187,8 @@ func (o *Owner) TaintSourceBytes(value []byte, name string, source ranges.Source
 // capacity must describe the complete retained allocation. Later writes require
 // normal root-generation invalidation. The source table must retain managedName
 // and managedValue for exactly the root lifetime; both are included in the
-// charge.
+// charge. A second adoption of the same allocation by the same owner extends the
+// first root (plan section 5.2.2, "Extension") and returns its RootRef.
 func (o *Owner) AdoptSourceBytes(value []byte, name string, source ranges.SourceID) (managedName, managedValue string, ref RootRef, ok bool) {
 	if !o.beginWrite() {
 		return "", "", RootRef{}, false
@@ -201,24 +203,34 @@ func (o *Owner) AdoptSourceBytes(value []byte, name string, source ranges.Source
 		return "", "", RootRef{}, false
 	}
 	charge := sizeClass(cap(value)) + sizeClass(len(name)) + sizeClass(len(value))
+	key, valid := BytesKey(value)
+	if !valid {
+		return "", "", RootRef{}, false
+	}
+	var set ranges.Set
+	if !ranges.AdoptCanonical(&set, ranges.Limit(config.MaxRangeCount), []ranges.Range{{Length: uint32(len(value)), SourceID: source}}, uint32(cap(value))).Valid {
+		return "", "", RootRef{}, false
+	}
+	existing, found, known := o.ownRoot(key.Pointer)
+	if !known {
+		o.owner.drops.contention.Add(1)
+		return "", "", RootRef{}, false
+	}
+	if found {
+		ref, ok = o.extendRoot(existing, key.Pointer, uint32(cap(value)), charge, "", value, &set)
+		if !ok {
+			return "", "", RootRef{}, false
+		}
+		return strings.Clone(name), string(value), ref, true
+	}
 	rootID, reserved := o.reserveRootSlot(charge)
 	if !reserved {
 		return "", "", RootRef{}, false
 	}
 	managedName = strings.Clone(name)
 	managedValue = string(value)
-	key, valid := BytesKey(value)
-	if !valid {
-		o.rollbackRoot(rootID, charge)
-		return "", "", RootRef{}, false
-	}
-	var set ranges.Set
-	if !ranges.AdoptCanonical(&set, ranges.Limit(config.MaxRangeCount), []ranges.Range{{Length: uint32(len(value)), SourceID: source}}, uint32(cap(value))).Valid {
-		o.rollbackRoot(rootID, charge)
-		return "", "", RootRef{}, false
-	}
-	generation, published := o.publishRoot(rootID, key.Pointer, uint32(cap(value)), charge, "", value, &set)
-	if !published || !o.putWindow(key, rootID, generation) {
+	generation, published := o.publishRoot(rootID, key.Pointer, uint32(cap(value)), charge, "", value, &set, KindBytes)
+	if !published || !o.indexRoot(rootID, generation, key.Pointer, uint32(cap(value)), KindBytes) {
 		o.rollbackRoot(rootID, charge)
 		return "", "", RootRef{}, false
 	}
@@ -236,6 +248,22 @@ func (o *Owner) AdoptString(value string, set *ranges.Set) (RootRef, bool) {
 	return o.adopt(key, uint32(len(value)), sizeClass(len(value)), value, nil, set)
 }
 
+// AdoptStringAlloc adopts an audited complete string allocation whose size is
+// at most allocBound bytes (plan section 4.5). The span is len(value) and the
+// charge is sizeClass(allocBound). It refuses allocBound values above
+// MaxRootBytes or below len(value)+3.
+func (o *Owner) AdoptStringAlloc(value string, allocBound int, set *ranges.Set) (RootRef, bool) {
+	key, ok := StringKey(value)
+	if !ok || len(value) < 2 {
+		return RootRef{}, false
+	}
+	if allocBound > MaxRootBytes || allocBound < len(value)+3 {
+		o.RecordBytesDrop()
+		return RootRef{}, false
+	}
+	return o.adopt(key, uint32(len(value)), sizeClass(allocBound), value, nil, set)
+}
+
 // AdoptBytes adopts an audited complete allocation without cloning it. The
 // caller must prove that value starts at the allocation base; capacity is the
 // retained span and charged size.
@@ -247,6 +275,24 @@ func (o *Owner) AdoptBytes(value []byte, set *ranges.Set) (RootRef, bool) {
 	return o.adopt(key, uint32(cap(value)), sizeClass(cap(value)), "", value, set)
 }
 
+// AdoptRunes adopts an audited complete []rune allocation without cloning it
+// (plan section 4.5). The caller must prove that value starts at the
+// allocation base. The root uses the byte coordinates of the rune array: span
+// and charge are 4*cap(value) bytes, and set must be valid for that span.
+func (o *Owner) AdoptRunes(value []rune, set *ranges.Set) (RootRef, bool) {
+	key, ok := RunesKey(value)
+	if !ok {
+		return RootRef{}, false
+	}
+	if cap(value) > MaxRootBytes/4 {
+		o.RecordBytesDrop()
+		return RootRef{}, false
+	}
+	span := 4 * cap(value)
+	anchor := unsafe.Slice((*byte)(unsafe.Pointer(unsafe.SliceData(value))), span)
+	return o.adopt(key, uint32(span), sizeClass(span), "", anchor, set)
+}
+
 func (o *Owner) adopt(key Key, span uint32, charge int64, stringAnchor string, bytesAnchor []byte, set *ranges.Set) (RootRef, bool) {
 	if !o.beginWrite() {
 		return RootRef{}, false
@@ -256,26 +302,24 @@ func (o *Owner) adopt(key Key, span uint32, charge int64, stringAnchor string, b
 		o.owner.drops.ranges.Add(1)
 		return RootRef{}, false
 	}
+	existing, found, known := o.ownRoot(key.Pointer)
+	if !known {
+		o.owner.drops.contention.Add(1)
+		return RootRef{}, false
+	}
+	if found {
+		return o.extendRoot(existing, key.Pointer, span, charge, stringAnchor, bytesAnchor, set)
+	}
 	rootID, ok := o.reserveRootSlot(charge)
 	if !ok {
 		return RootRef{}, false
 	}
-	generation, ok := o.publishRoot(rootID, key.Pointer, span, charge, stringAnchor, bytesAnchor, set)
-	if !ok || !o.putWindow(key, rootID, generation) {
+	generation, ok := o.publishRoot(rootID, key.Pointer, span, charge, stringAnchor, bytesAnchor, set, key.Kind)
+	if !ok || !o.indexRoot(rootID, generation, key.Pointer, span, key.Kind) {
 		o.rollbackRoot(rootID, charge)
 		return RootRef{}, false
 	}
 	return RootRef{ID: rootID, Generation: generation}, true
-}
-
-// Derive records a managed substring or subslice window. key must be inside the
-// referenced root allocation.
-func (o *Owner) Derive(key Key, root RootRef) bool {
-	if !o.beginWrite() {
-		return false
-	}
-	defer o.endWrite()
-	return o.putWindow(key, root.ID, root.Generation)
 }
 
 func (o *Owner) reserveRootSlot(charge int64) (uint16, bool) {
@@ -320,7 +364,9 @@ func (o *Owner) reserveRootSlot(charge int64) (uint16, bool) {
 	return rootID, true
 }
 
-func (o *Owner) publishRoot(rootID uint16, base uintptr, span uint32, charge int64, stringAnchor string, bytesAnchor []byte, set *ranges.Set) (uint32, bool) {
+// publishRoot stores a new root with indexed == false. No lookup can see it
+// before indexRoot commits.
+func (o *Owner) publishRoot(rootID uint16, base uintptr, span uint32, charge int64, stringAnchor string, bytesAnchor []byte, set *ranges.Set, kind Kind) (uint32, bool) {
 	if !o.owner.rootsMu.TryLock() {
 		o.owner.drops.contention.Add(1)
 		return 0, false
@@ -335,7 +381,8 @@ func (o *Owner) publishRoot(rootID uint16, base uintptr, span uint32, charge int
 	root.bytesAnchor = bytesAnchor
 	root.base = base
 	root.span = span
-	root.valueQuota.Store(uint64(generation) << 32)
+	root.indexed = false
+	root.kind = kind
 	truncated := o.publishRangesLocked(root, set, generation)
 	if truncated {
 		o.owner.drops.ranges.Add(1)
@@ -345,12 +392,22 @@ func (o *Owner) publishRoot(rootID uint16, base uintptr, span uint32, charge int
 }
 
 func (o *Owner) publishRangesLocked(root *rootRecord, set *ranges.Set, generation uint32) bool {
+	truncated := o.storeRangesLocked(root, set)
+	root.setGen = generation
+	return truncated
+}
+
+// storeRangesLocked stores the ranges of set in root. It does not change the
+// root generation or setGen. The caller holds rootsMu and frees the earlier
+// overflow block of root.
+func (o *Owner) storeRangesLocked(root *rootRecord, set *ranges.Set) bool {
 	var all [MaxRanges]ranges.Range
 	count := set.CopyTo(all[:])
 	if count > MaxRanges {
 		count = MaxRanges
 	}
 	limit := set.Limit()
+	root.overflow = 0
 	if count > GuaranteedRanges {
 		block := o.store.allocateOverflow()
 		if block == 0 {
@@ -363,7 +420,6 @@ func (o *Owner) publishRangesLocked(root *rootRecord, set *ranges.Set, generatio
 	copy(root.inline[:], all[:min(count, GuaranteedRanges)])
 	root.count = uint8(count)
 	root.limit = limit
-	root.setGen = generation
 	return set.Len() > count
 }
 
@@ -386,8 +442,9 @@ func (o *Owner) rollbackRoot(rootID uint16, charge int64) {
 	root.overflow = 0
 	root.count = 0
 	root.limit = 0
+	root.indexed = false
+	root.kind = KindInvalid
 	clear(root.inline[:])
-	root.valueQuota.Store(0)
 	root.generation.Store(0)
 	o.owner.rootFree[o.owner.rootFreeN] = rootID
 	o.owner.rootFreeN++

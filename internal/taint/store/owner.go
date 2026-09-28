@@ -53,7 +53,6 @@ func (s *Store) Acquire() *Owner {
 		generation := record.generation.Add(1)
 		record.id.Store(s.nextOwnerID.Add(1))
 		record.charged.Store(0)
-		record.values.Store(0)
 		record.rootCount.Store(0)
 		resetDropCounters(&record.drops)
 		record.state.Store(uint32(stateActive))
@@ -98,15 +97,6 @@ func (o *Owner) Charged() int64 {
 		return 0
 	}
 	return o.owner.charged.Load()
-}
-
-// Values returns value slots charged to this owner's live root generations.
-// Superseded pointer-free slots are reclaimed lazily and are not counted.
-func (o *Owner) Values() int32 {
-	if o.Disabled() {
-		return 0
-	}
-	return o.owner.values.Load()
 }
 
 // RecordBytesDrop records one byte-root rejection for an active owner.
@@ -179,6 +169,12 @@ func (o *Owner) Finish() {
 	}
 
 	record.rootsMu.Lock()
+	// Remove the index refs of every indexed root before its anchors are
+	// cleared. The indexed-root counter changes after the refs are removed.
+	for i := range record.roots {
+		o.unindexRootLocked(&record.roots[i], uint16(i))
+	}
+	record.extending = false
 	o.store.overflowMu.Lock()
 	for i := range record.roots {
 		root := &record.roots[i]
@@ -196,8 +192,8 @@ func (o *Owner) Finish() {
 		root.overflow = 0
 		root.count = 0
 		root.limit = 0
+		root.kind = KindInvalid
 		clear(root.inline[:])
-		root.valueQuota.Store(0)
 		root.generation.Store(0)
 	}
 	o.store.overflowMu.Unlock()
@@ -205,12 +201,9 @@ func (o *Owner) Finish() {
 	record.rootFreeN = 0
 	record.rootCount.Store(0)
 	charged := record.charged.Swap(0)
-	values := record.values.Swap(0)
 	record.rootsMu.Unlock()
 
 	o.store.charged.Add(-charged)
-	o.store.values.Add(-values)
-	o.store.addOperatorValues(-values)
 	record.bindings.reset()
 	record.state.Store(uint32(stateDead))
 }
@@ -225,4 +218,8 @@ func resetDropCounters(c *dropCounters) {
 	c.disabled.Store(0)
 	c.oneByte.Store(0)
 	c.fanout.Store(0)
+	c.indexFull.Store(0)
+	c.preContention.Store(0)
+	c.preStale.Store(0)
+	c.dupOwner.Store(0)
 }

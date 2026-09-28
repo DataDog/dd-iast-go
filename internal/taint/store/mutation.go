@@ -7,21 +7,18 @@ package store
 
 import "github.com/DataDog/dd-iast-go/internal/taint/ranges"
 
-type preparedRanges struct {
-	inline    [GuaranteedRanges]ranges.Range
-	overflow  uint16
-	count     uint8
-	limit     ranges.Limit
-	truncated bool
-}
-
 // PublishBytesMutation publishes root-relative provenance after an in-place
-// byte mutation and records the result window. value must still start at the
-// managed root base and remain within its charged capacity.
+// byte mutation. value must still start at the managed root base and remain
+// within the root span. When cap(value) is smaller than the root span (an
+// extended root, plan section 5.2.3), the new ranges replace the ranges on
+// [0, cap(value)), and the ranges after cap(value) stay only when they were
+// valid just before the claim.
 //
 // After this method claims the current generation, publication failure leaves
 // that generation invalid because the application mutation has already
-// occurred. Returning false never restores stale pre-mutation provenance.
+// occurred. Returning false never restores stale pre-mutation provenance. A
+// mutation does not change the index: index refs store the root identity, not
+// its generation.
 func (o *Owner) PublishBytesMutation(ref RootRef, value []byte, set *ranges.Set) (RootRef, bool) {
 	if ref.ID >= MaxRootsPerOwner || !o.beginWrite() {
 		return RootRef{}, false
@@ -39,41 +36,64 @@ func (o *Owner) PublishBytesMutation(ref RootRef, value []byte, set *ranges.Set)
 		o.owner.drops.ranges.Add(1)
 		return RootRef{}, false
 	}
-	prepared := o.prepareRanges(set)
-	if !o.owner.rootsMu.TryLock() {
-		if prepared.overflow != 0 {
-			o.store.freeOverflow(prepared.overflow)
-		}
+	if runHook(hookMutationLock, 0) || !o.owner.rootsMu.TryLock() {
 		o.owner.drops.contention.Add(1)
 		return RootRef{}, false
 	}
 	root := &o.owner.roots[ref.ID]
-	if root.generation.Load() != generation || root.bytesAnchor == nil || root.base != key.Pointer || root.span != uint32(cap(value)) {
-		o.owner.rootsMu.Unlock() // +checklocksforce: TryLock. // +checklocksforce: TryLock.
-		if prepared.overflow != 0 {
-			o.store.freeOverflow(prepared.overflow)
-		}
+	if root.generation.Load() != generation || root.bytesAnchor == nil || root.base != key.Pointer || uint32(cap(value)) > root.span {
+		o.owner.rootsMu.Unlock() // +checklocksforce: TryLock.
 		return RootRef{}, false
+	}
+	published := *set
+	var dropped bool
+	if uint32(cap(value)) < root.span {
+		var outcome ranges.Outcome
+		outcome, dropped = o.mutationTailLocked(root, ref.Generation, set, uint32(cap(value)), &published)
+		if !outcome.Valid {
+			o.owner.rootsMu.Unlock() // +checklocksforce: TryLock.
+			o.owner.drops.ranges.Add(1)
+			return RootRef{}, false
+		}
+		dropped = dropped || outcome.Truncated
 	}
 	oldOverflow := root.overflow
-	root.bytesAnchor = value
-	root.overflow = prepared.overflow
-	root.count = prepared.count
-	root.limit = prepared.limit
-	root.inline = prepared.inline
-	root.setGen = generation
-	root.valueQuota.Store(uint64(generation) << 32)
-	o.owner.rootsMu.Unlock() // +checklocksforce: TryLock.
-	if oldOverflow != 0 {
-		o.store.freeOverflow(oldOverflow)
+	truncated := o.storeRangesLocked(root, &published)
+	if cap(value) >= cap(root.bytesAnchor) {
+		root.bytesAnchor = value
 	}
-	if prepared.truncated {
+	root.setGen = generation
+	o.owner.rootsMu.Unlock() // +checklocksforce: TryLock.
+	o.store.freeOverflow(oldOverflow)
+	if truncated || dropped {
 		o.owner.drops.ranges.Add(1)
 	}
-	if !o.putWindow(key, ref.ID, generation) {
-		return RootRef{}, false
-	}
 	return RootRef{ID: ref.ID, Generation: generation}, true
+}
+
+// mutationTailLocked builds the ranges of a mutation of an extended root: the
+// new ranges on [0, low), then the stored ranges on [low, root.span) when they
+// were valid just before the claim (setGen == claimed). It reports whether it
+// dropped the stored tail. The caller holds rootsMu.
+func (o *Owner) mutationTailLocked(root *rootRecord, claimed uint32, set *ranges.Set, low uint32, dst *ranges.Set) (ranges.Outcome, bool) {
+	limit := max(root.limit, set.Limit())
+	tailValid := root.setGen == claimed && !runHook(hookMutationTail, 0)
+	var all [2 * MaxRanges]ranges.Range
+	count := set.CopyTo(all[:MaxRanges])
+	dropped := false
+	if tailValid {
+		var stored [MaxRanges]ranges.Range
+		storedCount := o.store.rootRangesLocked(root, &stored)
+		var canonical, tail ranges.Set
+		if !ranges.AdoptCanonical(&canonical, root.limit, stored[:storedCount], root.span).Valid ||
+			!ranges.Clear(&tail, root.limit, &canonical, root.span, 0, low).Valid {
+			return ranges.Outcome{}, false
+		}
+		count += tail.CopyTo(all[count:])
+	} else if root.count != 0 {
+		dropped = true
+	}
+	return ranges.Canonicalize(dst, limit, all[:count], root.span), dropped
 }
 
 func (o *Owner) claimMutation(ref RootRef) (uint32, bool) {
@@ -88,30 +108,5 @@ func (o *Owner) claimMutation(ref RootRef) (uint32, bool) {
 	if !root.generation.CompareAndSwap(ref.Generation, next) {
 		return 0, false
 	}
-	previousQuota := root.valueQuota.Swap(uint64(next) << 32)
-	if uint32(previousQuota>>32) == ref.Generation {
-		count := int32(uint32(previousQuota))
-		o.owner.values.Add(-count)
-		o.store.values.Add(-count)
-		o.store.addOperatorValues(-count)
-	}
 	return next, true
-}
-
-func (o *Owner) prepareRanges(set *ranges.Set) preparedRanges {
-	var all [MaxRanges]ranges.Range
-	count := set.CopyTo(all[:])
-	prepared := preparedRanges{count: uint8(count), limit: set.Limit()}
-	copy(prepared.inline[:], all[:min(count, GuaranteedRanges)])
-	if count <= GuaranteedRanges {
-		return prepared
-	}
-	prepared.overflow = o.store.allocateOverflow()
-	if prepared.overflow == 0 {
-		prepared.count = GuaranteedRanges
-		prepared.truncated = true
-		return prepared
-	}
-	copy(o.store.overflow[prepared.overflow-1].ranges[:], all[GuaranteedRanges:count])
-	return prepared
 }

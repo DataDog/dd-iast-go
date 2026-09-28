@@ -23,7 +23,6 @@ func TestZeroOwnerAccessorsAndDrops(t *testing.T) {
 	require.Zero(t, index)
 	require.False(t, valid)
 	require.Zero(t, owner.Charged())
-	require.Zero(t, owner.Values())
 	require.Equal(t, Counters{}, owner.Counters())
 	owner.RecordBytesDrop()
 	owner.Finish()
@@ -147,16 +146,7 @@ func TestRootAPIDefensiveBoundaries(t *testing.T) {
 	require.Equal(t, uint64(1), counters.Contention)
 }
 
-func TestRootValueReleaseAndWriterIdentityDefenses(t *testing.T) {
-	var root rootRecord
-	root.valueQuota.Store(uint64(7)<<32 | 2)
-	releaseRootValue(&root, 6)
-	require.Equal(t, uint64(7)<<32|2, root.valueQuota.Load())
-	releaseRootValue(&root, 7)
-	require.Equal(t, uint64(7)<<32|1, root.valueQuota.Load())
-	releaseRootValue(&root, 7)
-	releaseRootValue(&root, 7)
-	require.Equal(t, uint64(7)<<32, root.valueQuota.Load())
+func TestWriterIdentityDefenses(t *testing.T) {
 	_, _, ok := (WriterRef{}).Identity()
 	require.False(t, ok)
 	store := New()
@@ -171,7 +161,7 @@ func TestRootValueReleaseAndWriterIdentityDefenses(t *testing.T) {
 	require.False(t, ok)
 }
 
-func TestOperatorValueMirror(t *testing.T) {
+func TestOperatorIndexedRootMirror(t *testing.T) {
 	store := New()
 	var active atomic.Int32
 	store.BindOperatorActive(&active)
@@ -186,9 +176,9 @@ func TestOperatorValueMirror(t *testing.T) {
 func TestProcessCounterAccessors(t *testing.T) {
 	store := New()
 	require.Zero(t, store.ProcessCharged())
-	require.Zero(t, store.ProcessValues())
+	requireIndexEmpty(t, store)
 	require.Zero(t, store.AcquireDrops())
-	require.Same(t, &store.values, store.ActiveValues())
+	require.Same(t, &store.indexedRoots, store.IndexedRoots())
 	owner := store.Acquire()
 	managed, _, ok := owner.TaintString("managed-value", 1)
 	require.True(t, ok)

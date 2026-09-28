@@ -46,7 +46,7 @@ func TestPathFinishedOwnerStaleSlotsAreDropped(t *testing.T) {
 
 	require.Zero(t, owner.Charged())
 	require.Zero(t, s.ProcessCharged())
-	require.Zero(t, s.ProcessValues())
+	require.Zero(t, s.IndexedRoots().Load())
 	for _, key := range staleKeys {
 		requireStaleSlot(t, s, key)
 	}
@@ -67,7 +67,6 @@ func TestPathFinishedOwnerStaleSlotsAreDropped(t *testing.T) {
 	require.True(t, unsafe.SliceData(copied) == unsafe.SliceData(copyNative))
 	require.Nil(t, lookupByteRanges(s, copied))
 
-	propagation.ByteWindows(staleBytes, [][]byte{byteWindow})
 	require.Nil(t, lookupByteRanges(s, byteWindow))
 
 	repeatedBytes := propagation.RepeatBytes(staleBytes, repeatBytesNative, 2)
@@ -84,12 +83,13 @@ func TestPathFinishedOwnerStaleSlotsAreDropped(t *testing.T) {
 	require.Nil(t, lookupRanges(s, decoded))
 
 	require.Zero(t, s.ProcessCharged(), "stale slots must not restore released anchors")
-	require.Zero(t, s.ProcessValues(), "stale slots must not publish new values")
+	require.Zero(t, s.IndexedRoots().Load(), "stale refs must not publish new roots")
+	require.Zero(t, s.Stats().FilterSum)
 }
 
 func requireStaleSlot(t *testing.T, s *store.Store, key store.Key) {
 	t.Helper()
-	require.True(t, s.MayContain(key), "finished-owner slot must remain visible to the cheap gate")
+	require.False(t, s.MayContain(key), "Finish removes every index ref, so the cheap gate is a miss")
 	var snapshot store.Snapshot
 	require.True(t, s.Lookup(key, &snapshot), "an uncontended lookup must succeed")
 	require.Zero(t, snapshot.Len(), "a finished owner must contribute zero live entries")

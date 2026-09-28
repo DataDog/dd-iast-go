@@ -31,8 +31,6 @@ import (
 )
 
 const (
-	// maxWindows bounds the number of non-empty window outputs published per call.
-	maxWindows = 32
 	// maxInputs bounds the number of inputs inspected by coarse operations.
 	maxInputs = 16
 )
@@ -65,45 +63,6 @@ func withinByteBounds(result []byte) bool {
 	return len(result) >= 2 && len(result) <= store.MaxRootBytes && cap(result) <= store.MaxRootBytes
 }
 
-// deriveStringWindows derives result into every live owner in snapshot. result
-// must already be a window of a live root; derivation records the window only.
-func deriveStringWindow(result string, snapshot *store.Snapshot, s *store.Store) {
-	key, ok := store.StringKey(result)
-	if !ok {
-		return
-	}
-	for i := 0; i < snapshot.Len(); i++ {
-		entry, ok := snapshot.At(i)
-		if !ok {
-			continue
-		}
-		owner, ok := entry.Handle(s)
-		if !ok {
-			continue
-		}
-		owner.Derive(key, entry.Root)
-	}
-}
-
-// deriveBytesWindow derives result into every live owner in snapshot.
-func deriveBytesWindow(result []byte, snapshot *store.Snapshot, s *store.Store) {
-	key, ok := store.BytesKey(result)
-	if !ok {
-		return
-	}
-	for i := 0; i < snapshot.Len(); i++ {
-		entry, ok := snapshot.At(i)
-		if !ok {
-			continue
-		}
-		owner, ok := entry.Handle(s)
-		if !ok {
-			continue
-		}
-		owner.Derive(key, entry.Root)
-	}
-}
-
 // AdoptStringCopy publishes an audited fresh exact-length string result without
 // cloning it again. The caller must prove that result starts at its allocation
 // base and retains exactly len(result) bytes.
@@ -133,8 +92,9 @@ func adoptStringCopyHit(s *store.Store, key store.Key, input, result string) {
 	publishStringCopy(result, uint32(len(input)), &snapshot, s)
 }
 
-// CopyString is the exact copy primitive for string operations. It derives when
-// result aliases a safe input window, and otherwise clones result once to exact
+// CopyString is the exact copy primitive for string operations. When result
+// aliases a safe input window, it does nothing more: the interior index finds
+// the window. Otherwise it clones result once to exact
 // length on a tainted path and adopts that same clone independently for every
 // contributing owner. It returns the managed clone when it clones, and result
 // otherwise.
@@ -161,7 +121,7 @@ func copyStringHit(s *store.Store, key store.Key, input, result string) string {
 	}
 	recordExecuted()
 	if stringAlias(input, result) {
-		deriveStringWindow(result, &snapshot, s)
+		// The interior index finds a window of a live root with no extra work.
 		return result
 	}
 	if len(result) < 2 {
@@ -192,71 +152,8 @@ func publishStringCopy(clone string, inputLen uint32, snapshot *store.Snapshot, 
 	}
 }
 
-// StringWindow derives one non-empty output window of input.
-func StringWindow(input, output string) {
-	s := request.ActiveStore()
-	if s == nil || len(output) == 0 || !stringAlias(input, output) {
-		return
-	}
-	key, ok := store.StringKey(input)
-	if !ok || !s.MayContain(key) {
-		return
-	}
-	stringWindowHit(s, key, output)
-}
-
-//go:noinline
-func stringWindowHit(s *store.Store, key store.Key, output string) {
-	var snapshot store.Snapshot
-	if s.Lookup(key, &snapshot) && snapshot.Len() > 0 {
-		recordExecuted()
-		deriveStringWindow(output, &snapshot, s)
-	}
-}
-
-// StringWindows derives at most maxWindows non-empty output windows of input
-// into every live owner. Outputs that do not alias input are skipped. Empty
-// outputs remain untainted.
-func StringWindows(input string, outputs []string) {
-	s := request.ActiveStore()
-	if s == nil {
-		return
-	}
-	key, ok := store.StringKey(input)
-	if !ok || !s.MayContain(key) {
-		return
-	}
-	stringWindowsHit(s, key, input, outputs)
-}
-
-//go:noinline
-func stringWindowsHit(s *store.Store, key store.Key, input string, outputs []string) {
-	var snapshot store.Snapshot
-	if !s.Lookup(key, &snapshot) || snapshot.Len() == 0 {
-		return
-	}
-	recordExecuted()
-	if len(outputs) > maxWindows {
-		recordDropped()
-	}
-	published := 0
-	for outputIndex, output := range outputs {
-		if outputIndex >= maxWindows {
-			break
-		}
-		if len(output) == 0 || !stringAlias(input, output) {
-			continue
-		}
-		deriveStringWindow(output, &snapshot, s)
-		published++
-		if published >= maxWindows {
-			break
-		}
-	}
-}
-
-// RepeatString is the exact repeat primitive. It derives when count is one and
-// result aliases input, and otherwise clones result once to exact length on a
+// RepeatString is the exact repeat primitive. When count is one, the result is
+// the input and it does nothing more. Otherwise it clones result once to exact length on a
 // tainted path (isolating static backing such as strings.Repeat fast paths) and
 // adopts that same clone for every owner using ranges.Repeat.
 func RepeatString(input, result string, count int) string {
@@ -282,10 +179,8 @@ func repeatStringHit(s *store.Store, key store.Key, input, result string, count 
 	}
 	recordExecuted()
 	if count == 1 {
-		if !stringAlias(input, result) {
-			return result
-		}
-		deriveStringWindow(result, &snapshot, s)
+		// A window of a live root needs no publication; other results are
+		// not changed.
 		return result
 	}
 	if len(result) < 2 {
@@ -318,7 +213,8 @@ func publishStringRepeat(clone string, inputLen uint32, count int, snapshot *sto
 }
 
 // CoarseString is the coarse string primitive. An output that aliases a
-// tainted input derives exact window ranges from that input. Other outputs
+// tainted input keeps its exact window ranges: the interior index finds them.
+// Other outputs
 // inspect at most maxInputs inputs and publish one whole-output range per owner
 // using ranges.Coarse semantics: the source is the first contributing range in
 // input order and marks are intersected across every contributing range. The
@@ -351,8 +247,8 @@ func coarseStringAlias(s *store.Store, result string, inputs []string) bool {
 		}
 		var snapshot store.Snapshot
 		if s.Lookup(key, &snapshot) && snapshot.Len() > 0 {
+			// The interior index finds the window with no extra work.
 			recordExecuted()
-			deriveStringWindow(result, &snapshot, s)
 			return true
 		}
 	}
@@ -420,8 +316,9 @@ func coarseStringHit(s *store.Store, result string, inputs []string) string {
 	return clone
 }
 
-// CopyBytes is the exact equal-length copy primitive for byte operations. It
-// derives when result aliases a safe input window. Otherwise, the audited
+// CopyBytes is the exact equal-length copy primitive for byte operations. When
+// result aliases a safe input window, the interior index finds it and CopyBytes
+// does nothing more. Otherwise, the audited
 // caller must prove that result starts at its allocation base and its capacity
 // describes the complete retained allocation. CopyBytes adopts that result as
 // is, with its visible capacity charged, and never replaces it.
@@ -448,7 +345,7 @@ func copyBytesHit(s *store.Store, key store.Key, input, result []byte) []byte {
 	}
 	recordExecuted()
 	if bytesAlias(input, result) {
-		deriveBytesWindow(result, &snapshot, s)
+		// The interior index finds a window of a live root with no extra work.
 		return result
 	}
 	if !withinByteBounds(result) {
@@ -476,70 +373,8 @@ func publishBytesCopy(result []byte, inputLen uint32, snapshot *store.Snapshot, 
 	}
 }
 
-// ByteWindow derives one non-empty output window of input.
-func ByteWindow(input, output []byte) {
-	s := request.ActiveStore()
-	if s == nil || len(output) == 0 || !bytesAlias(input, output) {
-		return
-	}
-	key, ok := store.BytesKey(input)
-	if !ok || !s.MayContain(key) {
-		return
-	}
-	byteWindowHit(s, key, output)
-}
-
-//go:noinline
-func byteWindowHit(s *store.Store, key store.Key, output []byte) {
-	var snapshot store.Snapshot
-	if s.Lookup(key, &snapshot) && snapshot.Len() > 0 {
-		recordExecuted()
-		deriveBytesWindow(output, &snapshot, s)
-	}
-}
-
-// ByteWindows derives at most maxWindows non-empty output windows of input
-// into every live owner. Outputs that do not alias input are skipped.
-func ByteWindows(input []byte, outputs [][]byte) {
-	s := request.ActiveStore()
-	if s == nil {
-		return
-	}
-	key, ok := store.BytesKey(input)
-	if !ok || !s.MayContain(key) {
-		return
-	}
-	byteWindowsHit(s, key, input, outputs)
-}
-
-//go:noinline
-func byteWindowsHit(s *store.Store, key store.Key, input []byte, outputs [][]byte) {
-	var snapshot store.Snapshot
-	if !s.Lookup(key, &snapshot) || snapshot.Len() == 0 {
-		return
-	}
-	recordExecuted()
-	if len(outputs) > maxWindows {
-		recordDropped()
-	}
-	published := 0
-	for outputIndex, output := range outputs {
-		if outputIndex >= maxWindows {
-			break
-		}
-		if len(output) == 0 || !bytesAlias(input, output) {
-			continue
-		}
-		deriveBytesWindow(output, &snapshot, s)
-		published++
-		if published >= maxWindows {
-			break
-		}
-	}
-}
-
-// RepeatBytes is the exact repeat primitive for byte operations. It derives when
-// count is one and result aliases input. Otherwise, its audited caller must
+// RepeatBytes is the exact repeat primitive for byte operations. When result
+// aliases input, the interior index finds it. Otherwise, its audited caller must
 // prove that result starts at its allocation base and its capacity describes
 // the complete retained allocation. RepeatBytes adopts that result as-is using
 // ranges.Repeat and never replaces it.
@@ -563,7 +398,7 @@ func repeatBytesHit(s *store.Store, key store.Key, input, result []byte, count i
 	}
 	recordExecuted()
 	if bytesAlias(input, result) {
-		deriveBytesWindow(result, &snapshot, s)
+		// The interior index finds a window of a live root with no extra work.
 		return result
 	}
 	if !withinByteBounds(result) {
@@ -626,12 +461,10 @@ func coarseBytesAlias(s *store.Store, result []byte, inputs [][]byte) bool {
 			continue
 		}
 		var snapshot store.Snapshot
-		if s.Lookup(key, &snapshot) && snapshot.Len() > 0 {
-			if !recorded {
-				recordExecuted()
-				recorded = true
-			}
-			deriveBytesWindow(result, &snapshot, s)
+		if s.Lookup(key, &snapshot) && snapshot.Len() > 0 && !recorded {
+			// The interior index finds the window with no extra work.
+			recordExecuted()
+			recorded = true
 		}
 	}
 	return aliased
@@ -733,3 +566,12 @@ func coarseAccumulate(o *coarseOwner, set *ranges.Set) {
 		}
 	}
 }
+
+// StringWindow does nothing. The interior index finds every window of a live
+// root, so a window needs no publication. It stays only for the AST slice
+// operator wrappers of iast/propagation/operators.go, which step 5 of the
+// runtime operator hooks plan deletes together with this function.
+func StringWindow(string, string) {}
+
+// ByteWindow does nothing. See StringWindow.
+func ByteWindow([]byte, []byte) {}

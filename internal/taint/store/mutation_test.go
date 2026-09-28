@@ -19,7 +19,7 @@ func TestByteMutationPublishesRootRangesAndInvalidatesSiblings(t *testing.T) {
 	require.True(t, ok)
 	sibling := managed[1:3]
 	siblingKey, _ := BytesKey(sibling)
-	require.True(t, owner.Derive(siblingKey, root))
+	require.Equal(t, []ranges.Range{{Length: 2, SourceID: 0}}, lookupRanges(t, store, siblingKey))
 
 	managed[1] = 'X'
 	var set ranges.Set
@@ -41,8 +41,8 @@ func TestByteMutationPublishesRootRangesAndInvalidatesSiblings(t *testing.T) {
 		{Start: 2, Length: 2, SourceID: 0},
 	}, rangeSlice(&entry.Ranges))
 
-	require.True(t, store.Lookup(siblingKey, &snapshot))
-	require.Zero(t, snapshot.Len(), "old-generation sibling windows must be invisible")
+	require.Equal(t, []ranges.Range{{Start: 1, Length: 1, SourceID: 0}}, lookupRanges(t, store, siblingKey),
+		"a sibling window reads the ranges of the current generation")
 	owner.Finish()
 }
 
@@ -51,7 +51,7 @@ func TestMutationQuotaResetsAcrossGenerations(t *testing.T) {
 	owner := store.Acquire()
 	managed, root, ok := owner.TaintBytes([]byte("abcd"), 0)
 	require.True(t, ok)
-	for i := 0; i < MaxValuesPerRoot+50; i++ {
+	for i := 0; i < 300; i++ {
 		managed[0]++
 		var set ranges.Set
 		require.True(t, ranges.AdoptCanonical(&set, 10, []ranges.Range{{Length: uint32(len(managed)), SourceID: 0}}, uint32(cap(managed))).Valid)
@@ -59,7 +59,7 @@ func TestMutationQuotaResetsAcrossGenerations(t *testing.T) {
 		require.Truef(t, ok, "mutation %d", i)
 	}
 	owner.Finish()
-	require.Zero(t, store.ProcessValues())
+	requireIndexEmpty(t, store)
 }
 
 func TestFailedMutationInvalidatesOldTaint(t *testing.T) {
