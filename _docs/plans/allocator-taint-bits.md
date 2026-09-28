@@ -16,8 +16,8 @@
   fixed in this version, appendix D). The critic listed these 2 fixes as the
   only remaining items.
 - **User review: done** (section 10). Phase 1 is approved.
-- **Phase 1 (production heap bits): in progress.** Steps 1 to 3 of
-  section 9 are done. Next: step 4.
+- **Phase 1 (production heap bits): in progress.** Steps 1 to 4 of
+  section 9 are done. Next: step 5.
 - Phases 2 to 4 (stack values, origins and marks, propagation): outline only
   (section 8). Each one gets its own plan after phase 1.
 
@@ -435,8 +435,9 @@ and in the budget).
 `[c, c+128KiB)` (aligned in the arena). Only if `b <= c` and
 `c+128KiB <= e` (the chunk is fully inside the dead object), the sweeper does
 not clear the 2048 words: it stores 0 in the slot, then sets the free bit of
-the chunk with one `atomic.Or64` on the descriptor (no loop on amd64 and on
-arm64 with LSE atomics; an LL/SC loop on older arm64). A chunk at the edge of
+the chunk with `atomic.Or64` on the descriptor (implementation: first a
+`dirty` bit, then the free bit; no loop on amd64 and on arm64 with LSE
+atomics, the only arm64 CPUs where the feature is on). A chunk at the edge of
 the object is partly cleared (words) and stays. No live object can use a
 chunk that is fully inside a dead object. A reader that still has the old slot
 value can only be a reader of the dead object, which the API does not permit
@@ -485,8 +486,8 @@ it). Its cost is bounded:
   1280 words): the pass reads at most these words, and only in chunks that
   exist;
 - a large object: at most 64 MiB (section 5.4), thus at most 2 directories
-  and 513 slots; for each whole chunk one slot store and one `Or64`
-  (recycling); plus at most 2 partial chunks at the ends (at most 4096 words);
+  and 513 slots; for each whole chunk one slot store, two `Or64` (dirty and
+  free bits) and a counter increment (recycling); plus at most 2 partial chunks at the ends (at most 4096 words);
 - the finalizer check walks the sorted `s.specials` list once with a cursor
   (the PoC restarts from the head for each dead object: O(objects x specials)).
 
@@ -778,10 +779,24 @@ in the `taint` package as the first check of every operation.
    - `OtherSys` also changes by other runtime metadata (for example a new
      256 KiB chunk of `persistentalloc`): the accounting tests use a margin
      of half a slab.
-4. Chunk recycling (the sweeper sets free bits), zeroing of recycled
-   chunks, largest taintable span (5.4), with the boundary and interleaving
-   tests (the slab descriptors and the refill-owner tests are in step 3):
-   **1.5 days**.
+4. **(Done.)** Chunk recycling (the sweeper sets free bits), zeroing of
+   recycled chunks, largest taintable span (5.4), with the boundary and
+   interleaving tests (the slab descriptors and the refill-owner tests are
+   in step 3): **1.5 days**. Notes:
+   - Each descriptor has a `dirty` mask next to `free`. The sweeper sets
+     the dirty bit, then the free bit (two `Or64`, no loop). The goroutine
+     that takes a chunk with its dirty bit zeroes it (only the words that
+     are not 0, with checkpoints), then clears the dirty bit, before it
+     publishes the chunk.
+   - The largest taintable span is a constant (64 MiB) in phase 1; it is
+     not configurable yet. A refused `Set` counts a `Span` drop.
+   - The sweep hook cannot pause, so the interleaving tests are a stress
+     test (`TestRecycleStress`: 6 goroutines taint and drop large objects
+     while the GC runs; a new object never has old taint, live objects keep
+     their taint, the counters stay consistent) and the deterministic child
+     tests (recycling, zeroing, live neighbour in an edge chunk, span limit).
+   - Tests that need an arena boundary use a 48 MiB object that crosses
+     one (the 64 MiB span limit refuses larger objects).
 5. Atomics, bounded flag reset, single-walk finalizer check (5.5), with the
    dead-neighbour and flag stress tests: **1 day**.
 6. `Next`, `NextClean`, `Copy` (CAS writes, overlap) and their tests:

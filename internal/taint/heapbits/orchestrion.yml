@@ -57,6 +57,7 @@ aspects:
               __dd_taint_slabBytes  = __dd_taint_slabChunks * __dd_taint_chunkBytes
               __dd_taint_maxSlabs   = 1024 // maximum budget: 1 GiB
               __dd_taint_dirSlots   = heapArenaBytes / __dd_taint_chunkHeap
+              __dd_taint_maxSpanBytes = 64 << 20 // largest taintable span
             )
 
             // A directory must fit in one chunk, and an arena must be a
@@ -68,8 +69,9 @@ aspects:
             type __dd_taintDir [__dd_taint_dirSlots]uintptr
 
             type __dd_taintSlab struct {
-              base uintptr
-              free uint64
+              base  uintptr
+              free  uint64 // 1 = free
+              dirty uint64 // 1 = recycled: must be zeroed before use
             }
 
             var (
@@ -79,10 +81,11 @@ aspects:
               __dd_taint_used   uintptr // mapped and reserved bytes
               __dd_taint_usedmax uintptr // high-water mark of __dd_taint_used
               __dd_taint_accounted uint64 // bytes charged to the runtime memory stats
+              __dd_taint_recycled uint64 // chunks given back by the sweeper
               __dd_taint_budget uintptr = 64 << 20
 
               // Drops (an operation that could not get storage), by reason.
-              __dd_taint_drops [5]uint64
+              __dd_taint_drops [6]uint64
             )
 
             const (
@@ -91,6 +94,7 @@ aspects:
               __dd_taint_dropContention = 2 // too many failed CAS on free masks
               __dd_taint_dropMmap       = 3 // the OS refused the memory
               __dd_taint_dropSlotBusy   = 4 // another goroutine fills the slot
+              __dd_taint_dropSpan       = 5 // the span is larger than 64 MiB
             )
 
             //go:nosplit
@@ -210,6 +214,25 @@ aspects:
               return 2 + uintptr(n)*__dd_taint_slabChunks
             }
 
+            // __dd_taint_zero zeroes the chunk of code, in batches of 512
+            // words with a checkpoint between them. It writes only the words
+            // that are not 0.
+            func __dd_taint_zero(code uintptr) {
+              a := __dd_taint_chunkaddr(code)
+              if a == 0 {
+                return
+              }
+              c := (*__dd_taintChunk)(unsafe.Pointer(a))
+              for w := 0; w < __dd_taint_chunkWords; w++ {
+                if w > 0 && w%512 == 0 {
+                  __dd_taint_checkpoint()
+                }
+                if c[w] != 0 {
+                  c[w] = 0
+                }
+              }
+            }
+
             // __dd_taint_scanfree takes a free chunk of the published slabs
             // and returns its code, or 0. fails counts the failed CAS; after
             // 4 of them, it gives up (-1 in *fails).
@@ -224,7 +247,14 @@ aspects:
                   }
                   bit := f & -f
                   if atomic.Cas64(&d.free, f, f&^bit) {
-                    return 2 + uintptr(si)*__dd_taint_slabChunks + uintptr(sys.TrailingZeros64(bit))
+                    code := 2 + uintptr(si)*__dd_taint_slabChunks + uintptr(sys.TrailingZeros64(bit))
+                    if atomic.Load64(&d.dirty)&bit != 0 {
+                      // A recycled chunk: zero it before use (the caller
+                      // owns it; it is not published yet).
+                      __dd_taint_zero(code)
+                      atomic.And64(&d.dirty, ^bit)
+                    }
+                    return code
                   }
                   if *fails++; *fails >= 4 {
                     *fails = -1
@@ -377,7 +407,7 @@ aspects:
             var _ bool = runtimeFreegcEnabled
             var _ bool = sizeSpecializedMallocEnabled
             var _ func(uintptr) bool = reusableSize
-            var _ = func(s *mspan, p uintptr) uintptr { return s.objIndex(p) + s.startAddr }
+            var _ = func(s *mspan, p uintptr) uintptr { return s.objIndex(p) + s.startAddr + s.npages*pageSize }
             var _ = func(gp *g) (bool, uintptr, uintptr, *m) { return gp.preempt, gp.stack.lo, gp.stack.hi, gp.m }
             var _ = func(mp *m) (*g, int32, int32, string) { return mp.curg, mp.locks, mp.mallocing, mp.preemptoff }
             var _ func() = Gosched
@@ -436,16 +466,56 @@ aspects:
               Gosched()
             }
 
+            // __dd_taint_recycle gives back the chunk of the chunk-aligned heap
+            // address p to its slab (the sweeper calls it for a chunk that is
+            // fully inside a dead object; no live object can use it). The
+            // chunk leaves the directory first, then its dirty bit and its
+            // free bit are set: the next owner zeroes it before use. It does
+            // not loop (Or64 is one instruction on amd64 and on arm64 with
+            // LSE atomics, the only arm64 CPUs where the feature is on).
+            //
+            //go:nowritebarrierrec
+            func __dd_taint_recycle(p uintptr) {
+              ha := __dd_taint_arena(p)
+              if ha == nil {
+                return
+              }
+              d := atomic.Loaduintptr(&ha.__dd_taint)
+              if d < 2 {
+                return
+              }
+              dir := (*__dd_taintDir)(unsafe.Pointer(d))
+              slot := &dir[((p-arenaBaseOffset)/__dd_taint_chunkHeap)%__dd_taint_dirSlots]
+              v := atomic.Loaduintptr(slot)
+              if v < 2 {
+                return
+              }
+              c := v - 2
+              si, ci := c/__dd_taint_slabChunks, c%__dd_taint_slabChunks
+              if si >= __dd_taint_maxSlabs {
+                return
+              }
+              atomic.Storeuintptr(slot, 0)
+              sd := &__dd_taint_slabs[si]
+              bit := uint64(1) << ci
+              atomic.Or64(&sd.dirty, bit)
+              atomic.Or64(&sd.free, bit)
+              atomic.Xadd64(&__dd_taint_recycled, 1)
+            }
+
             // __dd_taint_apply sets (set=true) or clears the bits of [p, p+n).
             // For set, all chunks must exist (see __dd_taint_prepare); for
             // clear, missing chunks are skipped, and a word is written only
-            // if it has a bit to clear (no new dirty pages). Partial words use
+            // if it has a bit to clear (no new dirty pages). With recycle
+            // true (sweep hook only, for dead memory), a chunk that is fully
+            // inside the range is given back to its slab in place of a clear
+            // of its 2048 words. Partial words use
             // atomic Or64/And64 because a neighbour object can share the
             // word. Full words belong to the range only, so a plain store is
             // enough. With yield true (worker use only), it calls
             // __dd_taint_checkpoint every 512 work units (one for each chunk
             // and for each word).
-            func __dd_taint_apply(p, n uintptr, set, yield bool) {
+            func __dd_taint_apply(p, n uintptr, set, yield, recycle bool) {
               end := p + n
               units := 0
               for p < end {
@@ -459,6 +529,12 @@ aspects:
                 cend := cbase + __dd_taint_chunkHeap
                 if cend > end || cend == 0 {
                   cend = end
+                }
+                if recycle && p == cbase && cend-cbase == __dd_taint_chunkHeap {
+                  // The chunk is fully inside dead memory: give it back.
+                  __dd_taint_recycle(p)
+                  p = cend
+                  continue
                 }
                 if c := __dd_taint_chunk(p); c != nil {
                   b0, b1 := p-cbase, cend-cbase
@@ -630,6 +706,12 @@ aspects:
               if s == nil || s.isUserArenaChunk {
                 return false
               }
+              // The largest taintable span (64 MiB) bounds the work of the
+              // sweep hook for one span (at most 513 chunk slots).
+              if s.npages > __dd_taint_maxSpanBytes/pageSize {
+                __dd_taint_drop(__dd_taint_dropSpan)
+                return false
+              }
               return __dd_taint_setworker(s, p, n)
             }
 
@@ -643,7 +725,7 @@ aspects:
               if !__dd_taint_prepare(p, n) {
                 return false
               }
-              __dd_taint_apply(p, n, true, true)
+              __dd_taint_apply(p, n, true, true, false)
               atomic.Store8(&s.__dd_taint, 1)
               return true
             }
@@ -673,7 +755,7 @@ aspects:
               if __dd_taint_testing {
                 __dd_taint_probeworker(p)
               }
-              __dd_taint_apply(p, n, false, true)
+              __dd_taint_apply(p, n, false, true, false)
             }
 
             // __dd_taint_clearslot clears the bits of the whole allocation
@@ -684,7 +766,7 @@ aspects:
                 return
               }
               obj := s.startAddr + s.objIndex(p)*s.elemsize
-              __dd_taint_apply(obj, s.elemsize, false, false)
+              __dd_taint_apply(obj, s.elemsize, false, false, false)
             }
 
             // __dd_taint_fastwords is the largest number of bitmap words that
@@ -872,7 +954,7 @@ aspects:
                 if !hasFin && i%8 == 0 && n-i >= 8 && (mb == 0xff || mb == 0) {
                   // 8 objects with the same state.
                   if mb == 0xff && dead {
-                    __dd_taint_apply(base+run*size, (i-run)*size, false, false)
+                    __dd_taint_apply(base+run*size, (i-run)*size, false, false, true)
                     dead = false
                   } else if mb == 0 && !dead {
                     run, dead = i, true
@@ -882,7 +964,7 @@ aspects:
                 }
                 if mb&(1<<(i%8)) != 0 || (hasFin && __dd_taint_hasfin(s, i*size, size)) {
                   if dead {
-                    __dd_taint_apply(base+run*size, (i-run)*size, false, false)
+                    __dd_taint_apply(base+run*size, (i-run)*size, false, false, true)
                     dead = false
                   }
                 } else if !dead {
@@ -891,7 +973,7 @@ aspects:
                 i++
               }
               if dead {
-                __dd_taint_apply(base+run*size, (n-run)*size, false, false)
+                __dd_taint_apply(base+run*size, (n-run)*size, false, false, true)
               }
               // Only live objects can still have taint: check them until one
               // has taint.
@@ -965,10 +1047,10 @@ aspects:
             // __dd_taint_stats returns: slabs, chunks in use, mapped bytes,
             // reserved-or-mapped bytes, budget, sweeps, the 5 drop counters
             // (budget, refill busy, contention, mmap, slot busy), the bytes
-            // charged to the memory stats, and the high-water mark of the
-            // budget counter.
-            func __dd_taint_stats() [13]uint64 {
-              var r [13]uint64
+            // charged to the memory stats, the high-water mark of the budget
+            // counter, the span-too-large drops, and the recycled chunks.
+            func __dd_taint_stats() [15]uint64 {
+              var r [15]uint64
               n := atomic.Load(&__dd_taint_nslabs)
               r[0] = uint64(n)
               for si := uint32(0); si < n && si < __dd_taint_maxSlabs; si++ {
@@ -978,11 +1060,13 @@ aspects:
               r[3] = uint64(atomic.Loaduintptr(&__dd_taint_used))
               r[4] = uint64(atomic.Loaduintptr(&__dd_taint_budget))
               r[5] = atomic.Load64(&__dd_taint_sweeps)
-              for i := range __dd_taint_drops {
+              for i := 0; i < 5; i++ {
                 r[6+i] = atomic.Load64(&__dd_taint_drops[i])
               }
               r[11] = atomic.Load64(&__dd_taint_accounted)
               r[12] = uint64(atomic.Loaduintptr(&__dd_taint_usedmax))
+              r[13] = atomic.Load64(&__dd_taint_drops[__dd_taint_dropSpan])
+              r[14] = atomic.Load64(&__dd_taint_recycled)
               return r
             }
 
@@ -1014,6 +1098,18 @@ aspects:
               atomic.Store(&__dd_taint_parkrefill, v)
               return atomic.Load(&__dd_taint_parked)
             }
+            // __dd_taint_hasdir tells if the arena of p has a directory
+            // (tests only).
+            func __dd_taint_hasdir(p uintptr) bool {
+              if !__dd_taint_testing {
+                return false
+              }
+              ha := __dd_taint_arena(p)
+              return ha != nil && atomic.Loaduintptr(&ha.__dd_taint) >= 2
+            }
+            //go:linkname __dd_taint_api_hasdir __dd_iast_heapbits.hasdir
+            var __dd_taint_api_hasdir = __dd_taint_hasdir
+
             //go:linkname __dd_taint_api_allocknobs __dd_iast_heapbits.allocknobs
             var __dd_taint_api_allocknobs = __dd_taint_allocknobs
 
@@ -1136,8 +1232,8 @@ aspects:
             }
 
   # 5. Non-fatal OS allocation: only where runtime.mmap has a Go body, and only
-  #    on the supported platforms (linux and darwin on amd64 and arm64, no
-  #    sanitizers). Elsewhere the feature is off.
+  #    on the supported platforms (linux and darwin on amd64, and on arm64 with
+  #    LSE atomics; no sanitizers). Elsewhere the feature is off.
   - id: taint os alloc
     join-point:
       all-of:
@@ -1147,6 +1243,9 @@ aspects:
               - name: mmap
     advice:
       - inject-declarations:
+          imports:
+            cpu: internal/cpu
+            unsafe: unsafe
           template: |-
             func __dd_taint_mmapalloc(n uintptr) unsafe.Pointer {
               p, err := mmap(nil, n, _PROT_READ|_PROT_WRITE, _MAP_ANON|_MAP_PRIVATE, -1, 0)
@@ -1160,7 +1259,13 @@ aspects:
               if asanenabled || msanenabled {
                 return
               }
-              if (GOOS == "linux" || GOOS == "darwin") && (GOARCH == "amd64" || GOARCH == "arm64") {
+              if GOOS != "linux" && GOOS != "darwin" {
+                return
+              }
+              // On arm64, only with LSE atomics: without them, Or64 and And64
+              // are LL/SC loops with no progress bound, and the sweep hook
+              // (which cannot yield) uses them.
+              if GOARCH == "amd64" || (GOARCH == "arm64" && cpu.ARM64.HasATOMICS) {
                 __dd_taint_osalloc = __dd_taint_mmapalloc
               }
             }

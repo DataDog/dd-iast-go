@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -26,7 +27,33 @@ import (
 func supported() bool {
 	return !sanitizer &&
 		(runtime.GOOS == "linux" || runtime.GOOS == "darwin") &&
-		(runtime.GOARCH == "amd64" || runtime.GOARCH == "arm64")
+		(runtime.GOARCH == "amd64" || (runtime.GOARCH == "arm64" && arm64Atomics()))
+}
+
+// arm64Atomics reports whether the runtime sees the LSE atomics (the feature
+// is off without them): not turned off by GODEBUG, and present in the CPU.
+// All Apple arm64 CPUs have them; on Linux, the kernel lists them as
+// "atomics" in /proc/cpuinfo.
+func arm64Atomics() bool {
+	// GODEBUG can turn CPU features off (the runtime then has no LSE).
+	for opt := range strings.SplitSeq(os.Getenv("GODEBUG"), ",") {
+		if opt == "cpu.atomics=off" || opt == "cpu.all=off" {
+			return false
+		}
+	}
+	if runtime.GOOS != "linux" {
+		return true
+	}
+	info, err := os.ReadFile("/proc/cpuinfo")
+	if err != nil {
+		return false
+	}
+	for line := range strings.SplitSeq(string(info), "\n") {
+		if strings.HasPrefix(line, "Features") && slices.Contains(strings.Fields(line), "atomics") {
+			return true
+		}
+	}
+	return false
 }
 
 // need skips the test without Orchestrion. In a woven build on a supported
@@ -242,13 +269,31 @@ func TestTinyAllocatorNeighbours(t *testing.T) {
 	}
 }
 
+// crossingKeep holds the objects of crossingObject.
+var crossingKeep [][]byte
+
+// crossingObject returns a 48 MiB heap object (a span smaller than the 64 MiB
+// taintable limit) that crosses a boundary of the 64 MiB heap arenas with at
+// least margin bytes on the two sides, and the offset of that boundary in it.
+func crossingObject(t *testing.T, margin int) ([]byte, int) {
+	t.Helper()
+	const arena = 64 << 20
+	for range 16 {
+		b := heapBytes(48 << 20)
+		crossingKeep = append(crossingKeep, b)
+		base := uintptr(unsafe.Pointer(&b[0]))
+		next := (base + arena) &^ (arena - 1)
+		if off := int(next - base); next > base && off >= margin && len(b)-off >= margin {
+			return b, off
+		}
+	}
+	t.Fatal("no object crosses an arena boundary")
+	return nil, 0
+}
+
 func TestCrossArena(t *testing.T) {
 	need(t)
-	const arena = 64 << 20
-	b := heapBytes(3 * arena)
-	base := uintptr(unsafe.Pointer(&b[0]))
-	// First arena boundary inside b.
-	cut := int((base+arena)&^(arena-1) - base)
+	b, cut := crossingObject(t, 4096)
 	heapbits.SetBytes(b[cut-3 : cut+5])
 	for i := cut - 8; i < cut+8; i++ {
 		want := i >= cut-3 && i < cut+5

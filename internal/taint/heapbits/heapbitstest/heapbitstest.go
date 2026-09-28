@@ -23,7 +23,7 @@ var testingEnabled = true
 
 var (
 	//go:linkname rtStats __dd_iast_heapbits.stats
-	rtStats func() [13]uint64
+	rtStats func() [15]uint64
 
 	//go:linkname rtAllocKnobs __dd_iast_heapbits.allocknobs
 	rtAllocKnobs func(fail, park, parkSlot, parkScan bool) uint32
@@ -33,6 +33,9 @@ var (
 
 	//go:linkname rtFreegc __dd_iast_heapbits.freegc
 	rtFreegc func(unsafe.Pointer, uintptr) bool
+
+	//go:linkname rtHasDir __dd_iast_heapbits.hasdir
+	rtHasDir func(uintptr) bool
 
 	//go:linkname rtSlowPath __dd_iast_heapbits.slowpath
 	rtSlowPath func(bool) uint64
@@ -77,12 +80,17 @@ type Storage struct {
 	Drops       Drops
 	Accounted   uint64 // bytes charged to the runtime memory stats
 	UsedMax     uint64 // high-water mark of Used
+	Recycled    uint64 // chunks given back by the sweeper
 }
 
-// Drops counts the operations that could not get storage, by reason.
+// Drops counts the refused operations (the taint is dropped), by reason.
 type Drops struct {
 	Budget, RefillBusy, Contention, Mmap, SlotBusy uint64
+	Span                                           uint64 // span larger than MaxSpanBytes
 }
+
+// MaxSpanBytes is the largest heap span in which Set accepts a range.
+const MaxSpanBytes = 64 << 20
 
 // ChunksPerSlab is the number of chunks in one slab.
 const ChunksPerSlab = 64
@@ -101,8 +109,8 @@ func Stats() Storage {
 	r := rtStats()
 	return Storage{
 		Slabs: r[0], ChunksInUse: r[1], Mapped: r[2], Used: r[3], Budget: r[4], Sweeps: r[5],
-		Drops:     Drops{Budget: r[6], RefillBusy: r[7], Contention: r[8], Mmap: r[9], SlotBusy: r[10]},
-		Accounted: r[11], UsedMax: r[12],
+		Drops:     Drops{Budget: r[6], RefillBusy: r[7], Contention: r[8], Mmap: r[9], SlotBusy: r[10], Span: r[13]},
+		Accounted: r[11], UsedMax: r[12], Recycled: r[14],
 	}
 }
 
@@ -162,4 +170,12 @@ func SetForceSlowPath(on bool) uint64 {
 		return 0
 	}
 	return rtSlowPath(on)
+}
+
+// HasDirectory reports whether the heap arena of p has a taint directory.
+func HasDirectory(p unsafe.Pointer) bool {
+	if rtHasDir == nil {
+		return false
+	}
+	return rtHasDir(uintptr(p))
 }

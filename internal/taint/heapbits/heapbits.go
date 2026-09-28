@@ -85,6 +85,8 @@ func Enabled() bool {
 // 0, when the range wraps the address space, when the range is not inside one
 // allocation slot of an in-use heap span (stack, global, off-heap or user
 // arena memory, or a range that crosses into a neighbour object), when the
+// span of the range is larger than 64 MiB (this bounds the work of the
+// garbage collector hook), when the
 // runtime cannot get the storage for the bits (the budget is used, the OS
 // refused the memory, or another goroutine is getting the same storage: Set
 // never waits), or when the feature is not enabled.

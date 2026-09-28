@@ -118,6 +118,21 @@ func withDirectory(t *testing.T, n int) [][]byte {
 	return nil
 }
 
+// regionWithoutDirectory returns 64 bytes of heap in an arena that has no
+// taint directory.
+func regionWithoutDirectory(t *testing.T) []byte {
+	t.Helper()
+	for range 8 {
+		b := keepBytes(60 << 20) // smaller than the taintable limit
+		r := b[len(b)-64:]
+		if !heapbitstest.HasDirectory(unsafe.Pointer(&r[0])) {
+			return r
+		}
+	}
+	t.Fatal("no arena without a directory")
+	return nil
+}
+
 // fillFreeChunks takes all free chunks of the mapped slabs, without a new
 // slab. There must be at least one slab.
 func fillFreeChunks(t *testing.T) {
@@ -191,7 +206,6 @@ func TestStorageChild(t *testing.T) {
 		t.Fatalf("unexpected storage at start: %+v", st)
 	}
 	// A large object over 3 arenas, for the cross-arena cases.
-	big := keepBytes(3 * arenaBytes)
 	tainted = freshRegion()
 	if !heapbits.SetBytes(tainted[:1]) {
 		t.Fatal("first Set failed")
@@ -236,9 +250,14 @@ func TestStorageChild(t *testing.T) {
 		// Chunk slot (the directory exists) and directory slot (a new
 		// arena): both must be given back.
 		chunkSlot := withDirectory(t, 1)[0]
-		dirSlot := big[arenaBytes+arenaBytes/2 : arenaBytes+arenaBytes/2+64] // middle arena of big
 		fillFreeChunks(t)
-		for name, r := range map[string][]byte{"chunk slot": chunkSlot, "directory slot": dirSlot} {
+		for _, name := range []string{"chunk slot", "directory slot"} {
+			r := chunkSlot
+			if name == "directory slot" {
+				// Chosen now: the Set calls of fillFreeChunks can make
+				// directories.
+				r = regionWithoutDirectory(t)
+			}
 			before := heapbitstest.Stats()
 			ms0, m0 := otherSys()
 			heapbitstest.AllocKnobs(true, false, false, false)
@@ -260,9 +279,17 @@ func TestStorageChild(t *testing.T) {
 				t.Errorf("%s: a failed mmap changed the accounting: before %+v (OtherSys %d, metric %d), after %+v (OtherSys %d, metric %d)",
 					name, before, ms0, m0, after, ms1, m1)
 			}
-			// The slot was given back: the next Set gets the chunk.
+			// The slot was given back: the next Set gets the chunk (and the
+			// directory, for the directory slot).
 			if !heapbits.SetBytes(r[:1]) || !heapbits.AnyBytes(r[:1]) {
 				t.Errorf("%s: Set failed after the mmap failure (slot not released?)", name)
+			}
+			want := uint64(1)
+			if name == "directory slot" {
+				want = 2
+			}
+			if got := heapbitstest.Stats().ChunksInUse - after.ChunksInUse; got != want {
+				t.Errorf("%s: %d chunks taken by the next Set, want %d", name, got, want)
 			}
 			fillFreeChunks(t)
 		}
@@ -497,9 +524,8 @@ func TestStorageAllOrNothingAcrossArenas(t *testing.T) {
 	if !heapbits.SetBudget(childBudget) {
 		t.Fatal("SetBudget failed before the first Set")
 	}
-	big := keepBytes(3 * arenaBytes)
-	cut := (addr(big) + arenaBytes) &^ (arenaBytes - 1) // first arena boundary in big
-	c := int(cut - addr(big))
+	big, c := crossingObject(t, 8*heapbitstest.ChunkHeapBytes)
+	keep = append(keep, big)
 	// The directories of the two arenas.
 	if !heapbits.SetBytes(big[c-4*heapbitstest.ChunkHeapBytes:][:1]) || !heapbits.SetBytes(big[c+4*heapbitstest.ChunkHeapBytes:][:1]) {
 		t.Fatalf("Set failed: %+v", heapbitstest.Stats())
