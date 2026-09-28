@@ -1,0 +1,416 @@
+---
+# PoC: allocator-backed taint bits (1 bit for each heap byte).
+meta:
+  name: example.com/allocbits/heapbits
+  description: Allocator-backed taint bitmap (proof of concept)
+
+aspects:
+  # 1. One lazily allocated bitmap for each heap arena (1 bit for each byte).
+  #    Same model as runtime.checkmarksMap (heapArena.checkmarks).
+  - id: heapArena taint bitmap
+    join-point:
+      struct-definition: runtime.heapArena
+    advice:
+      - add-struct-field:
+          name: __dd_taint
+          type: "*__dd_taintBitmap"
+      - inject-declarations:
+          imports:
+            atomic: internal/runtime/atomic
+            sys: internal/runtime/sys
+            unsafe: unsafe
+          template: |-
+            // __dd_taintBitmap has one bit for each byte of one heap arena.
+            // Bit k%64 of word k/64 is the bit of byte k of the arena.
+            // It is off-heap memory from sysAlloc. It is never freed.
+            type __dd_taintBitmap struct {
+              _ sys.NotInHeap
+              b [heapArenaBytes / 64]uint64
+            }
+
+            // Compile-time checks: a change of these runtime internals in a
+            // new Go release makes the woven runtime fail to compile (loud).
+            var _ func(uintptr) *heapArena = heapArenaOf
+            var _ func(uintptr) *mspan = spanOfHeap
+            var _ func(uintptr) arenaIdx = arenaIndex
+            var _ func(arenaIdx) uintptr = arenaBase
+            var _ func(*byte, uintptr) *byte = addb
+            var _ func(uintptr, *sysMemStat, string) unsafe.Pointer = sysAlloc
+            var _ func(unsafe.Pointer, uintptr, *sysMemStat) = sysFree
+            var _ func(*sweepLocked, bool) bool = (*sweepLocked).sweep
+            var _ func(unsafe.Pointer, uintptr, bool) bool = freegc
+            var _ = func(s *mspan) (uint16, uintptr, *special, bool, uintptr) {
+              return s.nelems, s.elemsize, s.specials, s.isUserArenaChunk, s.limit
+            }
+            var _ = func(s *mspan, i uintptr) *uint8 { return s.markBitsForIndex(i).bytep }
+            var _ = func(sp *special) (uintptr, byte, *special) { return sp.offset, sp.kind, sp.next }
+            var _ byte = _KindSpecialFinalizer
+            var _ bool = runtimeFreegcEnabled
+
+            // __dd_taint_osalloc is set by an init function that is injected
+            // next to the OS-specific mmap. It never exits the process.
+            var __dd_taint_osalloc func(n uintptr) unsafe.Pointer
+
+            // Counters for tests.
+            var __dd_taint_bitmaps uint64
+            var __dd_taint_sweeps uint64
+
+            // Test knob: 1 disables the sweep hook (negative control only).
+            var __dd_taint_nosweep uint32
+
+            // __dd_taint_bitmap returns the bitmap of the arena of p, or nil.
+            // With alloc true, it allocates a missing bitmap.
+            func __dd_taint_bitmap(p uintptr, alloc bool) *__dd_taintBitmap {
+              ha := heapArenaOf(p)
+              if ha == nil {
+                return nil
+              }
+              slot := (*unsafe.Pointer)(unsafe.Pointer(&ha.__dd_taint))
+              bm := (*__dd_taintBitmap)(atomic.Loadp(unsafe.Pointer(slot)))
+              if bm != nil || !alloc {
+                return bm
+              }
+              if __dd_taint_osalloc == nil {
+                return nil // platform not supported
+              }
+              nbm := (*__dd_taintBitmap)(__dd_taint_osalloc(unsafe.Sizeof(__dd_taintBitmap{})))
+              if nbm == nil {
+                return nil
+              }
+              if atomic.Casp1(slot, nil, unsafe.Pointer(nbm)) {
+                atomic.Xadd64(&__dd_taint_bitmaps, 1)
+                return nbm
+              }
+              // PoC: lost race leaks the candidate (phase 1: claim first).
+              return (*__dd_taintBitmap)(atomic.Loadp(unsafe.Pointer(slot)))
+            }
+
+            // __dd_taint_apply sets (set=true) or clears the bits of [p, p+n).
+            // Word k of a bitmap holds the bits of heap bytes [64k, 64k+64)
+            // of the arena; all accesses use 64-bit words, so the byte order
+            // does not matter. Partial words use atomic Or64/And64 because a
+            // neighbour object can share the word. Full words belong to the
+            // range only, so a plain store is enough.
+            func __dd_taint_apply(p, n uintptr, set, alloc bool) {
+              end := p + n
+              for p < end {
+                base := arenaBase(arenaIndex(p))
+                aend := base + heapArenaBytes
+                if aend > end || aend == 0 {
+                  aend = end
+                }
+                if bm := __dd_taint_bitmap(p, alloc); bm != nil {
+                  b0, b1 := p-base, aend-base
+                  w0, w1 := b0/64, (b1-1)/64
+                  for w := w0; w <= w1; w++ {
+                    mask := ^uint64(0)
+                    if w == w0 {
+                      mask &= ^uint64(0) << (b0 % 64)
+                    }
+                    if w == w1 {
+                      mask &= ^uint64(0) >> (63 - (b1-1)%64)
+                    }
+                    switch {
+                    case mask == ^uint64(0) && set:
+                      bm.b[w] = ^uint64(0)
+                    case mask == ^uint64(0):
+                      bm.b[w] = 0
+                    case set:
+                      atomic.Or64(&bm.b[w], mask)
+                    default:
+                      atomic.And64(&bm.b[w], ^mask)
+                    }
+                  }
+                }
+                p = aend
+              }
+            }
+
+            // __dd_taint_set taints [p, p+n). It returns false (and does
+            // nothing) when the range is not in one in-use heap span. Thus
+            // stack memory, globals and off-heap memory are refused.
+            func __dd_taint_set(p, n uintptr) bool {
+              if n == 0 || p+n < p {
+                return false
+              }
+              s := spanOfHeap(p)
+              // User arena chunks (GOEXPERIMENT=arenas) are freed without a
+              // sweep of their objects: refuse them.
+              if s == nil || p+n > s.limit || s.isUserArenaChunk {
+                return false
+              }
+              __dd_taint_apply(p, n, true, true)
+              atomic.Store8(&s.__dd_taint, 1)
+              return true
+            }
+
+            // __dd_taint_clear removes the taint of [p, p+n) (heap only).
+            func __dd_taint_clear(p, n uintptr) {
+              if n == 0 || p+n < p {
+                return
+              }
+              s := spanOfHeap(p)
+              if s == nil || p+n > s.limit {
+                return
+              }
+              __dd_taint_apply(p, n, false, false)
+            }
+
+            // __dd_taint_any tells if one byte of [p, p+n) is tainted. It is
+            // safe for all addresses (not heap: false). Plain loads: a race
+            // with a writer gives the old or the new value of the word.
+            func __dd_taint_any(p, n uintptr) bool {
+              if n == 0 || p+n < p {
+                return false
+              }
+              end := p + n
+              for p < end {
+                base := arenaBase(arenaIndex(p))
+                aend := base + heapArenaBytes
+                if aend > end || aend == 0 {
+                  aend = end
+                }
+                if bm := __dd_taint_bitmap(p, false); bm != nil {
+                  b0, b1 := p-base, aend-base
+                  w0, w1 := b0/64, (b1-1)/64
+                  first := ^uint64(0) << (b0 % 64)
+                  last := ^uint64(0) >> (63 - (b1-1)%64)
+                  if w0 == w1 {
+                    if bm.b[w0]&first&last != 0 {
+                      return true
+                    }
+                  } else {
+                    if bm.b[w0]&first != 0 || bm.b[w1]&last != 0 {
+                      return true
+                    }
+                    for w := w0 + 1; w < w1; w++ {
+                      if bm.b[w] != 0 {
+                        return true
+                      }
+                    }
+                  }
+                }
+                p = aend
+              }
+              return false
+            }
+
+            // __dd_taint_sweep clears the bits of all objects of s that are
+            // not marked. The sweeper calls it before it frees them. Thus a
+            // new object never gets the taint of an old object at the same
+            // address. Runs of dead objects are cleared with one call.
+            //
+            // Flag protocol (with __dd_taint_set: bits, then flag=1): store
+            // flag=0 first, clear, then check the remaining bits with atomic
+            // loads; if one is set, store flag=1 again. A concurrent set on a
+            // live object is never lost: its flag store is after our store,
+            // or its bits are visible to our check.
+            //
+            //go:nowritebarrierrec
+            func __dd_taint_sweep(s *mspan) {
+              if atomic.Load(&__dd_taint_nosweep) != 0 {
+                return
+              }
+              atomic.Xadd64(&__dd_taint_sweeps, 1)
+              atomic.Store8(&s.__dd_taint, 0)
+              size := s.elemsize
+              base := s.base()
+              n := uintptr(s.nelems)
+              marks := s.markBitsForIndex(0).bytep
+              // A dead object with a finalizer becomes live again (the
+              // sweeper marks it); it must keep its taint.
+              hasFin := false
+              for sp := s.specials; sp != nil; sp = sp.next {
+                if sp.kind == _KindSpecialFinalizer {
+                  hasFin = true
+                  break
+                }
+              }
+              run := uintptr(0) // start of the current dead run
+              dead := false
+              for i := uintptr(0); i < n; {
+                mb := *addb(marks, i/8)
+                if !hasFin && i%8 == 0 && n-i >= 8 && (mb == 0xff || mb == 0) {
+                  // 8 objects with the same state.
+                  if mb == 0xff && dead {
+                    __dd_taint_apply(base+run*size, (i-run)*size, false, false)
+                    dead = false
+                  } else if mb == 0 && !dead {
+                    run, dead = i, true
+                  }
+                  i += 8
+                  continue
+                }
+                if mb&(1<<(i%8)) != 0 || (hasFin && __dd_taint_hasfin(s, i*size, size)) {
+                  if dead {
+                    __dd_taint_apply(base+run*size, (i-run)*size, false, false)
+                    dead = false
+                  }
+                } else if !dead {
+                  run, dead = i, true
+                }
+                i++
+              }
+              if dead {
+                __dd_taint_apply(base+run*size, (n-run)*size, false, false)
+              }
+              // Only live objects can still have taint: check them until one
+              // has taint.
+              for i := uintptr(0); i < n; {
+                mb := *addb(marks, i/8)
+                if !hasFin && i%8 == 0 && mb == 0 {
+                  i += 8
+                  continue
+                }
+                if mb&(1<<(i%8)) != 0 || (hasFin && __dd_taint_hasfin(s, i*size, size)) {
+                  if __dd_taint_anyatomic(base+i*size, size) {
+                    atomic.Store8(&s.__dd_taint, 1)
+                    break
+                  }
+                }
+                i++
+              }
+            }
+
+            // __dd_taint_hasfin tells if the object at span offset off has a
+            // finalizer special.
+            //
+            //go:nowritebarrierrec
+            func __dd_taint_hasfin(s *mspan, off, size uintptr) bool {
+              for sp := s.specials; sp != nil && sp.offset < off+size; sp = sp.next {
+                if sp.offset >= off && sp.kind == _KindSpecialFinalizer {
+                  return true
+                }
+              }
+              return false
+            }
+
+            // __dd_taint_anyatomic is __dd_taint_any with atomic loads, for the
+            // flag protocol of __dd_taint_sweep. [p, p+n) is in one span.
+            //
+            //go:nowritebarrierrec
+            func __dd_taint_anyatomic(p, n uintptr) bool {
+              end := p + n
+              for p < end {
+                base := arenaBase(arenaIndex(p))
+                aend := base + heapArenaBytes
+                if aend > end || aend == 0 {
+                  aend = end
+                }
+                if bm := __dd_taint_bitmap(p, false); bm != nil {
+                  b0, b1 := p-base, aend-base
+                  w0, w1 := b0/64, (b1-1)/64
+                  for w := w0; w <= w1; w++ {
+                    mask := ^uint64(0)
+                    if w == w0 {
+                      mask &= ^uint64(0) << (b0 % 64)
+                    }
+                    if w == w1 {
+                      mask &= ^uint64(0) >> (63 - (b1-1)%64)
+                    }
+                    if atomic.Load64(&bm.b[w])&mask != 0 {
+                      return true
+                    }
+                  }
+                }
+                p = aend
+              }
+              return false
+            }
+
+            func __dd_taint_stats() (bitmaps, sweeps uint64) {
+              return atomic.Load64(&__dd_taint_bitmaps), atomic.Load64(&__dd_taint_sweeps)
+            }
+
+            func __dd_taint_setnosweep(v bool) {
+              if v {
+                atomic.Store(&__dd_taint_nosweep, 1)
+              } else {
+                atomic.Store(&__dd_taint_nosweep, 0)
+              }
+            }
+
+            // Exported to example.com/allocbits/heapbits (push linkname).
+            //go:linkname __dd_taint_api_set __dd_iast_heapbits.set
+            var __dd_taint_api_set = __dd_taint_set
+            //go:linkname __dd_taint_api_clear __dd_iast_heapbits.clear
+            var __dd_taint_api_clear = __dd_taint_clear
+            //go:linkname __dd_taint_api_any __dd_iast_heapbits.any
+            var __dd_taint_api_any = __dd_taint_any
+            //go:linkname __dd_taint_api_stats __dd_iast_heapbits.stats
+            var __dd_taint_api_stats = __dd_taint_stats
+            // Test knob: runtime.freegc of a noscan object.
+            func __dd_taint_freegc(p unsafe.Pointer, size uintptr) bool {
+              return freegc(p, size, true)
+            }
+            //go:linkname __dd_taint_api_freegc __dd_iast_heapbits.freegc
+            var __dd_taint_api_freegc = __dd_taint_freegc
+            //go:linkname __dd_taint_api_nosweep __dd_iast_heapbits.nosweep
+            var __dd_taint_api_nosweep = __dd_taint_setnosweep
+
+  # 2. One flag for each span: "one bit was set in this span".
+  - id: mspan taint flag
+    join-point:
+      struct-definition: runtime.mspan
+    advice:
+      - add-struct-field:
+          name: __dd_taint
+          type: uint8
+
+  # 3. Clear the bits of dead objects when the span is swept.
+  - id: sweep clears taint
+    join-point:
+      all-of:
+        - import-path: runtime
+        - function-body:
+            function:
+              - receiver: "*runtime.sweepLocked"
+              - name: sweep
+    advice:
+      - prepend-statements:
+          template: |-
+            if __dd_s := sl.mspan; __dd_s.__dd_taint != 0 {
+              __dd_taint_sweep(__dd_s)
+            }
+
+  # 4. GOEXPERIMENT=runtimefreegc: freegc gives an object back at once (no
+  #    sweep). Clear its bits first. The caller promises that it is dead.
+  - id: freegc clears taint
+    join-point:
+      all-of:
+        - import-path: runtime
+        - function-body:
+            function:
+              - name: freegc
+    advice:
+      - prepend-statements:
+          template: |-
+            {{- $ptr := .Function.Argument 0 -}}
+            {{- $size := .Function.Argument 1 -}}
+            if runtimeFreegcEnabled && {{ $ptr }} != nil {
+              __dd_taint_clear(uintptr({{ $ptr }}), {{ $size }})
+            }
+
+  # 5. Non-fatal OS allocation: only where runtime.mmap has a Go body
+  #    (linux/amd64, linux/arm64, darwin, ...). Elsewhere the feature is off.
+  - id: taint os alloc
+    join-point:
+      all-of:
+        - import-path: runtime
+        - function-body:
+            function:
+              - name: mmap
+    advice:
+      - inject-declarations:
+          template: |-
+            func __dd_taint_mmapalloc(n uintptr) unsafe.Pointer {
+              p, err := mmap(nil, n, _PROT_READ|_PROT_WRITE, _MAP_ANON|_MAP_PRIVATE, -1, 0)
+              if err != 0 {
+                return nil
+              }
+              return p
+            }
+
+            func init() {
+              __dd_taint_osalloc = __dd_taint_mmapalloc
+            }

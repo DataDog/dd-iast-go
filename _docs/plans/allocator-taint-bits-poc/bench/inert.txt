@@ -1,0 +1,110 @@
+goos: darwin
+goarch: arm64
+pkg: example.com/allocbits/bench
+cpu: Apple M5 Pro
+BenchmarkAllocChurn/16         	43254064	         8.926 ns/op	      16 B/op	       1 allocs/op
+BenchmarkAllocChurn/64         	30582122	        12.08 ns/op	      64 B/op	       1 allocs/op
+BenchmarkAllocChurn/512        	 3960351	        91.06 ns/op	     512 B/op	       1 allocs/op
+BenchmarkAllocChurn/4096       	 2309751	       155.5 ns/op	    4096 B/op	       1 allocs/op
+BenchmarkGC                    	      34	  10177592 ns/op
+BenchmarkJSON                  	  182997	      1866 ns/op	    1720 B/op	      17 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: example.com/allocbits/bench
+cpu: Apple M5 Pro
+BenchmarkAllocChurn/16         	44539753	         9.164 ns/op	      16 B/op	       1 allocs/op
+BenchmarkAllocChurn/64         	28342178	        13.09 ns/op	      64 B/op	       1 allocs/op
+BenchmarkAllocChurn/512        	 3875709	        92.03 ns/op	     512 B/op	       1 allocs/op
+BenchmarkAllocChurn/4096       	 2301102	       157.6 ns/op	    4096 B/op	       1 allocs/op
+BenchmarkGC                    	      34	  10183514 ns/op
+BenchmarkJSON                  	  188324	      1845 ns/op	    1720 B/op	      17 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: example.com/allocbits/bench
+cpu: Apple M5 Pro
+BenchmarkAllocChurn/16         	44856084	         9.107 ns/op	      16 B/op	       1 allocs/op
+BenchmarkAllocChurn/64         	29551088	        12.24 ns/op	      64 B/op	       1 allocs/op
+BenchmarkAllocChurn/512        	 3937892	        91.28 ns/op	     512 B/op	       1 allocs/op
+BenchmarkAllocChurn/4096       	 2282833	       155.1 ns/op	    4096 B/op	       1 allocs/op
+BenchmarkGC                    	      32	  10104246 ns/op
+BenchmarkJSON                  	  166729	      1842 ns/op	    1720 B/op	      17 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: example.com/allocbits/bench
+cpu: Apple M5 Pro
+BenchmarkAllocChurn/16         	45404623	         8.698 ns/op	      16 B/op	       1 allocs/op
+BenchmarkAllocChurn/64         	30333988	        11.88 ns/op	      64 B/op	       1 allocs/op
+BenchmarkAllocChurn/512        	 3907892	        92.04 ns/op	     512 B/op	       1 allocs/op
+BenchmarkAllocChurn/4096       	 2288739	       156.4 ns/op	    4096 B/op	       1 allocs/op
+BenchmarkGC                    	      36	  10076128 ns/op
+BenchmarkJSON                  	  193149	      1835 ns/op	    1720 B/op	      17 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: example.com/allocbits/bench
+cpu: Apple M5 Pro
+BenchmarkAllocChurn/16         	45501700	         8.912 ns/op	      16 B/op	       1 allocs/op
+BenchmarkAllocChurn/64         	30170968	        11.62 ns/op	      64 B/op	       1 allocs/op
+BenchmarkAllocChurn/512        	 4050430	        90.46 ns/op	     512 B/op	       1 allocs/op
+BenchmarkAllocChurn/4096       	 2302128	       155.7 ns/op	    4096 B/op	       1 allocs/op
+BenchmarkGC                    	      33	   9793247 ns/op
+BenchmarkJSON                  	  199078	      1814 ns/op	    1720 B/op	      17 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: example.com/allocbits/bench
+cpu: Apple M5 Pro
+BenchmarkAllocChurn/16         	43686006	         8.867 ns/op	      16 B/op	       1 allocs/op
+BenchmarkAllocChurn/64         	31341253	        11.73 ns/op	      64 B/op	       1 allocs/op
+BenchmarkAllocChurn/512        	 4141352	        90.32 ns/op	     512 B/op	       1 allocs/op
+BenchmarkAllocChurn/4096       	 2276338	       156.3 ns/op	    4096 B/op	       1 allocs/op
+BenchmarkGC                    	      36	   9646892 ns/op
+BenchmarkJSON                  	  198967	      1827 ns/op	    1720 B/op	      17 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: example.com/allocbits/bench
+cpu: Apple M5 Pro
+BenchmarkAllocChurn/16         	44807701	         9.074 ns/op	      16 B/op	       1 allocs/op
+BenchmarkAllocChurn/64         	30405084	        11.94 ns/op	      64 B/op	       1 allocs/op
+BenchmarkAllocChurn/512        	 4024995	        90.76 ns/op	     512 B/op	       1 allocs/op
+BenchmarkAllocChurn/4096       	 2289980	       155.9 ns/op	    4096 B/op	       1 allocs/op
+BenchmarkGC                    	      36	  10094656 ns/op
+BenchmarkJSON                  	  185418	      1889 ns/op	    1720 B/op	      17 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: example.com/allocbits/bench
+cpu: Apple M5 Pro
+BenchmarkAllocChurn/16         	45365046	         8.806 ns/op	      16 B/op	       1 allocs/op
+BenchmarkAllocChurn/64         	30949105	        11.79 ns/op	      64 B/op	       1 allocs/op
+BenchmarkAllocChurn/512        	 4019845	        90.88 ns/op	     512 B/op	       1 allocs/op
+BenchmarkAllocChurn/4096       	 2277579	       156.4 ns/op	    4096 B/op	       1 allocs/op
+BenchmarkGC                    	      36	  10145212 ns/op
+BenchmarkJSON                  	  189572	      1813 ns/op	    1720 B/op	      17 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: example.com/allocbits/bench
+cpu: Apple M5 Pro
+BenchmarkAllocChurn/16         	45783079	         9.160 ns/op	      16 B/op	       1 allocs/op
+BenchmarkAllocChurn/64         	30289963	        11.76 ns/op	      64 B/op	       1 allocs/op
+BenchmarkAllocChurn/512        	 3928578	        91.10 ns/op	     512 B/op	       1 allocs/op
+BenchmarkAllocChurn/4096       	 2306698	       155.4 ns/op	    4096 B/op	       1 allocs/op
+BenchmarkGC                    	      31	   9753984 ns/op
+BenchmarkJSON                  	  190873	      1828 ns/op	    1720 B/op	      17 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: example.com/allocbits/bench
+cpu: Apple M5 Pro
+BenchmarkAllocChurn/16         	45494755	         8.729 ns/op	      16 B/op	       1 allocs/op
+BenchmarkAllocChurn/64         	30734424	        11.82 ns/op	      64 B/op	       1 allocs/op
+BenchmarkAllocChurn/512        	 3967191	        90.69 ns/op	     512 B/op	       1 allocs/op
+BenchmarkAllocChurn/4096       	 2314155	       158.3 ns/op	    4096 B/op	       1 allocs/op
+BenchmarkGC                    	      37	   9693573 ns/op
+BenchmarkJSON                  	  199363	      1843 ns/op	    1720 B/op	      17 allocs/op
+PASS
