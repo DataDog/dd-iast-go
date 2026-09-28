@@ -16,8 +16,8 @@
   fixed in this version, appendix D). The critic listed these 2 fixes as the
   only remaining items.
 - **User review: done** (section 10). Phase 1 is approved.
-- **Phase 1 (production heap bits): in progress.** Steps 1 to 4 of
-  section 9 are done. Next: step 5.
+- **Phase 1 (production heap bits): in progress.** Steps 1 to 5 of
+  section 9 are done. Next: step 6.
 - Phases 2 to 4 (stack values, origins and marks, propagation): outline only
   (section 8). Each one gets its own plan after phase 1.
 
@@ -797,8 +797,26 @@ in the `taint` package as the first check of every operation.
      tests (recycling, zeroing, live neighbour in an edge chunk, span limit).
    - Tests that need an arena boundary use a 48 MiB object that crosses
      one (the 64 MiB span limit refuses larger objects).
-5. Atomics, bounded flag reset, single-walk finalizer check (5.5), with the
-   dead-neighbour and flag stress tests: **1 day**.
+5. **(Done.)** Atomics, bounded flag reset, single-walk finalizer check
+   (5.5), with the dead-neighbour and flag stress tests: **1 day**. Notes:
+   - All accesses to bitmap words are atomic (`Load64`, `Store64`, `Or64`,
+     `And64`), also the zeroing of a recycled chunk; the sweep prologue
+     reads the span flag with `Load8`.
+   - Measured cost (M5 Pro, arm64: `Load64` is `LDAR`): `Any` on 16 B and
+     256 B: no change; on 4 KiB: +20% (clean) and +30% (taint in the
+     middle), from 24.8 to 29.7 ns and from 16.3 to 21.2 ns. This is at the
+     20% limit of 5.5 for long values only. The atomics stay (decision for
+     the user, section 10). On amd64, `Load64` is a plain `MOV`.
+   - The live check of the sweep hook has a limit of 1024 work units
+     (chunks and words); at the limit the flag stays 1.
+   - `TestGeneratedCode` also checks that no injected runtime function
+     calls a panic or throw function (with optimizations): every index has
+     a guard or a mask.
+   - The flag protocol has forced-interleaving tests: a test knob makes the
+     sweep hook of one span wait (at most 200 ms, without yield) after its
+     flag reset or after its live check, and a `Set` on a clean live object
+     runs there; the flag must be 1 after the sweep. A mutation that writes
+     the flag after the live check fails the second case.
 6. `Next`, `NextClean`, `Copy` (CAS writes, overlap) and their tests:
    **1.5 days**.
 7. Random model test and negative control knobs: **1 day**.

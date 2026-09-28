@@ -102,7 +102,9 @@ func lastLines(s string, n int) string {
 //     its inlined body, mcall);
 //  3. the Go wrappers that convert a pointer to a uintptr have no direct call
 //     (other than morestack in the prologue) between the conversion and the
-//     indirect call of the runtime function.
+//     indirect call of the runtime function;
+//  4. with optimizations, no injected runtime function calls a panic or throw
+//     function (no bounds check is left).
 func TestGeneratedCode(t *testing.T) {
 	if !built.WithOrchestrion {
 		t.Skip("orchestrion is not enabled, use `go tool orchestrion go test` to run this test suite")
@@ -190,6 +192,28 @@ func checkAsm(t *testing.T, funcs map[string]*asmFunc, noOpt bool) {
 	// Gosched is small: the compiler can inline it (its body calls mcall).
 	if cp := get("runtime.__dd_taint_checkpoint"); !calls(cp, "runtime.Gosched") && !calls(cp, "runtime.mcall") {
 		t.Error("the checkpoint does not call runtime.Gosched")
+	}
+
+	// Rule 4: no injected runtime function can panic (with optimizations):
+	// a panic in the runtime is a fatal error of the application. Every
+	// index has an explicit guard or a mask, so the compiler removes the
+	// bounds checks.
+	if !noOpt {
+		found := 0
+		for name, f := range funcs {
+			if !strings.HasPrefix(name, "runtime.__dd_taint") {
+				continue
+			}
+			found++
+			for _, target := range f.calls {
+				if strings.HasPrefix(target, "runtime.panic") || strings.HasPrefix(target, "runtime.goPanic") || target == "runtime.throw" || target == "runtime.fatal" {
+					t.Errorf("%s calls %s", name, target)
+				}
+			}
+		}
+		if found < 20 {
+			t.Errorf("only %d injected runtime functions found in the -S output", found)
+		}
 	}
 
 	// Rule 3: Go wrappers.

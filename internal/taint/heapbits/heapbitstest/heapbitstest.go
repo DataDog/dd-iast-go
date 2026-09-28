@@ -34,6 +34,15 @@ var (
 	//go:linkname rtFreegc __dd_iast_heapbits.freegc
 	rtFreegc func(unsafe.Pointer, uintptr) bool
 
+	//go:linkname rtSweepKnobs __dd_iast_heapbits.sweepknobs
+	rtSweepKnobs func(p uintptr, pause uint32, gosignal bool) (uint64, uint32)
+
+	//go:linkname rtSpanInfo __dd_iast_heapbits.spaninfo
+	rtSpanInfo func(p uintptr) (uintptr, uintptr)
+
+	//go:linkname rtSpanFlag __dd_iast_heapbits.spanflag
+	rtSpanFlag func(uintptr) int
+
 	//go:linkname rtHasDir __dd_iast_heapbits.hasdir
 	rtHasDir func(uintptr) bool
 
@@ -178,4 +187,49 @@ func HasDirectory(p unsafe.Pointer) bool {
 		return false
 	}
 	return rtHasDir(uintptr(p))
+}
+
+// SpanFlag returns the taint flag of the heap span of p (1: the span is
+// eligible for the sweep hook), or -1 when p is not heap memory or when the
+// test knobs are not active.
+func SpanFlag(p unsafe.Pointer) int {
+	if rtSpanFlag == nil {
+		return -1
+	}
+	return rtSpanFlag(uintptr(p))
+}
+
+// SpanInfo returns the base address and the object count of the heap span of
+// p, or 0, 0.
+func SpanInfo(p unsafe.Pointer) (base, nelems uintptr) {
+	if rtSpanInfo == nil {
+		return 0, 0
+	}
+	return rtSpanInfo(uintptr(p))
+}
+
+// Sweep waiting states of [SweepKnobs].
+const (
+	SweepNotWaiting = 0
+	SweepWaiting    = 1 // the sweep of the target waits at the pause point
+	SweepContinued  = 2 // it continued (go signal, or its 200 ms limit)
+)
+
+// Pause points of [SweepKnobs].
+const (
+	NoPause          = 0
+	PauseAfterReset  = 1 // after the flag reset, before the live check
+	PauseAfterChecks = 2 // after the live check (the end of the hook)
+)
+
+// SweepKnobs sets the test knobs of the sweep hook. The target is the span of
+// p (nil: none; a new target resets the counters). With a pause point, the
+// sweep hook of the target waits there until gosignal is true (at most
+// 200 ms). It returns the number of sweep hooks of the target and the
+// waiting state.
+func SweepKnobs(p unsafe.Pointer, pause uint32, gosignal bool) (sweeps uint64, waiting uint32) {
+	if rtSweepKnobs == nil {
+		return 0, SweepNotWaiting
+	}
+	return rtSweepKnobs(uintptr(p), pause, gosignal)
 }

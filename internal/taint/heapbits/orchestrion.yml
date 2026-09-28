@@ -227,8 +227,8 @@ aspects:
                 if w > 0 && w%512 == 0 {
                   __dd_taint_checkpoint()
                 }
-                if c[w] != 0 {
-                  c[w] = 0
+                if atomic.Load64(&c[w]) != 0 {
+                  atomic.Store64(&c[w], 0)
                 }
               }
             }
@@ -411,6 +411,8 @@ aspects:
             var _ = func(gp *g) (bool, uintptr, uintptr, *m) { return gp.preempt, gp.stack.lo, gp.stack.hi, gp.m }
             var _ = func(mp *m) (*g, int32, int32, string) { return mp.curg, mp.locks, mp.mallocing, mp.preemptoff }
             var _ func() = Gosched
+            var _ func() int64 = nanotime
+            var _ func(uint32) = procyield
 
             // __dd_taint_osalloc is set by an init function that is injected
             // next to the OS-specific mmap. It never exits the process.
@@ -509,10 +511,9 @@ aspects:
             // if it has a bit to clear (no new dirty pages). With recycle
             // true (sweep hook only, for dead memory), a chunk that is fully
             // inside the range is given back to its slab in place of a clear
-            // of its 2048 words. Partial words use
-            // atomic Or64/And64 because a neighbour object can share the
-            // word. Full words belong to the range only, so a plain store is
-            // enough. With yield true (worker use only), it calls
+            // of its 2048 words. All accesses to bitmap words are atomic:
+            // partial words use Or64/And64 (a neighbour object can share the
+            // word), full words use Store64. With yield true (worker use only), it calls
             // __dd_taint_checkpoint every 512 work units (one for each chunk
             // and for each word).
             func __dd_taint_apply(p, n uintptr, set, yield, recycle bool) {
@@ -556,13 +557,13 @@ aspects:
                     wp := &c[w&(__dd_taint_chunkWords-1)]
                     switch {
                     case mask == ^uint64(0) && set:
-                      *wp = ^uint64(0)
+                      atomic.Store64(wp, ^uint64(0))
                     case set:
                       atomic.Or64(wp, mask)
-                    case *wp&mask == 0:
+                    case atomic.Load64(wp)&mask == 0:
                       // Nothing to clear: do not write.
                     case mask == ^uint64(0):
-                      *wp = 0
+                      atomic.Store64(wp, 0)
                     default:
                       atomic.And64(wp, ^mask)
                     }
@@ -827,14 +828,14 @@ aspects:
                 first := ^uint64(0) << (b0 % 64)
                 last := ^uint64(0) >> (63 - (b1-1)%64)
                 if w0 == w1 {
-                  return c[w0&(__dd_taint_chunkWords-1)]&first&last != 0
+                  return atomic.Load64(&c[w0&(__dd_taint_chunkWords-1)])&first&last != 0
                 }
-                if c[w0&(__dd_taint_chunkWords-1)]&first != 0 || c[w1&(__dd_taint_chunkWords-1)]&last != 0 {
+                if atomic.Load64(&c[w0&(__dd_taint_chunkWords-1)])&first != 0 || atomic.Load64(&c[w1&(__dd_taint_chunkWords-1)])&last != 0 {
                   return true
                 }
                 if w1-w0 < __dd_taint_fastwords {
                   for w := w0 + 1; w < w1; w++ {
-                    if c[w&(__dd_taint_chunkWords-1)] != 0 {
+                    if atomic.Load64(&c[w&(__dd_taint_chunkWords-1)]) != 0 {
                       return true
                     }
                   }
@@ -857,7 +858,7 @@ aspects:
               return __dd_taint_anyworker(p, n)
             }
 
-            // __dd_taint_anyworker is the worker of __dd_taint_any. Plain
+            // __dd_taint_anyworker is the worker of __dd_taint_any. Atomic
             // loads: a race with a writer gives the old or the new value of
             // the word.
             //
@@ -885,11 +886,11 @@ aspects:
                   first := ^uint64(0) << (b0 % 64)
                   last := ^uint64(0) >> (63 - (b1-1)%64)
                   if w0 == w1 {
-                    if c[w0&(__dd_taint_chunkWords-1)]&first&last != 0 {
+                    if atomic.Load64(&c[w0&(__dd_taint_chunkWords-1)])&first&last != 0 {
                       return true
                     }
                   } else {
-                    if c[w0&(__dd_taint_chunkWords-1)]&first != 0 || c[w1&(__dd_taint_chunkWords-1)]&last != 0 {
+                    if atomic.Load64(&c[w0&(__dd_taint_chunkWords-1)])&first != 0 || atomic.Load64(&c[w1&(__dd_taint_chunkWords-1)])&last != 0 {
                       return true
                     }
                     // Batches of at most 512 words, a checkpoint between them.
@@ -900,7 +901,7 @@ aspects:
                       }
                       units += int(stop - w)
                       for ; w < stop; w++ {
-                        if c[w&(__dd_taint_chunkWords-1)] != 0 {
+                        if atomic.Load64(&c[w&(__dd_taint_chunkWords-1)]) != 0 {
                           return true
                         }
                       }
@@ -934,6 +935,10 @@ aspects:
               }
               atomic.Xadd64(&__dd_taint_sweeps, 1)
               atomic.Store8(&s.__dd_taint, 0)
+              target := __dd_taint_testing && s.base() == atomic.Loaduintptr(&__dd_taint_sweeptarget)
+              if target {
+                atomic.Xadd64(&__dd_taint_targetsweeps, 1)
+              }
               size := s.elemsize
               base := s.base()
               n := uintptr(s.nelems)
@@ -947,6 +952,9 @@ aspects:
                   break
                 }
               }
+              // The finalizer checks walk the sorted specials list once for
+              // each pass (a cursor), not from the head for each object.
+              cur := s.specials
               run := uintptr(0) // start of the current dead run
               dead := false
               for i := uintptr(0); i < n; {
@@ -962,7 +970,7 @@ aspects:
                   i += 8
                   continue
                 }
-                if mb&(1<<(i%8)) != 0 || (hasFin && __dd_taint_hasfin(s, i*size, size)) {
+                if mb&(1<<(i%8)) != 0 || (hasFin && __dd_taint_finat(&cur, i*size, size)) {
                   if dead {
                     __dd_taint_apply(base+run*size, (i-run)*size, false, false, true)
                     dead = false
@@ -975,44 +983,86 @@ aspects:
               if dead {
                 __dd_taint_apply(base+run*size, (n-run)*size, false, false, true)
               }
+              if target && atomic.Load(&__dd_taint_sweeppause) == 1 {
+                // Test knob: wait between the flag reset and the live check.
+                __dd_taint_sweepwait()
+              }
               // Only live objects can still have taint: check them until one
-              // has taint.
+              // has taint, with a work limit. At the limit, the flag stays 1
+              // (always safe: a flag of 1 only costs a sweep hook later).
+              budget := __dd_taint_resetWords
+              cur = s.specials
               for i := uintptr(0); i < n; {
                 mb := *addb(marks, i/8)
                 if !hasFin && i%8 == 0 && mb == 0 {
                   i += 8
                   continue
                 }
-                if mb&(1<<(i%8)) != 0 || (hasFin && __dd_taint_hasfin(s, i*size, size)) {
-                  if __dd_taint_anyatomic(base+i*size, size) {
+                if mb&(1<<(i%8)) != 0 || (hasFin && __dd_taint_finat(&cur, i*size, size)) {
+                  if __dd_taint_anyatomic(base+i*size, size, &budget) {
                     atomic.Store8(&s.__dd_taint, 1)
                     break
                   }
                 }
                 i++
               }
+              if target && atomic.Load(&__dd_taint_sweeppause) == 2 {
+                // Test knob: wait after the live check (the end of the hook).
+                __dd_taint_sweepwait()
+              }
             }
 
-            // __dd_taint_hasfin tells if the object at span offset off has a
-            // finalizer special.
+            // __dd_taint_sweepwait (test knob) waits at most 200 ms, without
+            // yield (the sweep cannot), until __dd_taint_sweepgo, so that a
+            // test can call Set while the sweep hook of a span is at a given
+            // point.
             //
             //go:nowritebarrierrec
-            func __dd_taint_hasfin(s *mspan, off, size uintptr) bool {
-              for sp := s.specials; sp != nil && sp.offset < off+size; sp = sp.next {
-                if sp.offset >= off && sp.kind == _KindSpecialFinalizer {
+            func __dd_taint_sweepwait() {
+              atomic.Store(&__dd_taint_sweepwaiting, 1)
+              deadline := nanotime() + 200e6
+              for atomic.Load(&__dd_taint_sweepgo) == 0 && nanotime() < deadline {
+                procyield(10)
+              }
+              atomic.Store(&__dd_taint_sweepwaiting, 2)
+            }
+
+            // __dd_taint_resetWords is the work limit (bitmap words and chunk
+            // lookups) of the live check of __dd_taint_sweep.
+            const __dd_taint_resetWords = 1024
+
+            // __dd_taint_finat tells if the object at span offset off (of the
+            // given size) has a finalizer special. *cur is a cursor on the
+            // specials list of the span (sorted by offset); the offsets of
+            // the calls must not decrease.
+            //
+            //go:nowritebarrierrec
+            func __dd_taint_finat(cur **special, off, size uintptr) bool {
+              sp := *cur
+              for sp != nil && sp.offset < off {
+                sp = sp.next
+              }
+              *cur = sp
+              for ; sp != nil && sp.offset < off+size; sp = sp.next {
+                if sp.kind == _KindSpecialFinalizer {
                   return true
                 }
               }
               return false
             }
 
-            // __dd_taint_anyatomic is __dd_taint_any with atomic loads, for the
-            // flag protocol of __dd_taint_sweep. [p, p+n) is in one span.
+            // __dd_taint_anyatomic tells if one byte of [p, p+n) is tainted,
+            // for the flag protocol of __dd_taint_sweep. It spends one unit of
+            // *budget for each chunk and each word; when the budget is used,
+            // it returns true (the caller then keeps the flag).
             //
             //go:nowritebarrierrec
-            func __dd_taint_anyatomic(p, n uintptr) bool {
+            func __dd_taint_anyatomic(p, n uintptr, budget *int) bool {
               end := p + n
               for p < end {
+                if *budget--; *budget < 0 {
+                  return true
+                }
                 cbase := p &^ (__dd_taint_chunkHeap - 1)
                 cend := cbase + __dd_taint_chunkHeap
                 if cend > end || cend == 0 {
@@ -1022,6 +1072,9 @@ aspects:
                   b0, b1 := p-cbase, cend-cbase
                   w0, w1 := b0/64, (b1-1)/64
                   for w := w0; w <= w1; w++ {
+                    if *budget--; *budget < 0 {
+                      return true
+                    }
                     mask := ^uint64(0)
                     if w == w0 {
                       mask &= ^uint64(0) << (b0 % 64)
@@ -1107,6 +1160,71 @@ aspects:
               ha := __dd_taint_arena(p)
               return ha != nil && atomic.Loaduintptr(&ha.__dd_taint) >= 2
             }
+            // Test knobs of the sweep hook: the span at __dd_taint_sweeptarget
+            // counts its sweeps; with __dd_taint_sweeppause 1 (after the flag
+            // reset) or 2 (after the live check), its sweep waits until
+            // __dd_taint_sweepgo (see the hook).
+            var __dd_taint_sweeptarget uintptr
+            var __dd_taint_targetsweeps uint64
+            var __dd_taint_sweeppause, __dd_taint_sweepwaiting, __dd_taint_sweepgo uint32
+
+            // __dd_taint_sweepknobs sets the sweep target (the span of p; 0: no
+            // target), the pause and the go signal. It returns the sweeps of
+            // the target and the waiting state (1: waits, 2: continued).
+            func __dd_taint_sweepknobs(p uintptr, pause uint32, gosignal bool) (sweeps uint64, waiting uint32) {
+              if !__dd_taint_testing {
+                return 0, 0
+              }
+              base := uintptr(0)
+              if sp := spanOfHeap(p); sp != nil {
+                base = sp.base()
+              }
+              if base != atomic.Loaduintptr(&__dd_taint_sweeptarget) {
+                atomic.Storeuintptr(&__dd_taint_sweeptarget, base)
+                atomic.Store64(&__dd_taint_targetsweeps, 0)
+                atomic.Store(&__dd_taint_sweepwaiting, 0)
+              }
+              atomic.Store(&__dd_taint_sweeppause, pause)
+              v := uint32(0)
+              if gosignal {
+                v = 1
+              }
+              atomic.Store(&__dd_taint_sweepgo, v)
+              return atomic.Load64(&__dd_taint_targetsweeps), atomic.Load(&__dd_taint_sweepwaiting)
+            }
+            //go:linkname __dd_taint_api_sweepknobs __dd_iast_heapbits.sweepknobs
+            var __dd_taint_api_sweepknobs = __dd_taint_sweepknobs
+
+            // __dd_taint_spaninfo returns the base and the object count of the
+            // span of p (0, 0 if not heap or not a test program).
+            func __dd_taint_spaninfo(p uintptr) (base, nelems uintptr) {
+              if !__dd_taint_testing {
+                return 0, 0
+              }
+              sp := spanOfHeap(p)
+              if sp == nil {
+                return 0, 0
+              }
+              return sp.base(), uintptr(sp.nelems)
+            }
+            //go:linkname __dd_taint_api_spaninfo __dd_iast_heapbits.spaninfo
+            var __dd_taint_api_spaninfo = __dd_taint_spaninfo
+
+            // __dd_taint_spanflag returns the taint flag of the span of p, or
+            // -1 (not heap, or not a test program).
+            func __dd_taint_spanflag(p uintptr) int {
+              if !__dd_taint_testing {
+                return -1
+              }
+              sp := spanOfHeap(p)
+              if sp == nil {
+                return -1
+              }
+              return int(atomic.Load8(&sp.__dd_taint))
+            }
+            //go:linkname __dd_taint_api_spanflag __dd_iast_heapbits.spanflag
+            var __dd_taint_api_spanflag = __dd_taint_spanflag
+
             //go:linkname __dd_taint_api_hasdir __dd_iast_heapbits.hasdir
             var __dd_taint_api_hasdir = __dd_taint_hasdir
 
@@ -1204,8 +1322,10 @@ aspects:
               - name: sweep
     advice:
       - prepend-statements:
+          imports:
+            atomic: internal/runtime/atomic
           template: |-
-            if __dd_s := sl.mspan; __dd_s.__dd_taint != 0 {
+            if __dd_s := sl.mspan; atomic.Load8(&__dd_s.__dd_taint) != 0 {
               __dd_taint_sweep(__dd_s)
             }
 
