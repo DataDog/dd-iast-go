@@ -54,7 +54,10 @@ aspects:
             var _ bool = runtimeFreegcEnabled
             var _ bool = sizeSpecializedMallocEnabled
             var _ func(uintptr) bool = reusableSize
-            var _ = func(s *mspan, p uintptr) uintptr { return s.objIndex(p) }
+            var _ = func(s *mspan, p uintptr) uintptr { return s.objIndex(p) + s.startAddr }
+            var _ = func(gp *g) (bool, uintptr, uintptr, *m) { return gp.preempt, gp.stack.lo, gp.stack.hi, gp.m }
+            var _ = func(mp *m) (*g, int32, int32, string) { return mp.curg, mp.locks, mp.mallocing, mp.preemptoff }
+            var _ func() = Gosched
 
             // __dd_taint_osalloc is set by an init function that is injected
             // next to the OS-specific mmap. It never exits the process.
@@ -103,24 +106,75 @@ aspects:
               return (*__dd_taintBitmap)(atomic.Loadp(unsafe.Pointer(slot)))
             }
 
+            // Entry points and workers
+            //
+            // The Go wrappers pass uintptr values (so that the values do not
+            // escape). A uintptr is not updated when the stack moves. Thus
+            // every entry point is nosplit up to the "is this heap memory?"
+            // decision (the classifier): a stack address is refused before
+            // the stack can move. After the decision, the range is heap
+            // memory, which never moves, and the Go wrapper keeps it live; the
+            // entry point then calls a normal function (the worker).
+            //
+            // A long loop in package runtime is not an async safe point. The
+            // workers count work units and call __dd_taint_checkpoint every
+            // 512 units, so that a long operation cannot delay a
+            // stop-the-world. The sweep hook never yields.
+
+            // __dd_taint_checkpoint yields the processor when the scheduler
+            // asked for it and when the context permits it.
+            func __dd_taint_checkpoint() {
+              gp := getg()
+              if !gp.preempt && !(__dd_taint_testing && atomic.Load(&__dd_taint_forceyield) != 0) {
+                return
+              }
+              mp := gp.m
+              if gp != mp.curg || mp.locks != 0 || mp.mallocing != 0 || mp.preemptoff != "" {
+                return
+              }
+              // The same conditions as canPreemptM, and a running goroutine.
+              if mp.p == 0 || mp.p.ptr().status != _Prunning || readgstatus(gp)&^_Gscan != _Grunning {
+                return
+              }
+              if __dd_taint_testing {
+                atomic.Xadd64(&__dd_taint_yields, 1)
+              }
+              Gosched()
+            }
+
             // __dd_taint_apply sets (set=true) or clears the bits of [p, p+n).
             // Word k of a bitmap holds the bits of heap bytes [64k, 64k+64)
             // of the arena; all accesses use 64-bit words, so the byte order
             // does not matter. Partial words use atomic Or64/And64 because a
             // neighbour object can share the word. Full words belong to the
-            // range only, so a plain store is enough.
-            func __dd_taint_apply(p, n uintptr, set, alloc bool) {
+            // range only, so a plain store is enough. With yield true (worker
+            // use only), it calls __dd_taint_checkpoint every 512 units.
+            func __dd_taint_apply(p, n uintptr, set, yield bool) {
               end := p + n
+              units := 0
               for p < end {
+                // Each arena is one work unit (also without a bitmap).
+                if yield {
+                  if units++; units >= 512 {
+                    units = 0
+                    __dd_taint_checkpoint()
+                  }
+                }
                 base := arenaBase(arenaIndex(p))
                 aend := base + heapArenaBytes
                 if aend > end || aend == 0 {
                   aend = end
                 }
-                if bm := __dd_taint_bitmap(p, alloc); bm != nil {
+                if bm := __dd_taint_bitmap(p, false); bm != nil {
                   b0, b1 := p-base, aend-base
                   w0, w1 := b0/64, (b1-1)/64
                   for w := w0; w <= w1; w++ {
+                    if yield {
+                      if units++; units >= 512 {
+                        units = 0
+                        __dd_taint_checkpoint()
+                      }
+                    }
                     mask := ^uint64(0)
                     if w == w0 {
                       mask &= ^uint64(0) << (b0 % 64)
@@ -144,28 +198,106 @@ aspects:
               }
             }
 
-            // __dd_taint_object returns the span of [p, p+n) when the range
-            // is inside one allocation slot of an in-use heap span. The check
-            // makes sure that a range cannot change the bits of a neighbour
-            // slot in the same span. Several tiny allocations can share one
-            // 16-byte slot: inside it, the caller must give a correct range.
-            func __dd_taint_object(p, n uintptr) (*mspan, bool) {
+            // __dd_taint_probe is the stack probe (tests only): 1 when the
+            // last classified address was in the stack of the current
+            // goroutine, 2 when it was not.
+            var __dd_taint_probe uint32
+
+            // Test knobs: __dd_taint_movestack makes the entry points call a
+            // function with a stack check before the classifier (negative
+            // control of the stack probe); __dd_taint_forceyield makes every
+            // checkpoint yield; __dd_taint_yields counts the yields.
+            var __dd_taint_movestack uint32
+
+            // __dd_taint_slowpath (test knob) makes __dd_taint_any use its
+            // slow path when the arena has no bitmap.
+            var __dd_taint_slowpath uint32
+
+            // __dd_taint_slowcount counts the calls of __dd_taint_any that
+            // reached the classification of the slow path (tests only).
+            var __dd_taint_slowcount uint64
+
+            // __dd_taint_workerprobe is like __dd_taint_probe, at the start of
+            // each worker (tests only). A worker must never run for a stack
+            // address: for a stack address, the value must stay 0.
+            var __dd_taint_workerprobe uint32
+            var __dd_taint_forceyield uint32
+            var __dd_taint_yields uint64
+
+            // __dd_taint_classifyprobe runs at the start of each entry point,
+            // only when the program links heapbitstest.
+            //
+            //go:nosplit
+            func __dd_taint_classifyprobe(p uintptr) {
+              if atomic.Load(&__dd_taint_movestack) != 0 {
+                // Exactly one stack check: with mayMoreStackMove, one move.
+                // (Two moves can give back the first stack: the stack cache
+                // reuses the last freed stack.)
+                __dd_taint_growstack(0)
+              }
+              gp := getg()
+              if p >= gp.stack.lo && p < gp.stack.hi {
+                atomic.Store(&__dd_taint_probe, 1)
+              } else {
+                atomic.Store(&__dd_taint_probe, 2)
+              }
+            }
+
+            // __dd_taint_probeworker runs at the start of each worker, only
+            // when the program links heapbitstest.
+            //
+            //go:nosplit
+            func __dd_taint_probeworker(p uintptr) {
+              gp := getg()
+              if p >= gp.stack.lo && p < gp.stack.hi {
+                atomic.Store(&__dd_taint_workerprobe, 1)
+              } else {
+                atomic.Store(&__dd_taint_workerprobe, 2)
+              }
+            }
+
+            // __dd_taint_growstack has a stack check (it is not a leaf), so
+            // that -d=maymorestack=runtime.mayMoreStackMove moves the stack
+            // when it is called.
+            //
+            //go:noinline
+            func __dd_taint_growstack(n int) int {
+              if n <= 0 {
+                return 0
+              }
+              return __dd_taint_growstack(n-1) + 1
+            }
+
+            // __dd_taint_classify returns the span of [p, p+n) when the range
+            // is inside one allocation slot of an in-use heap span, else nil.
+            // The check makes sure that a range cannot change the bits of a
+            // neighbour slot in the same span. Several tiny allocations can
+            // share one 16-byte slot: inside it, the caller must give a
+            // correct range.
+            //
+            //go:nosplit
+            func __dd_taint_classify(p, n uintptr) *mspan {
               s := spanOfHeap(p)
               if s == nil {
-                return nil, false
+                return nil
               }
-              obj := s.base() + s.objIndex(p)*s.elemsize
+              obj := s.startAddr + s.objIndex(p)*s.elemsize
               if p+n > obj+s.elemsize || p+n > s.limit {
-                return nil, false
+                return nil
               }
-              return s, true
+              return s
             }
 
             // __dd_taint_prepare makes sure that all arenas of [p, p+n) have a
             // bitmap. It returns false if one bitmap cannot be allocated.
             func __dd_taint_prepare(p, n uintptr) bool {
               end := p + n
+              units := 0
               for p < end {
+                if units++; units >= 512 {
+                  units = 0
+                  __dd_taint_checkpoint()
+                }
                 if __dd_taint_bitmap(p, true) == nil {
                   return false
                 }
@@ -183,21 +315,36 @@ aspects:
             // allocation slot of an in-use heap span (thus stack memory,
             // globals and off-heap memory are refused), or when a bitmap
             // cannot be allocated. Inside a tiny slot, the caller must give
-            // the range of one value (see __dd_taint_object).
+            // the range of one value (see __dd_taint_classify).
+            //
+            //go:nosplit
             func __dd_taint_set(p, n uintptr) bool {
+              if __dd_taint_testing {
+                __dd_taint_classifyprobe(p)
+              }
               if __dd_taint_osalloc == nil || n == 0 || p+n < p {
                 return false
               }
-              s, ok := __dd_taint_object(p, n)
+              s := __dd_taint_classify(p, n)
               // User arena chunks (GOEXPERIMENT=arenas) are freed without a
               // sweep of their objects: refuse them.
-              if !ok || s.isUserArenaChunk {
+              if s == nil || s.isUserArenaChunk {
                 return false
+              }
+              return __dd_taint_setworker(s, p, n)
+            }
+
+            // __dd_taint_setworker is the worker of __dd_taint_set.
+            //
+            //go:noinline
+            func __dd_taint_setworker(s *mspan, p, n uintptr) bool {
+              if __dd_taint_testing {
+                __dd_taint_probeworker(p)
               }
               if !__dd_taint_prepare(p, n) {
                 return false
               }
-              __dd_taint_apply(p, n, true, false)
+              __dd_taint_apply(p, n, true, true)
               atomic.Store8(&s.__dd_taint, 1)
               return true
             }
@@ -205,36 +352,159 @@ aspects:
             // __dd_taint_clear removes the taint of [p, p+n). It ignores a
             // range that is not inside one allocation slot of an in-use heap
             // span. The caller rule for tiny slots also applies.
+            //
+            //go:nosplit
             func __dd_taint_clear(p, n uintptr) {
+              if __dd_taint_testing {
+                __dd_taint_classifyprobe(p)
+              }
               if n == 0 || p+n < p {
                 return
               }
-              if _, ok := __dd_taint_object(p, n); !ok {
+              if __dd_taint_classify(p, n) == nil {
                 return
               }
-              __dd_taint_apply(p, n, false, false)
+              __dd_taint_clearworker(p, n)
+            }
+
+            // __dd_taint_clearworker is the worker of __dd_taint_clear.
+            //
+            //go:noinline
+            func __dd_taint_clearworker(p, n uintptr) {
+              if __dd_taint_testing {
+                __dd_taint_probeworker(p)
+              }
+              __dd_taint_apply(p, n, false, true)
             }
 
             // __dd_taint_clearslot clears the bits of the whole allocation
-            // slot of the heap object at p (freegc hook).
+            // slot of the heap object at p (freegc hook; it does not yield).
             func __dd_taint_clearslot(p uintptr) {
               s := spanOfHeap(p)
               if s == nil || atomic.Load8(&s.__dd_taint) == 0 {
                 return
               }
-              obj := s.base() + s.objIndex(p)*s.elemsize
+              obj := s.startAddr + s.objIndex(p)*s.elemsize
               __dd_taint_apply(obj, s.elemsize, false, false)
             }
 
+            // __dd_taint_fastwords is the largest number of bitmap words that
+            // the nosplit fast path of __dd_taint_any reads (w0 to w1, with
+            // w1-w0 < __dd_taint_fastwords).
+            const __dd_taint_fastwords = 16
+
+            // __dd_taint_arena is heapArenaOf with the nosplit directive (for
+            // the entry points).
+            //
+            //go:nosplit
+            func __dd_taint_arena(p uintptr) *heapArena {
+              ri := arenaIndex(p)
+              i1, i2 := ri.l1(), ri.l2()
+              if i1 >= uint(len(mheap_.arenas)) {
+                return nil
+              }
+              l2 := mheap_.arenas[i1]
+              if l2 == nil || i2 >= uint(len(l2)) {
+                return nil
+              }
+              return l2[i2]
+            }
+
             // __dd_taint_any tells if one byte of [p, p+n) is tainted. It is
-            // safe for all addresses (not heap: false). Plain loads: a race
-            // with a writer gives the old or the new value of the word.
+            // safe for all addresses: memory that is not in an in-use heap
+            // span is never tainted.
+            //
+            // Fast path (nosplit, bounded): a range in one arena that covers
+            // at most __dd_taint_fastwords bitmap words (about 1 KiB) is
+            // checked here. The bits of stack memory are always 0, so this is
+            // correct also for a stack address. Longer ranges are classified
+            // (a stack address is refused before the worker can move the
+            // stack), then checked by the worker.
+            //
+            //go:nosplit
             func __dd_taint_any(p, n uintptr) bool {
+              if __dd_taint_testing {
+                __dd_taint_classifyprobe(p)
+              }
               if n == 0 || p+n < p {
                 return false
               }
+              base := uintptr(arenaIndex(p))*heapArenaBytes + arenaBaseOffset
+              if end := p + n; end-base <= heapArenaBytes {
+                ha := __dd_taint_arena(p)
+                if ha == nil {
+                  if !__dd_taint_testing || atomic.Load(&__dd_taint_slowpath) == 0 {
+                    return false
+                  }
+                  goto slow
+                }
+                bm := (*__dd_taintBitmap)(atomic.Loadp(unsafe.Pointer(&ha.__dd_taint)))
+                if bm == nil {
+                  // No bitmap: no taint. The test knob sends the call to the
+                  // slow path (also above, without arena metadata), so that
+                  // tests can check the classification of any address.
+                  if !__dd_taint_testing || atomic.Load(&__dd_taint_slowpath) == 0 {
+                    return false
+                  }
+                  goto slow
+                }
+                b0, b1 := p-base, end-base
+                w0, w1 := b0/64, (b1-1)/64
+                // Always true (b1 <= heapArenaBytes): the guard makes a bug
+                // a missed taint, not an index panic.
+                if w0 > w1 || w1 >= uintptr(len(bm.b)) {
+                  return false
+                }
+                first := ^uint64(0) << (b0 % 64)
+                last := ^uint64(0) >> (63 - (b1-1)%64)
+                if w0 == w1 {
+                  return bm.b[w0]&first&last != 0
+                }
+                if bm.b[w0]&first != 0 || bm.b[w1]&last != 0 {
+                  return true
+                }
+                if w1-w0 < __dd_taint_fastwords {
+                  for w := w0 + 1; w < w1; w++ {
+                    if bm.b[w] != 0 {
+                      return true
+                    }
+                  }
+                  return false
+                }
+              }
+            slow:
+              if __dd_taint_testing {
+                atomic.Xadd64(&__dd_taint_slowcount, 1)
+              }
+              s := spanOfHeap(p)
+              if s == nil {
+                return false
+              }
+              // A Go value never extends after the end of its span: do not
+              // walk memory after it (this bounds the work of the worker).
+              if p+n > s.limit {
+                n = s.limit - p
+              }
+              return __dd_taint_anyworker(p, n)
+            }
+
+            // __dd_taint_anyworker is the worker of __dd_taint_any. Plain
+            // loads: a race with a writer gives the old or the new value of
+            // the word.
+            //
+            //go:noinline
+            func __dd_taint_anyworker(p, n uintptr) bool {
+              if __dd_taint_testing {
+                __dd_taint_probeworker(p)
+              }
               end := p + n
+              units := 0
               for p < end {
+                // Each arena is one work unit (also without a bitmap).
+                if units++; units >= 512 {
+                  units = 0
+                  __dd_taint_checkpoint()
+                }
                 base := arenaBase(arenaIndex(p))
                 aend := base + heapArenaBytes
                 if aend > end || aend == 0 {
@@ -253,9 +523,21 @@ aspects:
                     if bm.b[w0]&first != 0 || bm.b[w1]&last != 0 {
                       return true
                     }
-                    for w := w0 + 1; w < w1; w++ {
-                      if bm.b[w] != 0 {
-                        return true
+                    // Batches of at most 512 words, a checkpoint between them.
+                    for w := w0 + 1; w < w1; {
+                      stop := w + uintptr(512-units)
+                      if stop > w1 {
+                        stop = w1
+                      }
+                      units += int(stop - w)
+                      for ; w < stop; w++ {
+                        if bm.b[w] != 0 {
+                          return true
+                        }
+                      }
+                      if units >= 512 {
+                        units = 0
+                        __dd_taint_checkpoint()
                       }
                     }
                   }
@@ -419,6 +701,40 @@ aspects:
             var __dd_taint_api_enabled = __dd_taint_enabled
             //go:linkname __dd_taint_api_stats __dd_iast_heapbits.stats
             var __dd_taint_api_stats = __dd_taint_stats
+            // Test knobs of the stack probe and of the checkpoints.
+            func __dd_taint_testknobs(movestack, forceyield bool) (probe, workerprobe uint32, yields uint64) {
+              if !__dd_taint_testing {
+                return 0, 0, 0
+              }
+              v := uint32(0)
+              if movestack {
+                v = 1
+              }
+              atomic.Store(&__dd_taint_movestack, v)
+              v = 0
+              if forceyield {
+                v = 1
+              }
+              atomic.Store(&__dd_taint_forceyield, v)
+              return atomic.Xchg(&__dd_taint_probe, 0), atomic.Xchg(&__dd_taint_workerprobe, 0), atomic.Load64(&__dd_taint_yields)
+            }
+            func __dd_taint_setslowpath(v bool) uint64 {
+              if !__dd_taint_testing {
+                return 0
+              }
+              if v {
+                atomic.Store(&__dd_taint_slowpath, 1)
+              } else {
+                atomic.Store(&__dd_taint_slowpath, 0)
+              }
+              return atomic.Load64(&__dd_taint_slowcount)
+            }
+            //go:linkname __dd_taint_api_slowpath __dd_iast_heapbits.slowpath
+            var __dd_taint_api_slowpath = __dd_taint_setslowpath
+
+            //go:linkname __dd_taint_api_testknobs __dd_iast_heapbits.testknobs
+            var __dd_taint_api_testknobs = __dd_taint_testknobs
+
             // Test knob: runtime.freegc of a noscan object.
             func __dd_taint_freegc(p unsafe.Pointer, size uintptr) bool {
               if !__dd_taint_testing {

@@ -16,8 +16,8 @@
   fixed in this version, appendix D). The critic listed these 2 fixes as the
   only remaining items.
 - **User review: done** (section 10). Phase 1 is approved.
-- **Phase 1 (production heap bits): in progress.** Step 1 of section 9 is
-  done. Next: step 2.
+- **Phase 1 (production heap bits): in progress.** Steps 1 and 2 of
+  section 9 are done. Next: step 3.
 - Phases 2 to 4 (stack values, origins and marks, propagation): outline only
   (section 8). Each one gets its own plan after phase 1.
 
@@ -728,9 +728,34 @@ in the `taint` package as the first check of every operation.
    allocator (3.5), `KeepAlive` in all wrappers (5.3, rule "Liveness"), and
    the test that fails when a woven build on a supported platform is not
    enabled (6.3).
-2. Pointer safety (5.3): classifiers, workers with work units and
-   checkpoints, own arena lookup, `KeepAlive`, stack probe and its negative
-   control, generated-code check, progress test: **2 days**.
+2. **(Done.)** Pointer safety (5.3): classifiers, workers with work units
+   and checkpoints, own arena lookup, `KeepAlive`, stack probe and its
+   negative control, generated-code check: **2 days**. Notes:
+   - `Any` has a `nosplit` fast path for ranges of up to 16 bitmap words
+     (about 1 KiB) in one arena; it needs no classification, because the
+     bits of stack memory are always 0. Longer ranges are classified, then
+     the worker checks them.
+   - The negative control of the stack probe forces exactly **one** stack
+     move: two moves can give back the first stack (the stack cache reuses
+     the last freed stack), and then a stale address looks valid.
+   - The generated-code check is the Go test `TestGeneratedCode` (it builds
+     the woven runtime with `-S`, default flags and `-N -l`). With `-N -l`,
+     calls to `runtime.panicBounds` are permitted (the explicit guards make
+     them unreachable, but the compiler does not remove them without
+     optimizations); with optimizations, such a call fails the test.
+   - Work units also count arenas (with or without a bitmap), not only
+     words. The slow path of `Any` stops at the end of the span of `p` (a Go
+     value never extends after it), which bounds the work.
+   - The checkpoint also checks the P status (`_Prunning`) and the goroutine
+     status (`_Grunning`), as `canPreemptM` does, for the runtime hooks of
+     phase 4.
+   - A **worker probe** (test knob) records whether a worker ran for a stack
+     address. `TestNoWorkerForStackAddress` requires that no worker runs
+     for a long stack range. This test proves the order "worker after the
+     decision", which the generated-code check cannot see.
+   - The progress test with `Copy` (5.3) moves to step 6, with `Copy`.
+     Step 2 has `TestWorkerCheckpoints` (the workers yield at least once for
+     each 512 words when a test knob forces the yield).
 3. Slabs, budget, refill ownership, slot claim protocol, accounting (5.4),
    with the failure, rollback, budget and accounting tests: **2.5 days**.
 4. Slab descriptors, free bits, chunk recycling, largest taintable span
