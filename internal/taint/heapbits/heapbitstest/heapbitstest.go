@@ -23,7 +23,10 @@ var testingEnabled = true
 
 var (
 	//go:linkname rtStats __dd_iast_heapbits.stats
-	rtStats func() (bitmaps, sweeps uint64)
+	rtStats func() [13]uint64
+
+	//go:linkname rtAllocKnobs __dd_iast_heapbits.allocknobs
+	rtAllocKnobs func(fail, park, parkSlot, parkScan bool) uint32
 
 	//go:linkname rtNoSweep __dd_iast_heapbits.nosweep
 	rtNoSweep func(bool)
@@ -63,13 +66,67 @@ func Knobs(movestack, forceyield bool) (probe, workerProbe uint32, yields uint64
 	return rtTestKnobs(movestack, forceyield)
 }
 
-// Stats returns the number of bitmaps that the runtime allocated and the
-// number of tainted spans that the sweep hook processed.
-func Stats() (bitmaps, sweeps uint64) {
+// Storage is a snapshot of the storage of the taint bits.
+type Storage struct {
+	Slabs       uint64 // mapped slabs (1 MiB each)
+	ChunksInUse uint64 // chunks (16 KiB each) given to directories or bits
+	Mapped      uint64 // mapped bytes
+	Used        uint64 // mapped and reserved bytes (the budget counter)
+	Budget      uint64 // budget in bytes
+	Sweeps      uint64 // tainted spans processed by the sweep hook
+	Drops       Drops
+	Accounted   uint64 // bytes charged to the runtime memory stats
+	UsedMax     uint64 // high-water mark of Used
+}
+
+// Drops counts the operations that could not get storage, by reason.
+type Drops struct {
+	Budget, RefillBusy, Contention, Mmap, SlotBusy uint64
+}
+
+// ChunksPerSlab is the number of chunks in one slab.
+const ChunksPerSlab = 64
+
+// SlabBytes is the size of one slab.
+const SlabBytes = 1 << 20
+
+// ChunkHeapBytes is the heap size that one chunk covers.
+const ChunkHeapBytes = 128 << 10
+
+// Stats returns a snapshot of the storage.
+func Stats() Storage {
 	if rtStats == nil {
-		return 0, 0
+		return Storage{}
 	}
-	return rtStats()
+	r := rtStats()
+	return Storage{
+		Slabs: r[0], ChunksInUse: r[1], Mapped: r[2], Used: r[3], Budget: r[4], Sweeps: r[5],
+		Drops:     Drops{Budget: r[6], RefillBusy: r[7], Contention: r[8], Mmap: r[9], SlotBusy: r[10]},
+		Accounted: r[11], UsedMax: r[12],
+	}
+}
+
+// Waiting goroutines reported by [AllocKnobs].
+const (
+	NoneParked   = 0
+	RefillParked = 1 // the refill owner waits (after its budget reservation)
+	SlotParked   = 2 // the owner of a claimed slot waits (before its chunk)
+	ScanParked   = 3 // a goroutine waits after its scan of the free chunks
+)
+
+// AllocKnobs sets the test knobs of the allocator: with fail true, the next
+// mmap calls fail; with park true, the next goroutine that maps a slab waits
+// (after its budget reservation) until park is false again; with parkSlot
+// true, the next goroutine that claims an empty slot waits (before it gets
+// the chunk) until parkSlot is false again; with parkScan true, the first
+// goroutine that finds no free chunk waits (before it tries to become the
+// refill owner) until parkScan is false again (one goroutine only). It
+// returns which goroutine waits.
+func AllocKnobs(fail, park, parkSlot, parkScan bool) (parked uint32) {
+	if rtAllocKnobs == nil {
+		return NoneParked
+	}
+	return rtAllocKnobs(fail, park, parkSlot, parkScan)
 }
 
 // Enabled reports whether the test knobs are active in the woven runtime.

@@ -41,7 +41,39 @@ var (
 
 	//go:linkname rtEnabled __dd_iast_heapbits.enabled
 	rtEnabled func() bool
+
+	//go:linkname rtSetBudget __dd_iast_heapbits.setbudget
+	rtSetBudget func(bytes uintptr) bool
 )
+
+// DefaultBudget is the default memory budget of the taint bits: 64 MiB of
+// storage, enough for taint in up to 512 MiB of heap.
+const DefaultBudget = 64 << 20
+
+// MaxBudget is the largest memory budget of the taint bits.
+const MaxBudget = 1 << 30
+
+// SetBudget sets the memory budget of the taint bits, in bytes. The runtime
+// rounds it down to whole MiB; values above MaxBudget become MaxBudget; 0
+// turns the storage off (Set then always fails). The budget counts all the
+// memory that the feature maps for the bits (the 1 MiB slabs, which hold the
+// bits and their directories), and this memory counts in the memory limit of
+// the Go runtime (GOMEMLIMIT). It does not count the fixed metadata in the
+// runtime (16 KiB of slab descriptors, and one field in each heap arena and
+// span). When the budget is used, Set drops the taint (it returns false).
+//
+// SetBudget must be called before the first Set. It returns false (and
+// changes nothing) after the runtime has mapped storage, or when the feature
+// is not enabled.
+func SetBudget(bytes uint64) bool {
+	if rtSetBudget == nil || !Enabled() {
+		return false
+	}
+	if bytes > MaxBudget {
+		bytes = MaxBudget
+	}
+	return rtSetBudget(uintptr(bytes))
+}
 
 // Enabled reports whether the runtime was woven and the platform is
 // supported.
@@ -53,8 +85,9 @@ func Enabled() bool {
 // 0, when the range wraps the address space, when the range is not inside one
 // allocation slot of an in-use heap span (stack, global, off-heap or user
 // arena memory, or a range that crosses into a neighbour object), when the
-// runtime cannot allocate the storage for the bits, or when the feature is
-// not enabled.
+// runtime cannot get the storage for the bits (the budget is used, the OS
+// refused the memory, or another goroutine is getting the same storage: Set
+// never waits), or when the feature is not enabled.
 //
 // The range must be the memory of one Go value (the data of one string or
 // slice). The runtime checks the allocation slot, but several small

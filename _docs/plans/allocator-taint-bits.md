@@ -16,8 +16,8 @@
   fixed in this version, appendix D). The critic listed these 2 fixes as the
   only remaining items.
 - **User review: done** (section 10). Phase 1 is approved.
-- **Phase 1 (production heap bits): in progress.** Steps 1 and 2 of
-  section 9 are done. Next: step 3.
+- **Phase 1 (production heap bits): in progress.** Steps 1 to 3 of
+  section 9 are done. Next: step 4.
 - Phases 2 to 4 (stack values, origins and marks, propagation): outline only
   (section 8). Each one gets its own plan after phase 1.
 
@@ -756,10 +756,32 @@ in the `taint` package as the first check of every operation.
    - The progress test with `Copy` (5.3) moves to step 6, with `Copy`.
      Step 2 has `TestWorkerCheckpoints` (the workers yield at least once for
      each 512 words when a test knob forces the yield).
-3. Slabs, budget, refill ownership, slot claim protocol, accounting (5.4),
-   with the failure, rollback, budget and accounting tests: **2.5 days**.
-4. Slab descriptors, free bits, chunk recycling, largest taintable span
-   (5.4), with the boundary, refill-owner and interleaving tests: **1.5 days**.
+3. **(Done.)** Slabs, budget, refill ownership, slot claim protocol,
+   accounting (5.4), with the failure, rollback, budget and accounting
+   tests: **2.5 days**. Notes:
+   - The slab descriptors with their free masks (5.4) are in this step, as
+     "get a chunk" uses them. Recycling (the sweeper sets free bits) and the
+     zeroing of recycled chunks are in step 4.
+   - The directory slot of an arena holds the address of the directory,
+     not a code (directories are never given back): one decode less on the
+     read path. Chunk slots hold codes. `Any` on 16 bytes: 4.0 ns (flat
+     PoC bitmap: 3.2 ns).
+   - `heapbits.SetBudget` exists; the wiring to the IAST configuration is
+     done when the `taint` package uses the bits (phase 4).
+   - Concurrent first writers of one new chunk drop (slot busy), as the
+     protocol says: Set never waits. The tests that are not about this get
+     their storage first.
+   - The storage tests run in a child process with a budget of 32 MiB (a
+     heap where no memory had taint). The other tests set the budget to
+     1 GiB in `TestMain`: chunks of small objects are never given back, so
+     the default budget is used after a few tests.
+   - `OtherSys` also changes by other runtime metadata (for example a new
+     256 KiB chunk of `persistentalloc`): the accounting tests use a margin
+     of half a slab.
+4. Chunk recycling (the sweeper sets free bits), zeroing of recycled
+   chunks, largest taintable span (5.4), with the boundary and interleaving
+   tests (the slab descriptors and the refill-owner tests are in step 3):
+   **1.5 days**.
 5. Atomics, bounded flag reset, single-walk finalizer check (5.5), with the
    dead-neighbour and flag stress tests: **1 day**.
 6. `Next`, `NextClean`, `Copy` (CAS writes, overlap) and their tests:

@@ -148,7 +148,7 @@ func TestWorkerCheckpoints(t *testing.T) {
 	need(t)
 	const size = 1 << 20 // 16384 bitmap words
 	b := heapBytes(size)
-	// Make the bitmaps of all arenas of b exist, with no bit set.
+	// Make the chunks of b exist, with no bit set.
 	if !heapbits.SetBytes(b) {
 		t.Fatal("Set failed")
 	}

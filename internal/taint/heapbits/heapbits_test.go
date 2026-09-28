@@ -122,7 +122,9 @@ func reuse(size, count int) (reused, bad int) {
 	objs := make([][]byte, 2*count)
 	for i := range objs {
 		objs[i] = heapBytes(size)
-		heapbits.SetBytes(objs[i])
+		if !heapbits.SetBytes(objs[i]) {
+			panic("Set failed: storage budget used?")
+		}
 		if (i/64)%2 == 0 {
 			dropped[uintptr(unsafe.Pointer(unsafe.SliceData(objs[i])))] = struct{}{}
 		}
@@ -151,10 +153,24 @@ func reuse(size, count int) (reused, bad int) {
 
 var sizes = []int{8, 16, 24, 48, 64, 500, 4096, 30000, 40000, 1 << 20}
 
+// reuseSome is reuse, tried up to 5 times until at least one address is used
+// again: for large objects (own spans), the page allocator does not always
+// give the same address back.
+func reuseSome(size, count int) (reused, bad int) {
+	for range 5 {
+		r, b := reuse(size, count)
+		reused, bad = reused+r, bad+b
+		if reused > 0 {
+			break
+		}
+	}
+	return reused, bad
+}
+
 func TestNoTaintAfterReuse(t *testing.T) {
 	need(t)
 	for _, size := range sizes {
-		reused, bad := reuse(size, 2000)
+		reused, bad := reuseSome(size, 2000)
 		if bad != 0 {
 			t.Errorf("size %d: %d new objects inherited taint", size, bad)
 		}
@@ -172,7 +188,7 @@ func TestNoTaintAfterReuseNegativeControl(t *testing.T) {
 	need(t)
 	if os.Getenv("HEAPBITS_NEGATIVE_CONTROL") != "1" {
 		cmd := exec.Command(os.Args[0], "-test.run=^TestNoTaintAfterReuseNegativeControl$", "-test.v")
-		cmd.Env = append(os.Environ(), "HEAPBITS_NEGATIVE_CONTROL=1")
+		cmd.Env = append(os.Environ(), "HEAPBITS_NEGATIVE_CONTROL=1", childEnv+"=1")
 		out, err := cmd.CombinedOutput()
 		if err != nil {
 			t.Fatalf("child failed: %v\n%s", err, out)
@@ -180,10 +196,11 @@ func TestNoTaintAfterReuseNegativeControl(t *testing.T) {
 		t.Logf("child:\n%s", out)
 		return
 	}
+	heapbits.SetBudget(heapbits.MaxBudget)
 	heapbitstest.SetNoSweep(true)
 	total := 0
 	for _, size := range sizes {
-		reused, bad := reuse(size, 2000)
+		reused, bad := reuseSome(size, 2000)
 		// Each size must show the failure that the hook prevents.
 		if reused == 0 {
 			t.Errorf("size %d: no address was used again, the negative control is not valid", size)
@@ -246,13 +263,18 @@ func TestCrossArena(t *testing.T) {
 	if heapbits.AnyBytes(b) {
 		t.Fatal("clear failed")
 	}
-	bm, _ := heapbitstest.Stats()
-	t.Logf("bitmaps allocated: %d", bm)
+	t.Logf("storage: %+v", heapbitstest.Stats())
 }
 
 func TestConcurrentNeighbours(t *testing.T) {
 	need(t)
 	b := heapBytes(4096)
+	// Get the storage first: concurrent first writers of one chunk drop
+	// (Set never waits), which is not what this test checks.
+	if !heapbits.SetBytes(b) {
+		t.Fatal("Set failed")
+	}
+	heapbits.ClearBytes(b)
 	// The baseline is taken after the first write, when the span of b has
 	// its flag. The counter is global: an increase proves that a sweep of a
 	// tainted span ran while the workers changed bits, not that it was the
@@ -261,8 +283,7 @@ func TestConcurrentNeighbours(t *testing.T) {
 	var firstWrite sync.Once
 	written := make(chan struct{})
 	sweptDuring := func() bool {
-		_, sweeps := heapbitstest.Stats()
-		return sweeps > sweepsBefore.Load()
+		return heapbitstest.Stats().Sweeps > sweepsBefore.Load()
 	}
 	var wg, gcDone sync.WaitGroup
 	const workers = 8
@@ -297,10 +318,12 @@ func TestConcurrentNeighbours(t *testing.T) {
 				// Each worker owns byte offsets w, w+8, w+16, ...: the
 				// workers share every bitmap word.
 				j := (i%512)*8 + w
-				heapbits.SetBytes(b[j : j+1])
+				if !heapbits.SetBytes(b[j : j+1]) {
+					t.Errorf("Set failed at %d", j)
+					return
+				}
 				firstWrite.Do(func() {
-					_, sweeps := heapbitstest.Stats()
-					sweepsBefore.Store(sweeps)
+					sweepsBefore.Store(heapbitstest.Stats().Sweeps)
 					close(written)
 				})
 				if !heapbits.AnyBytes(b[j : j+1]) {
