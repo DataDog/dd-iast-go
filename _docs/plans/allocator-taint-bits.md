@@ -16,8 +16,8 @@
   fixed in this version, appendix D). The critic listed these 2 fixes as the
   only remaining items.
 - **User review: done** (section 10). Phase 1 is approved.
-- **Phase 1 (production heap bits): in progress.** Steps 1 to 7 of
-  section 9 are done. Next: step 8.
+- **Phase 1 (production heap bits): in progress.** Steps 1 to 8 of
+  section 9 are done. Next: step 9.
 - Phases 2 to 4 (stack values, origins and marks, propagation): outline only
   (section 8). Each one gets its own plan after phase 1.
 
@@ -858,7 +858,36 @@ in the `taint` package as the first check of every operation.
      milliseconds also for plain Go code. It now uses half of the Ps and
      alternates 5 rounds of a baseline (atomic operations in plain Go) and
      of the Copy work; the limit is 10 ms, or 3 times the baseline.
-8. Drift test with golden files for go1.26 and go1.27: **0.5 day**.
+8. **(Done.)** Drift test with golden files for go1.26 and go1.27:
+   **0.5 day**. Notes:
+   - `TestRuntimeDrift` (plain `go test`, no weaving) reads
+     `$(go env GOROOT)/src/runtime` and writes an inventory: the call sites
+     of the functions that give memory back or use it again (`freeSpan`,
+     `freeSpanLocked`, `freeManual`, `freegc`, `freeUserArenaChunk`,
+     `nextReusableNoScan`, `addReusableNoscan`, `mallocgcSmallNoscanReuse`),
+     the functions that write `freeindex` or `allocBits`, the
+     `_KindSpecial*` constants, the `mmap` definitions (with or without a Go
+     body, with their build constraint), and the full code of: the mark bit
+     and span lookup functions (`markBitsForIndex`,
+     `gcUsesSpanInlineMarkBits`, `spanOf`, `spanOfHeap`, `objIndex`,
+     `heapArenaOf`, `arenaIndex`, `l1`, `l2`), `sysAlloc`, the immediate
+     reuse path (`freegc`, `reusableSize`, `nextReusableNoScan`,
+     `addReusableNoscan`), the whole `(*sweepLocked).sweep` (with the
+     finalizer revival), the order of the specials list (`addspecial`,
+     `removespecial`, `specialFindSplicePoint`), `ensureSwept`, and the `mmap` bodies. The diff is
+     ordered (longest common subsequence). A development toolchain
+     (`devel go1.N-...`) uses `runtime-go1.N-devel.golden`. It compares it with
+     `testdata/runtime-go1.<minor>.golden`; `-update-drift` writes it.
+     go1.26.6 and go1.26.8 give the same inventory.
+   - Review of the golden files (go1.26 and go1.27): `freeSpan` is called
+     only by `(*sweepLocked).sweep` (the hook runs first); `freeManual` only
+     for manual spans (stacks, work buffers: `Set` refuses them); the
+     `freegc` callers are `growsliceNoAlias` and `growsliceBufNoAlias`
+     (the `freegc` hook); `mallocgcSmallNoscanReuse` reuses only objects
+     that `freegc` freed; `freeUserArenaChunk` frees user arena chunks
+     (`Set` refuses them); the writes of `freeindex` and `allocBits` are in
+     the allocation paths, span initialization and the sweep. No path frees
+     heap memory without one of the hooks.
 9. CI matrix job: **0.5 day**.
 10. Micro, worst-case and 3-variant overhead benchmarks, latency gate:
     **1.5 days**.
