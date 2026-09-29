@@ -805,8 +805,8 @@ in the `taint` package as the first check of every operation.
    - Measured cost (M5 Pro, arm64: `Load64` is `LDAR`): `Any` on 16 B and
      256 B: no change; on 4 KiB: +20% (clean) and +30% (taint in the
      middle), from 24.8 to 29.7 ns and from 16.3 to 21.2 ns. This is at the
-     20% limit of 5.5 for long values only. The atomics stay (decision for
-     the user, section 10). On amd64, `Load64` is a plain `MOV`.
+     20% limit of 5.5 for long values only. The atomics stay (user
+     decision, section 10 item 5). On amd64, `Load64` is a plain `MOV`.
    - The live check of the sweep hook has a limit of 1024 work units
      (chunks and words); at the limit the flag stays 1.
    - `TestGeneratedCode` also checks that no injected runtime function
@@ -838,6 +838,9 @@ the performance numbers of section 3.3; step 10 measures them again.
    and clears stale bits.
 3. **Origins and marks (phase 3): O1**, runtime specials.
 4. **Base branch: `main`.**
+5. **Atomic loads (step 5): keep all atomics.** The cost is only for long
+   values on arm64 (`Any` on 4 KiB: +20% to +30%); on amd64 the load is a
+   plain `MOV`. To check again with the step 10 benchmarks.
 
 ## 11. Risks
 
