@@ -503,10 +503,18 @@ func fillBudgetButOne(t *testing.T) {
 	t.Helper()
 	for range 8192 {
 		st := heapbitstest.Stats()
-		if st.Slabs*heapbitstest.SlabBytes == st.Budget && st.ChunksInUse == st.Slabs*heapbitstest.ChunksPerSlab-1 {
+		mapped := st.Slabs*heapbitstest.SlabBytes == st.Budget
+		free := st.Slabs*heapbitstest.ChunksPerSlab - st.ChunksInUse
+		if mapped && free == 1 {
 			return
 		}
-		if !heapbits.SetBytes(freshRegion()[:1]) {
+		r := freshRegion()
+		if mapped && free == 2 && !heapbitstest.HasDirectory(ptr(r)) {
+			// The Set would take the 2 last chunks (the directory of a
+			// new arena, and the bits): take another region.
+			continue
+		}
+		if !heapbits.SetBytes(r[:1]) {
 			t.Fatalf("Set failed before the budget was used: %+v", st)
 		}
 	}
