@@ -174,10 +174,138 @@ jobs:
           path: ${{ env.BENCHMARK_OUTPUT_DIR }}
           retention-days: 7
 
+  heapbits:
+    # Woven tests of the allocator-backed taint bits (plan
+    # _docs/plans/allocator-taint-bits.md, section 6.3): the runtime aspects
+    # use unexported runtime internals, so they run on each supported Go
+    # minor version, on amd64 and arm64, and with the build modes that
+    # change the runtime or the generated code.
+    name: Heap taint bits (${{ matrix.go }}, ${{ matrix.runner }}, ${{ matrix.mode }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        go: [oldstable, stable]
+        runner: [ubuntu-latest, ubuntu-24.04-arm]
+        mode: [default, race, no-optimizations, maymorestack, nogreenteagc, runtimefreegc, cgo-off]
+        include:
+          - go: stable
+            runner: macos-latest
+            mode: default
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Setup Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ matrix.go }}
+      - name: Woven tests
+        env:
+          MODE: ${{ matrix.mode }}
+          # Test the Go version of the cell: no automatic toolchain switch.
+          GOTOOLCHAIN: local
+        shell: bash
+        run: |
+          go version
+          args=(-shuffle=on -count=1)
+          case "$MODE" in
+            default) args+=(-ldflags=-checklinkname=1) ;;
+            race) args+=(-race) ;;
+            no-optimizations) args+=('-gcflags=all=-N -l') ;;
+            maymorestack) args+=('-gcflags=all=-d=maymorestack=runtime.mayMoreStackMove') ;;
+            nogreenteagc) export GOEXPERIMENT=nogreenteagc ;;
+            runtimefreegc) export GOEXPERIMENT=runtimefreegc ;;
+            cgo-off) export CGO_ENABLED=0 ;;
+            *) echo "unknown mode $MODE"; exit 1 ;;
+          esac
+          go tool orchestrion go test "${args[@]}" ./internal/taint/heapbits/...
+
+  heapbits-feature-off:
+    # The woven runtime must compile on every target, with the feature off
+    # where it is not supported (plan section 3.5).
+    name: Heap taint bits (feature off)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GOTOOLCHAIN: local
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Setup Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: stable
+      - name: Build Orchestrion
+        run: go build -o "$RUNNER_TEMP/orchestrion" github.com/DataDog/orchestrion
+      - name: Woven cross builds
+        shell: bash
+        run: |
+          for target in linux/386 linux/arm linux/riscv64 linux/ppc64le windows/amd64 js/wasm wasip1/wasm darwin/amd64 freebsd/amd64 plan9/amd64; do
+            echo "::group::$target"
+            GOOS="${target%/*}" GOARCH="${target#*/}" \
+              go test -c -o /dev/null -toolexec "$RUNNER_TEMP/orchestrion toolexec" ./internal/taint/heapbits
+            echo "::endgroup::"
+          done
+      - name: js/wasm tests (feature off)
+        run: |
+          GOOS=js GOARCH=wasm go test -short -count=1 \
+            -toolexec "$RUNNER_TEMP/orchestrion toolexec" \
+            -exec "$(go env GOROOT)/lib/wasm/go_js_wasm_exec" \
+            ./internal/taint/heapbits
+      - name: ASan tests (feature off)
+        # The default C compiler of the runner (gcc, with libasan).
+        run: go tool orchestrion go test -short -count=1 -asan ./internal/taint/heapbits
+
+  heapbits-prerelease:
+    # The development version of Go: a failure does not block a merge, but
+    # it gives time to fix the aspects before the next Go release. A new
+    # minor version also fails TestRuntimeDrift until its golden file exists.
+    name: Heap taint bits (Go development version)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Setup Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: stable
+      - name: Install gotip
+        run: |
+          go install golang.org/dl/gotip@latest
+          gotip download
+      - name: Drift test (no weaving)
+        # Fails for a new minor version until its golden file exists: the
+        # early signal to review the runtime code that the aspects use.
+        shell: bash
+        run: |
+          goroot="$(gotip env GOROOT)"
+          export PATH="$goroot/bin:$PATH"
+          export GOTOOLCHAIN=local
+          go version
+          go test -count=1 -run TestRuntimeDrift ./internal/taint/heapbits
+      - name: Woven tests
+        # Orchestrion can fail on a development version of Go (for example
+        # a new compiler flag that it does not know yet).
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: |
+          goroot="$(gotip env GOROOT)"
+          export PATH="$goroot/bin:$PATH"
+          export GOTOOLCHAIN=local
+          go tool orchestrion go test -shuffle=on -count=1 ./internal/taint/heapbits/...
+      - name: Report
+        if: ${{ failure() }}
+        run: |
+          echo "::warning::The heap taint bits fail on the Go development version: check the runtime aspects before the next Go release."
+          echo '### Heap taint bits fail on the Go development version' >> "$GITHUB_STEP_SUMMARY"
+
   green-ci:
     runs-on: ubuntu-latest
     name: Green CI
-    needs: [validate-licenses, lint, test, upload-coverage, benchmark]
+    needs: [validate-licenses, lint, test, upload-coverage, benchmark, heapbits, heapbits-feature-off]
     if: always()
     steps:
       - name: Success
@@ -187,6 +315,8 @@ jobs:
           && needs.test.result            == 'success'
           && needs.upload-coverage.result == 'success'
           && needs.benchmark.result       == 'success'
+          && needs.heapbits.result        == 'success'
+          && needs['heapbits-feature-off'].result == 'success'
         run: echo "Success!"
       - name: Failure
         if: |-
@@ -195,4 +325,6 @@ jobs:
           || needs.test.result            != 'success'
           || needs.upload-coverage.result != 'success'
           || needs.benchmark.result       != 'success'
+          || needs.heapbits.result        != 'success'
+          || needs['heapbits-feature-off'].result != 'success'
         run: echo "Failure!" && exit 1

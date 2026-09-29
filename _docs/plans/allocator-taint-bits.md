@@ -16,8 +16,8 @@
   fixed in this version, appendix D). The critic listed these 2 fixes as the
   only remaining items.
 - **User review: done** (section 10). Phase 1 is approved.
-- **Phase 1 (production heap bits): in progress.** Steps 1 to 8 of
-  section 9 are done. Next: step 9.
+- **Phase 1 (production heap bits): in progress.** Steps 1 to 9 of
+  section 9 are done. Next: step 10.
 - Phases 2 to 4 (stack values, origins and marks, propagation): outline only
   (section 8). Each one gets its own plan after phase 1.
 
@@ -888,7 +888,29 @@ in the `taint` package as the first check of every operation.
      (`Set` refuses them); the writes of `freeindex` and `allocBits` are in
      the allocation paths, span initialization and the sweep. No path frees
      heap memory without one of the hooks.
-9. CI matrix job: **0.5 day**.
+9. **(Done.)** CI matrix job: **0.5 day**. Notes (in `.github/workflows/ci.yml`):
+   - `heapbits`: `oldstable` and `stable` × `ubuntu-latest` (amd64) and
+     `ubuntu-24.04-arm` (arm64) × {default (with
+     `-ldflags=-checklinkname=1`), `-race`, `-N -l`, maymorestack,
+     `GOEXPERIMENT=nogreenteagc`, `GOEXPERIMENT=runtimefreegc`,
+     `CGO_ENABLED=0`}, plus darwin/arm64 (`macos-latest`, default). 29
+     cells, all required (in `green-ci`).
+   - `heapbits-feature-off`: woven cross builds (linux/386, linux/arm,
+     linux/riscv64, linux/ppc64le, windows/amd64, js/wasm, wasip1/wasm,
+     darwin/amd64, freebsd/amd64, plan9/amd64), js/wasm tests under Node.js,
+     and `-asan` tests (the feature is off in all of them). Required.
+   - `heapbits-prerelease` (gotip, `continue-on-error`): first the drift
+     test without weaving, then the woven tests. A failure gives a warning
+     and a line in the job summary; it does not open an issue (the workflow
+     has only `contents: read`). Tried locally with go1.28-devel: the drift
+     test fails as planned (no golden file) and its diff already shows
+     changes in `specialFindSplicePoint`, `ensureSwept` and the `mmap`
+     build constraints; the woven tests fail because Orchestrion v1.13.0
+     does not know the new compiler flag `-exportfd`.
+   - Run locally before the first CI run: the `CGO_ENABLED=0` and default
+     cells (go1.26.6, go1.27.1, darwin/arm64), and the `-asan` tests in a
+     linux/amd64 Debian container (golang:1.27.1, gcc 14): PASS, feature
+     off.
 10. Micro, worst-case and 3-variant overhead benchmarks, latency gate:
     **1.5 days**.
 11. Full review (code-review skill) and fixes: **1 day**.

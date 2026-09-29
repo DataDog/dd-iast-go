@@ -63,21 +63,24 @@ func TestRuntimeDrift(t *testing.T) {
 	}
 }
 
-// goMinor returns the minor version ("go1.27") of the toolchain at goroot.
+// goMinor returns the minor version ("go1.27") of the toolchain at goroot,
+// or "go1.28-devel" for a development version (gotip: "go1.28-devel_abcdef
+// ..."; a development build can have no VERSION file).
 func goMinor(t *testing.T, goroot string) string {
 	t.Helper()
-	b, err := os.ReadFile(filepath.Join(goroot, "VERSION"))
-	if err != nil {
-		t.Fatalf("read VERSION: %v", err)
+	v := ""
+	if b, err := os.ReadFile(filepath.Join(goroot, "VERSION")); err == nil {
+		v = strings.SplitN(strings.TrimSpace(string(b)), "\n", 2)[0]
+	} else if out, err := exec.Command(filepath.Join(goroot, "bin", "go"), "env", "GOVERSION").Output(); err == nil {
+		v = strings.TrimSpace(string(out))
+	} else {
+		t.Fatalf("cannot find the Go version of %s", goroot)
 	}
-	v := strings.SplitN(strings.TrimSpace(string(b)), "\n", 2)[0]
-	if m := regexp.MustCompile(`^go1\.\d+`).FindString(v); m != "" {
-		return m
-	}
-	// A development version ("devel go1.28-abcdef ..."): its own golden
-	// file, for the next minor version.
-	if m := regexp.MustCompile(`^devel (go1\.\d+)`).FindStringSubmatch(v); m != nil {
-		return m[1] + "-devel"
+	if m := regexp.MustCompile(`^(?:devel )?(go1\.\d+)(-devel)?`).FindStringSubmatch(v); m != nil {
+		if m[2] != "" || strings.HasPrefix(v, "devel ") {
+			return m[1] + "-devel"
+		}
+		return m[1]
 	}
 	return strings.Fields(v)[0]
 }
