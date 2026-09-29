@@ -16,8 +16,8 @@
   fixed in this version, appendix D). The critic listed these 2 fixes as the
   only remaining items.
 - **User review: done** (section 10). Phase 1 is approved.
-- **Phase 1 (production heap bits): in progress.** Steps 1 to 9 of
-  section 9 are done. Next: step 10.
+- **Phase 1 (production heap bits): in progress.** Steps 1 to 10 of
+  section 9 are done. Next: step 11.
 - Phases 2 to 4 (stack values, origins and marks, propagation): outline only
   (section 8). Each one gets its own plan after phase 1.
 
@@ -911,8 +911,71 @@ in the `taint` package as the first check of every operation.
      cells (go1.26.6, go1.27.1, darwin/arm64), and the `-asan` tests in a
      linux/amd64 Debian container (golang:1.27.1, gcc 14): PASS, feature
      off.
-10. Micro, worst-case and 3-variant overhead benchmarks, latency gate:
-    **1.5 days**.
+10. **(Done.)** Micro, worst-case and 3-variant overhead benchmarks, latency
+    gate: **1.5 days**. Notes:
+    - Micro benchmarks: package `internal/taint/heapbits/microbench` (it does
+      not link `heapbitstest`: with the test knobs active, every entry point
+      writes a global test probe, and the parallel cases were 70 times
+      slower), with `BenchmarkFirstChunkContention` (all Ps on the same new
+      chunk). Package `internal/taint/heapbits/budgetbench` (its own binary,
+      with a 4 MiB budget, filled with 4 MiB objects): `Set` when the budget
+      is full (32 ns, drop), and quota saturation with recovery on all Ps
+      after half of the objects die (`ok/op`: 35% of the `Set` calls keep
+      the taint). Worst-case sweep benchmarks
+      (`BenchmarkSweepWorstCase`, package `heapbits`): `Set` cost
+      (`set-ns/op`, not timed in `ns/op`) and GC cost (`ns/op`) separately,
+      the time in the sweep hook (`hook-ns/op`) and the p99 wait to stop the
+      world; with all Ps that `Set` while the sweepers recycle
+      (`parallel-set-and-sweep`). `BenchmarkAllocationLatency`: p50/p99 of
+      allocations with a 256 MiB memory limit, GC count, hooks in the timed
+      allocations, memory held by the runtime (`runtime-rss-bytes`).
+      **Limit:** the benchmarks cannot select large objects on a chunk
+      boundary or not (the runtime chooses the address; tries with padding
+      objects were not reliable); they report the fraction (`aligned/op`).
+    - Latency gate (5.5): `TestSweepHookLatency` measures the duration of each
+      sweep hook (test knob: a ring of the last 4096 durations) in 8
+      worst-case scenarios (64 MiB dead with full taint or one byte, 2 dead
+      64 MiB objects with interleaved chunks of the same slabs, 64 MiB
+      live after taint then clear, small objects half dead, sparse, with
+      finalizers, live and clean in flagged spans). Each scenario runs in
+      its own child process (all measured hooks are for its spans) until at
+      least 400 hooks ran, and requires a 99th percentile of at most 20 µs
+      (a second try if the first fails: OS noise). Observed: at most 8 µs.
+    - **Fix found by the latency gate:** when 2 sweepers recycled the 512
+      chunks of dead 64 MiB objects at the same time, the hook took 22 to
+      27 µs: 3 atomic operations for each chunk on the shared slab words and
+      counter (cache-line contention). The recycle now collects the chunks
+      of one slab and does one `Or64` for `dirty` and one for `free` for
+      each run of chunks of the same slab, and one counter add for each
+      call (`__dd_taint_recycleFlush`): 2 to 6 µs. (If the chunks of an
+      object come from many slabs in turn, the batching helps less; the
+      interleaved scenario keeps the same slabs, which is what makes 2
+      sweepers contend.)
+    - Overhead runner: a third variant `active` (the IAST binary with
+      `DD_IAST_BENCH_HEAPBITS=active`), new workloads `HeapBitsAllocChurn`,
+      `HeapBitsGC` (also reports `stw-p99-ns`) and `HeapBitsJSON`, a
+      three-column `comparison.txt`, and `gate.txt` with the gates of 7.2
+      (inert against control: no significant increase > 2% for the
+      `HeapBits` workloads; active against inert for `HeapBitsGC`: < 10% for
+      `sec/op` and for the STW p99). **Changes against the plan:** (1) the
+      gates fail the run only with `-gate`; the CI benchmark job (shared
+      runners, 2 samples) shows `gate.txt` in its summary without `-gate`,
+      as the benchmark README says that shared runners are too noisy for
+      hard thresholds. (2) The inert gate uses the `HeapBits` workloads
+      only, not all benchmarks: the other workloads of the IAST variant
+      also run IAST detections (for example `WeakHash*`), which cost more
+      by design. The runner sets `DD_IAST_BENCH_HEAPBITS` to an empty value
+      for the control and inert runs. The runner now also works in a jj workspace without a
+      `.git` directory (the revision in `metadata.txt` is then "unknown").
+    - Results (M5 Pro, go1.27.1): `Any` 16 B 3.0 ns, 256 B 4.3 ns, 4 KiB
+      29 ns (clean) / 3.4 ns (last byte) / 19 ns (middle); parallel on one
+      value: 0.28 ns (map baseline: 84 ns); `Set` 16 B 12 ns, 4 KiB 71 ns;
+      `Copy` 16 B 19 ns, 4 KiB 351 ns (shifted: 484 ns); `Next` ranges loop
+      over 4 ranges of 4 KiB: 118 ns. Overhead runner, 10 samples: inert
+      against control: no significant difference on any `HeapBits` workload;
+      active against inert: `HeapBitsGC` +6.8% (1 object in 4 tainted);
+      `HeapBitsAllocChurn` active against control +14% to +37% (with the
+      `Set` calls of the workload).
 11. Full review (code-review skill) and fixes: **1 day**.
 
 Total: approx. 14.5 days. Each step is one commit. Steps 2 to 6 can change

@@ -46,6 +46,9 @@ var (
 	//go:linkname rtSpanFlag __dd_iast_heapbits.spanflag
 	rtSpanFlag func(uintptr) int
 
+	//go:linkname rtSweepLog __dd_iast_heapbits.sweeplog
+	rtSweepLog func(*[4096]uint64) uint64
+
 	//go:linkname rtHasDir __dd_iast_heapbits.hasdir
 	rtHasDir func(uintptr) bool
 
@@ -243,4 +246,15 @@ func SetHookKnobs(noFreegc, noFinalizerSkip bool) {
 	if rtHookKnobs != nil {
 		rtHookKnobs(noFreegc, noFinalizerSkip)
 	}
+}
+
+// SweepDurations returns the number of sweep hooks since the start of the
+// program, and a ring of the durations (ns) of the last 4096 of them (hook
+// k is at index k%4096). Only test programs record it.
+func SweepDurations() (n uint64, ring [4096]uint64) {
+	if rtSweepLog == nil {
+		return 0, ring
+	}
+	n = rtSweepLog(&ring)
+	return n, ring
 }

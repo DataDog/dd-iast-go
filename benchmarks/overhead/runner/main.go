@@ -29,8 +29,17 @@ const (
 
 	controlResultsFile = "control.txt"
 	iastResultsFile    = "iast.txt"
+	activeResultsFile  = "active.txt"
 	comparisonFile     = "comparison.txt"
+	gateFile           = "gate.txt"
 	metadataFile       = "metadata.txt"
+
+	// activeEnvironment makes the HeapBits workloads taint data (the
+	// "active" variant: the IAST binary with this variable);
+	// inertEnvironment makes sure that the other variants do not, also
+	// when the caller exported the variable (the last value wins).
+	activeEnvironment = "DD_IAST_BENCH_HEAPBITS=active"
+	inertEnvironment  = "DD_IAST_BENCH_HEAPBITS="
 )
 
 type options struct {
@@ -39,6 +48,7 @@ type options struct {
 	benchtime string
 	cpu       int
 	benchmark string
+	gate      bool
 }
 
 type flagValues struct {
@@ -47,6 +57,7 @@ type flagValues struct {
 	benchtime string
 	cpu       string
 	benchmark string
+	gate      bool
 }
 
 type configuration struct {
@@ -57,6 +68,7 @@ type configuration struct {
 	benchtime  string
 	cpu        int
 	benchmark  string
+	gate       bool
 }
 
 func main() {
@@ -82,7 +94,7 @@ func run(arguments []string) (err error) {
 	defer func() {
 		err = errors.Join(err, cfg.output.Close())
 	}()
-	if err := initializeArtifacts(cfg.output, controlResultsFile, iastResultsFile, comparisonFile, metadataFile); err != nil {
+	if err := initializeArtifacts(cfg.output, controlResultsFile, iastResultsFile, activeResultsFile, comparisonFile, gateFile, metadataFile); err != nil {
 		return err
 	}
 
@@ -127,12 +139,16 @@ func run(arguments []string) (err error) {
 		"DD_IAST_ENABLED=true",
 		"DD_IAST_REQUEST_SAMPLING=100",
 		"DD_IAST_DEDUPLICATION_ENABLED=false",
+		inertEnvironment,
 	}
 	if err := execute(controlSource, append(validationEnvironment, "DD_IAST_BENCH_EXPECT=control"), controlBinary, "-test.run=^TestControlVariant$"); err != nil {
 		return fmt.Errorf("validate control variant: %w", err)
 	}
 	if err := execute(iastSource, append(validationEnvironment, "DD_IAST_BENCH_EXPECT=iast"), iastBinary, "-test.run=^TestWovenVariant$"); err != nil {
 		return fmt.Errorf("validate IAST variant: %w", err)
+	}
+	if err := execute(iastSource, append(validationEnvironment, "DD_IAST_BENCH_EXPECT=iast", activeEnvironment), iastBinary, "-test.run=^TestWovenVariant$"); err != nil {
+		return fmt.Errorf("validate active variant: %w", err)
 	}
 
 	if err := writeMetadata(cfg, metadataFile); err != nil {
@@ -141,18 +157,26 @@ func run(arguments []string) (err error) {
 
 	for sample := 1; sample <= cfg.count; sample++ {
 		fmt.Printf("Running sample %d/%d...\n", sample, cfg.count)
-		variants := [][3]string{{controlSource, controlBinary, controlResultsFile}, {iastSource, iastBinary, iastResultsFile}}
-		if sample%2 == 0 {
-			variants[0], variants[1] = variants[1], variants[0]
+		variants := []variant{
+			{controlSource, controlBinary, controlResultsFile, nil},
+			{iastSource, iastBinary, iastResultsFile, nil},
+			{iastSource, iastBinary, activeResultsFile, []string{activeEnvironment}},
 		}
-		for _, variant := range variants {
-			if err := runSample(cfg, variant[0], variant[1], variant[2]); err != nil {
+		// Rotate the order of the variants between samples.
+		for range sample % len(variants) {
+			variants = append(variants[1:], variants[0])
+		}
+		for _, v := range variants {
+			if err := runSample(cfg, v); err != nil {
 				return err
 			}
 		}
 	}
 
 	if err := compareResultSets(cfg.output.FS(), controlResultsFile, iastResultsFile); err != nil {
+		return err
+	}
+	if err := compareResultSets(cfg.output.FS(), controlResultsFile, activeResultsFile); err != nil {
 		return err
 	}
 	if err := execute(cfg.module, nil, "go", "mod", "download", "golang.org/x/perf"); err != nil {
@@ -165,10 +189,14 @@ func run(arguments []string) (err error) {
 	comparisonErr := executeWithWriters(cfg.module, nil, io.MultiWriter(os.Stdout, comparison), os.Stderr,
 		"go", "tool", "benchstat",
 		filepath.Join(cfg.output.Name(), controlResultsFile),
-		filepath.Join(cfg.output.Name(), iastResultsFile))
+		filepath.Join(cfg.output.Name(), iastResultsFile),
+		filepath.Join(cfg.output.Name(), activeResultsFile))
 	closeErr := comparison.Close()
 	if err := errors.Join(comparisonErr, closeErr); err != nil {
 		return fmt.Errorf("compare results: %w", err)
+	}
+	if err := checkGates(cfg); err != nil {
+		return err
 	}
 	fmt.Println("Benchmark artifacts:", cfg.output.Name())
 	return nil
@@ -210,6 +238,7 @@ func parseFlags(arguments []string) (options, error) {
 		benchtime: values.benchtime,
 		cpu:       cpu,
 		benchmark: values.benchmark,
+		gate:      values.gate,
 	}, nil
 }
 
@@ -230,6 +259,7 @@ func newFlagSet(values *flagValues) *flag.FlagSet {
 	flags.StringVar(&values.count, "count", values.count, "run `n` independent process samples per variant")
 	flags.StringVar(&values.cpu, "cpu", values.cpu, "use one positive GOMAXPROCS `value`")
 	flags.StringVar(&values.outputDir, "outputdir", values.outputDir, "write artifacts to `directory` (default: temporary directory)")
+	flags.BoolVar(&values.gate, "gate", values.gate, "fail when a regression gate of the HeapBits workloads is exceeded (use on a stable machine)")
 	return flags
 }
 
@@ -334,6 +364,7 @@ func newConfiguration(opts options) (configuration, error) {
 		benchtime:  opts.benchtime,
 		cpu:        opts.cpu,
 		benchmark:  opts.benchmark,
+		gate:       opts.gate,
 	}, nil
 }
 
@@ -474,18 +505,26 @@ func buildVariant(name, source, binary string) error {
 	return nil
 }
 
-func runSample(cfg configuration, directory, binary, destination string) error {
-	file, err := cfg.output.OpenFile(destination, os.O_APPEND|os.O_WRONLY, 0o644)
+// variant is one benchmark binary run: its module directory, its binary, its
+// results file and its extra environment.
+type variant struct {
+	directory, binary, results string
+	environment                []string
+}
+
+func runSample(cfg configuration, v variant) error {
+	file, err := cfg.output.OpenFile(v.results, os.O_APPEND|os.O_WRONLY, 0o644)
 	if err != nil {
 		return err
 	}
-	environment := []string{
+	environment := append([]string{
 		"GOMAXPROCS=" + strconv.Itoa(cfg.cpu),
 		"DD_IAST_ENABLED=true",
 		"DD_IAST_REQUEST_SAMPLING=100",
 		"DD_IAST_DEDUPLICATION_ENABLED=false",
-	}
-	runErr := executeWithWriters(directory, environment, file, os.Stderr, binary,
+		inertEnvironment,
+	}, v.environment...)
+	runErr := executeWithWriters(v.directory, environment, file, os.Stderr, v.binary,
 		"-test.run=^$",
 		"-test.bench="+cfg.benchmark,
 		"-test.benchmem",
@@ -498,7 +537,8 @@ func runSample(cfg configuration, directory, binary, destination string) error {
 func writeMetadata(cfg configuration, name string) error {
 	revision, err := commandOutput(cfg.repository, "git", "rev-parse", "HEAD")
 	if err != nil {
-		return err
+		// For example a secondary jj workspace, which has no .git directory.
+		revision = "unknown (" + err.Error() + ")"
 	}
 	goVersion, err := commandOutput(cfg.repository, "go", "version")
 	if err != nil {

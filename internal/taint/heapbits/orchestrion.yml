@@ -478,7 +478,16 @@ aspects:
             // LSE atomics, the only arm64 CPUs where the feature is on).
             //
             //go:nowritebarrierrec
-            func __dd_taint_recycle(p uintptr) {
+            //
+            // The chunk goes back to its slab later, in __dd_taint_recycleFlush:
+            // __dd_taint_recycle only removes it from the directory and adds
+            // it to the pending set r. Thus the shared slab words and the
+            // counter get one atomic operation for each run of chunks of the
+            // same slab and one counter add for each call of
+            // __dd_taint_apply, not 3 for each chunk (with 2 sweepers on 512
+            // chunks each, the contention on these cache lines took more
+            // than 20 µs).
+            func __dd_taint_recycle(p uintptr, r *__dd_taintPending) {
               ha := __dd_taint_arena(p)
               if ha == nil {
                 return
@@ -499,11 +508,39 @@ aspects:
                 return
               }
               atomic.Storeuintptr(slot, 0)
-              sd := &__dd_taint_slabs[si]
-              bit := uint64(1) << ci
-              atomic.Or64(&sd.dirty, bit)
-              atomic.Or64(&sd.free, bit)
-              atomic.Xadd64(&__dd_taint_recycled, 1)
+              if r.bits != 0 && r.slab != si {
+                __dd_taint_recycleFlush(r, false)
+              }
+              r.slab = si
+              r.bits |= uint64(1) << ci
+              r.n++
+            }
+
+            // __dd_taintPending is a set of recycled chunks of one slab that
+            // are not yet free (see __dd_taint_recycle), and the count of
+            // all the recycled chunks that the counter does not have yet.
+            type __dd_taintPending struct {
+              slab uintptr
+              bits uint64
+              n    uint64
+            }
+
+            // __dd_taint_recycleFlush gives the pending chunks back to their
+            // slab: dirty first, then free (a chunk that is free is always
+            // marked dirty; see __dd_taint_refill). With final true (the end
+            // of __dd_taint_apply), it also adds the count of all the
+            // recycled chunks to the counter.
+            func __dd_taint_recycleFlush(r *__dd_taintPending, final bool) {
+              if r.bits != 0 {
+                sd := &__dd_taint_slabs[r.slab%__dd_taint_maxSlabs]
+                atomic.Or64(&sd.dirty, r.bits)
+                atomic.Or64(&sd.free, r.bits)
+                r.bits = 0
+              }
+              if final && r.n != 0 {
+                atomic.Xadd64(&__dd_taint_recycled, int64(r.n))
+                r.n = 0
+              }
             }
 
             // __dd_taint_apply sets (set=true) or clears the bits of [p, p+n).
@@ -520,6 +557,7 @@ aspects:
             func __dd_taint_apply(p, n uintptr, set, yield, recycle bool) {
               end := p + n
               units := 0
+              var pending __dd_taintPending
               for p < end {
                 if yield {
                   if units++; units >= 512 {
@@ -534,7 +572,7 @@ aspects:
                 }
                 if recycle && p == cbase && cend-cbase == __dd_taint_chunkHeap {
                   // The chunk is fully inside dead memory: give it back.
-                  __dd_taint_recycle(p)
+                  __dd_taint_recycle(p, &pending)
                   p = cend
                   continue
                 }
@@ -572,6 +610,7 @@ aspects:
                 }
                 p = cend
               }
+              __dd_taint_recycleFlush(&pending, true)
             }
 
             // __dd_taint_probe is the stack probe (tests only): 1 when the
@@ -1176,6 +1215,26 @@ aspects:
             //
             //go:nowritebarrierrec
             func __dd_taint_sweep(s *mspan) {
+              if !__dd_taint_testing {
+                __dd_taint_sweep1(s)
+                return
+              }
+              // Tests only: the durations of the last hooks.
+              start := nanotime()
+              __dd_taint_sweep1(s)
+              d := nanotime() - start
+              i := atomic.Xadd64(&__dd_taint_sweeplogn, 1) - 1
+              atomic.Store64(&__dd_taint_sweeplog[i&uint64(len(__dd_taint_sweeplog)-1)], uint64(d))
+            }
+
+            // __dd_taint_sweeplog (tests only) holds the durations (ns) of
+            // the last 4096 sweep hooks; __dd_taint_sweeplogn counts all of
+            // them.
+            var __dd_taint_sweeplog [4096]uint64
+            var __dd_taint_sweeplogn uint64
+
+            //go:nowritebarrierrec
+            func __dd_taint_sweep1(s *mspan) {
               if atomic.Load(&__dd_taint_nosweep) != 0 {
                 return
               }
@@ -1473,6 +1532,15 @@ aspects:
             }
             //go:linkname __dd_taint_api_spanflag __dd_iast_heapbits.spanflag
             var __dd_taint_api_spanflag = __dd_taint_spanflag
+
+            func __dd_taint_sweepdurations(dst *[4096]uint64) uint64 {
+              for i := range dst {
+                dst[i] = atomic.Load64(&__dd_taint_sweeplog[i])
+              }
+              return atomic.Load64(&__dd_taint_sweeplogn)
+            }
+            //go:linkname __dd_taint_api_sweeplog __dd_iast_heapbits.sweeplog
+            var __dd_taint_api_sweeplog = __dd_taint_sweepdurations
 
             //go:linkname __dd_taint_api_hasdir __dd_iast_heapbits.hasdir
             var __dd_taint_api_hasdir = __dd_taint_hasdir

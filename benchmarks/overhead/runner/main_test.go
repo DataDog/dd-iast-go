@@ -207,3 +207,48 @@ func TestCompareResultSets(t *testing.T) {
 		})
 	}
 }
+
+func TestEvaluateGate(t *testing.T) {
+	output := []byte(`goos: linux
+goarch: amd64
+pkg: github.com/DataDog/dd-iast-go/benchmarks/overhead
+,control.txt,,iast.txt,,,
+,sec/op,CI,sec/op,CI,vs base,P
+HeapBitsGC,0.0104,5%,0.0108,4%,+3.10%,p=0.002 n=10
+HeapBitsJSON,1.8e-06,2%,1.8e-06,1%,~,p=0.753 n=10
+Health,1e-06,1%,2e-06,1%,+100.00%,p=0.000 n=10
+,control.txt,,iast.txt,,,
+,B/op,CI,B/op,CI,vs base,P
+HeapBitsGC,100,0%,200,0%,+100.00%,p=0.000 n=10
+`)
+	results, err := evaluateGate(gateRule{name: "test", prefix: "HeapBits", maxIncrease: 2}, output)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(results) != 2 {
+		t.Fatalf("got %d results, want 2 (sec/op of the HeapBits benchmarks only): %+v", len(results), results)
+	}
+	if results[0].pass || results[0].increase != 3.1 {
+		t.Errorf("HeapBitsGC: %+v, want a failure at +3.1%%", results[0])
+	}
+	if !results[1].pass {
+		t.Errorf("HeapBitsJSON: %+v, want a pass", results[1])
+	}
+	if _, failed := formatGateReport(results, false); !failed {
+		t.Error("the report must show the failure")
+	}
+	none, err := evaluateGate(gateRule{name: "none", prefix: "Nothing"}, output)
+	if err != nil || len(none) != 1 || !none[0].skipped || none[0].delta != "not run" {
+		t.Errorf("a rule with no benchmark must be reported as not run: %+v, %v", none, err)
+	}
+	if _, failed := formatGateReport(none, false); failed {
+		t.Error("an informative report must not fail for a rule that did not run")
+	}
+	if _, failed := formatGateReport(none, true); !failed {
+		t.Error("an enforced report must fail for a rule that did not run")
+	}
+	custom, err := evaluateGate(gateRule{name: "B/op", prefix: "HeapBitsGC", unit: "B/op", maxIncrease: 10}, output)
+	if err != nil || len(custom) != 1 || custom[0].pass {
+		t.Errorf("the B/op table must be used for unit B/op: %+v, %v", custom, err)
+	}
+}

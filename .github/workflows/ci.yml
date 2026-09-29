@@ -164,6 +164,12 @@ jobs:
               echo '```text'
               cat "$BENCHMARK_OUTPUT_DIR/comparison.txt"
               echo '```'
+              if [[ -s "$BENCHMARK_OUTPUT_DIR/gate.txt" ]]; then
+                echo '## Heap taint bits regression gates (informative on shared runners)'
+                echo '```text'
+                cat "$BENCHMARK_OUTPUT_DIR/gate.txt"
+                echo '```'
+              fi
             } >> "$GITHUB_STEP_SUMMARY"
           fi
       - name: Upload benchmark results

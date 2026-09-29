@@ -33,7 +33,7 @@ func gc() {
 }
 
 //go:noinline
-func taintedObject(t *testing.T, n int) uintptr {
+func taintedObject(t testing.TB, n int) uintptr {
 	b := heapBytes(n)
 	if !heapbits.SetBytes(b) {
 		t.Fatalf("Set of %d bytes failed: %+v", n, heapbitstest.Stats())
