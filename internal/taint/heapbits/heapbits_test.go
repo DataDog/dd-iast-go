@@ -214,7 +214,7 @@ func TestNoTaintAfterReuse(t *testing.T) {
 func TestNoTaintAfterReuseNegativeControl(t *testing.T) {
 	need(t)
 	if os.Getenv("HEAPBITS_NEGATIVE_CONTROL") != "1" {
-		cmd := exec.Command(os.Args[0], "-test.run=^TestNoTaintAfterReuseNegativeControl$", "-test.v")
+		cmd := exec.Command(os.Args[0], childArgs("^TestNoTaintAfterReuseNegativeControl$")...)
 		cmd.Env = append(os.Environ(), "HEAPBITS_NEGATIVE_CONTROL=1", childEnv+"=1")
 		out, err := cmd.CombinedOutput()
 		if err != nil {

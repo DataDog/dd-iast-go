@@ -472,7 +472,7 @@ func TestCopyProgress(t *testing.T) {
 	if os.Getenv("HEAPBITS_PROGRESS_CHILD") != "1" {
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 		defer cancel()
-		cmd := exec.CommandContext(ctx, os.Args[0], "-test.run=^TestCopyProgress$", "-test.v")
+		cmd := exec.CommandContext(ctx, os.Args[0], childArgs("^TestCopyProgress$")...)
 		cmd.Env = append(os.Environ(), "HEAPBITS_PROGRESS_CHILD=1", childEnv+"=1", "GODEBUG=asyncpreemptoff=1")
 		out, err := cmd.CombinedOutput()
 		if err != nil {

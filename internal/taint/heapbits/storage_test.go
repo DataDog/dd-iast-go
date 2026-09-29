@@ -35,7 +35,7 @@ func runChild(t *testing.T, test, mode string) string {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, os.Args[0], "-test.run=^"+test+"$", "-test.v")
+	cmd := exec.CommandContext(ctx, os.Args[0], childArgs("^"+test+"$")...)
 	cmd.Env = append(os.Environ(), storageChildEnv+"="+mode, childEnv+"=1")
 	out, err := cmd.CombinedOutput()
 	if err != nil {

@@ -155,7 +155,7 @@ func TestSweepHookLatency(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 			defer cancel()
-			cmd := exec.CommandContext(ctx, os.Args[0], "-test.run=^TestSweepHookLatency$", "-test.v")
+			cmd := exec.CommandContext(ctx, os.Args[0], childArgs("^TestSweepHookLatency$")...)
 			cmd.Env = append(os.Environ(), latencyScenarioEnv+"="+name, childEnv+"=1")
 			out, err := cmd.CombinedOutput()
 			if err != nil {

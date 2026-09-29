@@ -6,6 +6,7 @@
 package heapbits_test
 
 import (
+	"flag"
 	"os"
 	"testing"
 
@@ -24,4 +25,17 @@ func TestMain(m *testing.M) {
 		heapbits.SetBudget(heapbits.MaxBudget)
 	}
 	os.Exit(m.Run())
+}
+
+// childArgs returns the arguments of a child process of this test binary
+// that runs the tests that match pattern, with verbose output. When the
+// parent collects coverage, the child writes its counters in the coverage
+// directory of the parent: go test adds them to the coverage profile (else
+// the code that only the children run would count as not covered).
+func childArgs(pattern string) []string {
+	args := []string{"-test.run=" + pattern, "-test.v"}
+	if f := flag.Lookup("test.gocoverdir"); f != nil && f.Value.String() != "" {
+		args = append(args, "-test.gocoverdir="+f.Value.String())
+	}
+	return args
 }
