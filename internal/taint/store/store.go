@@ -16,6 +16,7 @@ import (
 	"unsafe"
 
 	"github.com/DataDog/dd-iast-go/internal/taint/ranges"
+	"github.com/DataDog/dd-iast-go/internal/taint/runtimebridge"
 )
 
 // Kind identifies the managed value representation.
@@ -202,12 +203,15 @@ type Store struct {
 	writerStates   atomic.Int32
 	writerActive   *atomic.Int32
 	operatorActive atomic.Pointer[atomic.Int32]
-	overflow       [OverflowBlocks]overflowBlock
-	overflowFree   [OverflowBlocks]uint16
-	overflowN      uint16
-	overflowMu     sync.Mutex
-	index          [IndexShards]indexShard
-	filter         [FilterBuckets]atomic.Uint32
+	// runtimeGate is set only on the store that BindRuntimeBridge bound. It
+	// mirrors indexedRoots into the runtime gate word.
+	runtimeGate  atomic.Pointer[runtimebridge.Gate]
+	overflow     [OverflowBlocks]overflowBlock
+	overflowFree [OverflowBlocks]uint16
+	overflowN    uint16
+	overflowMu   sync.Mutex
+	index        [IndexShards]indexShard
+	filter       runtimebridge.Filter
 }
 
 // BindOperatorActive binds a mirror counter used by operator fast gates. The
@@ -218,12 +222,46 @@ func (s *Store) BindOperatorActive(active *atomic.Int32) {
 	}
 }
 
-// addIndexedRoots changes the indexed-root counter and its operator mirror.
+// addIndexedRoots changes the indexed-root counter and its mirrors: the
+// operator counter and the runtime gate (plan section 3.2 rule 3).
 func (s *Store) addIndexedRoots(delta int32) {
 	s.indexedRoots.Add(delta)
 	if active := s.operatorActive.Load(); active != nil {
 		active.Add(delta)
 	}
+	if gate := s.runtimeGate.Load(); gate != nil {
+		gate.Add(delta)
+	}
+}
+
+// runtimeStore is the store that BindRuntimeBridge bound, or nil.
+var runtimeStore atomic.Pointer[Store]
+
+// RuntimeStore returns the store that the runtime bridge uses, or nil. The
+// runtime bridge callbacks use it, so they always use the store of the bridge
+// filter and confirm function.
+func RuntimeStore() *Store { return runtimeStore.Load() }
+
+// BindRuntimeBridge makes s the store of the runtime bridge (plan section 3.2
+// rule 6). Only the process request manager calls it. It installs the filter
+// and the Confirm function of s in the bridge, stores the string-to-slice
+// switch word, and then binds the indexed-root counter of s to the runtime
+// gate. It returns false and changes nothing when a binding exists, when the
+// Go release is not supported, or when s already has an indexed root.
+//
+// The caller must call it before it shares s with other goroutines: a root
+// that is indexed during the call is not counted in the gate.
+func (s *Store) BindRuntimeBridge(options runtimebridge.Options) bool {
+	if s == nil || s.indexedRoots.Load() != 0 {
+		return false
+	}
+	gate, ok := runtimebridge.Bind(&runtimebridge.Binding{Filter: &s.filter, Confirm: s.Confirm}, options)
+	if !ok {
+		return false
+	}
+	runtimeStore.Store(s)
+	s.runtimeGate.Store(gate)
+	return true
 }
 
 // IndexedRoots returns the process indexed-root counter for allocation-free

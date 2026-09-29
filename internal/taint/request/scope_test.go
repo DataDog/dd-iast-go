@@ -12,6 +12,8 @@ import (
 	"github.com/DataDog/dd-iast-go/internal/config"
 	"github.com/DataDog/dd-iast-go/internal/taint/httpbridge"
 	"github.com/DataDog/dd-iast-go/internal/taint/request"
+	"github.com/DataDog/dd-iast-go/internal/taint/runtimebridge"
+	"github.com/DataDog/dd-iast-go/internal/taint/store"
 	"github.com/stretchr/testify/require"
 )
 
@@ -123,6 +125,25 @@ func TestBeginActiveAndFinish(t *testing.T) {
 	require.False(t, scope.Active())
 	_, ok = scope.Analysis()
 	require.False(t, ok)
+}
+
+// TestProcessManagerBindsRuntimeBridge checks that the process manager binds
+// its store to the runtime bridge (plan runtime-operator-hooks, section 3.2
+// rule 6) with the string-to-slice switch of the configuration.
+func TestProcessManagerBindsRuntimeBridge(t *testing.T) {
+	restoreConfig(t)
+	config.Enabled = true
+	config.RequestSamplingPct = 100
+	config.MaxConcurrentRequests = 1
+	_, scope, created := request.Begin(context.Background())
+	require.True(t, created)
+	t.Cleanup(scope.Finish)
+	active := request.ActiveStore()
+	require.NotNil(t, active)
+	require.True(t, runtimebridge.Bound())
+	require.Same(t, active, store.RuntimeStore())
+	require.Equal(t, config.StringToSlicePropagationEnabled, runtimebridge.StringToSliceEnabled())
+	require.False(t, store.New().BindRuntimeBridge(runtimebridge.Options{}), "only one store is bound")
 }
 
 func restoreConfig(t *testing.T) {

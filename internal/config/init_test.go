@@ -6,6 +6,7 @@
 package config
 
 import (
+	"os"
 	"testing"
 
 	"github.com/DataDog/dd-iast-go/internal/config/loader"
@@ -78,4 +79,48 @@ func TestObserveReplaysInitialConfiguration(t *testing.T) {
 	count = 0
 	require.Equal(t, Enabled, Observe(observer))
 	require.Equal(t, firstCount, count)
+}
+
+func TestStringToSlicePropagationSwitch(t *testing.T) {
+	// load changes every setting. This cleanup runs after the environment
+	// cleanups of t.Setenv, so it loads the original environment again.
+	t.Cleanup(func() { load(loader.Observer{}) })
+	for _, test := range []struct {
+		value   string
+		set     bool
+		want    bool
+		warning bool
+	}{
+		{set: false, want: true},
+		{value: "false", set: true, want: false},
+		{value: "0", set: true, want: false},
+		{value: "true", set: true, want: true},
+		{value: "not-a-boolean", set: true, want: true, warning: true},
+	} {
+		t.Run(test.value, func(t *testing.T) {
+			// t.Setenv restores the environment after the test.
+			t.Setenv(EnvVarStringToSlicePropagationEnabled, test.value)
+			if !test.set {
+				require.NoError(t, os.Unsetenv(EnvVarStringToSlicePropagationEnabled))
+			}
+			var warnings []string
+			var registered any
+			load(loader.Observer{
+				Warn: func(format string, _ ...any) { warnings = append(warnings, format) },
+				RegisterDefault: func(name string, value any) {
+					if name == EnvVarStringToSlicePropagationEnabled {
+						registered = value
+					}
+				},
+				RegisterEnvironment: func(name string, value any) {
+					if name == EnvVarStringToSlicePropagationEnabled {
+						registered = value
+					}
+				},
+			})
+			require.Equal(t, test.want, StringToSlicePropagationEnabled)
+			require.Equal(t, test.want, registered)
+			require.Equal(t, test.warning, len(warnings) != 0)
+		})
+	}
 }

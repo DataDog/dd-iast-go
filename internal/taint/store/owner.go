@@ -106,6 +106,22 @@ func (o *Owner) RecordBytesDrop() {
 	}
 }
 
+// RecordFanoutDrop records one owner that an operation could not include
+// because the owner bound (MaxSnapshotOwners) was reached.
+func (o *Owner) RecordFanoutDrop() {
+	if o != nil && !o.Disabled() {
+		o.owner.drops.fanout.Add(1)
+	}
+}
+
+// RecordRangesDrop records one publication whose ranges are not exact (for
+// example a coarse range in place of exact ranges).
+func (o *Owner) RecordRangesDrop() {
+	if o != nil && !o.Disabled() {
+		o.owner.drops.ranges.Add(1)
+	}
+}
+
 // Counters returns this owner's bounded-loss counters.
 func (o *Owner) Counters() Counters {
 	if o.Disabled() {

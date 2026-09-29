@@ -24,9 +24,17 @@ func BytesToString(input []byte, result string) string {
 	if !ok || !active.MayContain(key) {
 		return result
 	}
+	publishBytesToString(active, key, result)
+	return result
+}
+
+// publishBytesToString adopts result for each owner of the value key, with
+// the ranges of the value. result must be a fresh allocation that starts at
+// its allocation base, with the length of the value.
+func publishBytesToString(s *store.Store, key store.Key, result string) {
 	var snapshot store.Snapshot
-	if !active.Lookup(key, &snapshot) {
-		return result
+	if !s.Lookup(key, &snapshot) {
+		return
 	}
 	published := false
 	for index := 0; index < snapshot.Len(); index++ {
@@ -35,10 +43,10 @@ func BytesToString(input []byte, result string) string {
 			continue
 		}
 		var copied ranges.Set
-		if !ranges.Copy(&copied, entry.Ranges.Limit(), &entry.Ranges, uint32(len(input))).Valid {
+		if !ranges.Copy(&copied, entry.Ranges.Limit(), &entry.Ranges, key.Length).Valid {
 			continue
 		}
-		if owner, ok := entry.Handle(active); ok {
+		if owner, ok := entry.Handle(s); ok {
 			if _, ok = owner.AdoptString(result, &copied); ok {
 				published = true
 			}
@@ -47,5 +55,4 @@ func BytesToString(input []byte, result string) string {
 	if published {
 		recordExecuted()
 	}
-	return result
 }

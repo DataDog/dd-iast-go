@@ -5,7 +5,10 @@
 
 package store
 
-import "github.com/DataDog/dd-iast-go/internal/taint/ranges"
+import (
+	"github.com/DataDog/dd-iast-go/internal/taint/ranges"
+	"github.com/DataDog/dd-iast-go/internal/taint/runtimebridge"
+)
 
 const MaxSnapshotOwners = 4
 
@@ -91,7 +94,7 @@ func (s *Store) MayContain(key Key) bool {
 	if s == nil || !validKey(key) {
 		return false
 	}
-	return s.filterHit(granuleKey(key.Pointer, false)) || s.filterHit(granuleKey(key.Pointer, true))
+	return runtimebridge.FilterHit(&s.filter, key.Pointer)
 }
 
 // IndexProbes returns the number of index shards that a Lookup of key reads:
@@ -241,19 +244,20 @@ func (s *Store) sliceRootLocked(root *rootRecord, base, p uintptr, n uint32, dst
 	return generation, root.generation.Load() == generation && root.setGen == generation
 }
 
-// ConfirmResult is the result of Store.Confirm.
-type ConfirmResult uint8
+// ConfirmResult is the result of Store.Confirm. The runtime bridge owns the
+// type (plan section 3.2.1), because its pre-checks call Confirm.
+type ConfirmResult = runtimebridge.ConfirmResult
 
 const (
 	// ConfirmClean: no live root contains the value, or no range of the root
 	// overlaps the value window.
-	ConfirmClean ConfirmResult = iota
+	ConfirmClean = runtimebridge.ConfirmClean
 	// ConfirmTainted: a live root contains the value and one of its ranges
 	// overlaps the value window.
-	ConfirmTainted
+	ConfirmTainted = runtimebridge.ConfirmTainted
 	// ConfirmUnknown: a TryRLock failed. A caller must treat the value as
 	// tainted when a false "clean" answer can lose taint.
-	ConfirmUnknown
+	ConfirmUnknown = runtimebridge.ConfirmUnknown
 )
 
 // Confirm reports whether the value [p, p+n) is tainted (plan section 3.2.1).

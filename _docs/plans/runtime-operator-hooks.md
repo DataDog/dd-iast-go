@@ -264,7 +264,7 @@ func concatstrings(buf *tmpBuf, a []string) string {
 
 Gate-off machine code (arm64, `stringtoslicebyte`, go1.27.1 and go1.26.6): `ADRP` + `ADD` + `LDARW` of the gate, then `CBZW` to the original body. Nothing else. The inlined `__dd_iast_ok()` adds 12 instructions to the gate-on branch only; the frame sizes do not change (appendix H.6).
 
-Changes in step 5 against the step 2 artifact: `links:` names `internal/taint/runtimebridge`; the real bridge implements `confirm` (3.2.1). (The context check before the wrapper and the signature assertions are in the artifact since critic round 9.)
+Changes in step 5 against the step 2 artifact: `links:` names `internal/taint/runtimebridge` **and** `internal/taint/propagation` (3.2 rule 6: the propagation package registers the callbacks); the real bridge implements `confirm` (3.2.1). (The context check before the wrapper and the signature assertions are in the artifact since critic round 9.)
 
 ## 3. Design A: concatenation hook
 
@@ -290,7 +290,9 @@ Rules:
 3. The gate mirrors "the process store has at least one **indexed root**" (a root with `indexed == true`, section 5.2.2). After step 3 there is no value table and no value counter (section 5.4), so `indexedRoots` is the only activity counter of the store. The store keeps `indexedRoots atomic.Int32` and binds it to `gate` in `Store.BindRuntimeBridge()` (rule 6). Publication order (5.2.2): increment `indexedRoots` **before** `indexed = true` is stored; decrement it only **after** `indexed = false` is stored and the refs are removed. Thus, while a reader validates a ref under `rootsMu.TryRLock` with `indexed == true`, `indexedRoots > 0`. A mutation does not change `indexedRoots` (5.2.3). The other bridges that read the value counter today also move to `indexedRoots` in step 3: `jsonbridge.BindActiveValues(store.ActiveValues())` becomes `jsonbridge.BindActiveValues(store.IndexedRoots())`, and `operatorbridge` (deleted in step 5) replaces `addOperatorValues`.
 4. The untainted path (`pre` before a filter hit, and the first checks of `hook`) does not allocate, does not concat, does not lock, has no `defer`, and does not call a `func` value. It reads the interior filter (section 5.2) inline.
 5. Every path that runs store code (`confirm` after a filter hit, and the tainted-path callbacks) is a `//go:noinline` bridge function with `defer` + `recover`. The runtime-side wrapper (section 2.2) sets the per-g guard (section 3.4) before **each** bridge call (`pre` and `hook`) and clears it after. (The `defer` rule applies to the bridge, not to the runtime side: the woven runtime has no `defer`, section 2.2.) If no binding is installed, the bridge function returns.
-6. **One binding for the gate, the filter and the callbacks.** The bridge holds `binding atomic.Pointer[Binding]`. `Binding` contains the filter pointer, the `confirm` function (section 3.2.1) and the tainted-path callbacks. Only `request.defaultManager` (`internal/taint/request/scope.go:46-60`) calls `manager.store.BindRuntimeBridge()`. That function does `binding.CompareAndSwap(nil, b)`, then stores the string-to-slice switch word (section 4.4), then binds the store's `indexedRoots` counter to `gate` (rule 3). A second call returns `false` and changes nothing. `store.New()` does not install anything. Thus a test store, or any store other than the process store, never changes `gate` and is never visible to the hooks. The gate can be non-zero only after the binding is stored, so `pre` and `hook` always read a filter of the same store that changes the gate.
+6. **One binding for the gate and the filter; callbacks use the bound store.** The bridge holds `binding atomic.Pointer[Binding]`. `Binding` contains the filter pointer and the `confirm` function (section 3.2.1). It does not contain the callbacks: `request` cannot import `propagation` (import cycle `propagation` -> `request`). Only `request.defaultManager` (`internal/taint/request/scope.go:46-60`) calls `manager.store.BindRuntimeBridge()`. That function returns `false` and changes nothing when the store already has an indexed root (a root that is indexed before the gate is bound is not counted in the gate); else it does `binding.CompareAndSwap(nil, b)`, then stores the string-to-slice switch word (section 4.4), then records the store for `store.RuntimeStore()`, then binds the store's `indexedRoots` counter to `gate` (rule 3). A second call returns `false` and changes nothing. `store.New()` does not install anything. Thus a test store, or any store other than the process store, never changes `gate` and is never visible to the hooks. The gate can be non-zero only after the binding is stored, so `pre` and `hook` always read a filter of the same store that changes the gate.
+   - **Callbacks.** `internal/taint/propagation` installs the 6 tainted-path callbacks with `runtimebridge.Register` in its `init` function. The callbacks get the store from `store.RuntimeStore()`, which is the store of the binding. Thus the filter, `confirm` and the callbacks always use one store, also when `Register` runs before or after `BindRuntimeBridge`.
+   - **Link rule (step 5).** The runtime aspect cannot import `propagation`, and a build can enable the runtime aspect with no other import of `propagation` (for example, only the `net/http` source aspect, which imports `request` but not `propagation`). Then the binding exists but no callback is registered: `pre` forces results to the heap and the result hooks propagate nothing. Rule: the `links:` list of the runtime declarations aspect names `internal/taint/runtimebridge` **and** `internal/taint/propagation`. Orchestrion adds each link-time dependency that the program does not import as a blank import of the synthetic main file (`internal/toolexec/aspect/oncompile-main.go` in v1.13.1), so the `init` function of `propagation` runs (the Go linker runs only the `init` functions of packages that `main` imports directly or indirectly, `cmd/link/internal/ld/inittask.go`). If this is not possible with Orchestrion v1.13.1, step 5 stops for user review; the fallback is to move the callbacks to a package that `request` imports, and to register them in `request.defaultManager` before `BindRuntimeBridge`.
 
 #### 3.2.1 Pre-check must not allocate for clean operands
 
@@ -299,14 +301,14 @@ A filter bucket can be non-zero for a clean operand (hash collision, or another 
 Rule: `pre` returns `true` only when a **live, validated** root contains an operand **and** one of the root ranges overlaps the operand window. It must never return `false` for a tainted operand (no false negative).
 
 1. For each operand: compute the filter buckets inline (section 5.2, two loads). If all are zero, continue. This is the common case. A zero filter is a proof of "clean": every visible root is indexed and counted in the filter (section 5.2.2, admission rule).
-2. On the first filter hit, call the `//go:noinline` function `confirmSlow` (sketch below). It has `defer` + `recover`. It calls `binding.confirm(ptr uintptr, n uint32) confirmResult` for this operand and the remaining ones. `confirmResult` is a `uint8` enum in the bridge (the store imports it): `confirmClean`, `confirmTainted`, `confirmUnknown`.
+2. On the first filter hit, call the `//go:noinline` function `confirmSlow` (sketch below). It has `defer` + `recover`. It calls `binding.Confirm(ptr uintptr, n uint32) ConfirmResult` for this operand and the remaining ones. `ConfirmResult` is a `uint8` enum in the bridge (the store imports it): `ConfirmClean`, `ConfirmTainted`, `ConfirmUnknown`.
 3. `confirm` is a store function. It runs the interior probe and the validation of section 5.2.3 steps 1-2, with `TryRLock` only. Then it scans the root ranges (inline and overflow, at most `MaxRanges` = 64, no copy) for one range that overlaps `[p-base, p-base+n)`. It does not allocate. It returns:
-   - `confirmClean`: no live root contains the operand, or no range overlaps the window (a clean part of a sparse tainted root);
-   - `confirmTainted`: a live root contains the operand and a range overlaps;
-   - `confirmUnknown`: a `TryRLock` failed. Counter `preContention`.
-4. `pre` returns `true` for `confirmTainted` and for `confirmUnknown`. Contention thus costs at most one heap allocation (<= 32 B). It does not lose taint. A recovered panic also returns `true` (counter `hookPanic`).
+   - `ConfirmClean`: no live root contains the operand, or no range overlaps the window (a clean part of a sparse tainted root);
+   - `ConfirmTainted`: a live root contains the operand and a range overlaps;
+   - `ConfirmUnknown`: a `TryRLock` failed. Counter `preContention`.
+4. `pre` returns `true` for `ConfirmTainted` and for `ConfirmUnknown`. Contention thus costs at most one heap allocation (<= 32 B). It does not lose taint. A recovered panic also returns `true` (counter `hookPanic`).
 5. `confirm` takes `uintptr`, not a pointer. Thus it cannot keep the operand live and it cannot make the operand escape (section 3.8).
-6. Remaining race: the owner finishes between `pre` and the result hook. Then one heap allocation happens for an operand that was tainted when `pre` ran. This is correct and bounded. A counter `preStale` records it.
+6. Remaining race: the owner finishes between `pre` and the result hook. Then one heap allocation happens for an operand that was tainted when `pre` ran. This is correct and bounded. The counter `preStale` exists in the store (step 3), but step 4 does not record it: the result function does not know whether `pre` ran or what it returned (the runtime does not pass the `pre` result, and the variant D signatures of appendix H stay as they are). A result hook that finds no taint is also the normal case for a result that was on the heap before `pre` (`buf == nil`). To record `preStale` needs a per-g flag or one more argument; that costs more than the information is worth. The counter stays 0.
 
 Cost: filter miss: two loads for each operand. Filter hit: one `confirmSlow` call (one open-coded defer, <= 40 probed entries, <= 64 range checks; target <= 50 ns), 0 allocations. The rate of filter hits depends on the index load (section 5.3, benchmark under sparse, typical and full load in section 9.2).
 
@@ -323,29 +325,44 @@ var gate uint32 // zero = off. The store changes it with sync/atomic.
 //go:linkname s2sGate __dd_iast_rt.s2s_gate
 var s2sGate uint32 // 1 = []byte(s) and []rune(s) propagation on (section 4.4)
 
-type callbacks struct { // tainted path only; may allocate
-	concat    func(result string, operands []string)
-	fromBytes func(result string, input []byte)
-	toBytes   func(result []byte, input string)
-	fromRunes func(result string, input []rune) // section 4.5
-	toRunes   func(result []rune, input string)
-}
-
-type confirmResult uint8
+type ConfirmResult uint8
 
 const (
-	confirmClean confirmResult = iota
-	confirmTainted
-	confirmUnknown // a TryRLock failed: treat as tainted in pre
+	ConfirmClean ConfirmResult = iota
+	ConfirmTainted
+	ConfirmUnknown // a TryRLock failed: treat as tainted in pre
 )
 
+// Binding is the store part only: filter and confirm of one store (rule 6).
+// It has no callbacks.
 type Binding struct {
-	filter  *[FilterBuckets]atomic.Uint32
-	confirm func(p uintptr, n uint32) confirmResult // store: no alloc
-	cb      callbacks
+	Filter  *Filter
+	Confirm func(p uintptr, n uint32) ConfirmResult // store: no alloc
 }
 
-var binding atomic.Pointer[Binding] // set once, by the process manager only
+// Callbacks are the tainted-path functions (may allocate). They are not in
+// Binding: the propagation package registers them with Register, and they
+// use store.RuntimeStore(), so they always use the store of the binding.
+type Callbacks struct {
+	Concat      func(result string, operands []string)
+	ConcatBytes func(result []byte, operands []string)
+	FromBytes   func(result string, input []byte)
+	ToBytes     func(result []byte, input string)
+	FromRunes   func(result string, input []rune) // section 4.5
+	ToRunes     func(result []rune, input string)
+}
+
+var (
+	binding   atomic.Pointer[Binding]   // set once (CAS), by the process store only
+	callbacks atomic.Pointer[Callbacks] // set by propagation.init via Register
+)
+
+// Bind installs b once for the process. A second call returns false.
+func Bind(b *Binding, options Options) (*Gate, bool)
+
+// Register installs the callbacks, separately from Bind. A registration
+// before or after Bind gives the same result.
+func Register(c *Callbacks) *Callbacks { return callbacks.Swap(c) }
 
 //go:linkname concatPre __dd_iast_rt.concat_pre
 func concatPre(a []string) bool {
@@ -355,7 +372,7 @@ func concatPre(a []string) bool {
 	}
 	for i := range a {
 		s := a[i]
-		if len(s) != 0 && filterHit(b.filter, uintptr(unsafe.Pointer(unsafe.StringData(s)))) {
+		if len(s) != 0 && filterHit(b.Filter, uintptr(unsafe.Pointer(unsafe.StringData(s)))) {
 			return confirmSlow(b, a[i:])
 		}
 	}
@@ -372,7 +389,7 @@ func confirmSlow(b *Binding, a []string) (hit bool) {
 	}()
 	for _, s := range a {
 		p := uintptr(unsafe.Pointer(unsafe.StringData(s)))
-		if len(s) != 0 && filterHit(b.filter, p) && b.confirm(p, uint32(len(s))) != confirmClean {
+		if len(s) != 0 && filterHit(b.Filter, p) && b.Confirm(p, uint32(len(s))) != ConfirmClean {
 			return true
 		}
 	}
@@ -492,7 +509,7 @@ In `concat(result, operands)` on the tainted path:
 4. `stringDataOnStack(result)`: the wrapper already skips it (section 2.2). With the v2 pre-check, a tainted operand never gives a stack result.
 5. Otherwise the result is a fresh allocation from `rawstring(l)` (strings) or `rawbyteslice(l)` (bytes). `mallocgc` returns the allocation base. The result is complete: it starts at the base and nobody else holds it yet. This is the "audited" case that `Owner.AdoptString` and `Owner.AdoptBytes` require. Adopt it. Do not clone it.
 6. Ranges: for each contributing owner, compose the operand ranges shifted by the cumulative operand lengths. Reuse the logic of `joinStringHit` (`string_exact.go`) with an empty separator and without `strings.Clone`. Share the same result between at most `MaxSnapshotOwners` owners, as `publishStringCopy` does today.
-7. More than 16 operands: do **not** reuse `coarseStringHit`. It inspects only the first `maxInputs` (16) inputs (`propagation.go:363-378`), and `joinStringHit` keeps only 15 (`string_exact.go:51-65`). A taint in operand 17 or later is lost. Add `coarseConcatHit(result, operands)`: it scans **all** operands with `MayContain` + `Lookup` (the operand count is fixed by the source code; no allocation), keeps at most `MaxSnapshotOwners` owners, and gives each owner one coarse range over `[0, len(result))` with the `limit` of the first match. It records a `ranges` drop because the ranges are not exact. Tests: 17 operands with only operand 17 tainted; 40 operands with only operand 40 tainted; 5 owners (the fifth is a `fanout` drop).
+7. More than 16 operands: do **not** reuse `coarseStringHit`. It inspects only the first `maxInputs` (16) inputs (`propagation.go:363-378`), and `joinStringHit` keeps only 15 (`string_exact.go:51-65`). A taint in operand 17 or later is lost. Add `coarseConcatHit(result, operands)`: it scans **all** operands with `MayContain` + `Lookup` (the operand count is fixed by the source code; no allocation), keeps at most `MaxSnapshotOwners` owners, and gives each owner its own ranges of each operand (the ranges of its `Lookup` of the operand, shifted by the cumulative operand lengths; only ranges of the owner that touch merge), with the source of the first range of the owner and the marks that all its ranges have. Thus a range of one owner never covers a byte that the owner does not taint, also in an operand that two owners share, and the evidence of a report for one owner masks the bytes of the other owners (step 4 reviews: one range over `[0, len(result))` for each owner, and then one range from the first to the last tainted byte of each operand, made the bytes of owner B the evidence of owner A). The `limit` of the first match bounds the range count; the ranges after the limit are dropped. It records one `ranges` drop for each owner because the ranges are not exact. The exact path (<= 16 operands) records one `ranges` drop for each owner when the range limit truncates its ranges. Tests: 17 operands with only operand 17 tainted; 40 operands with only operand 40 tainted; 5 owners (the fifth is a `fanout` drop).
 8. For `concatbytes`, the result is a `[]byte`. Adopt it as a bytes root with `span = cap(result)` (section 4.4 gives the mutable-bytes model).
 
 Rule for `count == 1` with `buf == nil`: the runtime copies a stack operand to the heap (`!stringDataOnStack(a[idx])` is false). The result is then a fresh allocation, so step 5 applies.
@@ -500,7 +517,7 @@ Rule for `count == 1` with `buf == nil`: the runtime copies a stack operand to t
 ### 3.7 Limits and fan-out
 
 - The hook uses the existing store limits. It adds no new table (the interior index of section 5 is a store table, not a hook table).
-- Every failure is a drop with an existing counter (`full`, `bytes`, `ranges`, `contention`, `fanout`) or a new one (`indexFull`, `preStale`). The hook never blocks: it uses the store's `TryLock` / `TryRLock` paths.
+- Every failure is a drop with an existing counter (`full`, `bytes`, `ranges`, `contention`, `fanout`) or a new one (`indexFull`, `preStale`; `preStale` is not recorded, see 3.2.1 item 6). The hook never blocks: it uses the store's `TryLock` / `TryRLock` paths.
 
 ### 3.8 Escape and GC contract
 
@@ -967,7 +984,7 @@ Delete from `iast/propagation/orchestrion.yml`:
 - `operator string slice`;
 - `operator byte slice`.
 
-Add a new package `iast/runtime` (`orchestrion.yml` with the runtime aspects from sections 3 and 4). Import it from `orchestrion.tool.go` at the root, the same as the other `iast/*` packages. The `links:` list names `github.com/DataDog/dd-iast-go/internal/taint/runtimebridge`.
+Add a new package `iast/runtime` (`orchestrion.yml` with the runtime aspects from sections 3 and 4). Import it from `orchestrion.tool.go` at the root, the same as the other `iast/*` packages. The `links:` list names `github.com/DataDog/dd-iast-go/internal/taint/runtimebridge` and `github.com/DataDog/dd-iast-go/internal/taint/propagation` (3.2 rule 6, link rule).
 
 After the change, this command must print nothing:
 
@@ -1071,17 +1088,18 @@ Still open after this plan:
 
 Section 9.4 gives the matrix for the woven tests.
 
-1. **Hooks fire:** for each runtime function (`concatstrings`, `concatbytes`, `slicebytetostring`, `stringtoslicebyte`, `slicerunetostring`, `stringtoslicerune`), a test taints a value, runs the operation, and asserts the exact ranges. An unwoven run `t.Skip`s with a detected reason, **except** when `DD_IAST_REQUIRE_WOVEN=1`: then it fails. Every woven CI job sets this variable. `TestMain` also reads a bridge counter `hookEntries` and fails if it is 0 at the end. Thus an unwoven build cannot pass a woven job.
-2. **Concat cases:** `a+b`, `a+b+c`, 6 operands, 17 operands with only operand 17 tainted, 40 operands with only operand 40 tainted, `s += b`, generic `T ~string`, defined string types, `[]byte(a+b)`, `quote("x" + tainted)` (the v1 failure), identity (`"" + t`).
+1. **Hooks fire:** for each runtime function (`concatstrings`, `concatbytes`, `slicebytetostring`, `stringtoslicebyte`, `slicerunetostring`, `stringtoslicerune`), a test taints a value, runs the operation, and asserts the exact ranges. An unwoven run `t.Skip`s with a detected reason, **except** when `DD_IAST_REQUIRE_WOVEN=1`: then it fails. Every woven CI job sets this variable. `TestMain` also reads a bridge counter `hookEntries` and fails if it is 0 at the end. Thus an unwoven build cannot pass a woven job. `hookEntries` is opt-in: the bridge counts entries only after `runtimebridge.CountEntries(true)`, because a shared atomic counter on every hooked operation costs too much on a busy process (step 4). `TestMain` and every test that reads `hookEntries` turn it on first.
+2. **Concat cases:** `a+b`, `a+b+c`, 6 operands, 17 operands with only operand 17 tainted, 40 operands with only operand 40 tainted, more than 16 interleaved operands of two owners (the ranges of each owner cover only its operands), more than 16 operands with one shared operand where owner A taints the two ends and owner B the middle (the ranges of A do not cover the bytes of B), more ranges than the range limit (exact and coarse: one `ranges` drop), `s += b`, generic `T ~string`, defined string types, `[]byte(a+b)`, `quote("x" + tainted)` (the v1 failure), identity (`"" + t`).
 3. **Conversion cases:** each row of section 4.1, including the alias rows, and the one-byte case (not tainted, no crash). The rune mapping tests of section 4.5. The switch-off tests of section 4.4.
 4. **Slice cases (store only, no hook):** `s[i:j]`, `s[i:]`, `s[:j]`, `b[i:j:k]`, one-byte windows, empty windows, a window that crosses a granule (both tiers), a 256 B and a 257 B root (tier boundary), a 64 KiB root, a window of a finished owner (must miss), the density and shared-allocation tests of 5.3 (including the extension and union tests), the rollback tests, the mutation-extension race test and the reader order test of 5.2.2, the mutation tests of 5.2.3 (including extended roots), and `TestStoreFootprint` (5.2.1).
 4b. **No false negative in the pre-check** (woven build, short non-escaping concat, `string(b)`, `[]byte(s)`, `string(rs)` and `[]rune(s)` with a tainted operand):
    - forced `indexFull` and forced `fanout` (test-only hooks): the root admission fails, the source value is **not** tainted, and no lookup reports it. Thus no live root is invisible to the filter.
-   - forced shard contention in `confirm` (failed `TryRLock`): `confirm` returns `confirmUnknown`, `pre` returns `true`, the result is on the heap, and the result hook adopts it (1 allocation, taint kept).
+   - forced shard contention in `confirm` (failed `TryRLock`): `confirm` returns `confirmUnknown`, `pre` returns `true`, the result is on the heap, and the result hook adopts it (1 allocation, taint kept). Step 4 checks `pre` and `confirm` with direct calls only (`TestRuntimePreConfirm`); the woven tests of step 5 must check the three effects: the heap is forced, the result hook adopts the result, and the result has the correct taint.
+   - an allocation that already has `MaxSnapshotOwners` owners (forced fanout): `pre` and `confirm` see the taint of the admitted owners, the taint of the refused owner is not visible, and no lookup reports the refused owner (step 4: `TestRuntimePreWithFullFanout`).
    - a clean subwindow of a sparse tainted root (taint on bytes 0-3 of a 64-byte root, operand `root[10:20]`): `pre` returns `false`, 0 allocations, the result stays on the stack.
    - a tainted subwindow of the same root (`root[2:6]`): `pre` returns `true`, the result has the correct ranges.
 5. **Negative controls** (each must make a test fail, then be restored): remove `stringDataOnStack`; in the wrappers, replace `buf = nil` with `_ = buf` (step 2 on variant D: 9 tests fail: forced-heap, runes, panic, unknown, recursion, stack growth, allocs); remove the `__dd_iast_in_hook` check from `__dd_iast_ok` (step 2 on variant D: `TestRecursionGuard` fails); remove the `s2sGate` check (the nested `if`) from the string-to-slice aspects (step 2 on variant D: `TestS2SGateOff` fails); make the wrappers call `runtime.<fn>` directly in place of the alias `__dd_iast_orig_<fn>` (step 2, first D build: the escape comparison fails in all 6 cells with `leaking param: buf`); remove the clear of the bypass token after the inner call (the gate-change test of 3.4.2 must fail); move the `__dd_iast_ok()` check from the prepended code back into the wrapper (the first variant D; step 2, critic round 9: the gate-on child of the system-stack test, item 15, crashes with "fatal: morestack on g0" in `__dd_iast_concatstrings`); in one alias, add an argument and remove the alias signature assertion (step 2: the build then compiles silently; with the assertion it is a compile error, 3.9 item 6); remove the filter decrement in `Finish` (filter test must detect the leak); remove `confirm` from `pre` (the clean-filter-hit allocation test must fail); remove the range-overlap scan from `confirm` (the sparse-root test of 4b must fail); make admission ignore an index failure (the forced `indexFull` test of 4b must fail); remove the rollback loop (the failure-injection test must fail); make `claimMutation` decrement `indexedRoots` (gate test (a) of 5.2.3 must fail); make the extension commit set `R.setGen = R.generation.Load()` (the mutation-extension race test of 5.2.2 must fail); read tier L before tier S (the reader order test of 5.2.2 must fail); replace the union with "latest adoption wins" (the longer-then-shorter test and the bytes union test of 5.3 must fail); remove check (b) of 5.2.2 step 5 (the concurrent cross-tier first adoption test must fail).
-6b. **Independent stores:** two stores from `store.New()` plus the process store, used concurrently under `-race`. Taint in a non-process store never changes `gate`, never changes the bridge filter, and is never seen by a hook. After the process store is bound, `BindRuntimeBridge()` on a second store returns `false`, and the bridge still uses the gate, filter, `confirm` and callbacks of the first store (a tainted value of the second store is not seen by a hook; a tainted value of the first store still is).
+6b. **Independent stores:** two stores from `store.New()` plus the process store, used concurrently under `-race`. Taint in a non-process store never changes `gate`, never changes the bridge filter, and is never seen by a hook. After the process store is bound, `BindRuntimeBridge()` on a second store returns `false`, and the bridge still uses the gate, filter, `confirm` and callbacks of the first store (a tainted value of the second store is not seen by a hook; a tainted value of the first store still is). The check includes a result callback: after the refused second binding, a concat result and a `[]byte(s)` result of a first-store value are adopted in the first store, and results of a second-store value are adopted in no store (step 4: `TestRuntimeResultAfterRefusedSecondBind`).
 6c. **Escape and GC** (section 3.8): all listed checks.
 6. **Address reuse:** taint, finish the owner, force GC, allocate many same-size strings, assert that none is tainted.
 7. **C4 regression fixtures** (woven build):
@@ -1198,9 +1216,9 @@ Result: **gate passed** ([`/tmp/concathook-gate/REPORT.md`](/tmp/concathook-gate
 Work in local stages; commit only when every stage passes. No stage is committed alone.
 
 - 5a. Delete the YAML aspects (section 6.1), the Go code (section 6.2) and `operatorbridge`. Apply section 6.3 to all five modules and section 6.4 (except the CI matrix).
-- 5b. Add `iast/runtime/orchestrion.yml` from the variant D artifact (`/tmp/concathook-gate/artifacts/perf/yaml/D-atomic.orchestrion.yml`, section 2.2): the shared declarations aspect `iast-runtime-decls` (two `runtime.g` fields, bridge declarations, `__dd_iast_ok`, the 6 aliases and wrappers) and the concat aspects. Change `links:` to `github.com/DataDog/dd-iast-go/internal/taint/runtimebridge`. Keep the context check before the wrapper call (2.2, 3.3) and the 3 signature assertions for each function (3.9 item 6); both are in the artifact since critic round 9. Move the system-stack test (9.1 item 15) into the module.
+- 5b. Add `iast/runtime/orchestrion.yml` from the variant D artifact (`/tmp/concathook-gate/artifacts/perf/yaml/D-atomic.orchestrion.yml`, section 2.2): the shared declarations aspect `iast-runtime-decls` (two `runtime.g` fields, bridge declarations, `__dd_iast_ok`, the 6 aliases and wrappers) and the concat aspects. Change `links:` to `github.com/DataDog/dd-iast-go/internal/taint/runtimebridge` and `github.com/DataDog/dd-iast-go/internal/taint/propagation` (3.2 rule 6, link rule). Add a **runtime-only link fixture**: a test binary whose source imports nothing from dd-iast-go (all dd-iast-go code comes from weaving, with only the runtime aspect and one source aspect that does not import `propagation`, for example `iast/net/http`). The test checks that the 6 callbacks are registered, and that a tainted concat result is tainted (not only forced to the heap). Keep the context check before the wrapper call (2.2, 3.3) and the 3 signature assertions for each function (3.9 item 6); both are in the artifact since critic round 9. Move the system-stack test (9.1 item 15) into the module.
 - 5c. Add the `slicebytetostring`, `stringtoslicebyte`, `slicerunetostring` and `stringtoslicerune` aspects (sections 4.2, 4.3, 4.5), with the `s2sGate` check in a nested `if` of the two string-to-slice aspects (4.3).
-- 5d. Move the woven operator tests to `iast/runtime` (section 6.2). Add the C4 fixtures (section 9.1 item 7), the `wrap-expression` audit test (section 7), the woven rune and switch-off tests (sections 4.4, 4.5), and the bypass token tests (3.4.2, 9.1 item 14). Add the woven report selection test of step 4 (a shared callback result, one owner in the report, also with an unowned context span). Delete `operatorActive` and update `TestStoreFootprint` (5.2.1).
+- 5d. Move the woven operator tests to `iast/runtime` (section 6.2). Add the C4 fixtures (section 9.1 item 7), the `wrap-expression` audit test (section 7), the woven rune and switch-off tests (sections 4.4, 4.5), and the bypass token tests (3.4.2, 9.1 item 14). Add the woven report selection test of step 4 (a shared callback result, one owner in the report, also with an unowned context span), and the woven variants of the coarse (> 16 operands) two-owner report tests of step 4 (`TestReportCoarseRuntimeResultMasksForeignOperands`, `TestReportCoarseRuntimeResultMasksForeignBytesInSharedOperand`). Add `DD_IAST_STRING_TO_SLICE_PROPAGATION_ENABLED` (default `true`, section 4.4) to the configuration table of `README.md`: the switch has an effect only after step 5, so step 4 does not document it. Delete `operatorActive` and update `TestStoreFootprint` (5.2.1).
 - 5e. Run the escape comparison with `-m` and `-m=2` (3.8), the link checks (3.9), and the negative controls of variant D (9.1 item 5: `_ = buf`, guard check, `s2sGate`, direct call in place of the alias, token clear after the inner call). Run the woven tests of variant D on linux/amd64 (container or CI branch run), default and `-race` (R8).
 - **Exit:** the `grep` in section 6.1 prints nothing; `go list -m github.com/DataDog/orchestrion` prints `v1.13.1` in all five modules; section 9.1 items 1-4b, 6b, 6c, 7-14 pass on go1.26.6 and go1.27.1, default and `-race`, on darwin/arm64 and linux/amd64; the escape lines are identical; concat and conversion benchmark gates pass on darwin/arm64.
 

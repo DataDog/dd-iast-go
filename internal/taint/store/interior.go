@@ -8,6 +8,8 @@ package store
 import (
 	"sync"
 	"sync/atomic"
+
+	"github.com/DataDog/dd-iast-go/internal/taint/runtimebridge"
 )
 
 // The interior index finds the root that contains a value from any data
@@ -24,10 +26,11 @@ import (
 // Only rollback, the tier S clean-up of an extension and Owner.Finish wait on a
 // shard lock. Readers only try the locks.
 const (
-	// ShiftS is the granule shift of tier S (64-byte granules).
-	ShiftS = 6
+	// ShiftS is the granule shift of tier S (64-byte granules). The runtime
+	// bridge owns the filter layout, so both sides use the same hash.
+	ShiftS = runtimebridge.ShiftS
 	// ShiftL is the granule shift of tier L (4 KiB granules).
-	ShiftL = 12
+	ShiftL = runtimebridge.ShiftL
 	// MaxSpanS is the largest root span in tier S.
 	MaxSpanS = 256
 	// IndexShards is the number of index shards. Each shard has its own lock.
@@ -40,7 +43,7 @@ const (
 	// home bucket and the next buckets of the same shard.
 	IndexBucketProbe = 5
 	// FilterBuckets is the number of filter counters.
-	FilterBuckets = 1 << 15
+	FilterBuckets = runtimebridge.FilterBuckets
 
 	// maxRootKeys is the largest number of granules that one root covers:
 	// 17 tier L granules for a root of MaxRootBytes at an unaligned base.
@@ -54,8 +57,7 @@ const (
 	// writerLockSpin is the number of atomic loads between two tries.
 	writerLockSpin = 64
 
-	indexHashMultiplier = 0x9e3779b97f4a7c15
-	tierLBit            = ^(^uintptr(0) >> 1)
+	tierLBit = runtimebridge.TierLBit
 )
 
 // Tier S uses at most 5 granules for each root, and one granule key has at
@@ -198,16 +200,11 @@ func tryRLockShard(shard *indexShard) bool {
 }
 
 // granuleKey returns the index key of the granule that contains address.
-func granuleKey(address uintptr, large bool) uintptr {
-	if large {
-		return tierLBit | (address>>ShiftL + 1)
-	}
-	return address>>ShiftS + 1
-}
+func granuleKey(address uintptr, large bool) uintptr { return runtimebridge.GranuleKey(address, large) }
 
-func indexHash(key uintptr) uint64 { return uint64(key) * indexHashMultiplier }
+func indexHash(key uintptr) uint64 { return runtimebridge.IndexHash(key) }
 
-func filterBucket(hash uint64) uint32 { return uint32(hash>>37) & (FilterBuckets - 1) }
+func filterBucket(hash uint64) uint32 { return runtimebridge.FilterBucket(hash) }
 
 func (s *Store) shardOf(hash uint64) (*indexShard, int) {
 	if forceIndexCollision.Load() {

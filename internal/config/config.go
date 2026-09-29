@@ -29,6 +29,9 @@ const (
 	EnvVarTelemetryVerbosity        = "DD_IAST_TELEMETRY_VERBOSITY"
 	EnvVarDbRowsToTaint             = "DD_IAST_DB_ROWS_TO_TAINT"
 	EnvVarStackTraceEnabled         = "DD_IAST_STACK_TRACE_ENABLED"
+	// EnvVarStringToSlicePropagationEnabled turns the []byte(s) and []rune(s)
+	// runtime propagation on or off.
+	EnvVarStringToSlicePropagationEnabled = "DD_IAST_STRING_TO_SLICE_PROPAGATION_ENABLED"
 
 	// MaxVulnerabilitiesPerRequest is the non-configurable hard event bound.
 	MaxVulnerabilitiesPerRequest = 64
@@ -66,6 +69,10 @@ var (
 	DbRowsToTaint uint64
 	// StackTraceEnabled determines whether stack traces will be included in vulnerability reports.
 	StackTraceEnabled bool
+	// StringToSlicePropagationEnabled determines whether []byte(s) and
+	// []rune(s) results get the taint of s. These results are mutable, and
+	// direct writes to them are not tracked, so their taint can be stale.
+	StringToSlicePropagationEnabled bool
 )
 
 func load(observer loader.Observer) {
@@ -82,6 +89,7 @@ func load(observer loader.Observer) {
 	TelemetryVerbosity = loader.FromEnv(observer, EnvVarTelemetryVerbosity, LogLevelInformation, parser.ParseLogLevel)
 	DbRowsToTaint = loader.UintFromEnv(observer, EnvVarDbRowsToTaint, 1)
 	StackTraceEnabled = loader.BoolFromEnv(observer, EnvVarStackTraceEnabled, true)
+	StringToSlicePropagationEnabled = loader.BoolFromEnv(observer, EnvVarStringToSlicePropagationEnabled, true)
 }
 
 type LogLevel = parser.LogLevel
