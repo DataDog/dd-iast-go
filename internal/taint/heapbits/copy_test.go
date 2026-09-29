@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"runtime"
 	"runtime/metrics"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -398,13 +399,46 @@ func TestCopyConcurrentNeighbour(t *testing.T) {
 	runtime.KeepAlive(a)
 }
 
-// Progress: 18 goroutines Copy into partial words of one shared bitmap word
-// (a CAS retry loop), and one goroutine copies a long range; with
-// asynchronous preemption off, every stop-the-world must still be fast.
+// stwCounts returns the histogram of the waits to stop the world for the GC.
+func stwCounts() *metrics.Float64Histogram {
+	s := []metrics.Sample{{Name: "/sched/pauses/stopping/gc:seconds"}}
+	metrics.Read(s)
+	return s[0].Value.Float64Histogram()
+}
+
+// maxNewWait returns the upper bound of the highest bucket that got new
+// counts between the two histograms.
+func maxNewWait(before, after *metrics.Float64Histogram) float64 {
+	m := 0.0
+	for i, c := range after.Counts {
+		if c > before.Counts[i] {
+			m = after.Buckets[i+1]
+		}
+	}
+	return m
+}
+
+var progressWord atomic.Uint64
+
+//go:noinline
+func progressBaselineOp(i int) { progressWord.Or(1 << (i % 64)) }
+
+// Progress: goroutines Copy into partial words of one shared bitmap word (a
+// CAS retry loop, with competing clean and tainted sources), and one
+// goroutine copies a long range; with asynchronous preemption off, a
+// stop-the-world must still be fast. The test uses half of the Ps (the GC
+// needs CPUs too), and it alternates rounds with a baseline (the same
+// goroutines do atomic operations in plain Go code): on a loaded machine,
+// the OS can delay a stop-the-world by tens of milliseconds without any
+// runtime code of the feature. Rounds with a slow baseline are inconclusive;
+// the limit for the others is 10 ms.
 func TestCopyProgress(t *testing.T) {
 	need(t)
 	if testing.Short() {
 		t.Skip("progress test")
+	}
+	if moveMode(t) {
+		t.Skip("the stack moves at every call in this build: the timing is not meaningful")
 	}
 	if os.Getenv("HEAPBITS_PROGRESS_CHILD") != "1" {
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
@@ -416,10 +450,48 @@ func TestCopyProgress(t *testing.T) {
 			t.Fatalf("child failed: %v\n%s", err, out)
 		}
 		t.Logf("child:\n%s", out)
+		if strings.Contains(string(out), "--- SKIP: TestCopyProgress") {
+			t.Skip("inconclusive in the child (machine too loaded)")
+		}
 		return
 	}
 	heapbits.SetBudget(heapbits.MaxBudget)
-	// 4 objects of 16 bytes in one word, shared by 18 goroutines.
+	workers := max(2, runtime.GOMAXPROCS(0)/2)
+	// run runs work on the goroutines during 6 GC cycles, and returns the
+	// longest new wait to stop the world.
+	// run runs work on the goroutines (each one calls started after its
+	// first operation) during 6 GC cycles, and returns the longest new wait
+	// to stop the world.
+	run := func(work func(w int, stop *atomic.Bool, started func())) float64 {
+		var stop atomic.Bool
+		var wg, ready sync.WaitGroup
+		for w := range workers {
+			wg.Add(1)
+			ready.Add(1)
+			go func() {
+				defer wg.Done()
+				var once sync.Once
+				work(w, &stop, func() { once.Do(ready.Done) })
+			}()
+		}
+		ready.Wait() // all goroutines are at work
+		before := stwCounts()
+		for range 6 {
+			runtime.GC()
+		}
+		after := stwCounts()
+		stop.Store(true)
+		wg.Wait()
+		return maxNewWait(before, after)
+	}
+	baselineWork := func(w int, stop *atomic.Bool, started func()) {
+		for i := w; !stop.Load(); i++ {
+			progressBaselineOp(i)
+			started()
+		}
+	}
+
+	// 4 objects of 16 bytes in one word, shared by the goroutines.
 	var objs []*[16]byte
 	for len(objs) < 4 {
 		objs = objs[:0]
@@ -433,59 +505,70 @@ func TestCopyProgress(t *testing.T) {
 			objs = append(objs, x)
 		}
 	}
-	tainted := heapBytes(16)
-	heapbits.SetBytes(tainted)
+	tainted, clean := heapBytes(16), heapBytes(16)
 	longDst, longSrc := heapBytes(32<<20), heapBytes(32<<20)
-	heapbits.SetBytes(longSrc)
-	var stop atomic.Bool
-	var wg sync.WaitGroup
-	clean := heapBytes(16)
-	for w := range 18 {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			o := objs[w%4]
-			// Competing patterns: tainted and clean sources, so that the CAS
-			// of neighbours in the shared word fail and retry.
-			for i := 0; !stop.Load(); i++ {
-				src := tainted
-				if (i+w)%2 == 0 {
-					src = clean
+	// The sources must be tainted: else Copy is only a clear.
+	if !heapbits.SetBytes(tainted) || !heapbits.SetBytes(longSrc) ||
+		!heapbits.AnyBytes(tainted) || !heapbits.AnyBytes(longSrc[len(longSrc)-1:]) {
+		t.Fatal("could not taint the sources")
+	}
+	var copies atomic.Int64
+	copyWork := func(w int, stop *atomic.Bool, started func()) {
+		if w == 0 {
+			for !stop.Load() {
+				if !heapbits.Copy(ptr(longDst), ptr(longSrc), uintptr(len(longDst))) {
+					t.Error("the long Copy failed")
+					started()
+					return
 				}
-				heapbits.Copy(unsafe.Pointer(o), ptr(src), 16)
+				copies.Add(1)
+				started()
 			}
-		}()
-	}
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		for !stop.Load() {
-			heapbits.Copy(ptr(longDst), ptr(longSrc), uintptr(len(longDst)))
+			return
 		}
-	}()
-	var worst time.Duration
-	for range 50 {
-		start := time.Now()
-		runtime.GC()
-		if d := time.Since(start); d > worst {
-			worst = d
-		}
-	}
-	stop.Store(true)
-	wg.Wait()
-	// The longest pause to stop the world for the GC.
-	s := []metrics.Sample{{Name: "/sched/pauses/stopping/gc:seconds"}}
-	metrics.Read(s)
-	h := s[0].Value.Float64Histogram()
-	maxStop := 0.0
-	for i, c := range h.Counts {
-		if c > 0 {
-			maxStop = h.Buckets[i+1]
+		o := objs[w%4]
+		// Competing patterns: tainted and clean sources, so that the CAS
+		// of neighbours in the shared word fail and retry.
+		for i := 0; !stop.Load(); i++ {
+			src := tainted
+			if (i+w)%2 == 0 {
+				src = clean
+			}
+			if !heapbits.Copy(unsafe.Pointer(o), ptr(src), 16) {
+				t.Error("Copy failed")
+				started()
+				return
+			}
+			started()
 		}
 	}
-	t.Logf("longest runtime.GC: %v; longest stop-the-world wait: at most %.3f ms", worst, maxStop*1e3)
-	if maxStop > 0.010 {
-		t.Errorf("a stop-the-world waited up to %.3f ms (limit 10 ms)", maxStop*1e3)
+	// Alternate rounds of the baseline and of the Copy work, so that a
+	// change of the machine load affects both. A round pair with a slow
+	// baseline (more than 5 ms) is inconclusive: the machine is too loaded.
+	// At most 5 pairs; at least 3 conclusive ones, else the test skips.
+	const limit = 0.010
+	conclusive := 0
+	worst, worstBaseline := 0.0, 0.0
+	for range 5 {
+		baseline := run(baselineWork)
+		got := run(copyWork)
+		worstBaseline = max(worstBaseline, baseline)
+		if baseline > 0.005 {
+			continue
+		}
+		conclusive++
+		worst = max(worst, got)
+	}
+	t.Logf("%d goroutines, %d conclusive rounds of 5, %d long copies; longest wait to stop the world: baseline at most %.3f ms, with Copy at most %.3f ms (limit %.0f ms)",
+		workers, conclusive, copies.Load(), worstBaseline*1e3, worst*1e3, limit*1e3)
+	if conclusive < 3 {
+		t.Skip("the machine is too loaded (slow baseline): the result is inconclusive")
+	}
+	if copies.Load() == 0 {
+		t.Error("no long Copy completed")
+	}
+	if worst > limit {
+		t.Errorf("a stop-the-world waited up to %.3f ms (limit %.0f ms)", worst*1e3, limit*1e3)
 	}
 	runtime.KeepAlive(objs)
 }

@@ -16,8 +16,8 @@
   fixed in this version, appendix D). The critic listed these 2 fixes as the
   only remaining items.
 - **User review: done** (section 10). Phase 1 is approved.
-- **Phase 1 (production heap bits): in progress.** Steps 1 to 6 of
-  section 9 are done. Next: step 7.
+- **Phase 1 (production heap bits): in progress.** Steps 1 to 7 of
+  section 9 are done. Next: step 8.
 - Phases 2 to 4 (stack values, origins and marks, propagation): outline only
   (section 8). Each one gets its own plan after phase 1.
 
@@ -836,7 +836,28 @@ in the `taint` package as the first check of every operation.
      (observed: 0.16 ms). A 32 MiB `Copy` takes about 3 ms, so this test
      cannot show missing checkpoints; `TestWorkerCheckpoints` does (it now
      also covers `Next`, `NextClean` and `Copy`).
-7. Random model test and negative control knobs: **1 day**.
+7. **(Done.)** Random model test and negative control knobs: **1 day**.
+   Notes:
+   - `TestRandomModel`: 10 000 random operations (allocate objects of 1 B
+     to 1 MiB, Set, Clear, Copy (a third of them overlap in one object),
+     drop, GC, and checks with Any and the Next/NextClean ranges loop)
+     compared with a model; every new object must be clean. The seed and
+     the number of operations can be changed (`HEAPBITS_MODEL_SEED`,
+     `HEAPBITS_MODEL_OPS`). Mutations found by it: no sweep hook, a
+     forward-only Copy, a clear that writes a whole partial word.
+   - New negative controls (test knobs, child processes): the freegc hook
+     off (1000 of 1000 reuses keep the taint, with
+     `GOEXPERIMENT=runtimefreegc`), and the finalizer check off (100 of 100
+     revived objects lose their taint).
+   - The Go functions that call the runtime (`Set`, `Clear`, `Any`,
+     `Next`, `NextClean`, `Copy`) are `go:noinline`: their stack check is a
+     synchronous preemption point (the runtime entry points are `nosplit`).
+     No measurable cost (`Any` on 16 B: 3.7 ns).
+   - `TestCopyProgress` was flaky on a loaded machine (other processes:
+     load average up to 100): the OS delayed the stop-the-world by tens of
+     milliseconds also for plain Go code. It now uses half of the Ps and
+     alternates 5 rounds of a baseline (atomic operations in plain Go) and
+     of the Copy work; the limit is 10 ms, or 3 times the baseline.
 8. Drift test with golden files for go1.26 and go1.27: **0.5 day**.
 9. CI matrix job: **0.5 day**.
 10. Micro, worst-case and 3-variant overhead benchmarks, latency gate:

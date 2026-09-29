@@ -421,8 +421,9 @@ aspects:
             // Counters for tests.
             var __dd_taint_sweeps uint64
 
-            // Test knob: 1 disables the sweep hook (negative control only).
-            var __dd_taint_nosweep uint32
+            // Test knobs (negative controls only): 1 disables the sweep hook,
+            // the freegc hook, or the finalizer check of the sweep hook.
+            var __dd_taint_nosweep, __dd_taint_nofreegc, __dd_taint_nofinskip uint32
 
             // __dd_taint_testing is true only when the program links package
             // heapbits/heapbitstest, which defines the symbol with the value
@@ -1197,6 +1198,9 @@ aspects:
                   break
                 }
               }
+              if __dd_taint_testing && atomic.Load(&__dd_taint_nofinskip) != 0 {
+                hasFin = false // negative control: ignore finalizers
+              }
               // The finalizer checks walk the sorted specials list once for
               // each pass (a cursor), not from the head for each object.
               cur := s.specials
@@ -1548,6 +1552,23 @@ aspects:
             }
             //go:linkname __dd_taint_api_freegc __dd_iast_heapbits.freegc
             var __dd_taint_api_freegc = __dd_taint_freegc
+            func __dd_taint_hookknobs(nofreegc, nofinskip bool) {
+              if !__dd_taint_testing {
+                return
+              }
+              v := uint32(0)
+              if nofreegc {
+                v = 1
+              }
+              atomic.Store(&__dd_taint_nofreegc, v)
+              v = 0
+              if nofinskip {
+                v = 1
+              }
+              atomic.Store(&__dd_taint_nofinskip, v)
+            }
+            //go:linkname __dd_taint_api_hookknobs __dd_iast_heapbits.hookknobs
+            var __dd_taint_api_hookknobs = __dd_taint_hookknobs
             //go:linkname __dd_taint_api_nosweep __dd_iast_heapbits.nosweep
             var __dd_taint_api_nosweep = __dd_taint_setnosweep
 
@@ -1592,12 +1613,16 @@ aspects:
               - name: freegc
     advice:
       - prepend-statements:
+          imports:
+            atomic: internal/runtime/atomic
           template: |-
             {{- $ptr := .Function.Argument 0 -}}
             {{- $size := .Function.Argument 1 -}}
             {{- $noscan := .Function.Argument 2 -}}
             if runtimeFreegcEnabled && {{ $ptr }} != nil && reusableSize({{ $size }}) && !(sizeSpecializedMallocEnabled && !{{ $noscan }}) {
-              __dd_taint_clearslot(uintptr({{ $ptr }}))
+              if !__dd_taint_testing || atomic.Load(&__dd_taint_nofreegc) == 0 {
+                __dd_taint_clearslot(uintptr({{ $ptr }}))
+              }
             }
 
   # 5. Non-fatal OS allocation: only where runtime.mmap has a Go body, and only

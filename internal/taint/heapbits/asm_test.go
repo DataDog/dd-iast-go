@@ -221,6 +221,12 @@ func checkAsm(t *testing.T, funcs map[string]*asmFunc, noOpt bool) {
 	// Rule 3: Go wrappers.
 	for _, name := range []string{"Set", "Clear", "Any", "Next", "NextClean", "Copy"} {
 		f := get(heapbitsPkg + "." + name)
+		// The wrapper must have a stack check: it is the synchronous
+		// preemption point of a loop of calls (the runtime entry is
+		// nosplit).
+		if f.nosplit || !slices.ContainsFunc(f.calls, func(c string) bool { return strings.HasPrefix(c, "runtime.morestack") }) {
+			t.Errorf("%s.%s has no stack check (it must be a preemption point)", heapbitsPkg, name)
+		}
 		indirect := 0
 		for _, target := range f.calls {
 			switch {

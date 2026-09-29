@@ -28,6 +28,9 @@ var (
 	//go:linkname rtAllocKnobs __dd_iast_heapbits.allocknobs
 	rtAllocKnobs func(fail, park, parkSlot, parkScan bool) uint32
 
+	//go:linkname rtHookKnobs __dd_iast_heapbits.hookknobs
+	rtHookKnobs func(noFreegc, noFinalizerSkip bool)
+
 	//go:linkname rtNoSweep __dd_iast_heapbits.nosweep
 	rtNoSweep func(bool)
 
@@ -232,4 +235,12 @@ func SweepKnobs(p unsafe.Pointer, pause uint32, gosignal bool) (sweeps uint64, w
 		return 0, SweepNotWaiting
 	}
 	return rtSweepKnobs(uintptr(p), pause, gosignal)
+}
+
+// SetHookKnobs turns off (true) or on (false) the freegc hook, and the
+// finalizer check of the sweep hook. Only for negative controls.
+func SetHookKnobs(noFreegc, noFinalizerSkip bool) {
+	if rtHookKnobs != nil {
+		rtHookKnobs(noFreegc, noFinalizerSkip)
+	}
 }

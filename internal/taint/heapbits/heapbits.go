@@ -11,8 +11,11 @@
 // platform that is not supported), all functions of this package do nothing
 // and report "not tainted".
 //
-// The bits describe memory, not values. A copy of tainted bytes is not
-// tainted. Only heap memory can be tainted: stack memory, global variables and
+// The bits describe memory, not values. An operation that puts the bytes in
+// new memory (the copy built-in function, a conversion that allocates, and so
+// on) does not copy the bits; only [Copy] does. An operation that shares the
+// memory (a sub-slice, or a conversion that the compiler makes without a
+// copy) sees the same bits. Only heap memory can be tainted: stack memory, global variables and
 // read-only data are refused. The runtime clears the bits of an object when
 // the garbage collector frees it, so that a new object at the same address
 // does not get old taint.
@@ -23,6 +26,11 @@ import (
 	"unsafe"
 )
 
+// The functions that call the runtime are not inlined (go:noinline): their
+// stack check is a synchronous preemption point. The runtime entry points
+// are nosplit and a short call has no other one, so a loop of inlined calls
+// in application code could delay a stop-the-world.
+//
 // The runtime (woven by the aspects of orchestrion.yml) defines these
 // variables with a push linkname. Without weaving, they stay nil.
 //
@@ -102,6 +110,8 @@ func Enabled() bool {
 // pointer-free values can share one 16-byte slot (the tiny allocator); inside
 // such a slot, it cannot check the bounds of each value. The String and Bytes
 // helpers always give correct ranges.
+//
+//go:noinline
 func Set(p unsafe.Pointer, n uintptr) bool {
 	if rtSet == nil || n == 0 {
 		return false
@@ -114,6 +124,8 @@ func Set(p unsafe.Pointer, n uintptr) bool {
 // Clear removes the taint of the n bytes at p. It ignores a range that [Set]
 // would refuse, except that Clear never allocates. The same rule as for Set
 // applies to the range.
+//
+//go:noinline
 func Clear(p unsafe.Pointer, n uintptr) {
 	if rtClear == nil || n == 0 {
 		return
@@ -124,6 +136,8 @@ func Clear(p unsafe.Pointer, n uintptr) {
 
 // Any reports whether one of the n bytes at p is tainted. It is safe for all
 // addresses.
+//
+//go:noinline
 func Any(p unsafe.Pointer, n uintptr) bool {
 	if rtAny == nil || n == 0 {
 		return false
@@ -144,6 +158,8 @@ func Any(p unsafe.Pointer, n uintptr) bool {
 //		// bytes [off, end) are tainted
 //		off = heapbits.Next(p, n, end)
 //	}
+//
+//go:noinline
 func Next(p unsafe.Pointer, n, from uintptr) uintptr {
 	if from >= n {
 		return n
@@ -159,6 +175,8 @@ func Next(p unsafe.Pointer, n, from uintptr) uintptr {
 // NextClean returns the smallest off in [from, n) such that the byte at p+off
 // is not tainted, or n. In all cases, from >= n returns n; without weaving (or
 // on a platform that is not supported), it returns from.
+//
+//go:noinline
 func NextClean(p unsafe.Pointer, n, from uintptr) uintptr {
 	if from >= n {
 		return n
@@ -180,6 +198,8 @@ func NextClean(p unsafe.Pointer, n, from uintptr) uintptr {
 // Copy returns false and changes no bit in the same cases as [Set] (for dst).
 // A source that is not heap memory (or not in one heap span) counts as clean:
 // then Copy removes the taint of dst.
+//
+//go:noinline
 func Copy(dst, src unsafe.Pointer, n uintptr) bool {
 	if rtCopy == nil || n == 0 {
 		return false
