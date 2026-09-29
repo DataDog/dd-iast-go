@@ -193,14 +193,8 @@ func TestRecycleChild(t *testing.T) {
 		if !heapbits.SetBytes(large) {
 			t.Fatal("Set failed")
 		}
-		fillBudgetButOne(t)
-		if !heapbits.SetBytes(freshRegion()[:1]) {
-			t.Fatal("Set of the last free chunk failed")
-		}
+		fillBudget(t)
 		full := heapbitstest.Stats()
-		if full.ChunksInUse != full.Slabs*heapbitstest.ChunksPerSlab || full.Mapped != full.Budget {
-			t.Fatalf("setup: want a full budget: %+v", full)
-		}
 		if heapbits.SetBytes(freshRegion()[:1]) {
 			t.Fatal("Set succeeded with a full budget")
 		}
@@ -320,4 +314,39 @@ func freeChunks() uint64 {
 //go:noinline
 func failedSet(n int) bool {
 	return heapbits.SetBytes(heapBytes(n))
+}
+
+// fillBudget uses all the budget: no free chunk, no new slab. Regions in a
+// new arena need 2 chunks (the directory and the bits): when a Set of a
+// fresh region fails, it uses a region whose arena has a directory (it
+// needs 1 chunk). The GCs that the fill starts can recycle chunks of dead
+// objects: it fills again after a GC, until the budget stays full.
+func fillBudget(t *testing.T) {
+	t.Helper()
+	spare := withDirectory(t, 8)
+	full := func() bool {
+		st := heapbitstest.Stats()
+		return st.Mapped == st.Budget && st.ChunksInUse == st.Slabs*heapbitstest.ChunksPerSlab
+	}
+	for range 8 {
+		for range 8192 {
+			if full() {
+				break
+			}
+			if !heapbits.SetBytes(freshRegion()[:1]) {
+				if len(spare) == 0 {
+					t.Fatalf("no spare region left: %+v", heapbitstest.Stats())
+				}
+				if !heapbits.SetBytes(spare[0][:1]) {
+					t.Fatalf("Set of a region with a directory failed: %+v", heapbitstest.Stats())
+				}
+				spare = spare[1:]
+			}
+		}
+		gc()
+		if full() {
+			return
+		}
+	}
+	t.Fatalf("could not fill the budget: %+v", heapbitstest.Stats())
 }
