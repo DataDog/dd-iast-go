@@ -199,10 +199,9 @@ type Store struct {
 	// the number of visible roots.
 	indexedRoots atomic.Int32
 	// indexMaxProbe is the largest bucket distance that an insert used.
-	indexMaxProbe  atomic.Uint32
-	writerStates   atomic.Int32
-	writerActive   *atomic.Int32
-	operatorActive atomic.Pointer[atomic.Int32]
+	indexMaxProbe atomic.Uint32
+	writerStates  atomic.Int32
+	writerActive  *atomic.Int32
 	// runtimeGate is set only on the store that BindRuntimeBridge bound. It
 	// mirrors indexedRoots into the runtime gate word.
 	runtimeGate  atomic.Pointer[runtimebridge.Gate]
@@ -214,21 +213,10 @@ type Store struct {
 	filter       runtimebridge.Filter
 }
 
-// BindOperatorActive binds a mirror counter used by operator fast gates. The
-// store changes the mirror at the same time as the indexed-root counter.
-func (s *Store) BindOperatorActive(active *atomic.Int32) {
-	if active != nil {
-		s.operatorActive.Store(active)
-	}
-}
-
-// addIndexedRoots changes the indexed-root counter and its mirrors: the
-// operator counter and the runtime gate (plan section 3.2 rule 3).
+// addIndexedRoots changes the indexed-root counter and its mirror, the
+// runtime gate (plan section 3.2 rule 3).
 func (s *Store) addIndexedRoots(delta int32) {
 	s.indexedRoots.Add(delta)
-	if active := s.operatorActive.Load(); active != nil {
-		active.Add(delta)
-	}
 	if gate := s.runtimeGate.Load(); gate != nil {
 		gate.Add(delta)
 	}

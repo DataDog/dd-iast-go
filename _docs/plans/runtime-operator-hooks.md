@@ -1093,7 +1093,7 @@ Section 9.4 gives the matrix for the woven tests.
 3. **Conversion cases:** each row of section 4.1, including the alias rows, and the one-byte case (not tainted, no crash). The rune mapping tests of section 4.5. The switch-off tests of section 4.4.
 4. **Slice cases (store only, no hook):** `s[i:j]`, `s[i:]`, `s[:j]`, `b[i:j:k]`, one-byte windows, empty windows, a window that crosses a granule (both tiers), a 256 B and a 257 B root (tier boundary), a 64 KiB root, a window of a finished owner (must miss), the density and shared-allocation tests of 5.3 (including the extension and union tests), the rollback tests, the mutation-extension race test and the reader order test of 5.2.2, the mutation tests of 5.2.3 (including extended roots), and `TestStoreFootprint` (5.2.1).
 4b. **No false negative in the pre-check** (woven build, short non-escaping concat, `string(b)`, `[]byte(s)`, `string(rs)` and `[]rune(s)` with a tainted operand):
-   - forced `indexFull` and forced `fanout` (test-only hooks): the root admission fails, the source value is **not** tainted, and no lookup reports it. Thus no live root is invisible to the filter.
+   - forced `indexFull` and forced `fanout` (test-only hooks): the root admission fails, the source value is **not** tainted, and no lookup reports it. Thus no live root is invisible to the filter. (Step 5: the woven test forces `indexFull` with `store.ForceIndexFullForTest`, a seam on the existing store test hook, so it adds no production cost.)
    - forced shard contention in `confirm` (failed `TryRLock`): `confirm` returns `confirmUnknown`, `pre` returns `true`, the result is on the heap, and the result hook adopts it (1 allocation, taint kept). Step 4 checks `pre` and `confirm` with direct calls only (`TestRuntimePreConfirm`); the woven tests of step 5 must check the three effects: the heap is forced, the result hook adopts the result, and the result has the correct taint.
    - an allocation that already has `MaxSnapshotOwners` owners (forced fanout): `pre` and `confirm` see the taint of the admitted owners, the taint of the refused owner is not visible, and no lookup reports the refused owner (step 4: `TestRuntimePreWithFullFanout`).
    - a clean subwindow of a sparse tainted root (taint on bytes 0-3 of a 64-byte root, operand `root[10:20]`): `pre` returns `false`, 0 allocations, the result stays on the stack.
@@ -1137,21 +1137,24 @@ Median of 8 runs, `-benchmem`, `benchstat`, go1.26.6 and go1.27.x:
 
 | Case | Gate |
 |---|---|
-| Gate off, any concat or conversion | 0 extra allocations; <= +2 ns (variant D, darwin/arm64, step 2: <= +0.54 ns resolved median; amd64 not measured yet, step 7) |
-| Gate on, clean, escaping (`buf == nil`) | 0 extra allocations; <= +3 ns |
-| Gate on, clean, stack buffer, filter miss | 0 extra allocations; <= +8 ns |
+| Gate off, any concat or conversion | 0 extra allocations; <= +2 ns as the pooled median of hook - nohook (woven) builds over >= 8 code placements (user decision after step 5); the worst single placement is reported, not gated (variant D, darwin/arm64, step 2: <= +0.54 ns resolved median; amd64 in step 7) |
+| Gate on, clean, escaping (`buf == nil`) | 0 extra allocations; <= +3 ns + 1.5 ns for each operand (user decision after step 5; was <= +3 ns) |
+| Gate on, clean, stack buffer, filter miss | 0 extra allocations; <= +3 ns + 1.5 ns for each operand (user decision after step 5; was <= +8 ns) |
 | Gate on, clean, stack buffer, filter hit | 0 extra allocations; <= +50 ns for each operand that hits |
 | Gate on, clean, 2-operand stack concat, full index | 0 extra allocations; <= +100 ns (both operands can hit) |
-| Gate on, tainted, stack buffer | exactly +1 allocation (<= 32 B); <= +60 ns |
+| Gate on, tainted, stack buffer | exactly +1 allocation of the exact result size (<= 32 B for strings and bytes; 4 B for each rune for `[]rune`); <= +1 us (user decision after step 5; was <= +60 ns and <= 32 B) |
 | `MayContain` filter hit, clean | <= 45 ns, 0 allocations |
 | `MayContain` clean, mean over random pointers, sparse / typical / full | <= 4 ns / <= 10 ns / <= 45 ns, 0 allocations |
+| Gate on, clean, rune conversion (`[]rune(s)`, `string(runes)`), escaping or stack | 0 extra allocations; <= +6 ns (user decision after step 5: `s2r-heap` measured +5.49 ns pooled, noisy) |
 | Gate on, `[]byte(s)` / `[]rune(s)` with the Q2 switch off | 0 extra allocations; <= +2 ns (one more load) |
-| Gate on, tainted rune conversion | +1 allocation only in the stack case; <= +60 ns + 2 ns for each rune |
+| Gate on, tainted rune conversion | +1 allocation only in the stack case, of the exact result size; <= +1 us (user decision after step 5; was <= +60 ns + 2 ns for each rune) |
 | `MayContain` filter miss (any load) | <= 3 ns, 0 allocations |
 | HTTP overhead benchmark | not worse than the Phase 6 result (+2.70 %) by more than 1 point |
 | Source-root admission loss (Q9), old admitted % - new admitted %, every workload of 9.2 | sparse: 0 points; stressed: <= 1 point; saturated: no gate, reported in `REPORT.md` |
 
 A failed gate stops the plan for user review (section 11).
+
+**Step 5 measurement and user decision.** On darwin/arm64 (20 interleaved rounds, GOGC=off), the gate-on clean path cost +5 to +19 ns for a concat (about +1.2 ns for each operand: one filter check for each operand) and +4 to +5 ns for a conversion; the tainted stack path cost +450 to +930 ns (store adoption is about 170 ns; GOGC=off adds `madvise` time). The gate is on whenever any request of the process has taint, so under load this cost applies to every concat and conversion of the process, also in the standard library and the tracer. Romain accepted these measured costs and the three new gates above.
 
 ### 9.4 CI matrix for woven tests
 
@@ -1224,12 +1227,14 @@ Work in local stages; commit only when every stage passes. No stage is committed
 
 ### Step 6 (1 day): CI matrix (one commit)
 
+- Build cache (found in step 5): Orchestrion v1.13.1 adds dependency archives (for example `iobridge` for std `io`) that the Go action ID of the dependent package does not include, and its tool ID does not include the build flags. Two woven runs that differ only in coverage flags or in per-package `-gcflags` must not share one GOCACHE: give each woven mode its own GOCACHE (`$RUNNER_TEMP/gocache-<mode>`) or put the mode in the cache key. Also pass `-gcflags` only once: Orchestrion keeps only the last `-gcflags` value (`internal/goflags/flags.go`), so a second flag gives a fingerprint mismatch.
+
 - Add the `woven-runtime` job (section 9.4, all 13 cells) with the timeouts measured in step 2 (`timeout-minutes: 9`, then 2 x the first CI time) and the required checks of 9.4 (escape comparison, link check, `blockedLinknames` grep). Optional: the gate-off benchmark report on linux/amd64 (9.4 item 4). Check that `ubuntu-24.04-arm` is available for this repository; if not, stop (section 11).
 - **Exit:** CI is green on the branch; system-tests pass.
 
 ### Step 7 (0.75 day): measure and report
 
-- Run section 9.2 on darwin/arm64 and on native linux/amd64 (not Rosetta). The gate-off rows of variant D on amd64 are measured here for the first time (R8). Use the interleaved method of appendix H (rotating order, >= 20 runs, difference of medians with a bootstrap 95 % CI); for `s2r-heap` use >= 40 runs or the stack rows (noise, appendix H).
+- Run section 9.2 on darwin/arm64 and on native linux/amd64 (not Rosetta). The gate-off rows of variant D on amd64 are measured here for the first time (R8). Use the method of `_docs/plans/runtime-operator-hooks-step5-results.md` (step 5): compare woven builds with and without the hooks (hook - nohook, not woven - unwoven, because the woven binary also links the tracer and its GC cost is not a hook cost), >= 8 code placements, interleaved runs, pooled median against the gate, worst single placement reported. Report the woven - unwoven difference too, as a separate customer-visible cost.
 - Fill the result table in a new "Implementation result" section of this plan.
 - **Exit:** every gate in section 9.3 passes, or the plan stops for review.
 

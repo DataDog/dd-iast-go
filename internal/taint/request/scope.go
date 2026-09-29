@@ -16,7 +16,6 @@ import (
 	"github.com/DataDog/dd-iast-go/internal/taint/httpbridge"
 	"github.com/DataDog/dd-iast-go/internal/taint/iobridge"
 	"github.com/DataDog/dd-iast-go/internal/taint/jsonbridge"
-	"github.com/DataDog/dd-iast-go/internal/taint/operatorbridge"
 	"github.com/DataDog/dd-iast-go/internal/taint/runtimebridge"
 	"github.com/DataDog/dd-iast-go/internal/taint/scopebridge"
 	"github.com/DataDog/dd-iast-go/internal/taint/sqlbridge"
@@ -53,7 +52,6 @@ var (
 		commandbridge.BindActiveOwners(&manager.used)
 		jsonbridge.BindActiveOwners(&manager.used)
 		jsonbridge.BindActiveValues(manager.store.IndexedRoots())
-		manager.store.BindOperatorActive(operatorbridge.ActiveValues())
 		// Only the process store is visible to the runtime hooks (plan
 		// runtime-operator-hooks, section 3.2 rule 6). The store is not
 		// shared yet, as BindRuntimeBridge requires.

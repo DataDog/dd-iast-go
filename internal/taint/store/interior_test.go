@@ -459,29 +459,56 @@ func TestConcurrentReadersDuringTierMoveNeverMiss(t *testing.T) {
 	// removed (before E5); 3: after E5. The hook stops the move at stages 1
 	// and 2 until readers have made minReads complete reads (Confirm) and
 	// minReads complete, uncontended lookups in the stage.
-	const iterations, minReads = 20, 16
+	//
+	// The readers hold read locks, and the writer uses TryLock, so a writer
+	// can fail with contention for a long time when readers run all the time
+	// (on linux/amd64, 10 000 tries were not sufficient). A barrier controls
+	// this: the readers park while the writer tries a lock, and they read
+	// only in the stages. Thus the writer can always commit, and each stage
+	// still has concurrent reads.
+	const iterations, minReads, readerCount, maxAttempts = 20, 16, 4, 8
 	s := New()
 	var stage atomic.Int32
 	var stageReads, stageLookups [4]atomic.Int64
 	var misses, lookupMisses, duplicates atomic.Int64
-	waitForReads := func(current int32) bool {
-		stage.Store(current)
-		first, firstLookups := stageReads[current].Load(), stageLookups[current].Load()
-		for i := 0; stageReads[current].Load()-first < minReads || stageLookups[current].Load()-firstLookups < minReads; i++ {
+	// pause parks the readers; parked counts the readers that are parked. A
+	// reader reads only after it sees pause == false at the start of its
+	// loop, so parked == readerCount after pause.Store(true) means that no
+	// read runs.
+	var pause, stop atomic.Bool
+	var parked atomic.Int32
+	var stalled atomic.Bool
+	pauseReaders := func() {
+		pause.Store(true)
+		for i := 0; parked.Load() != readerCount; i++ {
 			if i > 100_000_000 {
-				return false
+				stalled.Store(true)
+				return
 			}
 			runtime.Gosched()
 		}
-		return true
 	}
-	var stalled atomic.Bool
+	// readStage lets the readers read in stage current until they made
+	// minReads reads and minReads lookups, then parks them again.
+	readStage := func(current int32) {
+		stage.Store(current)
+		first, firstLookups := stageReads[current].Load(), stageLookups[current].Load()
+		pause.Store(false)
+		for i := 0; stageReads[current].Load()-first < minReads || stageLookups[current].Load()-firstLookups < minReads; i++ {
+			if i > 100_000_000 {
+				stalled.Store(true)
+				break
+			}
+			runtime.Gosched()
+		}
+		pauseReaders()
+	}
 	setHook(t, func(current hookStage, _ int) bool {
 		switch current {
 		case hookExtendCommit:
-			stalled.Store(stalled.Load() || !waitForReads(1))
+			readStage(1)
 		case hookExtendCleanup:
-			stalled.Store(stalled.Load() || !waitForReads(2))
+			readStage(2)
 		}
 		return false
 	})
@@ -492,14 +519,21 @@ func TestConcurrentReadersDuringTierMoveNeverMiss(t *testing.T) {
 		require.True(t, ok)
 		key, _ := BytesKey(value[150:160])
 		stage.Store(0)
-		var stop atomic.Bool
-		var readers, ready sync.WaitGroup
-		for range 4 {
-			ready.Add(1)
+		stop.Store(false)
+		pause.Store(true)
+		var readers sync.WaitGroup
+		for range readerCount {
 			readers.Go(func() {
-				ready.Done()
 				var snapshot Snapshot
 				for !stop.Load() {
+					if pause.Load() {
+						parked.Add(1)
+						for pause.Load() && !stop.Load() {
+							runtime.Gosched()
+						}
+						parked.Add(-1)
+						continue
+					}
 					before := stage.Load()
 					// Confirm separates a contended read (ConfirmUnknown) from
 					// a miss (ConfirmClean).
@@ -529,20 +563,24 @@ func TestConcurrentReadersDuringTierMoveNeverMiss(t *testing.T) {
 				}
 			})
 		}
-		ready.Wait()
-		// Readers hold shard read locks, so an extension can fail with
-		// contention. Retry it: a failed extension leaves the root unchanged.
-		extended := false
-		for attempt := 0; attempt < 10_000 && !extended; attempt++ {
+		pauseReaders()
+		// No reader runs when the writer tries a lock, so contention is not
+		// expected. A failed extension leaves the root unchanged, so a small
+		// number of tries is permitted; the failure message has the counters.
+		extended, attempts := false, 0
+		for ; attempts < maxAttempts && !extended; attempts++ {
 			_, extended = owner.AdoptBytes(value, mustSet(t, ranges.DefaultLimit, 300, r(250, 10, 2)))
 		}
-		after := extended && waitForReads(3)
+		if extended {
+			readStage(3)
+		}
 		stop.Store(true)
 		readers.Wait()
+		counters, storeCounters := owner.Counters(), s.Counters()
 		owner.Finish()
-		require.Truef(t, extended, "iteration %d", iteration)
-		require.Truef(t, after, "iteration %d: no read after the move", iteration)
-		require.Falsef(t, stalled.Load(), "iteration %d: no read during the move", iteration)
+		require.Truef(t, extended, "iteration %d: %d tries, owner contention %d, store contention %d, owner counters %+v",
+			iteration, attempts, counters.Contention, storeCounters.Contention, counters)
+		require.Falsef(t, stalled.Load(), "iteration %d: the readers or the writer stalled in a stage", iteration)
 	}
 	for current := 1; current <= 3; current++ {
 		require.GreaterOrEqualf(t, stageReads[current].Load(), int64(iterations*minReads), "reads in stage %d", current)

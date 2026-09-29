@@ -28,10 +28,10 @@ Many of the functionality provided by this module relies on taint tracking:
 Category | Supported operations
 ---|---
 String windows | Every substring of a tracked value, with no instrumentation (for example the results of `Cut*`, `Split*`, `Fields*`, `Trim*`, `Lines`, and their sequence variants)
-String copies and transforms | Maximal `+` chains of 2–16 operands; string slicing; allocation-preserving `[]byte`-to-`string` assignments, declarations, and returns; `Clone`, `Join`, `Repeat`, `Replace*`, case conversion, `Map`, and `ToValidUTF8`
+String copies and transforms | Every non-constant `+` concatenation (also `+=` and more than 16 operands), `string(b)`, `[]byte(a + b)`, `string(runes)`, and `[]rune(s)`, through runtime hooks (`iast/runtime`) in every package of the program; `Clone`, `Join`, `Repeat`, `Replace*`, case conversion, `Map`, and `ToValidUTF8`
 Formatting and encoding | `fmt.Sprint*`, `net/url` escape and unescape functions, and `strconv` quote and unquote functions
 Byte windows | Every subslice of a tracked value, with no instrumentation (for example two- and three-index `[]byte` slicing, `Cut*`, `Split*`, `Fields*`, and `Trim*`)
-Byte copies and transforms | `Clone`, `Join`, `Repeat`, `Replace*`, case conversion, `Map`, and `ToValidUTF8`
+Byte copies and transforms | `[]byte(s)` through a runtime hook (see `DD_IAST_STRING_TO_SLICE_PROPAGATION_ENABLED`); `Clone`, `Join`, `Repeat`, `Replace*`, case conversion, `Map`, and `ToValidUTF8`
 Stateful writers | Direct `strings.Builder` and `bytes.Buffer` writes, `Grow`, `Reset`, `Truncate`, and `String`; exact current `bytes.Buffer` value copies
 JSON decoding | Go 1.26 `json.Unmarshal` and `json.Decoder.Decode` string values in nested structs, arrays, slices, and typed map values, including named string types and `,string` fields
 
@@ -41,7 +41,11 @@ Migration note: the exported window wrappers of `iast/propagation`
 the other wrappers that only returned a window of their input) are removed. A
 direct caller must call the standard-library function on the tracked value
 (for example `strings.Cut` in place of `propagation.StringsCut`). The taint
-store finds the provenance of the returned windows with no wrapper.
+store finds the provenance of the returned windows with no wrapper. The
+operator wrappers of `iast/propagation` (`Concat2` to `Concat16`,
+`BytesToString`, `StringSlice*`, and `BytesSlice*`) are also removed: the
+runtime hooks of `iast/runtime` and the taint store replace them. Use the Go
+operators directly.
 
 Propagation instrumentation applies to direct calls in the application root.
 Calls through function or method values do not propagate input taint, except
@@ -50,13 +54,21 @@ its data pointer. Native
 `bytes.Buffer` hooks still invalidate tracked state for indirect mutations and
 mutable exposure. `Bytes`, `AvailableBuffer`, and `Peek` results remain
 untainted; accessing them invalidates tracked overlapping buffer views.
-String-to-byte conversion, `append`, `copy`, `+=`, and direct byte index/slice
-assignment do not create new tainted mutable roots. Supported byte-slice windows
-share the parent managed root. Writes through mutable aliases retained before
-tracking, or across later tracking, are not observed and can leave stale ranges.
-Conversion contexts optimized by the Go
-compiler, including calls, comparisons, map keys, ranges, and concatenations,
-are intentionally not wrapped. Tainted replacement terms supplied to
+The runtime hooks of `iast/runtime` do not change the application source
+code, so they do not change evaluation order or constant expressions. They
+propagate through calls through function values and in dependencies too. When
+IAST has no tainted value in the process, each hooked operation costs one
+atomic load. Conversions that the Go compiler optimizes into an alias of their
+input (map keys, comparisons, `switch`, ranges, and concatenation operands)
+need no hook: the taint store finds the provenance of the alias from its data
+pointer. `string(r)` of one rune value, one-byte conversion results, `append`,
+`copy`, and direct byte index/slice assignment do not create new tainted
+roots. `[]byte(s)` and `[]rune(s)` results are mutable: a later direct write is
+not observed and can leave stale ranges. Supported byte-slice windows share the
+parent managed root. Writes through mutable aliases retained before tracking,
+or across later tracking, are not observed and can leave stale ranges. The
+runtime hooks support Go 1.26 and Go 1.27; on a later Go release they stay off.
+Tainted replacement terms supplied to
 `strings.Replacer` are not tracked in this release. Builder value copies are not
 supported.
 
@@ -163,6 +175,7 @@ Environment variable | Type | Default | Description
 `DD_IAST_TELEMETRY_VERBOSITY` | `OFF`, `MANDATORY`, `INFORMATION`, or `DEBUG` | `INFORMATION` | Sets IAST telemetry verbosity.
 `DD_IAST_DB_ROWS_TO_TAINT` | Non-negative integer | `1` | Number of database rows tainted for each request.
 `DD_IAST_STACK_TRACE_ENABLED` | Boolean | `true` | Includes stack traces in vulnerability reports.
+`DD_IAST_STRING_TO_SLICE_PROPAGATION_ENABLED` | Boolean | `true` | Propagates taint through `[]byte(s)` and `[]rune(s)` conversions. The results are mutable, so a later direct write can leave stale taint.
 
 > [!NOTE]
 > Boolean values are parsed using [`strconv.ParseBool`](https://pkg.go.dev/strconv#ParseBool),

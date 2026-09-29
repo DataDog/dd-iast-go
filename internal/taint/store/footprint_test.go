@@ -10,5 +10,5 @@ package store
 // changes them.
 const (
 	expectedOwnerSize = 183_376
-	expectedStoreSize = 14_040_768
+	expectedStoreSize = 14_040_760
 )

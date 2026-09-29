@@ -1,0 +1,446 @@
+# Unless explicitly stated otherwise all files in this repository are licensed
+# under the Apache License Version 2.0.
+# This product includes software developed at Datadog (https://www.datadoghq.com/).
+# Copyright 2026-present Datadog, Inc.
+---
+# $schema: https://datadoghq.dev/orchestrion/schema.json
+meta:
+  name: github.com/DataDog/dd-iast-go/iast/runtime
+  description: >-
+    Taint propagation hooks in the Go runtime for string concatenation and for
+    the string, []byte and []rune conversions. The hooks replace the
+    source-expression rewrites, so the evaluation of the application code does
+    not change.
+
+# How the hooks work (plan runtime-operator-hooks, section 2.2, variant D):
+#
+#  1. The prepended code of each hooked runtime function reads the gate word
+#     with one atomic load. When the gate is 0 (no tainted root in the process
+#     store), the original body runs. This is the only added work when IAST
+#     has no taint.
+#  2. When the gate is not 0, the code reads the bypass token of the current
+#     goroutine. A token of 1 is the inner call of a wrapper: the code clears
+#     the token and runs the original body.
+#  3. Else the code calls the nosplit context check __dd_iast_ok(). When it is
+#     true, the code returns the result of the wrapper __dd_iast_<fn>. When it
+#     is false (system stack, runtime lock, allocation in progress, or a bridge
+#     call on this goroutine), the original body runs directly.
+#  4. The wrapper calls the bridge pre-check (it can force the result to the
+#     heap), sets the token, calls the original function through the alias
+#     __dd_iast_orig_<fn>, clears the token, and calls the bridge result hook
+#     when the result is not on the stack.
+#
+# Rules (do not change them without the escape comparison and the system-stack
+# test of the plan, sections 3.8 and 9.1 item 15):
+#
+#  - The wrapper calls the original function only through its body-less alias.
+#    A direct call changes the escape tags of the runtime function.
+#  - The alias and the wrapper have no other call site.
+#  - Three assignments to one func type check the signature of the original
+#    function, of the alias and of the wrapper at compile time.
+#  - The string-to-slice switch is a nested if, so that the gate-off path is
+#    one load and one branch.
+
+aspects:
+  - id: iast-runtime-decls
+    join-point:
+      struct-definition: runtime.g
+    advice:
+      - add-struct-field:
+          name: __dd_iast_in_hook
+          type: uint8
+      - add-struct-field:
+          name: __dd_iast_bypass
+          type: uint8
+      - add-blank-import: unsafe
+      - inject-declarations:
+          # The bridge defines the __dd_iast_rt.* symbols. The propagation
+          # package registers the tainted-path callbacks in its init function.
+          # Orchestrion adds a link dependency that the program does not import
+          # to the main package, so both init functions run (plan section 3.2
+          # rule 6).
+          links:
+            - github.com/DataDog/dd-iast-go/internal/taint/runtimebridge
+            - github.com/DataDog/dd-iast-go/internal/taint/propagation
+          template: |-
+            //go:linkname __dd_iast_rt_gate __dd_iast_rt.gate
+            var __dd_iast_rt_gate uint32
+
+            //go:linkname __dd_iast_rt_s2s_gate __dd_iast_rt.s2s_gate
+            var __dd_iast_rt_s2s_gate uint32
+
+            //go:linkname __dd_iast_rt_concat_pre __dd_iast_rt.concat_pre
+            //go:noescape
+            func __dd_iast_rt_concat_pre(a []string) bool
+
+            //go:linkname __dd_iast_rt_concat_hook __dd_iast_rt.concat_hook
+            //go:noescape
+            func __dd_iast_rt_concat_hook(res string, a []string)
+
+            //go:linkname __dd_iast_rt_concat_bytes_hook __dd_iast_rt.concat_bytes_hook
+            //go:noescape
+            func __dd_iast_rt_concat_bytes_hook(res []byte, a []string)
+
+            //go:linkname __dd_iast_rt_bytes_pre __dd_iast_rt.bytes_pre
+            //go:noescape
+            func __dd_iast_rt_bytes_pre(ptr *byte, n int) bool
+
+            //go:linkname __dd_iast_rt_from_bytes __dd_iast_rt.from_bytes
+            //go:noescape
+            func __dd_iast_rt_from_bytes(res string, ptr *byte, n int)
+
+            //go:linkname __dd_iast_rt_str_pre __dd_iast_rt.str_pre
+            //go:noescape
+            func __dd_iast_rt_str_pre(s string) bool
+
+            //go:linkname __dd_iast_rt_to_bytes __dd_iast_rt.to_bytes
+            //go:noescape
+            func __dd_iast_rt_to_bytes(res []byte, s string)
+
+            //go:linkname __dd_iast_rt_runes_pre __dd_iast_rt.runes_pre
+            //go:noescape
+            func __dd_iast_rt_runes_pre(a []rune) bool
+
+            //go:linkname __dd_iast_rt_from_runes __dd_iast_rt.from_runes
+            //go:noescape
+            func __dd_iast_rt_from_runes(res string, a []rune)
+
+            //go:linkname __dd_iast_rt_to_runes __dd_iast_rt.to_runes
+            //go:noescape
+            func __dd_iast_rt_to_runes(res []rune, s string)
+
+            //go:nosplit
+            func __dd_iast_ok() bool {
+              gp := getg()
+              mp := gp.m
+              return gp == mp.curg && mp.locks == 0 && mp.mallocing == 0 && mp.preemptoff == "" && gp.__dd_iast_in_hook == 0
+            }
+
+            //go:linkname __dd_iast_orig_concatstrings runtime.concatstrings
+            //go:noescape
+            func __dd_iast_orig_concatstrings(buf *tmpBuf, a []string) string
+
+            var _ func(*tmpBuf, []string) string = concatstrings
+            var _ func(*tmpBuf, []string) string = __dd_iast_orig_concatstrings
+            var _ func(*tmpBuf, []string) string = __dd_iast_concatstrings
+
+            // The only caller is the prepended code of the original function, after
+            // __dd_iast_ok() returned true. Thus this function has no context check.
+            //go:noinline
+            func __dd_iast_concatstrings(buf *tmpBuf, a []string) string {
+              gp := getg()
+              if buf != nil {
+                gp.__dd_iast_in_hook = 1
+                hit := __dd_iast_rt_concat_pre(a)
+                gp.__dd_iast_in_hook = 0
+                if hit {
+                  buf = nil
+                }
+              }
+              gp.__dd_iast_bypass = 1
+              r := __dd_iast_orig_concatstrings(buf, a)
+              gp.__dd_iast_bypass = 0
+              if len(r) != 0 && !stringDataOnStack(r) {
+                gp.__dd_iast_in_hook = 1
+                __dd_iast_rt_concat_hook(r, a)
+                gp.__dd_iast_in_hook = 0
+              }
+              return r
+            }
+
+            //go:linkname __dd_iast_orig_concatbytes runtime.concatbytes
+            //go:noescape
+            func __dd_iast_orig_concatbytes(buf *tmpBuf, a []string) []byte
+
+            var _ func(*tmpBuf, []string) []byte = concatbytes
+            var _ func(*tmpBuf, []string) []byte = __dd_iast_orig_concatbytes
+            var _ func(*tmpBuf, []string) []byte = __dd_iast_concatbytes
+
+            // The only caller is the prepended code of the original function, after
+            // __dd_iast_ok() returned true. Thus this function has no context check.
+            //go:noinline
+            func __dd_iast_concatbytes(buf *tmpBuf, a []string) []byte {
+              gp := getg()
+              if buf != nil {
+                gp.__dd_iast_in_hook = 1
+                hit := __dd_iast_rt_concat_pre(a)
+                gp.__dd_iast_in_hook = 0
+                if hit {
+                  buf = nil
+                }
+              }
+              gp.__dd_iast_bypass = 1
+              r := __dd_iast_orig_concatbytes(buf, a)
+              gp.__dd_iast_bypass = 0
+              if len(r) != 0 && !stringDataOnStack(unsafe.String(unsafe.SliceData(r), 1)) {
+                gp.__dd_iast_in_hook = 1
+                __dd_iast_rt_concat_bytes_hook(r, a)
+                gp.__dd_iast_in_hook = 0
+              }
+              return r
+            }
+
+            //go:linkname __dd_iast_orig_slicebytetostring runtime.slicebytetostring
+            //go:noescape
+            func __dd_iast_orig_slicebytetostring(buf *tmpBuf, ptr *byte, n int) string
+
+            var _ func(*tmpBuf, *byte, int) string = slicebytetostring
+            var _ func(*tmpBuf, *byte, int) string = __dd_iast_orig_slicebytetostring
+            var _ func(*tmpBuf, *byte, int) string = __dd_iast_slicebytetostring
+
+            // The only caller is the prepended code of the original function, after
+            // __dd_iast_ok() returned true. Thus this function has no context check.
+            //go:noinline
+            func __dd_iast_slicebytetostring(buf *tmpBuf, ptr *byte, n int) string {
+              gp := getg()
+              if buf != nil && n > 1 {
+                gp.__dd_iast_in_hook = 1
+                hit := __dd_iast_rt_bytes_pre(ptr, n)
+                gp.__dd_iast_in_hook = 0
+                if hit {
+                  buf = nil
+                }
+              }
+              gp.__dd_iast_bypass = 1
+              r := __dd_iast_orig_slicebytetostring(buf, ptr, n)
+              gp.__dd_iast_bypass = 0
+              if len(r) > 1 && !stringDataOnStack(r) {
+                gp.__dd_iast_in_hook = 1
+                __dd_iast_rt_from_bytes(r, ptr, n)
+                gp.__dd_iast_in_hook = 0
+              }
+              return r
+            }
+
+            //go:linkname __dd_iast_orig_stringtoslicebyte runtime.stringtoslicebyte
+            //go:noescape
+            func __dd_iast_orig_stringtoslicebyte(buf *tmpBuf, s string) []byte
+
+            var _ func(*tmpBuf, string) []byte = stringtoslicebyte
+            var _ func(*tmpBuf, string) []byte = __dd_iast_orig_stringtoslicebyte
+            var _ func(*tmpBuf, string) []byte = __dd_iast_stringtoslicebyte
+
+            // The only caller is the prepended code of the original function, after
+            // __dd_iast_ok() returned true. Thus this function has no context check.
+            //go:noinline
+            func __dd_iast_stringtoslicebyte(buf *tmpBuf, s string) []byte {
+              gp := getg()
+              if buf != nil && len(s) > 1 {
+                gp.__dd_iast_in_hook = 1
+                hit := __dd_iast_rt_str_pre(s)
+                gp.__dd_iast_in_hook = 0
+                if hit {
+                  buf = nil
+                }
+              }
+              gp.__dd_iast_bypass = 1
+              r := __dd_iast_orig_stringtoslicebyte(buf, s)
+              gp.__dd_iast_bypass = 0
+              if len(r) > 1 && !stringDataOnStack(unsafe.String(unsafe.SliceData(r), 1)) {
+                gp.__dd_iast_in_hook = 1
+                __dd_iast_rt_to_bytes(r, s)
+                gp.__dd_iast_in_hook = 0
+              }
+              return r
+            }
+
+            //go:linkname __dd_iast_orig_slicerunetostring runtime.slicerunetostring
+            //go:noescape
+            func __dd_iast_orig_slicerunetostring(buf *tmpBuf, a []rune) string
+
+            var _ func(*tmpBuf, []rune) string = slicerunetostring
+            var _ func(*tmpBuf, []rune) string = __dd_iast_orig_slicerunetostring
+            var _ func(*tmpBuf, []rune) string = __dd_iast_slicerunetostring
+
+            // The only caller is the prepended code of the original function, after
+            // __dd_iast_ok() returned true. Thus this function has no context check.
+            //go:noinline
+            func __dd_iast_slicerunetostring(buf *tmpBuf, a []rune) string {
+              gp := getg()
+              if buf != nil && len(a) != 0 {
+                gp.__dd_iast_in_hook = 1
+                hit := __dd_iast_rt_runes_pre(a)
+                gp.__dd_iast_in_hook = 0
+                if hit {
+                  buf = nil
+                }
+              }
+              gp.__dd_iast_bypass = 1
+              r := __dd_iast_orig_slicerunetostring(buf, a)
+              gp.__dd_iast_bypass = 0
+              if len(r) > 1 && !stringDataOnStack(r) {
+                gp.__dd_iast_in_hook = 1
+                __dd_iast_rt_from_runes(r, a)
+                gp.__dd_iast_in_hook = 0
+              }
+              return r
+            }
+
+            //go:linkname __dd_iast_orig_stringtoslicerune runtime.stringtoslicerune
+            //go:noescape
+            func __dd_iast_orig_stringtoslicerune(buf *[tmpStringBufSize]rune, s string) []rune
+
+            var _ func(*[tmpStringBufSize]rune, string) []rune = stringtoslicerune
+            var _ func(*[tmpStringBufSize]rune, string) []rune = __dd_iast_orig_stringtoslicerune
+            var _ func(*[tmpStringBufSize]rune, string) []rune = __dd_iast_stringtoslicerune
+
+            // The only caller is the prepended code of the original function, after
+            // __dd_iast_ok() returned true. Thus this function has no context check.
+            //go:noinline
+            func __dd_iast_stringtoslicerune(buf *[tmpStringBufSize]rune, s string) []rune {
+              gp := getg()
+              if buf != nil && len(s) != 0 {
+                gp.__dd_iast_in_hook = 1
+                hit := __dd_iast_rt_str_pre(s)
+                gp.__dd_iast_in_hook = 0
+                if hit {
+                  buf = nil
+                }
+              }
+              gp.__dd_iast_bypass = 1
+              r := __dd_iast_orig_stringtoslicerune(buf, s)
+              gp.__dd_iast_bypass = 0
+              if len(r) != 0 && !stringDataOnStack(unsafe.String((*byte)(unsafe.Pointer(unsafe.SliceData(r))), 1)) {
+                gp.__dd_iast_in_hook = 1
+                __dd_iast_rt_to_runes(r, s)
+                gp.__dd_iast_in_hook = 0
+              }
+              return r
+            }
+
+  - id: iast-concatstrings
+    join-point:
+      all-of:
+        - import-path: runtime
+        - function-body:
+            function:
+              - name: concatstrings
+    advice:
+      - prepend-statements:
+          imports:
+            atomic: internal/runtime/atomic
+          template: |-
+            {{- $buf := .Function.Argument 0 -}}
+            {{- $a := .Function.Argument 1 -}}
+            if atomic.Load(&__dd_iast_rt_gate) != 0 {
+              if __dd_iast_gp := getg(); __dd_iast_gp.__dd_iast_bypass != 0 {
+                __dd_iast_gp.__dd_iast_bypass = 0
+              } else if __dd_iast_ok() {
+                return __dd_iast_concatstrings({{ $buf }}, {{ $a }})
+              }
+            }
+
+  - id: iast-concatbytes
+    join-point:
+      all-of:
+        - import-path: runtime
+        - function-body:
+            function:
+              - name: concatbytes
+    advice:
+      - prepend-statements:
+          imports:
+            atomic: internal/runtime/atomic
+          template: |-
+            {{- $buf := .Function.Argument 0 -}}
+            {{- $a := .Function.Argument 1 -}}
+            if atomic.Load(&__dd_iast_rt_gate) != 0 {
+              if __dd_iast_gp := getg(); __dd_iast_gp.__dd_iast_bypass != 0 {
+                __dd_iast_gp.__dd_iast_bypass = 0
+              } else if __dd_iast_ok() {
+                return __dd_iast_concatbytes({{ $buf }}, {{ $a }})
+              }
+            }
+
+  - id: iast-slicebytetostring
+    join-point:
+      all-of:
+        - import-path: runtime
+        - function-body:
+            function:
+              - name: slicebytetostring
+    advice:
+      - prepend-statements:
+          imports:
+            atomic: internal/runtime/atomic
+          template: |-
+            {{- $buf := .Function.Argument 0 -}}
+            {{- $ptr := .Function.Argument 1 -}}
+            {{- $n := .Function.Argument 2 -}}
+            if atomic.Load(&__dd_iast_rt_gate) != 0 {
+              if __dd_iast_gp := getg(); __dd_iast_gp.__dd_iast_bypass != 0 {
+                __dd_iast_gp.__dd_iast_bypass = 0
+              } else if __dd_iast_ok() {
+                return __dd_iast_slicebytetostring({{ $buf }}, {{ $ptr }}, {{ $n }})
+              }
+            }
+
+  - id: iast-stringtoslicebyte
+    join-point:
+      all-of:
+        - import-path: runtime
+        - function-body:
+            function:
+              - name: stringtoslicebyte
+    advice:
+      - prepend-statements:
+          imports:
+            atomic: internal/runtime/atomic
+          template: |-
+            {{- $buf := .Function.Argument 0 -}}
+            {{- $s := .Function.Argument 1 -}}
+            if atomic.Load(&__dd_iast_rt_gate) != 0 {
+              if atomic.Load(&__dd_iast_rt_s2s_gate) != 0 {
+                if __dd_iast_gp := getg(); __dd_iast_gp.__dd_iast_bypass != 0 {
+                  __dd_iast_gp.__dd_iast_bypass = 0
+                } else if __dd_iast_ok() {
+                  return __dd_iast_stringtoslicebyte({{ $buf }}, {{ $s }})
+                }
+              }
+            }
+
+  - id: iast-slicerunetostring
+    join-point:
+      all-of:
+        - import-path: runtime
+        - function-body:
+            function:
+              - name: slicerunetostring
+    advice:
+      - prepend-statements:
+          imports:
+            atomic: internal/runtime/atomic
+          template: |-
+            {{- $buf := .Function.Argument 0 -}}
+            {{- $a := .Function.Argument 1 -}}
+            if atomic.Load(&__dd_iast_rt_gate) != 0 {
+              if __dd_iast_gp := getg(); __dd_iast_gp.__dd_iast_bypass != 0 {
+                __dd_iast_gp.__dd_iast_bypass = 0
+              } else if __dd_iast_ok() {
+                return __dd_iast_slicerunetostring({{ $buf }}, {{ $a }})
+              }
+            }
+
+  - id: iast-stringtoslicerune
+    join-point:
+      all-of:
+        - import-path: runtime
+        - function-body:
+            function:
+              - name: stringtoslicerune
+    advice:
+      - prepend-statements:
+          imports:
+            atomic: internal/runtime/atomic
+          template: |-
+            {{- $buf := .Function.Argument 0 -}}
+            {{- $s := .Function.Argument 1 -}}
+            if atomic.Load(&__dd_iast_rt_gate) != 0 {
+              if atomic.Load(&__dd_iast_rt_s2s_gate) != 0 {
+                if __dd_iast_gp := getg(); __dd_iast_gp.__dd_iast_bypass != 0 {
+                  __dd_iast_gp.__dd_iast_bypass = 0
+                } else if __dd_iast_ok() {
+                  return __dd_iast_stringtoslicerune({{ $buf }}, {{ $s }})
+                }
+              }
+            }

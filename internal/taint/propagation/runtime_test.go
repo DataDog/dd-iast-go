@@ -505,7 +505,9 @@ func TestRuntimeRuneLimitsAndCharge(t *testing.T) {
 		require.True(t, ranges.AdoptCanonical(&set, ranges.DefaultLimit, []ranges.Range{rng(0, 8, 1)}, uint32(4*test.n)).Valid)
 		_, ok := owner.AdoptRunes(runes, &set)
 		require.True(t, ok)
-		result := freshString(string(runes))
+		// strings.Repeat, not string(runes): a woven runtime hook would
+		// also count a bytes drop for string(runes).
+		result := freshString(strings.Repeat("z", test.n))
 		bridgetest.FromRunes(result, runes)
 		require.Equal(t, test.want, lookupRanges(s, result) != nil, "%d runes", test.n)
 		if !test.want {

@@ -104,7 +104,9 @@ func TestPropagationTelemetry(t *testing.T) {
 	owner := acquireOwner(t, s)
 	input, _ := taintString(t, owner, "attacker-value", []ranges.Range{{Start: 0, Length: 8, SourceID: 1}})
 
-	result := propagation.CoarseString("prefix:"+input, input)
+	// freshString is not a runtime concatenation, so a woven runtime hook
+	// does not also count a propagation.
+	result := propagation.CoarseString(freshString("prefix:", input), input)
 	require.NotEmpty(t, lookupRanges(s, result))
 	elements := make([]string, 17)
 	for index := range elements {

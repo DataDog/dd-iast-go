@@ -1,4 +1,4 @@
-module github.com/DataDog/dd-iast-go/testapps/os-exec
+module github.com/DataDog/dd-iast-go/testapps/runtime
 
 go 1.26.6
 
@@ -82,7 +82,6 @@ require (
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/secure-systems-lab/go-securesystemslib v0.11.1 // indirect
 	github.com/shirou/gopsutil/v4 v4.26.8 // indirect
-	github.com/stretchr/testify v1.12.1 // indirect
 	github.com/tinylib/msgp v1.6.4 // indirect
 	github.com/tklauser/go-sysconf v0.4.0 // indirect
 	github.com/tklauser/numcpus v0.12.0 // indirect
@@ -120,4 +119,4 @@ require (
 	google.golang.org/protobuf v1.36.12 // indirect
 )
 
-replace github.com/DataDog/dd-iast-go => ../../../..
+replace github.com/DataDog/dd-iast-go => ../../..

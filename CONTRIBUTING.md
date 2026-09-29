@@ -100,6 +100,24 @@ asks for a dedicated `*_test` package, use Go's external test package pattern:
 - do not create a separate directory named `example_test` or move the tests to
   an unrelated package.
 
+Exception: the tests of a bridge package that the aspects add as a synthetic
+dependency of a standard library package (today `internal/taint/jsonbridge` and
+`internal/taint/writerbridge`) are in a `bridgetests` subdirectory of the bridge
+package. With Orchestrion v1.13.1, a woven test build of the bridge package
+fails also with an external test package in the same directory:
+
+```text
+synthetic dependency "github.com/DataDog/dd-iast-go/internal/taint/iobridge"
+discovered through archive "github.com/DataDog/dd-iast-go/internal/taint/httpbridge"
+requires a test variant for "github.com/DataDog/dd-iast-go/internal/taint/writerbridge";
+an archive in that synthetic dependency closure was compiled without this edge
+in Go's package graph and cannot safely use the variant.
+```
+
+The test binary of the `bridgetests` package does not test the bridge package
+itself, so Go does not make a test variant of it. Use this exception only for
+this error, and put a `doc.go` file in the `bridgetests` package that tells why.
+
 An external test package can access only exported symbols. If a test needs
 unexported logic, move that logic to an appropriate package under `internal/`
 and export it from that internal package. Import the internal package from both
