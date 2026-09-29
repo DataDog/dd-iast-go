@@ -52,20 +52,20 @@ var sweepScenarios = map[string]func(t testing.TB){
 	"2x64MiB dead, interleaved chunks": func(t testing.TB) {
 		a, b := heapBytes(64<<20), heapBytes(64<<20)
 		for off := 0; off < len(a); off += 128 << 10 {
-			heapbits.SetBytes(a[off : off+1])
-			heapbits.SetBytes(b[off : off+1])
+			mustSet(t, a[off:off+1])
+			mustSet(t, b[off:off+1])
 		}
 	},
 	// A dead 64 MiB object with one late tainted byte.
 	"64MiB dead, one byte": func(t testing.TB) {
 		b := heapBytes(64 << 20)
-		heapbits.SetBytes(b[len(b)-1:])
+		mustSet(t, b[len(b)-1:])
 	},
-	// A live 64 MiB object with its taint cleared: the flag stays, the live
-	// check runs to its limit.
+	// A live 64 MiB object with its taint cleared: the flag stays (whole
+	// chunks inside), each GC runs the hook on it.
 	"64MiB live, taint then clear": func(t testing.TB) {
 		b := heapBytes(64 << 20)
-		heapbits.SetBytes(b)
+		mustSet(t, b)
 		heapbits.ClearBytes(b)
 		latencyKeep = append(latencyKeep, b)
 	},
@@ -75,7 +75,7 @@ var sweepScenarios = map[string]func(t testing.TB){
 		objs := make([]*[64]byte, 8192)
 		for i := range objs {
 			objs[i] = new64()
-			heapbits.SetBytes(objs[i][:])
+			mustSet(t, objs[i][:])
 		}
 		for i := 0; i < len(objs); i += 2 {
 			objs[i] = nil
@@ -87,7 +87,7 @@ var sweepScenarios = map[string]func(t testing.TB){
 		for i := range 8192 {
 			o := new64()
 			if i%64 == 0 {
-				heapbits.SetBytes(o[:])
+				mustSet(t, o[:])
 			}
 		}
 	},
@@ -95,7 +95,7 @@ var sweepScenarios = map[string]func(t testing.TB){
 	"small, finalizers": func(t testing.TB) {
 		for range 2048 {
 			b := &box{}
-			heapbits.SetBytes(b.data[:])
+			mustSet(t, b.data[:])
 			runtime.SetFinalizer(b, func(*box) {})
 		}
 	},
@@ -108,7 +108,7 @@ var sweepScenarios = map[string]func(t testing.TB){
 		}
 		for i := 0; i < len(objs); i += 512 {
 			b := unsafe.Slice((*byte)(unsafe.Pointer(objs[i])), 8)
-			heapbits.SetBytes(b)
+			mustSet(t, b)
 			heapbits.ClearBytes(b)
 		}
 		latencyKeepPtr = append(latencyKeepPtr, objs)
@@ -223,4 +223,13 @@ func sweepLatencyRun(t *testing.T, prepare func(testing.TB)) (n, p99, maxNs uint
 	runtime.GC()
 	after, ring := heapbitstest.SweepDurations()
 	return hookStats(before, after, ring)
+}
+
+// mustSet taints b, and stops the test if the Set fails (a scenario without
+// taint would not test the hook).
+func mustSet(t testing.TB, b []byte) {
+	t.Helper()
+	if !heapbits.SetBytes(b) {
+		t.Fatalf("Set of %d bytes failed: %+v", len(b), heapbitstest.Stats())
+	}
 }

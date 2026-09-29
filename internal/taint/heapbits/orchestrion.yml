@@ -726,6 +726,20 @@ aspects:
               return true
             }
 
+            // __dd_taint_failedprepare runs after a failed __dd_taint_prepare
+            // for the object of p in span s. The chunks that prepare got
+            // stay. If one of them is a whole chunk inside the object, it
+            // sets the flag of the span, so that the sweep hook recycles the
+            // chunk when the object dies. Other chunks are shared with other
+            // objects: they stay with their heap addresses (no flag, thus no
+            // sweep hook without taint).
+            func __dd_taint_failedprepare(s *mspan, p uintptr) {
+              obj := s.base() + s.objIndex(p)*s.elemsize
+              if __dd_taint_haswhole(obj, s.elemsize) {
+                atomic.Store8(&s.__dd_taint, 1)
+              }
+            }
+
             // __dd_taint_set taints [p, p+n). It returns false (and changes no
             // bit) when the feature is off, when the range is not inside one
             // allocation slot of an in-use heap span (thus stack memory,
@@ -764,6 +778,7 @@ aspects:
                 __dd_taint_probeworker(p)
               }
               if !__dd_taint_prepare(p, n) {
+                __dd_taint_failedprepare(s, p)
                 return false
               }
               __dd_taint_apply(p, n, true, true, false)
@@ -1140,6 +1155,7 @@ aspects:
                 return true
               }
               if !__dd_taint_prepare(dst, n) {
+                __dd_taint_failedprepare(s, dst)
                 return false
               }
               // Destination words in the memmove order: backward when dst is
@@ -1240,6 +1256,13 @@ aspects:
               }
               atomic.Xadd64(&__dd_taint_sweeps, 1)
               atomic.Store8(&s.__dd_taint, 0)
+              // A span larger than the largest taintable span has no bits
+              // (Set refuses it). A flag can be left on its mspan from an
+              // earlier use (the runtime does not zero reused mspans): the
+              // hook stops here, so that its work stays bounded.
+              if s.npages > __dd_taint_maxSpanBytes/pageSize {
+                return
+              }
               target := __dd_taint_testing && s.base() == atomic.Loaduintptr(&__dd_taint_sweeptarget)
               if target {
                 atomic.Xadd64(&__dd_taint_targetsweeps, 1)
@@ -1295,29 +1318,74 @@ aspects:
                 // Test knob: wait between the flag reset and the live check.
                 __dd_taint_sweepwait()
               }
+              // A live large object with a whole chunk inside keeps the
+              // flag, also without taint (after a clear or a failed Set):
+              // only the sweep hook of the span can recycle the chunk when
+              // the object dies. Other chunks are shared with other
+              // objects and stay with their heap addresses.
+              if n == 1 && (*marks&1 != 0 || hasFin) && __dd_taint_haswhole(base, size) {
+                atomic.Store8(&s.__dd_taint, 1)
+                n = 0 // no live check
+              }
               // Only live objects can still have taint: check them until one
               // has taint, with a work limit. At the limit, the flag stays 1
               // (always safe: a flag of 1 only costs a sweep hook later).
+              // The check reads each run of consecutive live objects in one
+              // walk (one chunk lookup for each chunk of the run, not for
+              // each object), and skips the dead objects (a span with no
+              // live object gets the flag 0 at once).
               budget := __dd_taint_resetWords
               cur = s.specials
               for i := uintptr(0); i < n; {
+                // The next live object (8 dead objects at once).
                 mb := *addb(marks, i/8)
-                if !hasFin && i%8 == 0 && mb == 0 {
+                if !hasFin && i%8 == 0 && n-i >= 8 && mb == 0 {
                   i += 8
                   continue
                 }
-                if mb&(1<<(i%8)) != 0 || (hasFin && __dd_taint_finat(&cur, i*size, size)) {
-                  if __dd_taint_anyatomic(base+i*size, size, &budget) {
-                    atomic.Store8(&s.__dd_taint, 1)
+                if mb&(1<<(i%8)) == 0 && !(hasFin && __dd_taint_finat(&cur, i*size, size)) {
+                  i++
+                  continue
+                }
+                // The run of live objects [i, j) (8 live objects at once).
+                j := i + 1
+                for j < n {
+                  mb := *addb(marks, j/8)
+                  if !hasFin && j%8 == 0 && n-j >= 8 && mb == 0xff {
+                    j += 8
+                    continue
+                  }
+                  if mb&(1<<(j%8)) == 0 && !(hasFin && __dd_taint_finat(&cur, j*size, size)) {
                     break
                   }
+                  j++
                 }
-                i++
+                if __dd_taint_anyatomic(base+i*size, (j-i)*size, &budget) {
+                  atomic.Store8(&s.__dd_taint, 1)
+                  break
+                }
+                i = j
               }
               if target && atomic.Load(&__dd_taint_sweeppause) == 2 {
                 // Test knob: wait after the live check (the end of the hook).
                 __dd_taint_sweepwait()
               }
+            }
+
+            // __dd_taint_haswhole tells if a chunk exists for one of the
+            // chunk-aligned 128 KiB blocks that are fully inside [p, p+n)
+            // (at most 512 lookups for the largest taintable span).
+            //
+            //go:nowritebarrierrec
+            func __dd_taint_haswhole(p, n uintptr) bool {
+              c := alignUp(p, __dd_taint_chunkHeap)
+              for c >= p && c+__dd_taint_chunkHeap > c && c+__dd_taint_chunkHeap <= p+n {
+                if __dd_taint_chunk(c) != nil {
+                  return true
+                }
+                c += __dd_taint_chunkHeap
+              }
+              return false
             }
 
             // __dd_taint_sweepwait (test knob) waits at most 200 ms, without

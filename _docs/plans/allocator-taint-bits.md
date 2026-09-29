@@ -16,8 +16,8 @@
   fixed in this version, appendix D). The critic listed these 2 fixes as the
   only remaining items.
 - **User review: done** (section 10). Phase 1 is approved.
-- **Phase 1 (production heap bits): in progress.** Steps 1 to 10 of
-  section 9 are done. Next: step 11.
+- **Phase 1 (production heap bits): done.** Steps 1 to 11 of section 9 are
+  done.
 - Phases 2 to 4 (stack values, origins and marks, propagation): outline only
   (section 8). Each one gets its own plan after phase 1.
 
@@ -976,7 +976,51 @@ in the `taint` package as the first check of every operation.
       active against inert: `HeapBitsGC` +6.8% (1 object in 4 tainted);
       `HeapBitsAllocChurn` active against control +14% to +37% (with the
       `Set` calls of the workload).
-11. Full review (code-review skill) and fixes: **1 day**.
+11. **(Done.)** Full review (code-review skill) and fixes: **1 day**. Six
+    reviewers (storage, GC integration, entry points and operations,
+    security, API and compatibility, tests and validation). Fixes:
+    - **Stranded chunks:** a `Set` or `Copy` that failed after it got some
+      chunks did not set the span flag, so the sweep hook never recycled
+      these chunks when the object died. Both now set the flag on failure
+      when a whole chunk inside the object exists (the other chunks are
+      shared with other objects and stay with their heap addresses). Also,
+      a live large object with a whole chunk inside keeps the flag without
+      taint (after a clear), so that its chunks are recycled when it dies
+      (before, only the work limit of the live check kept it).
+    - **Live check:** it read the bits object by object (one chunk lookup
+      for each live object); in a Linux VM (container on macOS), a span of
+      small live clean objects took 12 to 38 µs. It now reads each run of
+      consecutive live objects in one walk (one lookup for each chunk of
+      the run): 1.3 µs. Dead objects are skipped (a first version read the
+      whole span: a dead span or a span of large slots with one live slot
+      then reached the work limit and kept the flag).
+      `TestBoundedFlagReset` has new cases (large slots with one live slot;
+      the limit with a 96 KiB live object).
+    - **Stale flag on a reused mspan:** the runtime does not zero reused
+      mspans. The hook now stops at once for a span larger than 64 MiB (it
+      has no bits), so that its work stays bounded.
+    - Runner: `-gate` needs `-count=4` or more (with 3 samples, `benchstat`
+      never finds a significant difference); the variant check uses the
+      same arm64 LSE condition as the runtime.
+    - Tests: `TestCopyConcurrentNeighbour` waits for the Copy goroutine
+      every 10000 rounds (also with `GOMAXPROCS=1`) and checks its Sets; `TestCopyProgress` has at least 2
+      writers of the shared word; new `TestStorageCopyAllOrNothing` (a
+      Copy gets 1 of 2 chunks, then fails); new recycle cases (failed Set,
+      cleared live object); latency scenarios check their Set calls;
+      new recycle case with a full budget (a Set uses a recycled chunk, no
+      new slab); `TestFlagProtocolUnderGC` keeps its new objects (with
+      `runtimefreegc` and cgo off, the same slot came back every time);
+      drift inventory holds the body of `mallocgcSmallNoscanReuse`;
+      `reuseSome` tries up to 20 times (the negative control did not find
+      a reused 40000-byte address once in 4 runs on emulated amd64).
+    - CI: new cells `cgo-off-runtimefreegc` (Linux) and macOS `race` and
+      `no-optimizations`.
+    - Not changed: the CI benchmark job stays informative (see step 10);
+      the assembly test checks that the wrappers call `runtime.morestack`
+      but not where (the compiler emits it only in the prologue check; the
+      stack-move negative control tests the behavior); the latency gate
+      uses the 99th percentile, not the maximum (OS and VM pauses of more
+      than 1 ms occur in containers).
 
 Total: approx. 14.5 days. Each step is one commit. Steps 2 to 6 can change
 the performance numbers of section 3.3; step 10 measures them again.

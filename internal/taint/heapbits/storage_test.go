@@ -518,16 +518,23 @@ func fillBudgetButOne(t *testing.T) {
 // Set fails, and no bit changes.
 func checkAllOrNothing(t *testing.T, across []byte) {
 	t.Helper()
+	checkAllOrNothingOp(t, across, "Set", func() bool { return heapbits.SetBytes(across) })
+}
+
+// checkAllOrNothingOp is checkAllOrNothing for the operation op (Set or
+// Copy) that writes the bits of across.
+func checkAllOrNothingOp(t *testing.T, across []byte, name string, op func() bool) {
+	t.Helper()
 	before := heapbitstest.Stats()
 	if before.ChunksInUse != before.Slabs*heapbitstest.ChunksPerSlab-1 || before.Mapped != before.Budget {
 		t.Fatalf("setup: want a full budget with 1 free chunk: %+v", before)
 	}
-	if heapbits.SetBytes(across) {
-		t.Fatal("Set over 2 new chunks succeeded with 1 free chunk")
+	if op() {
+		t.Fatalf("%s over 2 new chunks succeeded with 1 free chunk", name)
 	}
 	after := heapbitstest.Stats()
 	if heapbits.AnyBytes(across) {
-		t.Error("a failed Set changed bits")
+		t.Errorf("a failed %s changed bits", name)
 	}
 	if after.Drops.Budget == before.Drops.Budget {
 		t.Error("no budget drop")
@@ -563,6 +570,31 @@ func TestStorageAllOrNothingAcrossArenas(t *testing.T) {
 	}
 	fillBudgetButOne(t)
 	checkAllOrNothing(t, big[c-8:c+8])
+}
+
+// A Copy over 2 new chunks with 1 free chunk gets the first one, then fails
+// and changes no bit (own child process: it needs its own last free chunk).
+func TestStorageCopyAllOrNothing(t *testing.T) {
+	need(t)
+	switch os.Getenv(storageChildEnv) {
+	case "":
+		runChild(t, "TestStorageCopyAllOrNothing", "copy")
+		return
+	case "copy":
+	default:
+		t.Skip("in another child process")
+	}
+	if !heapbits.SetBudget(childBudget) {
+		t.Fatal("SetBudget failed before the first Set")
+	}
+	src := keepBytes(64)
+	if !heapbits.SetBytes(src) {
+		t.Fatal("Set of the source failed")
+	}
+	pair := withDirectory(t, 2)
+	fillBudgetButOne(t)
+	dst := pair[0][heapbitstest.ChunkHeapBytes-8 : heapbitstest.ChunkHeapBytes+8]
+	checkAllOrNothingOp(t, dst, "Copy", func() bool { return heapbits.Copy(ptr(dst), ptr(src), uintptr(len(dst))) })
 }
 
 // The runtime default budget is heapbits.DefaultBudget; a budget of 0 turns

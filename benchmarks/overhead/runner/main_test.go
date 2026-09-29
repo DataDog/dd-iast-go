@@ -45,6 +45,7 @@ func TestParseFlags(t *testing.T) {
 		},
 		{name: "positional argument", arguments: []string{"extra"}, wantError: "unexpected positional arguments"},
 		{name: "zero count", arguments: []string{"-count=0"}, wantError: "-count must be a single positive integer"},
+		{name: "gate with few samples", arguments: []string{"-gate", "-count=3"}, wantError: "-gate needs -count=4 or more, got 3"},
 		{name: "invalid count", arguments: []string{"-count=many"}, wantError: "-count must be a single positive integer"},
 		{name: "zero CPU", arguments: []string{"-cpu=0"}, wantError: "-cpu must be a single positive integer"},
 		{name: "CPU list", arguments: []string{"-cpu=1,2"}, wantError: `-cpu must be a single positive integer: "1,2"`},

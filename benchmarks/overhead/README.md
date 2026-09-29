@@ -94,7 +94,8 @@ variant also run IAST detections (for example `WeakHash*`), which cost more
 by design.
 
 Without `-gate`, the report is informative. Use `-gate` with enough samples
-(for example `-count=10`) on a stable machine. With `-gate`, a gate whose
+(for example `-count=10`; at least 4, because with fewer samples `benchstat`
+never finds a significant difference) on a stable machine. With `-gate`, a gate whose
 workloads the `-bench` expression does not select (`SKIP`) also fails.
 
 Each workload reports `ns/op`, `B/op`, and `allocs/op`. The runner uses

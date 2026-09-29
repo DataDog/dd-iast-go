@@ -180,11 +180,11 @@ func reuse(size, count int) (reused, bad int) {
 
 var sizes = []int{8, 16, 24, 48, 64, 500, 4096, 30000, 40000, 1 << 20}
 
-// reuseSome is reuse, tried up to 5 times until at least one address is used
+// reuseSome is reuse, tried up to 20 times until at least one address is used
 // again: for large objects (own spans), the page allocator does not always
 // give the same address back.
 func reuseSome(size, count int) (reused, bad int) {
-	for range 5 {
+	for range 20 {
 		r, b := reuse(size, count)
 		reused, bad = reused+r, bad+b
 		if reused > 0 {

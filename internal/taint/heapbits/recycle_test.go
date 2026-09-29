@@ -80,6 +80,60 @@ func TestRecycleChild(t *testing.T) {
 		}
 	})
 
+	t.Run("failed Set: the chunks it got are recycled when the object dies", func(t *testing.T) {
+		// Only the chunks of one slab are free (a new slab for a dead
+		// 1 MiB object), and mmap fails: a Set of a 16 MiB object (128
+		// chunks) gets them, then fails.
+		fillFreeChunks(t)
+		taintedObject(t, 1<<20)
+		gc()
+		free := freeChunks()
+		if free < 7 {
+			t.Fatalf("only %d free chunks", free)
+		}
+		before := heapbitstest.Stats()
+		heapbitstest.AllocKnobs(true, false, false, false)
+		ok := failedSet(16 << 20)
+		heapbitstest.AllocKnobs(false, false, false, false)
+		if ok {
+			t.Fatal("Set of 16 MiB succeeded with a failing mmap")
+		}
+		mid := heapbitstest.Stats()
+		if mid.ChunksInUse-before.ChunksInUse != free {
+			t.Fatalf("the failed Set took %d chunks, want %d", mid.ChunksInUse-before.ChunksInUse, free)
+		}
+		gc()
+		after := heapbitstest.Stats()
+		// All but at most 3: a new directory stays with its arena, and the
+		// first chunk is shared with other objects when the object does
+		// not start on a chunk boundary (one more directory and edge if it
+		// crosses an arena boundary: counted in the 3 with some margin).
+		// Without the fix, none: the span had no flag.
+		if after.Recycled-mid.Recycled+3 < free || after.ChunksInUse > before.ChunksInUse+3 {
+			t.Fatalf("recycled %d chunks after the death, want about %d (chunks in use %d, before the Set %d)",
+				after.Recycled-mid.Recycled, free, after.ChunksInUse, before.ChunksInUse)
+		}
+	})
+
+	t.Run("cleared live large object: its chunks are recycled when it dies", func(t *testing.T) {
+		b := heapBytes(1 << 20)
+		if !heapbits.SetBytes(b) {
+			t.Fatal("Set failed")
+		}
+		heapbits.ClearBytes(b)
+		gc() // live: the flag must stay (whole chunks inside)
+		if f := heapbitstest.SpanFlag(ptr(b)); f != 1 {
+			t.Fatalf("flag of the live cleared object: %d, want 1", f)
+		}
+		before := heapbitstest.Stats()
+		runtime.KeepAlive(b)
+		b = nil
+		gc()
+		if got := heapbitstest.Stats().Recycled - before.Recycled; got < 7 {
+			t.Fatalf("recycled %d chunks after the death, want at least 7", got)
+		}
+	})
+
 	t.Run("live neighbour in an edge chunk keeps its taint", func(t *testing.T) {
 		// A dead large object D, and a live object in the chunk of the end
 		// of D (after D): that chunk is not fully inside D, so it is not
@@ -130,6 +184,40 @@ func TestRecycleChild(t *testing.T) {
 		gc()
 		if got := heapbitstest.Stats().Recycled - mid.Recycled; got < 511 {
 			t.Errorf("a dead 64 MiB object gave back %d chunks, want at least 511", got)
+		}
+	})
+
+	t.Run("full budget: a Set uses a recycled chunk", func(t *testing.T) {
+		// A tainted 1 MiB object, then the whole budget in use.
+		large := heapBytes(1 << 20)
+		if !heapbits.SetBytes(large) {
+			t.Fatal("Set failed")
+		}
+		fillBudgetButOne(t)
+		if !heapbits.SetBytes(freshRegion()[:1]) {
+			t.Fatal("Set of the last free chunk failed")
+		}
+		full := heapbitstest.Stats()
+		if full.ChunksInUse != full.Slabs*heapbitstest.ChunksPerSlab || full.Mapped != full.Budget {
+			t.Fatalf("setup: want a full budget: %+v", full)
+		}
+		if heapbits.SetBytes(freshRegion()[:1]) {
+			t.Fatal("Set succeeded with a full budget")
+		}
+		// The object dies: its chunks are free again, and the next Set
+		// gets one without a new slab.
+		runtime.KeepAlive(large)
+		large = nil
+		gc()
+		if heapbitstest.Stats().Recycled == full.Recycled {
+			t.Fatal("no chunk was recycled")
+		}
+		r := freshRegion()
+		if !heapbits.SetBytes(r[:1]) || !heapbits.AnyBytes(r[:1]) {
+			t.Fatalf("Set failed after the recycle: %+v", heapbitstest.Stats())
+		}
+		if st := heapbitstest.Stats(); st.Slabs != full.Slabs || st.Mapped != full.Mapped {
+			t.Errorf("a new slab was mapped: %+v", st)
 		}
 	})
 }
@@ -219,4 +307,17 @@ func TestRecycleStress(t *testing.T) {
 		t.Error("no address of a dead tainted object was used again: the test proves little")
 	}
 	t.Logf("%d Sets, %d addresses used again, %d chunks recycled", sets.Load(), reused.Load(), st.Recycled-before.Recycled)
+}
+
+// freeChunks returns the number of free chunks in the mapped slabs.
+func freeChunks() uint64 {
+	st := heapbitstest.Stats()
+	return st.Slabs*heapbitstest.ChunksPerSlab - st.ChunksInUse
+}
+
+// failedSet taints a new object of n bytes, which then dies.
+//
+//go:noinline
+func failedSet(n int) bool {
+	return heapbits.SetBytes(heapBytes(n))
 }

@@ -673,6 +673,23 @@ mapped:
 	return l2[ri.l2()]
 }
 
+## mallocgcSmallNoscanReuse (malloc.go [])
+{
+	v, span := c.nextReusableNoScan(span, spc)
+	x := unsafe.Pointer(v)
+	if gcBlackenEnabled != 0 {
+		addAssistCredit(size)
+	}
+	if needzero {
+		memclrNoHeapPointers(x, size)
+	}
+	publicationBarrier()
+	if writeBarrier.enabled {
+		gcmarknewobject(span, uintptr(x))
+	}
+	return x
+}
+
 ## mmap (cgo_mmap.go [(linux && (amd64 || arm64 || loong64)) || (freebsd && amd64)])
 {
 	if _cgo_mmap != nil {

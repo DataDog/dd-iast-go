@@ -14,6 +14,7 @@ require (
 	github.com/DataDog/dd-trace-go/contrib/net/http/v2 v2.11.0-dev.0.20260724102042-cf24b817c453
 	github.com/DataDog/dd-trace-go/v2 v2.11.0-rc.1
 	github.com/DataDog/orchestrion v1.13.0
+	golang.org/x/sys v0.48.0
 )
 
 require (
@@ -119,7 +120,6 @@ require (
 	golang.org/x/mod v0.40.0 // indirect
 	golang.org/x/perf v0.0.0-20260709024250-82a0b07e230d // indirect
 	golang.org/x/sync v0.22.0 // indirect
-	golang.org/x/sys v0.48.0 // indirect
 	golang.org/x/term v0.46.0 // indirect
 	golang.org/x/time v0.15.0 // indirect
 	golang.org/x/tools v0.49.0 // indirect

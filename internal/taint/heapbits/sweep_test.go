@@ -219,8 +219,13 @@ func TestFlagProtocolUnderGC(t *testing.T) {
 	runtime.GC()
 	runtime.GC()
 	reused := 0
+	// Keep the new objects: each one gets a new address (else the
+	// allocator, or freegc, can give the same slot again and again).
+	fresh := make([]*[48]byte, 0, 2*n)
+	defer runtime.KeepAlive(fresh)
 	for range 2 * n {
 		o := new48()
+		fresh = append(fresh, o)
 		if addrs[uintptr(unsafe.Pointer(o))] {
 			reused++
 			if heapbits.AnyBytes(o[:]) {
@@ -239,10 +244,13 @@ type ptrObj struct{ p *byte }
 //go:noinline
 func newPtrObj() *ptrObj { return new(ptrObj) }
 
-// The live check of the sweep hook has a work limit (1024 units: one per
-// chunk and one per word, thus 2 for each small object): for a span with
-// many live clean objects, the flag stays 1 (safe); for a span with a few,
-// it goes back to 0.
+// The live check of the sweep hook reads the bits of each run of live
+// objects, with a work limit (1024 units: one for each chunk and one for
+// each word, thus at most 129 for a span of 8 KiB): for a span of small
+// objects without taint, the flag goes back to 0, with many or few live
+// objects; for a span of large slots with one live slot, it reads only the
+// live slot; for a larger live object without taint (more than 1024
+// words), the flag stays 1 (safe).
 func TestBoundedFlagReset(t *testing.T) {
 	need(t)
 	defer heapbitstest.SweepKnobs(nil, heapbitstest.NoPause, false)
@@ -287,10 +295,60 @@ func TestBoundedFlagReset(t *testing.T) {
 				live++
 			}
 		}
-		if live < 600 { // 600 objects: 1200 units, more than the limit
+		if live < 600 {
 			t.Fatalf("only %d live objects in the span", live)
 		}
-		check(t, objs, o, 1)
+		check(t, objs, o, 0)
+	})
+	t.Run("large slots, one live", func(t *testing.T) {
+		// Slots of 27264 bytes: 3 in a span of 10 pages (1280 words, more
+		// than the limit); the live slot has 426 words.
+		const size = 27264
+		objs := make([][]byte, 30)
+		for i := range objs {
+			objs[i] = heapBytes(size)
+		}
+		o := objs[len(objs)/2]
+		base, nelems := heapbitstest.SpanInfo(ptr(o))
+		if nelems != 3 {
+			t.Skipf("span of %d objects of %d bytes, want 3", nelems, size)
+		}
+		clear(objs) // only o stays live
+		if !heapbits.SetBytes(o) {
+			t.Fatal("Set failed")
+		}
+		heapbits.ClearBytes(o)
+		heapbitstest.SweepKnobs(ptr(o), heapbitstest.NoPause, false)
+		runtime.GC()
+		runtime.GC()
+		sweeps, _ := heapbitstest.SweepKnobs(ptr(o), heapbitstest.NoPause, false)
+		if sweeps == 0 {
+			t.Fatal("the sweep hook did not run for the span")
+		}
+		if got := heapbitstest.SpanFlag(ptr(o)); got != 0 {
+			t.Errorf("flag %d, want 0 (span at %#x: one live slot without taint)", got, base)
+		}
+		runtime.KeepAlive(o)
+	})
+	t.Run("limit", func(t *testing.T) {
+		// 96 KiB: 1536 words, more than the limit, and no whole chunk
+		// inside (see the large-object rule of the hook).
+		b := heapBytes(96 << 10)
+		if !heapbits.SetBytes(b) {
+			t.Fatal("Set failed")
+		}
+		heapbits.ClearBytes(b)
+		heapbitstest.SweepKnobs(ptr(b), heapbitstest.NoPause, false)
+		runtime.GC()
+		runtime.GC()
+		sweeps, _ := heapbitstest.SweepKnobs(ptr(b), heapbitstest.NoPause, false)
+		if sweeps == 0 {
+			t.Fatal("the sweep hook did not run for the span")
+		}
+		if got := heapbitstest.SpanFlag(ptr(b)); got != 1 {
+			t.Errorf("flag %d, want 1 (the limit of the live check)", got)
+		}
+		runtime.KeepAlive(b)
 	})
 	t.Run("few", func(t *testing.T) {
 		// A fresh span: allocate (and keep live) until an object is the

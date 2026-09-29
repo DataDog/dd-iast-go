@@ -369,10 +369,13 @@ func TestCopyConcurrentNeighbour(t *testing.T) {
 		t.Fatal("no two objects in one word")
 	}
 	tainted, clean := heapBytes(16), heapBytes(16)
-	heapbits.SetBytes(tainted)
-	heapbits.SetBytes(b[:]) // get the storage
+	if !heapbits.SetBytes(tainted) || !heapbits.SetBytes(b[:]) { // b: get the storage
+		t.Fatal("Set failed")
+	}
 	var stop atomic.Bool
+	var copies atomic.Int64
 	var wg sync.WaitGroup
+	started := make(chan struct{})
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -381,10 +384,35 @@ func TestCopyConcurrentNeighbour(t *testing.T) {
 			if i%2 == 0 {
 				src = tainted
 			}
-			heapbits.Copy(unsafe.Pointer(a), ptr(src), 16)
+			if heapbits.Copy(unsafe.Pointer(a), ptr(src), 16) {
+				if copies.Add(1) == 1 {
+					close(started)
+				}
+			}
 		}
 	}()
+	select {
+	case <-started: // the Copy goroutine works: the loop runs with it
+	case <-time.After(10 * time.Second):
+		stop.Store(true)
+		wg.Wait()
+		t.Fatal("no Copy succeeded")
+	}
 	for i := range 100000 {
+		if i%10000 == 0 {
+			// Let the Copy goroutine run between the rounds (also with
+			// GOMAXPROCS=1 or a loaded machine): wait until it did one
+			// more Copy.
+			c, deadline := copies.Load(), time.Now().Add(10*time.Second)
+			for copies.Load() == c {
+				if time.Now().After(deadline) {
+					stop.Store(true)
+					wg.Wait()
+					t.Fatal("the Copy goroutine stopped")
+				}
+				runtime.Gosched()
+			}
+		}
 		heapbits.SetBytes(b[:])
 		if !heapbits.AnyBytes(b[:1]) || !heapbits.AnyBytes(b[15:]) {
 			t.Fatalf("round %d: a Set of the neighbour was lost", i)
@@ -396,6 +424,7 @@ func TestCopyConcurrentNeighbour(t *testing.T) {
 	}
 	stop.Store(true)
 	wg.Wait()
+	t.Logf("%d Copy calls", copies.Load())
 	runtime.KeepAlive(a)
 }
 
@@ -456,9 +485,9 @@ func TestCopyProgress(t *testing.T) {
 		return
 	}
 	heapbits.SetBudget(heapbits.MaxBudget)
-	workers := max(2, runtime.GOMAXPROCS(0)/2)
-	// run runs work on the goroutines during 6 GC cycles, and returns the
-	// longest new wait to stop the world.
+	// At least 3: goroutine 0 does the long Copy, the others write the
+	// shared word (at least 2, so that their CAS compete).
+	workers := max(3, runtime.GOMAXPROCS(0)/2)
 	// run runs work on the goroutines (each one calls started after its
 	// first operation) during 6 GC cycles, and returns the longest new wait
 	// to stop the world.

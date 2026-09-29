@@ -97,7 +97,8 @@ var freePaths = []string{"freeSpan", "freeSpanLocked", "freeManual", "freegc", "
 //     spanOf, spanOfHeap, objIndex, heapArenaOf, arenaIndex, l1, l2;
 //   - accounting: sysAlloc (the hooks copy its accounting);
 //   - immediate reuse: freegc (the hook repeats its eligibility checks),
-//     reusableSize, nextReusableNoScan, addReusableNoscan;
+//     reusableSize, nextReusableNoScan, addReusableNoscan,
+//     mallocgcSmallNoscanReuse (it reuses a freed slot at once);
 //   - the whole sweep (the hook runs at its start; the finalizer revival and
 //     the specials loop after it), the order of the specials list (addspecial,
 //     removespecial, specialFindSplicePoint) and ensureSwept (no special
@@ -106,7 +107,7 @@ var freePaths = []string{"freeSpan", "freeSpanLocked", "freeManual", "freegc", "
 var bodyFuncs = []string{
 	"markBitsForIndex", "gcUsesSpanInlineMarkBits", "spanOf", "spanOfHeap", "objIndex", "heapArenaOf", "arenaIndex", "l1", "l2",
 	"sysAlloc",
-	"freegc", "reusableSize", "nextReusableNoScan", "addReusableNoscan",
+	"freegc", "reusableSize", "nextReusableNoScan", "addReusableNoscan", "mallocgcSmallNoscanReuse",
 	"sweep", "addspecial", "removespecial", "specialFindSplicePoint", "ensureSwept",
 	"mmap",
 }

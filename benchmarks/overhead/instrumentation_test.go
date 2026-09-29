@@ -11,6 +11,8 @@ import (
 	"runtime"
 	"testing"
 
+	"golang.org/x/sys/cpu"
+
 	"github.com/DataDog/dd-iast-go/internal/taint/heapbits"
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/mocktracer"
 	"github.com/DataDog/orchestrion/runtime/built"
@@ -52,7 +54,10 @@ func TestWovenVariant(t *testing.T) {
 	if len(finished) != 1 {
 		t.Fatalf("weak-hash aspect produced %d spans, want 1", len(finished))
 	}
-	supported := (runtime.GOOS == "linux" || runtime.GOOS == "darwin") && (runtime.GOARCH == "amd64" || runtime.GOARCH == "arm64")
+	// The same support check as the runtime: on arm64, the feature needs
+	// LSE atomics.
+	supported := (runtime.GOOS == "linux" || runtime.GOOS == "darwin") &&
+		(runtime.GOARCH == "amd64" || (runtime.GOARCH == "arm64" && cpu.ARM64.HasATOMICS))
 	if supported && !heapbits.Enabled() {
 		t.Fatal("IAST variant does not have the woven heap taint bits")
 	}

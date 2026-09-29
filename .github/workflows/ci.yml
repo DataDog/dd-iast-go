@@ -194,11 +194,20 @@ jobs:
       matrix:
         go: [oldstable, stable]
         runner: [ubuntu-latest, ubuntu-24.04-arm]
-        mode: [default, race, no-optimizations, maymorestack, nogreenteagc, runtimefreegc, cgo-off]
+        # cgo-off-runtimefreegc: the mmap path without cgo, with the
+        # immediate reuse of freegc (combinations of modes that change the
+        # runtime).
+        mode: [default, race, no-optimizations, maymorestack, nogreenteagc, runtimefreegc, cgo-off, cgo-off-runtimefreegc]
         include:
           - go: stable
             runner: macos-latest
             mode: default
+          - go: stable
+            runner: macos-latest
+            mode: race
+          - go: stable
+            runner: macos-latest
+            mode: no-optimizations
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -223,6 +232,7 @@ jobs:
             nogreenteagc) export GOEXPERIMENT=nogreenteagc ;;
             runtimefreegc) export GOEXPERIMENT=runtimefreegc ;;
             cgo-off) export CGO_ENABLED=0 ;;
+            cgo-off-runtimefreegc) export CGO_ENABLED=0 GOEXPERIMENT=runtimefreegc ;;
             *) echo "unknown mode $MODE"; exit 1 ;;
           esac
           go tool orchestrion go test "${args[@]}" ./internal/taint/heapbits/...

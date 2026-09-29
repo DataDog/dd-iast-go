@@ -32,6 +32,7 @@ const (
 	activeResultsFile  = "active.txt"
 	comparisonFile     = "comparison.txt"
 	gateFile           = "gate.txt"
+	minGateCount       = 4
 	metadataFile       = "metadata.txt"
 
 	// activeEnvironment makes the HeapBits workloads taint data (the
@@ -215,6 +216,11 @@ func parseFlags(arguments []string) (options, error) {
 	count, err := positiveInteger("-count", values.count)
 	if err != nil {
 		return options{}, err
+	}
+	// With 3 samples or fewer, benchstat never finds a significant
+	// difference (p >= 0.1): an enforced gate would always pass.
+	if values.gate && count < minGateCount {
+		return options{}, fmt.Errorf("-gate needs -count=%d or more, got %d", minGateCount, count)
 	}
 	cpu, err := positiveInteger("-cpu", values.cpu)
 	if err != nil {
