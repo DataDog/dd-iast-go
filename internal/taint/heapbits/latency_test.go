@@ -128,7 +128,8 @@ const latencyScenarioEnv = "HEAPBITS_LATENCY_SCENARIO"
 // The latency gate of plan section 5.5: in the worst-case scenarios, the
 // sweep hook of one span takes at most 20 µs (99th percentile of the
 // measured durations: a few very long ones can be the OS, which can stop
-// the thread at any time).
+// the thread at any time). On CI runners the limit is 50 µs (see
+// latencyLimit).
 //
 // Each scenario runs in its own child process, so that all the sweep hooks
 // that it measures are for the spans of the scenario (no other test made
@@ -187,17 +188,19 @@ func sweepLatencyChild(t *testing.T, name string) {
 		if n < latencyMinHooks {
 			t.Fatalf("only %d sweep hooks ran, want at least %d", n, latencyMinHooks)
 		}
-		if p99 <= latencyLimit {
+		limit := latencyLimit()
+		if p99 <= limit {
 			return
 		}
 		if attempt == 2 {
-			t.Fatalf("99th percentile of the sweep hook: %.1f µs, want at most 20 µs", float64(p99)/1e3)
+			t.Fatalf("99th percentile of the sweep hook: %.1f µs, want at most %d µs", float64(p99)/1e3, limit/1000)
 		}
 	}
 }
 
 const (
-	latencyLimit    = 20_000 // ns
+	latencyLimitDev = 20_000 // ns: the limit of plan section 5.5
+	latencyLimitCI  = 50_000 // ns: shared CI runners (3 to 5 times slower)
 	latencyMinHooks = 400
 )
 
@@ -232,4 +235,15 @@ func mustSet(t testing.TB, b []byte) {
 	if !heapbits.SetBytes(b) {
 		t.Fatalf("Set of %d bytes failed: %+v", len(b), heapbitstest.Stats())
 	}
+}
+
+// latencyLimit returns the limit of the 99th percentile of the sweep hook:
+// 20 µs on a developer machine; 50 µs on a CI runner (environment variable
+// CI set), which is slower and shared with other jobs. There the gate finds
+// large regressions only.
+func latencyLimit() uint64 {
+	if os.Getenv("CI") != "" {
+		return latencyLimitCI
+	}
+	return latencyLimitDev
 }

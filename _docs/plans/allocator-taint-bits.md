@@ -1023,6 +1023,10 @@ in the `taint` package as the first check of every operation.
       stack-move negative control tests the behavior); the latency gate
       uses the 99th percentile, not the maximum (OS and VM pauses of more
       than 1 ms occur in containers).
+    - After the push: on GitHub runners, the 64 MiB scenarios took 24 to
+      29 µs (p99; 3 to 9 µs on the M5 Pro). Decision (Romain): the limit
+      stays 20 µs on developer machines and is 50 µs when `CI` is set
+      (slower, shared runners: the gate finds large regressions only).
 
 Total: approx. 14.5 days. Each step is one commit. Steps 2 to 6 can change
 the performance numbers of section 3.3; step 10 measures them again.
