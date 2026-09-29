@@ -143,6 +143,8 @@ func checkAsm(t *testing.T, funcs map[string]*asmFunc, noOpt bool) {
 		"runtime.__dd_taint_set":           "runtime.__dd_taint_setworker",
 		"runtime.__dd_taint_clear":         "runtime.__dd_taint_clearworker",
 		"runtime.__dd_taint_any":           "runtime.__dd_taint_anyworker",
+		"runtime.__dd_taint_next":          "runtime.__dd_taint_nextworker",
+		"runtime.__dd_taint_copy":          "runtime.__dd_taint_copyworker",
 		"runtime.__dd_taint_classify":      "",
 		"runtime.__dd_taint_arena":         "",
 		"runtime.__dd_taint_classifyprobe": "runtime.__dd_taint_growstack", // test knob only
@@ -184,7 +186,7 @@ func checkAsm(t *testing.T, funcs map[string]*asmFunc, noOpt bool) {
 		}
 		return false
 	}
-	for _, name := range []string{"runtime.__dd_taint_apply", "runtime.__dd_taint_anyworker"} {
+	for _, name := range []string{"runtime.__dd_taint_apply", "runtime.__dd_taint_anyworker", "runtime.__dd_taint_nextworker", "runtime.__dd_taint_copyworker"} {
 		if !calls(get(name), "runtime.__dd_taint_checkpoint") {
 			t.Errorf("%s does not call the checkpoint", name)
 		}
@@ -217,7 +219,7 @@ func checkAsm(t *testing.T, funcs map[string]*asmFunc, noOpt bool) {
 	}
 
 	// Rule 3: Go wrappers.
-	for _, name := range []string{"Set", "Clear", "Any"} {
+	for _, name := range []string{"Set", "Clear", "Any", "Next", "NextClean", "Copy"} {
 		f := get(heapbitsPkg + "." + name)
 		indirect := 0
 		for _, target := range f.calls {

@@ -39,6 +39,12 @@ var (
 	//go:linkname rtAny __dd_iast_heapbits.any
 	rtAny func(p, n uintptr) bool
 
+	//go:linkname rtNext __dd_iast_heapbits.next
+	rtNext func(p, n, from uintptr, want bool) uintptr
+
+	//go:linkname rtCopy __dd_iast_heapbits.copy
+	rtCopy func(dst, src, n uintptr) bool
+
 	//go:linkname rtEnabled __dd_iast_heapbits.enabled
 	rtEnabled func() bool
 
@@ -124,6 +130,63 @@ func Any(p unsafe.Pointer, n uintptr) bool {
 	}
 	ok := rtAny(uintptr(p), n)
 	runtime.KeepAlive(p)
+	return ok
+}
+
+// Next returns the smallest off in [from, n) such that the byte at p+off is
+// tainted, or n. In all cases (also without weaving), from >= n returns n.
+// Memory that is not heap memory is never tainted.
+//
+// Next and NextClean give the tainted ranges of a value without allocation:
+//
+//	for off := heapbits.Next(p, n, 0); off < n; {
+//		end := heapbits.NextClean(p, n, off)
+//		// bytes [off, end) are tainted
+//		off = heapbits.Next(p, n, end)
+//	}
+func Next(p unsafe.Pointer, n, from uintptr) uintptr {
+	if from >= n {
+		return n
+	}
+	if rtNext == nil {
+		return n
+	}
+	r := rtNext(uintptr(p), n, from, true)
+	runtime.KeepAlive(p)
+	return r
+}
+
+// NextClean returns the smallest off in [from, n) such that the byte at p+off
+// is not tainted, or n. In all cases, from >= n returns n; without weaving (or
+// on a platform that is not supported), it returns from.
+func NextClean(p unsafe.Pointer, n, from uintptr) uintptr {
+	if from >= n {
+		return n
+	}
+	if rtNext == nil {
+		return from
+	}
+	r := rtNext(uintptr(p), n, from, false)
+	runtime.KeepAlive(p)
+	return r
+}
+
+// Copy makes the bits of the n bytes at dst equal to the bits of the n bytes
+// at src. Without concurrent writers, the result is the same as a memmove of
+// the bits: overlap (dst == src included) is correct. With concurrent writers
+// to src or dst, each destination word of bits is replaced atomically, but
+// there is no snapshot of the whole range.
+//
+// Copy returns false and changes no bit in the same cases as [Set] (for dst).
+// A source that is not heap memory (or not in one heap span) counts as clean:
+// then Copy removes the taint of dst.
+func Copy(dst, src unsafe.Pointer, n uintptr) bool {
+	if rtCopy == nil || n == 0 {
+		return false
+	}
+	ok := rtCopy(uintptr(dst), uintptr(src), n)
+	runtime.KeepAlive(dst)
+	runtime.KeepAlive(src)
 	return ok
 }
 

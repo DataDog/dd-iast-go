@@ -917,6 +917,251 @@ aspects:
               return false
             }
 
+            // __dd_taint_next returns the smallest off in [from, n) such that
+            // the bit of byte p+off is 1 (want true) or 0 (want false), or n.
+            // Memory that is not in an in-use heap span has no taint: then
+            // Next finds nothing (n), and NextClean finds from.
+            //
+            //go:nosplit
+            func __dd_taint_next(p, n, from uintptr, want bool) uintptr {
+              if __dd_taint_testing {
+                __dd_taint_classifyprobe(p)
+              }
+              if from >= n {
+                return n
+              }
+              if p+n < p {
+                if want {
+                  return n
+                }
+                return from
+              }
+              s := spanOfHeap(p)
+              if s == nil {
+                if want {
+                  return n
+                }
+                return from
+              }
+              // A Go value never extends after its span (this bounds the
+              // work); the bytes after it count as clean.
+              m := n
+              if p+m > s.limit {
+                m = s.limit - p
+              }
+              if from >= m {
+                if want {
+                  return n
+                }
+                return from
+              }
+              r := __dd_taint_nextworker(p, m, from, want)
+              if r == m {
+                if want {
+                  return n
+                }
+                if m < n {
+                  return m
+                }
+              }
+              return r
+            }
+
+            // __dd_taint_nextworker is the worker of __dd_taint_next. It
+            // returns m when no byte in [from, m) matches.
+            //
+            //go:noinline
+            func __dd_taint_nextworker(p, m, from uintptr, want bool) uintptr {
+              if __dd_taint_testing {
+                __dd_taint_probeworker(p)
+              }
+              q, end := p+from, p+m
+              units := 0
+              for q < end {
+                if units++; units >= 512 {
+                  units = 0
+                  __dd_taint_checkpoint()
+                }
+                cbase := q &^ (__dd_taint_chunkHeap - 1)
+                cend := cbase + __dd_taint_chunkHeap
+                if cend > end || cend == 0 {
+                  cend = end
+                }
+                c := __dd_taint_chunk(q)
+                if c == nil {
+                  // No chunk: all bytes of the region are clean.
+                  if !want {
+                    return q - p
+                  }
+                  q = cend
+                  continue
+                }
+                b0, b1 := q-cbase, cend-cbase
+                w0, w1 := b0/64, (b1-1)/64
+                for w := w0; w <= w1; w++ {
+                  if units++; units >= 512 {
+                    units = 0
+                    __dd_taint_checkpoint()
+                  }
+                  mask := ^uint64(0)
+                  if w == w0 {
+                    mask &= ^uint64(0) << (b0 % 64)
+                  }
+                  if w == w1 {
+                    mask &= ^uint64(0) >> (63 - (b1-1)%64)
+                  }
+                  x := atomic.Load64(&c[w&(__dd_taint_chunkWords-1)])
+                  if !want {
+                    x = ^x
+                  }
+                  if x &= mask; x != 0 {
+                    return cbase + w*64 + uintptr(sys.TrailingZeros64(x)) - p
+                  }
+                }
+                q = cend
+              }
+              return m
+            }
+
+            // __dd_taint_readbits returns the bits of the k (1 to 64) heap
+            // bytes at a in the low k bits (bit i: byte a+i). A missing chunk
+            // gives 0 bits. It reads at most 2 words, with atomic loads.
+            //
+            //go:nowritebarrierrec
+            func __dd_taint_readbits(a, k uintptr) uint64 {
+              var r uint64
+              got := uintptr(0)
+              for got < k {
+                q := a + got
+                off := q & (__dd_taint_chunkHeap - 1)
+                sh := off % 64
+                take := 64 - sh
+                if take > k-got {
+                  take = k - got
+                }
+                if c := __dd_taint_chunk(q); c != nil {
+                  x := atomic.Load64(&c[(off/64)&(__dd_taint_chunkWords-1)]) >> sh
+                  if take < 64 {
+                    x &= (uint64(1) << take) - 1
+                  }
+                  r |= x << got
+                }
+                got += take
+              }
+              return r
+            }
+
+            // __dd_taint_copy makes the bits of [dst, dst+n) equal to the bits
+            // of [src, src+n) (memmove semantics: overlap is correct). It
+            // returns false and changes no bit with the same failure cases as
+            // __dd_taint_set (for dst). A source that is not in one in-use
+            // heap span counts as clean. Both pointers are classified here,
+            // before any call that can move the stack.
+            //
+            //go:nosplit
+            func __dd_taint_copy(dst, src, n uintptr) bool {
+              if __dd_taint_testing {
+                __dd_taint_classifyprobe(dst)
+              }
+              if __dd_taint_osalloc == nil || n == 0 || dst+n < dst {
+                return false
+              }
+              s := __dd_taint_classify(dst, n)
+              if s == nil || s.isUserArenaChunk {
+                return false
+              }
+              if s.npages > __dd_taint_maxSpanBytes/pageSize {
+                __dd_taint_drop(__dd_taint_dropSpan)
+                return false
+              }
+              srcHeap := false
+              if src+n >= src {
+                if ss := spanOfHeap(src); ss != nil && src+n <= ss.limit {
+                  srcHeap = true
+                }
+              }
+              return __dd_taint_copyworker(s, dst, src, n, srcHeap)
+            }
+
+            // __dd_taint_copyworker is the worker of __dd_taint_copy.
+            //
+            //go:noinline
+            func __dd_taint_copyworker(s *mspan, dst, src, n uintptr, srcHeap bool) bool {
+              if __dd_taint_testing {
+                __dd_taint_probeworker(dst)
+              }
+              if dst == src && srcHeap {
+                return true // the bits are already equal
+              }
+              // A clean source (also a source that is not heap memory): the
+              // copy is a clear, which needs no storage.
+              if !srcHeap || !__dd_taint_anyworker(src, n) {
+                __dd_taint_apply(dst, n, false, true, false)
+                return true
+              }
+              if !__dd_taint_prepare(dst, n) {
+                return false
+              }
+              // Destination words in the memmove order: backward when dst is
+              // after src, so that a source word is read before a write can
+              // change it.
+              end := dst + n
+              first := dst &^ 63
+              last := (end - 1) &^ 63
+              backward := dst > src
+              units := 0
+              for i := uintptr(0); ; i++ {
+                wa := first + i*64 // heap address of the destination word
+                if backward {
+                  wa = last - i*64
+                }
+                if wa < first || wa > last {
+                  break
+                }
+                lo, hi := wa, wa+64
+                if lo < dst {
+                  lo = dst
+                }
+                if hi > end {
+                  hi = end
+                }
+                k := hi - lo
+                bits := __dd_taint_readbits(src+(lo-dst), k) << (lo - wa)
+                mask := ^uint64(0)
+                if k < 64 {
+                  mask = ((uint64(1) << k) - 1) << (lo - wa)
+                }
+                c := __dd_taint_chunk(wa)
+                if c == nil {
+                  continue // cannot happen after __dd_taint_prepare
+                }
+                wp := &c[((wa&(__dd_taint_chunkHeap-1))/64)&(__dd_taint_chunkWords-1)]
+                if mask == ^uint64(0) {
+                  atomic.Store64(wp, bits)
+                } else {
+                  for {
+                    old := atomic.Load64(wp)
+                    if atomic.Cas64(wp, old, old&^mask|bits&mask) {
+                      break
+                    }
+                    // A neighbour writer changed the word: try again, with a
+                    // checkpoint from time to time (never return false: some
+                    // destination words are already written).
+                    if units++; units >= 512 {
+                      units = 0
+                      __dd_taint_checkpoint()
+                    }
+                  }
+                }
+                if units++; units >= 512 {
+                  units = 0
+                  __dd_taint_checkpoint()
+                }
+              }
+              atomic.Store8(&s.__dd_taint, 1)
+              return true
+            }
+
             // __dd_taint_sweep clears the bits of all objects of s that are
             // not marked. The sweeper calls it before it frees them. Thus a
             // new object never gets the taint of an old object at the same
@@ -1250,6 +1495,10 @@ aspects:
             var __dd_taint_api_set = __dd_taint_set
             //go:linkname __dd_taint_api_clear __dd_iast_heapbits.clear
             var __dd_taint_api_clear = __dd_taint_clear
+            //go:linkname __dd_taint_api_next __dd_iast_heapbits.next
+            var __dd_taint_api_next = __dd_taint_next
+            //go:linkname __dd_taint_api_copy __dd_iast_heapbits.copy
+            var __dd_taint_api_copy = __dd_taint_copy
             //go:linkname __dd_taint_api_any __dd_iast_heapbits.any
             var __dd_taint_api_any = __dd_taint_any
             //go:linkname __dd_taint_api_enabled __dd_iast_heapbits.enabled

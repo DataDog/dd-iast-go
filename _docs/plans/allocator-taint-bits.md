@@ -16,8 +16,8 @@
   fixed in this version, appendix D). The critic listed these 2 fixes as the
   only remaining items.
 - **User review: done** (section 10). Phase 1 is approved.
-- **Phase 1 (production heap bits): in progress.** Steps 1 to 5 of
-  section 9 are done. Next: step 6.
+- **Phase 1 (production heap bits): in progress.** Steps 1 to 6 of
+  section 9 are done. Next: step 7.
 - Phases 2 to 4 (stack values, origins and marks, propagation): outline only
   (section 8). Each one gets its own plan after phase 1.
 
@@ -817,8 +817,25 @@ in the `taint` package as the first check of every operation.
      flag reset or after its live check, and a `Set` on a clean live object
      runs there; the flag must be 1 after the sweep. A mutation that writes
      the flag after the live check fails the second case.
-6. `Next`, `NextClean`, `Copy` (CAS writes, overlap) and their tests:
-   **1.5 days**.
+6. **(Done.)** `Next`, `NextClean`, `Copy` (CAS writes, overlap) and their
+   tests: **1.5 days**. Notes:
+   - `Next` and `NextClean` use one runtime entry point (`next`, with the
+     bit to find). The bytes after the end of the span of `p` count as
+     clean (a Go value never extends after its span).
+   - `Copy` classifies both pointers in its `nosplit` entry. A source that
+     is not in one in-use heap span counts as clean. When the source has no
+     taint (checked first), `Copy` is a clear and needs no storage; else it
+     gets all destination chunks first (all or nothing), then writes the
+     destination words in the `memmove` order (backward when `dst > src`),
+     full words with `Store64` and partial words with a `Cas64` loop, then
+     sets the span flag. `Copy` has the same span limit as `Set`.
+   - The progress test (`TestCopyProgress`, child process with
+     `GODEBUG=asyncpreemptoff=1`): 18 goroutines `Copy` into 4 objects of
+     one bitmap word, and one goroutine copies 32 MiB, while the test runs
+     50 GCs; the longest wait to stop the world must be below 10 ms
+     (observed: 0.16 ms). A 32 MiB `Copy` takes about 3 ms, so this test
+     cannot show missing checkpoints; `TestWorkerCheckpoints` does (it now
+     also covers `Next`, `NextClean` and `Copy`).
 7. Random model test and negative control knobs: **1 day**.
 8. Drift test with golden files for go1.26 and go1.27: **0.5 day**.
 9. CI matrix job: **0.5 day**.

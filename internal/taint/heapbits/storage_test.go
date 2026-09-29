@@ -295,6 +295,37 @@ func TestStorageChild(t *testing.T) {
 		}
 	})
 
+	t.Run("copy all or nothing", func(t *testing.T) {
+		// A Copy that needs a chunk that cannot be obtained changes no bit.
+		dst := withDirectory(t, 1)[0]
+		fillFreeChunks(t)
+		before := heapbitstest.Stats()
+		heapbitstest.AllocKnobs(true, false, false, false)
+		ok := heapbits.Copy(ptr(dst), ptr(tainted), 64)
+		heapbitstest.AllocKnobs(false, false, false, false)
+		if ok {
+			t.Fatal("Copy succeeded with a failing mmap")
+		}
+		if heapbits.AnyBytes(dst) {
+			t.Error("a failed Copy changed bits")
+		}
+		if st := heapbitstest.Stats(); st.Drops.Mmap != before.Drops.Mmap+1 {
+			t.Errorf("mmap drops: %d, want %d", st.Drops.Mmap, before.Drops.Mmap+1)
+		}
+		// A clean source needs no storage: the Copy succeeds.
+		clean := freshRegion()
+		heapbitstest.AllocKnobs(true, false, false, false)
+		ok = heapbits.Copy(ptr(dst), ptr(clean), 64)
+		heapbitstest.AllocKnobs(false, false, false, false)
+		if !ok {
+			t.Error("Copy from a clean source needed storage")
+		}
+		if !heapbits.Copy(ptr(dst), ptr(tainted), 64) || !heapbits.AnyBytes(dst[:1]) {
+			t.Error("Copy failed after the mmap failure")
+		}
+		fillFreeChunks(t)
+	})
+
 	t.Run("refill owner parked", func(t *testing.T) {
 		regions := withDirectory(t, 2)
 		owner, other := regions[0], regions[1]

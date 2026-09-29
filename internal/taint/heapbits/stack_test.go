@@ -6,7 +6,9 @@
 package heapbits_test
 
 import (
+	"sync"
 	"testing"
+	"unsafe"
 
 	"github.com/DataDog/dd-iast-go/internal/taint/heapbits"
 	"github.com/DataDog/dd-iast-go/internal/taint/heapbits/heapbitstest"
@@ -20,6 +22,7 @@ import (
 //go:noinline
 func probeLocal(movestack bool, op string) uint32 {
 	var local [64]byte
+	src := copySrc() // before the knobs: its first use calls Set
 	heapbitstest.Knobs(movestack, false)
 	switch op {
 	case "Set":
@@ -28,6 +31,10 @@ func probeLocal(movestack bool, op string) uint32 {
 		heapbits.ClearBytes(local[:])
 	case "Any":
 		heapbits.AnyBytes(local[:])
+	case "Next":
+		heapbits.NextClean(unsafe.Pointer(&local), uintptr(len(local)), 0)
+	case "Copy":
+		heapbits.Copy(unsafe.Pointer(&local), unsafe.Pointer(&src[0]), uintptr(len(local)))
 	}
 	probe, _, _ := heapbitstest.Knobs(false, false)
 	return probe
@@ -40,6 +47,7 @@ func probeLocal(movestack bool, op string) uint32 {
 //go:noinline
 func longLocal(op string) uint32 {
 	var local [4096]byte
+	src := copySrc() // before the knobs: its first use calls Set
 	heapbitstest.Knobs(false, false)
 	switch op {
 	case "Set":
@@ -48,6 +56,10 @@ func longLocal(op string) uint32 {
 		heapbits.ClearBytes(local[:])
 	case "Any":
 		heapbits.AnyBytes(local[:])
+	case "Next":
+		heapbits.NextClean(unsafe.Pointer(&local), uintptr(len(local)), 0)
+	case "Copy":
+		heapbits.Copy(unsafe.Pointer(&local), unsafe.Pointer(&src[0]), uintptr(len(local)))
 	}
 	_, worker, _ := heapbitstest.Knobs(false, false)
 	return worker
@@ -82,6 +94,10 @@ func TestNoWorkerForStackAddress(t *testing.T) {
 			heapbits.ClearBytes(b)
 		case "Any":
 			heapbits.AnyBytes(b)
+		case "Next":
+			heapbits.NextClean(ptr(b), uintptr(len(b)), 0)
+		case "Copy":
+			heapbits.Copy(ptr(b), ptr(copySrc()), uintptr(len(b)))
 		}
 		if _, worker, _ := heapbitstest.Knobs(false, false); worker != heapbitstest.ProbeOffStack {
 			t.Errorf("%s: the worker did not run for a long heap range (worker probe = %d)", name, worker)
@@ -89,7 +105,15 @@ func TestNoWorkerForStackAddress(t *testing.T) {
 	}
 }
 
-var stackOps = []string{"Set", "Clear", "Any"}
+var stackOps = []string{"Set", "Clear", "Any", "Next", "Copy"}
+
+// copySrc is a tainted heap source for the Copy cases (made on first use:
+// the storage child tests need a first Set after their SetBudget).
+var copySrc = sync.OnceValue(func() []byte {
+	b := make([]byte, 4096)
+	heapbits.SetBytes(b)
+	return b
+})
 
 // moveMode reports whether the test binary was built with
 // -gcflags=all=-d=maymorestack=runtime.mayMoreStackMove. The negative control
@@ -173,6 +197,26 @@ func TestWorkerCheckpoints(t *testing.T) {
 	})
 	step("Set", func() { heapbits.SetBytes(b) })
 	step("Clear", func() { heapbits.ClearBytes(b) })
+	step("Next", func() {
+		if got := heapbits.Next(ptr(b), uintptr(len(b)), 0); got != uintptr(len(b)) {
+			t.Errorf("Next = %d, want %d", got, len(b))
+		}
+	})
+	src := heapBytes(size)
+	if !heapbits.SetBytes(src) {
+		t.Fatal("Set failed")
+	}
+	step("Copy", func() {
+		if !heapbits.Copy(ptr(b), ptr(src), uintptr(len(b))) {
+			t.Error("Copy failed")
+		}
+	})
+	// b is fully tainted now: NextClean reads all of it.
+	step("NextClean", func() {
+		if got := heapbits.NextClean(ptr(b), uintptr(len(b)), 0); got != uintptr(len(b)) {
+			t.Errorf("NextClean = %d, want %d", got, len(b))
+		}
+	})
 	_, _, after := heapbitstest.Knobs(false, false)
 	if after <= before {
 		t.Error("no yield at all")

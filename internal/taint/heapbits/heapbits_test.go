@@ -416,6 +416,19 @@ func TestNotWovenOrDisabledIsInert(t *testing.T) {
 		t.Fatal("Any must report clean when the feature is off")
 	}
 	heapbits.ClearBytes(b)
+	p := unsafe.Pointer(&b[0])
+	if got := heapbits.Next(p, 16, 3); got != 16 {
+		t.Fatalf("Next = %d, want 16", got)
+	}
+	if got := heapbits.NextClean(p, 16, 3); got != 3 {
+		t.Fatalf("NextClean = %d, want 3", got)
+	}
+	if heapbits.Next(p, 16, 16) != 16 || heapbits.NextClean(p, 16, 20) != 16 {
+		t.Fatal("from >= n must return n")
+	}
+	if heapbits.Copy(p, unsafe.Pointer(&heapBytes(16)[0]), 16) {
+		t.Fatal("Copy must fail when the feature is off")
+	}
 }
 
 func TestEmpty(t *testing.T) {
