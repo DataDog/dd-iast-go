@@ -3,7 +3,9 @@
 ## Status
 
 - **Phase 0 (theory and proof of concept): done.** The proof of concept (PoC)
-  is in [`allocator-taint-bits-poc/`](allocator-taint-bits-poc/). All its tests
+  was in `allocator-taint-bits-poc/` (removed after Phase 1: its own
+  `go.mod` made the license check fail; it stays in the history of the
+  commit `wip(plan): allocator-backed taint bits`). All its tests
   pass on 22 configurations (section 3.2).
 - **Critic round 1: done** (GPT-6 Astra, verdict "not solid", 3 blockers, 5
   major, 1 minor). All findings are answered in this version (appendix A). Two
