@@ -598,7 +598,7 @@ func TestStorageCopyAllOrNothing(t *testing.T) {
 }
 
 // The runtime default budget is heapbits.DefaultBudget; a budget of 0 turns
-// the storage off.
+// the storage off; a budget above heapbits.MaxBudget becomes MaxBudget.
 func TestBudgetDefaultAndZero(t *testing.T) {
 	need(t)
 	switch os.Getenv(storageChildEnv) {
@@ -616,9 +616,18 @@ func TestBudgetDefaultAndZero(t *testing.T) {
 		if st := heapbitstest.Stats(); st.Slabs != 0 || st.Drops.Budget == 0 {
 			t.Fatalf("unexpected storage: %+v", st)
 		}
+	case "clamp":
+		// A budget above MaxBudget becomes MaxBudget.
+		if !heapbits.SetBudget(2 * heapbits.MaxBudget) {
+			t.Fatal("SetBudget failed")
+		}
+		if st := heapbitstest.Stats(); st.Budget != heapbits.MaxBudget {
+			t.Fatalf("budget %d, want %d", st.Budget, uint64(heapbits.MaxBudget))
+		}
 	case "":
 		runChild(t, "TestBudgetDefaultAndZero", "default")
 		runChild(t, "TestBudgetDefaultAndZero", "zero")
+		runChild(t, "TestBudgetDefaultAndZero", "clamp")
 	default:
 		t.Skip("in another child process")
 	}

@@ -77,8 +77,27 @@ jobs:
             -shuffle=on \
             -covermode=atomic \
             -coverpkg=./... \
-            -coverprofile=coverage.txt \
+            -coverprofile=coverage-woven.txt \
             ./...
+      - name: Unit Tests (not woven)
+        # The code for a runtime without the Orchestrion aspects (for
+        # example the "feature off" paths of internal/taint/heapbits) runs
+        # only in this build.
+        run: |
+          go test \
+            -shuffle=on \
+            -covermode=atomic \
+            -coverpkg=./... \
+            -coverprofile=coverage-plain.txt \
+            ./...
+      - name: Merge coverage profiles
+        # Same mode and same blocks: add the counts of each block.
+        run: |
+          awk 'FNR == 1 && NR != 1 { next }
+               NR == 1 { print; next }
+               { key = $1 " " $2; count[key] += $3 }
+               END { for (key in count) print key, count[key] }' \
+            coverage-woven.txt coverage-plain.txt > coverage.txt
       - name: Overhead benchmark unit tests
         run: go -C benchmarks/overhead test -shuffle=on ./...
       - name: Upload coverage artifact
