@@ -8,7 +8,6 @@
 package redaction
 
 import (
-	"math"
 	"strings"
 	"unicode/utf8"
 
@@ -227,13 +226,9 @@ func truncateRedactedEvidence(value string, remaining *uint64) (string, model.Tr
 		*remaining -= uint64(len(value))
 		return value, model.TruncatedSideNone
 	}
-	// Here *remaining < len(value), thus it fits in an int. The explicit
-	// bound makes this clear to static analysis.
-	cut := *remaining
-	if cut > math.MaxInt {
-		cut = math.MaxInt
-	}
-	result := value[:int(cut)]
+	// Here *remaining < len(value). A slice index can have any integer
+	// type, thus no conversion to int is necessary.
+	result := value[:*remaining]
 	*remaining = 0
 	return result, model.TruncatedSideRight
 }

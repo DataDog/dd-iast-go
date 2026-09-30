@@ -219,10 +219,9 @@ jobs:
     # Root module only.
     runs-on: ${{ matrix.runner }}
     name: Woven runtime (go ${{ matrix.go }}, ${{ matrix.runner }}, ${{ matrix.mode }}, orchestrion ${{ matrix.orchestrion }})
-    # 9 minutes (2 x the largest cold cell of plan step 2, 264 s), plus 3
-    # minutes for the module download when the module cache is empty.
-    # Change it to 2 x the first measured CI time.
-    timeout-minutes: 12
+    # 2 x the slowest cell of the first CI run (10m18s, go.mod, amd64,
+    # -race), rounded up (plan step 6).
+    timeout-minutes: 21
     strategy:
       fail-fast: false
       matrix:
