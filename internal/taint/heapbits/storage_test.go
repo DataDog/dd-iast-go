@@ -498,9 +498,13 @@ func TestStorageChild(t *testing.T) {
 	})
 }
 
-// fillBudgetButOne uses the budget and keeps exactly one free chunk.
+// fillBudgetButOne uses the budget and keeps exactly one free chunk. A
+// fresh region in a new arena needs 2 chunks (the directory and the bits):
+// with 2 free chunks left, it uses a spare region whose arena has a
+// directory (1 chunk), made before the budget is used.
 func fillBudgetButOne(t *testing.T) {
 	t.Helper()
+	spare := withDirectory(t, 2)
 	for range 8192 {
 		st := heapbitstest.Stats()
 		mapped := st.Slabs*heapbitstest.SlabBytes == st.Budget
@@ -509,10 +513,11 @@ func fillBudgetButOne(t *testing.T) {
 			return
 		}
 		r := freshRegion()
-		if mapped && free == 2 && !heapbitstest.HasDirectory(ptr(r)) {
-			// The Set would take the 2 last chunks (the directory of a
-			// new arena, and the bits): take another region.
-			continue
+		if mapped && free == 2 {
+			if len(spare) == 0 {
+				t.Fatalf("no spare region left: %+v", st)
+			}
+			r, spare = spare[0], spare[1:]
 		}
 		if !heapbits.SetBytes(r[:1]) {
 			t.Fatalf("Set failed before the budget was used: %+v", st)
