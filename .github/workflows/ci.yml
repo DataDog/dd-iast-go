@@ -145,7 +145,13 @@ jobs:
             coverage_packages=$(IFS=,; printf '%s' "${packages[*]}")
           fi
           coverage_flags=(-covermode=atomic "-coverpkg=$coverage_packages")
-          "${test_command[@]}" -shuffle=on "${coverage_flags[@]}" -coverprofile=coverage.txt ./...
+          # The woven run of the root module also uses the race detector
+          # (plan runtime-operator-hooks, section 9.4).
+          race_flags=()
+          if [[ "$MODULE" == '.' ]]; then
+            race_flags=(-race)
+          fi
+          "${test_command[@]}" "${race_flags[@]}" -shuffle=on "${coverage_flags[@]}" -coverprofile=coverage.txt ./...
           if [[ "$MODULE" == '.' ]]; then
             go test -shuffle=on "${coverage_flags[@]}" -coverprofile=coverage.ordinary.txt ./...
             go test -race -shuffle=on ./.github
@@ -183,7 +189,12 @@ jobs:
               echo 'Bootstrap fixture must declare its expected symbols in cmd/bootstrap/symbols.txt'
               exit 1
             fi
-            go tool orchestrion go build -o "$RUNNER_TEMP/iast-bootstrap" ./cmd/bootstrap
+            # The woven test run above has coverage flags, and this woven
+            # build has none. Orchestrion does not put the build flags in
+            # the cache key of its dependency archives, thus this build has
+            # its own GOCACHE (plan runtime-operator-hooks, step 6).
+            GOCACHE="$RUNNER_TEMP/gocache-bootstrap" \
+              go tool orchestrion go build -o "$RUNNER_TEMP/iast-bootstrap" ./cmd/bootstrap
             go tool nm "$RUNNER_TEMP/iast-bootstrap" > "$RUNNER_TEMP/iast-bootstrap.nm"
             while IFS= read -r symbol || [[ -n "$symbol" ]]; do
               if [[ -z "$symbol" ]]; then
@@ -201,6 +212,112 @@ jobs:
           path: ${{ matrix.module }}/coverage*.txt
           retention-days: 1
           if-no-files-found: error
+
+  woven-runtime:
+    # The woven tests of the runtime hooks, for each supported Go version,
+    # architecture and build mode (plan runtime-operator-hooks, section 9.4).
+    # Root module only.
+    runs-on: ${{ matrix.runner }}
+    name: Woven runtime (go ${{ matrix.go }}, ${{ matrix.runner }}, ${{ matrix.mode }}, orchestrion ${{ matrix.orchestrion }})
+    # 9 minutes (2 x the largest cold cell of plan step 2, 264 s), plus 3
+    # minutes for the module download when the module cache is empty.
+    # Change it to 2 x the first measured CI time.
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        # go.mod is the version of the go directive of go.mod.
+        go: [go.mod, 1.27.x]
+        runner: [ubuntu-latest, ubuntu-24.04-arm]
+        # nol is -gcflags=all=-N -l.
+        mode: [default, race, nol]
+        orchestrion: [go.mod]
+        include:
+          # One more cell uses the latest Orchestrion release, so that a
+          # release that breaks the aspects is found (plan section 6.3).
+          # This entry changes the value of an axis, thus it is a new cell.
+          - go: 1.27.x
+            runner: ubuntu-latest
+            mode: default
+            orchestrion: latest
+    env:
+      DD_IAST_REQUIRE_WOVEN: '1'
+      # Use the Go version that setup-go installed, not a toolchain download.
+      GOTOOLCHAIN: local
+      # The encoding/json aspects do not build yet on the default
+      # encoding/json of Go 1.27 (v2). Until the plan
+      # _docs/plans/encoding-json-v2.md is done, the Go 1.27 cells use the v1
+      # implementation.
+      GOEXPERIMENT: ${{ startsWith(matrix.go, '1.27') && 'nojsonv2' || '' }}
+      MODE: ${{ matrix.mode }}
+      WOVEN_OUT: ${{ github.workspace }}/woven-runtime-out
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Setup Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ matrix.go != 'go.mod' && matrix.go || '' }}
+          go-version-file: ${{ matrix.go == 'go.mod' && 'go.mod' || '' }}
+          # The cell with the latest Orchestrion runs code that is not pinned
+          # by go.sum. It does not write the shared cache.
+          cache: ${{ matrix.orchestrion != 'latest' }}
+          cache-dependency-path: |
+            go.sum
+            iast/runtime/testapp/go.sum
+      - name: Use the latest Orchestrion release
+        if: matrix.orchestrion == 'latest'
+        shell: bash
+        run: |
+          # Orchestrion refuses to run when its version is not the version
+          # of go.mod. Thus change go.mod as a customer does, then run that
+          # version with go run.
+          version=$(go list -m -f '{{ .Version }}' github.com/DataDog/orchestrion@latest)
+          echo "Orchestrion ${version}"
+          for module in . iast/runtime/testapp; do
+            go -C "$module" get "github.com/DataDog/orchestrion@${version}"
+            go -C "$module" mod tidy
+          done
+          echo "ORCHESTRION=go run github.com/DataDog/orchestrion@${version}" >> "$GITHUB_ENV"
+      - name: Toolchain
+        id: toolchain
+        run: |
+          go version
+          go env GOEXPERIMENT
+      # Each check below runs also when an earlier check failed, so that
+      # the cell reports all the failures.
+      - name: blockedLinknames check
+        if: ${{ !cancelled() && steps.toolchain.outcome == 'success' }}
+        run: .github/woven-runtime.sh "$MODE" linknames
+      - name: Woven tests
+        if: ${{ !cancelled() && steps.toolchain.outcome == 'success' }}
+        run: .github/woven-runtime.sh "$MODE" test
+      - name: System-stack test
+        if: ${{ !cancelled() && steps.toolchain.outcome == 'success' }}
+        run: .github/woven-runtime.sh "$MODE" g0
+      - name: Link check
+        if: ${{ !cancelled() && steps.toolchain.outcome == 'success' }}
+        run: .github/woven-runtime.sh "$MODE" link "$WOVEN_OUT"
+      - name: Escape comparison
+        if: ${{ !cancelled() && steps.toolchain.outcome == 'success' }}
+        run: .github/woven-runtime.sh "$MODE" escape "$WOVEN_OUT"
+      - name: Gate-off benchmark (not a gate)
+        if: >-
+          ${{ !cancelled() && steps.toolchain.outcome == 'success'
+          && matrix.go == 'go.mod' && matrix.runner == 'ubuntu-latest'
+          && matrix.mode == 'default' && matrix.orchestrion == 'go.mod' }}
+        continue-on-error: true
+        run: .github/woven-runtime.sh "$MODE" bench "$WOVEN_OUT" >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload check output
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: woven-runtime-${{ strategy.job-index }}
+          path: ${{ env.WOVEN_OUT }}/escape
+          retention-days: 7
+          if-no-files-found: ignore
 
   upload-coverage:
     needs: test
@@ -299,7 +416,7 @@ jobs:
   green-ci:
     runs-on: ubuntu-latest
     name: Green CI
-    needs: [modules, validate-licenses, lint, test, upload-coverage, benchmark]
+    needs: [modules, validate-licenses, lint, test, woven-runtime, upload-coverage, benchmark]
     if: always()
     steps:
       - name: Success
@@ -308,6 +425,7 @@ jobs:
           && needs.validate-licenses.result == 'success'
           && needs.lint.result            == 'success'
           && needs.test.result            == 'success'
+          && needs.woven-runtime.result   == 'success'
           && needs.upload-coverage.result == 'success'
           && needs.benchmark.result       == 'success'
         run: echo "Success!"
@@ -317,6 +435,7 @@ jobs:
           || needs.validate-licenses.result != 'success'
           || needs.lint.result            != 'success'
           || needs.test.result            != 'success'
+          || needs.woven-runtime.result   != 'success'
           || needs.upload-coverage.result != 'success'
           || needs.benchmark.result       != 'success'
         run: echo "Failure!" && exit 1

@@ -15,7 +15,11 @@
 #   mode  = default | race | nol   (nol is -gcflags=all=-N -l)
 #   level = m | m2                 (-m, or -m=2 written as -m -m)
 # Run it from the repository root. It exits 1 when the lines are not identical.
+# ORCHESTRION is the Orchestrion command (default: go tool orchestrion).
 set -euo pipefail
+
+# A string with spaces gives more than one word (for example "go run ...").
+read -r -a orchestrion <<<"${ORCHESTRION:-go tool orchestrion}"
 
 MODE=${1:?mode}
 LEVEL=${2:?level}
@@ -57,7 +61,7 @@ extract() {
 		sed -E 's/(\.go:[0-9]+):[0-9]+/\1/g' | sort
 }
 
-go tool orchestrion go test -a -c -o /dev/null "${FLAGS[@]}" ./iast/runtime >"$OUT/$TAG.woven.raw" 2>&1
+"${orchestrion[@]}" go test -a -c -o /dev/null "${FLAGS[@]}" ./iast/runtime >"$OUT/$TAG.woven.raw" 2>&1
 go test -a -c -o /dev/null "${FLAGS[@]}" ./iast/runtime >"$OUT/$TAG.plain.raw" 2>&1
 # With default flags, the compiler reports the inlining of __dd_iast_ok. With
 # -N -l, there is no inlining, and only the injected declarations of the
