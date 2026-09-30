@@ -89,6 +89,27 @@ provenance. Reader associations last only for the outer decode call and are
 cleared on return or panic. Reentrant use of the same decoder can lose
 outer-decode provenance.
 
+Request body readers: `io.ReadAll` gives request-body provenance to its
+result only when the reader is exclusive to one request. This is true for the
+request body, and for `io.TeeReader`, `http.MaxBytesReader`,
+`io.LimitReader`, `bufio.NewReader(Size)`, and `io.MultiReader` with 1 to 8
+inputs, when all their inputs are exclusive to the same request. In these
+cases, `io.ReadAll` drops the provenance (a safe miss):
+
+- `io.MultiReader` with an input that is not tracked, for example
+  `io.MultiReader(strings.NewReader("prefix"), r.Body)`;
+- `io.MultiReader` with more than 8 inputs;
+- a reader that is not exclusive: a `bufio.Reader` of the manual helper
+  `iast/bufio.Propagate`, a `bufio.Reader` or `io.LimitedReader` that got a
+  new input after its construction (for example `Reset`), a wrapper that got
+  no `Read` guard (more than 128 guarded wrappers at the same time), and a
+  reader that a different request also tracked, also after that request
+  finished;
+- a reader that a concurrent operation locks while `io.ReadAll` checks it.
+
+The Go 1.26 `json.Decoder` still gives provenance to each request that
+tracks its reader.
+
 Tracking a stateful writer uses a strong request-bounded receiver anchor. This
 can make a stack receiver escape. Writer state is limited to eight receivers per
 request owner, four owners per receiver, and 64 KiB of charged visible capacity.

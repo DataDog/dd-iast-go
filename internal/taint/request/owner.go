@@ -10,6 +10,7 @@ import (
 	"sync/atomic"
 
 	"github.com/DataDog/dd-iast-go/internal/model/constants"
+	"github.com/DataDog/dd-iast-go/internal/taint/iobridge"
 	"github.com/DataDog/dd-iast-go/internal/taint/store"
 )
 
@@ -268,6 +269,13 @@ func (a Analysis) Finish() {
 	a.slot.sourceMu.Unlock()
 	if owner := a.slot.owner.Swap(nil); owner != nil {
 		owner.Finish()
+		// The Read guards refer to owners of the process store only
+		// (PropagateGuardedReader uses the process manager). The owner is
+		// not active, and its bindings are cleared, thus its guards are not
+		// necessary (plan encoding-json-v2, section 6.6).
+		if index, ok := owner.Index(); ok && a.manager == processManager.Load() {
+			iobridge.ReleaseOwner(index, owner.Generation())
+		}
 	}
 	a.manager.used.And(^(uint64(1) << a.index))
 }

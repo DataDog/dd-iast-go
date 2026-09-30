@@ -25,7 +25,12 @@ aspects:
           template: |-
             _ = iastjson.Activate
 
-  - id: encoding/json Decoder reader binding
+  # The Decoder type has different fields in the v1 and in the v2 variant of
+  # encoding/json (plan encoding-json-v2, section 4). This aspect matches on
+  # all variants, thus it uses only the symbols that it declares itself. A
+  # variant-specific aspect sets the two variables in an init function. If no
+  # aspect sets them, Decode does not propagate.
+  - id: "[shared] encoding/json Decoder reader binding"
     join-point:
       all-of:
         - import-path: encoding/json
@@ -34,12 +39,41 @@ aspects:
               - receiver: "*encoding/json.Decoder"
               - name: Decode
     advice:
+      - inject-declarations:
+          template: |-
+            // __dd_iast_decodeBind binds the decode state of a Decoder to its
+            // reader. It is nil when no variant-specific aspect sets it.
+            var __dd_iast_decodeBind func(*Decoder) bool
+
+            // __dd_iast_decodeUnbind releases the binding of
+            // __dd_iast_decodeBind.
+            var __dd_iast_decodeUnbind func(*Decoder)
       - prepend-statements:
+          template: |-
+            if __dd_iast_bind := __dd_iast_decodeBind; __dd_iast_bind != nil && __dd_iast_bind({{ .Function.Receiver }}) {
+              if __dd_iast_unbind := __dd_iast_decodeUnbind; __dd_iast_unbind != nil {
+                defer __dd_iast_unbind({{ .Function.Receiver }})
+              }
+            }
+
+  # The anchor type decodeState exists only in the v1 files of encoding/json.
+  # This join point has no import-path clause, thus the telemetry test does not
+  # count it as a propagation point.
+  - id: "[v1] encoding/json Decoder reader binding dispatch"
+    join-point:
+      struct-definition: encoding/json.decodeState
+    advice:
+      - inject-declarations:
           imports:
             iastjsonbridge: github.com/DataDog/dd-iast-go/internal/taint/jsonbridge
           template: |-
-            if iastjsonbridge.Bind({{ .Function.Receiver }}.r, &{{ .Function.Receiver }}.d) {
-              defer iastjsonbridge.Unbind(&{{ .Function.Receiver }}.d)
+            func init() {
+              __dd_iast_decodeBind = func(dec *Decoder) bool {
+                return iastjsonbridge.Bind(dec.r, &dec.d)
+              }
+              __dd_iast_decodeUnbind = func(dec *Decoder) {
+                iastjsonbridge.Unbind(&dec.d)
+              }
             }
 
   - id: encoding/json decode state lifetime

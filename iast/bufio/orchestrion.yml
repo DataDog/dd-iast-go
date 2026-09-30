@@ -10,8 +10,13 @@ meta:
 
 aspects:
   # NewReader delegates to NewReaderSize, so this single hook covers both.
-  # Keep the same policy as iast/bufio.Propagate. Calling that helper here
-  # would create an import cycle: bufio -> iast/bufio -> bufio.
+  # Keep the same size policy as iast/bufio.Propagate. Calling that helper
+  # here would create an import cycle: bufio -> iast/bufio -> bufio.
+  # Reset can change the input of the result. Thus the binding is exclusive
+  # only with a Read guard (plan encoding-json-v2, section 6.6). The guard is
+  # the bufio.Reader.Read aspect below. When NewReaderSize returns its input
+  # (a bufio.Reader with a large enough buffer), the binding and the guard of
+  # that reader do not change.
   - id: bufio.NewReaderSize
     join-point:
       all-of:
@@ -28,7 +33,27 @@ aspects:
             {{- $input := .Function.Argument 0 -}}
             {{- $result := .Function.Result 0 -}}
             defer func() {
-              if {{ $result }} != nil && {{ $result }}.Size() <= iastiobridge.MaxBufferedReaderSize {
-                iastiobridge.Propagate({{ $input }}, {{ $result }})
+              if {{ $result }} != nil && {{ $result }}.Size() <= iastiobridge.MaxBufferedReaderSize &&
+                !iastiobridge.Same({{ $input }}, {{ $result }}) {
+                iastiobridge.PropagateGuarded({{ $input }}, {{ $result }})
               }
             }()
+
+  # The Read guard of guarded bufio readers. It checks the field rd before a
+  # byte flows. Only reset writes rd, and reset discards the buffer, thus the
+  # buffered bytes always come from the current rd. When no guard exists, the
+  # cost is one atomic load.
+  - id: bufio.Reader.Read guard
+    join-point:
+      all-of:
+        - import-path: bufio
+        - function-body:
+            function:
+              - receiver: "*bufio.Reader"
+              - name: Read
+    advice:
+      - prepend-statements:
+          imports:
+            iastiobridge: github.com/DataDog/dd-iast-go/internal/taint/iobridge
+          template: |-
+            iastiobridge.CheckRead({{ .Function.Receiver }}, {{ .Function.Receiver }}.rd)

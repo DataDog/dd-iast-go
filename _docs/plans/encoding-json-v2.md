@@ -375,16 +375,21 @@ both.
   the root count is not zero.
 - New request helpers (in `internal/taint/request`, registered by
   `iast/encoding/json`):
-  - `ReaderOwnerToken(reader) (index uint8, generation uint64, ok bool)`.
-    `ok` is true only when `store.LookupReaderValue` (section 6.5) is
-    complete, finds exactly one owner, and that binding is exclusive.
-  - `CloneForOwner(reader, index, generation, data) (clone []byte, proven bool)`.
-    It revalidates the token (index + generation + active, as
-    `OwnerRef.Handle` and `analysisForOwner` do). Then it does a complete
-    lookup of `reader` again, which must find exactly this owner, with an
-    exclusive binding. If a check fails, `proven` is false. Else it adopts
-    the clone into this owner only. An oversized value returns
-    `(nil, true)`: a miss for this value, but the decoder stays open.
+  - `ReaderOwnerToken(reader) request.ReaderToken` (it is
+    `request.ReaderOwner`, section 6.5, rule (f)). The token is `OK` only
+    when `store.LookupReaderValue` (section 6.5) is complete, finds exactly
+    one owner, and that binding is exclusive. The token identifies that
+    binding (owner slot, generation, entry; rule (f)).
+  - `CloneForOwner(reader, token, data) (clone []byte, proven bool)`.
+    It revalidates the token with `request.RevalidateReader` (rule (f)):
+    a complete lookup of `reader` again must find exactly this owner
+    (same generation, active), with the same exclusive binding, and no
+    reader bind of another owner of `reader` since that binding was made
+    (the creation baseline of rule (f)). If a check fails,
+    `proven` is false. Else it adopts the clone into this owner only. An
+    oversized value returns `(nil, true)`: a miss for this value, but the
+    decoder stays open. `request.CloneReaderBytesForToken` (done with
+    rule (f)) has these checks.
 - `func BindDecoder(binding *ReaderBinding, state any) bool` — the v1
   replacement for `Bind(dec.r, &dec.d)` (section 6.7). The decoder slot
   keeps the `*ReaderBinding`, not the reader. v1 `Document` then uses the
@@ -619,16 +624,23 @@ defer func() {
   complete, finds exactly one owner, and that binding is exclusive. Else
   the state becomes "closed".
 - The `ReadValue` wrapper above calls `ReaderDocument`, which calls
-  `CloneForOwner`. It revalidates the token and does a complete lookup
-  again. If a check fails, the state becomes "closed".
+  `CloneForOwner`. It revalidates the token at each `Decode` with
+  `request.RevalidateReader` (section 6.5, rule (f)). If a check fails,
+  the state becomes "closed". A check of the owner only ("the lookup
+  finds O again") is not sufficient: a bind of another owner of the
+  reader that starts and ends between `NewDecoder` and `Decode` is not
+  visible at either point. Only the reader bind counter of rule (f)
+  shows it.
 
 Invariant:
 
 > A `Decode` value is attributed only to owner O, and only when (1) at
 > `NewDecoder`, a complete lookup found exactly one owner O, with an
 > exclusive binding of the reader; and (2) at this `Decode`, the token of O
-> is still valid (same generation, active), and a complete lookup still
-> finds exactly O, with an exclusive binding. By (1) and section 6.5, every
+> is still valid (same generation, active), a complete lookup still
+> finds exactly O, with the same exclusive binding, and no other owner did
+> a reader bind of the reader since that binding was made (rule (f); this
+> includes the time since `NewDecoder`). By (1) and section 6.5, every
 > byte that the reader produces while O lives is data of O (except the
 > documented residual R15, section 6.6). The decoder
 > reads no byte before `NewDecoder` returns, and it reads only from that
@@ -816,7 +828,16 @@ Rules (the round 3 request, rules (a), (b), and (c)):
   "retargeted" bit (section 6.6). A lookup reports a binding as exclusive
   only when `exclusive && !(viaGuard && owner.retargeted)`. All consumers
   (v2 decoder, v1 `Document`, `io.ReadAll`) and all wrapper proofs use
-  this effective value.
+  this effective value. Fail closed (review 2 of batch 1, finding 3): the
+  `Retarget` callback that sets the bit runs under `recover`. If it does
+  not return normally, the bit can be missing, and `CheckRead` removes
+  the guard. Thus `iobridge` then sets a process-wide sticky bit
+  (`iobridge.RetargetLost`) BEFORE `CheckRead` returns (before a byte of
+  the new target flows). While it is set, `request.lookupReader` reports
+  no ref with `ViaGuard` as exclusive. A binding over a guarded binding
+  has `viaGuard` too (rule (a)), thus no binding that depends on a lost
+  retarget is exclusive. Cost: one atomic load for each reader lookup
+  while a request is active.
 - (b) Complete lookups. A lookup that skipped an active owner (lock
   contention or fanout overflow) reports `complete = false`. An
   incomplete lookup is "unknown", and unknown is a miss. It never gives
@@ -840,6 +861,137 @@ Rules (the round 3 request, rules (a), (b), and (c)):
   different binding; if the table cannot hold both, the lookup is
   incomplete (rule (b), a miss). This applies to all reader bindings, not
   only exclusive ones.
+- (e) Input revalidation (review of batch 1, findings 1 and 2). A
+  "derived" exclusive binding is the binding of a wrapper (`TeeReader`,
+  `MaxBytesReader`, `MultiReader`, a guarded wrapper). A "root" exclusive
+  binding is the body at entry or `request.BindReader`. A derived
+  exclusive binding of R to O records its inputs: the entries of the
+  input bindings in the binding table of O (at most 8, one fixed input
+  set for each reader binding of the owner). A lookup of R reports it as
+  effectively exclusive only when a complete lookup of each input finds
+  exactly O (same slot and generation), with an effectively exclusive
+  binding. This check is recursive, with a limit of 16 input lookups for
+  each lookup of R. Over the limit, R is not effectively exclusive (a
+  miss). Invariant: when an input gets a second owner, or stops being
+  effectively exclusive, each wrapper over it stops being exclusive
+  before the next attribution.
+  The loss is sticky (follow-up review 1 of batch 1, finding 1). A check
+  of the owners that are live now is not sufficient: if B binds an input
+  X of a wrapper W of A, W can read or buffer bytes of B, and after B
+  ends a lookup of X finds only A again. Rule (f) gives the sticky loss:
+  each input X is a reader binding of A, and the bind of B makes X not
+  effectively exclusive for good (the creation baseline). The lookup of
+  W does a complete lookup of each input, thus W is not effectively
+  exclusive either. The input set has no counter stamp of its own (it
+  had one before review 2 of batch 1; appendix note 19).
+  Cost: one complete lookup for each input of a derived binding at each
+  revalidation (each with the one counter load of rule (f)). All only
+  while a request is active.
+  The `MultiReader` aspect makes one call:
+  it looks up all the inputs, then makes one bind to the owner of the
+  lookups, with all the inputs. There is no proof that is kept between
+  two calls. If the owner ends after the lookups, the bind fails. A
+  change of an input after the lookups is found by the revalidation. A
+  rebind of a derived binding keeps the inputs of the old and of the new
+  proof. A derived binding that gets no free input set is not exclusive.
+- (f) Creation baseline and owner tokens (review of batch 1, the root
+  gap; review 2 of batch 1, findings 1 and 2). A ROOT binding (the body
+  at entry, `request.BindReader`) has no input to check. For a root
+  reader X of A: B binds X while A is bound, the bytes of X are read or
+  buffered, and B ends. A later lookup of X finds only A. Rule (f) makes
+  this loss sticky for each reader binding, root or derived, with ONE
+  invariant.
+  - Counters. Each store has 4,096 reader bind counters
+    (`Store.readerBinds`, `[4096]atomic.Uint64`, 32 KiB, no lock). The
+    counter of a reader is selected by a hash of its type word and its
+    address (rule (d)). Two readers can have the same counter. Each
+    reader bind attempt of any owner adds 1 to the counter of its object
+    (`addReaderBind`): under the table lock and BEFORE the table change,
+    or with no lock when the bind fails before (a bind that cannot lock
+    its table also counts, because no lookup can see it). A counter
+    never decreases (64 bits: no wrap).
+  - Creation baseline. Each reader binding b of owner O for reader X
+    keeps `expect(b)` (`bindingTable.readerExpect`, one `uint64` for each
+    of the 8 reader bindings, next to `bindingTable.readers`). The bind
+    that makes b sets it to the value that its own counter add returned
+    (the baseline). Each later reader bind of O that holds the table lock
+    of O adds 1 to `expect` of each reader binding of O with the same
+    counter, after its table change and before the unlock
+    (`stampReaderBind`; at most 8 hash computations).
+  - Invariant (I). Let C be the counter of X. At each time when the table
+    lock of O is free or read-locked:
+    `C - expect(b)` = the number of adds to C since b was made that are
+    not stamped binds of O. Proof: when b is made, `expect(b) = C`
+    (under the write lock of O, after the add of this bind). After that,
+    each add changes C by 1. A stamped bind of O changes C and
+    `expect(b)` by 1 each, and it holds the write lock of O from its add
+    to its stamp, thus a reader of the table never sees one change
+    without the other. No other operation changes `expect(b)`. Thus
+    `C - expect(b)` only grows, and it is 0 only when no other owner (and
+    no unstamped bind) added to C since b was made.
+  - Effective exclusivity. A reader lookup reports b as effectively
+    exclusive only when, in addition to rules (a), (a2), and (e),
+    `C == expect(b)`, with C read UNDER the table read lock of O. The
+    load must be under the lock (review 2 of batch 1, finding 1): if the
+    lookup read C before the lock, a stamped rebind of O between the load
+    and the lock adds 1 to `expect(b)` but not to the loaded C, and this
+    cancels one add of another owner. By (I), `C == expect(b)` proves
+    that no other owner started a reader bind with the counter of X
+    since b was made. The loss is sticky (`C - expect(b)` never
+    decreases), also after the other owner ends, and also when the other
+    bind came before a token was taken (finding 2). A bind of O itself
+    (a rebind of its root, a derived bind, a bind of another reader of O
+    with the same counter) does not change the result. A bind of O that
+    cannot lock its table, or a bind of another owner of a different
+    reader with the same counter, is a safe miss (probability 1/4,096
+    for one bind).
+  - One reader binding for each entry. An entry that stops being a
+    reader binding (a kind change, for example to URL) is "demoted"
+    (`binding.demoted`): it never becomes exclusive again in this owner
+    generation. The exclusive flag of a binding never comes back after a
+    loss (`exclusive = old && new`). Thus in one generation, an entry
+    index identifies at most one exclusive reader binding, from its
+    creation to its first loss.
+  - Tokens. A token (`store.ReaderToken`, `request.ReaderToken`,
+    `iobridge.ReadToken`) keeps the owner slot, the generation, and the
+    binding entry of an effectively exclusive binding. Revalidation
+    (`ReaderToken.Revalidate`, `request.RevalidateReader`): a new complete
+    lookup of X must find exactly one owner, with the same slot,
+    generation, and entry, effectively exclusive (rules (a2), (e), and
+    (f) at this lookup), and the owner is active.
+  - Ordering assumption (A1), as before: a reader produces data of an
+    owner only after the reader bind of that owner started (a bind comes
+    at the construction of the wrapper, or before the bytes flow). The
+    consumers take the token BEFORE the first byte and revalidate AFTER
+    the last byte.
+  - Proof of the token rule. The capture at T0 and the revalidation at
+    T1 found the same entry e of the same generation, effectively
+    exclusive. By the "one reader binding for each entry" rule, the same
+    binding b was an exclusive reader binding of X for O during all of
+    [T0, T1] (it did not change kind, and its flag did not change). At
+    T1, `C == expect(b)`, thus no other owner started a reader bind of X
+    between the creation of b and T1. A bind of another owner that
+    starts after T1 starts after the last byte, thus (A1) none of its
+    data flowed. The bytes flowed during [T0, T1] while b was exclusive,
+    and by the proof sketch below every byte that X produced is data of
+    O. For a derived X, the lookup at T1 also checks each input (rule
+    (e)), and each input has its own baseline.
+  - Consumers: each consumer takes the token BEFORE the first byte flows
+    and calls the revalidation AFTER the bytes flowed, at attribution
+    time: `io.ReadAll` (`iobridge.ReadAllBegin` / `ReadAllEnd`, done),
+    `request.CloneReaderBytesForToken` (done), v1 `Document` (step 3a)
+    and the v2 decoder (step 5): the token of `NewDecoder` must be
+    revalidated at each `Decode`.
+  Cost: the binding stays 32 bytes (`demoted` uses the padding);
+  `OwnerRef` is 24 bytes (no counter value); `readerInputs` is 9 bytes
+  (no stamp); each owner grows by 64 bytes for `readerExpect` and gets
+  back 120 bytes from the input sets (owner 183,544 bytes, store
+  14,084,296 bytes in `footprint_test.go`). One atomic add for each
+  reader bind attempt, and one atomic load for each reader lookup that
+  finds an exclusive binding, under the read lock that the lookup takes
+  already, and one load of the test hook pointer for each active owner of
+  a reader lookup (`hookLookupOwner`, nil in production). The revalidation is one more complete lookup, only when the
+  token is OK.
 
 Proof sketch (by induction over reader construction). Claim: while a
 binding of R to O is effectively exclusive (rule (a2)), every byte that
@@ -864,6 +1016,19 @@ section 6.6, decision Q10).
   `buf`, section 6.6).
 - If I is itself guarded and gets retargeted, the same bit of O is set,
   and W has `viaGuard`, so W stops being exclusive too.
+- After construction, an input of a wrapper can get a second owner (for
+  example a later `request.BindReader` in another request). Then the
+  input is not exclusive, and rule (e) makes each wrapper over it not
+  exclusive too, before the next attribution. The bind of the second
+  owner changes the counter of the input, thus the input and each
+  wrapper over it stay not exclusive after the second owner ends (the
+  creation baseline of rule (f)).
+- A root reader can also get a second owner after its binding. A lookup
+  after the second owner ended finds only the first owner, but the
+  counter of the reader is larger than the baseline of the binding: the
+  binding is not effectively exclusive any more. Each token of a
+  consumer is a miss, also a token taken after the second owner ended,
+  and a wrapper built after that gets no exclusive proof (rule (f)).
 - No other construction gets the flag. A lookup that could hide a second
   owner is incomplete, so it cannot give the flag.
 
@@ -871,7 +1036,8 @@ Each consumer captures one owner token BEFORE the first byte flows, and
 checks effective exclusivity again AFTER the bytes flowed. The v2
 decoder and v1 `Decode` capture at `NewDecoder` and check at each
 `Decode` (after `ReadValue`, and at v1 `decodeState.init`). `io.ReadAll`
-captures at entry and checks at return (section 6.7, decision Q11). The
+captures at entry and checks at return (section 6.7, decision Q11). Each
+check is the revalidation of rule (f), not only a new lookup. The
 bit is set before a foreign byte flows. Thus the consumer sees the bit
 for every foreign byte that it received. The capture before the reads
 makes sure that a binding made during the reads (for example a late
@@ -889,9 +1055,10 @@ Changes:
      the slot gets a new generation (`store/owner.go:53`). New
      `MarkRetargeted(store, index uint8, generation uint64)` sets it only
      if the generation still matches. It takes no lock.
-   - New `BindReaderValue(owner, object any, exclusive bool) bool`. `bind`
-     sets the flag on a new entry, and does `exclusive = old && new` on an
-     existing one. A kind change from URL to reader sets the new value.
+   - New `BindReaderValue(owner, object any, exclusive, viaGuard bool)
+     bool`. `bind` sets the flags on a new entry, and does
+     `exclusive = old && new` and `viaGuard = old || new` on an existing
+     one. A kind change from URL to reader sets the new value.
      `BindObjectValue` keeps its signature (URL bindings; reader binds
      through it are non-exclusive).
    - `lookupObject` returns `(count int, complete bool)`. `complete` is
@@ -900,45 +1067,64 @@ Changes:
      owner does not fit in `out`. New
      `LookupReaderValue(store, object any, out []OwnerRef) (int, bool)`.
      `LookupObject` and `LookupObjectValue` keep their signatures.
+   - rule (e): new `BindDerivedReaderValue(owner, object any, viaGuard
+     bool, inputs []any, refs []OwnerRef) bool`. It checks under the
+     table lock that each ref refers to owner and to the current binding
+     of its input, then records the input entries. `OwnerRef` gets the
+     entry index (padding). The binding table gets 8 input sets
+     (`[8]uint8` and a count each). Only `LookupReaderValue` computes
+     `Exclusive`, with the revalidation of rule (e);
+     `LookupObject` and `LookupObjectValue` set it to false.
+   - rule (f): the store gets the reader bind counters
+     (`[4096]atomic.Uint64`); `bindingTable.readers` and
+     `bindingTable.readerExpect` (the creation baselines),
+     `binding.demoted`, `ReaderToken`, `OwnerRef.ReaderToken()`, and
+     `ReaderToken.Revalidate(OwnerRef)`.
 2. `internal/taint/request/reader.go` and `http.go`:
    - the entry binding and `BindReader` use `exclusive = true`;
-   - `PropagateReader(input, output)` (TeeReader, MaxBytesReader) computes
-     `exclusive = complete && count == 1 && refs[0].Exclusive`, and binds
-     the output to each found owner with that value;
+   - `PropagateReader(input, output)` (TeeReader, MaxBytesReader): when
+     `complete && count == 1 && refs[0].Exclusive`, one derived bind
+     (`store.BindDerivedReaderValue`, rule (e)) to that owner, with input
+     as its input; else a non-exclusive bind to each found owner;
    - new `PropagateSharedReader(input, output)` (the manual helper
      `iast/bufio.Propagate` only): today's behavior, `exclusive = false`;
    - new `PropagateGuardedReader(input, output)` (bufio, LimitReader;
      section 6.6);
-   - new `PropagateReaderWith(input, output, allow bool)`: as
-     `PropagateReader`, with `exclusive = allow && ...`;
-   - new `ReaderOwner(input) (index uint8, generation uint64, ok bool)`
-     for the `MultiReader` join, for `ReaderOwnerToken` (section 6.1),
-     and for the `io.ReadAll` capture (section 6.7);
+   - new `PropagateJoinedReader(inputs [8]any, count int, output)`
+     (`io.MultiReader`, rule (e)): when `count` is 1 to 8 and a complete
+     lookup of each input finds the same one owner, with an effectively
+     exclusive binding, one derived bind with all the inputs; else a
+     non-exclusive bind to each owner of the first 8 inputs;
+   - new `ReaderOwner(input) ReaderToken` (rule (f); `OK()` and
+     `Identity() (index uint8, generation uint64, ok bool)`) for
+     `ReaderOwnerToken` (section 6.1), and for the `io.ReadAll` capture
+     (section 6.7), and `RevalidateReader(token, input) bool`;
    - `ReadAllBytes(input, data)` becomes
-     `ReadAllBytesForOwner(input, index, generation, data)` (section 6.7).
-     The old name stays as a test helper that calls `ReaderOwner`, then
-     `ReadAllBytesForOwner`;
+     `ReadAllBytesForToken(token, input, data)` (section 6.7), and
+     `CloneReaderBytesForToken(token, input, data)` is new. The old name
+     `ReadAllBytes` stays as a test helper that calls `ReaderOwner`, then
+     `ReadAllBytesForToken`;
    - the lookup function is a package variable, so that a request test can
      replace it with a stub that returns `complete = false`.
 3. `internal/taint/iobridge/bridge.go` (stays at `sync/atomic` and
    `unsafe`):
-   - the callbacks get `propagateShared`, `propagateWith`, `owner`, and
-     (section 6.6) `propagateGuarded` and `retarget`; the `readAll`
+   - the callbacks get `propagateShared`, `propagateJoin`, and
+     (section 6.6) `propagateGuarded` and `retarget`; step 3a adds
+     `owner` (for `ReadAllBegin`); the `readAll`
      callback gets the owner token:
      `readAll func(input any, data []byte, index uint8, generation uint64)`;
-   - new `type ReadToken struct{ generation uint64; index uint8; ok bool }`
-     (16 bytes, on the stack), `ReadAllBegin(input any) ReadToken` (calls
+   - new `type ReadToken` (a copy of the fields of `store.ReaderToken`,
+     rule (f): the store pointer as `any`, generation, slot, entry, `OK`;
+     32 bytes, on the stack, no allocation), `ReadAllBegin(input any) ReadToken` (calls
      `owner`), and `ReadAllEnd(token ReadToken, input any, data []byte)`
      (returns at once when `!token.ok`; else calls `readAll`). They
      replace `ReadAll` in the `io.ReadAll` template (section 6.7);
    - section 6.6 adds the guard table, `CheckRead`, `PropagateGuarded`,
-     `Guard`, `Unguard`, `Same`, and `ReleaseOwner`;
-   - new `PropagateShared(input, output any)` and
-     `PropagateWith(input, output any, allow bool)`;
-   - new `type Join struct{ index uint8; generation uint64; count uint8; failed bool }`
-     with `Add(input any)`, `Fail()`, and `Exclusive() bool`. `Add` fails
-     the join if `owner` returns `ok = false` or a different owner.
-     `Exclusive` is `!failed && count > 0`.
+     `Guard`, `Unguard`, `Same`, and `ReleaseOwner`; rule (a2) adds
+     `RetargetLost` (fail closed);
+   - new `PropagateShared(input, output any)`, `MaxJoinInputs = 8`, and
+     `PropagateJoin(inputs [MaxJoinInputs]any, count int, output any)`.
+     The array is passed by value: no allocation.
 4. Aspects:
    - `iast/bufio/bufio.go` (manual helper): `Propagate` →
      `PropagateShared`;
@@ -947,40 +1133,39 @@ Changes:
      `PropagateGuarded`, plus the `Read` guard aspects (section 6.6);
    - `io.TeeReader` and `net/http.MaxBytesReader` are not changed
      (`Propagate` now computes the flag);
-   - `io.MultiReader` template, two passes, at most 8 inputs each:
+   - `io.MultiReader` template, one call (rule (e)):
 
 ```go
 defer func() {
-	var __dd_iast_join iastiobridge.Join
+	var __dd_iast_inputs [iastiobridge.MaxJoinInputs]any
 	for __dd_iast_index, __dd_iast_reader := range {{ $inputs }} {
-		if __dd_iast_index >= 8 {
-			__dd_iast_join.Fail()
+		if __dd_iast_index >= len(__dd_iast_inputs) {
 			break
 		}
-		__dd_iast_join.Add(__dd_iast_reader)
+		__dd_iast_inputs[__dd_iast_index] = __dd_iast_reader
 	}
-	__dd_iast_exclusive := __dd_iast_join.Exclusive()
-	for __dd_iast_index, __dd_iast_reader := range {{ $inputs }} {
-		if __dd_iast_index >= 8 {
-			break
-		}
-		iastiobridge.PropagateWith(__dd_iast_reader, {{ $result }}, __dd_iast_exclusive)
-	}
+	iastiobridge.PropagateJoin(__dd_iast_inputs, len({{ $inputs }}), {{ $result }})
 }()
 ```
 
-   An owner can be added to an input between the two passes. Then the
-   second pass finds two owners, and the output is non-exclusive (safe).
+   A change of an input after the lookups (a second owner, the end of
+   the owner) makes the output non-exclusive: the bind fails, or the
+   revalidation of rule (e) finds the change.
 
 All consumers read the effective flag in this change: the v2 decoder,
 v1 `Document`, and `io.ReadAll` (section 6.7, decisions Q6 and Q9). The
 owner fanout of `PropagateReader` stays: it only makes more
 non-exclusive bindings, which no consumer attributes.
 
-Cost: no memory change (padding). One more bool test in each lookup. For
-`io.MultiReader`: at most 8 more lookups, only while a request is active
-(`LookupObject` returns at once when no owner is in use,
-`request/http.go:43-49`).
+Cost: the binding (32 bytes) does not grow (padding). `OwnerRef` stays
+24 bytes (the entry index uses the padding). Rule (e) adds 8 input sets
+of 9 bytes to each binding table; rule (f) adds 8 reader entries and 8
+baselines (72 bytes) to each binding table and 32 KiB of counters to the
+store (see rule (f) for the measured sizes). One more bool test in
+each lookup. A reader lookup of a derived exclusive binding does one more
+lookup for each input, recursively, at most 16. For `io.MultiReader`: at
+most 8 more lookups, only while a request is active (`LookupObject`
+returns at once when no owner is in use, `request/http.go:43-49`).
 
 ### 6.6 Per-`Read` guard for retargetable wrappers (decision Q8)
 
@@ -1114,12 +1299,20 @@ func CheckRead(self, target any) {
 }
 ```
 
-- `checkRead` probes 4 slots. Not found, or same target: return. Found
-  and a different target: call the registered `retarget(index,
-  generation)` callback (the only indirect call, on the rare path), then
-  CAS the slot to nil and decrement `guardCount`.
+- `checkRead` probes all 4 slots. For each entry of `self` with a
+  different target: call the registered `retarget(index, generation)`
+  callback (the only indirect call, on the rare path), then CAS the slot
+  to nil and decrement `guardCount`.
 - `Guard(self, input any, index uint8, generation uint64) bool` inserts
-  an entry. Only `request` calls it.
+  an entry. Only `request` calls it. The duplicate check is atomic
+  (review of batch 1, finding 3): after the insertion CAS, `Guard` scans
+  the 4 probe slots again; if it finds another entry of `self`, it
+  removes its own entry and returns false. The atomic operations are
+  sequentially consistent, so of two concurrent calls, at least one sees
+  the other (both can fail: a safe miss). `checkRead` checks all the
+  matching probe slots, not only the first one. A test hook
+  (`SetGuardHookForTest`) runs between the first duplicate check and the
+  insertion, so that a test can stop two calls at this point.
 - `PropagateGuarded(input, output any)` calls the registered
   `propagateGuarded` callback.
 - `Same(a, b any) bool` compares two words.
@@ -1238,22 +1431,28 @@ Changes:
      effectively exclusive binding. It returns at once when no owner is
      in use (`request/http.go:43-49`).
    - `ReadAllEnd` returns at once when the token is not `ok`: miss. Else
-     `ReadAllBytesForOwner(input, index, generation, data)` revalidates
-     the token (index + generation + active), does a complete lookup of
-     `input` again, which must find exactly this owner, with an
-     effectively exclusive binding, and then adopts `data` into this
-     owner only. If a check fails: miss.
+     `ReadAllBytesForToken(token, input, data)` revalidates the token
+     (section 6.5, rule (f): index + generation + entry + active, a
+     complete lookup of `input` again, which must find exactly this
+     owner, with the same effectively exclusive binding, and no reader
+     bind of another owner of `input` since that binding was made), and
+     then adopts `data`
+     into this owner only. If a check fails: miss.
    - The oversize drop count stays, for that one owner only, and only
      when the token is still valid.
    - Why: a binding that is made during `io.ReadAll` (for example a late
      `request.BindReader` on a reader that was unbound at entry) must
      not claim the bytes that flowed before it. With no token at entry,
      the result is a miss. A second owner that is added during the
-     reads makes the second lookup find two owners: miss.
+     reads makes the second lookup find two owners: miss. A second owner
+     that is added and ends during the reads, or before the token, changes
+     the counter of the reader: miss (rule (f)).
    - Cost: one more lookup for each `io.ReadAll`, only while an owner is
      in use. No allocation (the token is on the stack).
 3. `CloneReaderBytes` stays as a helper for tests (many tests use it as
-   a probe), with the same exclusive single-owner rule.
+   a probe), with the same exclusive single-owner rule. The token form
+   `CloneReaderBytesForToken(token, input, data)` (rule (f), done) is the
+   form for consumers.
 
 User-visible behavior changes. "Before" is the current Phase 8 behavior.
 Rows marked "v1" apply to `Decode` on lanes A and C. The other rows apply
@@ -1324,6 +1523,31 @@ Each step lists its exit criteria and an estimate for one engineer.
    1.27.1 with the v1 JSON `Decode` aspect disabled locally. List all other
    failures (other `orchestrion.yml` files). Exit: a written list; JSON is
    the only blocker, or new plans exist for the other items.
+
+   **Result (done).** Go 1.27.1 (`jsonv2` default), darwin/arm64, a copy of
+   the repository with the v1 `Decoder.Decode` aspect removed, own
+   `GOCACHE`. Commands: `go tool orchestrion go test -count=1 ./...` in the
+   root module and in the 5 other modules, and
+   `.github/woven-runtime.sh default {linknames,test,g0,link}`. All
+   packages build woven. The only failures are JSON failures:
+   - root module, `iast/encoding/json`: `TestSourceShape` (the v1 targets
+     `decodeState.*`, `Decoder.r`, `Decoder.d` do not exist: step 6) and
+     `TestInstrumentedPropagationTelemetry` (a result of the removed
+     aspect in the copy only);
+   - `iast/integration/testapp`: 9 tests, all because JSON does not
+     propagate on v2 (steps 4, 5, 7): `TestHTTPBodyReaderJSONWriterToSQL`,
+     `TestJSONDecoderMoreThanEightDocuments`,
+     `TestJSONDecoderPropagatesOwnerBoundBody`,
+     `TestJSONDecoderReinitializedWithCleanReader`,
+     `TestJSONDestinationClassesPreserveTheirContracts`,
+     `TestJSONUnmarshalPropagatesNestedNamedStringTag`,
+     `TestJSONUnmarshalPropagatesNestedStrings`,
+     `TestJSONUnmarshalStringTagsInNestedAndMapValues`,
+     `TestRepeatedJSONLiteralsKeepSeparateSourcesAndMarks`.
+   - `iast/database/sql/testapp`, `iast/runtime/testapp`,
+     `iast/os/exec/testapp`, `benchmarks/overhead`, and the four
+     woven-runtime checks pass.
+   JSON is the only blocker. No other plan is necessary (R8 closed).
 2. **Dispatch variables for `Decode` (3-4 h).** Section 4. Exit: all Phase 8
    tests pass on lanes A and C; lane B compiles woven; a local build on
    Go 1.26.6 with `GOEXPERIMENT=jsonv2` compiles woven.
@@ -1340,7 +1564,8 @@ Each step lists its exit criteria and an estimate for one engineer.
    `complete = false` when a test in package `store` holds an owner's
    `lifecycleMu` or binding-table lock, and on fanout overflow;
    `unsafe.Sizeof(binding{}) == 32` and `unsafe.Sizeof(OwnerRef{}) == 24`
-   (recompute both sizes with the new type word of rule (d));
+   (recompute both sizes with the new type word of rule (d); the
+   baselines of rule (f) are in the binding table);
    type-plus-address identity (rule (d)): a custom `*Body` with an
    embedded first-field `bytes.Buffer`, bound exclusively to owner A, while
    owner B is also live; a lookup of `&body.Buffer` does not find A's
@@ -1392,6 +1617,14 @@ Each step lists its exit criteria and an estimate for one engineer.
    7.1 commands 3, 6, 7, 8 pass; the dependency test of `iobridge`
    passes; the one-time GOROOT scan of section 6.4 finds no
    `bufio.Reader` value copy.
+
+   **Steps 2, 2a, and 2b: done.** See "Appendix: Implementation notes
+   (steps 1 to 2b)" for the deviations. One-time GOROOT scan: a
+   `go/packages` + `go/types` scan of `std` (Go 1.27.1: 381 packages;
+   Go 1.26.6: 360 packages; `bufio` excluded) lists each value use of the
+   type `bufio.Reader` (a dereference or a variable used as a value, a
+   variable, field, or parameter of value type). It found 0 uses. A
+   control package with `q := *p` and a value field gave 4 findings.
 3. **Bridge and request helpers (4-5 h).** `Active`, `EnableV2`, `String`,
    `ReaderBinding.Capture`, `ReaderDocument`, `ReaderOwnerToken`,
    `CloneForOwner`. Unit tests: bad tokens, nil reader, length mismatch,
@@ -1411,9 +1644,19 @@ Each step lists its exit criteria and an estimate for one engineer.
    - `BindDecoder` and the v1 `Document` path through `CloneForOwner`:
      1.5-2 h.
    - `io.ReadAll` token (decision Q11): `ReadToken`, `ReadAllBegin`,
-     `ReadAllEnd`, `ReadAllBytesForOwner`, the new template, and the
-     "Tests to add" of section 6.7: 1-1.5 h. `CloneReaderBytes` rule:
-     0.5-1 h.
+     `ReadAllEnd`, `ReadAllBytesForToken`, the new template, and the
+     "Tests to add" of section 6.7: 1-1.5 h. **Done early** with rule
+     (f) of section 6.5 (appendix note 18): the token is taken before the
+     first read and REVALIDATED (rule (f)) after the reads, not only
+     looked up again. `CloneReaderBytes` rule: 0.5-1 h (the token form
+     `CloneReaderBytesForToken` is done; the one-shot `CloneReaderBytes`
+     of the v1 `Document` callback still uses the fanout rule).
+   - v1 `Document` must call the revalidation of rule (f)
+     (`request.RevalidateReader`, through `CloneForOwner` or
+     `CloneReaderBytesForToken`) with the token of `NewDecoder` at each
+     `decodeState.init`. A check of the owner only is not sufficient.
+     Test: B binds the reader of A after `NewDecoder` and ends before
+     `Decode`: miss.
    - Change the tests of section 6.7 ("Tests to change"): 1.5-2 h.
    - New v1 tests (lanes A and C): two owners, `io.MultiReader` with a
      clean input, the contended-lookup stub, a decoder made while no
@@ -1437,6 +1680,32 @@ Each step lists its exit criteria and an estimate for one engineer.
      (section 6.6, residual R15, all lanes): 0.5 h.
    Exit: section 7.1 commands 2 to 8 pass on all lanes; the README lists
    the behavior changes of section 6.7.
+   Release requirements from the review of batch 1 (deferred to this
+   step, not optional): `io.ReadAll` (`internal/taint/request/reader.go`,
+   `ReadAllBytes`, today `LookupObject` ignores the `Exclusive` flag and
+   incomplete lookups) must require a complete lookup with one
+   effectively exclusive owner (rules (a2), (b), (e)). Tests: the
+   `MultiReader` 8+1 composition, a saturated guard table, and retargeted
+   wrappers, all through `io.ReadAll`. `iast/io/io_test.go` (about lines
+   117-145) then changes. **Done** for `io.ReadAll` (appendix note 18):
+   the `MultiReader` 8+1 composition and the clean-input chain of
+   `iast/io/io_test.go` changed as section 6.7 says. The saturated guard
+   table and the retargeted wrappers through `io.ReadAll` are still to
+   do.
+   Release requirement from review 2 of batch 1 (finding 6, known and
+   deferred to this step, not optional): the v1 `Document` callback still
+   uses the one-shot `CloneReaderBytes` with the old fanout rule
+   (`internal/taint/request/reader.go`, `CloneReaderBytes`;
+   `iast/encoding/json/json.go`, the `Document` callback). It gives the
+   bytes to each bound owner, also for a non-exclusive binding. Step 3a
+   must move it to the token of `NewDecoder` and the revalidation of rule
+   (f). Exit tests (lanes A and C), each through
+   `json.NewDecoder(r).Decode`: `io.MultiReader(bodyA, bodyB)` of two
+   live requests A and B: miss for A and for B (no new source in either
+   request); `io.MultiReader(clean, bodyA)`: miss; `io.MultiReader`
+   with 9 inputs: miss; control `io.MultiReader(bodyA)`: tainted in A
+   only. Until this step, the v1 decoder keeps the old behavior, and the
+   README says so.
 4. **v2 string wrapper (3-4 h).** Section 6.2. Exit: woven `Unmarshal` tests
    pass on lane B for struct, slice, array, pointer, typed map value,
    `,string`, escapes, nested values.
@@ -1453,6 +1722,14 @@ Each step lists its exit criteria and an estimate for one engineer.
    `Decode` calls, chain, `More()` loop through `bufio` and
    `io.LimitReader`, `br.Reset(nil)`), on lane B (0.5-1 h, included in
    the estimate of this step, now 4.5-7 h).
+   The decoder keeps the `request.ReaderToken` of `NewDecoder` (rule (f)
+   of section 6.5), and `ReaderDocument` MUST revalidate it at each
+   `Decode` (`request.RevalidateReader`, through `CloneForOwner`). A new
+   lookup that finds the same owner is not sufficient. Test (lane B): B
+   binds the reader of A (a root reader, and a `bufio` wrapper of it)
+   after `NewDecoder` and ends before `Decode`: the value is a miss, and
+   the decoder is closed; control: a rebind of the reader by A between
+   `NewDecoder` and `Decode` keeps the value tainted.
 6. **Variant-aware shape and telemetry tests (3-4 h).** Section 6.4. Exit:
    tests pass on all lanes and fail when a pinned symbol is renamed (check
    with a patched copy of the GOROOT package directory).
@@ -1981,3 +2258,244 @@ Revision 5 listed seven points with defaults. Status in revision 6:
    the reads and checks it again after; else miss (section 6.7).
 7. Process: critic round 5 is done (see "Appendix: Critic round 5
    responses"). The changes of revision 6 go to the user review.
+
+## Appendix: Implementation notes (steps 1 to 2b)
+
+Deviations from the text of the plan, with the reason for each:
+
+1. Rule (d). The binding gets no new type field. The lookup reads the
+   type word of the `object` interface that the binding keeps already.
+   Thus `unsafe.Sizeof(binding{})` stays 32 and `OwnerRef` stays 24
+   (`OwnerRef` also gets `ViaGuard`, in the padding). A different-type
+   binding at the same address is a second entry. If the table cannot
+   hold it, the bind fails and the lookup finds no binding: a miss, the
+   same result as "incomplete".
+2. The lookup stub of section 6.5 is a test flag
+   (`request.SetIncompleteReaderLookupsForTest`), not a function
+   variable. A function variable is an indirect call, and the compiler
+   then moves the `[MaxSnapshotOwners]OwnerRef` arrays of the callers to
+   the heap (3 allocations for each call, measured).
+3. `iobridge.Register` takes one `iobridge.Callbacks` struct (7
+   callbacks), not a list of arguments. It ignores a set with a nil
+   callback.
+4. Telemetry of section 6.6: two new owner counters, `GuardFull` (no
+   guard entry) and `Retargets` (a guard found a new target). The owner
+   record grows by 16 bytes and the store by 1,040 bytes
+   (`footprint_test.go` updated). The `retargeted` bit uses padding.
+5. `iobridge.ReleaseOwner` is called only for owners of the process
+   manager. Guards refer only to owners of the process store, and another
+   store can have an owner with the same slot and generation.
+6. `Guard` returns false when the wrapper has a guard already (the
+   binding is then not exclusive). The `retarget` callback runs under
+   `recover`.
+7. Step 2: the v1 `init` sets the dispatch variables to the Phase 8
+   calls `Bind(dec.r, &dec.d)` and `Unbind(&dec.d)`. `BindDecoder` is
+   step 3a (section 6.7). The v1 dispatch aspect has only a
+   `struct-definition` join point, so the telemetry count stays 5. Only
+   the two new aspect ids have a variant tag; step 6 tags the others.
+8. Steps 2a and 2b are in one change. Thus the interim 2a tests ("bufio
+   and `LimitReader` results are not exclusive until step 2b") are
+   replaced by the 2b tests.
+9. Still open by the plan order: `TestSourceShape` fails on lane B
+   (step 6); `CloneReaderBytes` and v1 `Document` use the old fanout rule
+   (step 3a), but their lookups use the type-plus-address identity.
+   `io.ReadAll` uses the exclusive rule with an owner token (note 18).
+10. Review of batch 1, finding 1 (`MultiReader` two passes). The first
+    pass proved owner A, but the second pass did not check A again. If
+    A ended between the passes and one input got a new owner B, the
+    result was exclusive to B, with bytes of A. Fix: one call
+    (`iobridge.PropagateJoin`, `request.PropagateJoinedReader`) does all
+    the lookups and then one bind to A with all the inputs (rule (e)).
+    `iobridge.Join`, `iobridge.PropagateWith`, and
+    `request.PropagateReaderWith` are removed. The `owner` callback is
+    removed until step 3a (`ReadAllBegin`) needs it. Test:
+    `TestPropagateJoinedReaderOwnerChangeAfterLookup` (a test hook runs
+    between the lookups and the bind). With the old two-pass logic, it
+    fails ("the reader has an exclusive owner").
+11. Review of batch 1, finding 2 (an input that gets a second owner after
+    the construction of its wrapper). Fix: rule (e), input
+    revalidation at each reader lookup (section 6.5). The option
+    "invalidate the dependent proofs when an input gets another owner"
+    was not used: the bind of B cannot find A's bindings when a lookup
+    is contended. Tests: `TestDerivedBindingLosesExclusivityWhenInputGetsSecondOwner`
+    (request), `TestDerivedReaderBindingRevalidatesInputs` and the other
+    rule (e) tests (store), `TestWrapperLosesExclusivityWhenInputGetsSecondOwner`
+    (woven: `TeeReader`, `MultiReader`, `LimitReader`, `bufio`), and
+    `TestMaxBytesReaderOfExclusiveInputIsExclusive` (woven). With no
+    revalidation, all of them fail. Memory: +72 bytes for each owner,
+    +4,608 bytes for the store (`footprint_test.go`).
+12. Review of batch 1, finding 3 (`Guard` duplicate check before the
+    insertion). Fix: section 6.6, `Guard`. Test:
+    `TestGuardConcurrentSameWrapper` (8 goroutines, 2,000 rounds, under
+    `-race`). With the check before the insertion only, it fails
+    ("2 calls returned true, the table has 2 entries of the wrapper").
+13. Review of batch 1, finding 4. (a) `TestMultiReaderEightInputsOfAAndNinthOfB`:
+    owner A in the first 8 inputs, live owner B in the ninth: not
+    exclusive (control: the first 8 alone are exclusive to A). (b)
+    Negative control of `TestDecoderOfEmbeddedBufferIsNotAttributedToBody`
+    (rule (d)): with a pointer-only `bindingTable.find`, the woven test
+    on Go 1.26.6 fails with "the bytes of the embedded buffer were
+    attributed to the body owner"; with the type-plus-address lookup, it
+    passes. (c) The guard release tests also check that each slot of the
+    guard table is empty (`iobridge.GuardEntriesForTest`).
+14. Follow-up review 1 of batch 1, finding 1 (rule (e) checked only the
+    owners that are live now). If B bound an input X of a wrapper W of A
+    and then ended, a lookup of W was exclusive to A again, although W
+    could have bytes of B. Fix: the reader bind counters of rule (e)
+    (section 6.5), a sticky loss. Changes: `Store.readerBinds` (4,096
+    `atomic.Uint64`), `OwnerRef.binds`, `readerInputs.stamp`,
+    `bindingTable.countReaderBind` (the binds of the owner itself do not
+    count), and a count for each bind attempt, also a failed one. Memory:
+    `OwnerRef` 24 to 32 bytes, +128 bytes for each owner (input sets of
+    24 bytes), +40,960 bytes for the store (`footprint_test.go`: owner
+    183,592, store 14,087,368; the plan budget is 14,180,537). Tests:
+    `TestDerivedReaderBindingStaysNotExclusiveAfterSecondOwnerEnds`
+    (bind, non-exclusive bind, and contended bind of B),
+    `TestDerivedReaderBindingProofUsesTheCounterOfTheLookup` (B binds
+    between the lookup and the derived bind), `TestReaderBindCounterSlots`
+    (binds of the owner and of other owners with the same counter)
+    (store); `TestDerivedBindingStaysNotExclusiveAfterSecondOwnerEnds`
+    (request); `TestWrapperStaysNotExclusiveAfterSecondOwnerEnds` (woven:
+    `TeeReader`, `MultiReader`, `LimitReader`, `bufio`, and two chains)
+    and `TestMaxBytesReaderOfExclusiveInputIsExclusive` (woven). With a
+    check of the live owners only (no counter comparison), all of them
+    fail. Known limit: the counters protect the inputs of derived
+    bindings only. A direct lookup of X after B ended finds only A (a
+    root binding has no input to check). Note 18 closes this limit for
+    the consumers.
+15. Follow-up review 1 of batch 1, finding 2
+    (`TestGuardConcurrentSameWrapper` was not deterministic). New
+    `TestGuardSameWrapperAfterDuplicateCheck`: the test hook
+    `iobridge.SetGuardHookForTest` stops two `Guard` calls for the same
+    wrapper after the first duplicate check, until both arrive. With the
+    check before the insertion only, it fails at each run ("2 calls
+    returned true, the table has 2 entries of the wrapper").
+    `TestGuardConcurrentSameWrapper` stays as a stress test.
+16. Follow-up review 1 of batch 1, finding 3: section 6.5 shows the
+    `viaGuard` parameter of `BindReaderValue`.
+17. Follow-up review 2 of batch 1 (HIGH, bind order of rule (e)). A
+    reader bind changed the table BEFORE it added 1 to the counter. A
+    lookup of a wrapper W of A could read the old counter of input X
+    while X was bound to B, and see only A after B ended: W was
+    exclusive. Fix: each bind adds 1 to the counter (`addReaderBind`)
+    under the table lock BEFORE the table change, and the stamps of the
+    owner itself change after it (`stampReaderBind`, was
+    `countReaderBind`). The invariant is in section 6.5, rule (e), and in
+    the comment of `addReaderBind`. Test:
+    `TestWrapperLookupSeesBindThatStartedBeforeTheCounterRead` (store):
+    test hooks `hookReaderBind` (between the counter add and the table
+    change) and `hookInputCounters` (after the lookup of W read the
+    input counters) stop B and the lookup, so that the lookup reads the
+    counters while B is bound, and continues after B ended. With the old
+    order, it fails ("the lookup read the counter while B was bound to
+    the input").
+18. Review of batch 1, the root gap (HIGH). Only derived bindings had a
+    sticky loss (note 14). For a ROOT reader X of A: B binds X while A is
+    bound, the bytes of X are read or buffered, and B ends. A later
+    lookup of X finds only A. A consumer that captured A at one point and
+    found A again later attributed the bytes to A. Fix: rule (f) of
+    section 6.5. The token keeps the counter value of X that the lookup
+    read before the owner scan, and the own-bind count of the binding
+    (`binding.own`, `uint32` in the padding; `bindingTable.readers`, the
+    list of reader entries). `stampReaderBind` adds 1 to the own-bind
+    count of each reader binding of the owner with the counter of the
+    bind. `ReaderToken.Revalidate` accepts a new complete lookup only
+    when the counter changed by the same value as the own-bind count.
+    Consumers in this batch: `request.ReaderOwner` (now returns a
+    `ReaderToken`) with `request.RevalidateReader`;
+    `ReadAllBytesForToken` and the `io.ReadAll` template
+    (`iobridge.ReadAllBegin` before the first read, `ReadAllEnd` after
+    the reads: the capture-before / check-after rule of section 6.7 is
+    done early); `CloneReaderBytesForToken`. The one-shot
+    `CloneReaderBytes` (the v1 `Document` callback) is not changed
+    (step 3a). Memory: `OwnerRef` 32 to 40 bytes, +8 bytes for each
+    owner, +512 bytes for the store (`footprint_test.go`: owner 183,600,
+    store 14,087,880). Changed tests: `iast/io/io_test.go`
+    `TestReadAllThroughSupportedWrappers` (split: `MultiReader(tee)` is
+    tainted, `MultiReader(clean, tee)` is a miss) and
+    `TestMultiReaderInspectionBoundAndCleanup` (the 8+1 composition is a
+    miss for A and B, control `MultiReader(bodyA)` is tainted), as section
+    6.7 says; `internal_test.go` `TestReadAllBytesPublishesEveryBoundOwner`
+    became `TestReadAllBytesRequiresOneExclusiveOwner`. New tests:
+    `store/reader_token_test.go` (B binds X with an exclusive, a
+    non-exclusive, and a contended bind, then ends: miss; a direct bind
+    of a derived reader: miss; own rebind, own derived bind, and own bind
+    of a reader with the same counter: valid; own contended bind: safe
+    miss; other owner, other entry, other store, new generation: miss;
+    B in its bind at the capture: no token; the reader entry list follows
+    kind changes), `request/reader_token_test.go`
+    (the same sequence, and a bind of B between the capture and the
+    revalidation with the test hook `revalidateHookForTest`, for
+    `RevalidateReader`, `ReadAllBytesForToken`, and
+    `CloneReaderBytesForToken`; own rebind keeps exclusivity),
+    `iast/io/readall_token_test.go` (woven: B binds and ends during the
+    reads of `io.ReadAll` on the root, through `bufio` and `TeeReader`;
+    late bind; second owner that stays live; own rebind during the
+    reads), `iobridge` `TestReadAllEndWithTokenThatIsNotOK`, and two
+    zero-allocation checks (gate off, active request). With no counter
+    comparison in `Revalidate`, the store, request, and woven root tests
+    fail; with no own-bind count, the own rebind tests fail.
+19. Review 2 of batch 1 (findings 1 to 6). One invariant replaces the
+    counter stamps of notes 14, 17, and 18: the creation baseline of rule
+    (f) (section 6.5, with invariant (I) and its proof).
+    - Finding 1 (HIGH, snapshot race). The lookup read the counter
+      BEFORE the owner scan, and `binding.own` later under the lock. A
+      token of A; B binds X and ends; the revalidation loads the counter
+      (with B); A rebinds X before the lookup locks A (own +1, counter +1
+      not loaded): the two changes were equal, and the bytes of B were
+      accepted. Fix: the counter is read UNDER the table read lock of the
+      owner, with the baseline. No retry is necessary: a stamped bind of
+      the owner holds the write lock from its add to its stamp. Test:
+      `TestReaderLookupReadsCounterUnderTableLock` (store, root and
+      derived; new test hook `hookLookupOwner` before the lookup locks an
+      owner, where A rebinds X; control with no bind of B: valid).
+    - Finding 2 (HIGH, bind of B before the capture). A binds X, B binds
+      X and ends, A takes a NEW token: the token compared only the
+      changes after the capture, thus it was valid. Fix: the baseline is
+      taken when the binding is made, not at the capture.
+      `bindingTable.readerExpect` replaces `binding.own`,
+      `OwnerRef.binds`, `OwnerRef.own`, `ReaderToken.Binds`,
+      `ReaderToken.Own`, `readerInputs.stamp`, and `inputProof`. New
+      `binding.demoted`: an entry that stops being a reader binding is
+      never exclusive again, so that a token or an input set that refers
+      to the entry cannot see a new binding with a new baseline. Tests:
+      `TestForeignBindBeforeCaptureIsSticky` (store: new token not OK,
+      wrapper built after B ended gets no exclusive proof, own rebinds
+      before B keep exclusivity, own rebind after B does not restore it),
+      `TestConcurrentOwnAndForeignRebindIsSticky` (store, barriers: A
+      stops in its rebind after its counter add, B binds X and ends in
+      this window; root and derived),
+      `TestWrapperBuiltAfterSecondOwnerEndedIsNotExclusive` (request, the
+      four propagation functions and the three token consumers). Changed
+      tests (they asserted the old behavior): the "new token after B
+      ended is valid" controls of `store/reader_token_test.go` and
+      `request/reader_token_test.go`, `TestDerivedBindingStaysNotExclusiveAfterSecondOwnerEnds`
+      (request: the input itself is not exclusive now),
+      `TestDerivedReaderRebindKeepsBothProofs` (a demoted entry is not
+      exclusive), `TestReaderBindCounterSlots` (a collision of B with a
+      root is a safe miss for the root too), `TestBindingSizes`, and the
+      footprint (owner 183,544, store 14,084,296).
+    - Finding 3 (MEDIUM, retarget callback panic). `retarget` recovered
+      the panic, and `CheckRead` removed the guard with no bit set. Fix:
+      the sticky `iobridge.RetargetLost` bit (rule (a2)), checked in
+      `request.lookupReader` for each ref with `ViaGuard`. Tests:
+      `TestRetargetCallbackFailureFailsClosed` (request; test hook
+      `retargetHookForTest` panics; the guarded wrapper and a `TeeReader`
+      over it are a miss for the three consumers; the body is not
+      changed) and `TestRetargetCallbackPanicDoesNotEscape` (iobridge:
+      the bit is set only after a failure).
+    - Finding 4 (test). `TestContentionDuringRevalidationIsMiss`
+      (request): the test seam `store.HoldBindingTableForTest` locks the
+      binding table of the owner, or of another active owner, during the
+      revalidation of a valid token: each consumer misses; the same token
+      is valid after the release.
+    - Finding 5 (docs). `iast/bufio/bufio.go` describes the current v1
+      behavior; the README lists the `io.ReadAll` misses.
+    - Finding 6 (known, deferred). Step 3a release requirement: the v1
+      `Document` callback (`CloneReaderBytes`, old fanout rule), with the
+      `io.MultiReader(bodyA, bodyB)` decoder exit test.
+    Revert evidence: with the counter load moved back before the owner
+    scan, `TestReaderLookupReadsCounterUnderTableLock` fails (all four
+    cases); with the old `binding.go` (token deltas), the item 1 and 2
+    store tests and the request test fail; with the old `retarget` and no
+    lookup check, the two item 3 tests fail.

@@ -8,7 +8,8 @@ package store
 // This file has the test seams of the store for tests in other packages. Only
 // tests call the functions that end in "ForTest". The linker removes them
 // from a program that does not call them. They use the testHook seam, which
-// the store reads already, so they add no cost to production code.
+// the store reads already, or the existing locks, so they add no cost to
+// production code.
 
 // ForceIndexFullForTest makes the index refuse each new root of each store:
 // the first adoption fails with an indexFull drop (plan runtime-operator-hooks,
@@ -20,4 +21,19 @@ func ForceIndexFullForTest() (restore func(), ok bool) {
 		return func() {}, false
 	}
 	return func() { testHook.CompareAndSwap(&hook, nil) }, true
+}
+
+// HoldBindingTableForTest takes the write lock of the binding table of owner,
+// until release is called. Then each reader lookup that reaches owner is
+// incomplete (plan encoding-json-v2, section 6.5, rule (b)). It returns a
+// release that does nothing when owner is nil or disabled.
+//
+// +checklocksignore: the lock is held until release.
+func HoldBindingTableForTest(owner *Owner) (release func()) {
+	if owner == nil || owner.Disabled() {
+		return func() {}
+	}
+	table := &owner.owner.bindings
+	table.mu.Lock()
+	return table.mu.Unlock
 }

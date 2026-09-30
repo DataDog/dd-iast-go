@@ -151,6 +151,18 @@ const (
 	// hookValidate runs in readers under rootsMu, for a root with
 	// indexed == true.
 	hookValidate
+	// hookReaderBind runs in bindValue under the binding table lock, after
+	// the reader bind counter add and before the table change (rule (e) of
+	// plan encoding-json-v2, section 6.5). The result is not used.
+	hookReaderBind
+	// hookInputCounters runs in a reader lookup after it copied the input
+	// identities of a derived exclusive binding, and before the input
+	// lookups (rule (e)). No lock is held. The result is not used.
+	hookInputCounters
+	// hookLookupOwner runs in a reader lookup for each active owner, with
+	// the owner slot as arg, before the lookup locks the owner (rule (f)).
+	// No lock is held. The result is not used.
+	hookLookupOwner
 )
 
 // testHook is a test seam. It is nil in production.

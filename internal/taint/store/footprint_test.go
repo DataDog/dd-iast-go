@@ -9,6 +9,6 @@ package store
 // amd64 have the same layout). TestStoreFootprint fails when a field change
 // changes them.
 const (
-	expectedOwnerSize = 183_376
-	expectedStoreSize = 14_040_760
+	expectedOwnerSize = 183_544
+	expectedStoreSize = 14_084_296
 )

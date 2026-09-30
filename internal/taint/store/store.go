@@ -103,8 +103,13 @@ type owner struct {
 	rootNext    uint16
 	rootFree    [MaxRootsPerOwner]uint16
 	rootFreeN   uint16
-	charged     atomic.Int64
-	rootCount   atomic.Int32
+	// retargeted is the sticky bit of plan encoding-json-v2, section 6.5,
+	// rule (a2). A per-Read guard sets it when a guarded reader of this
+	// owner gets a new target. Acquire clears it for each new generation.
+	// It uses the padding before charged.
+	retargeted atomic.Bool
+	charged    atomic.Int64
+	rootCount  atomic.Int32
 	// extending is true while an extension of a root of this owner runs
 	// (plan section 5.2.2, "Extension"). It is guarded by rootsMu.
 	extending      bool
@@ -146,6 +151,13 @@ type dropCounters struct {
 	// dupOwner counts lookup refs that were skipped because the snapshot
 	// already had a contribution of the same owner.
 	dupOwner atomic.Uint64
+	// guardFull counts guarded reader wrappers that got no Read guard entry
+	// because the guard table was full (plan encoding-json-v2, section 6.6).
+	// Such a wrapper gets a non-exclusive binding.
+	guardFull atomic.Uint64
+	// retargets counts the Read guard checks that found a new target of a
+	// guarded reader of this owner (plan encoding-json-v2, section 6.6).
+	retargets atomic.Uint64
 }
 
 // Counters is a point-in-time loss snapshot.
@@ -164,6 +176,10 @@ type Counters struct {
 	PreContention uint64
 	PreStale      uint64
 	DupOwner      uint64
+	// GuardFull counts guarded wrappers with no Read guard entry.
+	GuardFull uint64
+	// Retargets counts the retargets that a Read guard found.
+	Retargets uint64
 }
 
 // Stats is a bounded store-health snapshot.
@@ -211,6 +227,10 @@ type Store struct {
 	overflowMu   sync.Mutex
 	index        [IndexShards]indexShard
 	filter       runtimebridge.Filter
+	// readerBinds are the reader bind counters of plan encoding-json-v2,
+	// section 6.5, rule (f). Each reader bind attempt of any owner adds 1 to
+	// the counter of its object (readerBindSlot). A counter never decreases.
+	readerBinds [readerBindSlots]atomic.Uint64
 }
 
 // addIndexedRoots changes the indexed-root counter and its mirror, the
@@ -329,5 +349,6 @@ func snapshotDrops(d *dropCounters) Counters {
 		Disabled: d.disabled.Load(), OneByte: d.oneByte.Load(), Fanout: d.fanout.Load(),
 		IndexFull: d.indexFull.Load(), PreContention: d.preContention.Load(),
 		PreStale: d.preStale.Load(), DupOwner: d.dupOwner.Load(),
+		GuardFull: d.guardFull.Load(), Retargets: d.retargets.Load(),
 	}
 }

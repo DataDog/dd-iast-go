@@ -73,7 +73,8 @@ func EagerHTTP(
 
 	if owner := analysis.storeOwner(); owner != nil {
 		store.BindObjectValue(owner, urlObject, store.BindingURL)
-		store.BindObjectValue(owner, bodyObject, store.BindingReader)
+		// The request body produces only data of this request.
+		store.BindReaderValue(owner, bodyObject, true, false)
 	}
 	return analysis.taintHeaders(headers)
 }

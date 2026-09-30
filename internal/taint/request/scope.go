@@ -140,7 +140,15 @@ func FinishContext(ctx context.Context, created bool) {
 
 func init() {
 	httpbridge.Register(BeginServerContext, FinishContext, EagerHTTP)
-	iobridge.Register(PropagateReader, ReadAllBytes)
+	iobridge.Register(iobridge.Callbacks{
+		Propagate:        PropagateReader,
+		PropagateShared:  PropagateSharedReader,
+		PropagateJoin:    PropagateJoinedReader,
+		PropagateGuarded: PropagateGuardedReader,
+		Retarget:         retargetReader,
+		Owner:            readAllOwner,
+		ReadAll:          readAllEnd,
+	})
 	httpbridge.RegisterLazy(
 		ManageForm, ManageParameter, ManageMultipartParameter,
 		ManagePathParameter, ManageCookie, ManageMultipart,

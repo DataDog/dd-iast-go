@@ -105,7 +105,10 @@ func TestManagedLazyMapIsIdempotentAndAllocationFree(t *testing.T) {
 	analysis.Finish()
 }
 
-func TestReadAllBytesPublishesEveryBoundOwner(t *testing.T) {
+// TestReadAllBytesRequiresOneExclusiveOwner checks plan encoding-json-v2,
+// section 6.7: an io.ReadAll result is adopted only by the one exclusive owner
+// of its reader. A reader with two owners is a miss for both.
+func TestReadAllBytesRequiresOneExclusiveOwner(t *testing.T) {
 	previousEnabled := config.Enabled
 	previousSampling := config.RequestSamplingPct
 	previousMax := config.MaxConcurrentRequests
@@ -119,29 +122,37 @@ func TestReadAllBytesPublishesEveryBoundOwner(t *testing.T) {
 	})
 	firstCtx, firstScope, created := Begin(context.Background())
 	require.True(t, created)
+	t.Cleanup(firstScope.Finish)
 	secondCtx, secondScope, created := Begin(context.Background())
 	require.True(t, created)
-	reader := new(int)
-	require.True(t, BindReader(firstCtx, reader))
-	require.True(t, BindReader(secondCtx, reader))
-	data := make([]byte, 4, 8)
-	copy(data, "body")
-	ReadAllBytes(reader, data)
+	t.Cleanup(secondScope.Finish)
 	firstAnalysis, ok := firstScope.Analysis()
 	require.True(t, ok)
 	secondAnalysis, ok := secondScope.Analysis()
 	require.True(t, ok)
+
+	shared := new(int)
+	require.True(t, BindReader(firstCtx, shared))
+	require.True(t, BindReader(secondCtx, shared))
+	sharedData := make([]byte, 6, 8)
+	copy(sharedData, "shared")
+	ReadAllBytes(shared, sharedData)
+	require.Zero(t, firstAnalysis.SourceCount())
+	require.Zero(t, secondAnalysis.SourceCount())
+
+	reader := new(int)
+	require.True(t, BindReader(firstCtx, reader))
+	data := make([]byte, 4, 8)
+	copy(data, "body")
+	ReadAllBytes(reader, data)
 	require.Equal(t, 1, firstAnalysis.SourceCount())
-	require.Equal(t, 1, secondAnalysis.SourceCount())
+	require.Zero(t, secondAnalysis.SourceCount())
 	key, _ := store.BytesKey(data)
 	var snapshot store.Snapshot
 	require.True(t, firstAnalysis.manager.store.Lookup(key, &snapshot))
-	require.Equal(t, 2, snapshot.Len())
+	require.Equal(t, 1, snapshot.Len())
 
 	firstScope.Finish()
-	require.True(t, secondAnalysis.manager.store.Lookup(key, &snapshot))
-	require.Equal(t, 1, snapshot.Len())
-	secondScope.Finish()
 	if secondAnalysis.manager.store.Lookup(key, &snapshot) {
 		require.Zero(t, snapshot.Len())
 	}

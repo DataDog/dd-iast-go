@@ -50,6 +50,7 @@ func (s *Store) Acquire() *Owner {
 		record.writerDirty.Store(false)
 		record.writerVersion.Add(1)
 		record.writersMu.Unlock() // +checklocksforce: TryLock.
+		record.retargeted.Store(false)
 		generation := record.generation.Add(1)
 		record.id.Store(s.nextOwnerID.Add(1))
 		record.charged.Store(0)
@@ -111,6 +112,14 @@ func (o *Owner) RecordBytesDrop() {
 func (o *Owner) RecordFanoutDrop() {
 	if o != nil && !o.Disabled() {
 		o.owner.drops.fanout.Add(1)
+	}
+}
+
+// RecordGuardDrop records one guarded reader wrapper that got no Read guard
+// entry, because the guard table was full.
+func (o *Owner) RecordGuardDrop() {
+	if o != nil && !o.Disabled() {
+		o.owner.drops.guardFull.Add(1)
 	}
 }
 
@@ -238,4 +247,6 @@ func resetDropCounters(c *dropCounters) {
 	c.preContention.Store(0)
 	c.preStale.Store(0)
 	c.dupOwner.Store(0)
+	c.guardFull.Store(0)
+	c.retargets.Store(0)
 }
