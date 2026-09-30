@@ -1,0 +1,1801 @@
+# Unless explicitly stated otherwise all files in this repository are licensed
+# under the Apache License Version 2.0.
+# This product includes software developed at Datadog (https://www.datadoghq.com/).
+# Copyright 2026-present Datadog, Inc.
+---
+# $schema: https://datadoghq.dev/orchestrion/schema.json
+meta:
+  name: github.com/DataDog/dd-iast-go/internal/taint/heapbits
+  description: |-
+    Allocator-backed taint bits: one bit for each heap byte, stored next to the
+    Go allocator metadata. See _docs/plans/allocator-taint-bits.md.
+
+aspects:
+  # 1. Taint bits (1 bit for each heap byte), in 16 KiB chunks that cover
+  #    128 KiB of heap each. Each heap arena has a lazily allocated directory
+  #    of chunks (same idea as runtime.checkmarksMap in heapArena.checkmarks).
+  #    Directories and chunks come from 1 MiB slabs, inside a total budget.
+  - id: heapArena taint bitmap
+    join-point:
+      struct-definition: runtime.heapArena
+    advice:
+      - add-struct-field:
+          name: __dd_taint
+          type: uintptr
+      - inject-declarations:
+          imports:
+            atomic: internal/runtime/atomic
+            sys: internal/runtime/sys
+            unsafe: unsafe
+          template: |-
+            // Storage layout
+            //
+            // A chunk is 2048 words (16 KiB) of bits: bit k%64 of word k/64
+            // is the bit of byte k of a 128 KiB region of the heap, aligned
+            // to 128 KiB. All accesses use 64-bit words, so the byte order
+            // does not matter.
+            //
+            // A slot is a uintptr (only accessed with atomics): 0 = empty,
+            // 1 = claimed (an allocation is in progress; readers treat it as
+            // empty), other = 2 + slabIndex*64 + chunkIndex. There are no
+            // raw pointers in slots. heapArena.__dd_taint is the slot of the
+            // directory of the arena; a directory is one chunk that holds
+            // the slots of the chunks of the arena. Directories are never
+            // given back, so the directory slot holds the address of the
+            // directory (a uintptr, at least 4 KiB aligned) in place of a
+            // code: one decode less on the read path.
+            //
+            // A slab is 1 MiB (64 chunks) from a direct mmap. The slab
+            // descriptors are permanent: base, and a mask of free chunks
+            // (1 = free). Slabs are never unmapped. The budget counts the
+            // mapped slabs, and it is reserved before each mmap.
+            const (
+              __dd_taint_chunkWords = 2048
+              __dd_taint_chunkBytes = __dd_taint_chunkWords * 8
+              __dd_taint_chunkHeap  = __dd_taint_chunkWords * 64 // heap bytes for one chunk
+              __dd_taint_slabChunks = 64
+              __dd_taint_slabBytes  = __dd_taint_slabChunks * __dd_taint_chunkBytes
+              __dd_taint_maxSlabs   = 1024 // maximum budget: 1 GiB
+              __dd_taint_dirSlots   = heapArenaBytes / __dd_taint_chunkHeap
+              __dd_taint_maxSpanBytes = 64 << 20 // largest taintable span
+            )
+
+            // A directory must fit in one chunk, and an arena must be a
+            // whole number of chunks.
+            var _ [__dd_taint_chunkBytes - __dd_taint_dirSlots*8]byte
+            var _ [1 - heapArenaBytes%__dd_taint_chunkHeap]byte
+
+            type __dd_taintChunk [__dd_taint_chunkWords]uint64
+            type __dd_taintDir [__dd_taint_dirSlots]uintptr
+
+            type __dd_taintSlab struct {
+              base  uintptr
+              free  uint64 // 1 = free
+              dirty uint64 // 1 = recycled: must be zeroed before use
+            }
+
+            var (
+              __dd_taint_slabs  [__dd_taint_maxSlabs]__dd_taintSlab
+              __dd_taint_nslabs uint32  // published descriptors
+              __dd_taint_refill uint32  // 1 while a goroutine maps a slab
+              __dd_taint_used   uintptr // mapped and reserved bytes
+              __dd_taint_usedmax uintptr // high-water mark of __dd_taint_used
+              __dd_taint_accounted uint64 // bytes charged to the runtime memory stats
+              __dd_taint_recycled uint64 // chunks given back by the sweeper
+              __dd_taint_budget uintptr = 64 << 20
+
+              // Drops (an operation that could not get storage), by reason.
+              __dd_taint_drops [6]uint64
+            )
+
+            const (
+              __dd_taint_dropBudget     = 0 // the budget is used
+              __dd_taint_dropRefillBusy = 1 // another goroutine maps a slab
+              __dd_taint_dropContention = 2 // too many failed CAS on free masks
+              __dd_taint_dropMmap       = 3 // the OS refused the memory
+              __dd_taint_dropSlotBusy   = 4 // another goroutine fills the slot
+              __dd_taint_dropSpan       = 5 // the span is larger than 64 MiB
+            )
+
+            //go:nosplit
+            func __dd_taint_drop(reason int) {
+              if reason >= 0 && reason < len(__dd_taint_drops) {
+                atomic.Xadd64(&__dd_taint_drops[reason], 1)
+              }
+            }
+
+            // __dd_taint_chunkaddr decodes a slot value. It returns 0 for an
+            // empty or claimed slot.
+            //
+            //go:nosplit
+            func __dd_taint_chunkaddr(v uintptr) uintptr {
+              if v < 2 {
+                return 0
+              }
+              c := v - 2
+              si, ci := c/__dd_taint_slabChunks, c%__dd_taint_slabChunks
+              if si >= __dd_taint_maxSlabs {
+                return 0
+              }
+              base := atomic.Loaduintptr(&__dd_taint_slabs[si].base)
+              if base == 0 {
+                return 0
+              }
+              return base + ci*__dd_taint_chunkBytes
+            }
+
+            // __dd_taint_chunk returns the chunk of the heap address p, or nil
+            // (no storage: no taint). It never allocates.
+            //
+            //go:nosplit
+            func __dd_taint_chunk(p uintptr) *__dd_taintChunk {
+              ha := __dd_taint_arena(p)
+              if ha == nil {
+                return nil
+              }
+              d := atomic.Loaduintptr(&ha.__dd_taint)
+              if d < 2 {
+                return nil
+              }
+              dir := (*__dd_taintDir)(unsafe.Pointer(d))
+              ci := ((p - arenaBaseOffset) / __dd_taint_chunkHeap) % __dd_taint_dirSlots
+              c := __dd_taint_chunkaddr(atomic.Loaduintptr(&dir[ci]))
+              if c == 0 {
+                return nil
+              }
+              return (*__dd_taintChunk)(unsafe.Pointer(c))
+            }
+
+            //go:nosplit
+            func __dd_taint_account(n uintptr) {
+              memstats.other_sys.add(int64(n))
+              gcController.mappedReady.Add(int64(n))
+              atomic.Xadd64(&__dd_taint_accounted, int64(n))
+            }
+
+            // Test knobs of the allocator: __dd_taint_failalloc makes the mmap
+            // fail; __dd_taint_parkrefill makes the refill owner wait (with
+            // Gosched) after its reservation, until the knob is cleared;
+            // __dd_taint_parkslot makes the owner of a claimed slot wait
+            // before it gets its chunk.
+            var __dd_taint_failalloc uint32
+            var __dd_taint_parkrefill uint32
+            var __dd_taint_parkslot uint32
+            var __dd_taint_parkscan uint32 // one-shot: 1 = armed, 2 = a goroutine waits
+            var __dd_taint_parked uint32 // 1: refill owner waits, 2: slot owner waits, 3: a goroutine waits after its scan
+
+            // __dd_taint_refillslab maps a new slab and returns the code of its
+            // first chunk (owned by the caller), or 0. Only the refill owner
+            // calls it.
+            func __dd_taint_refillslab() uintptr {
+              n := atomic.Load(&__dd_taint_nslabs)
+              if n >= __dd_taint_maxSlabs {
+                __dd_taint_drop(__dd_taint_dropBudget)
+                return 0
+              }
+              for {
+                u := atomic.Loaduintptr(&__dd_taint_used)
+                b := atomic.Loaduintptr(&__dd_taint_budget)
+                if u+__dd_taint_slabBytes < u || u+__dd_taint_slabBytes > b {
+                  __dd_taint_drop(__dd_taint_dropBudget)
+                  return 0
+                }
+                if atomic.Casuintptr(&__dd_taint_used, u, u+__dd_taint_slabBytes) {
+                  // High-water mark of the budget counter (for tests).
+                  for m := atomic.Loaduintptr(&__dd_taint_usedmax); m < u+__dd_taint_slabBytes; m = atomic.Loaduintptr(&__dd_taint_usedmax) {
+                    if atomic.Casuintptr(&__dd_taint_usedmax, m, u+__dd_taint_slabBytes) {
+                      break
+                    }
+                  }
+                  break
+                }
+              }
+              if __dd_taint_testing && atomic.Load(&__dd_taint_parkrefill) != 0 {
+                atomic.Store(&__dd_taint_parked, 1)
+                for atomic.Load(&__dd_taint_parkrefill) != 0 {
+                  Gosched()
+                }
+                atomic.Store(&__dd_taint_parked, 0)
+              }
+              var base unsafe.Pointer
+              if !__dd_taint_testing || atomic.Load(&__dd_taint_failalloc) == 0 {
+                base = __dd_taint_osalloc(__dd_taint_slabBytes)
+              }
+              if base == nil {
+                atomic.Xadduintptr(&__dd_taint_used, ^uintptr(__dd_taint_slabBytes-1))
+                __dd_taint_drop(__dd_taint_dropMmap)
+                return 0
+              }
+              __dd_taint_account(__dd_taint_slabBytes)
+              d := &__dd_taint_slabs[n]
+              atomic.Store64(&d.free, ^uint64(0)&^1)
+              atomic.Storeuintptr(&d.base, uintptr(base))
+              atomic.Store(&__dd_taint_nslabs, n+1)
+              return 2 + uintptr(n)*__dd_taint_slabChunks
+            }
+
+            // __dd_taint_zero zeroes the chunk of code, in batches of 512
+            // words with a checkpoint between them. It writes only the words
+            // that are not 0.
+            func __dd_taint_zero(code uintptr) {
+              a := __dd_taint_chunkaddr(code)
+              if a == 0 {
+                return
+              }
+              c := (*__dd_taintChunk)(unsafe.Pointer(a))
+              for w := 0; w < __dd_taint_chunkWords; w++ {
+                if w > 0 && w%512 == 0 {
+                  __dd_taint_checkpoint()
+                }
+                if atomic.Load64(&c[w]) != 0 {
+                  atomic.Store64(&c[w], 0)
+                }
+              }
+            }
+
+            // __dd_taint_scanfree takes a free chunk of the published slabs
+            // and returns its code, or 0. fails counts the failed CAS; after
+            // 4 of them, it gives up (-1 in *fails).
+            func __dd_taint_scanfree(fails *int) uintptr {
+              n := atomic.Load(&__dd_taint_nslabs)
+              for si := uint32(0); si < n && si < __dd_taint_maxSlabs; si++ {
+                d := &__dd_taint_slabs[si]
+                for {
+                  f := atomic.Load64(&d.free)
+                  if f == 0 {
+                    break
+                  }
+                  bit := f & -f
+                  if atomic.Cas64(&d.free, f, f&^bit) {
+                    code := 2 + uintptr(si)*__dd_taint_slabChunks + uintptr(sys.TrailingZeros64(bit))
+                    if atomic.Load64(&d.dirty)&bit != 0 {
+                      // A recycled chunk: zero it before use (the caller
+                      // owns it; it is not published yet).
+                      __dd_taint_zero(code)
+                      atomic.And64(&d.dirty, ^bit)
+                    }
+                    return code
+                  }
+                  if *fails++; *fails >= 4 {
+                    *fails = -1
+                    return 0
+                  }
+                }
+              }
+              return 0
+            }
+
+            // __dd_taint_getchunk returns the code of a free chunk (owned by
+            // the caller), or 0 (drop). Free chunks in the slabs come first;
+            // a new slab is mapped only when there is none. It never waits.
+            func __dd_taint_getchunk() uintptr {
+              fails := 0
+              if code := __dd_taint_scanfree(&fails); code != 0 || fails < 0 {
+                if fails < 0 {
+                  __dd_taint_drop(__dd_taint_dropContention)
+                }
+                return code
+              }
+              if __dd_taint_testing && atomic.Cas(&__dd_taint_parkscan, 1, 2) {
+                // One-shot knob: the first goroutine that gets here waits.
+                atomic.Store(&__dd_taint_parked, 3)
+                for atomic.Load(&__dd_taint_parkscan) == 2 {
+                  Gosched()
+                }
+                atomic.Store(&__dd_taint_parked, 0)
+              }
+              if !atomic.Cas(&__dd_taint_refill, 0, 1) {
+                __dd_taint_drop(__dd_taint_dropRefillBusy)
+                return 0
+              }
+              // Another goroutine can have mapped a slab between the scan and
+              // the flag: scan again before a new mapping.
+              code := __dd_taint_scanfree(&fails)
+              if code == 0 && fails >= 0 {
+                code = __dd_taint_refillslab()
+              } else if fails < 0 {
+                __dd_taint_drop(__dd_taint_dropContention)
+              }
+              atomic.Store(&__dd_taint_refill, 0)
+              return code
+            }
+
+            // __dd_taint_slotfill returns the chunk of a slot, and gets one if
+            // the slot is empty. It returns 0 (drop) when no chunk can be
+            // obtained, or when another goroutine fills the slot (no wait).
+            // With raw true (directory slots), the slot holds the address of
+            // the chunk, else its code.
+            func __dd_taint_slotfill(slot *uintptr, raw bool) uintptr {
+              decode := func(v uintptr) uintptr {
+                if raw {
+                  if v < 2 {
+                    return 0
+                  }
+                  return v
+                }
+                return __dd_taint_chunkaddr(v)
+              }
+              v := atomic.Loaduintptr(slot)
+              if v >= 2 {
+                return decode(v)
+              }
+              if v == 1 || !atomic.Casuintptr(slot, 0, 1) {
+                if a := decode(atomic.Loaduintptr(slot)); a != 0 {
+                  return a
+                }
+                __dd_taint_drop(__dd_taint_dropSlotBusy)
+                return 0
+              }
+              if __dd_taint_testing && atomic.Load(&__dd_taint_parkslot) != 0 {
+                atomic.Store(&__dd_taint_parked, 2)
+                for atomic.Load(&__dd_taint_parkslot) != 0 {
+                  Gosched()
+                }
+                atomic.Store(&__dd_taint_parked, 0)
+              }
+              code := __dd_taint_getchunk()
+              if code == 0 {
+                atomic.Storeuintptr(slot, 0)
+                return 0
+              }
+              a := __dd_taint_chunkaddr(code)
+              if raw {
+                atomic.Storeuintptr(slot, a)
+              } else {
+                atomic.Storeuintptr(slot, code)
+              }
+              return a
+            }
+
+            // __dd_taint_chunkfill returns the chunk of the heap address p,
+            // and gets the directory and the chunk if they are missing.
+            func __dd_taint_chunkfill(p uintptr) *__dd_taintChunk {
+              ha := __dd_taint_arena(p)
+              if ha == nil {
+                return nil
+              }
+              d := __dd_taint_slotfill(&ha.__dd_taint, true)
+              if d == 0 {
+                return nil
+              }
+              dir := (*__dd_taintDir)(unsafe.Pointer(d))
+              ci := ((p - arenaBaseOffset) / __dd_taint_chunkHeap) % __dd_taint_dirSlots
+              c := __dd_taint_slotfill(&dir[ci], false)
+              if c == 0 {
+                return nil
+              }
+              return (*__dd_taintChunk)(unsafe.Pointer(c))
+            }
+
+            // __dd_taint_setbudget sets the budget in bytes (rounded down to
+            // whole slabs, at most 1 GiB). It fails after the first slab.
+            func __dd_taint_setbudget(bytes uintptr) bool {
+              if __dd_taint_osalloc == nil {
+                return false // feature off
+              }
+              if bytes > __dd_taint_maxSlabs*__dd_taint_slabBytes {
+                bytes = __dd_taint_maxSlabs * __dd_taint_slabBytes
+              }
+              bytes -= bytes % __dd_taint_slabBytes
+              if !atomic.Cas(&__dd_taint_refill, 0, 1) {
+                return false
+              }
+              ok := atomic.Load(&__dd_taint_nslabs) == 0 && atomic.Loaduintptr(&__dd_taint_used) == 0
+              if ok {
+                atomic.Storeuintptr(&__dd_taint_budget, bytes)
+              }
+              atomic.Store(&__dd_taint_refill, 0)
+              return ok
+            }
+
+            // Compile-time checks: a change of these runtime internals in a
+            // new Go release makes the woven runtime fail to compile (loud).
+            var _ func(uintptr) *heapArena = heapArenaOf
+            var _ func(uintptr) *mspan = spanOfHeap
+            var _ func(uintptr) arenaIdx = arenaIndex
+            var _ func(arenaIdx) uintptr = arenaBase
+            var _ func(*byte, uintptr) *byte = addb
+            var _ = func() { memstats.other_sys.add(0); gcController.mappedReady.Add(0) }
+            var _ func(*sweepLocked, bool) bool = (*sweepLocked).sweep
+            var _ func(unsafe.Pointer, uintptr, bool) bool = freegc
+            var _ = func(s *mspan) (uint16, uintptr, *special, bool, uintptr) {
+              return s.nelems, s.elemsize, s.specials, s.isUserArenaChunk, s.limit
+            }
+            var _ = func(s *mspan, i uintptr) *uint8 { return s.markBitsForIndex(i).bytep }
+            var _ = func(sp *special) (uintptr, byte, *special) { return sp.offset, sp.kind, sp.next }
+            var _ byte = _KindSpecialFinalizer
+            var _ bool = runtimeFreegcEnabled
+            var _ bool = sizeSpecializedMallocEnabled
+            var _ func(uintptr) bool = reusableSize
+            var _ = func(s *mspan, p uintptr) uintptr { return s.objIndex(p) + s.startAddr + s.npages*pageSize }
+            var _ = func(gp *g) (bool, uintptr, uintptr, *m) { return gp.preempt, gp.stack.lo, gp.stack.hi, gp.m }
+            var _ = func(mp *m) (*g, int32, int32, string) { return mp.curg, mp.locks, mp.mallocing, mp.preemptoff }
+            var _ func() = Gosched
+            var _ func() int64 = nanotime
+            var _ func(uint32) = procyield
+
+            // __dd_taint_osalloc is set by an init function that is injected
+            // next to the OS-specific mmap. It never exits the process.
+            var __dd_taint_osalloc func(n uintptr) unsafe.Pointer
+
+            // Counters for tests.
+            var __dd_taint_sweeps uint64
+
+            // Test knobs (negative controls only): 1 disables the sweep hook,
+            // the freegc hook, or the finalizer check of the sweep hook.
+            var __dd_taint_nosweep, __dd_taint_nofreegc, __dd_taint_nofinskip uint32
+
+            // __dd_taint_testing is true only when the program links package
+            // heapbits/heapbitstest, which defines the symbol with the value
+            // true. Production programs do not link it, so the test knobs
+            // below do nothing there.
+            //
+            //go:linkname __dd_taint_testing __dd_iast_heapbits_testing.enabled
+            var __dd_taint_testing bool
+
+            // Entry points and workers
+            //
+            // The Go wrappers pass uintptr values (so that the values do not
+            // escape). A uintptr is not updated when the stack moves. Thus
+            // every entry point is nosplit up to the "is this heap memory?"
+            // decision (the classifier): a stack address is refused before
+            // the stack can move. After the decision, the range is heap
+            // memory, which never moves, and the Go wrapper keeps it live; the
+            // entry point then calls a normal function (the worker).
+            //
+            // A long loop in package runtime is not an async safe point. The
+            // workers count work units and call __dd_taint_checkpoint every
+            // 512 units, so that a long operation cannot delay a
+            // stop-the-world. The sweep hook never yields.
+
+            // __dd_taint_checkpoint yields the processor when the scheduler
+            // asked for it and when the context permits it.
+            func __dd_taint_checkpoint() {
+              gp := getg()
+              if !gp.preempt && !(__dd_taint_testing && atomic.Load(&__dd_taint_forceyield) != 0) {
+                return
+              }
+              mp := gp.m
+              if gp != mp.curg || mp.locks != 0 || mp.mallocing != 0 || mp.preemptoff != "" {
+                return
+              }
+              // The same conditions as canPreemptM, and a running goroutine.
+              if mp.p == 0 || mp.p.ptr().status != _Prunning || readgstatus(gp)&^_Gscan != _Grunning {
+                return
+              }
+              if __dd_taint_testing {
+                atomic.Xadd64(&__dd_taint_yields, 1)
+              }
+              Gosched()
+            }
+
+            // __dd_taint_recycle gives back the chunk of the chunk-aligned heap
+            // address p to its slab (the sweeper calls it for a chunk that is
+            // fully inside a dead object; no live object can use it). The
+            // chunk leaves the directory first, then its dirty bit and its
+            // free bit are set: the next owner zeroes it before use. It does
+            // not loop (Or64 is one instruction on amd64 and on arm64 with
+            // LSE atomics, the only arm64 CPUs where the feature is on).
+            //
+            //go:nowritebarrierrec
+            //
+            // The chunk goes back to its slab later, in __dd_taint_recycleFlush:
+            // __dd_taint_recycle only removes it from the directory and adds
+            // it to the pending set r. Thus the shared slab words and the
+            // counter get one atomic operation for each run of chunks of the
+            // same slab and one counter add for each call of
+            // __dd_taint_apply, not 3 for each chunk (with 2 sweepers on 512
+            // chunks each, the contention on these cache lines took more
+            // than 20 µs).
+            func __dd_taint_recycle(p uintptr, r *__dd_taintPending) {
+              ha := __dd_taint_arena(p)
+              if ha == nil {
+                return
+              }
+              d := atomic.Loaduintptr(&ha.__dd_taint)
+              if d < 2 {
+                return
+              }
+              dir := (*__dd_taintDir)(unsafe.Pointer(d))
+              slot := &dir[((p-arenaBaseOffset)/__dd_taint_chunkHeap)%__dd_taint_dirSlots]
+              v := atomic.Loaduintptr(slot)
+              if v < 2 {
+                return
+              }
+              c := v - 2
+              si, ci := c/__dd_taint_slabChunks, c%__dd_taint_slabChunks
+              if si >= __dd_taint_maxSlabs {
+                return
+              }
+              atomic.Storeuintptr(slot, 0)
+              if r.bits != 0 && r.slab != si {
+                __dd_taint_recycleFlush(r, false)
+              }
+              r.slab = si
+              r.bits |= uint64(1) << ci
+              r.n++
+            }
+
+            // __dd_taintPending is a set of recycled chunks of one slab that
+            // are not yet free (see __dd_taint_recycle), and the count of
+            // all the recycled chunks that the counter does not have yet.
+            type __dd_taintPending struct {
+              slab uintptr
+              bits uint64
+              n    uint64
+            }
+
+            // __dd_taint_recycleFlush gives the pending chunks back to their
+            // slab: dirty first, then free (a chunk that is free is always
+            // marked dirty; see __dd_taint_refill). With final true (the end
+            // of __dd_taint_apply), it also adds the count of all the
+            // recycled chunks to the counter.
+            func __dd_taint_recycleFlush(r *__dd_taintPending, final bool) {
+              if r.bits != 0 {
+                sd := &__dd_taint_slabs[r.slab%__dd_taint_maxSlabs]
+                atomic.Or64(&sd.dirty, r.bits)
+                atomic.Or64(&sd.free, r.bits)
+                r.bits = 0
+              }
+              if final && r.n != 0 {
+                atomic.Xadd64(&__dd_taint_recycled, int64(r.n))
+                r.n = 0
+              }
+            }
+
+            // __dd_taint_apply sets (set=true) or clears the bits of [p, p+n).
+            // For set, all chunks must exist (see __dd_taint_prepare); for
+            // clear, missing chunks are skipped, and a word is written only
+            // if it has a bit to clear (no new dirty pages). With recycle
+            // true (sweep hook only, for dead memory), a chunk that is fully
+            // inside the range is given back to its slab in place of a clear
+            // of its 2048 words. All accesses to bitmap words are atomic:
+            // partial words use Or64/And64 (a neighbour object can share the
+            // word), full words use Store64. With yield true (worker use only), it calls
+            // __dd_taint_checkpoint every 512 work units (one for each chunk
+            // and for each word).
+            func __dd_taint_apply(p, n uintptr, set, yield, recycle bool) {
+              end := p + n
+              units := 0
+              var pending __dd_taintPending
+              for p < end {
+                if yield {
+                  if units++; units >= 512 {
+                    units = 0
+                    __dd_taint_checkpoint()
+                  }
+                }
+                cbase := p &^ (__dd_taint_chunkHeap - 1)
+                cend := cbase + __dd_taint_chunkHeap
+                if cend > end || cend == 0 {
+                  cend = end
+                }
+                if recycle && p == cbase && cend-cbase == __dd_taint_chunkHeap {
+                  // The chunk is fully inside dead memory: give it back.
+                  __dd_taint_recycle(p, &pending)
+                  p = cend
+                  continue
+                }
+                if c := __dd_taint_chunk(p); c != nil {
+                  b0, b1 := p-cbase, cend-cbase
+                  w0, w1 := b0/64, (b1-1)/64
+                  for w := w0; w <= w1; w++ {
+                    if yield {
+                      if units++; units >= 512 {
+                        units = 0
+                        __dd_taint_checkpoint()
+                      }
+                    }
+                    mask := ^uint64(0)
+                    if w == w0 {
+                      mask &= ^uint64(0) << (b0 % 64)
+                    }
+                    if w == w1 {
+                      mask &= ^uint64(0) >> (63 - (b1-1)%64)
+                    }
+                    wp := &c[w&(__dd_taint_chunkWords-1)]
+                    switch {
+                    case mask == ^uint64(0) && set:
+                      atomic.Store64(wp, ^uint64(0))
+                    case set:
+                      atomic.Or64(wp, mask)
+                    case atomic.Load64(wp)&mask == 0:
+                      // Nothing to clear: do not write.
+                    case mask == ^uint64(0):
+                      atomic.Store64(wp, 0)
+                    default:
+                      atomic.And64(wp, ^mask)
+                    }
+                  }
+                }
+                p = cend
+              }
+              __dd_taint_recycleFlush(&pending, true)
+            }
+
+            // __dd_taint_probe is the stack probe (tests only): 1 when the
+            // last classified address was in the stack of the current
+            // goroutine, 2 when it was not.
+            var __dd_taint_probe uint32
+
+            // Test knobs: __dd_taint_movestack makes the entry points call a
+            // function with a stack check before the classifier (negative
+            // control of the stack probe); __dd_taint_forceyield makes every
+            // checkpoint yield; __dd_taint_yields counts the yields.
+            var __dd_taint_movestack uint32
+
+            // __dd_taint_slowpath (test knob) makes __dd_taint_any use its
+            // slow path when the arena has no bitmap.
+            var __dd_taint_slowpath uint32
+
+            // __dd_taint_slowcount counts the calls of __dd_taint_any that
+            // reached the classification of the slow path (tests only).
+            var __dd_taint_slowcount uint64
+
+            // __dd_taint_workerprobe is like __dd_taint_probe, at the start of
+            // each worker (tests only). A worker must never run for a stack
+            // address: for a stack address, the value must stay 0.
+            var __dd_taint_workerprobe uint32
+            var __dd_taint_forceyield uint32
+            var __dd_taint_yields uint64
+
+            // __dd_taint_classifyprobe runs at the start of each entry point,
+            // only when the program links heapbitstest.
+            //
+            //go:nosplit
+            func __dd_taint_classifyprobe(p uintptr) {
+              if atomic.Load(&__dd_taint_movestack) != 0 {
+                // Exactly one stack check: with mayMoreStackMove, one move.
+                // (Two moves can give back the first stack: the stack cache
+                // reuses the last freed stack.)
+                __dd_taint_growstack(0)
+              }
+              gp := getg()
+              if p >= gp.stack.lo && p < gp.stack.hi {
+                atomic.Store(&__dd_taint_probe, 1)
+              } else {
+                atomic.Store(&__dd_taint_probe, 2)
+              }
+            }
+
+            // __dd_taint_probeworker runs at the start of each worker, only
+            // when the program links heapbitstest.
+            //
+            //go:nosplit
+            func __dd_taint_probeworker(p uintptr) {
+              gp := getg()
+              if p >= gp.stack.lo && p < gp.stack.hi {
+                atomic.Store(&__dd_taint_workerprobe, 1)
+              } else {
+                atomic.Store(&__dd_taint_workerprobe, 2)
+              }
+            }
+
+            // __dd_taint_growstack has a stack check (it is not a leaf), so
+            // that -d=maymorestack=runtime.mayMoreStackMove moves the stack
+            // when it is called.
+            //
+            //go:noinline
+            func __dd_taint_growstack(n int) int {
+              if n <= 0 {
+                return 0
+              }
+              return __dd_taint_growstack(n-1) + 1
+            }
+
+            // __dd_taint_classify returns the span of [p, p+n) when the range
+            // is inside one allocation slot of an in-use heap span, else nil.
+            // The check makes sure that a range cannot change the bits of a
+            // neighbour slot in the same span. Several tiny allocations can
+            // share one 16-byte slot: inside it, the caller must give a
+            // correct range.
+            //
+            //go:nosplit
+            func __dd_taint_classify(p, n uintptr) *mspan {
+              s := spanOfHeap(p)
+              if s == nil {
+                return nil
+              }
+              obj := s.startAddr + s.objIndex(p)*s.elemsize
+              if p+n > obj+s.elemsize || p+n > s.limit {
+                return nil
+              }
+              return s
+            }
+
+            // __dd_taint_prepare makes sure that all chunks of [p, p+n) exist.
+            // It returns false if one chunk cannot be obtained; the chunks
+            // that it got stay (they are empty, and in the budget).
+            func __dd_taint_prepare(p, n uintptr) bool {
+              end := p + n
+              units := 0
+              for p < end {
+                if units++; units >= 512 {
+                  units = 0
+                  __dd_taint_checkpoint()
+                }
+                if __dd_taint_chunkfill(p) == nil {
+                  return false
+                }
+                cend := (p &^ (__dd_taint_chunkHeap - 1)) + __dd_taint_chunkHeap
+                if cend > end || cend == 0 {
+                  cend = end
+                }
+                p = cend
+              }
+              return true
+            }
+
+            // __dd_taint_failedprepare runs after a failed __dd_taint_prepare
+            // for the object of p in span s. The chunks that prepare got
+            // stay. If one of them is a whole chunk inside the object, it
+            // sets the flag of the span, so that the sweep hook recycles the
+            // chunk when the object dies. Other chunks are shared with other
+            // objects: they stay with their heap addresses (no flag, thus no
+            // sweep hook without taint).
+            func __dd_taint_failedprepare(s *mspan, p uintptr) {
+              obj := s.base() + s.objIndex(p)*s.elemsize
+              if __dd_taint_haswhole(obj, s.elemsize) {
+                atomic.Store8(&s.__dd_taint, 1)
+              }
+            }
+
+            // __dd_taint_set taints [p, p+n). It returns false (and changes no
+            // bit) when the feature is off, when the range is not inside one
+            // allocation slot of an in-use heap span (thus stack memory,
+            // globals and off-heap memory are refused), or when a bitmap
+            // cannot be allocated. Inside a tiny slot, the caller must give
+            // the range of one value (see __dd_taint_classify).
+            //
+            //go:nosplit
+            func __dd_taint_set(p, n uintptr) bool {
+              if __dd_taint_testing {
+                __dd_taint_classifyprobe(p)
+              }
+              if __dd_taint_osalloc == nil || n == 0 || p+n < p {
+                return false
+              }
+              s := __dd_taint_classify(p, n)
+              // User arena chunks (GOEXPERIMENT=arenas) are freed without a
+              // sweep of their objects: refuse them.
+              if s == nil || s.isUserArenaChunk {
+                return false
+              }
+              // The largest taintable span (64 MiB) bounds the work of the
+              // sweep hook for one span (at most 513 chunk slots).
+              if s.npages > __dd_taint_maxSpanBytes/pageSize {
+                __dd_taint_drop(__dd_taint_dropSpan)
+                return false
+              }
+              return __dd_taint_setworker(s, p, n)
+            }
+
+            // __dd_taint_setworker is the worker of __dd_taint_set.
+            //
+            //go:noinline
+            func __dd_taint_setworker(s *mspan, p, n uintptr) bool {
+              if __dd_taint_testing {
+                __dd_taint_probeworker(p)
+              }
+              if !__dd_taint_prepare(p, n) {
+                __dd_taint_failedprepare(s, p)
+                return false
+              }
+              __dd_taint_apply(p, n, true, true, false)
+              atomic.Store8(&s.__dd_taint, 1)
+              return true
+            }
+
+            // __dd_taint_clear removes the taint of [p, p+n). It ignores a
+            // range that is not inside one allocation slot of an in-use heap
+            // span. The caller rule for tiny slots also applies.
+            //
+            //go:nosplit
+            func __dd_taint_clear(p, n uintptr) {
+              if __dd_taint_testing {
+                __dd_taint_classifyprobe(p)
+              }
+              if n == 0 || p+n < p {
+                return
+              }
+              if __dd_taint_classify(p, n) == nil {
+                return
+              }
+              __dd_taint_clearworker(p, n)
+            }
+
+            // __dd_taint_clearworker is the worker of __dd_taint_clear.
+            //
+            //go:noinline
+            func __dd_taint_clearworker(p, n uintptr) {
+              if __dd_taint_testing {
+                __dd_taint_probeworker(p)
+              }
+              __dd_taint_apply(p, n, false, true, false)
+            }
+
+            // __dd_taint_clearslot clears the bits of the whole allocation
+            // slot of the heap object at p (freegc hook; it does not yield).
+            func __dd_taint_clearslot(p uintptr) {
+              s := spanOfHeap(p)
+              if s == nil || atomic.Load8(&s.__dd_taint) == 0 {
+                return
+              }
+              obj := s.startAddr + s.objIndex(p)*s.elemsize
+              __dd_taint_apply(obj, s.elemsize, false, false, false)
+            }
+
+            // __dd_taint_fastwords is the largest number of bitmap words that
+            // the nosplit fast path of __dd_taint_any reads (w0 to w1, with
+            // w1-w0 < __dd_taint_fastwords).
+            const __dd_taint_fastwords = 16
+
+            // __dd_taint_arena is heapArenaOf with the nosplit directive (for
+            // the entry points).
+            //
+            //go:nosplit
+            func __dd_taint_arena(p uintptr) *heapArena {
+              ri := arenaIndex(p)
+              i1, i2 := ri.l1(), ri.l2()
+              if i1 >= uint(len(mheap_.arenas)) {
+                return nil
+              }
+              l2 := mheap_.arenas[i1]
+              if l2 == nil || i2 >= uint(len(l2)) {
+                return nil
+              }
+              return l2[i2]
+            }
+
+            // __dd_taint_any tells if one byte of [p, p+n) is tainted. It is
+            // safe for all addresses: memory that is not in an in-use heap
+            // span is never tainted.
+            //
+            // Fast path (nosplit, bounded): a range in one arena that covers
+            // at most __dd_taint_fastwords bitmap words (about 1 KiB) is
+            // checked here. The bits of stack memory are always 0, so this is
+            // correct also for a stack address. Longer ranges are classified
+            // (a stack address is refused before the worker can move the
+            // stack), then checked by the worker.
+            //
+            //go:nosplit
+            func __dd_taint_any(p, n uintptr) bool {
+              if __dd_taint_testing {
+                __dd_taint_classifyprobe(p)
+              }
+              if n == 0 || p+n < p {
+                return false
+              }
+              cbase := p &^ (__dd_taint_chunkHeap - 1)
+              if end := p + n; end-cbase <= __dd_taint_chunkHeap {
+                c := __dd_taint_chunk(p)
+                if c == nil {
+                  // No chunk: no taint. The test knob sends the call to the
+                  // slow path, so that tests can check the classification of
+                  // any address.
+                  if !__dd_taint_testing || atomic.Load(&__dd_taint_slowpath) == 0 {
+                    return false
+                  }
+                  goto slow
+                }
+                b0, b1 := p-cbase, end-cbase
+                w0, w1 := b0/64, (b1-1)/64
+                first := ^uint64(0) << (b0 % 64)
+                last := ^uint64(0) >> (63 - (b1-1)%64)
+                if w0 == w1 {
+                  return atomic.Load64(&c[w0&(__dd_taint_chunkWords-1)])&first&last != 0
+                }
+                if atomic.Load64(&c[w0&(__dd_taint_chunkWords-1)])&first != 0 || atomic.Load64(&c[w1&(__dd_taint_chunkWords-1)])&last != 0 {
+                  return true
+                }
+                if w1-w0 < __dd_taint_fastwords {
+                  for w := w0 + 1; w < w1; w++ {
+                    if atomic.Load64(&c[w&(__dd_taint_chunkWords-1)]) != 0 {
+                      return true
+                    }
+                  }
+                  return false
+                }
+              }
+            slow:
+              if __dd_taint_testing {
+                atomic.Xadd64(&__dd_taint_slowcount, 1)
+              }
+              s := spanOfHeap(p)
+              if s == nil {
+                return false
+              }
+              // A Go value never extends after the end of its span: do not
+              // walk memory after it (this bounds the work of the worker).
+              if p+n > s.limit {
+                n = s.limit - p
+              }
+              return __dd_taint_anyworker(p, n)
+            }
+
+            // __dd_taint_anyworker is the worker of __dd_taint_any. Atomic
+            // loads: a race with a writer gives the old or the new value of
+            // the word.
+            //
+            //go:noinline
+            func __dd_taint_anyworker(p, n uintptr) bool {
+              if __dd_taint_testing {
+                __dd_taint_probeworker(p)
+              }
+              end := p + n
+              units := 0
+              for p < end {
+                // Each chunk is one work unit (also a missing one).
+                if units++; units >= 512 {
+                  units = 0
+                  __dd_taint_checkpoint()
+                }
+                cbase := p &^ (__dd_taint_chunkHeap - 1)
+                cend := cbase + __dd_taint_chunkHeap
+                if cend > end || cend == 0 {
+                  cend = end
+                }
+                if c := __dd_taint_chunk(p); c != nil {
+                  b0, b1 := p-cbase, cend-cbase
+                  w0, w1 := b0/64, (b1-1)/64
+                  first := ^uint64(0) << (b0 % 64)
+                  last := ^uint64(0) >> (63 - (b1-1)%64)
+                  if w0 == w1 {
+                    if atomic.Load64(&c[w0&(__dd_taint_chunkWords-1)])&first&last != 0 {
+                      return true
+                    }
+                  } else {
+                    if atomic.Load64(&c[w0&(__dd_taint_chunkWords-1)])&first != 0 || atomic.Load64(&c[w1&(__dd_taint_chunkWords-1)])&last != 0 {
+                      return true
+                    }
+                    // Batches of at most 512 words, a checkpoint between them.
+                    for w := w0 + 1; w < w1; {
+                      stop := w + uintptr(512-units)
+                      if stop > w1 {
+                        stop = w1
+                      }
+                      units += int(stop - w)
+                      for ; w < stop; w++ {
+                        if atomic.Load64(&c[w&(__dd_taint_chunkWords-1)]) != 0 {
+                          return true
+                        }
+                      }
+                      if units >= 512 {
+                        units = 0
+                        __dd_taint_checkpoint()
+                      }
+                    }
+                  }
+                }
+                p = cend
+              }
+              return false
+            }
+
+            // __dd_taint_next returns the smallest off in [from, n) such that
+            // the bit of byte p+off is 1 (want true) or 0 (want false), or n.
+            // Memory that is not in an in-use heap span has no taint: then
+            // Next finds nothing (n), and NextClean finds from.
+            //
+            //go:nosplit
+            func __dd_taint_next(p, n, from uintptr, want bool) uintptr {
+              if __dd_taint_testing {
+                __dd_taint_classifyprobe(p)
+              }
+              if from >= n {
+                return n
+              }
+              if p+n < p {
+                if want {
+                  return n
+                }
+                return from
+              }
+              s := spanOfHeap(p)
+              if s == nil {
+                if want {
+                  return n
+                }
+                return from
+              }
+              // A Go value never extends after its span (this bounds the
+              // work); the bytes after it count as clean.
+              m := n
+              if p+m > s.limit {
+                m = s.limit - p
+              }
+              if from >= m {
+                if want {
+                  return n
+                }
+                return from
+              }
+              r := __dd_taint_nextworker(p, m, from, want)
+              if r == m {
+                if want {
+                  return n
+                }
+                if m < n {
+                  return m
+                }
+              }
+              return r
+            }
+
+            // __dd_taint_nextworker is the worker of __dd_taint_next. It
+            // returns m when no byte in [from, m) matches.
+            //
+            //go:noinline
+            func __dd_taint_nextworker(p, m, from uintptr, want bool) uintptr {
+              if __dd_taint_testing {
+                __dd_taint_probeworker(p)
+              }
+              q, end := p+from, p+m
+              units := 0
+              for q < end {
+                if units++; units >= 512 {
+                  units = 0
+                  __dd_taint_checkpoint()
+                }
+                cbase := q &^ (__dd_taint_chunkHeap - 1)
+                cend := cbase + __dd_taint_chunkHeap
+                if cend > end || cend == 0 {
+                  cend = end
+                }
+                c := __dd_taint_chunk(q)
+                if c == nil {
+                  // No chunk: all bytes of the region are clean.
+                  if !want {
+                    return q - p
+                  }
+                  q = cend
+                  continue
+                }
+                b0, b1 := q-cbase, cend-cbase
+                w0, w1 := b0/64, (b1-1)/64
+                for w := w0; w <= w1; w++ {
+                  if units++; units >= 512 {
+                    units = 0
+                    __dd_taint_checkpoint()
+                  }
+                  mask := ^uint64(0)
+                  if w == w0 {
+                    mask &= ^uint64(0) << (b0 % 64)
+                  }
+                  if w == w1 {
+                    mask &= ^uint64(0) >> (63 - (b1-1)%64)
+                  }
+                  x := atomic.Load64(&c[w&(__dd_taint_chunkWords-1)])
+                  if !want {
+                    x = ^x
+                  }
+                  if x &= mask; x != 0 {
+                    return cbase + w*64 + uintptr(sys.TrailingZeros64(x)) - p
+                  }
+                }
+                q = cend
+              }
+              return m
+            }
+
+            // __dd_taint_readbits returns the bits of the k (1 to 64) heap
+            // bytes at a in the low k bits (bit i: byte a+i). A missing chunk
+            // gives 0 bits. It reads at most 2 words, with atomic loads.
+            //
+            //go:nowritebarrierrec
+            func __dd_taint_readbits(a, k uintptr) uint64 {
+              var r uint64
+              got := uintptr(0)
+              for got < k {
+                q := a + got
+                off := q & (__dd_taint_chunkHeap - 1)
+                sh := off % 64
+                take := 64 - sh
+                if take > k-got {
+                  take = k - got
+                }
+                if c := __dd_taint_chunk(q); c != nil {
+                  x := atomic.Load64(&c[(off/64)&(__dd_taint_chunkWords-1)]) >> sh
+                  if take < 64 {
+                    x &= (uint64(1) << take) - 1
+                  }
+                  r |= x << got
+                }
+                got += take
+              }
+              return r
+            }
+
+            // __dd_taint_copy makes the bits of [dst, dst+n) equal to the bits
+            // of [src, src+n) (memmove semantics: overlap is correct). It
+            // returns false and changes no bit with the same failure cases as
+            // __dd_taint_set (for dst). A source that is not in one in-use
+            // heap span counts as clean. Both pointers are classified here,
+            // before any call that can move the stack.
+            //
+            //go:nosplit
+            func __dd_taint_copy(dst, src, n uintptr) bool {
+              if __dd_taint_testing {
+                __dd_taint_classifyprobe(dst)
+              }
+              if __dd_taint_osalloc == nil || n == 0 || dst+n < dst {
+                return false
+              }
+              s := __dd_taint_classify(dst, n)
+              if s == nil || s.isUserArenaChunk {
+                return false
+              }
+              if s.npages > __dd_taint_maxSpanBytes/pageSize {
+                __dd_taint_drop(__dd_taint_dropSpan)
+                return false
+              }
+              srcHeap := false
+              if src+n >= src {
+                if ss := spanOfHeap(src); ss != nil && src+n <= ss.limit {
+                  srcHeap = true
+                }
+              }
+              return __dd_taint_copyworker(s, dst, src, n, srcHeap)
+            }
+
+            // __dd_taint_copyworker is the worker of __dd_taint_copy.
+            //
+            //go:noinline
+            func __dd_taint_copyworker(s *mspan, dst, src, n uintptr, srcHeap bool) bool {
+              if __dd_taint_testing {
+                __dd_taint_probeworker(dst)
+              }
+              if dst == src && srcHeap {
+                return true // the bits are already equal
+              }
+              // A clean source (also a source that is not heap memory): the
+              // copy is a clear, which needs no storage.
+              if !srcHeap || !__dd_taint_anyworker(src, n) {
+                __dd_taint_apply(dst, n, false, true, false)
+                return true
+              }
+              if !__dd_taint_prepare(dst, n) {
+                __dd_taint_failedprepare(s, dst)
+                return false
+              }
+              // Destination words in the memmove order: backward when dst is
+              // after src, so that a source word is read before a write can
+              // change it.
+              end := dst + n
+              first := dst &^ 63
+              last := (end - 1) &^ 63
+              backward := dst > src
+              units := 0
+              for i := uintptr(0); ; i++ {
+                wa := first + i*64 // heap address of the destination word
+                if backward {
+                  wa = last - i*64
+                }
+                if wa < first || wa > last {
+                  break
+                }
+                lo, hi := wa, wa+64
+                if lo < dst {
+                  lo = dst
+                }
+                if hi > end {
+                  hi = end
+                }
+                k := hi - lo
+                bits := __dd_taint_readbits(src+(lo-dst), k) << (lo - wa)
+                mask := ^uint64(0)
+                if k < 64 {
+                  mask = ((uint64(1) << k) - 1) << (lo - wa)
+                }
+                c := __dd_taint_chunk(wa)
+                if c == nil {
+                  continue // cannot happen after __dd_taint_prepare
+                }
+                wp := &c[((wa&(__dd_taint_chunkHeap-1))/64)&(__dd_taint_chunkWords-1)]
+                if mask == ^uint64(0) {
+                  atomic.Store64(wp, bits)
+                } else {
+                  for {
+                    old := atomic.Load64(wp)
+                    if atomic.Cas64(wp, old, old&^mask|bits&mask) {
+                      break
+                    }
+                    // A neighbour writer changed the word: try again, with a
+                    // checkpoint from time to time (never return false: some
+                    // destination words are already written).
+                    if units++; units >= 512 {
+                      units = 0
+                      __dd_taint_checkpoint()
+                    }
+                  }
+                }
+                if units++; units >= 512 {
+                  units = 0
+                  __dd_taint_checkpoint()
+                }
+              }
+              atomic.Store8(&s.__dd_taint, 1)
+              return true
+            }
+
+            // __dd_taint_sweep clears the bits of all objects of s that are
+            // not marked. The sweeper calls it before it frees them. Thus a
+            // new object never gets the taint of an old object at the same
+            // address. Runs of dead objects are cleared with one call.
+            //
+            // Flag protocol (with __dd_taint_set: bits, then flag=1): store
+            // flag=0 first, clear, then check the remaining bits with atomic
+            // loads; if one is set, store flag=1 again. A concurrent set on a
+            // live object is never lost: its flag store is after our store,
+            // or its bits are visible to our check.
+            //
+            //go:nowritebarrierrec
+            func __dd_taint_sweep(s *mspan) {
+              if !__dd_taint_testing {
+                __dd_taint_sweep1(s)
+                return
+              }
+              // Tests only: the durations of the last hooks.
+              start := nanotime()
+              __dd_taint_sweep1(s)
+              d := nanotime() - start
+              i := atomic.Xadd64(&__dd_taint_sweeplogn, 1) - 1
+              atomic.Store64(&__dd_taint_sweeplog[i&uint64(len(__dd_taint_sweeplog)-1)], uint64(d))
+            }
+
+            // __dd_taint_sweeplog (tests only) holds the durations (ns) of
+            // the last 4096 sweep hooks; __dd_taint_sweeplogn counts all of
+            // them.
+            var __dd_taint_sweeplog [4096]uint64
+            var __dd_taint_sweeplogn uint64
+
+            //go:nowritebarrierrec
+            func __dd_taint_sweep1(s *mspan) {
+              if atomic.Load(&__dd_taint_nosweep) != 0 {
+                return
+              }
+              atomic.Xadd64(&__dd_taint_sweeps, 1)
+              atomic.Store8(&s.__dd_taint, 0)
+              // A span larger than the largest taintable span has no bits
+              // (Set refuses it). A flag can be left on its mspan from an
+              // earlier use (the runtime does not zero reused mspans): the
+              // hook stops here, so that its work stays bounded.
+              if s.npages > __dd_taint_maxSpanBytes/pageSize {
+                return
+              }
+              target := __dd_taint_testing && s.base() == atomic.Loaduintptr(&__dd_taint_sweeptarget)
+              if target {
+                atomic.Xadd64(&__dd_taint_targetsweeps, 1)
+              }
+              size := s.elemsize
+              base := s.base()
+              n := uintptr(s.nelems)
+              marks := s.markBitsForIndex(0).bytep
+              // A dead object with a finalizer becomes live again (the
+              // sweeper marks it); it must keep its taint.
+              hasFin := false
+              for sp := s.specials; sp != nil; sp = sp.next {
+                if sp.kind == _KindSpecialFinalizer {
+                  hasFin = true
+                  break
+                }
+              }
+              if __dd_taint_testing && atomic.Load(&__dd_taint_nofinskip) != 0 {
+                hasFin = false // negative control: ignore finalizers
+              }
+              // The finalizer checks walk the sorted specials list once for
+              // each pass (a cursor), not from the head for each object.
+              cur := s.specials
+              run := uintptr(0) // start of the current dead run
+              dead := false
+              for i := uintptr(0); i < n; {
+                mb := *addb(marks, i/8)
+                if !hasFin && i%8 == 0 && n-i >= 8 && (mb == 0xff || mb == 0) {
+                  // 8 objects with the same state.
+                  if mb == 0xff && dead {
+                    __dd_taint_apply(base+run*size, (i-run)*size, false, false, true)
+                    dead = false
+                  } else if mb == 0 && !dead {
+                    run, dead = i, true
+                  }
+                  i += 8
+                  continue
+                }
+                if mb&(1<<(i%8)) != 0 || (hasFin && __dd_taint_finat(&cur, i*size, size)) {
+                  if dead {
+                    __dd_taint_apply(base+run*size, (i-run)*size, false, false, true)
+                    dead = false
+                  }
+                } else if !dead {
+                  run, dead = i, true
+                }
+                i++
+              }
+              if dead {
+                __dd_taint_apply(base+run*size, (n-run)*size, false, false, true)
+              }
+              if target && atomic.Load(&__dd_taint_sweeppause) == 1 {
+                // Test knob: wait between the flag reset and the live check.
+                __dd_taint_sweepwait()
+              }
+              // A live large object with a whole chunk inside keeps the
+              // flag, also without taint (after a clear or a failed Set):
+              // only the sweep hook of the span can recycle the chunk when
+              // the object dies. Other chunks are shared with other
+              // objects and stay with their heap addresses.
+              if n == 1 && (*marks&1 != 0 || hasFin) && __dd_taint_haswhole(base, size) {
+                atomic.Store8(&s.__dd_taint, 1)
+                n = 0 // no live check
+              }
+              // Only live objects can still have taint: check them until one
+              // has taint, with a work limit. At the limit, the flag stays 1
+              // (always safe: a flag of 1 only costs a sweep hook later).
+              // The check reads each run of consecutive live objects in one
+              // walk (one chunk lookup for each chunk of the run, not for
+              // each object), and skips the dead objects (a span with no
+              // live object gets the flag 0 at once).
+              budget := __dd_taint_resetWords
+              cur = s.specials
+              for i := uintptr(0); i < n; {
+                // The next live object (8 dead objects at once).
+                mb := *addb(marks, i/8)
+                if !hasFin && i%8 == 0 && n-i >= 8 && mb == 0 {
+                  i += 8
+                  continue
+                }
+                if mb&(1<<(i%8)) == 0 && !(hasFin && __dd_taint_finat(&cur, i*size, size)) {
+                  i++
+                  continue
+                }
+                // The run of live objects [i, j) (8 live objects at once).
+                j := i + 1
+                for j < n {
+                  mb := *addb(marks, j/8)
+                  if !hasFin && j%8 == 0 && n-j >= 8 && mb == 0xff {
+                    j += 8
+                    continue
+                  }
+                  if mb&(1<<(j%8)) == 0 && !(hasFin && __dd_taint_finat(&cur, j*size, size)) {
+                    break
+                  }
+                  j++
+                }
+                if __dd_taint_anyatomic(base+i*size, (j-i)*size, &budget) {
+                  atomic.Store8(&s.__dd_taint, 1)
+                  break
+                }
+                i = j
+              }
+              if target && atomic.Load(&__dd_taint_sweeppause) == 2 {
+                // Test knob: wait after the live check (the end of the hook).
+                __dd_taint_sweepwait()
+              }
+            }
+
+            // __dd_taint_haswhole tells if a chunk exists for one of the
+            // chunk-aligned 128 KiB blocks that are fully inside [p, p+n)
+            // (at most 512 lookups for the largest taintable span).
+            //
+            //go:nowritebarrierrec
+            func __dd_taint_haswhole(p, n uintptr) bool {
+              c := alignUp(p, __dd_taint_chunkHeap)
+              for c >= p && c+__dd_taint_chunkHeap > c && c+__dd_taint_chunkHeap <= p+n {
+                if __dd_taint_chunk(c) != nil {
+                  return true
+                }
+                c += __dd_taint_chunkHeap
+              }
+              return false
+            }
+
+            // __dd_taint_sweepwait (test knob) waits at most 200 ms, without
+            // yield (the sweep cannot), until __dd_taint_sweepgo, so that a
+            // test can call Set while the sweep hook of a span is at a given
+            // point.
+            //
+            //go:nowritebarrierrec
+            func __dd_taint_sweepwait() {
+              atomic.Store(&__dd_taint_sweepwaiting, 1)
+              deadline := nanotime() + 200e6
+              for atomic.Load(&__dd_taint_sweepgo) == 0 && nanotime() < deadline {
+                procyield(10)
+              }
+              atomic.Store(&__dd_taint_sweepwaiting, 2)
+            }
+
+            // __dd_taint_resetWords is the work limit (bitmap words and chunk
+            // lookups) of the live check of __dd_taint_sweep.
+            const __dd_taint_resetWords = 1024
+
+            // __dd_taint_finat tells if the object at span offset off (of the
+            // given size) has a finalizer special. *cur is a cursor on the
+            // specials list of the span (sorted by offset); the offsets of
+            // the calls must not decrease.
+            //
+            //go:nowritebarrierrec
+            func __dd_taint_finat(cur **special, off, size uintptr) bool {
+              sp := *cur
+              for sp != nil && sp.offset < off {
+                sp = sp.next
+              }
+              *cur = sp
+              for ; sp != nil && sp.offset < off+size; sp = sp.next {
+                if sp.kind == _KindSpecialFinalizer {
+                  return true
+                }
+              }
+              return false
+            }
+
+            // __dd_taint_anyatomic tells if one byte of [p, p+n) is tainted,
+            // for the flag protocol of __dd_taint_sweep. It spends one unit of
+            // *budget for each chunk and each word; when the budget is used,
+            // it returns true (the caller then keeps the flag).
+            //
+            //go:nowritebarrierrec
+            func __dd_taint_anyatomic(p, n uintptr, budget *int) bool {
+              end := p + n
+              for p < end {
+                if *budget--; *budget < 0 {
+                  return true
+                }
+                cbase := p &^ (__dd_taint_chunkHeap - 1)
+                cend := cbase + __dd_taint_chunkHeap
+                if cend > end || cend == 0 {
+                  cend = end
+                }
+                if c := __dd_taint_chunk(p); c != nil {
+                  b0, b1 := p-cbase, cend-cbase
+                  w0, w1 := b0/64, (b1-1)/64
+                  for w := w0; w <= w1; w++ {
+                    if *budget--; *budget < 0 {
+                      return true
+                    }
+                    mask := ^uint64(0)
+                    if w == w0 {
+                      mask &= ^uint64(0) << (b0 % 64)
+                    }
+                    if w == w1 {
+                      mask &= ^uint64(0) >> (63 - (b1-1)%64)
+                    }
+                    if atomic.Load64(&c[w&(__dd_taint_chunkWords-1)])&mask != 0 {
+                      return true
+                    }
+                  }
+                }
+                p = cend
+              }
+              return false
+            }
+
+            // __dd_taint_enabled tells if the platform has a taint allocator.
+            func __dd_taint_enabled() bool {
+              return __dd_taint_osalloc != nil
+            }
+
+            // __dd_taint_stats returns: slabs, chunks in use, mapped bytes,
+            // reserved-or-mapped bytes, budget, sweeps, the 5 drop counters
+            // (budget, refill busy, contention, mmap, slot busy), the bytes
+            // charged to the memory stats, the high-water mark of the budget
+            // counter, the span-too-large drops, and the recycled chunks.
+            func __dd_taint_stats() [15]uint64 {
+              var r [15]uint64
+              n := atomic.Load(&__dd_taint_nslabs)
+              r[0] = uint64(n)
+              for si := uint32(0); si < n && si < __dd_taint_maxSlabs; si++ {
+                r[1] += uint64(__dd_taint_slabChunks - sys.OnesCount64(atomic.Load64(&__dd_taint_slabs[si].free)))
+              }
+              r[2] = uint64(n) * __dd_taint_slabBytes
+              r[3] = uint64(atomic.Loaduintptr(&__dd_taint_used))
+              r[4] = uint64(atomic.Loaduintptr(&__dd_taint_budget))
+              r[5] = atomic.Load64(&__dd_taint_sweeps)
+              for i := 0; i < 5; i++ {
+                r[6+i] = atomic.Load64(&__dd_taint_drops[i])
+              }
+              r[11] = atomic.Load64(&__dd_taint_accounted)
+              r[12] = uint64(atomic.Loaduintptr(&__dd_taint_usedmax))
+              r[13] = atomic.Load64(&__dd_taint_drops[__dd_taint_dropSpan])
+              r[14] = atomic.Load64(&__dd_taint_recycled)
+              return r
+            }
+
+            // __dd_taint_allocknobs sets the test knobs of the allocator and
+            // returns __dd_taint_parked (who waits).
+            func __dd_taint_allocknobs(fail, park, parkslot, parkscan bool) uint32 {
+              if !__dd_taint_testing {
+                return 0
+              }
+              if parkscan {
+                atomic.Cas(&__dd_taint_parkscan, 0, 1)
+              } else {
+                atomic.Store(&__dd_taint_parkscan, 0)
+              }
+              v := uint32(0)
+              if parkslot {
+                v = 1
+              }
+              atomic.Store(&__dd_taint_parkslot, v)
+              v = 0
+              if fail {
+                v = 1
+              }
+              atomic.Store(&__dd_taint_failalloc, v)
+              v = 0
+              if park {
+                v = 1
+              }
+              atomic.Store(&__dd_taint_parkrefill, v)
+              return atomic.Load(&__dd_taint_parked)
+            }
+            // __dd_taint_hasdir tells if the arena of p has a directory
+            // (tests only).
+            func __dd_taint_hasdir(p uintptr) bool {
+              if !__dd_taint_testing {
+                return false
+              }
+              ha := __dd_taint_arena(p)
+              return ha != nil && atomic.Loaduintptr(&ha.__dd_taint) >= 2
+            }
+            // Test knobs of the sweep hook: the span at __dd_taint_sweeptarget
+            // counts its sweeps; with __dd_taint_sweeppause 1 (after the flag
+            // reset) or 2 (after the live check), its sweep waits until
+            // __dd_taint_sweepgo (see the hook).
+            var __dd_taint_sweeptarget uintptr
+            var __dd_taint_targetsweeps uint64
+            var __dd_taint_sweeppause, __dd_taint_sweepwaiting, __dd_taint_sweepgo uint32
+
+            // __dd_taint_sweepknobs sets the sweep target (the span of p; 0: no
+            // target), the pause and the go signal. It returns the sweeps of
+            // the target and the waiting state (1: waits, 2: continued).
+            func __dd_taint_sweepknobs(p uintptr, pause uint32, gosignal bool) (sweeps uint64, waiting uint32) {
+              if !__dd_taint_testing {
+                return 0, 0
+              }
+              base := uintptr(0)
+              if sp := spanOfHeap(p); sp != nil {
+                base = sp.base()
+              }
+              if base != atomic.Loaduintptr(&__dd_taint_sweeptarget) {
+                atomic.Storeuintptr(&__dd_taint_sweeptarget, base)
+                atomic.Store64(&__dd_taint_targetsweeps, 0)
+                atomic.Store(&__dd_taint_sweepwaiting, 0)
+              }
+              atomic.Store(&__dd_taint_sweeppause, pause)
+              v := uint32(0)
+              if gosignal {
+                v = 1
+              }
+              atomic.Store(&__dd_taint_sweepgo, v)
+              return atomic.Load64(&__dd_taint_targetsweeps), atomic.Load(&__dd_taint_sweepwaiting)
+            }
+            //go:linkname __dd_taint_api_sweepknobs __dd_iast_heapbits.sweepknobs
+            var __dd_taint_api_sweepknobs = __dd_taint_sweepknobs
+
+            // __dd_taint_spaninfo returns the base and the object count of the
+            // span of p (0, 0 if not heap or not a test program).
+            func __dd_taint_spaninfo(p uintptr) (base, nelems uintptr) {
+              if !__dd_taint_testing {
+                return 0, 0
+              }
+              sp := spanOfHeap(p)
+              if sp == nil {
+                return 0, 0
+              }
+              return sp.base(), uintptr(sp.nelems)
+            }
+            //go:linkname __dd_taint_api_spaninfo __dd_iast_heapbits.spaninfo
+            var __dd_taint_api_spaninfo = __dd_taint_spaninfo
+
+            // __dd_taint_spanflag returns the taint flag of the span of p, or
+            // -1 (not heap, or not a test program).
+            func __dd_taint_spanflag(p uintptr) int {
+              if !__dd_taint_testing {
+                return -1
+              }
+              sp := spanOfHeap(p)
+              if sp == nil {
+                return -1
+              }
+              return int(atomic.Load8(&sp.__dd_taint))
+            }
+            //go:linkname __dd_taint_api_spanflag __dd_iast_heapbits.spanflag
+            var __dd_taint_api_spanflag = __dd_taint_spanflag
+
+            func __dd_taint_sweepdurations(dst *[4096]uint64) uint64 {
+              for i := range dst {
+                dst[i] = atomic.Load64(&__dd_taint_sweeplog[i])
+              }
+              return atomic.Load64(&__dd_taint_sweeplogn)
+            }
+            //go:linkname __dd_taint_api_sweeplog __dd_iast_heapbits.sweeplog
+            var __dd_taint_api_sweeplog = __dd_taint_sweepdurations
+
+            //go:linkname __dd_taint_api_hasdir __dd_iast_heapbits.hasdir
+            var __dd_taint_api_hasdir = __dd_taint_hasdir
+
+            //go:linkname __dd_taint_api_allocknobs __dd_iast_heapbits.allocknobs
+            var __dd_taint_api_allocknobs = __dd_taint_allocknobs
+
+            //go:linkname __dd_taint_api_setbudget __dd_iast_heapbits.setbudget
+            var __dd_taint_api_setbudget = __dd_taint_setbudget
+
+            func __dd_taint_setnosweep(v bool) {
+              if !__dd_taint_testing {
+                return
+              }
+              if v {
+                atomic.Store(&__dd_taint_nosweep, 1)
+              } else {
+                atomic.Store(&__dd_taint_nosweep, 0)
+              }
+            }
+
+            // Exported to github.com/DataDog/dd-iast-go/internal/taint/heapbits (push linkname).
+            //go:linkname __dd_taint_api_set __dd_iast_heapbits.set
+            var __dd_taint_api_set = __dd_taint_set
+            //go:linkname __dd_taint_api_clear __dd_iast_heapbits.clear
+            var __dd_taint_api_clear = __dd_taint_clear
+            //go:linkname __dd_taint_api_next __dd_iast_heapbits.next
+            var __dd_taint_api_next = __dd_taint_next
+            //go:linkname __dd_taint_api_copy __dd_iast_heapbits.copy
+            var __dd_taint_api_copy = __dd_taint_copy
+            //go:linkname __dd_taint_api_any __dd_iast_heapbits.any
+            var __dd_taint_api_any = __dd_taint_any
+            //go:linkname __dd_taint_api_enabled __dd_iast_heapbits.enabled
+            var __dd_taint_api_enabled = __dd_taint_enabled
+            //go:linkname __dd_taint_api_stats __dd_iast_heapbits.stats
+            var __dd_taint_api_stats = __dd_taint_stats
+            // Test knobs of the stack probe and of the checkpoints.
+            func __dd_taint_testknobs(movestack, forceyield bool) (probe, workerprobe uint32, yields uint64) {
+              if !__dd_taint_testing {
+                return 0, 0, 0
+              }
+              v := uint32(0)
+              if movestack {
+                v = 1
+              }
+              atomic.Store(&__dd_taint_movestack, v)
+              v = 0
+              if forceyield {
+                v = 1
+              }
+              atomic.Store(&__dd_taint_forceyield, v)
+              return atomic.Xchg(&__dd_taint_probe, 0), atomic.Xchg(&__dd_taint_workerprobe, 0), atomic.Load64(&__dd_taint_yields)
+            }
+            func __dd_taint_setslowpath(v bool) uint64 {
+              if !__dd_taint_testing {
+                return 0
+              }
+              if v {
+                atomic.Store(&__dd_taint_slowpath, 1)
+              } else {
+                atomic.Store(&__dd_taint_slowpath, 0)
+              }
+              return atomic.Load64(&__dd_taint_slowcount)
+            }
+            //go:linkname __dd_taint_api_slowpath __dd_iast_heapbits.slowpath
+            var __dd_taint_api_slowpath = __dd_taint_setslowpath
+
+            //go:linkname __dd_taint_api_testknobs __dd_iast_heapbits.testknobs
+            var __dd_taint_api_testknobs = __dd_taint_testknobs
+
+            // Test knob: runtime.freegc of a noscan object.
+            func __dd_taint_freegc(p unsafe.Pointer, size uintptr) bool {
+              if !__dd_taint_testing {
+                return false
+              }
+              return freegc(p, size, true)
+            }
+            //go:linkname __dd_taint_api_freegc __dd_iast_heapbits.freegc
+            var __dd_taint_api_freegc = __dd_taint_freegc
+            func __dd_taint_hookknobs(nofreegc, nofinskip bool) {
+              if !__dd_taint_testing {
+                return
+              }
+              v := uint32(0)
+              if nofreegc {
+                v = 1
+              }
+              atomic.Store(&__dd_taint_nofreegc, v)
+              v = 0
+              if nofinskip {
+                v = 1
+              }
+              atomic.Store(&__dd_taint_nofinskip, v)
+            }
+            //go:linkname __dd_taint_api_hookknobs __dd_iast_heapbits.hookknobs
+            var __dd_taint_api_hookknobs = __dd_taint_hookknobs
+            //go:linkname __dd_taint_api_nosweep __dd_iast_heapbits.nosweep
+            var __dd_taint_api_nosweep = __dd_taint_setnosweep
+
+  # 2. One flag for each span: "one bit was set in this span".
+  - id: mspan taint flag
+    join-point:
+      struct-definition: runtime.mspan
+    advice:
+      - add-struct-field:
+          name: __dd_taint
+          type: uint8
+
+  # 3. Clear the bits of dead objects when the span is swept.
+  - id: sweep clears taint
+    join-point:
+      all-of:
+        - import-path: runtime
+        - function-body:
+            function:
+              - receiver: "*runtime.sweepLocked"
+              - name: sweep
+    advice:
+      - prepend-statements:
+          imports:
+            atomic: internal/runtime/atomic
+          template: |-
+            if __dd_s := sl.mspan; atomic.Load8(&__dd_s.__dd_taint) != 0 {
+              __dd_taint_sweep(__dd_s)
+            }
+
+  # 4. GOEXPERIMENT=runtimefreegc: freegc gives an object back at once (no
+  #    sweep). Clear the bits of its whole slot first (the size argument can be
+  #    smaller than the slot). The caller promises that it is dead. Only when
+  #    freegc can free the object (the same checks as freegc), so that no work
+  #    is added when it returns at once.
+  - id: freegc clears taint
+    join-point:
+      all-of:
+        - import-path: runtime
+        - function-body:
+            function:
+              - name: freegc
+    advice:
+      - prepend-statements:
+          imports:
+            atomic: internal/runtime/atomic
+          template: |-
+            {{- $ptr := .Function.Argument 0 -}}
+            {{- $size := .Function.Argument 1 -}}
+            {{- $noscan := .Function.Argument 2 -}}
+            if runtimeFreegcEnabled && {{ $ptr }} != nil && reusableSize({{ $size }}) && !(sizeSpecializedMallocEnabled && !{{ $noscan }}) {
+              if !__dd_taint_testing || atomic.Load(&__dd_taint_nofreegc) == 0 {
+                __dd_taint_clearslot(uintptr({{ $ptr }}))
+              }
+            }
+
+  # 5. Non-fatal OS allocation: only where runtime.mmap has a Go body, and only
+  #    on the supported platforms (linux and darwin on amd64, and on arm64 with
+  #    LSE atomics; no sanitizers). Elsewhere the feature is off.
+  - id: taint os alloc
+    join-point:
+      all-of:
+        - import-path: runtime
+        - function-body:
+            function:
+              - name: mmap
+    advice:
+      - inject-declarations:
+          imports:
+            cpu: internal/cpu
+            unsafe: unsafe
+          template: |-
+            func __dd_taint_mmapalloc(n uintptr) unsafe.Pointer {
+              p, err := mmap(nil, n, _PROT_READ|_PROT_WRITE, _MAP_ANON|_MAP_PRIVATE, -1, 0)
+              if err != 0 {
+                return nil
+              }
+              return p
+            }
+
+            func init() {
+              if asanenabled || msanenabled {
+                return
+              }
+              if GOOS != "linux" && GOOS != "darwin" {
+                return
+              }
+              // On arm64, only with LSE atomics: without them, Or64 and And64
+              // are LL/SC loops with no progress bound, and the sweep hook
+              // (which cannot yield) uses them.
+              if GOARCH == "amd64" || (GOARCH == "arm64" && cpu.ARM64.HasATOMICS) {
+                __dd_taint_osalloc = __dd_taint_mmapalloc
+              }
+            }

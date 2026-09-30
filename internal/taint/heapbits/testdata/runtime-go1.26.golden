@@ -1,0 +1,896 @@
+# Inventory of the runtime internals that the aspects of orchestrion.yml
+# depend on (TestRuntimeDrift). Update with -update-drift after a review.
+
+call addReusableNoscan in freegc (malloc.go)
+call freeManual in freeSomeWbufs (mgcwork.go)
+call freeManual in freeStackSpans (stack.go)
+call freeManual in stackfree (stack.go)
+call freeManual in stackpoolfree (stack.go)
+call freeSpan in (*sweepLocked).sweep (mgcsweep.go)
+call freeSpanLocked in (*mheap).freeManual (mheap.go)
+call freeSpanLocked in (*mheap).freeSpan (mheap.go)
+call freeUserArenaChunk in (*userArena).free (arena.go)
+call freegc in growsliceBufNoAlias (slice.go)
+call freegc in growsliceNoAlias (slice.go)
+call mallocgcSmallNoscanReuse in mallocgcSmallNoScanSC10 (malloc_generated.go)
+call mallocgcSmallNoscanReuse in mallocgcSmallNoScanSC11 (malloc_generated.go)
+call mallocgcSmallNoscanReuse in mallocgcSmallNoScanSC12 (malloc_generated.go)
+call mallocgcSmallNoscanReuse in mallocgcSmallNoScanSC13 (malloc_generated.go)
+call mallocgcSmallNoscanReuse in mallocgcSmallNoScanSC14 (malloc_generated.go)
+call mallocgcSmallNoscanReuse in mallocgcSmallNoScanSC15 (malloc_generated.go)
+call mallocgcSmallNoscanReuse in mallocgcSmallNoScanSC16 (malloc_generated.go)
+call mallocgcSmallNoscanReuse in mallocgcSmallNoScanSC17 (malloc_generated.go)
+call mallocgcSmallNoscanReuse in mallocgcSmallNoScanSC18 (malloc_generated.go)
+call mallocgcSmallNoscanReuse in mallocgcSmallNoScanSC19 (malloc_generated.go)
+call mallocgcSmallNoscanReuse in mallocgcSmallNoScanSC2 (malloc_generated.go)
+call mallocgcSmallNoscanReuse in mallocgcSmallNoScanSC20 (malloc_generated.go)
+call mallocgcSmallNoscanReuse in mallocgcSmallNoScanSC21 (malloc_generated.go)
+call mallocgcSmallNoscanReuse in mallocgcSmallNoScanSC22 (malloc_generated.go)
+call mallocgcSmallNoscanReuse in mallocgcSmallNoScanSC23 (malloc_generated.go)
+call mallocgcSmallNoscanReuse in mallocgcSmallNoScanSC24 (malloc_generated.go)
+call mallocgcSmallNoscanReuse in mallocgcSmallNoScanSC25 (malloc_generated.go)
+call mallocgcSmallNoscanReuse in mallocgcSmallNoScanSC26 (malloc_generated.go)
+call mallocgcSmallNoscanReuse in mallocgcSmallNoScanSC3 (malloc_generated.go)
+call mallocgcSmallNoscanReuse in mallocgcSmallNoScanSC4 (malloc_generated.go)
+call mallocgcSmallNoscanReuse in mallocgcSmallNoScanSC5 (malloc_generated.go)
+call mallocgcSmallNoscanReuse in mallocgcSmallNoScanSC6 (malloc_generated.go)
+call mallocgcSmallNoscanReuse in mallocgcSmallNoScanSC7 (malloc_generated.go)
+call mallocgcSmallNoscanReuse in mallocgcSmallNoScanSC8 (malloc_generated.go)
+call mallocgcSmallNoscanReuse in mallocgcSmallNoScanSC9 (malloc_generated.go)
+call mallocgcSmallNoscanReuse in mallocgcSmallNoscan (malloc.go)
+call mallocgcSmallNoscanReuse in smallNoScanStub (malloc_stubs.go)
+call nextReusableNoScan in mallocgcSmallNoscanReuse (malloc.go)
+const _KindSpecialBubble (mheap.go)
+const _KindSpecialCheckFinalizer (mheap.go)
+const _KindSpecialCleanup (mheap.go)
+const _KindSpecialFinalizer (mheap.go)
+const _KindSpecialPinCounter (mheap.go)
+const _KindSpecialProfile (mheap.go)
+const _KindSpecialReachable (mheap.go)
+const _KindSpecialSecret (mheap.go)
+const _KindSpecialTinyBlock (mheap.go)
+const _KindSpecialWeakHandle (mheap.go)
+mmap with a Go body in cgo_mmap.go [(linux && (amd64 || arm64 || loong64)) || (freebsd && amd64)]
+mmap with a Go body in os2_aix.go []
+mmap with a Go body in os3_solaris.go []
+mmap with a Go body in sys_darwin.go []
+mmap with a Go body in sys_openbsd.go []
+mmap without a body in mmap.go [!aix && !darwin && !js && !((linux && (amd64 || arm64 || loong64)) || (freebsd && amd64)) && !openbsd && !plan9 && !solaris && !windows]
+write allocBits in (*mheap).initSpan (mheap.go)
+write allocBits in (*mspan).init (mheap.go)
+write allocBits in (*sweepLocked).sweep (mgcsweep.go)
+write freeindex in (*mcentral).cacheSpan (mcentral.go)
+write freeindex in (*mheap).allocUserArenaChunk (arena.go)
+write freeindex in (*mheap).initSpan (mheap.go)
+write freeindex in (*mspan).init (mheap.go)
+write freeindex in (*mspan).nextFreeIndex (mbitmap.go)
+write freeindex in (*sweepLocked).sweep (mgcsweep.go)
+write freeindex in mallocgcLarge (malloc.go)
+write freeindex in mallocgcSmallNoScanSC10 (malloc_generated.go)
+write freeindex in mallocgcSmallNoScanSC11 (malloc_generated.go)
+write freeindex in mallocgcSmallNoScanSC12 (malloc_generated.go)
+write freeindex in mallocgcSmallNoScanSC13 (malloc_generated.go)
+write freeindex in mallocgcSmallNoScanSC14 (malloc_generated.go)
+write freeindex in mallocgcSmallNoScanSC15 (malloc_generated.go)
+write freeindex in mallocgcSmallNoScanSC16 (malloc_generated.go)
+write freeindex in mallocgcSmallNoScanSC17 (malloc_generated.go)
+write freeindex in mallocgcSmallNoScanSC18 (malloc_generated.go)
+write freeindex in mallocgcSmallNoScanSC19 (malloc_generated.go)
+write freeindex in mallocgcSmallNoScanSC2 (malloc_generated.go)
+write freeindex in mallocgcSmallNoScanSC20 (malloc_generated.go)
+write freeindex in mallocgcSmallNoScanSC21 (malloc_generated.go)
+write freeindex in mallocgcSmallNoScanSC22 (malloc_generated.go)
+write freeindex in mallocgcSmallNoScanSC23 (malloc_generated.go)
+write freeindex in mallocgcSmallNoScanSC24 (malloc_generated.go)
+write freeindex in mallocgcSmallNoScanSC25 (malloc_generated.go)
+write freeindex in mallocgcSmallNoScanSC26 (malloc_generated.go)
+write freeindex in mallocgcSmallNoScanSC3 (malloc_generated.go)
+write freeindex in mallocgcSmallNoScanSC4 (malloc_generated.go)
+write freeindex in mallocgcSmallNoScanSC5 (malloc_generated.go)
+write freeindex in mallocgcSmallNoScanSC6 (malloc_generated.go)
+write freeindex in mallocgcSmallNoScanSC7 (malloc_generated.go)
+write freeindex in mallocgcSmallNoScanSC8 (malloc_generated.go)
+write freeindex in mallocgcSmallNoScanSC9 (malloc_generated.go)
+write freeindex in mallocgcSmallScanNoHeaderSC1 (malloc_generated.go)
+write freeindex in mallocgcSmallScanNoHeaderSC10 (malloc_generated.go)
+write freeindex in mallocgcSmallScanNoHeaderSC11 (malloc_generated.go)
+write freeindex in mallocgcSmallScanNoHeaderSC12 (malloc_generated.go)
+write freeindex in mallocgcSmallScanNoHeaderSC13 (malloc_generated.go)
+write freeindex in mallocgcSmallScanNoHeaderSC14 (malloc_generated.go)
+write freeindex in mallocgcSmallScanNoHeaderSC15 (malloc_generated.go)
+write freeindex in mallocgcSmallScanNoHeaderSC16 (malloc_generated.go)
+write freeindex in mallocgcSmallScanNoHeaderSC17 (malloc_generated.go)
+write freeindex in mallocgcSmallScanNoHeaderSC18 (malloc_generated.go)
+write freeindex in mallocgcSmallScanNoHeaderSC19 (malloc_generated.go)
+write freeindex in mallocgcSmallScanNoHeaderSC2 (malloc_generated.go)
+write freeindex in mallocgcSmallScanNoHeaderSC20 (malloc_generated.go)
+write freeindex in mallocgcSmallScanNoHeaderSC21 (malloc_generated.go)
+write freeindex in mallocgcSmallScanNoHeaderSC22 (malloc_generated.go)
+write freeindex in mallocgcSmallScanNoHeaderSC23 (malloc_generated.go)
+write freeindex in mallocgcSmallScanNoHeaderSC24 (malloc_generated.go)
+write freeindex in mallocgcSmallScanNoHeaderSC25 (malloc_generated.go)
+write freeindex in mallocgcSmallScanNoHeaderSC26 (malloc_generated.go)
+write freeindex in mallocgcSmallScanNoHeaderSC3 (malloc_generated.go)
+write freeindex in mallocgcSmallScanNoHeaderSC4 (malloc_generated.go)
+write freeindex in mallocgcSmallScanNoHeaderSC5 (malloc_generated.go)
+write freeindex in mallocgcSmallScanNoHeaderSC6 (malloc_generated.go)
+write freeindex in mallocgcSmallScanNoHeaderSC7 (malloc_generated.go)
+write freeindex in mallocgcSmallScanNoHeaderSC8 (malloc_generated.go)
+write freeindex in mallocgcSmallScanNoHeaderSC9 (malloc_generated.go)
+write freeindex in mallocgcTinySize1 (malloc_generated.go)
+write freeindex in mallocgcTinySize10 (malloc_generated.go)
+write freeindex in mallocgcTinySize11 (malloc_generated.go)
+write freeindex in mallocgcTinySize12 (malloc_generated.go)
+write freeindex in mallocgcTinySize13 (malloc_generated.go)
+write freeindex in mallocgcTinySize14 (malloc_generated.go)
+write freeindex in mallocgcTinySize15 (malloc_generated.go)
+write freeindex in mallocgcTinySize2 (malloc_generated.go)
+write freeindex in mallocgcTinySize3 (malloc_generated.go)
+write freeindex in mallocgcTinySize4 (malloc_generated.go)
+write freeindex in mallocgcTinySize5 (malloc_generated.go)
+write freeindex in mallocgcTinySize6 (malloc_generated.go)
+write freeindex in mallocgcTinySize7 (malloc_generated.go)
+write freeindex in mallocgcTinySize8 (malloc_generated.go)
+write freeindex in mallocgcTinySize9 (malloc_generated.go)
+write freeindex in nextFreeFast (malloc.go)
+write freeindex in nextFreeFastStub (malloc_stubs.go)
+write freeindex in nextFreeFastTiny (malloc_stubs.go)
+
+## (*mcache).addReusableNoscan (mcache.go [])
+{
+	if !runtimeFreegcEnabled {
+		return
+	}
+	v := gclinkptr(ptr)
+	v.ptr().next = c.reusableNoscan[spc]
+	c.reusableNoscan[spc] = v
+}
+
+## (*mcache).nextReusableNoScan (malloc.go [])
+{
+	if !runtimeFreegcEnabled {
+		return 0, s
+	}
+	v := c.reusableNoscan[spc]
+	if v == 0 {
+		return 0, s
+	}
+	c.reusableNoscan[spc] = v.ptr().next
+	if debugReusableLog {
+		println("reusing from ptr free list:", hex(v), "sweepgen:", mheap_.sweepgen, "writeBarrier.enabled:", writeBarrier.enabled)
+	}
+	if doubleCheckReusable {
+		doubleCheckNextReusable(v)
+	}
+	if !writeBarrier.enabled {
+		return v, nil
+	}
+	if s.base() <= uintptr(v) && uintptr(v) < s.limit {
+		return v, s
+	}
+	span := spanOf(uintptr(v))
+	if span == nil {
+		throw("nextReusableNoScan: nil span for pointer in reusable object free list")
+	}
+	return v, span
+}
+
+## (*mheap).sysAlloc (malloc.go [])
+{
+	assertLockHeld(&h.lock)
+	n = alignUp(n, heapArenaBytes)
+	if hintList == &h.arenaHints {
+		v = h.arena.alloc(n, heapArenaBytes, &gcController.heapReleased, "heap")
+		if v != nil {
+			size = n
+			goto mapped
+		}
+	}
+	for *hintList != nil {
+		hint := *hintList
+		p := hint.addr
+		if hint.down {
+			p -= n
+		}
+		if p+n < p {
+			v = nil
+		} else if arenaIndex(p+n-1) >= 1<<arenaBits {
+			v = nil
+		} else {
+			v = sysReserve(unsafe.Pointer(p), n, "heap reservation")
+		}
+		if p == uintptr(v) {
+			if !hint.down {
+				p += n
+			}
+			hint.addr = p
+			size = n
+			break
+		}
+		if v != nil {
+			sysUnreserve(v, n)
+		}
+		*hintList = hint.next
+		h.arenaHintAlloc.free(unsafe.Pointer(hint))
+	}
+	if size == 0 {
+		if raceenabled {
+			throw("too many address space collisions for -race mode")
+		}
+		v, size = sysReserveAligned(nil, n, heapArenaBytes, "heap")
+		if v == nil {
+			return nil, 0
+		}
+		hint := (*arenaHint)(h.arenaHintAlloc.alloc())
+		hint.addr, hint.down = uintptr(v), true
+		hint.next, mheap_.arenaHints = mheap_.arenaHints, hint
+		hint = (*arenaHint)(h.arenaHintAlloc.alloc())
+		hint.addr = uintptr(v) + size
+		hint.next, mheap_.arenaHints = mheap_.arenaHints, hint
+	}
+	{
+		var bad string
+		p := uintptr(v)
+		if p+size < p {
+			bad = "region exceeds uintptr range"
+		} else if arenaIndex(p) >= 1<<arenaBits {
+			bad = "base outside usable address space"
+		} else if arenaIndex(p+size-1) >= 1<<arenaBits {
+			bad = "end outside usable address space"
+		}
+		if bad != "" {
+			print("runtime: memory allocated by OS [", hex(p), ", ", hex(p+size), ") not in usable address space: ", bad, "\n")
+			throw("memory reservation exceeds address space limit")
+		}
+	}
+	if uintptr(v)&(heapArenaBytes-1) != 0 {
+		throw("misrounded allocation in sysAlloc")
+	}
+mapped:
+	if valgrindenabled {
+		valgrindCreateMempool(v)
+		valgrindMakeMemNoAccess(v, size)
+	}
+	for ri := arenaIndex(uintptr(v)); ri <= arenaIndex(uintptr(v)+size-1); ri++ {
+		l2 := h.arenas[ri.l1()]
+		if l2 == nil {
+			l2 = (*[1 << arenaL2Bits]*heapArena)(sysAllocOS(unsafe.Sizeof(*l2), "heap index"))
+			if l2 == nil {
+				throw("out of memory allocating heap arena map")
+			}
+			if h.arenasHugePages {
+				sysHugePage(unsafe.Pointer(l2), unsafe.Sizeof(*l2))
+			} else {
+				sysNoHugePage(unsafe.Pointer(l2), unsafe.Sizeof(*l2))
+			}
+			atomic.StorepNoWB(unsafe.Pointer(&h.arenas[ri.l1()]), unsafe.Pointer(l2))
+		}
+		if l2[ri.l2()] != nil {
+			throw("arena already initialized")
+		}
+		var r *heapArena
+		r = (*heapArena)(h.heapArenaAlloc.alloc(unsafe.Sizeof(*r), goarch.PtrSize, &memstats.gcMiscSys, "heap metadata"))
+		if r == nil {
+			r = (*heapArena)(persistentalloc(unsafe.Sizeof(*r), goarch.PtrSize, &memstats.gcMiscSys))
+			if r == nil {
+				throw("out of memory allocating heap arena metadata")
+			}
+		}
+		if len((*arenaList)) == cap((*arenaList)) {
+			size := 2 * uintptr(cap((*arenaList))) * goarch.PtrSize
+			if size == 0 {
+				size = physPageSize
+			}
+			newArray := (*notInHeap)(persistentalloc(size, goarch.PtrSize, &memstats.gcMiscSys))
+			if newArray == nil {
+				throw("out of memory allocating allArenas")
+			}
+			oldSlice := (*arenaList)
+			*(*notInHeapSlice)(unsafe.Pointer(&(*arenaList))) = notInHeapSlice{newArray, len((*arenaList)), int(size / goarch.PtrSize)}
+			copy((*arenaList), oldSlice)
+		}
+		(*arenaList) = (*arenaList)[:len((*arenaList))+1]
+		(*arenaList)[len((*arenaList))-1] = ri
+		atomic.StorepNoWB(unsafe.Pointer(&l2[ri.l2()]), unsafe.Pointer(r))
+	}
+	if raceenabled {
+		racemapshadow(v, size)
+	}
+	return
+}
+
+## (*mspan).ensureSwept (mgcsweep.go [])
+{
+	gp := getg()
+	if gp.m.locks == 0 && gp.m.mallocing == 0 && gp != gp.m.g0 {
+		throw("mspan.ensureSwept: m is not locked")
+	}
+	sl := sweep.active.begin()
+	if sl.valid {
+		if s, ok := sl.tryAcquire(s); ok {
+			s.sweep(false)
+			sweep.active.end(sl)
+			return
+		}
+		sweep.active.end(sl)
+	}
+	for {
+		spangen := atomic.Load(&s.sweepgen)
+		if spangen == sl.sweepGen || spangen == sl.sweepGen+3 {
+			break
+		}
+		osyield()
+	}
+}
+
+## (*mspan).markBitsForIndex (mgcmark_greenteagc.go [goexperiment.greenteagc])
+{
+	if gcUsesSpanInlineMarkBits(s.elemsize) {
+		bits.bytep = &s.inlineMarkBits().marks[objIndex/8]
+	} else {
+		bits.bytep = s.gcmarkBits.bytep(objIndex / 8)
+	}
+	bits.mask = uint8(1) << (objIndex % 8)
+	bits.index = objIndex
+	return
+}
+
+## (*mspan).markBitsForIndex (mgcmark_nogreenteagc.go [!goexperiment.greenteagc])
+{
+	bytep, mask := s.gcmarkBits.bitp(objIndex)
+	return markBits{bytep, mask, objIndex}
+}
+
+## (*mspan).objIndex (mbitmap.go [])
+{
+	return s.divideByElemSize(p - s.base())
+}
+
+## (*mspan).specialFindSplicePoint (mheap.go [])
+{
+	iter := &span.specials
+	found := false
+	for {
+		s := *iter
+		if s == nil {
+			break
+		}
+		if offset == s.offset && kind == s.kind {
+			found = true
+			break
+		}
+		if offset < s.offset || (offset == s.offset && kind < s.kind) {
+			break
+		}
+		iter = &s.next
+	}
+	return iter, found
+}
+
+## (*sweepLocked).sweep (mgcsweep.go [])
+{
+	gp := getg()
+	if gp.m.locks == 0 && gp.m.mallocing == 0 && gp != gp.m.g0 {
+		throw("mspan.sweep: m is not locked")
+	}
+	s := sl.mspan
+	if !preserve {
+		sl.mspan = nil
+	}
+	sweepgen := mheap_.sweepgen
+	if state := s.state.get(); state != mSpanInUse || s.sweepgen != sweepgen-1 {
+		print("mspan.sweep: state=", state, " sweepgen=", s.sweepgen, " mheap.sweepgen=", sweepgen, "\n")
+		throw("mspan.sweep: bad span state")
+	}
+	trace := traceAcquire()
+	if trace.ok() {
+		trace.GCSweepSpan(s.npages * pageSize)
+		traceRelease(trace)
+	}
+	mheap_.pagesSwept.Add(int64(s.npages))
+	spc := s.spanclass
+	size := s.elemsize
+	hadSpecials := s.specials != nil
+	siter := newSpecialsIter(s)
+	for siter.valid() {
+		objIndex := siter.s.offset / size
+		p := s.base() + objIndex*size
+		mbits := s.markBitsForIndex(objIndex)
+		if !mbits.isMarked() {
+			hasFinAndRevived := false
+			endOffset := p - s.base() + size
+			for tmp := siter.s; tmp != nil && tmp.offset < endOffset; tmp = tmp.next {
+				if tmp.kind == _KindSpecialFinalizer {
+					mbits.setMarkedNonAtomic()
+					hasFinAndRevived = true
+					break
+				}
+			}
+			if hasFinAndRevived {
+				for siter.valid() && siter.s.offset < endOffset {
+					special := siter.s
+					p := s.base() + special.offset
+					if special.kind == _KindSpecialFinalizer || special.kind == _KindSpecialWeakHandle {
+						siter.unlinkAndNext()
+						freeSpecial(special, unsafe.Pointer(p), size)
+					} else {
+						siter.next()
+					}
+				}
+			} else {
+				for siter.valid() && siter.s.offset < endOffset {
+					special := siter.s
+					p := s.base() + special.offset
+					siter.unlinkAndNext()
+					freeSpecial(special, unsafe.Pointer(p), size)
+				}
+			}
+		} else {
+			if siter.s.kind == _KindSpecialReachable {
+				special := siter.unlinkAndNext()
+				(*specialReachable)(unsafe.Pointer(special)).reachable = true
+				freeSpecial(special, unsafe.Pointer(p), size)
+			} else {
+				siter.next()
+			}
+		}
+	}
+	if hadSpecials && s.specials == nil {
+		spanHasNoSpecials(s)
+	}
+	if traceAllocFreeEnabled() || debug.clobberfree != 0 || raceenabled || msanenabled || asanenabled {
+		mbits := s.markBitsForBase()
+		abits := s.allocBitsForIndex(0)
+		for i := uintptr(0); i < uintptr(s.nelems); i++ {
+			if !mbits.isMarked() && (abits.index < uintptr(s.freeindex) || abits.isMarked()) {
+				x := s.base() + i*s.elemsize
+				if traceAllocFreeEnabled() {
+					trace := traceAcquire()
+					if trace.ok() {
+						trace.HeapObjectFree(x)
+						traceRelease(trace)
+					}
+				}
+				if debug.clobberfree != 0 {
+					clobberfree(unsafe.Pointer(x), size)
+				}
+				if raceenabled && !s.isUserArenaChunk {
+					racefree(unsafe.Pointer(x), size)
+				}
+				if msanenabled && !s.isUserArenaChunk {
+					msanfree(unsafe.Pointer(x), size)
+				}
+				if asanenabled && !s.isUserArenaChunk {
+					asanpoison(unsafe.Pointer(x), size)
+				}
+				if valgrindenabled && !s.isUserArenaChunk {
+					valgrindFree(unsafe.Pointer(x))
+				}
+			}
+			mbits.advance()
+			abits.advance()
+		}
+	}
+	if gcUsesSpanInlineMarkBits(s.elemsize) {
+		s.moveInlineMarks(s.gcmarkBits)
+	}
+	if s.freeindex < s.nelems {
+		obj := uintptr(s.freeindex)
+		if (*s.gcmarkBits.bytep(obj / 8)&^*s.allocBits.bytep(obj / 8))>>(obj%8) != 0 {
+			s.reportZombies()
+		}
+		for i := obj/8 + 1; i < divRoundUp(uintptr(s.nelems), 8); i++ {
+			if *s.gcmarkBits.bytep(i)&^*s.allocBits.bytep(i) != 0 {
+				s.reportZombies()
+			}
+		}
+	}
+	nalloc := uint16(s.countAlloc())
+	nfreed := s.allocCount - nalloc
+	if nalloc > s.allocCount {
+		print("runtime: nelems=", s.nelems, " nalloc=", nalloc, " previous allocCount=", s.allocCount, " nfreed=", nfreed, "\n")
+		throw("sweep increased allocation count")
+	}
+	s.allocCount = nalloc
+	s.freeindex = 0
+	s.freeIndexForScan = 0
+	if traceEnabled() {
+		getg().m.p.ptr().trace.reclaimed += uintptr(nfreed) * s.elemsize
+	}
+	s.allocBits = s.gcmarkBits
+	s.gcmarkBits = newMarkBits(uintptr(s.nelems))
+	if s.pinnerBits != nil {
+		s.refreshPinnerBits()
+	}
+	s.refillAllocCache(0)
+	if state := s.state.get(); state != mSpanInUse || s.sweepgen != sweepgen-1 {
+		print("mspan.sweep: state=", state, " sweepgen=", s.sweepgen, " mheap.sweepgen=", sweepgen, "\n")
+		throw("mspan.sweep: bad span state after sweep")
+	}
+	if s.sweepgen == sweepgen+1 || s.sweepgen == sweepgen+3 {
+		throw("swept cached span")
+	}
+	atomic.Store(&s.sweepgen, sweepgen)
+	if s.isUserArenaChunk {
+		if preserve {
+			throw("sweep: tried to preserve a user arena span")
+		}
+		if nalloc > 0 {
+			mheap_.central[spc].mcentral.fullSwept(sweepgen).push(s)
+			return false
+		}
+		mheap_.pagesInUse.Add(-s.npages)
+		s.state.set(mSpanDead)
+		systemstack(func() {
+			if s.list != &mheap_.userArena.quarantineList {
+				throw("user arena span is on the wrong list")
+			}
+			lock(&mheap_.lock)
+			mheap_.userArena.quarantineList.remove(s)
+			mheap_.userArena.readyList.insert(s)
+			unlock(&mheap_.lock)
+		})
+		return false
+	}
+	if spc.sizeclass() != 0 {
+		if nfreed > 0 {
+			s.needzero = 1
+			stats := memstats.heapStats.acquire()
+			atomic.Xadd64(&stats.smallFreeCount[spc.sizeclass()], int64(nfreed))
+			memstats.heapStats.release()
+			gcController.totalFree.Add(int64(nfreed) * int64(s.elemsize))
+		}
+		if !preserve {
+			if nalloc == 0 {
+				mheap_.freeSpan(s)
+				return true
+			}
+			if nalloc == s.nelems {
+				mheap_.central[spc].mcentral.fullSwept(sweepgen).push(s)
+			} else {
+				mheap_.central[spc].mcentral.partialSwept(sweepgen).push(s)
+			}
+		}
+	} else if !preserve {
+		if nfreed != 0 {
+			stats := memstats.heapStats.acquire()
+			atomic.Xadd64(&stats.largeFreeCount, 1)
+			atomic.Xadd64(&stats.largeFree, int64(size))
+			memstats.heapStats.release()
+			gcController.totalFree.Add(int64(size))
+			if debug.efence > 0 {
+				s.limit = 0
+				sysFault(unsafe.Pointer(s.base()), size)
+			} else {
+				mheap_.freeSpan(s)
+			}
+			return true
+		}
+		mheap_.central[spc].mcentral.fullSwept(sweepgen).push(s)
+	}
+	return false
+}
+
+## (arenaIdx).l1 (mheap.go [])
+{
+	if arenaL1Bits == 0 {
+		return 0
+	} else {
+		return uint(i) >> arenaL1Shift
+	}
+}
+
+## (arenaIdx).l2 (mheap.go [])
+{
+	if arenaL1Bits == 0 {
+		return uint(i)
+	} else {
+		return uint(i) & (1<<arenaL2Bits - 1)
+	}
+}
+
+## (chunkIdx).l1 (mpagealloc.go [])
+{
+	if pallocChunksL1Bits == 0 {
+		return 0
+	} else {
+		return uint(i) >> pallocChunksL1Shift
+	}
+}
+
+## (chunkIdx).l2 (mpagealloc.go [])
+{
+	if pallocChunksL1Bits == 0 {
+		return uint(i)
+	} else {
+		return uint(i) & (1<<pallocChunksL2Bits - 1)
+	}
+}
+
+## (objptr).objIndex (mgcmark_greenteagc.go [goexperiment.greenteagc])
+{
+	return uint16(p) & ((1 << gc.PageShift) - 1)
+}
+
+## addspecial (mheap.go [])
+{
+	span := spanOfHeap(uintptr(p))
+	if span == nil {
+		throw("addspecial on invalid pointer")
+	}
+	mp := acquirem()
+	span.ensureSwept()
+	offset := uintptr(p) - span.base()
+	kind := s.kind
+	lock(&span.speciallock)
+	iter, exists := span.specialFindSplicePoint(offset, kind)
+	if !exists || force {
+		s.offset = offset
+		s.next = *iter
+		*iter = s
+		spanHasSpecials(span)
+	}
+	unlock(&span.speciallock)
+	releasem(mp)
+	KeepAlive(p)
+	return !exists || force
+}
+
+## arenaIndex (mheap.go [])
+{
+	return arenaIdx((p - arenaBaseOffset) / heapArenaBytes)
+}
+
+## freegc (malloc.go [])
+{
+	if !runtimeFreegcEnabled || !reusableSize(size) {
+		return false
+	}
+	if sizeSpecializedMallocEnabled && !noscan {
+		return false
+	}
+	if ptr == nil {
+		throw("freegc nil")
+	}
+	mp := acquirem()
+	if mp.mallocing != 0 {
+		throw("freegc deadlock")
+	}
+	if mp.gsignal == getg() {
+		throw("freegc during signal")
+	}
+	mp.mallocing = 1
+	if mp.curg.stack.lo <= uintptr(ptr) && uintptr(ptr) < mp.curg.stack.hi {
+		mp.mallocing = 0
+		releasem(mp)
+		return false
+	}
+	if doubleCheckReusable {
+		span := spanOf(uintptr(ptr))
+		if span == nil {
+			throw("nextReusable: nil span for pointer in free list")
+		}
+		if state := span.state.get(); state != mSpanInUse {
+			throw("nextReusable: span is not in use")
+		}
+	}
+	if debug.clobberfree != 0 {
+		clobberfree(ptr, size)
+	}
+	c := getMCache(mp)
+	if c == nil {
+		throw("freegc called without a P or outside bootstrapping")
+	}
+	v := uintptr(ptr)
+	if !noscan && !heapBitsInSpan(size) {
+		v -= mallocHeaderSize
+		size += mallocHeaderSize
+	}
+	var sizeclass uint8
+	if size <= gc.SmallSizeMax-8 {
+		sizeclass = gc.SizeToSizeClass8[divRoundUp(size, gc.SmallSizeDiv)]
+	} else {
+		sizeclass = gc.SizeToSizeClass128[divRoundUp(size-gc.SmallSizeMax, gc.LargeSizeDiv)]
+	}
+	spc := makeSpanClass(sizeclass, noscan)
+	s := c.alloc[spc]
+	if debugReusableLog {
+		if s.base() <= uintptr(v) && uintptr(v) < s.limit {
+			println("freegc [in mcache]:", hex(uintptr(v)), "sweepgen:", mheap_.sweepgen, "writeBarrier.enabled:", writeBarrier.enabled)
+		} else {
+			println("freegc [NOT in mcache]:", hex(uintptr(v)), "sweepgen:", mheap_.sweepgen, "writeBarrier.enabled:", writeBarrier.enabled)
+		}
+	}
+	if noscan {
+		c.addReusableNoscan(spc, uintptr(v))
+	} else {
+		throw("freegc called for object with pointers, not yet implemented")
+	}
+	mp.mallocing = 0
+	releasem(mp)
+	return true
+}
+
+## gcUsesSpanInlineMarkBits (mgcmark_greenteagc.go [goexperiment.greenteagc])
+{
+	return heapBitsInSpan(size) && size >= 16
+}
+
+## gcUsesSpanInlineMarkBits (mgcmark_nogreenteagc.go [!goexperiment.greenteagc])
+{
+	return false
+}
+
+## heapArenaOf (mheap.go [])
+{
+	ri := arenaIndex(p)
+	if arenaL1Bits == 0 {
+		if ri.l2() >= uint(len(mheap_.arenas[0])) {
+			return nil
+		}
+	} else {
+		if ri.l1() >= uint(len(mheap_.arenas)) {
+			return nil
+		}
+	}
+	l2 := mheap_.arenas[ri.l1()]
+	if arenaL1Bits != 0 && l2 == nil {
+		return nil
+	}
+	return l2[ri.l2()]
+}
+
+## mallocgcSmallNoscanReuse (malloc.go [])
+{
+	v, span := c.nextReusableNoScan(span, spc)
+	x := unsafe.Pointer(v)
+	if gcBlackenEnabled != 0 {
+		addAssistCredit(size)
+	}
+	if needzero {
+		memclrNoHeapPointers(x, size)
+	}
+	publicationBarrier()
+	if writeBarrier.enabled {
+		gcmarknewobject(span, uintptr(x))
+	}
+	return x
+}
+
+## mmap (cgo_mmap.go [(linux && (amd64 || arm64 || loong64)) || (freebsd && amd64)])
+{
+	if _cgo_mmap != nil {
+		var ret uintptr
+		systemstack(func() {
+			ret = callCgoMmap(addr, n, prot, flags, fd, off)
+		})
+		if ret < 4096 {
+			return nil, int(ret)
+		}
+		return unsafe.Pointer(ret), 0
+	}
+	return sysMmap(addr, n, prot, flags, fd, off)
+}
+
+## mmap (os2_aix.go [])
+{
+	r, err0 := syscall6(&libc_mmap, uintptr(addr), uintptr(n), uintptr(prot), uintptr(flags), uintptr(fd), uintptr(off))
+	if r == ^uintptr(0) {
+		return nil, int(err0)
+	}
+	return unsafe.Pointer(r), int(err0)
+}
+
+## mmap (os3_solaris.go [])
+{
+	p, err := doMmap(uintptr(addr), n, uintptr(prot), uintptr(flags), uintptr(fd), uintptr(off))
+	if p == ^uintptr(0) {
+		return nil, int(err)
+	}
+	return unsafe.Pointer(p), 0
+}
+
+## mmap (sys_darwin.go [])
+{
+	args := struct {
+		addr			unsafe.Pointer
+		n				uintptr
+		prot, flags, fd	int32
+		off				uint32
+		ret1			unsafe.Pointer
+		ret2			int
+	}{addr, n, prot, flags, fd, off, nil, 0}
+	libcCall(unsafe.Pointer(abi.FuncPCABI0(mmap_trampoline)), unsafe.Pointer(&args))
+	return args.ret1, args.ret2
+}
+
+## mmap (sys_openbsd.go [])
+{
+	args := struct {
+		addr			unsafe.Pointer
+		n				uintptr
+		prot, flags, fd	int32
+		off				uint32
+		ret1			unsafe.Pointer
+		ret2			int
+	}{addr, n, prot, flags, fd, off, nil, 0}
+	libcCall(unsafe.Pointer(abi.FuncPCABI0(mmap_trampoline)), unsafe.Pointer(&args))
+	KeepAlive(addr)
+	return args.ret1, args.ret2
+}
+
+## removespecial (mheap.go [])
+{
+	span := spanOfHeap(uintptr(p))
+	if span == nil {
+		throw("removespecial on invalid pointer")
+	}
+	mp := acquirem()
+	span.ensureSwept()
+	offset := uintptr(p) - span.base()
+	var result *special
+	lock(&span.speciallock)
+	iter, exists := span.specialFindSplicePoint(offset, kind)
+	if exists {
+		s := *iter
+		*iter = s.next
+		result = s
+	}
+	if span.specials == nil {
+		spanHasNoSpecials(span)
+	}
+	unlock(&span.speciallock)
+	releasem(mp)
+	return result
+}
+
+## reusableSize (malloc.go [])
+{
+	if size < maxTinySize || size > maxSmallSize-mallocHeaderSize {
+		return false
+	}
+	return true
+}
+
+## spanOf (mheap.go [])
+{
+	ri := arenaIndex(p)
+	if arenaL1Bits == 0 {
+		if ri.l2() >= uint(len(mheap_.arenas[0])) {
+			return nil
+		}
+	} else {
+		if ri.l1() >= uint(len(mheap_.arenas)) {
+			return nil
+		}
+	}
+	l2 := mheap_.arenas[ri.l1()]
+	if arenaL1Bits != 0 && l2 == nil {
+		return nil
+	}
+	ha := l2[ri.l2()]
+	if ha == nil {
+		return nil
+	}
+	return ha.spans[(p/pageSize)%pagesPerArena]
+}
+
+## spanOfHeap (mheap.go [])
+{
+	s := spanOf(p)
+	if s == nil || s.state.get() != mSpanInUse || p < s.base() || p >= s.limit {
+		return nil
+	}
+	return s
+}
+
+## sysAlloc (mem.go [])
+{
+	sysStat.add(int64(n))
+	gcController.mappedReady.Add(int64(n))
+	p := sysAllocOS(n, vmaName)
+	if asanenabled {
+		lsanregisterrootregion(p, n)
+	}
+	return p
+}
