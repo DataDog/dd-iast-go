@@ -52,14 +52,26 @@ type loadedStore struct {
 	window   Key   // a window of a root
 	neighbor Key   // a clean allocation in the same 64-byte granule as a root
 	clean    []Key // clean 64-byte allocations, one granule each
+	miss     []Key // the clean keys that are filter misses
 	roots    int
 	entries  int
 	keep     []any
+
+	// The values of neighbor, clean and miss, for the runtime bridge
+	// benchmarks (they take values, not keys).
+	neighborValue string
+	cleanValues   []string
+	missValues    []string
 }
 
 func newLoadedStore(tb testing.TB, load lookupLoad) *loadedStore {
 	tb.Helper()
-	s := New()
+	return newLoadedStoreIn(tb, New(), load)
+}
+
+// newLoadedStoreIn loads s. The owners finish in the cleanup of tb.
+func newLoadedStoreIn(tb testing.TB, s *Store, load lookupLoad) *loadedStore {
+	tb.Helper()
 	loaded := &loadedStore{store: s}
 	// The tainted root, its window and the neighbor are published first, so
 	// a full store cannot refuse them.
@@ -90,6 +102,7 @@ func newLoadedStore(tb testing.TB, load lookupLoad) *loadedStore {
 			}
 			if _, _, _, ok := owner.AdoptSourceBytes(batch[i-1], "n", 1); ok {
 				loaded.neighbor = Key{Pointer: second, Length: 16, Kind: KindBytes}
+				loaded.neighborValue = unsafe.String(&batch[i][0], len(batch[i]))
 				loaded.keep = append(loaded.keep, batch)
 				break
 			}
@@ -117,6 +130,13 @@ func newLoadedStore(tb testing.TB, load lookupLoad) *loadedStore {
 		loaded.clean[i], _ = StringKey(values[i])
 	}
 	loaded.keep = append(loaded.keep, values)
+	loaded.cleanValues = values
+	for i, key := range loaded.clean {
+		if !s.MayContain(key) {
+			loaded.miss = append(loaded.miss, key)
+			loaded.missValues = append(loaded.missValues, values[i])
+		}
+	}
 	loaded.entries, _ = benchOccupancy(s)
 	tb.Cleanup(func() { finishAll(loaded.owners) })
 	return loaded
@@ -191,10 +211,16 @@ func BenchmarkMayContain(b *testing.B) {
 			keys []Key
 		}{
 			{"clean-random", loaded.clean},
+			// Filter misses only (plan section 9.3: "filter miss, any
+			// load"). At the full load, most random keys are filter hits.
+			{"clean-miss", loaded.miss},
 			{"clean-neighbor", []Key{loaded.neighbor}},
 			{"tainted-root", []Key{loaded.tainted}},
 		} {
 			b.Run(fmt.Sprintf("%s/%s", c.name, load.name), func(b *testing.B) {
+				if len(c.keys) == 0 {
+					b.Skip("no key")
+				}
 				hitRate, probes := loaded.rates(c.keys)
 				i := 0
 				for b.Loop() {

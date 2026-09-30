@@ -30,6 +30,8 @@ import (
 // with the same instructions. Thus build the two binaries with more than one
 // code placement (for example, add a padding function to the injected runtime
 // declarations), and use the runs of all the placements together.
+// .github/runtime-bench.sh does all this, and checks the gates of plan section
+// 9.3 (the CI workflow runtime-bench.yml runs it on linux).
 //
 // Each case is a //go:noinline function, so that the call shape is the same in
 // all the builds. The "heap" cases store the result in a global (buf == nil);
@@ -154,8 +156,8 @@ func BenchmarkRuntimeS2SOff(b *testing.B) {
 }
 
 // BenchmarkRuntimeTainted: the gate is on, and one operand is tainted. The
-// stack cases get one heap allocation (plan section 9.3: +1 allocation,
-// <= +60 ns).
+// stack cases get one heap allocation (plan section 9.3: +1 allocation of the
+// exact result size, <= +1 us).
 func BenchmarkRuntimeTainted(b *testing.B) {
 	ctx := begin(b)
 	s := taintString(b, ctx, "s", "short-value")

@@ -1273,6 +1273,130 @@ Q1 (Orchestrion target) is closed: dd-trace-go v2.11.0-rc.1 has no Orchestrion r
 - **Signature assertions.** Accepted: the woven runtime asserts the signature of each hooked function at compile time. A signature change then fails the build, also on go1.28+ (this is the one exception to "Go 1.28+: hooks off silently"). Applied: 3.9 item 6, 3.10, R3, step 5.
 - **Q9.** Loss budget is a gate: sparse 0 points, stressed <= 1 point, saturated reported only. Applied: R14, 9.3, step 3 exit, section 11.
 
+## 13. Implementation result
+
+Step 7. The measurement is automatic: `.github/runtime-bench.sh` (build, run, report) and `.github/runtime-bench.py` (pooled medians, bootstrap intervals, the 9.3 gates, verdict). The CI workflow `.github/workflows/runtime-bench.yml` runs the same script on linux. The method is the method of step 5 ([runtime-operator-hooks-step5-results.md](./runtime-operator-hooks-step5-results.md)):
+
+- hook - nohook: two woven test binaries of `./iast/runtime`; nohook has no prepend-statements aspect (the `runtime.g` declarations stay);
+- 8 code placements: a padding function with k = 0, 1, 3, 5, 7, 9, 11, 13 stores in the injected runtime declarations (k = 0 is the repository code), one GOCACHE for each build;
+- interleaved rounds: each round runs the 16 woven binaries and the unwoven binary once, and the order rotates each round;
+- gate value: the pooled median of hook - nohook over all the placements, with a 95 % bootstrap interval; the worst single placement is reported, not gated;
+- woven - unwoven (pooled hook - plain) is reported in a separate column: it is the cost that a customer sees (it also has the GC cost of the linked tracer), not a gate.
+
+Two gates (`hit`, `full2`) are **estimates**, because no woven benchmark has a clean filter hit. `BenchmarkRuntimePre` (`internal/taint/store/runtime_bridge_bench_test.go`, new in step 7) calls the bridge pre-check directly on the bound store (filter check, `Confirm`, panic guard). The gate value is this time plus the hook entry (the clean `b2s-stack` or `concat2-stack` hook - nohook, which also has one filter-miss pre-check). This sum is not a woven measurement of the filter-hit path. `concat2-clean-hit` uses the same clean neighbor for the two operands (one pointer, one shard). `BenchmarkMayContain` has a new `clean-miss` case (only keys that the filter rejects) at the three loads.
+
+The report is PASS only when every gate has complete data: the 41 runtime cases in 8 placements with the same number of hook and nohook runs (>= 8), >= 8 runs of each store row that a gate uses and of each admission row, and >= 10 HTTP runs for each side. Missing data gives INCOMPLETE, unless the gate key is in `RUNTIME_BENCH_OPTIONAL`.
+
+### 13.1 darwin/arm64
+
+Apple M5 Pro (18 cores), go1.26.6, Orchestrion v1.13.1, revision `7b2a6d48` (plus the step 7 files). Raw data and `report.md`: `/tmp/perf7` (builds and run 1), `/tmp/perf7-heap` (re-measure), `/tmp/perf7-http20`, `/tmp/perf7-run2` (run 2).
+
+Commands (repository root):
+
+```console
+export GOTOOLCHAIN=go1.26.6 GOCACHE=/tmp/perf7-gocache-plain RUNTIME_BENCH_OUT=/tmp/perf7
+.github/runtime-bench.sh build                    # 16 woven builds, 4 at a time: 11 min
+.github/runtime-bench.sh plain
+.github/runtime-bench.sh run                      # 10 rounds x 17 binaries, 300ms: 42 to 48 min
+RUNTIME_BENCH_OLD_TREE=/tmp/step3-base .github/runtime-bench.sh store   # 8 rounds, old and new store: 2 min
+RUNTIME_BENCH_HTTP_COUNT=20 .github/runtime-bench.sh http   # sampled out: 1 min
+.github/runtime-bench.sh report
+```
+
+`/tmp/step3-base` is the old store of step 3 (the parent commit of step 3 with the benchmark files, `/tmp/step3-report.md`).
+
+Three measurements:
+
+1. **Run 1** (18:41 to 19:30): other builds ran on the machine (load average 5 to 81). Result: 3 heap conversion rows and the HTTP row (n=10) failed, with wide intervals: gate off `r2s-heap` +2.95 ns [-0.21, +6.82]; clean `s2b-heap` +4.88 ns [+4.49, +5.52] (gate +4.5); clean `s2r-heap` +6.24 ns [+3.47, +7.53] (gate +6); HTTP +7.12 % (benchstat ±97 % / ±771 %, p=0.315).
+2. **Re-measure** of the 8 heap conversion rows (20 rounds, 160 runs for each side, same load): all pass; clean `s2b-heap` +4.36 ns [+4.03, +4.65]. HTTP n=20: +0.60 % (±87 %).
+3. **Run 2** (20:26 to 21:09, the same 17 binaries, quiet machine: load average 2 to 5): new runtime rounds (with `TestAllocs`) and a new HTTP run (n=20). The store, bridge pre-check and admission benchmarks are not measured again in run 2: the report uses their run of 20:22 to 20:24 (after the new store benchmarks were added; load average 4). With these inputs, **all gates pass**. This combined result is the step 7 result on darwin/arm64. The table below uses it.
+
+| Key | Case (9.3) | Gate | Run 2 | Result |
+|---|---|---|---|---|
+| off | Gate off, any concat or conversion | 0 extra allocations; <= +2 ns pooled | 0 extra allocations; worst `concat2-stack` +0.43 ns; `concat16-stack` +0.13 ns (worst placement +2.96 ns, k=0) | PASS |
+| clean-heap | Gate on, clean, escaping (`buf == nil`) | 0 extra allocations; <= +3 ns + 1.5 ns for each operand | worst margin `s2b-heap` +4.22 ns [+4.16, +4.33] (gate +4.5); concat 2 / 4 / 6 / 16: +5.31 / +6.43 / +8.09 / +14.66 ns | PASS |
+| clean-stack | Gate on, clean, stack buffer, filter miss | 0 extra allocations; <= +3 ns + 1.5 ns for each operand | worst margin `s2b-stack` +3.99 ns; concat 2 / 4 / 6 / 16: +4.85 / +5.90 / +7.21 / +15.13 ns | PASS |
+| hit | Gate on, clean, stack buffer, filter hit | 0 extra allocations; <= +50 ns for each operand that hits | estimate: `RuntimePre/full/one-clean-hit` 41.51 ns + hook entry 3.61 ns = 45.12 ns (sparse 25.35 ns, typical 24.73 ns) | PASS (estimate) |
+| full2 | Gate on, clean, 2-operand stack concat, full index | 0 extra allocations; <= +100 ns | estimate: `RuntimePre/full/concat2-clean-hit` (both operands hit) 79.57 ns + hook entry 4.85 ns = 84.42 ns | PASS (estimate) |
+| tainted | Gate on, tainted, stack buffer | +1 allocation of the exact result size; <= +1 us | +1 allocation, 16 B; concat2 +620.06 ns, `b2s` +415.44 ns, `s2b` +418.40 ns | PASS |
+| maycontain-hit | `MayContain` filter hit, clean | <= 45 ns, 0 allocations | worst 1.65 ns | PASS |
+| maycontain-random | `MayContain` clean, random pointers, sparse / typical / full | <= 4 / 10 / 45 ns, 0 allocations | 1.69 / 1.72 / 1.92 ns (filter hit rate 0.5 / 11.1 / 92.3 %) | PASS |
+| rune-clean | Gate on, clean, rune conversion, escaping or stack | 0 extra allocations; <= +6 ns | worst `s2r-stack` +3.37 ns; `s2r-heap` +3.37 ns [+0.70, +5.10] | PASS |
+| s2s-off | Gate on, `[]byte(s)` / `[]rune(s)`, Q2 switch off | 0 extra allocations; <= +2 ns | worst `s2b-stack` +0.23 ns | PASS |
+| tainted-rune | Gate on, tainted rune conversion | +1 allocation of the exact result size; <= +1 us | `r2s` +815.34 ns, 16 B; `s2r` +833.12 ns, 48 B (11 runes x 4 B = 44 B, size class 48 B) | PASS |
+| maycontain-miss | `MayContain` filter miss (any load) | <= 3 ns, 0 allocations | `clean-miss` sparse / typical / full: 1.68 / 1.69 / 1.66 ns | PASS |
+| http | HTTP overhead benchmark (sampled out) | <= +3.70 % (Phase 6 +2.70 % + 1 point) | n=20: control 54.38 us, IAST 55.95 us, +2.89 % (±1 %, p=0.000) | PASS |
+| admission | Source-root admission loss (Q9), old - new | sparse: 0 points; stressed: <= 1 point | sparse: 0.00 points in all 17 rows; stressed: worst +0.10 points (`dense256/stressed/TaintBytes`), best -1.15; saturated (reported): -46.36 to +87.20 points, as in step 3 (`collide/saturated` 12.80 %: the index refuses colliding granules) | PASS |
+| allocs | Zero allocations (`TestAllocs`, woven stdlib path, gate on, clean) | 0 | PASS in all 8 hook binaries | PASS |
+
+The smallest margins: clean `s2b-heap` (0.28 ns; step 5: +4.45 ns), `hit` (4.9 ns), clean `concat2-heap` (0.69 ns), tainted `s2r-stack` (167 ns). A loaded machine moves the heap rows over their gates (run 1).
+
+Run 2, all runtime cases (hook - nohook, ns; "Allocs" and "B" are the median extra allocations and bytes):
+
+| Case | Pooled [95 % CI] | Worst placement (k) | Range | Allocs | B | Woven - unwoven | Gate | Result |
+|---|---:|---:|---:|---:|---:|---:|---|---|
+| RuntimeOff/concat2-heap | **+0.38** [+0.19, +0.59] | +0.98 (11) | +0.25..+0.98 | +0 | +0 | +2.30 | <= +2 ns | PASS |
+| RuntimeOff/concat4-heap | **+0.30** [+0.17, +0.46] | +1.03 (0) | +0.05..+1.03 | +0 | +0 | +1.70 | <= +2 ns | PASS |
+| RuntimeOff/concat6-heap | **+0.35** [+0.11, +0.50] | +1.27 (0) | -0.09..+1.27 | +0 | +0 | +1.64 | <= +2 ns | PASS |
+| RuntimeOff/concat16-heap | **-1.42** [-1.85, -1.04] | +2.61 (0) | -2.54..+2.61 | +0 | +0 | -0.36 | <= +2 ns | PASS |
+| RuntimeOff/concat2-stack | **+0.43** [+0.31, +0.51] | +0.91 (11) | +0.19..+0.91 | +0 | +0 | +0.29 | <= +2 ns | PASS |
+| RuntimeOff/concat4-stack | **+0.31** [+0.24, +0.47] | +1.27 (0) | +0.15..+1.27 | +0 | +0 | +0.41 | <= +2 ns | PASS |
+| RuntimeOff/concat6-stack | **+0.42** [+0.31, +0.59] | +1.79 (0) | +0.11..+1.79 | +0 | +0 | +0.39 | <= +2 ns | PASS |
+| RuntimeOff/concat16-stack | **+0.13** [-0.54, +0.51] | +2.96 (0) | -2.03..+2.96 | +0 | +0 | -0.23 | <= +2 ns | PASS |
+| RuntimeOff/b2s-heap | **+0.10** [+0.05, +0.17] | +0.26 (0) | +0.02..+0.26 | +0 | +0 | +2.00 | <= +2 ns | PASS |
+| RuntimeOff/b2s-stack | **+0.18** [+0.15, +0.21] | +0.22 (13) | +0.11..+0.22 | +0 | +0 | +0.19 | <= +2 ns | PASS |
+| RuntimeOff/s2b-heap | **+0.08** [+0.00, +0.15] | +0.20 (11) | -0.01..+0.20 | +0 | +0 | +1.93 | <= +2 ns | PASS |
+| RuntimeOff/s2b-stack | **+0.24** [+0.23, +0.24] | +0.24 (11) | +0.21..+0.24 | +0 | +0 | +0.24 | <= +2 ns | PASS |
+| RuntimeOff/r2s-heap | **-1.70** [-2.07, -1.07] | +0.12 (0) | -2.70..+0.12 | +0 | +0 | +0.01 | <= +2 ns | PASS |
+| RuntimeOff/r2s-stack | **-0.49** [-0.73, -0.08] | +0.25 (13) | -1.11..+0.25 | +0 | +0 | +0.10 | <= +2 ns | PASS |
+| RuntimeOff/s2r-heap | **-0.37** [-1.72, +0.63] | +0.00 (11) | -2.09..+0.00 | +0 | +0 | +4.23 | <= +2 ns | PASS |
+| RuntimeOff/s2r-stack | **-0.43** [-0.94, +0.23] | +0.33 (5) | -0.90..+0.33 | +0 | +0 | -0.22 | <= +2 ns | PASS |
+| RuntimeClean/concat2-heap | **+5.31** [+5.10, +5.48] | +5.62 (11) | +4.95..+5.62 | +0 | +0 | +5.34 | <= +6 ns | PASS |
+| RuntimeClean/concat4-heap | **+6.43** [+6.27, +6.68] | +7.64 (0) | +6.02..+7.64 | +0 | +0 | +6.54 | <= +9 ns | PASS |
+| RuntimeClean/concat6-heap | **+8.09** [+7.77, +8.33] | +9.23 (0) | +7.49..+9.23 | +0 | +0 | +8.21 | <= +12 ns | PASS |
+| RuntimeClean/concat16-heap | **+14.66** [+14.34, +15.03] | +17.84 (0) | +13.53..+17.84 | +0 | +0 | +14.30 | <= +27 ns | PASS |
+| RuntimeClean/concat2-stack | **+4.85** [+4.71, +4.99] | +5.19 (0) | +4.49..+5.19 | +0 | +0 | +4.83 | <= +6 ns | PASS |
+| RuntimeClean/concat4-stack | **+5.90** [+5.80, +6.08] | +6.82 (0) | +5.64..+6.82 | +0 | +0 | +5.91 | <= +9 ns | PASS |
+| RuntimeClean/concat6-stack | **+7.21** [+7.06, +7.39] | +8.39 (0) | +6.60..+8.39 | +0 | +0 | +7.31 | <= +12 ns | PASS |
+| RuntimeClean/concat16-stack | **+15.13** [+14.73, +15.76] | +18.78 (0) | +13.98..+18.78 | +0 | +0 | +15.49 | <= +27 ns | PASS |
+| RuntimeClean/b2s-heap | **+3.82** [+3.74, +3.90] | +4.28 (1) | +3.65..+4.28 | +0 | +0 | +3.91 | <= +4.5 ns | PASS |
+| RuntimeClean/b2s-stack | **+3.61** [+3.58, +3.62] | +3.67 (7) | +3.56..+3.67 | +0 | +0 | +3.60 | <= +4.5 ns | PASS |
+| RuntimeClean/s2b-heap | **+4.22** [+4.16, +4.33] | +4.51 (11) | +4.04..+4.51 | +0 | +0 | +4.44 | <= +4.5 ns | PASS |
+| RuntimeClean/s2b-stack | **+3.99** [+3.98, +4.02] | +4.04 (9) | +3.96..+4.04 | +0 | +0 | +3.99 | <= +4.5 ns | PASS |
+| RuntimeClean/r2s-heap | **+1.92** [+1.61, +2.41] | +4.12 (0) | +0.83..+4.12 | +0 | +0 | +2.97 | <= +6 ns | PASS |
+| RuntimeClean/r2s-stack | **+2.79** [+2.54, +3.26] | +3.40 (13) | +2.33..+3.40 | +0 | +0 | +3.41 | <= +6 ns | PASS |
+| RuntimeClean/s2r-heap | **+3.37** [+0.70, +5.10] | +5.66 (13) | -0.18..+5.66 | +0 | +0 | +1.82 | <= +6 ns | PASS |
+| RuntimeClean/s2r-stack | **+3.37** [+2.85, +3.89] | +4.08 (7) | +2.78..+4.08 | +0 | +0 | +3.31 | <= +6 ns | PASS |
+| RuntimeS2SOff/s2b-heap | **+0.12** [+0.08, +0.18] | +0.23 (11) | -0.04..+0.23 | +0 | +0 | +0.20 | <= +2 ns | PASS |
+| RuntimeS2SOff/s2b-stack | **+0.23** [+0.23, +0.24] | +0.24 (7) | +0.22..+0.24 | +0 | +0 | +0.24 | <= +2 ns | PASS |
+| RuntimeS2SOff/s2r-heap | **-2.92** [-4.44, -0.68] | +1.36 (1) | -4.53..+1.36 | +0 | +0 | -1.88 | <= +2 ns | PASS |
+| RuntimeS2SOff/s2r-stack | **-0.38** [-0.88, +0.14] | +0.15 (5) | -1.62..+0.15 | +0 | +0 | -0.64 | <= +2 ns | PASS |
+| RuntimeTainted/concat2-stack | **+620.06** [+618.26, +624.93] | +625.90 (11) | +614.24..+625.90 | +1 | +16 | +619.98 | <= +1 us, +1 alloc | PASS |
+| RuntimeTainted/b2s-stack | **+415.44** [+411.86, +417.27] | +419.98 (1) | +408.34..+419.98 | +1 | +16 | +415.43 | <= +1 us, +1 alloc | PASS |
+| RuntimeTainted/s2b-stack | **+418.40** [+415.85, +420.45] | +422.15 (3) | +414.50..+422.15 | +1 | +16 | +418.40 | <= +1 us, +1 alloc | PASS |
+| RuntimeTainted/r2s-stack | **+815.34** [+812.52, +821.35] | +829.35 (13) | +811.00..+829.35 | +1 | +16 | +815.84 | <= +1 us, +1 alloc | PASS |
+| RuntimeTainted/s2r-stack | **+833.12** [+828.72, +834.88] | +838.00 (5) | +827.01..+838.00 | +1 | +48 | +833.17 | <= +1 us, +1 alloc | PASS |
+
+### 13.2 linux/amd64 (CI)
+
+To be filled in after the CI run. Workflow `.github/workflows/runtime-bench.yml` ("Runtime benchmarks"). Trigger: push a branch that matches `bench/**` (the step 7 commit has the bookmark `bench/runtime-hooks-step7`). A manual start (`workflow_dispatch`) is possible only after the workflow file is on the default branch. The job summary of "Measure (ubuntu-latest)" has the 9.3 table, and the artifact `runtime-bench-results-ubuntu-latest` has the raw files and the benchstat output. The same run also gives linux/arm64 ("Measure (ubuntu-24.04-arm)").
+
+Differences from the darwin/arm64 run, so that the measure job fits in 60 minutes (measured locally: one run of all the runtime benchmarks is 8.4 s at 100ms, 21 s at 300ms):
+
+- `-test.benchtime=100ms` in place of 300ms. The 8 placements and the 10 rounds do not change (80 runs for each side and case). Budget: 17 binaries x 10 rounds x approx. 9 s = approx. 26 min, plus approx. 1 min for the store benchmarks. The budgets come from local times: check them after the first CI run (a runner can have 2 vCPUs).
+- The 16 woven builds of one runner run in 8 parallel build jobs (one for each placement); the measure job downloads the 16 binaries and runs all the rounds on one machine.
+- The HTTP benchmark runs in its own job, on another runner with the same label.
+- No old store: the source-root admission gate is optional (`RUNTIME_BENCH_OPTIONAL=admission`). It is a property of the store algorithm, measured on darwin/arm64 above and in step 3. The new-store admitted percentages are reported. All the other gates must have data.
+- Only the Go version of `go.mod` (go1.26.6).
+
+### 13.3 Not measured, and corrections
+
+- go1.27.x (section 9.2 asks for go1.26.6 and go1.27.x): not measured in step 7. Step 5 measured the gate-off rows on go1.27.1 (pooled, all pass).
+- Section 9.2 cases that `iast/runtime/bench_test.go` does not have: tainted concat with 4, 6 and 16 operands, and a tainted heap concat; rune conversions with 8 and 1 000 runes, and multi-byte text (the benchmarks use 11 and 40 ASCII runes). The 9.3 gates above are proven only for the measured cases. To add them: new cases in `bench_test.go`, then a new build and run (approx. 1 hour).
+- No woven benchmark has a clean filter hit, thus the `hit` and `full2` gates are estimates (see above; `hit` is 4.9 ns below its gate). To measure them: woven one-hit and two-hit stack cases at the full load in `bench_test.go` (with two neighbors in different granules), then a new build and run.
+- Section 9.2 says "median of 8 runs". After step 5, the gate rows use the pooled method above (80 runs for each side); section 9.2 is not changed.
+- Correction outside the plan: the comment of `BenchmarkRuntimeTainted` (`iast/runtime/bench_test.go`) gave the old gate (<= +60 ns); it now gives <= +1 us (user decision after step 5). No factual error was found in the other sections of this plan.
+
 ## Appendix A. Critic round 1 responses
 
 | # | Finding | Response |
