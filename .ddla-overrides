@@ -70,6 +70,23 @@
   {
     "override_type": "replace",
     "target": {
+      "component": "github.com/DataDog/dd-iast-go/testapps/runtime",
+      "origin": "https://github.com/DataDog/dd-iast-go"
+    },
+    "replacement": {
+      "name": "github.com/DataDog/dd-iast-go/testapps/runtime",
+      "origin": "https://github.com/DataDog/dd-iast-go",
+      "license": [
+        "Apache-2.0"
+      ],
+      "copyright": [
+        "Datadog, Inc."
+      ]
+    }
+  },
+  {
+    "override_type": "replace",
+    "target": {
       "component": "github.com/xeipuuv/gojsonpointer",
       "origin": "https://github.com/xeipuuv/gojsonpointer"
     },

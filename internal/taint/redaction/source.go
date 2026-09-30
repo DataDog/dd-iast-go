@@ -8,6 +8,7 @@
 package redaction
 
 import (
+	"math"
 	"strings"
 	"unicode/utf8"
 
@@ -226,7 +227,13 @@ func truncateRedactedEvidence(value string, remaining *uint64) (string, model.Tr
 		*remaining -= uint64(len(value))
 		return value, model.TruncatedSideNone
 	}
-	result := value[:int(*remaining)]
+	// Here *remaining < len(value), thus it fits in an int. The explicit
+	// bound makes this clear to static analysis.
+	cut := *remaining
+	if cut > math.MaxInt {
+		cut = math.MaxInt
+	}
+	result := value[:int(cut)]
 	*remaining = 0
 	return result, model.TruncatedSideRight
 }
