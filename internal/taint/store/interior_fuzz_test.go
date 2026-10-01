@@ -230,6 +230,9 @@ func checkIndexInvariants(t *testing.T, s *Store) {
 		for bucket := range s.index[i].buckets {
 			for slot := range s.index[i].buckets[bucket] {
 				entry := &s.index[i].buckets[bucket][slot]
+				if got, want := slotTag(&s.index[i], bucket, slot), entryTagOf(entry); got != want {
+					t.Fatalf("shard %d bucket %d slot %d: tag %d, want %d", i, bucket, slot, got, want)
+				}
 				if entry.key == 0 {
 					continue
 				}

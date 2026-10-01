@@ -11,7 +11,7 @@ package bridgetest
 
 import (
 	"sync/atomic"
-	_ "unsafe" // for go:linkname
+	"unsafe"
 
 	// The bridge must be in the build for the linker to find its symbols.
 	_ "github.com/DataDog/dd-iast-go/internal/taint/runtimebridge"
@@ -32,6 +32,40 @@ func S2SGate() uint32 { return atomic.LoadUint32(&s2sGate) }
 // SetS2SGate stores the string-to-slice switch word and returns the previous
 // value. Only tests change this word after Bind.
 func SetS2SGate(value uint32) uint32 { return atomic.SwapUint32(&s2sGate, value) }
+
+// The filter checks return their arguments unchanged, with the result of the
+// check (plan section 13.4). The runtime passes its stack buffer as buf; the
+// tests pass any pointer.
+
+// ConcatHit is __dd_iast_rt.concat_hit.
+//
+//go:linkname ConcatHit __dd_iast_rt.concat_hit
+//go:noescape
+func ConcatHit(buf unsafe.Pointer, a []string) (unsafe.Pointer, []string, bool)
+
+// BytesHit is __dd_iast_rt.bytes_hit.
+//
+//go:linkname BytesHit __dd_iast_rt.bytes_hit
+//go:noescape
+func BytesHit(buf unsafe.Pointer, ptr *byte, n int) (unsafe.Pointer, *byte, int, bool)
+
+// StrHit is __dd_iast_rt.str_hit.
+//
+//go:linkname StrHit __dd_iast_rt.str_hit
+//go:noescape
+func StrHit(buf unsafe.Pointer, s string) (unsafe.Pointer, string, bool)
+
+// StrHitRunes is __dd_iast_rt.str_hit_runes.
+//
+//go:linkname StrHitRunes __dd_iast_rt.str_hit_runes
+//go:noescape
+func StrHitRunes(buf unsafe.Pointer, s string) (unsafe.Pointer, string, bool)
+
+// RunesHit is __dd_iast_rt.runes_hit.
+//
+//go:linkname RunesHit __dd_iast_rt.runes_hit
+//go:noescape
+func RunesHit(buf unsafe.Pointer, a []rune) (unsafe.Pointer, []rune, bool)
 
 // ConcatPre is __dd_iast_rt.concat_pre.
 //

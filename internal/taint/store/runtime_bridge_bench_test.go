@@ -22,9 +22,9 @@ import (
 //   - one-clean-hit: one clean operand that is a filter hit (a neighbor
 //     allocation in the granule of a root);
 //   - one-miss: one clean operand that is a filter miss;
-//   - concat2-clean-hit: two clean operands that are both filter hits (plan
-//     section 9.3: "2-operand stack concat, full index, both operands can
-//     hit");
+//   - concat2-clean-hit: two clean operands that are both filter hits, in
+//     the granules of two different roots (plan section 9.3: "2-operand
+//     stack concat, full index, both operands can hit");
 //   - concat2-clean-random: two random clean operands.
 //
 // The names are RuntimePre/<load>/<case>.
@@ -45,11 +45,12 @@ func BenchmarkRuntimePre(b *testing.B) {
 			n := len(loaded.cleanValues)
 			clean := append(append([]string(nil), loaded.cleanValues...), loaded.cleanValues[0])
 			miss := loaded.missValues
-			hitRate, _ := loaded.rates([]Key{loaded.neighbor})
+			other, _ := StringKey(loaded.otherNeighborValue)
+			hitRate, _ := loaded.rates([]Key{loaded.neighbor, other})
 			if hitRate != 100 {
-				b.Fatal("the neighbor is not a filter hit")
+				b.Fatal("a neighbor is not a filter hit")
 			}
-			pair := []string{neighbor, neighbor}
+			pair := []string{neighbor, loaded.otherNeighborValue}
 			cases := []struct {
 				name string
 				f    func(i int) bool

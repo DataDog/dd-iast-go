@@ -222,7 +222,7 @@ func runChild(t *testing.T, gate, depth int) result {
 	return r
 }
 
-const wantUserEntries = 6 // one pre-check entry for each operation
+const wantUserEntries = 6 // one filter-check entry for each operation
 
 func TestSystemStackSkipsHook(t *testing.T) {
 	// Woven check (and the normal-goroutine control) at depth 0.

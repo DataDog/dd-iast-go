@@ -1224,3 +1224,36 @@ func storeMax(counter *atomic.Int64, value int64) {
 		}
 	}
 }
+
+// TestTagMatches checks that tagMatches never misses a slot with the tag. It
+// can report more slots (the borrow of the subtraction); probe then compares
+// the entry key.
+func TestTagMatches(t *testing.T) {
+	r := rand.New(rand.NewPCG(7, 11))
+	for range 100_000 {
+		word := r.Uint64()
+		// Some words with repeated, zero and 0x01 bytes, for the borrow.
+		for i := range 8 {
+			switch r.IntN(4) {
+			case 0:
+				word &^= 0xff << (8 * i)
+			case 1:
+				word = word&^(0xff<<(8*i)) | 1<<(8*i)
+			}
+		}
+		tag := max(uint8(r.Uint32()), 1)
+		if r.IntN(2) == 0 {
+			slot := r.IntN(8)
+			word = word&^(0xff<<(8*slot)) | uint64(tag)<<(8*slot)
+		}
+		matches := tagMatches(word, tag)
+		for slot := range 8 {
+			if uint8(word>>(8*slot)) == tag {
+				require.NotZero(t, matches&(0x80<<(8*slot)), "word %#x tag %#x slot %d", word, tag, slot)
+			}
+		}
+		require.Zero(t, matches&^tagHighs)
+	}
+	require.Zero(t, tagMatches(0, 1), "empty slots have tag 0")
+	require.NotZero(t, entryTag(0), "a tag is never 0")
+}

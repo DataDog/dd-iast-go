@@ -14,8 +14,9 @@ import (
 )
 
 // tokenOps are the 6 hooked operations with a stack buffer and a tainted
-// input. Each one enters the bridge twice: the pre-check forces the result to
-// the heap, and the result hook adopts it.
+// input. Each one enters the bridge 3 times: the filter check before the
+// wrapper has a hit, the pre-check forces the result to the heap, and the
+// result hook adopts it.
 func tokenOps(t *testing.T) map[string]func() probe {
 	t.Helper()
 	ctx := begin(t)
@@ -53,7 +54,7 @@ func TestBypassTokenGateChange(t *testing.T) {
 
 		before := entries()
 		p = op()
-		require.Equal(t, uint64(2), entries()-before, "%s: the next operation must enter the bridge (a stale token skips it)", name)
+		require.Equal(t, uint64(3), entries()-before, "%s: the next operation must enter the bridge (a stale token skips it)", name)
 		require.Equal(t, probe{tainted: true}, p, name)
 	}
 }
@@ -95,7 +96,7 @@ func TestBypassTokenStaleBound(t *testing.T) {
 	first := stackConcat("x", s)
 	second := stackConcat("x", s)
 	got := entries() - before
-	require.GreaterOrEqual(t, got, uint64(2), "at most one operation can skip the bridge")
+	require.GreaterOrEqual(t, got, uint64(3), "at most one operation can skip the bridge")
 	require.True(t, first.tainted || second.tainted)
 	require.True(t, second.tainted, "the stale token is gone after one entry")
 }
@@ -115,5 +116,5 @@ func TestBypassTokenSequence(t *testing.T) {
 	for i := range 1000 {
 		list[i%len(list)]()
 	}
-	require.Equal(t, uint64(2000), entries()-before)
+	require.Equal(t, uint64(3000), entries()-before)
 }

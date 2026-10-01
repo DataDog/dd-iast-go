@@ -10,5 +10,6 @@ package store
 // changes them.
 const (
 	expectedOwnerSize = 183_376
-	expectedStoreSize = 14_040_760
+	// The tag words of the index shards (256 x 16 x 8 B) are 32 768 B.
+	expectedStoreSize = 14_073_528
 )

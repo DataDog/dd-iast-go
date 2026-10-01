@@ -355,9 +355,18 @@ func TestFilterHitUsesBothTiers(t *testing.T) {
 	require.Equal(t, TierLBit|(p>>ShiftL+1), GranuleKey(p, true))
 	require.Equal(t, p>>ShiftS+1, GranuleKey(p, false))
 
+	// On a 64-bit platform, TierLBit (bit 63) does not change the bucket, so
+	// filterHit does not set it. On a 32-bit platform, it sets it.
+	if unsafe.Sizeof(uintptr(0)) == 8 {
+		require.Zero(t, tierLHashBit)
+	} else {
+		require.Equal(t, uintptr(TierLBit), uintptr(tierLHashBit))
+	}
+
 	// The written-out FilterHit is the same as the bucketS / bucketL form.
 	for i := range uintptr(4096) {
 		q := p + i*977
+		require.Equal(t, bucketL(q), FilterBucket(IndexHash(q>>ShiftL+1|tierLHashBit)), "the tier L key of filterHit has the same bucket")
 		var single Filter
 		single[bucketS(q)].Add(1)
 		require.True(t, FilterHit(&single, q))

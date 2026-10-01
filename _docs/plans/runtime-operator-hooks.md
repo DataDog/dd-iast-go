@@ -123,7 +123,7 @@ Source: `/tmp/concathook-gate/artifacts/perf/yaml/D-atomic.orchestrion.yml` (gen
 How it works, for each hooked function `<fn>`:
 
 1. **Outer entry** (prepended statements in `runtime.<fn>`): one atomic load of the gate. Gate 0: the original body runs. This is the only added work with the gate off. The frame, the prologue and the result of `<fn>` do not change (appendix H).
-2. Gate not 0: read the bypass token of the current `g`. Token 1: this is an inner entry (item 4). Token 0: call the `//go:nosplit` context check `__dd_iast_ok()` (3.3). It returns false: the original body runs directly (no wrapper frame, no token, no bridge call). It returns true: `return __dd_iast_<fn>(args)`.
+2. Gate not 0: read the bypass token of the current `g`. Token 1: this is an inner entry (item 4). Token 0: call the `//go:nosplit` context check `__dd_iast_ok()` (3.3). It returns false: the original body runs directly (no wrapper frame, no token, no bridge call). It returns true: after step 7, call the bridge filter check `__dd_iast_rt_<x>_hit(args)` (section 13.4; `slicerunetostring` calls it first in its wrapper). It returns false (no input can be tainted): the original body runs directly. It returns true: `return __dd_iast_<fn>(args)`.
 3. **Wrapper** `__dd_iast_<fn>` (`//go:noinline`, in the shared declarations, section 3.5): the pre-check with the guard (3.2.1, 3.4) and `buf = nil` on a hit; set the bypass token; call the original function through the alias `__dd_iast_orig_<fn>`; clear the token; call the result hook with the guard when the result is not on the stack. The wrapper has no context check: its only caller called `__dd_iast_ok()` immediately before.
 4. **Inner entry** (the same prepended statements, in the call from the wrapper): the gate is not 0 and the token is 1, so it clears the token and runs the original body. It does not call `__dd_iast_ok()`.
 
@@ -265,6 +265,19 @@ func concatstrings(buf *tmpBuf, a []string) string {
 Gate-off machine code (arm64, `stringtoslicebyte`, go1.27.1 and go1.26.6): `ADRP` + `ADD` + `LDARW` of the gate, then `CBZW` to the original body. Nothing else. The inlined `__dd_iast_ok()` adds 12 instructions to the gate-on branch only; the frame sizes do not change (appendix H.6).
 
 Changes in step 5 against the step 2 artifact: `links:` names `internal/taint/runtimebridge` **and** `internal/taint/propagation` (3.2 rule 6: the propagation package registers the callbacks); the real bridge implements `confirm` (3.2.1). (The context check before the wrapper and the signature assertions are in the artifact since critic round 9.)
+
+Change after step 7 (section 13.4): the template above is the step 5 form. In the current `iast/runtime/orchestrion.yml`, the prepended code calls a bridge filter check after `__dd_iast_ok()`, and calls the wrapper only on a filter hit. The filter check returns its arguments unchanged, and the code stores them in the arguments, so that no argument is live across the call (no new spill at the entry, thus the gate-off path does not change):
+
+```go
+} else if __dd_iast_ok() {
+  var __dd_iast_hit bool
+  if buf, a, __dd_iast_hit = __dd_iast_rt_concat_hit(buf, a); __dd_iast_hit {
+    return __dd_iast_concatstrings(buf, a)
+  }
+}
+```
+
+`slicerunetostring` is the exception: there, the filter check in the prepended code makes the frame larger than the small-frame limit, so its wrapper calls the filter check first.
 
 ## 3. Design A: concatenation hook
 
@@ -411,6 +424,8 @@ if buf != nil {
 ```
 
 `filterHit`, `bucketS`, `bucketL` and `FilterBuckets` live in the bridge, and the store imports them, so the two sides cannot disagree on the hash.
+
+After step 7 (section 13.4), the prepended code calls the same filter check before the wrapper, with the bridge functions `__dd_iast_rt.concat_hit`, `bytes_hit`, `str_hit`, `str_hit_runes` and `runes_hit`. A clean input with a filter miss thus does not enter the wrapper, the pre-check or the result hook. The pre-check and the result hook still check the filter (they run only after a hit).
 
 ### 3.3 Runtime context checks
 
@@ -1283,9 +1298,9 @@ Step 7. The measurement is automatic: `.github/runtime-bench.sh` (build, run, re
 - gate value: the pooled median of hook - nohook over all the placements, with a 95 % bootstrap interval; the worst single placement is reported, not gated;
 - woven - unwoven (pooled hook - plain) is reported in a separate column: it is the cost that a customer sees (it also has the GC cost of the linked tracer), not a gate.
 
-Two gates (`hit`, `full2`) are **estimates**, because no woven benchmark has a clean filter hit. `BenchmarkRuntimePre` (`internal/taint/store/runtime_bridge_bench_test.go`, new in step 7) calls the bridge pre-check directly on the bound store (filter check, `Confirm`, panic guard). The gate value is this time plus the hook entry (the clean `b2s-stack` or `concat2-stack` hook - nohook, which also has one filter-miss pre-check). This sum is not a woven measurement of the filter-hit path. `concat2-clean-hit` uses the same clean neighbor for the two operands (one pointer, one shard). `BenchmarkMayContain` has a new `clean-miss` case (only keys that the filter rejects) at the three loads.
+In the step 7 run (sections 13.1 to 13.3), two gates (`hit`, `full2`) are **estimates**, because no woven benchmark had a clean filter hit. Section 13.4 replaces these estimates with the woven case `BenchmarkRuntimeCleanHit`. `BenchmarkRuntimePre` (`internal/taint/store/runtime_bridge_bench_test.go`, new in step 7) calls the bridge pre-check directly on the bound store (filter check, `Confirm`, panic guard). The gate value is this time plus the hook entry (the clean `b2s-stack` or `concat2-stack` hook - nohook, which also has one filter-miss pre-check). This sum is not a woven measurement of the filter-hit path. `concat2-clean-hit` uses the same clean neighbor for the two operands (one pointer, one shard). `BenchmarkMayContain` has a new `clean-miss` case (only keys that the filter rejects) at the three loads.
 
-The report is PASS only when every gate has complete data: the 41 runtime cases in 8 placements with the same number of hook and nohook runs (>= 8), >= 8 runs of each store row that a gate uses and of each admission row, and >= 10 HTTP runs for each side. Missing data gives INCOMPLETE, unless the gate key is in `RUNTIME_BENCH_OPTIONAL`.
+The report is PASS only when every gate has complete data: the 41 runtime cases (43 after section 13.4) in 8 placements with the same number of hook and nohook runs (>= 8), >= 8 runs of each store row that a gate uses and of each admission row, and >= 10 HTTP runs for each side. Missing data gives INCOMPLETE, unless the gate key is in `RUNTIME_BENCH_OPTIONAL`.
 
 ### 13.1 darwin/arm64
 
@@ -1393,9 +1408,56 @@ Differences from the darwin/arm64 run, so that the measure job fits in 60 minute
 
 - go1.27.x (section 9.2 asks for go1.26.6 and go1.27.x): not measured in step 7. Step 5 measured the gate-off rows on go1.27.1 (pooled, all pass).
 - Section 9.2 cases that `iast/runtime/bench_test.go` does not have: tainted concat with 4, 6 and 16 operands, and a tainted heap concat; rune conversions with 8 and 1 000 runes, and multi-byte text (the benchmarks use 11 and 40 ASCII runes). The 9.3 gates above are proven only for the measured cases. To add them: new cases in `bench_test.go`, then a new build and run (approx. 1 hour).
-- No woven benchmark has a clean filter hit, thus the `hit` and `full2` gates are estimates (see above; `hit` is 4.9 ns below its gate). To measure them: woven one-hit and two-hit stack cases at the full load in `bench_test.go` (with two neighbors in different granules), then a new build and run.
+- In step 7, no woven benchmark had a clean filter hit, thus the `hit` and `full2` gates are estimates (see above; `hit` is 4.9 ns below its gate). Done in section 13.4. To measure them: woven one-hit and two-hit stack cases at the full load in `bench_test.go` (with two neighbors in different granules), then a new build and run.
 - Section 9.2 says "median of 8 runs". After step 5, the gate rows use the pooled method above (80 runs for each side); section 9.2 is not changed.
 - Correction outside the plan: the comment of `BenchmarkRuntimeTainted` (`iast/runtime/bench_test.go`) gave the old gate (<= +60 ns); it now gives <= +1 us (user decision after step 5). No factual error was found in the other sections of this plan.
+
+### 13.4 Gate-on optimization (after step 7)
+
+Cause: the first CI run of the step 7 workflow (run 36834964455, linux/amd64) gave gate-on clean costs of approx. 2 times the gates (for example `concat2` +10 ns, gate +6 ns; `b2s` / `s2b` +7 to +9 ns, gate +4.5 ns; filter-hit pre-check 79 to 88 ns, gate 50 ns). The gate-off rows passed. This change makes the gate-on path less expensive. The gate-off path does not change: the same 4 instructions after the prologue, and the same prologue and frame as the nohook build (disassembly of the 6 functions; the escape comparison is identical in the 3 modes).
+
+Changes:
+
+1. **Filter check before the wrapper.** After `__dd_iast_ok()`, the prepended code calls a bridge filter check (`__dd_iast_rt.concat_hit`, `bytes_hit`, `str_hit`, `str_hit_runes`; `internal/taint/runtimebridge/hooks.go`). It reads the interior filter of each input. When no input can be tainted (the clean path), the original body runs directly: no wrapper, no pre-check, no bypass token, no inner entry and no result hook. The pre-check and the result hook read the same filter, so they could do nothing for these inputs. The filter check returns its arguments unchanged, and the prepended code stores them in the arguments: thus no argument is live across the call, and the compiler adds no spill at the entry (the gate-off path). In an optimized build, each filter check is a leaf function (no frame, no lock, no allocation). Exception: in `slicerunetostring`, the call in the prepended code makes the frame larger than the small-frame limit, so the wrapper calls `__dd_iast_rt.runes_hit` first, and calls the result hook only after a hit. Woven tests: each tainted operation now enters the bridge 3 times (filter check, pre-check, result hook).
+2. **Less expensive filter hash** (`filter.go`, `filterHit`): one multiply-add for each tier (`k*m + m` in place of `(k+1)*m`), the multiplier in a register for a loop of operands, the two bucket loads with one branch (the tier S load stays first in the program order, section 5.2.4). On a 64-bit platform, the tier L key does not set `TierLBit` (bit 63 does not change bits 37 to 51 of the hash); on a 32-bit platform, it sets it (`tierLHashBit`).
+3. **Slot tags in the index** (`internal/taint/store/interior.go`): one tag byte for each slot (hash bits 29 to 36, never 0; 0 is an empty slot), in one word for each bucket (32 KiB for the store). Only a writer that holds the shard write lock changes a tag, together with the entry. `probe` reads only the slots whose tag can match (a SWAR compare of 8 tags). `Confirm` of a clean filter hit is approx. 2 times faster (`RuntimePre/sparse/one-clean-hit` 24.66 to 13.29 ns; `full` 39.78 to 18.01 ns).
+4. **Measured clean filter hit**: the new woven benchmark `BenchmarkRuntimeCleanHit` (`iast/runtime/bench_test.go`) replaces the estimates of the `hit` and `full2` gates (section 13). Each operand is in the granule of a different root, so it is a filter hit, and `Confirm` gives clean. Before the measurement, the benchmark checks that a hooked binary calls `Confirm` once for each operand and that the cases do not allocate. The gate value is the woven case (hook - nohook, sparse load) plus the extra cost of the pre-check at the worst load (`RuntimePre/<load>/... - RuntimePre/sparse/...`). `concat2-clean-hit` of `BenchmarkRuntimePre` now uses two neighbors in different granules (two roots).
+
+Not used, with the reason (not measured separately): one load for both tiers (the tier S and tier L buckets of a pointer are not adjacent, and the reader order of 5.2.4 needs two loads); a filter check that does not return its arguments, in the prepended code (the arguments are then live across the call, and the compiler spills them at the entry, also on the gate-off path); the filter check in the prepended code of `slicerunetostring` (see item 1). In the wrapper of `slicerunetostring`, a first version stored the returned arguments again; the wrapper now ignores them (the compiler keeps `buf` and `a` in their spill slots), and `RuntimeClean/r2s-stack` went from +4.39 to +3.70 ns (two different runs). Not done: a lock-free `Confirm` (the clean filter hit costs mostly the 3 `TryRLock` / `RUnlock` pairs: shard, owner lifecycle, owner roots).
+
+HTTP (sampled out): a CPU profile of the woven benchmark (`DD_IAST_REQUEST_SAMPLING=0`, 5 s) has no sample in a hooked runtime function or in the bridge: no root is live, so the gate is off. The IAST cost of this benchmark is not in the runtime hooks (IAST has +9 allocations and +3.9 KiB for each request).
+
+Measurement (darwin/arm64, Apple M5 Pro, go1.26.6, Orchestrion v1.13.1). "Before" is the parent commit `b3096104` with the new benchmark files (`iast/runtime/bench_test.go`, `internal/taint/store/lookup_bench_test.go`, `runtime_bridge_bench_test.go`). The 16 woven binaries of "before" and the 16 of "after" run in the same interleaved rounds (8 rounds, 34 binaries, 300ms; thus 64 runs for each side and case). Store benchmarks: 8 rounds for each tree, one tree after the other. HTTP: n=20 for each tree, one tree after the other. Raw data and reports: `/tmp/t02` (not kept). Pooled hook - nohook, ns:
+
+| Case | Gate | Before | After |
+|---|---|---:|---:|
+| `RuntimeClean/concat2-heap` | +6 | +5.17 | **+2.62** |
+| `RuntimeClean/concat2-stack` | +6 | +4.80 | **+2.97** |
+| `RuntimeClean/concat4-stack` | +9 | +5.84 | **+4.00** |
+| `RuntimeClean/concat6-stack` | +12 | +7.07 | **+4.98** |
+| `RuntimeClean/concat16-heap` | +27 | +14.42 | **+11.16** |
+| `RuntimeClean/concat16-stack` | +27 | +15.34 | **+12.78** |
+| `RuntimeClean/b2s-heap` | +4.5 | +3.81 | **+1.14** |
+| `RuntimeClean/b2s-stack` | +4.5 | +3.60 | **+1.20** |
+| `RuntimeClean/s2b-heap` | +4.5 | +4.30 | **+1.28** |
+| `RuntimeClean/s2b-stack` | +4.5 | +4.02 | **+1.40** |
+| `RuntimeClean/r2s-heap` | +6 | +1.99 | +1.55 |
+| `RuntimeClean/r2s-stack` | +6 | +2.76 | +3.70 |
+| `RuntimeClean/s2r-heap` | +6 | +6.04 | **+1.24** |
+| `RuntimeClean/s2r-stack` | +6 | +4.52 | **+1.96** |
+| `RuntimeCleanHit/s2b-stack` (sparse) | - | +33.61 | **+23.36** |
+| `RuntimeCleanHit/concat2-stack` (sparse) | - | +62.77 | **+42.03** |
+| gate `hit` (woven + full - sparse) | 50 | 48.73 | **28.08** |
+| gate `full2` (woven + full - sparse) | 100 | 94.21 | **50.88** |
+| `RuntimeTainted/concat2-stack` | +1 us | +603.90 | +590.30 |
+| `RuntimeOff/*` (worst pooled) | +2 | +1.25 (`s2r-heap`) | +2.02 (`s2r-heap`), see below |
+| HTTP sampled out | +3.70 % | +2.63 % | +3.47 % |
+
+All other rows pass. The gate-off concat rows are 0.2 to 0.5 ns higher than before (`concat16-stack`: -0.27 to +1.19 ns). Their gate-off instructions do not change; the gate-on block is 2 instructions longer, so the original body starts 8 bytes later (code layout). The gate-off row `RuntimeOff/s2r-heap` is the row with the most noise (placement range -1.51 to +4.60 ns; the gate-off path has the same instructions as before and as the nohook build). It failed by 0.02 ns in the 8 rounds. A re-measure of this row only (20 rounds, 160 runs for each side, the same binaries): before +0.64 ns [-0.31, +1.69], after +0.57 ns [-0.61, +1.70]: PASS. `RuntimeClean/r2s-stack` is 0.9 ns slower than before (the wrapper calls the filter check and then the original function; it is 2.3 ns below its gate). The HTTP rows of the two trees ran one after the other, not interleaved (benchstat ±1 % to ±3 %); the gate is off in this benchmark, so this change cannot change it. With these inputs, all gates pass (the `admission` gate needs the old store of step 3 and is not measured again: this change does not change admission).
+
+Validation: `go vet` (also `./.github`), `gofmt`, `go tool checklocks ./...`, `go test ./internal/taint/... ./.github`; `.github/woven-runtime.sh` in the modes default, race and nol: test, g0, escape (identical), and in default also linknames and link; `GOOS=linux GOARCH=386 go build ./internal/taint/...`.
+
+**CI must run again** (linux/amd64 and linux/arm64, workflow `runtime-bench.yml`): the CI numbers of run 36834964455 are for the code before this change.
 
 ## Appendix A. Critic round 1 responses
 
