@@ -4,6 +4,15 @@
 // Copyright 2026-present Datadog, Inc.
 
 // Package bufio instruments reader-wrapper provenance.
+//
+// A bufio.Reader that bufio.NewReader or bufio.NewReaderSize makes over a
+// reader of one request is exclusive to that request, while its input does
+// not change. A Read guard checks the input at each Read.
+//
+// Known limit: do not copy a bufio.Reader by value. If code copies a
+// bufio.Reader, then resets and reads the copy, the two values share one
+// buffer. Then IAST can attribute the bytes of the new reader of the copy to
+// the request of the original reader.
 package bufio
 
 import (
@@ -20,10 +29,9 @@ import (
 // an active binding. It does not read from either reader.
 //
 // An unwoven bufio package has no Read guard, thus the binding of output is
-// not exclusive. Today, io.ReadAll needs an exclusive binding, thus it does
-// not attribute the bytes of output. The v1 encoding/json decoder still
-// attributes them to each request that is bound to output. After step 3a of
-// plan encoding-json-v2, the decoder also needs an exclusive binding.
+// not exclusive. io.ReadAll and the json.Decoder need an exclusive binding,
+// thus they do not attribute the bytes of output (decision Q13 of plan
+// encoding-json-v2).
 func Propagate(input io.Reader, output *bufio.Reader) {
 	if output != nil && output.Size() <= iobridge.MaxBufferedReaderSize {
 		iobridge.PropagateShared(input, output)

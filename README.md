@@ -85,16 +85,20 @@ intersecting source identity. Custom unmarshaler output, decoded byte slices,
 interface values, typed map keys, and `map[string]any` keys are not propagated.
 Decoder documents larger than 64 KiB safely drop provenance. Decoder tracking uses 64 process
 slots with four-probe admission; excess or colliding concurrent decodes drop
-provenance. Reader associations last only for the outer decode call and are
-cleared on return or panic. Reentrant use of the same decoder can lose
+provenance. Decoder state associations last only for the outer decode call and
+are cleared on return or panic. Reentrant use of the same decoder can lose
 outer-decode provenance.
 
-Request body readers: `io.ReadAll` gives request-body provenance to its
-result only when the reader is exclusive to one request. This is true for the
-request body, and for `io.TeeReader`, `http.MaxBytesReader`,
-`io.LimitReader`, `bufio.NewReader(Size)`, and `io.MultiReader` with 1 to 8
-inputs, when all their inputs are exclusive to the same request. In these
-cases, `io.ReadAll` drops the provenance (a safe miss):
+Request body readers: `io.ReadAll` and `json.Decoder.Decode` give
+request-body provenance to the bytes that they read only when the reader is
+exclusive to one request. This is true for the request body, and for
+`io.TeeReader`, `http.MaxBytesReader`, `io.LimitReader`,
+`bufio.NewReader(Size)`, and `io.MultiReader` with 1 to 8 inputs, when all
+their inputs are exclusive to the same request. `io.ReadAll` takes the owner
+of its reader before the first read. `json.NewDecoder` takes the owner of its
+reader when it makes the decoder, and each `Decode` checks that owner again
+before it attributes a value. In the cases below, the bytes get no provenance (a
+safe miss):
 
 - `io.MultiReader` with an input that is not tracked, for example
   `io.MultiReader(strings.NewReader("prefix"), r.Body)`;
@@ -105,10 +109,26 @@ cases, `io.ReadAll` drops the provenance (a safe miss):
   no `Read` guard (more than 128 guarded wrappers at the same time), and a
   reader that a different request also tracked, also after that request
   finished;
-- a reader that a concurrent operation locks while `io.ReadAll` checks it.
+- a reader that a concurrent operation locks while `io.ReadAll` or a
+  `json.Decoder` checks it;
+- a reader that gets its request binding (or a second request) after
+  `io.ReadAll` started or after `json.NewDecoder` made the decoder;
+- a `json.Decoder` that `json.NewDecoder` made while no request was active;
+- all the values of a `json.Decoder` after one failed check (for example one
+  locked check, or a retargeted input): the decoder never gives provenance
+  again.
 
-The Go 1.26 `json.Decoder` still gives provenance to each request that
-tracks its reader.
+Before this release, the Go 1.26 `json.Decoder` gave provenance to each
+request that tracked its reader at `Decode` time, also for a reader that was
+not exclusive (for example `io.MultiReader(bodyA, bodyB)` of two requests, or
+`io.MultiReader(bytes.NewReader(prefix), r.Body)`). These cases are now safe
+misses. A decoder that is used again by a later request gives provenance only
+to the request whose reader it read, while that request is active.
+
+Known limit: do not copy a `bufio.Reader` by value. If code copies a
+`bufio.Reader`, then resets and reads the copy, the two values share one
+buffer. Then IAST can attribute the bytes of the new reader of the copy to the
+request of the original reader.
 
 Tracking a stateful writer uses a strong request-bounded receiver anchor. This
 can make a stack receiver escape. Writer state is limited to eight receivers per

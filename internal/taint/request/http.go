@@ -73,7 +73,12 @@ func EagerHTTP(
 
 	if owner := analysis.storeOwner(); owner != nil {
 		store.BindObjectValue(owner, urlObject, store.BindingURL)
-		// The request body produces only data of this request.
+		// The request body produces only data of this request. The body
+		// types of the net/http server (HTTP/1 and HTTP/2) are not exported
+		// and have no reset method, thus user code cannot reset such a body
+		// to other data (plan encoding-json-v2, section 6.5, assumption
+		// (A2)). A body that code outside the application packages set
+		// before this handler is outside this proof.
 		store.BindReaderValue(owner, bodyObject, true, false)
 	}
 	return analysis.taintHeaders(headers)

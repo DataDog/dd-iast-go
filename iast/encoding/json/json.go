@@ -15,11 +15,22 @@ import (
 	"github.com/DataDog/dd-iast-go/internal/taint/request"
 )
 
-const instrumentedPropagationPoints = 5
+// instrumentedPropagationPoints is the number of aspects of orchestrion.yml
+// with the join point clause "import-path: encoding/json".
+const instrumentedPropagationPoints = 6
 
 func init() {
 	telemetry.InstrumentedPropagation += instrumentedPropagationPoints
-	jsonbridge.Register(request.CloneReaderBytes, propagateLiteral)
+	jsonbridge.Register(callbacks())
+}
+
+// callbacks returns the JSON bridge callbacks of this package.
+func callbacks() jsonbridge.Callbacks {
+	return jsonbridge.Callbacks{
+		Literal: propagateLiteral,
+		Owner:   request.ReaderOwnerToken,
+		Clone:   request.CloneForOwner,
+	}
 }
 
 // Activate is referenced by executable bootstrap instrumentation so package

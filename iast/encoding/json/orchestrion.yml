@@ -41,8 +41,9 @@ aspects:
     advice:
       - inject-declarations:
           template: |-
-            // __dd_iast_decodeBind binds the decode state of a Decoder to its
-            // reader. It is nil when no variant-specific aspect sets it.
+            // __dd_iast_decodeBind binds the decode state of a Decoder to the
+            // reader owner that NewDecoder captured. It is nil when no
+            // variant-specific aspect sets it.
             var __dd_iast_decodeBind func(*Decoder) bool
 
             // __dd_iast_decodeUnbind releases the binding of
@@ -56,9 +57,44 @@ aspects:
               }
             }
 
+  # The reader owner of a Decoder (plan encoding-json-v2, sections 6.3 and
+  # 6.7). NewDecoder exists on all variants. It captures the owner token of
+  # its reader BEFORE the first byte of the reader flows. Each Decode then
+  # revalidates this token before it attributes the bytes of a value. The
+  # field is added on all variants, thus the advice uses only the field and
+  # its methods. Capture does no lookup until a variant-specific aspect
+  # installs a consumer of the token (jsonbridge.EnableV1, EnableV2).
+  - id: "[shared] encoding/json Decoder reader binding field"
+    join-point:
+      struct-definition: encoding/json.Decoder
+    advice:
+      - add-struct-field:
+          name: __dd_iast_binding
+          type: github.com/DataDog/dd-iast-go/internal/taint/jsonbridge.ReaderBinding
+
+  - id: "[shared] encoding/json NewDecoder reader owner capture"
+    join-point:
+      all-of:
+        - import-path: encoding/json
+        - function-body:
+            function:
+              - receiver: false
+              - name: NewDecoder
+    advice:
+      - prepend-statements:
+          template: |-
+            __dd_iast_reader := {{ .Function.Argument 0 }}
+            defer func() {
+              if {{ .Function.Result 0 }} != nil {
+                {{ .Function.Result 0 }}.__dd_iast_binding.Capture(__dd_iast_reader)
+              }
+            }()
+
   # The anchor type decodeState exists only in the v1 files of encoding/json.
   # This join point has no import-path clause, thus the telemetry test does not
-  # count it as a propagation point.
+  # count it as a propagation point. The v1 Document callback uses the reader
+  # owner that NewDecoder captured, not the reader at Decode time (plan
+  # encoding-json-v2, section 6.7).
   - id: "[v1] encoding/json Decoder reader binding dispatch"
     join-point:
       struct-definition: encoding/json.decodeState
@@ -68,8 +104,10 @@ aspects:
             iastjsonbridge: github.com/DataDog/dd-iast-go/internal/taint/jsonbridge
           template: |-
             func init() {
+              // The v1 Document path uses the owner token of NewDecoder.
+              iastjsonbridge.EnableV1()
               __dd_iast_decodeBind = func(dec *Decoder) bool {
-                return iastjsonbridge.Bind(dec.r, &dec.d)
+                return iastjsonbridge.BindDecoder(&dec.__dd_iast_binding, &dec.d)
               }
               __dd_iast_decodeUnbind = func(dec *Decoder) {
                 iastjsonbridge.Unbind(&dec.d)
@@ -89,7 +127,7 @@ aspects:
           imports:
             iastjsonbridge: github.com/DataDog/dd-iast-go/internal/taint/jsonbridge
           template: |-
-            if iastjsonbridge.Bind(nil, {{ .Function.Receiver }}) {
+            if iastjsonbridge.Bind({{ .Function.Receiver }}) {
               defer iastjsonbridge.Unbind({{ .Function.Receiver }})
             }
 

@@ -11,3 +11,7 @@ package json
 // on this variant of encoding/json. The v2 variant does not propagate yet
 // (plan encoding-json-v2, step 5).
 const decoderPropagates = false
+
+// newDecoderAllocations is the number of allocations of json.NewDecoder in
+// the unwoven v2 variant: the Decoder and its jsontext.Decoder.
+const newDecoderAllocations = 2

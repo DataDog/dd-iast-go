@@ -10,3 +10,7 @@ package json
 // decoderPropagates reports whether (*json.Decoder).Decode propagates taint
 // on this variant of encoding/json. The v1 variant does.
 const decoderPropagates = true
+
+// newDecoderAllocations is the number of allocations of json.NewDecoder in
+// the unwoven v1 variant: the Decoder.
+const newDecoderAllocations = 1

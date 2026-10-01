@@ -183,7 +183,6 @@ func TestCloneReaderBytesPublishesIndependentDocument(t *testing.T) {
 	require.True(t, created)
 	t.Cleanup(secondScope.Finish)
 	require.True(t, BindReader(firstCtx, reader))
-	require.True(t, BindReader(secondCtx, reader))
 
 	document := make([]byte, 4, 16)
 	copy(document, "body")
@@ -198,12 +197,19 @@ func TestCloneReaderBytesPublishesIndependentDocument(t *testing.T) {
 	secondAnalysis, ok := secondScope.Analysis()
 	require.True(t, ok)
 	require.Equal(t, 1, firstAnalysis.SourceCount())
-	require.Equal(t, 1, secondAnalysis.SourceCount())
+	require.Zero(t, secondAnalysis.SourceCount())
 	key, valid := store.BytesKey(clone)
 	require.True(t, valid)
 	var snapshot store.Snapshot
 	require.True(t, firstAnalysis.manager.store.Lookup(key, &snapshot))
-	require.Equal(t, 2, snapshot.Len())
+	require.Equal(t, 1, snapshot.Len())
+
+	// Two owners: the reader is not exclusive, thus no owner gets the bytes
+	// (plan encoding-json-v2, section 6.7).
+	require.True(t, BindReader(secondCtx, reader))
+	require.Nil(t, CloneReaderBytes(reader, []byte("second")))
+	require.Equal(t, 1, firstAnalysis.SourceCount())
+	require.Zero(t, secondAnalysis.SourceCount())
 }
 
 func TestAdoptBodyBytesPreservesSliceAndReusesSource(t *testing.T) {

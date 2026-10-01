@@ -347,6 +347,10 @@ both.
 - `func Active() bool` — inlinable: `active() && hasValues()`.
 - `func EnableV2()` — sets an atomic flag. Only the Go 1.27 v2 `init` calls
   it.
+- `func EnableV1()` — sets the v1 consumer flag. Only the `init` of the v1
+  dispatch aspect calls it (step 3a review, finding 1). Both flags are bits
+  of one `atomic.Uint32` (`consumers`): `Capture` loads it once, and
+  `ReaderDocument` tests the v2 bit.
 - `func String(raw []byte, value reflect.Value)` — returns at once unless
   `Active()`, `len(raw) >= 2`, `raw[0] == '"'`. Then it calls the registered
   literal callback as `literal(raw, raw, value, nil)` under `shield`.
@@ -355,8 +359,11 @@ both.
   (`state`: none, exclusive, or closed; about 40 bytes). ONE owner only:
   attribution needs exactly one exclusive owner (section 6.5). Plain
   integers only, so the bridge keeps its dependency rule.
-- `func (b *ReaderBinding) Capture(reader any)` — returns at once unless
-  `active()` (owners only, NOT `hasValues()`). Then it stores `reader` and
+- `func (b *ReaderBinding) Capture(reader any)` — returns at once unless a
+  decoder consumer of the token is installed (`EnableV1` or `EnableV2`)
+  and `active()` (owners only, NOT `hasValues()`). With no consumer (Go
+  1.27 v2 before step 5), `NewDecoder` does no lookup and the state stays
+  "none": no `Decode` uses the token (step 3a review, finding 1). Then it stores `reader` and
   calls the registered owner callback under `shield`. The state becomes
   "exclusive" only if the callback proves one exclusive owner. Else the
   state becomes "closed" (sticky: this decoder never propagates).
@@ -964,6 +971,23 @@ Rules (the round 3 request, rules (a), (b), and (c)):
     at the construction of the wrapper, or before the bytes flow). The
     consumers take the token BEFORE the first byte and revalidate AFTER
     the last byte.
+  - Root content assumption (A2) (step 3a review, finding 2). Rules (a)
+    and (f) assume that a ROOT reader (the body at entry,
+    `request.BindReader`) gives only data of its owner for all the time
+    that it is bound, not only the data that it holds when it is bound. A
+    reset of a bound mutable root to other data (for example
+    `strings.Reader.Reset` on a reader of `request.BindReader`) keeps its
+    address and its counter: no lookup and no revalidation can find it,
+    and a decoder made before the reset gives the new bytes to the owner.
+    This is outside the contract of `request.BindReader` (its doc comment
+    says so). Production: the only root bind is the HTTP body at entry
+    (`request/http.go`). The body types of the net/http server (HTTP/1
+    `*http.body`; HTTP/2 `*http.http2requestBody` on Go 1.26,
+    `*http2.requestBody` in `net/http/internal/http2` on Go 1.27) are not
+    exported and have only `Read` and `Close`: user code cannot reset
+    them. A body that a handler outside the application packages set
+    before the first instrumented handler is bound as it is: (A2) is an
+    assumption for that body, not a proof.
   - Proof of the token rule. The capture at T0 and the revalidation at
     T1 found the same entry e of the same generation, effectively
     exclusive. By the "one reader binding for each entry" rule, the same
@@ -1678,8 +1702,17 @@ Each step lists its exit criteria and an estimate for one engineer.
        the earlier values tainted.
    - Known-limit test `TestKnownLimitBufioValueCopySharesBuffer`
      (section 6.6, residual R15, all lanes): 0.5 h.
-   Exit: section 7.1 commands 2 to 8 pass on all lanes; the README lists
-   the behavior changes of section 6.7.
+   Exit: section 7.1 commands 2 to 8 pass on all lanes, with one
+   exception on lane B, from the plan order: on lane B, `TestSourceShape`
+   (`iast/encoding/json`) fails, because it pins the v1 symbols, and the
+   variant-aware shape test is step 6; and command 4 fails in
+   `iast/integration/testapp` with the 9 JSON tests of step 1 (JSON does
+   not propagate on v2 until steps 4, 5, and 7). Thus at step 3a: lanes A
+   and C run commands 1 to 8 with no failure; lane B runs commands 1, 6,
+   and 7 with no failure, and commands 2 to 5 and 8 with no failure other
+   than `TestSourceShape` and the 9 testapp JSON tests of step 1 (step 3a
+   review, finding 3). The README lists the behavior changes of section
+   6.7.
    Release requirements from the review of batch 1 (deferred to this
    step, not optional): `io.ReadAll` (`internal/taint/request/reader.go`,
    `ReadAllBytes`, today `LookupObject` ignores the `Exclusive` flag and
@@ -1690,8 +1723,8 @@ Each step lists its exit criteria and an estimate for one engineer.
    117-145) then changes. **Done** for `io.ReadAll` (appendix note 18):
    the `MultiReader` 8+1 composition and the clean-input chain of
    `iast/io/io_test.go` changed as section 6.7 says. The saturated guard
-   table and the retargeted wrappers through `io.ReadAll` are still to
-   do.
+   table and the retargeted wrappers through `io.ReadAll` are done at
+   step 3a (`iast/io/readall_exclusive_test.go`).
    Release requirement from review 2 of batch 1 (finding 6, known and
    deferred to this step, not optional): the v1 `Document` callback still
    uses the one-shot `CloneReaderBytes` with the old fanout rule
@@ -1706,6 +1739,11 @@ Each step lists its exit criteria and an estimate for one engineer.
    with 9 inputs: miss; control `io.MultiReader(bodyA)`: tainted in A
    only. Until this step, the v1 decoder keeps the old behavior, and the
    README says so.
+
+   **Steps 3 and 3a: done**, with the lane B exceptions of the exit list
+   above (`TestSourceShape` until step 6; the 9 testapp JSON tests until
+   steps 4, 5, and 7). See "Appendix: Implementation
+   notes (steps 3 and 3a)" for the deviations and the review fixes.
 4. **v2 string wrapper (3-4 h).** Section 6.2. Exit: woven `Unmarshal` tests
    pass on lane B for struct, slice, array, pointer, typed map value,
    `,string`, escapes, nested values.
@@ -2499,3 +2537,116 @@ Deviations from the text of the plan, with the reason for each:
     cases); with the old `binding.go` (token deltas), the item 1 and 2
     store tests and the request test fail; with the old `retarget` and no
     lookup check, the two item 3 tests fail.
+
+## Appendix: Implementation notes (steps 3 and 3a)
+
+Changed files: `internal/taint/jsonbridge/bridge.go` (and
+`bridgetests`), `internal/taint/request/reader.go` (and
+`json_token_test.go`, `internal_test.go`), `iast/encoding/json/json.go`,
+`iast/encoding/json/orchestrion.yml` (and the tests), `iast/io` and
+`iast/bufio` tests, `iast/bufio/bufio.go` (doc), `README.md`,
+`iast/integration/testapp/json_chain.go`.
+
+Deviations from the text of the plan, with the reason for each:
+
+1. Section 6.1, `OwnerToken` and `ReaderBinding`. Rule (f) needs the
+   store and the binding entry of the token, thus `OwnerToken` is
+   `{Store any; Generation uint64; Index, Entry uint8; OK bool}` (a copy
+   of `store.ReaderToken`, as `iobridge.ReadToken`). `ReaderBinding` keeps
+   the reader, the store, the generation, the slot, the entry, and the
+   state: 48 bytes, not 40 (`TestReaderBindingSize`).
+2. Section 6.1, request helpers. `request.ReaderOwnerToken` returns the
+   bridge form `jsonbridge.OwnerToken`, not `request.ReaderToken`: the
+   bridge keeps the token in the `Decoder`, and it cannot import
+   `request`. `request.ReaderOwner` stays the request form. Both use the
+   same lookup.
+3. `jsonbridge.Register` takes one `jsonbridge.Callbacks` struct
+   (`Literal`, `Owner`, `Clone`), as `iobridge.Register`. It ignores a set
+   with a nil callback. The old `Document` callback is removed:
+   `jsonbridge.Document` (v1) and `ReaderDocument` (v2) both call `Clone`
+   through `ReaderBinding`. `Bind(reader, state)` becomes `Bind(state)`
+   (the `decodeState.unmarshal` lifetime aspect; a decoder slot keeps a
+   `*ReaderBinding`, not a reader).
+4. `BindDecoder` returns false, and takes no slot, when the binding is
+   not exclusive: `Document` cannot propagate then. `decodeState.unmarshal`
+   still takes its own slot for `Quoted`.
+5. `CloneForOwner` details: a value shorter than 2 bytes is
+   `(nil, true)` with no lookup; an oversized value is revalidated, and
+   a valid token counts one bytes drop for its owner only (as
+   `ReadAllBytesForToken`), then `(nil, true)`; a failed adoption (source
+   table full, lock contention) is `(nil, true)`; an owner that the
+   request directory does not find any more is `(nil, false)`. A panic in
+   a callback is recovered: `Owner` gives a closed binding, `Clone` gives
+   `proven = false` (closed, fail closed).
+6. Telemetry: the `[shared]` `NewDecoder` capture aspect needs an
+   `import-path: encoding/json` clause (a `function-body` join point has
+   no package-qualified function name), thus
+   `instrumentedPropagationPoints` is 6 on all variants. Step 6 counts the
+   aspects by variant tag.
+7. The `NewDecoder` capture and the `__dd_iast_binding` field are
+   `[shared]` aspects, added in this step (v1 `Document` needs them).
+   `Capture` looks up the reader only when a consumer of the token is
+   installed: the v1 dispatch `init` calls `jsonbridge.EnableV1`, and the
+   v2 `init` of step 5 calls `EnableV2`. Thus on the v2 variant before
+   step 5, `NewDecoder` does no lookup (one atomic load), and the state
+   stays "none" (step 3a review, finding 1;
+   `TestNewDecoderLooksUpOnlyForAConsumer`, `TestCaptureNeedsAConsumer`).
+8. `SetV2ForTest` (jsonbridge) is a test hook, so that the bridge and
+   request tests can run `ReaderDocument` on the v1 variant.
+9. `iast/integration/testapp/json_chain.go`: `BuildJSONChain` used
+   `io.MultiReader(bytes.NewReader(nil), buffered)`, a clean input. It is
+   now `io.MultiReader(buffered)`, so that
+   `TestHTTPBodyReaderJSONWriterToSQL` keeps the wrapper chain coverage
+   (the clean-input case is a miss, section 6.7; the woven test
+   `TestDecoderMultiReaderInputs` covers it).
+10. Residual R15: the README "Known limit" note and the `iast/bufio`
+    package doc note of section 6.6 are added in this step (step 10
+    lists them), because `TestKnownLimitBufioValueCopySharesBuffer` pins
+    the behavior now.
+11. `TestReadAllWrapperWithNoReadGuardIsMiss` (woven) fills the 128 slots
+    of the guard table and does not check the `GuardFull` counter:
+    `request.Analysis` does not export the owner counters. The request
+    unit test `TestPropagateGuardedReaderFullGuardTableIsNotExclusive`
+    checks the counter.
+12. The `Decode` consumer tests are in `iast/encoding/json`
+    (`decoder_exclusive_test.go`). They build on all lanes. On lane B
+    the decoder does not propagate yet (`decoderPropagates` is false):
+    the miss checks pass, and the controls expect no taint. Step 5 sets
+    `decoderPropagates` to true on lane B.
+
+Review fixes (step 3a review):
+
+13. Finding 1: the consumer gate of note 7. Revert evidence (lane B,
+    woven): with `Capture` gated by `active()` only,
+    `TestNewDecoderLooksUpOnlyForAConsumer` fails ("Should be zero, but
+    was 1"), and `TestCaptureNeedsAConsumer` (lane A) fails ("Should be
+    zero, but was 101").
+14. Finding 2: assumption (A2) of section 6.5, and the contract on the
+    doc comment of `request.BindReader`. No code change: the only
+    production root bind is the HTTP body at entry, and user code cannot
+    reset the body types of the net/http server.
+15. Finding 3: the step 3a exit list states the lane B exceptions
+    (`TestSourceShape` until step 6; the 9 `iast/integration/testapp`
+    JSON tests of step 1 until steps 4, 5, and 7).
+16. Finding 4: new woven v1 tests (all lanes; on lane B the controls
+    expect no taint): `TestDecoderHandedToAnotherRequest` (a decoder of
+    A given to the goroutine of B through a channel: tainted in A only
+    while A owns the bytes; a miss after A ends, or after B binds the
+    reader), `TestDecoderOversizedValueThenValidValue` (one bytes drop
+    for the owner, then the next valid value is tainted), and the request
+    test `TestCloneForOwnerFailedAdoptionKeepsBindingOpen` (a full source
+    table and a contended source lock: `CloneForOwner` returns
+    `(nil, true)`, the binding stays open, and a later value propagates
+    when the lock is free).
+17. Finding 5: `TestReaderDocumentWithNoIndexedRoot` asserts that the
+    process has no indexed root, and does not skip.
+
+Revert evidence (lane A, woven): with `CloneForOwner` that does a new
+lookup and no token revalidation, `TestDecoderContendedLookupIsMiss`,
+`TestDecoderBoundAfterNewDecoderIsMiss` (second owner ended before
+`Decode`), and `TestDecoderRetargetBetweenTwoDecodes` fail. With, in
+addition, a `ReaderOwnerToken` that accepts any found owner (the old
+fanout proof), also `TestDecoderMultiReaderOfTwoRequestsIsMiss`,
+`TestDecoderMultiReaderInputs` (clean input, 9 inputs),
+`TestDecoderRetargetAfterBindIsMiss`, and
+`TestDecoderLimitReaderOfRetargetedBufioIsMiss` fail.

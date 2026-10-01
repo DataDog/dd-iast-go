@@ -16,7 +16,6 @@ import (
 func TestDecoderSlotCapacityAndRelease(t *testing.T) {
 	activateDecoderOwners(t)
 	// Consecutive uint64 elements occupy all 64 pointer-hash buckets.
-	// Binding the array as the reader also keeps every state address anchored.
 	states := new([65]uint64)
 	t.Cleanup(func() {
 		for index := range states {
@@ -24,13 +23,13 @@ func TestDecoderSlotCapacityAndRelease(t *testing.T) {
 		}
 	})
 	for index := range 64 {
-		require.True(t, jsonbridge.Bind(states, &states[index]), "slot %d", index)
+		require.True(t, jsonbridge.Bind(&states[index]), "slot %d", index)
 	}
-	require.False(t, jsonbridge.Bind(states, &states[64]))
+	require.False(t, jsonbridge.Bind(&states[64]))
 	for index := range 64 {
 		jsonbridge.Unbind(&states[index])
 	}
-	require.True(t, jsonbridge.Bind(states, &states[64]), "released capacity must be reusable")
+	require.True(t, jsonbridge.Bind(&states[64]), "released capacity must be reusable")
 }
 
 func TestDecoderCollisionStopsAfterFourProbes(t *testing.T) {
@@ -45,11 +44,11 @@ func TestDecoderCollisionStopsAfterFourProbes(t *testing.T) {
 		}
 	})
 	for _, index := range indexes[:4] {
-		require.True(t, jsonbridge.Bind(states, &states[index]))
+		require.True(t, jsonbridge.Bind(&states[index]))
 	}
-	require.False(t, jsonbridge.Bind(states, &states[indexes[4]]), "unrelated free buckets must not extend the probe budget")
+	require.False(t, jsonbridge.Bind(&states[indexes[4]]), "unrelated free buckets must not extend the probe budget")
 	jsonbridge.Unbind(&states[indexes[1]])
-	require.True(t, jsonbridge.Bind(states, &states[indexes[4]]), "a released collision slot must be reusable")
+	require.True(t, jsonbridge.Bind(&states[indexes[4]]), "a released collision slot must be reusable")
 }
 
 func activateDecoderOwners(t *testing.T) {

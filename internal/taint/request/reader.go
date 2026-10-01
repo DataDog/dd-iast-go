@@ -11,6 +11,7 @@ import (
 
 	"github.com/DataDog/dd-iast-go/internal/model/constants"
 	"github.com/DataDog/dd-iast-go/internal/taint/iobridge"
+	"github.com/DataDog/dd-iast-go/internal/taint/jsonbridge"
 	"github.com/DataDog/dd-iast-go/internal/taint/ranges"
 	"github.com/DataDog/dd-iast-go/internal/taint/store"
 )
@@ -58,6 +59,15 @@ func SetIncompleteReaderLookupsForTest() (restore func()) {
 // owner. The caller asserts that every byte of reader comes from data of this
 // request, thus the binding is exclusive. Non-pointer and zero-sized values
 // are safe misses.
+//
+// Contract (plan encoding-json-v2, section 6.5, assumption (A2)): the
+// assertion applies to all the bytes that reader gives while it is bound,
+// not only to the bytes that it holds now. Thus do not bind a reader that
+// code can reset to other data (for example a *strings.Reader, a
+// *bytes.Reader, or a *bytes.Buffer that is used again) while the request
+// is active. A reset keeps the address and the bind counter of the reader.
+// Thus no lookup and no token revalidation can find it, and a consumer that
+// took its token before the reset attributes the new bytes to this request.
 func BindReader(ctx context.Context, reader any) bool {
 	analysis, ok := FromContext(ctx).Analysis()
 	if !ok {
@@ -317,32 +327,69 @@ func retargetReader(index uint8, generation uint64) {
 	}
 }
 
-// CloneReaderBytes returns an exact-capacity clone of data and attempts to
-// publish it for every active owner bound to input. It returns nil when no owner
-// is bound or data exceeds the root limit. Publication failures remain safe
-// misses, and decoder buffers are never retained directly.
-//
-// The v1 json Document callback uses it. It still uses the fanout rule, with
-// no owner token: plan encoding-json-v2, step 3a, moves v1 Document to an
-// owner token that NewDecoder takes, and to CloneReaderBytesForToken.
+// CloneReaderBytes takes the owner token of input, and then calls
+// CloneReaderBytesForToken. Thus it returns a clone only when input has
+// exactly one effectively exclusive owner (plan encoding-json-v2, section
+// 6.7). Only tests call it, as a probe: a consumer must take the token before
+// the first byte of input flows (ReaderOwner, ReaderOwnerToken).
 func CloneReaderBytes(input any, data []byte) []byte {
-	if len(data) < 2 || len(data) > store.MaxRootBytes {
-		return nil
+	return CloneReaderBytesForToken(ReaderOwner(input), input, data)
+}
+
+// ReaderOwnerToken returns the owner token of reader in the form of the JSON
+// bridge (jsonbridge.ReaderBinding.Capture, at NewDecoder). It is
+// ReaderOwner: the token is OK only when a complete lookup finds exactly one
+// active owner, with an effectively exclusive binding.
+func ReaderOwnerToken(reader any) jsonbridge.OwnerToken {
+	token := ReaderOwner(reader).token
+	if !token.OK {
+		return jsonbridge.OwnerToken{}
 	}
-	var refs [store.MaxSnapshotOwners]store.OwnerRef
-	count := LookupObject(input, store.BindingReader, refs[:])
-	if count == 0 {
-		return nil
+	return jsonbridge.OwnerToken{
+		Store: token.Store, Generation: token.Generation, Index: token.Index, Entry: token.Entry, OK: true,
 	}
-	clone := make([]byte, len(data))
-	copy(clone, data)
-	for index := 0; index < count; index++ {
-		analysis, ok := analysisForOwner(refs[index])
-		if ok {
-			analysis.adoptBodyBytes(clone)
+}
+
+// CloneForOwner is the Clone callback of the JSON bridge. A decoder calls it
+// for each value that it read from reader, with the token that
+// ReaderOwnerToken returned when the decoder was made. proven is false when
+// the token is not valid for reader any more (RevalidateReader, plan
+// encoding-json-v2, section 6.5, rule (f)): then the decoder never propagates
+// again. Else it adopts an exact-capacity clone of data into the owner of
+// token only, and returns it. When data is too short or larger than the root
+// limit, or when the adoption fails, it returns (nil, true): a miss for this
+// value only. An oversized value with a valid token counts a drop for that
+// owner only.
+func CloneForOwner(reader any, token jsonbridge.OwnerToken, data []byte) (clone []byte, proven bool) {
+	owner, _ := token.Store.(*store.Store)
+	if !token.OK || owner == nil {
+		return nil, false
+	}
+	if len(data) < 2 {
+		return nil, true
+	}
+	ref, ok := revalidateReader(store.ReaderToken{
+		Store: owner, Generation: token.Generation, Index: token.Index, Entry: token.Entry, OK: true,
+	}, reader)
+	if !ok {
+		return nil, false
+	}
+	if len(data) > store.MaxRootBytes {
+		if handle, ok := ref.Handle(); ok {
+			handle.RecordBytesDrop()
 		}
+		return nil, true
 	}
-	return clone
+	analysis, ok := analysisForOwner(ref)
+	if !ok {
+		return nil, false
+	}
+	clone = make([]byte, len(data))
+	copy(clone, data)
+	if !analysis.adoptBodyBytes(clone) {
+		return nil, true
+	}
+	return clone, true
 }
 
 // CloneReaderBytesForToken returns an exact-capacity clone of data, read from

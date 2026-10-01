@@ -34,7 +34,11 @@ type JSONChainValues struct {
 func BuildJSONChain(body io.Reader) (JSONChainValues, error) {
 	limited := io.LimitReader(body, 4096)
 	buffered := bufio.NewReader(limited)
-	composed := io.MultiReader(bytes.NewReader(nil), buffered)
+	// The MultiReader has one input. An input that is not tracked (for
+	// example bytes.NewReader(nil)) makes the composed reader not exclusive
+	// to the request, and the decoder then attributes nothing (plan
+	// encoding-json-v2, section 6.7).
+	composed := io.MultiReader(buffered)
 	result := JSONChainValues{Readers: []io.Reader{body, limited, buffered, composed}}
 	if err := json.NewDecoder(composed).Decode(&result.Document); err != nil {
 		return result, err

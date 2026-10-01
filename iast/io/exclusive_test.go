@@ -22,8 +22,9 @@ import (
 // The tests of this file check the exclusive reader bindings of plan
 // encoding-json-v2, sections 6.5 and 6.6. They check the binding only, with
 // request.ReaderOwner: ok means "one owner, effectively exclusive". The
-// io.ReadAll consumer tests are in readall_token_test.go. The JSON decoders
-// use the exclusive rule in later steps of the plan.
+// io.ReadAll consumer tests are in readall_token_test.go and
+// readall_exclusive_test.go. The json.Decoder consumer tests are in
+// iast/encoding/json.
 
 func requireWoven(t *testing.T) {
 	t.Helper()
