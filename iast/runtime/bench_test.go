@@ -11,6 +11,7 @@ import (
 
 	"github.com/DataDog/dd-iast-go/internal/taint/runtimebridge"
 	"github.com/DataDog/dd-iast-go/internal/taint/runtimebridge/bridgetest"
+	"github.com/DataDog/dd-iast-go/internal/taint/store"
 )
 
 // The benchmarks of plan section 9.2 for the concatenation and conversion
@@ -137,6 +138,84 @@ func BenchmarkRuntimeClean(b *testing.B) {
 	ctx := begin(b)
 	_ = taintString(b, ctx, "unrelated", "unrelated-tainted-value")
 	runBench(b, benchCases())
+}
+
+// BenchmarkRuntimeCleanHit: the gate is on, and each operand is a clean
+// filter hit. Each operand is a part of a different tainted root (64 bytes,
+// one tier S granule, so the two operands are in different granules) that has
+// a range only on [0, 2). Thus the filter check before the wrapper has a hit,
+// and the pre-check confirms that the operands are clean: the result stays on
+// the stack (0 extra allocations). The plan section 9.3 gates "filter hit"
+// (s2b-stack, one operand) and "2-operand stack concat" (concat2-stack, both
+// operands hit) use these cases.
+func BenchmarkRuntimeCleanHit(b *testing.B) {
+	ctx := begin(b)
+	source := taintString(b, ctx, "hit", "hit-source")
+	first := adoptString(b, source, strings.Repeat("h", 64), [2]uint32{0, 2})
+	second := adoptString(b, source, strings.Repeat("i", 64), [2]uint32{0, 2})
+	one, two := first[32:40], second[48:56]
+	if stringData(one)>>runtimebridge.ShiftS == stringData(two)>>runtimebridge.ShiftS {
+		b.Fatal("the operands are in the same granule")
+	}
+	for _, s := range []string{one, two} {
+		key, ok := store.StringKey(s)
+		if !ok || !store.RuntimeStore().MayContain(key) || keyTainted(stringData(s), len(s)) {
+			b.Fatal("an operand is not a clean filter hit")
+		}
+	}
+	cases := []benchCase{
+		{"s2b-stack", func() { sinkInt = stackS2BLen(one) }},
+		{"concat2-stack", func() { sinkInt = stackConcatLen(one, two) }},
+	}
+	requireCleanHitPath(b, source, cases, []int{1, 2})
+	runBench(b, cases)
+}
+
+// requireCleanHitPath checks, before the measurement, that each case of a
+// hooked binary calls Confirm once for each operand (thus the woven code did
+// not skip the pre-check), and that no case allocates. A binary without the
+// hooks (nohook, unwoven) does not call Confirm: it only checks the
+// allocations.
+func requireCleanHitPath(b *testing.B, tainted string, cases []benchCase, operands []int) {
+	b.Helper()
+	before := entries()
+	sinkString = heapConcat2("x", tainted)
+	hooked := entries() != before
+	sinkString = ""
+	previousBinding, previousCallbacks := runtimebridge.CurrentForTest()
+	if previousBinding == nil {
+		if hooked {
+			b.Fatal("the hooked runtime bridge is not bound")
+		}
+		for _, c := range cases {
+			if allocs := testing.AllocsPerRun(100, c.f); allocs != 0 {
+				b.Fatalf("%s: %v allocations, want 0", c.name, allocs)
+			}
+		}
+		return
+	}
+	var confirms int
+	counted := *previousBinding
+	counted.Confirm = func(p uintptr, n uint32) runtimebridge.ConfirmResult {
+		confirms++
+		return previousBinding.Confirm(p, n)
+	}
+	restore := runtimebridge.ReplaceForTest(&counted, runtimebridge.StringToSliceEnabled(), previousCallbacks)
+	defer restore()
+	for i, c := range cases {
+		confirms = 0
+		c.f()
+		want := 0
+		if hooked {
+			want = operands[i]
+		}
+		if confirms != want {
+			b.Fatalf("%s: %d calls to Confirm, want %d (hooked: %t)", c.name, confirms, want, hooked)
+		}
+		if allocs := testing.AllocsPerRun(100, c.f); allocs != 0 {
+			b.Fatalf("%s: %v allocations, want 0", c.name, allocs)
+		}
+	}
 }
 
 // BenchmarkRuntimeS2SOff: the gate is on, and the string-to-slice switch is

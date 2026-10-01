@@ -1,4 +1,5 @@
 runtime.__dd_iast_concatstrings
 runtime.__dd_iast_stringtoslicerune
+__dd_iast_rt.concat_hit
 __dd_iast_rt.concat_hook
 github.com/DataDog/dd-iast-go/internal/taint/propagation.runtimeConcat

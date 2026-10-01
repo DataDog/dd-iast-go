@@ -58,10 +58,12 @@ type loadedStore struct {
 	keep     []any
 
 	// The values of neighbor, clean and miss, for the runtime bridge
-	// benchmarks (they take values, not keys).
-	neighborValue string
-	cleanValues   []string
-	missValues    []string
+	// benchmarks (they take values, not keys). otherNeighborValue is a
+	// second neighbor, in the granule of another root.
+	neighborValue      string
+	otherNeighborValue string
+	cleanValues        []string
+	missValues         []string
 }
 
 func newLoadedStore(tb testing.TB, load lookupLoad) *loadedStore {
@@ -88,8 +90,9 @@ func newLoadedStoreIn(tb testing.TB, s *Store, load lookupLoad) *loadedStore {
 	}
 	loaded.keep = append(loaded.keep, managed)
 	// Two 16-byte allocations in one 64-byte granule: one is a root, the
-	// other stays clean.
-	for attempt := 0; attempt < 1000 && loaded.neighbor.Pointer == 0; attempt++ {
+	// other stays clean. Two such pairs, in different granules.
+	var neighbors []Key
+	for attempt := 0; attempt < 1000 && len(neighbors) < 2; attempt++ {
 		batch := make([][]byte, 16)
 		for i := range batch {
 			batch[i] = make([]byte, 16)
@@ -97,20 +100,25 @@ func newLoadedStoreIn(tb testing.TB, s *Store, load lookupLoad) *loadedStore {
 		}
 		for i := 1; i < len(batch); i++ {
 			first, second := bytesPointer(batch[i-1]), bytesPointer(batch[i])
-			if first>>6 != second>>6 {
+			if first>>6 != second>>6 || len(neighbors) == 1 && neighbors[0].Pointer>>6 == second>>6 {
 				continue
 			}
 			if _, _, _, ok := owner.AdoptSourceBytes(batch[i-1], "n", 1); ok {
-				loaded.neighbor = Key{Pointer: second, Length: 16, Kind: KindBytes}
-				loaded.neighborValue = unsafe.String(&batch[i][0], len(batch[i]))
+				neighbors = append(neighbors, Key{Pointer: second, Length: 16, Kind: KindBytes})
+				if len(neighbors) == 1 {
+					loaded.neighborValue = unsafe.String(&batch[i][0], len(batch[i]))
+				} else {
+					loaded.otherNeighborValue = unsafe.String(&batch[i][0], len(batch[i]))
+				}
 				loaded.keep = append(loaded.keep, batch)
 				break
 			}
 		}
 	}
-	if loaded.neighbor.Pointer == 0 {
+	if len(neighbors) != 2 {
 		tb.Fatal("no neighbor allocation")
 	}
+	loaded.neighbor = neighbors[0]
 	for remaining := load.roots; remaining > 0; remaining -= MaxRootsPerOwner {
 		owner := s.Acquire()
 		if owner.Disabled() {
@@ -222,10 +230,15 @@ func BenchmarkMayContain(b *testing.B) {
 					b.Skip("no key")
 				}
 				hitRate, probes := loaded.rates(c.keys)
+				// The index goes back to 0 at the end of the keys. A modulo
+				// is an integer division, and on amd64 a division costs more
+				// than the filter check.
 				i := 0
 				for b.Loop() {
-					benchSink = loaded.store.MayContain(c.keys[i%len(c.keys)])
-					i++
+					benchSink = loaded.store.MayContain(c.keys[i])
+					if i++; i == len(c.keys) {
+						i = 0
+					}
 				}
 				loaded.report(b)
 				b.ReportMetric(hitRate, "filter-hit%")

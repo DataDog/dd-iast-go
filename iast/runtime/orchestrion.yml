@@ -22,9 +22,24 @@ meta:
 #     goroutine. A token of 1 is the inner call of a wrapper: the code clears
 #     the token and runs the original body.
 #  3. Else the code calls the nosplit context check __dd_iast_ok(). When it is
-#     true, the code returns the result of the wrapper __dd_iast_<fn>. When it
-#     is false (system stack, runtime lock, allocation in progress, or a bridge
-#     call on this goroutine), the original body runs directly.
+#     false (system stack, runtime lock, allocation in progress, or a bridge
+#     call on this goroutine), the original body runs directly. When it is
+#     true, the code calls the bridge filter check __dd_iast_rt_<x>_hit. The
+#     filter check reads the interior filter of each input and returns true
+#     only when one input can be tainted (in an optimized build, it is a leaf
+#     function). When the
+#     filter check returns true, the code returns the result of the wrapper
+#     __dd_iast_<fn>. When the filter check returns false (the clean path),
+#     the original body runs directly: no pre-check, no
+#     token, no inner call and no result hook. The pre-check and the result
+#     hook read the same filter, so they could do nothing for these inputs.
+#     The filter check returns its arguments unchanged, and the code stores
+#     them in the arguments of the function. Thus no argument is live across
+#     the call, and the compiler does not spill the arguments at the entry of
+#     the function (on the gate-off path). The escape comparison checks that
+#     the escape tags of the function do not change. Exception:
+#     slicerunetostring calls its filter check first in its wrapper (see the
+#     wrapper).
 #  4. The wrapper calls the bridge pre-check (it can force the result to the
 #     heap), sets the token, calls the original function through the alias
 #     __dd_iast_orig_<fn>, clears the token, and calls the bridge result hook
@@ -68,6 +83,32 @@ aspects:
 
             //go:linkname __dd_iast_rt_s2s_gate __dd_iast_rt.s2s_gate
             var __dd_iast_rt_s2s_gate uint32
+
+            // The filter checks return their arguments unchanged, with the
+            // result of the check. The prepended code stores the returned
+            // values in the arguments of the hooked function. Then no
+            // argument is live across the call, and the compiler does not
+            // spill the arguments at the entry of the hooked function (that
+            // is, also on the gate-off path).
+            //go:linkname __dd_iast_rt_concat_hit __dd_iast_rt.concat_hit
+            //go:noescape
+            func __dd_iast_rt_concat_hit(buf *tmpBuf, a []string) (*tmpBuf, []string, bool)
+
+            //go:linkname __dd_iast_rt_bytes_hit __dd_iast_rt.bytes_hit
+            //go:noescape
+            func __dd_iast_rt_bytes_hit(buf *tmpBuf, ptr *byte, n int) (*tmpBuf, *byte, int, bool)
+
+            //go:linkname __dd_iast_rt_str_hit __dd_iast_rt.str_hit
+            //go:noescape
+            func __dd_iast_rt_str_hit(buf *tmpBuf, s string) (*tmpBuf, string, bool)
+
+            //go:linkname __dd_iast_rt_str_hit_runes __dd_iast_rt.str_hit_runes
+            //go:noescape
+            func __dd_iast_rt_str_hit_runes(buf *[tmpStringBufSize]rune, s string) (*[tmpStringBufSize]rune, string, bool)
+
+            //go:linkname __dd_iast_rt_runes_hit __dd_iast_rt.runes_hit
+            //go:noescape
+            func __dd_iast_rt_runes_hit(buf *tmpBuf, a []rune) (*tmpBuf, []rune, bool)
 
             //go:linkname __dd_iast_rt_concat_pre __dd_iast_rt.concat_pre
             //go:noescape
@@ -254,21 +295,30 @@ aspects:
 
             // The only caller is the prepended code of the original function, after
             // __dd_iast_ok() returned true. Thus this function has no context check.
+            //
+            // The filter check of this function is here, not in the prepended
+            // code: there, it makes the frame of slicerunetostring larger
+            // than the small-frame limit (128 bytes), and the prologue of the
+            // gate-off path then has one more instruction. The wrapper does
+            // not use the returned arguments: then the compiler keeps buf and
+            // a in their spill slots, and does not store the returned values
+            // again.
             //go:noinline
             func __dd_iast_slicerunetostring(buf *tmpBuf, a []rune) string {
+              _, _, hit := __dd_iast_rt_runes_hit(buf, a)
               gp := getg()
-              if buf != nil && len(a) != 0 {
+              if hit && buf != nil && len(a) != 0 {
                 gp.__dd_iast_in_hook = 1
-                hit := __dd_iast_rt_runes_pre(a)
+                pre := __dd_iast_rt_runes_pre(a)
                 gp.__dd_iast_in_hook = 0
-                if hit {
+                if pre {
                   buf = nil
                 }
               }
               gp.__dd_iast_bypass = 1
               r := __dd_iast_orig_slicerunetostring(buf, a)
               gp.__dd_iast_bypass = 0
-              if len(r) > 1 && !stringDataOnStack(r) {
+              if hit && len(r) > 1 && !stringDataOnStack(r) {
                 gp.__dd_iast_in_hook = 1
                 __dd_iast_rt_from_runes(r, a)
                 gp.__dd_iast_in_hook = 0
@@ -326,7 +376,10 @@ aspects:
               if __dd_iast_gp := getg(); __dd_iast_gp.__dd_iast_bypass != 0 {
                 __dd_iast_gp.__dd_iast_bypass = 0
               } else if __dd_iast_ok() {
-                return __dd_iast_concatstrings({{ $buf }}, {{ $a }})
+                var __dd_iast_hit bool
+                if {{ $buf }}, {{ $a }}, __dd_iast_hit = __dd_iast_rt_concat_hit({{ $buf }}, {{ $a }}); __dd_iast_hit {
+                  return __dd_iast_concatstrings({{ $buf }}, {{ $a }})
+                }
               }
             }
 
@@ -348,7 +401,10 @@ aspects:
               if __dd_iast_gp := getg(); __dd_iast_gp.__dd_iast_bypass != 0 {
                 __dd_iast_gp.__dd_iast_bypass = 0
               } else if __dd_iast_ok() {
-                return __dd_iast_concatbytes({{ $buf }}, {{ $a }})
+                var __dd_iast_hit bool
+                if {{ $buf }}, {{ $a }}, __dd_iast_hit = __dd_iast_rt_concat_hit({{ $buf }}, {{ $a }}); __dd_iast_hit {
+                  return __dd_iast_concatbytes({{ $buf }}, {{ $a }})
+                }
               }
             }
 
@@ -371,7 +427,10 @@ aspects:
               if __dd_iast_gp := getg(); __dd_iast_gp.__dd_iast_bypass != 0 {
                 __dd_iast_gp.__dd_iast_bypass = 0
               } else if __dd_iast_ok() {
-                return __dd_iast_slicebytetostring({{ $buf }}, {{ $ptr }}, {{ $n }})
+                var __dd_iast_hit bool
+                if {{ $buf }}, {{ $ptr }}, {{ $n }}, __dd_iast_hit = __dd_iast_rt_bytes_hit({{ $buf }}, {{ $ptr }}, {{ $n }}); __dd_iast_hit {
+                  return __dd_iast_slicebytetostring({{ $buf }}, {{ $ptr }}, {{ $n }})
+                }
               }
             }
 
@@ -394,7 +453,10 @@ aspects:
                 if __dd_iast_gp := getg(); __dd_iast_gp.__dd_iast_bypass != 0 {
                   __dd_iast_gp.__dd_iast_bypass = 0
                 } else if __dd_iast_ok() {
-                  return __dd_iast_stringtoslicebyte({{ $buf }}, {{ $s }})
+                  var __dd_iast_hit bool
+                  if {{ $buf }}, {{ $s }}, __dd_iast_hit = __dd_iast_rt_str_hit({{ $buf }}, {{ $s }}); __dd_iast_hit {
+                    return __dd_iast_stringtoslicebyte({{ $buf }}, {{ $s }})
+                  }
                 }
               }
             }
@@ -440,7 +502,10 @@ aspects:
                 if __dd_iast_gp := getg(); __dd_iast_gp.__dd_iast_bypass != 0 {
                   __dd_iast_gp.__dd_iast_bypass = 0
                 } else if __dd_iast_ok() {
-                  return __dd_iast_stringtoslicerune({{ $buf }}, {{ $s }})
+                  var __dd_iast_hit bool
+                  if {{ $buf }}, {{ $s }}, __dd_iast_hit = __dd_iast_rt_str_hit_runes({{ $buf }}, {{ $s }}); __dd_iast_hit {
+                    return __dd_iast_stringtoslicerune({{ $buf }}, {{ $s }})
+                  }
                 }
               }
             }

@@ -6,6 +6,7 @@
 package store
 
 import (
+	"math/bits"
 	"sync"
 	"sync/atomic"
 
@@ -87,8 +88,45 @@ type indexEntry struct {
 }
 
 type indexShard struct {
-	mu      sync.RWMutex
+	mu sync.RWMutex
+	// tags has one byte for each slot of buckets: entryTag of the key hash
+	// when the slot has an entry, 0 when the slot is empty. Only a writer that
+	// holds the write lock changes a tag, together with the entry. A reader
+	// compares the 8 tags of a bucket with a few word operations, and reads
+	// only the entries whose tag matches (probe).
+	tags    [IndexBucketsPerShard]uint64
 	buckets [IndexBucketsPerShard][IndexBucketSize]indexEntry
+}
+
+// A bucket has one tag word: 8 slots of one byte.
+const _ = uint(8-IndexBucketSize) + uint(IndexBucketSize-8)
+
+const (
+	tagOnes  = 0x0101010101010101
+	tagHighs = 0x8080808080808080
+)
+
+// entryTag returns the tag of a key hash: hash bits 29 to 36, which no other
+// use of the hash reads (the shard uses bits 56 to 63, the home bucket bits 52
+// to 55 and the filter bits 37 to 51). It is never 0, so 0 marks an empty
+// slot.
+func entryTag(hash uint64) uint8 { return max(uint8(hash>>29), 1) }
+
+// tagMatches returns a mask with bit 8*i+7 set for each slot i whose tag can be
+// tag. Every slot whose tag is tag has its bit set. Some other slots can also
+// have their bit set (the borrow of the subtraction): the caller compares the
+// entry key.
+func tagMatches(word uint64, tag uint8) uint64 {
+	x := word ^ tagOnes*uint64(tag)
+	return (x - tagOnes) &^ x & tagHighs
+}
+
+// setTagLocked stores tag in the tag byte of a slot. The caller holds the write
+// lock of shard.
+func setTagLocked(shard *indexShard, bucket, slot int, tag uint8) {
+	shift := 8 * uint(slot)
+	word := &shard.tags[bucket&(IndexBucketsPerShard-1)]
+	*word = *word&^(0xff<<shift) | uint64(tag)<<shift
 }
 
 type indexPos struct {
@@ -325,12 +363,15 @@ func (s *Store) insertRefStep(key, base uintptr, span uint32, ref ownerRef) (ind
 	entry := &shard.buckets[emptyBucket][emptySlot]
 	*entry = indexEntry{key: key, base: base, span: span, n: 1}
 	entry.refs[0] = ref
+	setTagLocked(shard, emptyBucket, emptySlot, entryTag(indexHash(key)))
 	return indexPos{shard: shard, bucket: uint8(emptyBucket), slot: uint8(emptySlot)}, insertOK, emptyStep
 }
 
-// removeRefLocked removes ref from entry and clears the entry when it has no
-// ref. It reports whether it removed a ref.
-func removeRefLocked(entry *indexEntry, ref ownerRef) bool {
+// removeRefLocked removes ref from the entry at (bucket, slot) of shard, and
+// clears the entry and its tag when it has no ref. It reports whether it
+// removed a ref. The caller holds the write lock of shard.
+func removeRefLocked(shard *indexShard, bucket, slot int, ref ownerRef) bool {
+	entry := &shard.buckets[bucket&(IndexBucketsPerShard-1)][slot&(IndexBucketSize-1)]
 	for i := 0; i < int(entry.n); i++ {
 		if !entry.refs[i].sameRoot(ref) {
 			continue
@@ -341,6 +382,7 @@ func removeRefLocked(entry *indexEntry, ref ownerRef) bool {
 		entry.n--
 		if entry.n == 0 {
 			*entry = indexEntry{}
+			setTagLocked(shard, bucket, slot, 0)
 		}
 		return true
 	}
@@ -358,7 +400,7 @@ func removeRefAt(pos indexPos, key, base uintptr, ref ownerRef) bool {
 	if entry.key != key || entry.base != base {
 		return false
 	}
-	return removeRefLocked(entry, ref)
+	return removeRefLocked(pos.shard, int(pos.bucket), int(pos.slot), ref)
 }
 
 // removeRef finds and removes ref from the entry (key, base). It waits for the
@@ -368,10 +410,11 @@ func (s *Store) removeRef(key, base uintptr, ref ownerRef) bool {
 	shard.mu.Lock()
 	defer shard.mu.Unlock()
 	for step := 0; step < IndexBucketProbe; step++ {
-		bucket := &shard.buckets[(home+step)&(IndexBucketsPerShard-1)]
+		index := (home + step) & (IndexBucketsPerShard - 1)
+		bucket := &shard.buckets[index]
 		for slot := range bucket {
 			entry := &bucket[slot]
-			if entry.key == key && entry.base == base && removeRefLocked(entry, ref) {
+			if entry.key == key && entry.base == base && removeRefLocked(shard, index, slot, ref) {
 				return true
 			}
 		}
@@ -604,15 +647,19 @@ type candidate struct {
 // probe copies the refs of the entries of key that contain [p, p+n). It
 // reports false when the shard lock is contended.
 func (s *Store) probe(key, p uintptr, n uint32, out *[maxProbeRefs]candidate, count int, overflow *bool) (int, bool) {
-	shard, home := s.shardOf(indexHash(key))
+	hash := indexHash(key)
+	shard, home := s.shardOf(hash)
+	tag := entryTag(hash)
 	if !shard.mu.TryRLock() {
 		return count, false
 	}
 	end := p + uintptr(n)
 	for step := 0; step < IndexBucketProbe; step++ {
-		bucket := &shard.buckets[(home+step)&(IndexBucketsPerShard-1)]
-		for slot := range bucket {
-			entry := &bucket[slot]
+		index := (home + step) & (IndexBucketsPerShard - 1)
+		bucket := &shard.buckets[index]
+		// Only the slots whose tag can be tag: an entry of key has this tag.
+		for matches := tagMatches(shard.tags[index], tag); matches != 0; matches &= matches - 1 {
+			entry := &bucket[bits.TrailingZeros64(matches)>>3]
 			if entry.key != key || p < entry.base || end < p || end > entry.base+uintptr(entry.span) {
 				continue
 			}

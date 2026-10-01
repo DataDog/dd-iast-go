@@ -391,9 +391,11 @@ func TestRecursionGuard(t *testing.T) {
 	nestedEntries.Store(0)
 	nestedSink.Store(nil)
 	before := entries()
-	p := stackConcat("x", value) // pre (1 entry, nested confirm) + result hook (1 entry, nested callback)
+	// Filter check (1 entry) + pre (1 entry, nested confirm) + result hook (1
+	// entry, nested callback).
+	p := stackConcat("x", value)
 	got := entries() - before
-	require.Equal(t, uint64(2), got, "only the pre-check and the result hook enter the bridge")
+	require.Equal(t, uint64(3), got, "only the filter check, the pre-check and the result hook enter the bridge")
 	require.Zero(t, nestedEntries.Load(), "nested operations must not enter the bridge")
 	require.NotNil(t, nestedSink.Load(), "the nested operations ran")
 	require.Equal(t, probe{tainted: true}, p)

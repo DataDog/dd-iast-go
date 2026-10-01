@@ -35,6 +35,9 @@ func requireFilterConsistent(t testing.TB, s *Store) {
 		for bucket := range shard.buckets {
 			for slot := range shard.buckets[bucket] {
 				entry := &shard.buckets[bucket][slot]
+				if got, want := slotTag(shard, bucket, slot), entryTagOf(entry); got != want {
+					require.Failf(t, "tag mismatch", "shard %d bucket %d slot %d: tag %d, want %d", i, bucket, slot, got, want)
+				}
 				if entry.key != 0 {
 					expected[filterBucket(indexHash(entry.key))] += uint32(entry.n)
 				}
@@ -47,6 +50,20 @@ func requireFilterConsistent(t testing.TB, s *Store) {
 			require.Failf(t, "filter mismatch", "bucket %d: got %d, want %d", i, got, expected[i])
 		}
 	}
+}
+
+// slotTag returns the tag byte of a slot.
+func slotTag(shard *indexShard, bucket, slot int) uint8 {
+	return uint8(shard.tags[bucket] >> (8 * uint(slot)))
+}
+
+// entryTagOf returns the tag that the slot of entry must have: 0 for an empty
+// slot.
+func entryTagOf(entry *indexEntry) uint8 {
+	if entry.key == 0 {
+		return 0
+	}
+	return entryTag(indexHash(entry.key))
 }
 
 // indexState returns the store statistics without the monotonic MaxProbe.

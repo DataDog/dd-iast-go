@@ -86,6 +86,8 @@ func newBenchData() *benchData {
 	for _, shape := range []string{"s2b-heap", "s2b-stack", "s2r-heap", "s2r-stack"} {
 		add("RuntimeS2SOff/"+shape, benchResult{20, 0, 0}, benchResult{20, 0, 0})
 	}
+	add("RuntimeCleanHit/s2b-stack", benchResult{10, 0, 0}, benchResult{40, 0, 0})
+	add("RuntimeCleanHit/concat2-stack", benchResult{10, 0, 0}, benchResult{60, 0, 0})
 	for name, bytes := range map[string]int{"concat2": 16, "b2s": 16, "s2b": 16, "r2s": 16, "s2r": 48} {
 		add("RuntimeTainted/"+name+"-stack", benchResult{10, 0, 0}, benchResult{600, bytes, 1})
 	}
@@ -95,6 +97,7 @@ func newBenchData() *benchData {
 		}
 		d.store["RuntimePre/"+load+"/one-clean-hit"] = benchResult{30, 0, 0}
 	}
+	d.store["RuntimePre/sparse/concat2-clean-hit"] = benchResult{50, 0, 0}
 	d.store["RuntimePre/full/concat2-clean-hit"] = benchResult{70, 0, 0}
 	d.store["RuntimePre/full/concat2-clean-random"] = benchResult{60, 0, 0}
 	for _, workload := range []string{"params1000", "dense256", "span257"} {
@@ -228,6 +231,29 @@ func TestRuntimeBenchReportGateOffBoundary(t *testing.T) {
 		d.hook["RuntimeOff/concat2-heap"][k] = r
 	}
 	requireVerdict(t, d, "", "FAIL", "**Verdict: FAIL** (off)")
+}
+
+// TestRuntimeBenchReportFilterHitGates checks the "hit" and "full2" gates: the
+// woven clean filter hit (hook - nohook, pooled) plus the extra cost of the
+// pre-check at the worst load (store benchmark, worst load - sparse).
+func TestRuntimeBenchReportFilterHitGates(t *testing.T) {
+	// hit: +30.70 ns pooled + (30 - 30) = 30.70 ns; full2: +50.70 + (70 - 50).
+	requireVerdict(t, newBenchData(), "", "PASS", "= 30.70 ns", "= 70.70 ns")
+	d := newBenchData()
+	d.store["RuntimePre/full/one-clean-hit"] = benchResult{50, 0, 0}
+	requireVerdict(t, d, "", "FAIL", "(hit)", "= 50.70 ns")
+	d = newBenchData()
+	d.store["RuntimePre/full/concat2-clean-random"] = benchResult{100, 0, 0}
+	requireVerdict(t, d, "", "FAIL", "(full2)", "= 100.70 ns")
+	d = newBenchData()
+	for k, r := range d.hook["RuntimeCleanHit/s2b-stack"] {
+		r.allocs = 1
+		d.hook["RuntimeCleanHit/s2b-stack"][k] = r
+	}
+	requireVerdict(t, d, "", "FAIL", "(hit")
+	d = newBenchData()
+	delete(d.store, "RuntimePre/sparse/concat2-clean-hit")
+	requireVerdict(t, d, "", "INCOMPLETE", "NOT MEASURED")
 }
 
 func TestRuntimeBenchReportFailsExtraAllocationWithGateOff(t *testing.T) {

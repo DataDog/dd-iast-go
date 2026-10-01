@@ -21,6 +21,27 @@ import "unsafe"
 //
 // Result functions run after the runtime function, only when the result is
 // not on the stack.
+//
+// Filter checks ("hit") run in the prepended code of the runtime function,
+// after the context check and before the wrapper (slicerunetostring: first in
+// its wrapper). When a filter check returns false, the runtime does not call
+// the wrapper: no pre-check, no bypass token, no inner call and no result
+// function. This is the clean path when the gate is on. A false result is a
+// proof that no indexed root contains the input (the same filter as the
+// pre-checks and the result functions, plan sections 3.2.1 and 5.2.4), so the
+// wrapper has nothing to do. A filter check does not lock, does not allocate,
+// has no defer and cannot panic. The runtime does not set the per-g guard for
+// it, because it calls no hooked function. In an optimized build, the
+// compiler inlines its helpers, and it is a leaf function with no frame. The
+// hooks do not need this for correctness: with -gcflags=all=-N -l, the filter
+// checks call their helpers, and the result is the same.
+//
+// A filter check returns its arguments unchanged, with the result of the
+// check, and the runtime stores them in the arguments of the hooked function.
+// Then no argument of the hooked function is live across the call, and the
+// compiler does not spill the arguments at the entry of the hooked function,
+// that is, also on the gate-off path. The buf argument is the stack buffer of
+// the runtime function (unsafe.Pointer here): the filter check only returns it.
 
 // maxLength is the largest value length that the store can key.
 const maxLength = uint64(^uint32(0))
@@ -30,6 +51,61 @@ func length32(n int) (uint32, bool) {
 		return 0, false
 	}
 	return uint32(n), true
+}
+
+// The bodies of the filter checks are written out, so that in an optimized
+// build each one is a leaf function with no frame (all its helpers are
+// inlined).
+
+//go:linkname concatHit __dd_iast_rt.concat_hit
+func concatHit(buf unsafe.Pointer, a []string) (unsafe.Pointer, []string, bool) {
+	enter()
+	b := binding.Load()
+	if b == nil || b.Filter == nil {
+		return buf, a, false
+	}
+	f, m := b.Filter, hashMultiplier
+	for _, s := range a {
+		if len(s) != 0 && filterHit(f, stringPointer(s), m) {
+			return buf, a, true
+		}
+	}
+	return buf, a, false
+}
+
+//go:linkname bytesHit __dd_iast_rt.bytes_hit
+func bytesHit(buf unsafe.Pointer, ptr *byte, n int) (unsafe.Pointer, *byte, int, bool) {
+	enter()
+	b := binding.Load()
+	p := uintptr(unsafe.Pointer(ptr))
+	return buf, ptr, n, b != nil && b.Filter != nil && n > 0 && p != 0 && FilterHit(b.Filter, p)
+}
+
+//go:linkname strHit __dd_iast_rt.str_hit
+func strHit(buf unsafe.Pointer, s string) (unsafe.Pointer, string, bool) {
+	enter()
+	b := binding.Load()
+	p := stringPointer(s)
+	return buf, s, b != nil && b.Filter != nil && len(s) != 0 && p != 0 && FilterHit(b.Filter, p)
+}
+
+// strHitRunes is strHit for stringtoslicerune (its buffer has another type
+// in the runtime).
+//
+//go:linkname strHitRunes __dd_iast_rt.str_hit_runes
+func strHitRunes(buf unsafe.Pointer, s string) (unsafe.Pointer, string, bool) {
+	enter()
+	b := binding.Load()
+	p := stringPointer(s)
+	return buf, s, b != nil && b.Filter != nil && len(s) != 0 && p != 0 && FilterHit(b.Filter, p)
+}
+
+//go:linkname runesHit __dd_iast_rt.runes_hit
+func runesHit(buf unsafe.Pointer, a []rune) (unsafe.Pointer, []rune, bool) {
+	enter()
+	b := binding.Load()
+	p := uintptr(unsafe.Pointer(unsafe.SliceData(a)))
+	return buf, a, b != nil && b.Filter != nil && len(a) != 0 && p != 0 && FilterHit(b.Filter, p)
 }
 
 //go:linkname concatPre __dd_iast_rt.concat_pre

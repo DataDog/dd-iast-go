@@ -54,6 +54,7 @@ EXPECTED_RUNTIME = (
     [f"RuntimeOff/{s}" for s in SHAPES]
     + [f"RuntimeClean/{s}" for s in SHAPES]
     + [f"RuntimeS2SOff/{c}-{m}" for c in ("s2b", "s2r") for m in ("heap", "stack")]
+    + ["RuntimeCleanHit/s2b-stack", "RuntimeCleanHit/concat2-stack"]
     + [f"RuntimeTainted/{c}-stack" for c in ["concat2"] + CONVERSIONS]
 )
 
@@ -150,6 +151,10 @@ def runtime_limit(case):
         if is_rune(name):
             return 6.0, 0, "<= +6 ns"
         limit = 3 + 1.5 * operands(name)
+        return limit, 0, f"<= +{limit:g} ns"
+    if group == "RuntimeCleanHit":
+        # Each operand is a clean filter hit: <= +50 ns for each operand.
+        limit = 50.0 * operands(name)
         return limit, 0, f"<= +{limit:g} ns"
     if group == "RuntimeTainted":
         return 1000.0, 1, "<= +1 us, +1 alloc"
@@ -266,44 +271,50 @@ def main():
         select("RuntimeClean", lambda n: n.endswith("-stack") and not is_rune(n)),
     )
 
-    # A filter hit: the hook entry (the clean b2s-stack hook - nohook, which
-    # also has one filter-miss pre-check) plus the complete bridge pre-check
-    # of one clean operand that is a filter hit, at the worst load.
-    title, gate = "Gate on, clean, stack buffer, filter hit", "0 extra allocations; <= +50 ns for each operand that hits"
-    hits = store_values([f"RuntimePre/{x}/one-clean-hit" for x in LOADS])
-    entry = rows.get("RuntimeClean/b2s-stack")
-    if hits is None or entry is None:
-        missing("hit", title, gate, "`RuntimePre/*/one-clean-hit` or `RuntimeClean/b2s-stack`")
-    else:
-        v, n = max(hits)
-        total = v + entry["delta"]
+    # A filter hit. The woven case RuntimeCleanHit/s2b-stack (hook - nohook)
+    # is the complete gate-on path of one clean operand that is a filter hit
+    # (filter check, wrapper, pre-check with Confirm), with one root (sparse).
+    # The store benchmark gives the extra cost of the pre-check at a larger
+    # load: RuntimePre/<load>/one-clean-hit - RuntimePre/sparse/one-clean-hit,
+    # at the worst load. The gate value is the sum.
+    def woven_hit(key, title, gate, case, worst_names, sparse_name, limit):
+        pre = store_values(worst_names + [sparse_name])
+        woven = rows.get(case)
+        if pre is None or woven is None:
+            missing(key, title, gate, f"`{case}` or `{sparse_name}` and the other loads")
+            return
+        sparse = dict((n, v) for v, n in pre)[sparse_name]
+        v, n = max(x for x in pre if x[1] != sparse_name)
+        extra = max(0.0, v - sparse)
+        total = woven["delta"] + extra
         gates.append(
             (
-                "hit",
+                key,
                 title,
                 gate,
-                f"`{n}` {v:.2f} ns + hook entry {entry['delta']:.2f} ns = {total:.2f} ns",
-                total <= 50 and zero_allocs([x for _, x in hits]) and entry["allocs"] == 0,
+                f"woven `{case}` {woven['delta']:.2f} ns + load (`{n}` - sparse) {extra:.2f} ns = {total:.2f} ns",
+                total <= limit and zero_allocs([x for _, x in pre]) and woven["allocs"] == 0,
             )
         )
 
-    title, gate = "Gate on, clean, 2-operand stack concat, full index", "0 extra allocations; <= +100 ns (both operands can hit)"
-    pre = store_values(["RuntimePre/full/concat2-clean-hit", "RuntimePre/full/concat2-clean-random"])
-    entry = rows.get("RuntimeClean/concat2-stack")
-    if pre is None or entry is None:
-        missing("full2", title, gate, "`RuntimePre/full/concat2-*` or `RuntimeClean/concat2-stack`")
-    else:
-        v, n = max(pre)
-        total = v + entry["delta"]
-        gates.append(
-            (
-                "full2",
-                title,
-                gate,
-                f"`{n}` {v:.2f} ns + hook entry {entry['delta']:.2f} ns = {total:.2f} ns",
-                total <= 100 and zero_allocs([x for _, x in pre]) and entry["allocs"] == 0,
-            )
-        )
+    woven_hit(
+        "hit",
+        "Gate on, clean, stack buffer, filter hit",
+        "0 extra allocations; <= +50 ns for each operand that hits",
+        "RuntimeCleanHit/s2b-stack",
+        [f"RuntimePre/{x}/one-clean-hit" for x in LOADS if x != "sparse"],
+        "RuntimePre/sparse/one-clean-hit",
+        50,
+    )
+    woven_hit(
+        "full2",
+        "Gate on, clean, 2-operand stack concat, full index",
+        "0 extra allocations; <= +100 ns (both operands can hit)",
+        "RuntimeCleanHit/concat2-stack",
+        ["RuntimePre/full/concat2-clean-hit", "RuntimePre/full/concat2-clean-random"],
+        "RuntimePre/sparse/concat2-clean-hit",
+        100,
+    )
 
     runtime_gate(
         "tainted",
