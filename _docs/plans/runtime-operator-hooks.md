@@ -1171,6 +1171,31 @@ A failed gate stops the plan for user review (section 11).
 
 **Step 5 measurement and user decision.** On darwin/arm64 (20 interleaved rounds, GOGC=off), the gate-on clean path cost +5 to +19 ns for a concat (about +1.2 ns for each operand: one filter check for each operand) and +4 to +5 ns for a conversion; the tainted stack path cost +450 to +930 ns (store adoption is about 170 ns; GOGC=off adds `madvise` time). The gate is on whenever any request of the process has taint, so under load this cost applies to every concat and conversion of the process, also in the standard library and the tracer. Romain accepted these measured costs and the three new gates above.
 
+**Gates for each platform (user decision after CI run 36992589970).** The gates in the table above are the **local** profile (darwin/arm64, Apple M5 Pro). The GitHub runners (`ubuntu-latest`, linux/amd64, AMD EPYC 7763; `ubuntu-24.04-arm`, linux/arm64) are slower and have more noise. Romain accepted the native CI numbers. `.github/runtime-bench.py` has one table of gates (`PROFILES`) with the two profiles; `RUNTIME_BENCH_PROFILE` selects one (default `local`; the workflow sets `ci`). The report title gives the profile, and the gate column gives the limits of that profile. The CI limits are the worst value of the two runners in run 36992589970, plus a margin. The allocation rules are the same in the two profiles (0 extra allocations for clean and gate off; +1 allocation of the exact size for tainted). The admission gate stays optional on CI (no old store). The CI measure jobs are **report-only**: the job summary and the artifact have the full table and the verdict, and a FAIL or INCOMPLETE verdict gives a warning, not a failed job (`RUNTIME_BENCH_REPORT_ONLY=1`). An error of the scripts still fails the job.
+
+| Key | Local (darwin/arm64) | CI (GitHub runners) | CI worst, run 36992589970 |
+|---|---|---|---|
+| off | <= +2 ns | <= +8 ns; rune rows (`r2s`, `s2r`): <= +25 ns (noisy) | +6.87 ns (`concat16-stack`, arm64); rune +21.85 ns (`r2s-heap`, amd64) |
+| clean-heap, clean-stack | <= +3 ns + 1.5 ns for each operand | <= +4 ns + 2 ns for each operand (concat 2 / 4 / 6 / 16: 8 / 12 / 16 / 36 ns; conversions 6 ns) | `concat16-stack` +29.59 ns (amd64); `s2b-stack` +4.06 ns (amd64) |
+| rune-clean | <= +6 ns | <= +25 ns | +20.85 ns (`r2s-heap`, amd64) |
+| hit | <= +50 ns for each operand that hits | <= +100 ns for each operand that hits | 89.21 ns (arm64) |
+| full2 | <= +100 ns | <= +200 ns | 175.89 ns (arm64) |
+| tainted | <= +1 us | <= +1.5 us | +1167.55 ns (`concat2-stack`, amd64) |
+| tainted-rune | <= +1 us | <= +1.75 us | +1438.09 ns (`s2r-stack`, arm64) |
+| maycontain-hit | <= 45 ns | <= 45 ns | 4.37 ns (amd64) |
+| maycontain-random | <= 4 / 10 / 45 ns | <= 5 / 10 / 45 ns | 4.13 / 4.12 / 4.17 ns (amd64) |
+| maycontain-miss | <= 3 ns | <= 5 ns | 4.15 ns (amd64) |
+| s2s-off | <= +2 ns | <= +5 ns | +4.08 ns (`s2r-heap`, arm64) |
+| http | <= +3.70 % | <= +6.00 % | +5.17 % (arm64) |
+| admission | sparse 0, stressed <= 1 point | the same, optional (no old store) | not measured |
+| allocs | 0 | 0 | 8 PASS on each runner |
+
+CI evidence (workflow `runtime-bench.yml`, local gates, verdict FAIL in the three runs):
+
+1. Run 36834964455 (revision `b3096104`, before the gate-on optimization of section 13.4): clean `concat16-heap` +43.34 ns (amd64) / +40.50 ns (arm64); `hit` 79.44 / 88.30 ns (estimate); HTTP +8.24 % / +10.57 %.
+2. Run 36910820603 (revision `0dd7db22`, after the gate-on optimization): clean `concat16-heap` +27.47 / +26.45 ns; `hit` 56.21 / 89.95 ns (woven); HTTP +9.96 % / +10.89 %, IAST +9 allocations for each request.
+3. Run 36992589970 (revision `4def661f`, after the HTTP allocation fix: no allocation for each request that IAST does not analyze): HTTP +5.01 % / +5.17 %, IAST +5 allocations for each request. With the `ci` profile, the two runners PASS (section 13.2).
+
 ### 9.4 CI matrix for woven tests
 
 New job `woven-runtime` in `.github/workflows/ci.yml`, root module only. Packages: `./iast/runtime/...`, `./internal/taint/runtimebridge/...`, `./internal/taint/store/...`, `./internal/taint/propagation/...`. Every cell sets `DD_IAST_REQUIRE_WOVEN=1`.
@@ -1394,7 +1419,7 @@ Run 2, all runtime cases (hook - nohook, ns; "Allocs" and "B" are the median ext
 
 ### 13.2 linux/amd64 (CI)
 
-To be filled in after the CI run. Workflow `.github/workflows/runtime-bench.yml` ("Runtime benchmarks"). Trigger: push a branch that matches `bench/**` (the step 7 commit has the bookmark `bench/runtime-hooks-step7`). A manual start (`workflow_dispatch`) is possible only after the workflow file is on the default branch. The job summary of "Measure (ubuntu-latest)" has the 9.3 table, and the artifact `runtime-bench-results-ubuntu-latest` has the raw files and the benchstat output. The same run also gives linux/arm64 ("Measure (ubuntu-24.04-arm)").
+Filled in after CI run 36992589970: see 13.2.1 (also linux/arm64). Workflow `.github/workflows/runtime-bench.yml` ("Runtime benchmarks"). Trigger: push a branch that matches `bench/**` (the step 7 commit has the bookmark `bench/runtime-hooks-step7`). A manual start (`workflow_dispatch`) is possible only after the workflow file is on the default branch. The job summary of "Measure (ubuntu-latest)" has the 9.3 table, and the artifact `runtime-bench-results-ubuntu-latest` has the raw files and the benchstat output. The same run also gives linux/arm64 ("Measure (ubuntu-24.04-arm)").
 
 Differences from the darwin/arm64 run, so that the measure job fits in 60 minutes (measured locally: one run of all the runtime benchmarks is 8.4 s at 100ms, 21 s at 300ms):
 
@@ -1403,6 +1428,33 @@ Differences from the darwin/arm64 run, so that the measure job fits in 60 minute
 - The HTTP benchmark runs in its own job, on another runner with the same label.
 - No old store: the source-root admission gate is optional (`RUNTIME_BENCH_OPTIONAL=admission`). It is a property of the store algorithm, measured on darwin/arm64 above and in step 3. The new-store admitted percentages are reported. All the other gates must have data.
 - Only the Go version of `go.mod` (go1.26.6).
+
+#### 13.2.1 CI results, run 36992589970
+
+Revision `4def661f`, go1.26.6, 8 placements, 10 rounds, 100ms (80 runs for each side and case). Runners: `ubuntu-latest` (linux/amd64, AMD EPYC 7763) and `ubuntu-24.04-arm` (linux/arm64). With the local gates, the verdict is FAIL on the two runners. With the `ci` gates (section 9.3, user decision), the verdict is **PASS** on the two runners (the same artifacts, report again with `RUNTIME_BENCH_PROFILE=ci`). The key rows (pooled hook - nohook, ns; store rows: median ns):
+
+| Key | Row | linux/amd64 | linux/arm64 | CI gate |
+|---|---|---:|---:|---|
+| off | worst non-rune row | -0.62 (`concat16-stack`); +0.62 (`s2b-stack`) | +6.87 (`concat16-stack`) | <= +8 |
+| off | worst rune row | +21.85 (`r2s-heap`, CI [-5.35, +27.55]) | +3.50 (`s2r-heap`) | <= +25 |
+| clean-heap | `concat16-heap` | +26.85 | +25.75 | <= +36 |
+| clean-stack | `concat16-stack` | +29.59 | +27.91 | <= +36 |
+| clean-stack | `s2b-stack` | +4.06 | +1.74 | <= +6 |
+| rune-clean | worst | +20.85 (`r2s-heap`) | +8.55 (`s2r-heap`) | <= +25 |
+| s2s-off | `s2r-heap` | +0.54 | +4.08 | <= +5 |
+| hit | woven `CleanHit/s2b-stack` + load | 60.07 + 11.84 = 71.91 | 73.23 + 15.98 = 89.21 | <= 100 |
+| full2 | woven `CleanHit/concat2-stack` + load | 132.40 + 28.11 = 160.51 | 144.45 + 31.44 = 175.89 | <= 200 |
+| tainted | `concat2-stack` | +1167.55 (+1, 16 B) | +1115.90 (+1, 16 B) | <= +1.5 us |
+| tainted-rune | `s2r-stack` | +1347.12 (+1, 48 B) | +1438.09 (+1, 48 B) | <= +1.75 us |
+| maycontain-hit | worst `clean-neighbor` | 4.37 | 3.88 | <= 45 |
+| maycontain-random | sparse / typical / full | 4.13 / 4.12 / 4.17 | 4.02 / 4.03 / 4.14 | <= 5 / 10 / 45 |
+| maycontain-miss | worst | 4.15 | 4.06 | <= 5 |
+| http | sampled out, n=10 | +5.01 % (145.15 / 152.43 us) | +5.17 % (91.73 / 96.47 us) | <= +6.00 % |
+| allocs | `TestAllocs` | 8 PASS | 8 PASS | 0 |
+
+The rune rows (`r2s`, `s2r`) have the most noise on CI: the placement range of `RuntimeOff/r2s-heap` on amd64 is -8.90 to +30.35 ns, and on arm64 the same row is -8.90 ns pooled. The gate-off instructions do not change (section 13.4).
+
+**Step 7: done**, with the gates of section 9.3 for each platform: darwin/arm64 PASS with the local gates (section 13.1, and 13.4 after the gate-on optimization); linux/amd64 and linux/arm64 PASS with the ci gates (run 36992589970). The CI measure jobs are report-only (section 9.3).
 
 ### 13.3 Not measured, and corrections
 

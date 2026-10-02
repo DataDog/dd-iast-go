@@ -50,7 +50,9 @@ type benchData struct {
 	short        map[string]string // case -> the placement with one hook run less
 	storeRuns    int               // runs of each store and admission row
 	httpRuns     int               // runs of each side of the HTTP benchmark
+	httpIAST     float64           // ns/op of the IAST side (control: 50 000)
 	allocs       bool
+	profile      string // RUNTIME_BENCH_PROFILE ("" is the default)
 }
 
 // newBenchData returns data where every gate passes. The hook cost of a
@@ -68,6 +70,7 @@ func newBenchData() *benchData {
 		admissionNew: map[string]float64{},
 		storeRuns:    8,
 		httpRuns:     10,
+		httpIAST:     51000,
 		allocs:       true,
 	}
 	add := func(name string, nohook, hook benchResult) {
@@ -125,6 +128,35 @@ func (d *benchData) line(name string, r benchResult, extra string) string {
 // runtime-bench.py, and returns the verdict and the report.
 func (d *benchData) write(t *testing.T, optional string) (string, string) {
 	t.Helper()
+	directory := d.files(t)
+	output, err := runReport(t, directory, optional, d.profile)
+	if err != nil {
+		t.Fatalf("runtime-bench.py: %v\n%s", err, output)
+	}
+	verdict, err := os.ReadFile(filepath.Join(directory, "verdict"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(verdict), output
+}
+
+// runReport runs runtime-bench.py on directory, and returns its output.
+func runReport(t *testing.T, directory, optional, profile string) (string, error) {
+	t.Helper()
+	script, err := filepath.Abs("runtime-bench.py")
+	if err != nil {
+		t.Fatal(err)
+	}
+	command := exec.Command("python3", script, directory)
+	command.Env = append(os.Environ(), "RUNTIME_BENCH_OPTIONAL="+optional, "RUNTIME_BENCH_PROFILE="+profile)
+	output, err := command.CombinedOutput()
+	return string(output), err
+}
+
+// files writes the data in the layout of runtime-bench.sh in a new
+// directory, and returns the directory.
+func (d *benchData) files(t *testing.T) string {
+	t.Helper()
 	directory := t.TempDir()
 	files := map[string]*strings.Builder{}
 	file := func(name string) *strings.Builder {
@@ -163,7 +195,7 @@ func (d *benchData) write(t *testing.T, optional string) (string, string) {
 	}
 	for range d.httpRuns {
 		file("http/control.txt").WriteString("BenchmarkHTTPRoundTrip \t 1000\t 50000 ns/op\n")
-		file("http/iast.txt").WriteString("BenchmarkHTTPRoundTrip \t 1000\t 51000 ns/op\n")
+		file("http/iast.txt").WriteString(fmt.Sprintf("BenchmarkHTTPRoundTrip \t 1000\t %.0f ns/op\n", d.httpIAST))
 	}
 	for name, content := range files {
 		path := filepath.Join(directory, name)
@@ -174,21 +206,25 @@ func (d *benchData) write(t *testing.T, optional string) (string, string) {
 			t.Fatal(err)
 		}
 	}
-	script, err := filepath.Abs("runtime-bench.py")
-	if err != nil {
-		t.Fatal(err)
+	return directory
+}
+
+// setDelta sets the pooled hook - nohook of a runtime case to delta ns. The
+// placement shift of newBenchData adds 0.7 ns to the pooled median.
+func (d *benchData) setDelta(name string, delta float64) {
+	for k, r := range d.hook[name] {
+		r.ns = d.nohook[name][k].ns + delta - 0.7 + 0.2*float64(indexOf(d.placements, k))
+		d.hook[name][k] = r
 	}
-	command := exec.Command("python3", script, directory)
-	command.Env = append(os.Environ(), "RUNTIME_BENCH_OPTIONAL="+optional)
-	output, err := command.CombinedOutput()
-	if err != nil {
-		t.Fatalf("runtime-bench.py: %v\n%s", err, output)
+}
+
+func indexOf(values []string, value string) int {
+	for i, v := range values {
+		if v == value {
+			return i
+		}
 	}
-	verdict, err := os.ReadFile(filepath.Join(directory, "verdict"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	return string(verdict), string(output)
+	return -1
 }
 
 func requireVerdict(t *testing.T, d *benchData, optional, want string, contains ...string) string {
@@ -210,6 +246,118 @@ func TestRuntimeBenchReportPassesWithAllData(t *testing.T) {
 		// The pooled median and the worst placement of 8.
 		"| RuntimeOff/concat2-heap | **+0.70**", "| +1.40 (13) |",
 		"**Verdict: PASS**")
+}
+
+func TestRuntimeBenchReportDefaultProfileIsLocal(t *testing.T) {
+	for _, profile := range []string{"", "local"} {
+		d := newBenchData()
+		d.profile = profile
+		requireVerdict(t, d, "", "PASS",
+			"plan section 9.3 gates, profile `local` (darwin/arm64)",
+			"| 0 extra allocations; <= +2 ns pooled |",
+			"<= +3 ns + 1.5 ns for each operand",
+			"<= +1 us, +1 alloc",
+			"<= 4 / 10 / 45 ns, 0 allocations",
+			"<= +3.70 % (Phase 6: +2.70 %, + 1 point)")
+	}
+}
+
+// ciMeasured returns data with the worst values of CI run 36992589970
+// (linux/amd64 and linux/arm64) for each gate of the ci profile.
+func ciMeasured() *benchData {
+	d := newBenchData()
+	d.profile = "ci"
+	d.setDelta("RuntimeOff/concat16-stack", 6.87)
+	d.setDelta("RuntimeOff/r2s-heap", 21.85)
+	d.setDelta("RuntimeClean/concat16-stack", 29.59)
+	d.setDelta("RuntimeClean/s2b-stack", 4.06)
+	d.setDelta("RuntimeClean/r2s-heap", 20.85)
+	d.setDelta("RuntimeS2SOff/s2r-heap", 4.08)
+	d.setDelta("RuntimeTainted/concat2-stack", 1167.55)
+	d.setDelta("RuntimeTainted/s2r-stack", 1438.09)
+	// hit and full2: the woven value plus the load cost (worst load - sparse).
+	d.setDelta("RuntimeCleanHit/s2b-stack", 73.23)
+	d.store["RuntimePre/full/one-clean-hit"] = benchResult{30 + 15.98, 0, 0}
+	d.setDelta("RuntimeCleanHit/concat2-stack", 144.45)
+	d.store["RuntimePre/full/concat2-clean-hit"] = benchResult{50 + 31.44, 0, 0}
+	d.store["MayContain/clean-random/sparse"] = benchResult{4.13, 0, 0}
+	d.store["MayContain/clean-miss/sparse"] = benchResult{4.15, 0, 0}
+	d.store["MayContain/clean-neighbor/full"] = benchResult{4.37, 0, 0}
+	d.httpIAST = 50000 * 1.0517
+	return d
+}
+
+func TestRuntimeBenchReportCIProfile(t *testing.T) {
+	requireVerdict(t, ciMeasured(), "", "PASS",
+		"plan section 9.3 gates, profile `ci` (GitHub runners)",
+		"| 0 extra allocations; <= +8 ns pooled (rune conversion: <= +25 ns) |",
+		"<= +4 ns + 2 ns for each operand",
+		"= 89.21 ns", "= 175.89 ns",
+		"| RuntimeClean/concat16-stack | **+29.59**", "| <= +36 ns | PASS |",
+		"<= +1.5 us, +1 alloc", "<= +1.75 us, +1 alloc",
+		"<= 5 / 10 / 45 ns, 0 allocations",
+		"+5.17 %", "<= +6.00 %",
+		"**Verdict: PASS**")
+	// The same data fails the local gates.
+	d := ciMeasured()
+	d.profile = "local"
+	requireVerdict(t, d, "", "FAIL", "profile `local`")
+
+	// Just above each limit of the ci profile.
+	for name, c := range map[string]struct {
+		change func(*benchData)
+		key    string
+	}{
+		"off":              {func(d *benchData) { d.setDelta("RuntimeOff/concat16-stack", 8.01) }, "off"},
+		"off rune":         {func(d *benchData) { d.setDelta("RuntimeOff/r2s-heap", 25.01) }, "off"},
+		"clean concat16":   {func(d *benchData) { d.setDelta("RuntimeClean/concat16-stack", 36.01) }, "clean-stack"},
+		"clean concat2":    {func(d *benchData) { d.setDelta("RuntimeClean/concat2-heap", 8.01) }, "clean-heap"},
+		"clean conversion": {func(d *benchData) { d.setDelta("RuntimeClean/s2b-stack", 6.01) }, "clean-stack"},
+		"clean rune":       {func(d *benchData) { d.setDelta("RuntimeClean/r2s-heap", 25.01) }, "rune-clean"},
+		"s2s off":          {func(d *benchData) { d.setDelta("RuntimeS2SOff/s2r-heap", 5.01) }, "s2s-off"},
+		"tainted":          {func(d *benchData) { d.setDelta("RuntimeTainted/concat2-stack", 1500.01) }, "tainted"},
+		"tainted rune":     {func(d *benchData) { d.setDelta("RuntimeTainted/s2r-stack", 1750.01) }, "tainted-rune"},
+		"hit":              {func(d *benchData) { d.setDelta("RuntimeCleanHit/s2b-stack", 100.01-15.98) }, "hit"},
+		"full2":            {func(d *benchData) { d.setDelta("RuntimeCleanHit/concat2-stack", 200.01-31.44) }, "full2"},
+		"maycontain hit": {func(d *benchData) {
+			d.store["MayContain/clean-neighbor/full"] = benchResult{45.01, 0, 0}
+		}, "maycontain-hit"},
+		"maycontain random": {func(d *benchData) {
+			d.store["MayContain/clean-random/sparse"] = benchResult{5.01, 0, 0}
+		}, "maycontain-random"},
+		"maycontain miss": {func(d *benchData) {
+			d.store["MayContain/clean-miss/full"] = benchResult{5.01, 0, 0}
+		}, "maycontain-miss"},
+		"http": {func(d *benchData) { d.httpIAST = 50000 * 1.0601 }, "http"},
+		// The allocation rules do not change.
+		"off allocation": {func(d *benchData) {
+			for k, r := range d.hook["RuntimeOff/s2b-stack"] {
+				r.allocs++
+				d.hook["RuntimeOff/s2b-stack"][k] = r
+			}
+		}, "off"},
+		"tainted bytes": {func(d *benchData) {
+			for k, r := range d.hook["RuntimeTainted/concat2-stack"] {
+				r.bytes = 32
+				d.hook["RuntimeTainted/concat2-stack"][k] = r
+			}
+		}, "tainted"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			d := ciMeasured()
+			c.change(d)
+			requireVerdict(t, d, "", "FAIL", "**Verdict: FAIL** ("+c.key+")")
+		})
+	}
+}
+
+func TestRuntimeBenchReportRejectsUnknownProfile(t *testing.T) {
+	d := newBenchData()
+	output, err := runReport(t, d.files(t), "", "other")
+	var exit *exec.ExitError
+	if !errors.As(err, &exit) || exit.ExitCode() != 2 || !strings.Contains(output, "unknown RUNTIME_BENCH_PROFILE") {
+		t.Fatalf("error %v, output %q; want exit code 2 and the unknown profile", err, output)
+	}
 }
 
 func TestRuntimeBenchReportParsesNamesWithoutSuffix(t *testing.T) {

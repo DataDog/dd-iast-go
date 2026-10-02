@@ -17,6 +17,11 @@
 #   INCOMPLETE  no gate fails, but a gate has no complete data, and it is not
 #               in RUNTIME_BENCH_OPTIONAL.
 #
+# RUNTIME_BENCH_PROFILE selects the gate limits (see PROFILES): "local"
+# (default, the darwin/arm64 gates of plan section 9.3) or "ci" (the GitHub
+# runners, linux/amd64 and linux/arm64). An unknown profile is an error (exit
+# code 2).
+#
 # RUNTIME_BENCH_OPTIONAL is a comma-separated list of gate keys (the "Key"
 # column of the report) that can be "not measured", or "all" for a partial
 # re-measure.
@@ -83,6 +88,77 @@ EXPECTED_ADMISSION = (
     + ["SourceAdmission/retention/sparse/TaintString"]
 )
 
+# The gate limits of each profile (plan section 9.3). All ns values are the
+# maximum pooled hook - nohook, or the maximum median for the store rows.
+#   off, off_rune        gate off; off_rune is for r2s and s2r
+#   clean_base, clean_operand
+#                        gate on, clean, not rune: base + operand x operands
+#   clean_rune           gate on, clean, rune conversion
+#   hit                  filter hit, for each operand that hits
+#   full2                2-operand stack concat, full index
+#   tainted, tainted_rune
+#                        gate on, tainted (+1 allocation of the exact size)
+#   maycontain_hit, maycontain_random (sparse, typical, full), maycontain_miss
+#   s2s_off              Q2 switch off
+#   http, http_note      HTTP overhead in %, and the reason of the limit
+PROFILES = {
+    "local": {
+        "title": "darwin/arm64",
+        "off": 2.0,
+        "off_rune": 2.0,
+        "clean_base": 3.0,
+        "clean_operand": 1.5,
+        "clean_rune": 6.0,
+        "hit": 50.0,
+        "full2": 100.0,
+        "tainted": 1000.0,
+        "tainted_rune": 1000.0,
+        "maycontain_hit": 45.0,
+        "maycontain_random": (4.0, 10.0, 45.0),
+        "maycontain_miss": 3.0,
+        "s2s_off": 2.0,
+        "http": 3.70,
+        "http_note": "Phase 6: +2.70 %, + 1 point",
+    },
+    # User decision after CI run 36992589970: the worst value of the two
+    # GitHub runners, plus a margin.
+    "ci": {
+        "title": "GitHub runners",
+        "off": 8.0,
+        "off_rune": 25.0,
+        "clean_base": 4.0,
+        "clean_operand": 2.0,
+        "clean_rune": 25.0,
+        "hit": 100.0,
+        "full2": 200.0,
+        "tainted": 1500.0,
+        "tainted_rune": 1750.0,
+        "maycontain_hit": 45.0,
+        "maycontain_random": (5.0, 10.0, 45.0),
+        "maycontain_miss": 5.0,
+        "s2s_off": 5.0,
+        "http": 6.0,
+        "http_note": "CI run 36992589970: +5.17 %, + margin",
+    },
+}
+
+
+def profile():
+    """Returns (name, limits) of RUNTIME_BENCH_PROFILE."""
+    name = os.environ.get("RUNTIME_BENCH_PROFILE", "") or "local"
+    if name not in PROFILES:
+        print(f"runtime-bench.py: unknown RUNTIME_BENCH_PROFILE {name!r} (use one of {', '.join(PROFILES)})", file=sys.stderr)
+        sys.exit(2)
+    return name, PROFILES[name]
+
+
+def ns(v):
+    return f"{v:g} ns"
+
+
+def us(v):
+    return f"{v / 1000:g} us"
+
 
 def load(path):
     """Returns {case: [{unit: value}]} of one benchmark output file."""
@@ -142,26 +218,28 @@ def is_rune(name):
     return name.startswith(("r2s", "s2r"))
 
 
-def runtime_limit(case):
-    """Returns (limit ns, extra allocations, text) of plan section 9.3."""
+def runtime_limit(case, g):
+    """Returns (limit ns, extra allocations, text) of the case, with the
+    limits g of the active profile."""
     group, name = case.split("/", 1)
-    if group in ("RuntimeOff", "RuntimeS2SOff"):
-        return 2.0, 0, "<= +2 ns"
-    if group == "RuntimeClean":
-        if is_rune(name):
-            return 6.0, 0, "<= +6 ns"
-        limit = 3 + 1.5 * operands(name)
-        return limit, 0, f"<= +{limit:g} ns"
-    if group == "RuntimeCleanHit":
-        # Each operand is a clean filter hit: <= +50 ns for each operand.
-        limit = 50.0 * operands(name)
-        return limit, 0, f"<= +{limit:g} ns"
-    if group == "RuntimeTainted":
-        return 1000.0, 1, "<= +1 us, +1 alloc"
-    return None, None, "-"
+    if group == "RuntimeOff":
+        limit = g["off_rune"] if is_rune(name) else g["off"]
+    elif group == "RuntimeS2SOff":
+        limit = g["s2s_off"]
+    elif group == "RuntimeClean":
+        limit = g["clean_rune"] if is_rune(name) else g["clean_base"] + g["clean_operand"] * operands(name)
+    elif group == "RuntimeCleanHit":
+        # Each operand is a clean filter hit.
+        limit = g["hit"] * operands(name)
+    elif group == "RuntimeTainted":
+        limit = g["tainted_rune"] if is_rune(name) else g["tainted"]
+        return limit, 1, f"<= +{us(limit)}, +1 alloc"
+    else:
+        return None, None, "-"
+    return limit, 0, f"<= +{ns(limit)}"
 
 
-def runtime_rows(out):
+def runtime_rows(out, g):
     """Returns (placements, rows, problems) of the hook - nohook results."""
     files = sorted(glob.glob(os.path.join(out, "runtime", "[hn][0-9][0-9].txt")))
     ks = sorted({os.path.basename(f)[1:3] for f in files})
@@ -193,7 +271,7 @@ def runtime_rows(out):
         extra_allocs = med(runs_h, "allocs/op") - med(runs_n, "allocs/op")
         extra_bytes = med(runs_h, "B/op") - med(runs_n, "B/op")
         woven = st.median(b) - med(plain[case]) if case in plain else None
-        limit, allocs, text = runtime_limit(case)
+        limit, allocs, text = runtime_limit(case, g)
         ok = delta <= limit and extra_allocs == allocs
         name = case.split("/", 1)[1]
         if case.startswith("RuntimeTainted/"):
@@ -215,11 +293,12 @@ def runtime_rows(out):
 
 def main():
     out = sys.argv[1]
+    profile_name, g = profile()
     optional = {x.strip() for x in os.environ.get("RUNTIME_BENCH_OPTIONAL", "").split(",") if x.strip()}
     lines = []
     p = lines.append
 
-    ks, rows, problems = runtime_rows(out)
+    ks, rows, problems = runtime_rows(out, g)
     store = load(os.path.join(out, "store", "lookup-new.txt"))
     adm_new = load(os.path.join(out, "store", "admission-new.txt"))
     adm_old = load(os.path.join(out, "store", "admission-old.txt"))
@@ -237,7 +316,7 @@ def main():
         if absent:
             missing(key, title, gate, f"`{absent[0]}`: {problems.get(absent[0], 'no data')}")
             return
-        worst = max(selected, key=lambda c: rows[c]["delta"] - runtime_limit(c)[0])
+        worst = max(selected, key=lambda c: rows[c]["delta"] - runtime_limit(c, g)[0])
         r = rows[worst]
         value = f"worst margin: `{worst}` {fmt(r['delta'])} ns (gate {r['text']}), allocs {fmt(r['allocs'], 0)}"
         if worst.startswith("RuntimeTainted/"):
@@ -257,17 +336,21 @@ def main():
     def select(group, test=lambda n: True):
         return [c for c in EXPECTED_RUNTIME if c.startswith(group + "/") and test(c.split("/", 1)[1])]
 
-    runtime_gate("off", "Gate off, any concat or conversion", "0 extra allocations; <= +2 ns pooled", select("RuntimeOff"))
+    off = f"0 extra allocations; <= +{ns(g['off'])} pooled"
+    if g["off_rune"] != g["off"]:
+        off += f" (rune conversion: <= +{ns(g['off_rune'])})"
+    runtime_gate("off", "Gate off, any concat or conversion", off, select("RuntimeOff"))
+    clean = f"0 extra allocations; <= +{ns(g['clean_base'])} + {ns(g['clean_operand'])} for each operand"
     runtime_gate(
         "clean-heap",
         "Gate on, clean, escaping (`buf == nil`)",
-        "0 extra allocations; <= +3 ns + 1.5 ns for each operand",
+        clean,
         select("RuntimeClean", lambda n: n.endswith("-heap") and not is_rune(n)),
     )
     runtime_gate(
         "clean-stack",
         "Gate on, clean, stack buffer, filter miss",
-        "0 extra allocations; <= +3 ns + 1.5 ns for each operand",
+        clean,
         select("RuntimeClean", lambda n: n.endswith("-stack") and not is_rune(n)),
     )
 
@@ -300,44 +383,45 @@ def main():
     woven_hit(
         "hit",
         "Gate on, clean, stack buffer, filter hit",
-        "0 extra allocations; <= +50 ns for each operand that hits",
+        f"0 extra allocations; <= +{ns(g['hit'])} for each operand that hits",
         "RuntimeCleanHit/s2b-stack",
         [f"RuntimePre/{x}/one-clean-hit" for x in LOADS if x != "sparse"],
         "RuntimePre/sparse/one-clean-hit",
-        50,
+        g["hit"],
     )
     woven_hit(
         "full2",
         "Gate on, clean, 2-operand stack concat, full index",
-        "0 extra allocations; <= +100 ns (both operands can hit)",
+        f"0 extra allocations; <= +{ns(g['full2'])} (both operands can hit)",
         "RuntimeCleanHit/concat2-stack",
         ["RuntimePre/full/concat2-clean-hit", "RuntimePre/full/concat2-clean-random"],
         "RuntimePre/sparse/concat2-clean-hit",
-        100,
+        g["full2"],
     )
 
     runtime_gate(
         "tainted",
         "Gate on, tainted, stack buffer",
-        "+1 allocation of the exact result size; <= +1 us",
+        f"+1 allocation of the exact result size; <= +{us(g['tainted'])}",
         select("RuntimeTainted", lambda n: not is_rune(n)),
     )
 
-    title, gate = "`MayContain` filter hit, clean", "<= 45 ns, 0 allocations"
+    title, gate = "`MayContain` filter hit, clean", f"<= {ns(g['maycontain_hit'])}, 0 allocations"
     values = store_values([f"MayContain/clean-neighbor/{x}" for x in LOADS])
     if values is None:
         missing("maycontain-hit", title, gate, "`MayContain/clean-neighbor/*`")
     else:
         v, n = max(values)
-        gates.append(("maycontain-hit", title, gate, f"worst `{n}` {v:.2f} ns", v <= 45 and zero_allocs([x for _, x in values])))
+        gates.append(("maycontain-hit", title, gate, f"worst `{n}` {v:.2f} ns", v <= g["maycontain_hit"] and zero_allocs([x for _, x in values])))
 
-    title, gate = "`MayContain` clean, random pointers, sparse / typical / full", "<= 4 / 10 / 45 ns, 0 allocations"
+    title = "`MayContain` clean, random pointers, sparse / typical / full"
+    gate = f"<= {' / '.join(f'{v:g}' for v in g['maycontain_random'])} ns, 0 allocations"
     names = [f"MayContain/clean-random/{x}" for x in LOADS]
     values = store_values(names)
     if values is None:
         missing("maycontain-random", title, gate, "`MayContain/clean-random/*`")
     else:
-        ok = all(v <= limit for (v, _), limit in zip(values, (4, 10, 45))) and zero_allocs(names)
+        ok = all(v <= limit for (v, _), limit in zip(values, g["maycontain_random"])) and zero_allocs(names)
         text = "; ".join(
             f"{x} {v:.2f} ns ({med(store[n], 'filter-hit%'):.1f} % hit)" for x, (v, n) in zip(LOADS, values)
         )
@@ -346,19 +430,24 @@ def main():
     runtime_gate(
         "rune-clean",
         "Gate on, clean, rune conversion, escaping or stack",
-        "0 extra allocations; <= +6 ns",
+        f"0 extra allocations; <= +{ns(g['clean_rune'])}",
         select("RuntimeClean", is_rune),
     )
-    runtime_gate("s2s-off", "Gate on, `[]byte(s)` / `[]rune(s)`, Q2 switch off", "0 extra allocations; <= +2 ns", select("RuntimeS2SOff"))
+    runtime_gate(
+        "s2s-off",
+        "Gate on, `[]byte(s)` / `[]rune(s)`, Q2 switch off",
+        f"0 extra allocations; <= +{ns(g['s2s_off'])}",
+        select("RuntimeS2SOff"),
+    )
     runtime_gate(
         "tainted-rune",
         "Gate on, tainted rune conversion",
-        "+1 allocation of the exact result size; <= +1 us",
+        f"+1 allocation of the exact result size; <= +{us(g['tainted_rune'])}",
         select("RuntimeTainted", is_rune),
     )
 
     # Only filter misses: the clean keys that the filter rejects, at each load.
-    title, gate = "`MayContain` filter miss (any load)", "<= 3 ns, 0 allocations"
+    title, gate = "`MayContain` filter miss (any load)", f"<= {ns(g['maycontain_miss'])}, 0 allocations"
     names = [f"MayContain/clean-miss/{x}" for x in LOADS]
     values = store_values(names)
     if values is None:
@@ -366,15 +455,15 @@ def main():
     else:
         v, n = max(values)
         text = "; ".join(f"{x} {v:.2f} ns" for x, (v, _) in zip(LOADS, values))
-        gates.append(("maycontain-miss", title, gate, text, v <= 3 and zero_allocs(names)))
+        gates.append(("maycontain-miss", title, gate, text, v <= g["maycontain_miss"] and zero_allocs(names)))
 
-    title, gate = "HTTP overhead benchmark (sampled out)", "<= +3.70 % (Phase 6: +2.70 %, + 1 point)"
+    title, gate = "HTTP overhead benchmark (sampled out)", f"<= +{g['http']:.2f} % ({g['http_note']})"
     rt = "HTTPRoundTrip"
     if len(control.get(rt, [])) >= MIN_HTTP_RUNS and len(iast.get(rt, [])) >= MIN_HTTP_RUNS:
         c, i = med(control[rt]), med(iast[rt])
         pct = 100 * (i / c - 1)
         text = f"control {c / 1000:.2f} us, IAST {i / 1000:.2f} us: {pct:+.2f} % (n={len(control[rt])})"
-        gates.append(("http", title, gate, text, pct <= 3.70))
+        gates.append(("http", title, gate, text, pct <= g["http"]))
     else:
         missing("http", title, gate, f"less than {MIN_HTTP_RUNS} `HTTPRoundTrip` runs for each side")
 
@@ -427,7 +516,10 @@ def main():
     required = [g for g in unmeasured if "all" not in optional and g[0] not in optional]
     verdict = "FAIL" if failed else ("INCOMPLETE" if required else "PASS")
 
-    p(f"## Runtime hooks: plan section 9.3 gates ({os.environ.get('RUNTIME_BENCH_TAG', '')})")
+    p(
+        f"## Runtime hooks: plan section 9.3 gates, profile `{profile_name}` ({g['title']}) "
+        f"({os.environ.get('RUNTIME_BENCH_TAG', '')})"
+    )
     p("")
     counts = sorted({r["n"] for r in rows.values()})
     p(

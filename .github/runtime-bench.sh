@@ -35,7 +35,8 @@
 #   store         run the store and sink benchmarks (plain go test)
 #   http          run the benchmarks/overhead HTTP round trip, sampled out
 #   report        write the Markdown report (stdout) and the gate verdict
-#                 (exit 0 only for PASS; see runtime-bench.py)
+#                 (exit 0 only for PASS, or with RUNTIME_BENCH_REPORT_ONLY=1;
+#                 see runtime-bench.py)
 #   all           build (all placements), plain, run, store, http, report
 #
 # Environment:
@@ -55,6 +56,11 @@
 #                            old side of the source-root admission gate).
 #   RUNTIME_BENCH_OPTIONAL   gate keys that "report" accepts as not measured
 #                            (comma-separated, or "all" for a partial run)
+#   RUNTIME_BENCH_PROFILE    gate limits of "report": local (default,
+#                            darwin/arm64) or ci (GitHub runners)
+#   RUNTIME_BENCH_REPORT_ONLY 1: "report" exits 0 also for FAIL and
+#                            INCOMPLETE (the verdict is in the report). An
+#                            error of the script is still a failure.
 #   ORCHESTRION              the Orchestrion command (default: go tool orchestrion)
 #
 # Run it from the repository root. RUNTIME_BENCH_OUT must be outside the
@@ -414,8 +420,13 @@ report)
 	} >"$out/report.md"
 	cat "$out/report.md"
 	# runtime-bench.py writes the verdict file. FAIL and INCOMPLETE are
-	# exit 1.
-	[[ $(cat "$out/verdict") == PASS ]]
+	# exit 1, but not in report-only mode.
+	verdict=$(cat "$out/verdict")
+	if [[ ${RUNTIME_BENCH_REPORT_ONLY:-} == 1 ]]; then
+		echo "Report only: the verdict $verdict does not fail the command." >&2
+		exit 0
+	fi
+	[[ $verdict == PASS ]]
 	;;
 all)
 	"$0" build

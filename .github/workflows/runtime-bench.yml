@@ -12,6 +12,12 @@ name: Runtime benchmarks
 # each code placement) in parallel. One measure job for each runner then runs
 # all the binaries of that runner in interleaved rounds on one machine, so
 # that the pooled median compares runs of the same machine.
+#
+# The measure jobs use the "ci" gate profile of .github/runtime-bench.py
+# (plan section 9.3, user decision after run 36992589970), and they are
+# report-only: a FAIL or INCOMPLETE verdict is in the job summary, in the
+# artifact and in a warning, but it does not fail the job. An error of the
+# scripts still fails the job.
 on:
   push:
     branches:
@@ -118,8 +124,12 @@ jobs:
       RUNTIME_BENCH_STORE_COUNT: '8'
       # CI has no old store (the parent commit of plan step 3), thus the
       # source-root admission gate is not measured. All other gates must have
-      # data, else the report is INCOMPLETE and the job fails.
+      # data, else the report is INCOMPLETE.
       RUNTIME_BENCH_OPTIONAL: admission
+      # The gate limits of the GitHub runners (plan section 9.3).
+      RUNTIME_BENCH_PROFILE: ci
+      # The verdict does not fail the job (see the top of this file).
+      RUNTIME_BENCH_REPORT_ONLY: '1'
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -161,6 +171,11 @@ jobs:
         run: |
           RUNTIME_BENCH_TAG="$RUNNER_LABEL, $(go env GOVERSION), $RUNTIME_BENCH_TAG" \
             .github/runtime-bench.sh report >> "$GITHUB_STEP_SUMMARY"
+          verdict=$(cat "$RUNNER_TEMP/runtime-bench/verdict")
+          echo "Verdict ($RUNNER_LABEL, profile $RUNTIME_BENCH_PROFILE): $verdict"
+          if [[ $verdict != PASS ]]; then
+            echo "::warning title=Runtime gates ($RUNNER_LABEL)::verdict $verdict (report only, see the job summary)"
+          fi
       - name: Upload the results
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
