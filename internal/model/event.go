@@ -23,20 +23,35 @@ type Event struct {
 	Vulnerabilities []Vulnerability `json:"vulnerabilities" msg:"vulnerabilities"`
 }
 
+// MaxVulnerabilities is the non-configurable hard event vulnerability bound.
+const MaxVulnerabilities = config.MaxVulnerabilitiesPerRequest
+
 func NewEvent() *Event {
 	return &Event{
-		Vulnerabilities: make([]Vulnerability, 0, config.VulnerabilitiesPerRequest),
+		Vulnerabilities: make([]Vulnerability, 0, min(config.VulnerabilitiesPerRequest, MaxVulnerabilities)),
 	}
 }
 
 // AddVulnerability tries to add a new vulnerability to the event. Returns true
 // if the vulnerability was added, false otherwise.
 func (e *Event) AddVulnerability(vuln Vulnerability) bool {
-	if len(e.Vulnerabilities) >= config.VulnerabilitiesPerRequest {
+	if !e.CanAddVulnerability(vuln) {
+		return false
+	}
+	e.Vulnerabilities = append(e.Vulnerabilities, vuln)
+	return true
+}
+
+// CanAddVulnerability reports whether vuln passes the configured hard capacity
+// and event-local de-duplication checks. It does not mutate the event.
+func (e *Event) CanAddVulnerability(vuln Vulnerability) bool {
+	if e == nil {
+		return false
+	}
+	if len(e.Vulnerabilities) >= min(config.VulnerabilitiesPerRequest, MaxVulnerabilities) {
 		instrumentation.Instance.TelemetryLog().Warn("max vulnerabilities per request reached, dropping", slog.Any("vulnerability", vuln))
 		return false
 	}
-
 	if config.DeduplicationEnabled {
 		for i := range e.Vulnerabilities {
 			if e.Vulnerabilities[i].Hash == vuln.Hash {
@@ -45,7 +60,5 @@ func (e *Event) AddVulnerability(vuln Vulnerability) bool {
 			}
 		}
 	}
-
-	e.Vulnerabilities = append(e.Vulnerabilities, vuln)
 	return true
 }

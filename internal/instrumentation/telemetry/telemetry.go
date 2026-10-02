@@ -38,6 +38,10 @@ var (
 	ExecutedSource executedSource
 	// ExecutedPropagation is the number of propagations that have actually been executed since the last heartbeat.
 	ExecutedPropagation atomic.Uint64
+	// CoarsenedPropagation is the number of propagations that used coarse ranges.
+	CoarsenedPropagation atomic.Uint64
+	// DroppedPropagation is the number of bounded propagation contributions dropped.
+	DroppedPropagation atomic.Uint64
 	// ExecutedSink is the number of instrumented sinks that have actually been executed since the last heartbeat.
 	ExecutedSink executedSink
 )

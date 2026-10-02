@@ -1,0 +1,192 @@
+name: Runtime benchmarks
+# The benchmarks of plan runtime-operator-hooks, section 9.2, and the check of
+# the numeric gates of section 9.3 (plan step 7), on native linux/amd64 and
+# linux/arm64. The logic is in .github/runtime-bench.sh, so that a local run
+# uses the same commands.
+#
+# To run it: push a branch whose name starts with "bench/". A manual start
+# (workflow_dispatch) is possible only when this file is on the default
+# branch.
+#
+# The build jobs make the woven test binaries (hook and nohook, one job for
+# each code placement) in parallel. One measure job for each runner then runs
+# all the binaries of that runner in interleaved rounds on one machine, so
+# that the pooled median compares runs of the same machine.
+#
+# The measure jobs use the "ci" gate profile of .github/runtime-bench.py
+# (plan section 9.3, user decision after run 36992589970), and they are
+# report-only: a FAIL or INCOMPLETE verdict is in the job summary, in the
+# artifact and in a warning, but it does not fail the job. An error of the
+# scripts still fails the job.
+on:
+  push:
+    branches:
+      - 'bench/**'
+  workflow_dispatch:
+
+concurrency:
+  group: runtime-bench-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # Use the Go version that setup-go installed, not a toolchain download.
+  GOTOOLCHAIN: local
+  RUNTIME_BENCH_TAG: ${{ github.sha }}
+# The output directory of the script is $RUNNER_TEMP/runtime-bench (the
+# default of .github/runtime-bench.sh on a runner).
+
+jobs:
+  build:
+    name: Build (${{ matrix.runner }}, placement ${{ matrix.placement }})
+    runs-on: ${{ matrix.runner }}
+    # Two cold woven builds (hook and nohook). A runner can have only 2
+    # vCPUs.
+    timeout-minutes: 30
+    strategy:
+      fail-fast: true
+      matrix:
+        runner: [ubuntu-latest, ubuntu-24.04-arm]
+        # k stores in the padding function (plan step 5 results: 8 code
+        # placements). 0 is the repository code.
+        placement: [0, 1, 3, 5, 7, 9, 11, 13]
+    env:
+      PLACEMENT: ${{ matrix.placement }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Setup Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: Build the hook and nohook binaries
+        run: .github/runtime-bench.sh build "$PLACEMENT"
+      - name: Upload the binaries
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: runtime-bench-bin-${{ matrix.runner }}-${{ matrix.placement }}
+          path: ${{ runner.temp }}/runtime-bench/bin
+          retention-days: 1
+          if-no-files-found: error
+
+  http:
+    name: HTTP overhead (${{ matrix.runner }})
+    runs-on: ${{ matrix.runner }}
+    # Two woven builds of benchmarks/overhead, then 10 samples of each.
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-latest, ubuntu-24.04-arm]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Setup Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: |
+            go.sum
+            benchmarks/overhead/go.sum
+      - name: HTTP round trip, sampled out
+        run: .github/runtime-bench.sh http
+      - name: Upload the results
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: runtime-bench-http-${{ matrix.runner }}
+          path: ${{ runner.temp }}/runtime-bench/http
+          retention-days: 7
+          if-no-files-found: error
+
+  measure:
+    name: Measure (${{ matrix.runner }})
+    needs: [build, http]
+    runs-on: ${{ matrix.runner }}
+    # Budget, from local times: 17 binaries x 10 rounds x approx. 9 s
+    # (100ms benchtime) = approx. 26 min, plus approx. 1 min for the store
+    # benchmarks. Change it after the first CI run.
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-latest, ubuntu-24.04-arm]
+    env:
+      # CI uses 100ms in place of the local 300ms, so that the job fits in
+      # its timeout. The number of rounds and placements does not change.
+      RUNTIME_BENCH_ROUNDS: '10'
+      RUNTIME_BENCH_BENCHTIME: 100ms
+      RUNTIME_BENCH_STORE_COUNT: '8'
+      # CI has no old store (the parent commit of plan step 3), thus the
+      # source-root admission gate is not measured. All other gates must have
+      # data, else the report is INCOMPLETE.
+      RUNTIME_BENCH_OPTIONAL: admission
+      # The gate limits of the GitHub runners (plan section 9.3).
+      RUNTIME_BENCH_PROFILE: ci
+      # The verdict does not fail the job (see the top of this file).
+      RUNTIME_BENCH_REPORT_ONLY: '1'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Setup Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: Download the binaries
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: runtime-bench-bin-${{ matrix.runner }}-*
+          path: ${{ runner.temp }}/runtime-bench/bin
+          merge-multiple: true
+      - name: Download the HTTP results
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: runtime-bench-http-${{ matrix.runner }}
+          path: ${{ runner.temp }}/runtime-bench/http
+      - name: Environment
+        run: |
+          # An artifact does not keep the file mode.
+          chmod +x "$RUNNER_TEMP"/runtime-bench/bin/*.test
+          ls -l "$RUNNER_TEMP/runtime-bench/bin"
+          go version
+          nproc
+          grep -m1 'model name' /proc/cpuinfo || true
+      - name: Build the unwoven binary
+        run: .github/runtime-bench.sh plain
+      - name: Interleaved rounds
+        run: .github/runtime-bench.sh run
+      - name: Store and sink benchmarks
+        run: .github/runtime-bench.sh store
+      - name: Report
+        if: ${{ !cancelled() }}
+        env:
+          RUNNER_LABEL: ${{ matrix.runner }}
+        run: |
+          RUNTIME_BENCH_TAG="$RUNNER_LABEL, $(go env GOVERSION), $RUNTIME_BENCH_TAG" \
+            .github/runtime-bench.sh report >> "$GITHUB_STEP_SUMMARY"
+          verdict=$(cat "$RUNNER_TEMP/runtime-bench/verdict")
+          echo "Verdict ($RUNNER_LABEL, profile $RUNTIME_BENCH_PROFILE): $verdict"
+          if [[ $verdict != PASS ]]; then
+            echo "::warning title=Runtime gates ($RUNNER_LABEL)::verdict $verdict (report only, see the job summary)"
+          fi
+      - name: Upload the results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: runtime-bench-results-${{ matrix.runner }}
+          path: |
+            ${{ runner.temp }}/runtime-bench/runtime
+            ${{ runner.temp }}/runtime-bench/store
+            ${{ runner.temp }}/runtime-bench/http
+            ${{ runner.temp }}/runtime-bench/*.txt
+            ${{ runner.temp }}/runtime-bench/report.md
+            ${{ runner.temp }}/runtime-bench/verdict
+          retention-days: 30
+          if-no-files-found: warn
