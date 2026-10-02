@@ -15,3 +15,23 @@ const decoderPropagates = false
 // newDecoderAllocations is the number of allocations of json.NewDecoder in
 // the unwoven v2 variant: the Decoder and its jsontext.Decoder.
 const newDecoderAllocations = 2
+
+// unmarshalTaintsKeysAndAny reports whether json.Unmarshal taints map keys
+// and interface{} strings on this variant. The v2 variant does: they use the
+// default string arshaler (plan encoding-json-v2, decision Q1).
+const unmarshalTaintsKeysAndAny = true
+
+// activeStringTagAllocations is the number of allocations that the JSON
+// aspects add for one ,string field of clean bytes while the gate is open.
+// The v2 string wrapper adds none.
+const activeStringTagAllocations = 0
+
+// unmarshalHasStringCache reports whether the decoder of json.Unmarshal keeps
+// a string cache across calls. Only the decoder of the v2 variant does.
+const unmarshalHasStringCache = true
+
+// unmarshalCleanAllocations is the number of allocations of one json.Unmarshal
+// of unmarshalAllocationDocument in the unwoven build of this variant
+// (TestUnmarshalAllocationBaseline). With the gate off, the woven build must
+// have the same number.
+const unmarshalCleanAllocations = 5

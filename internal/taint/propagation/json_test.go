@@ -93,3 +93,17 @@ func TestJSONStringRequiresAliasedTaintedLiteral(t *testing.T) {
 	require.False(t, propagated)
 	require.Equal(t, "clean", result)
 }
+
+// TestJSONMayBeTainted checks the filter of the string cache guard: it is
+// true for each window of a tainted root (also outside its ranges: the filter
+// has no ranges), and false with no active request.
+func TestJSONMayBeTainted(t *testing.T) {
+	require.False(t, propagation.JSONMayBeTainted([]byte("no request")))
+	s, _ := beginScope(t)
+	owner := acquireOwner(t, s)
+	document, _ := taintBytes(t, owner, []byte(`{"value":"attack"}`), []ranges.Range{{Start: 10, Length: 6, SourceID: 7}})
+	require.True(t, propagation.JSONMayBeTainted(document))
+	require.True(t, propagation.JSONMayBeTainted(document[10:16]))
+	require.True(t, propagation.JSONMayBeTainted(document[2:7]))
+	require.False(t, propagation.JSONMayBeTainted(nil))
+}

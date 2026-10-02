@@ -183,6 +183,12 @@ taint is not tracked any more. Its bytes are then shown as untainted text, like
 any other untainted text in the value (for example, a value read from a
 database).
 
+Known limit (Go 1.27 `encoding/json`): the decoder keeps a cache of decoded
+strings. Strings from bytes that can have taint do not go into this cache. If
+another goroutine taints the same byte buffer while it is being decoded, one
+tainted string can still go into the cache, and a later request that decodes
+the same value can show a false source.
+
 `taint.VisitString` and `taint.VisitBytes` take a `context.Context`. They visit
 only the ranges of the request of this context, and return `false` when the
 context has no active request analysis.

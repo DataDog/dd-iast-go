@@ -162,6 +162,11 @@ Consequences:
 - We must never taint the string that `makeString` returns. We must clone it
   (the existing `JSONString` does `strings.Clone`) and store the clone with
   `SetString`. The cache keeps the clean original.
+- Correction (step 4): with the runtime hooks (plan runtime-operator-hooks),
+  `string(b)` in `makeString` IS tainted when `b` has taint (a verbatim
+  string aliases the input). Thus the cache can keep a tainted string, and a
+  later decode of clean bytes (same or other request) gets it. Section 6.2,
+  "String cache", adds a guard in `makeString`.
 
 ## 3. Hook candidates and what each one observes
 
@@ -169,7 +174,7 @@ Consequences:
 |---|---|---|---|
 | String unmarshal closure | `function-body` + `signature` on a `FuncLit` | `dec`, `va`, `uo` | Rejected: the signature is shared by every unmarshal closure in `v2` (bool, int, struct, map, methods, ...). Too broad. |
 | `makeStringArshaler` result | `function-body` on `FuncDecl`, defer on `Result 0` | the `*arshaler`, once per type | Selected: wrap `r.unmarshal` with an injected wrapper. Runs once per type. |
-| `makeString` | `function-body` on `FuncDecl` | unquoted bytes, result | Rejected: no destination; cache hits skip the conversion; escaped strings have no link to input. |
+| `makeString` | `function-body` on `FuncDecl` | unquoted bytes, result | Rejected as a source (no destination; cache hits skip the conversion; escaped strings have no link to input). Selected as the string cache guard (section 6.2, "String cache"): it is the only function that reads or changes the cache. |
 | `va.SetString(str)` | `method-call` on `encoding/json/v2.addressableValue` | final string | Rejected: `val` is overwritten, so the raw token is lost; template must use local names. |
 | `jsontext.(*decoderState).ReadValue` | `function-body` in `jsontext` | raw value, `d.rd` | Rejected for strings: runs for every value; no destination. |
 | `unmarshalValueAny` | `function-body` on `FuncDecl`, defer on `Result 0` | raw token (via `PreviousTokenOrValue`), `any` result | Optional: only direct `encoding/json/v2` users with v2 default options reach it. Not needed for the v1 facade. |
@@ -282,7 +287,8 @@ Variant anchors (checked against the source):
 | v1 `init` sets those vars (`decodeState` anchor) | match | no match | no match |
 | `add-struct-field` + `NewDecoder` snapshot | match (used by v1 `Document`, section 6.7) | match | match (unused) |
 | `makeStringArshaler` hook, declares `__dd_iast_stringWrap` var | no match | match | match (var stays nil) |
-| v2 `init` sets `__dd_iast_stringWrap`, enables bridge v2 flag (`errInvalidStringTag` anchor) | no match | match | no match |
+| `makeString` string cache guard (uses only its arguments and `jsonbridge`) | no match | match | match |
+| v2 `init` sets `__dd_iast_stringWrap` (step 4), enables bridge v2 flag (step 5) (`errInvalidStringTag` anchor) | no match | match | no match |
 | `jsontext.Decoder.ReadValue` call wrapper (3 calls match; the guard changes only the call in `Decode`) | no match | match | match (no-op: bridge v2 flag off) |
 
 The Decode template becomes:
@@ -346,7 +352,8 @@ both.
 
 - `func Active() bool` — inlinable: `active() && hasValues()`.
 - `func EnableV2()` — sets an atomic flag. Only the Go 1.27 v2 `init` calls
-  it.
+  it, from step 5 (with the `ReadValue` wrapper). The step 4 `init` does not
+  call it (appendix of step 4, note 2).
 - `func EnableV1()` — sets the v1 consumer flag. Only the `init` of the v1
   dispatch aspect calls it (step 3a review, finding 1). Both flags are bits
   of one `atomic.Uint32` (`consumers`): `Capture` loads it once, and
@@ -413,7 +420,7 @@ The Go 1.27 aspect (anchor `errInvalidStringTag`, same file
 ```go
 func init() {
 	__dd_iast_stringWrap = __dd_iast_wrapStringUnmarshal
-	iastjsonbridge.EnableV2()
+	// Step 5 adds: iastjsonbridge.EnableV2() (with the ReadValue wrapper).
 }
 
 func __dd_iast_wrapStringUnmarshal(next unmarshaler) unmarshaler {
@@ -475,6 +482,68 @@ Notes:
   gate its creation on `Active()`: the cache can be filled before `main`.
 - `propagateLiteral` (`iast/encoding/json/json.go:35-45`) is reused as is.
   It clones the result, adopts the clone, and calls `SetString`.
+
+String cache (step 4 review, finding 1). The runtime hooks taint
+`string(b)` when `b` has taint. `makeString` (`v2/intern.go:20-54`) puts
+that string in the 256-entry cache of the decoder, and the pooled decoder
+keeps the cache across `Unmarshal` calls (`jsontext/pools.go:118-140` does
+not clear it). A later decode of clean bytes with the same string, in the
+same request or in another live request, then gets the tainted string: a
+false source. `makeString` has two callers in Go 1.27.1: the string arshaler
+(`v2/arshal_default.go:298`) and the `any` fast path `unmarshalValueAny`
+(`v2/arshal_any.go:89`, direct `jsonv2.Unmarshal` into `any`, `[]any`,
+`map[string]any` with no `AllowDuplicateNames`). Go 1.26.6 has the same
+two callers and the same signature. A fix in the wrapper covers only the
+first caller. Thus the guard is in `makeString` itself:
+
+```yaml
+- id: "[v2] encoding/json/v2 string cache guard"
+  join-point:
+    all-of:
+      - import-path: encoding/json/v2
+      - function-body:
+          function:
+            - receiver: false
+            - name: makeString
+  advice:
+    - prepend-statements:
+        template: |-
+          if iastjsonbridge.HasIndexedRoots() && iastjsonbridge.SkipCache({{ .Function.Argument 1 }}) {
+            return string({{ .Function.Argument 1 }})
+          }
+```
+
+- The gate `jsonbridge.HasIndexedRoots()` is the indexed-root counter of
+  the process (inlinable): the runtime gate has the same value (the store
+  changes both at the same time), and with the gate off the runtime hooks
+  do not taint. Gate-off cost: two loads (the counter pointer and the
+  counter), no call. (A gate and a call in one function do not fit the
+  inline budget: cost 93 > 80.)
+- `jsonbridge.SkipCache(b)` (not inlined) returns false for `len(b) < 2`
+  (no taint, no cache) and with no indexed root. Else
+  it calls the new `Callbacks.MayBeTainted` (`propagation.JSONMayBeTainted`:
+  the store filter on `b`, the same filter as the pre-check of the runtime
+  hooks; no lookup, no lock) under `shield`. A panic or a missing callback
+  gives true (fail closed: one allocation, and the result is correct).
+- When `SkipCache` is true, `makeString` returns `string(b)`: the result of
+  `makeString` with no cache. The cache is not read and not changed. Thus a
+  string of bytes that can have taint never goes into the cache, and a cache
+  hit never gives it. The runtime hooks give `string(b)` the taint of `b`
+  (correct provenance); the wrapper then replaces it with its own clone.
+- Clean bytes: the filter does not match, and the cache works as before
+  (no allocation added). A filter false positive costs one allocation.
+- The aspect uses only the arguments of `makeString` and `jsonbridge`, thus
+  it applies to each toolchain that has `encoding/json/v2` (also Go 1.26 +
+  `jsonv2`). It replaces the scan-based removal of the first step 4 code.
+- Residual: a root that another goroutine adds for the same bytes between
+  the gate check and the conversion (a concurrent taint of the bytes that
+  are being decoded) can put one tainted string in the cache.
+- Documented miss (decision Q3, direct `encoding/json/v2` is out of scope):
+  the `any` fast path makes object names with `Token.String`
+  (`unmarshalObjectAny`), and gives `any` strings with no wrapper. Verbatim
+  strings get the taint of the runtime hooks; escaped object names and
+  escaped `any` strings get no taint. These names do not use the cache, so
+  they cannot give a false source.
 
 ### 6.3 Decoder document (the `ReadValue` call in `(*Decoder).Decode` only)
 
@@ -1747,6 +1816,9 @@ Each step lists its exit criteria and an estimate for one engineer.
 4. **v2 string wrapper (3-4 h).** Section 6.2. Exit: woven `Unmarshal` tests
    pass on lane B for struct, slice, array, pointer, typed map value,
    `,string`, escapes, nested values.
+
+   **Step 4: done.** See "Appendix: Implementation notes (step 4)" for the
+   deviations (string cache guard, `EnableV2` moved to step 5).
 5. **v2 decoder document (4.5-7 h).** Section 6.3, with the template guard.
    Add `iast/encoding/json/testdata/scopeprobe` and
    `TestV2ReadValueHookScope` (section 6.3; 1-2 h). Exit: the scope test
@@ -1768,6 +1840,11 @@ Each step lists its exit criteria and an estimate for one engineer.
    after `NewDecoder` and ends before `Decode`: the value is a miss, and
    the decoder is closed; control: a rebind of the reader by A between
    `NewDecoder` and `Decode` keeps the value tainted.
+   Also call `iastjsonbridge.EnableV2()` in the v2 `init` (the
+   `errInvalidStringTag` aspect) in this step, with the `ReadValue`
+   wrapper (step 4 did not call it). Then update
+   `TestNewDecoderLooksUpOnlyForAConsumer`: on lane B, `NewDecoder` now
+   does a lookup.
 6. **Variant-aware shape and telemetry tests (3-4 h).** Section 6.4. Exit:
    tests pass on all lanes and fail when a pinned symbol is renamed (check
    with a patched copy of the GOROOT package directory).
@@ -1928,8 +2005,12 @@ lane, from the repository root unless noted:
   input. This is consistent, but it differs from v1 `Decoder` behavior.
 - R4. Removed. The `,string` guard no longer uses destination identity.
 - R5. The string cache survives across requests in pooled decoders. The
-  wrapper never taints a cached string; it taints a clone. A test must prove
-  that a later request does not inherit taint.
+  wrapper never taints a cached string; it taints a clone. The runtime hooks
+  can taint the string that `makeString` makes; the string cache guard
+  (section 6.2) keeps such a string out of the cache. A test must prove
+  that a later request does not inherit taint (step 4:
+  `TestUnmarshalStringCacheKeepsRequestsApart`,
+  `TestUnmarshalV2StringCacheKeepsRequestsApart`).
 - R6. The 40-byte `__dd_iast_binding` field and one defer in `NewDecoder`
   also apply on v1 and on Go 1.26 + `jsonv2`. While a request is active,
   `NewDecoder` does one `LookupObject` scan (64 owner slots, `TryRLock`).
@@ -2650,3 +2731,87 @@ fanout proof), also `TestDecoderMultiReaderOfTwoRequestsIsMiss`,
 `TestDecoderMultiReaderInputs` (clean input, 9 inputs),
 `TestDecoderRetargetAfterBindIsMiss`, and
 `TestDecoderLimitReaderOfRetargetedBufioIsMiss` fail.
+
+## Appendix: Implementation notes (step 4)
+
+Changed files: `iast/encoding/json/orchestrion.yml` (three `[v2]`
+aspects: string arshaler wrap, string cache guard, string unmarshal
+source), `iast/encoding/json/json.go` (`MayBeTainted` callback, telemetry
+count), `internal/taint/jsonbridge/bridge.go` (`Callbacks.MayBeTainted`,
+`SkipCache`), `internal/taint/propagation/json.go` (`JSONMayBeTainted`),
+and the tests (`iast/encoding/json/unmarshal_test.go`,
+`unmarshal_v2_test.go`, `variant_v1_test.go`, `variant_v2_test.go`,
+`race_on_test.go`, `race_off_test.go`, `bridgetests/bridge_test.go`,
+`propagation/json_test.go`, `request/json_token_test.go`).
+
+Deviations from the text of the plan, with the reason for each:
+
+1. Section 2.4 is not correct with the runtime hooks (plan
+   runtime-operator-hooks). `makeString` (`v2/intern.go:20-54`) converts
+   the unquoted bytes with `string(b)`. For a verbatim string, `b` is an
+   alias of the input (`jsonwire.UnquoteMayCopy`), thus the
+   `slicebytetostring` hook taints the result, and `makeString` puts that
+   tainted string in the string cache of the pooled decoder. A later
+   `Unmarshal` of clean bytes with the same string, in the same request or
+   in another request while the first request is live, then gets the
+   tainted string: a false source. This happens on lane B also without
+   the wrapper, and also on the `any` fast path of direct
+   `jsonv2.Unmarshal` (`unmarshalValueAny`), which has no wrapper. Fix:
+   the string cache guard in `makeString` (section 6.2, "String cache").
+   The first step 4 code removed the string from the cache in the wrapper
+   (a scan of 256 entries); the step 4 review (finding 1) showed that it
+   does not cover the `any` fast path. The guard replaces it, thus the
+   `Literal` callback and `jsonbridge.String` have no result again.
+   Tests: `TestUnmarshalStringCacheKeepsRequestsApart` (json.Unmarshal of
+   a struct) and `TestUnmarshalV2StringCacheKeepsRequestsApart` (lane B:
+   request A decodes tainted bytes with direct v2 `any`, `map[string]any`,
+   `[]any`, a struct, or json.Unmarshal of a struct; then request B decodes
+   clean bytes with direct v2 `any` or json.Unmarshal). Each attempt
+   proves that its three decodes used one cache (the probe string of the
+   last decode is the string of the first decode, with one P and the GC
+   off: `sync.Pool.Get` then gives the decoder of the previous decode), and tries
+   again with new strings when not (at most 50 attempts; sync.Pool can drop
+   the decoder). With the guard removed, all 11 cases fail
+   (`the value "cached-N" is tainted`).
+2. Section 6.2, `init`. The v2 `init` sets `__dd_iast_stringWrap` only.
+   `jsonbridge.EnableV2` stays for step 5 (appendix of steps 3 and 3a,
+   note 7): with `EnableV2` and no `ReadValue` wrapper, `NewDecoder` does
+   a lookup that no `Decode` uses (`TestNewDecoderLooksUpOnlyForAConsumer`
+   pins this rule on lane B). Step 5 has an explicit item for it.
+3. Section 6.2, `,string` test. The guard also tests
+   `uo.Flags.Has(jsonflags.TagFlags)`, as the closure does
+   (`arshal_default.go:260-261`). `__dd_iast_innerNull` ignores a token
+   shorter than 6 bytes and a token that does not start with a quote, and
+   it needs `AppendUnquote` to succeed.
+4. Telemetry. The two new aspects with `import-path: encoding/json/v2` are
+   also counted by the substring count of
+   `TestInstrumentedPropagationTelemetry`. Thus
+   `instrumentedPropagationPoints` is 8 on all variants, until step 6
+   counts the aspects by variant tag. Step 6 must not count the string
+   cache guard as a propagation point (it propagates nothing).
+5. Runtime hooks and test expectations (for step 7). On all lanes, the
+   runtime hooks taint a verbatim string that a decoder converts from
+   tainted input bytes. On v1, `json.Unmarshal` of tainted bytes thus
+   taints verbatim map keys and `interface{}` strings, with no JSON
+   aspect. Only escaped keys and `interface{}` strings show decision Q1
+   (`TestUnmarshalKeysAndInterfaceValues` uses escapes, and
+   `TestUnmarshalKeysAndInterfaceValuesUseTheirOwnToken` taints one escaped
+   token at a time: only that key or string gets taint on lane B). The v1
+   `Decoder` decodes its clean buffer, thus its keys stay clean. A custom
+   `UnmarshalJSON` or `UnmarshalText` that converts its input bytes gets
+   the taint of the input from the runtime hooks; the tests use methods
+   that set a constant.
+6. Allocations (clean bytes). Unwoven baseline (`unmarshalCleanAllocations`,
+   `TestUnmarshalAllocationBaseline`, runs unwoven and woven, not with
+   `-race`): 16 allocations on v1 (Go 1.26.6 and Go 1.27.1 `nojsonv2`), 5
+   on v2 (Go 1.27.1). With the gate off, the woven count is the same
+   (`TestUnmarshalCleanAllocations`). With the gate open, the v2 wrapper
+   and the string cache guard add none; the v1 `Quoted` aspect adds one for
+   each `,string` field (existing Phase 8 behavior,
+   `activeStringTagAllocations`).
+
+Not done in this step (by the plan order or out of scope): provenance for
+the direct `encoding/json/v2` `any` fast path (escaped object names and
+escaped strings, section 6.2, "String cache"; decision Q3). The cost of the
+guard while an indexed root exists (one filter check for each decoded
+string of 2 bytes or more) is not benchmarked; step 8 measures it.

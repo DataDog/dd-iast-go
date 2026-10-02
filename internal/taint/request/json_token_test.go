@@ -33,6 +33,8 @@ func registerJSONForTest(t *testing.T) {
 		Literal: func([]byte, []byte, reflect.Value, error) {},
 		Owner:   ReaderOwnerToken,
 		Clone:   CloneForOwner,
+		// The string cache guard is not used by these tests.
+		MayBeTainted: func([]byte) bool { return true },
 	})
 	t.Cleanup(jsonbridge.SetV2ForTest(true))
 }

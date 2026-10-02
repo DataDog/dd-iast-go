@@ -28,6 +28,9 @@ type Callbacks struct {
 	// is true and clone is nil, it is a miss for this data only (for example
 	// data larger than the root limit).
 	Clone func(reader any, token OwnerToken, data []byte) (clone []byte, proven bool)
+	// MayBeTainted reports whether the store filter matches data. A false
+	// result proves that data has no taint. It does no lookup and no lock.
+	MayBeTainted func(data []byte) bool
 }
 
 // OwnerToken is the exclusive owner of a reader at one lookup. Only the
@@ -200,6 +203,44 @@ func String(raw []byte, value reflect.Value) {
 	}
 }
 
+// HasIndexedRoots reports whether the process has an indexed root. It is the
+// gate of the string cache guard of encoding/json/v2 (plan encoding-json-v2,
+// section 6.2, "String cache"): the guard calls SkipCache only when it is
+// true. The runtime gate has the same value (the store changes both at the
+// same time). With the gate off, the runtime hooks do not taint. It is
+// inlinable: two loads, no call.
+func HasIndexedRoots() bool { return hasValues() }
+
+// SkipCache reports whether makeString of encoding/json/v2 must not use its
+// string cache for the unquoted string bytes b (plan encoding-json-v2,
+// section 6.2, "String cache"). Call it only when HasIndexedRoots is true.
+// The runtime hooks taint string(b) when b has taint. The cache of a pooled
+// decoder keeps that string for later decodes, in this request and in other
+// requests. Thus a later decode of clean bytes could get a tainted string: a
+// false source. When SkipCache is true, makeString returns string(b) and does
+// not read or change the cache.
+//
+// The result is the store filter of b: it is never false for tainted bytes.
+// No indexed root, or fewer than 2 bytes, gives false. A missing callback or
+// a panic gives true (fail closed: the cost is one allocation, the result is
+// correct).
+//
+//go:noinline
+func SkipCache(b []byte) (skip bool) {
+	if len(b) < 2 || !hasValues() {
+		// The runtime hooks do not taint a string of fewer than 2 bytes,
+		// and makeString does not cache it. With no indexed root, no bytes
+		// have taint.
+		return false
+	}
+	defer shield()
+	skip = true
+	if callback := registered.Load(); callback != nil {
+		skip = callback.MayBeTainted(b)
+	}
+	return skip
+}
+
 type document struct {
 	original uintptr
 	length   uint32
@@ -234,7 +275,7 @@ func BindActiveOwners(owners *atomic.Uint64) *atomic.Uint64 { return activeOwner
 // Register installs the JSON callbacks. It does nothing when a callback is
 // nil.
 func Register(callbacks Callbacks) {
-	if callbacks.Literal == nil || callbacks.Owner == nil || callbacks.Clone == nil {
+	if callbacks.Literal == nil || callbacks.Owner == nil || callbacks.Clone == nil || callbacks.MayBeTainted == nil {
 		return
 	}
 	registered.Store(&callbacks)

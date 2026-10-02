@@ -114,6 +114,137 @@ aspects:
               }
             }
 
+  # The default string arshaler of encoding/json/v2 (plan encoding-json-v2,
+  # section 6.2). makeStringArshaler exists in the v2 package of Go 1.26 and
+  # of Go 1.27. This aspect uses only the symbols that it declares itself and
+  # the arshaler fields that the v2 shape test (plan step 6) pins. It wraps the
+  # unmarshal function of the result once for each string type, before
+  # makeMethodArshaler reads it. Thus a custom method replaces the wrapper,
+  # and a method fallback calls the wrapped default. The wrapper is nil, and
+  # nothing changes, until the Go 1.27 aspect below sets it.
+  - id: "[v2] encoding/json/v2 string arshaler wrap"
+    join-point:
+      all-of:
+        - import-path: encoding/json/v2
+        - function-body:
+            function:
+              - receiver: false
+              - name: makeStringArshaler
+    advice:
+      - inject-declarations:
+          template: |-
+            // __dd_iast_stringWrap wraps the default string unmarshaler. It is
+            // nil when no variant-specific aspect sets it.
+            var __dd_iast_stringWrap func(unmarshaler) unmarshaler
+      - prepend-statements:
+          template: |-
+            defer func() {
+              if __dd_iast_wrap := __dd_iast_stringWrap; __dd_iast_wrap != nil {
+                if __dd_iast_result := {{ .Function.Result 0 }}; __dd_iast_result != nil && __dd_iast_result.unmarshal != nil {
+                  __dd_iast_result.unmarshal = __dd_iast_wrap(__dd_iast_result.unmarshal)
+                }
+              }
+            }()
+
+  # The string cache guard of encoding/json/v2 (plan encoding-json-v2, section
+  # 6.2, "String cache"). makeString is the only function that reads or
+  # changes the string cache of a decoder. All its callers use it: the default
+  # string arshaler and the any fast path (unmarshalValueAny). When b can have
+  # taint, the runtime hooks can taint string(b). The cache of a pooled
+  # decoder keeps a string for later decodes, in this request and in other
+  # requests. Thus a string of bytes that can have taint does not go into the
+  # cache, and does not come from it. makeString has the same signature in the
+  # v2 package of Go 1.26 and of Go 1.27, and this aspect uses only its
+  # arguments, thus it applies to each toolchain that has encoding/json/v2.
+  # The gate-off cost is two loads and no call (jsonbridge.HasIndexedRoots).
+  - id: "[v2] encoding/json/v2 string cache guard"
+    join-point:
+      all-of:
+        - import-path: encoding/json/v2
+        - function-body:
+            function:
+              - receiver: false
+              - name: makeString
+    advice:
+      - prepend-statements:
+          imports:
+            iastjsonbridge: github.com/DataDog/dd-iast-go/internal/taint/jsonbridge
+          template: |-
+            {{- $b := .Function.Argument 1 -}}
+            if iastjsonbridge.HasIndexedRoots() && iastjsonbridge.SkipCache({{ $b }}) {
+              // The same result as makeString with no cache.
+              return string({{ $b }})
+            }
+
+  # The anchor errInvalidStringTag exists only in the v2 package of Go 1.27
+  # (plan encoding-json-v2, section 4). The ,string rule of the wrapper is the
+  # rule of Go 1.27.1, thus Go 1.26 with GOEXPERIMENT=jsonv2 gets no wrapper.
+  # The join point has no import-path clause, thus the telemetry test does not
+  # count it as a propagation point. The init function runs before any
+  # arshaler is made: no package-level initializer of encoding/json/v2 calls
+  # lookupArshaler.
+  - id: "[v2] encoding/json/v2 string unmarshal source"
+    join-point:
+      declaration-of: encoding/json/v2.errInvalidStringTag
+    advice:
+      - inject-declarations:
+          imports:
+            iastjsonbridge: github.com/DataDog/dd-iast-go/internal/taint/jsonbridge
+            jsonflags: encoding/json/internal/jsonflags
+            jsonopts: encoding/json/internal/jsonopts
+            jsontext: encoding/json/jsontext
+          template: |-
+            func init() {
+              // The Decode document (jsonbridge.EnableV2) comes with the
+              // ReadValue wrapper of plan encoding-json-v2, step 5.
+              __dd_iast_stringWrap = __dd_iast_wrapStringUnmarshal
+            }
+
+            // __dd_iast_wrapStringUnmarshal returns an unmarshaler that calls
+            // next, and then publishes the raw token of the decoded string to
+            // the JSON bridge. The bridge sets a tainted clone of the string,
+            // never the string of next: that string can come from the string
+            // cache of the decoder, which other decodes share. (The string
+            // cache guard keeps a string of bytes that can have taint out of
+            // that cache.)
+            func __dd_iast_wrapStringUnmarshal(next unmarshaler) unmarshaler {
+              return func(dec *jsontext.Decoder, va addressableValue, uo *jsonopts.Struct) error {
+                if !iastjsonbridge.Active() {
+                  return next(dec, va, uo)
+                }
+                if err := next(dec, va, uo); err != nil {
+                  // A failed conversion does not propagate.
+                  return err
+                }
+                // next read exactly one value and no other token, thus this
+                // is the raw token of the string, with its quotes.
+                raw := export.Decoder(dec).PreviousTokenOrValue()
+                if uo.Flags.Has(jsonflags.TagFlags) && uo.Flags.Get(jsonflags.StringTag) && uo.Flags.Get(jsonflags.StringifyWithLegacySemantics) && __dd_iast_innerNull(raw) {
+                  // The same test as the stringify test of next. A ,string
+                  // value with an inner null keeps or clears the
+                  // destination. It gets no string of this token.
+                  return nil
+                }
+                iastjsonbridge.String(raw, va.Value)
+                return nil
+              }
+            }
+
+            // __dd_iast_innerNull reports whether the raw token raw unquotes to
+            // null. This is the test of the ,string option of the default
+            // string unmarshaler, after its first unquote. It uses only the
+            // raw token, never the destination.
+            func __dd_iast_innerNull(raw []byte) bool {
+              // The longest form of null is "\u006e\u0075\u006c\u006c" (26
+              // bytes). A longer token cannot unquote to null.
+              if len(raw) < 6 || len(raw) > 26 || raw[0] != '"' {
+                return false
+              }
+              var buffer [32]byte
+              inner, err := jsontext.AppendUnquote(buffer[:0], raw)
+              return err == nil && string(inner) == "null"
+            }
+
   - id: encoding/json decode state lifetime
     join-point:
       all-of:

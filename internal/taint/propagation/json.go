@@ -14,6 +14,18 @@ import (
 	"github.com/DataDog/dd-iast-go/internal/taint/store"
 )
 
+// JSONMayBeTainted reports whether the bytes of literal can be tainted: the
+// store filter of the active store matches them. It is a cheap check with no
+// lookup. A false result proves that literal has no taint.
+func JSONMayBeTainted(literal []byte) bool {
+	s := request.ActiveStore()
+	if s == nil {
+		return false
+	}
+	key, ok := store.BytesKey(literal)
+	return ok && s.MayContain(key)
+}
+
 // JSONString propagates provenance intersecting a raw JSON literal to its
 // decoded string. The boolean reports whether a managed clone was published.
 func JSONString(document, literal []byte, result string) (string, bool) {

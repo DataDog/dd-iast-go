@@ -49,6 +49,10 @@ type fakeCallbacks struct {
 	literalItem             []byte
 	literalErr              error
 	literalCalls            int
+	filterCalls             int
+	filterInput             []byte
+	filterResult            bool
+	filterPanics            bool
 }
 
 func register(t *testing.T, fake *fakeCallbacks) {
@@ -73,6 +77,14 @@ func register(t *testing.T, fake *fakeCallbacks) {
 				return append([]byte(nil), data...), true
 			}
 			return fake.clone(reader, token, data)
+		},
+		MayBeTainted: func(data []byte) bool {
+			fake.filterCalls++
+			fake.filterInput = data
+			if fake.filterPanics {
+				panic("filter")
+			}
+			return fake.filterResult
 		},
 	})
 }
@@ -99,6 +111,12 @@ func TestRegisterIgnoresIncompleteCallbacks(t *testing.T) {
 	fake := &fakeCallbacks{}
 	register(t, fake)
 	jsonbridge.Register(jsonbridge.Callbacks{Literal: func([]byte, []byte, reflect.Value, error) {}})
+	// All callbacks but MayBeTainted: also incomplete.
+	jsonbridge.Register(jsonbridge.Callbacks{
+		Literal: func([]byte, []byte, reflect.Value, error) {},
+		Owner:   func(any) jsonbridge.OwnerToken { return jsonbridge.OwnerToken{} },
+		Clone:   func(any, jsonbridge.OwnerToken, []byte) ([]byte, bool) { return nil, false },
+	})
 	binding := new(jsonbridge.ReaderBinding)
 	binding.Capture(new(int))
 	require.Equal(t, 1, fake.ownerCalls, "an incomplete set must not replace the callbacks")
@@ -197,6 +215,8 @@ func TestDecoderCallbacksQuotedIdentityAndCleanup(t *testing.T) {
 		Literal: func([]byte, []byte, reflect.Value, error) { panic("literal") },
 		Owner:   func(any) jsonbridge.OwnerToken { panic("owner") },
 		Clone:   func(any, jsonbridge.OwnerToken, []byte) ([]byte, bool) { panic("clone") },
+		// MayBeTainted is necessary for a complete set.
+		MayBeTainted: func([]byte) bool { panic("filter") },
 	})
 	require.True(t, jsonbridge.BindDecoder(binding, state))
 	require.NotPanics(t, func() { jsonbridge.Document(state, original) })
@@ -238,9 +258,13 @@ func TestDecoderCallbacksInactive(t *testing.T) {
 	jsonbridge.Quoted(state, []byte(`"inactive"`), 0, 10, "inactive")
 	jsonbridge.Literal(state, nil, nil, reflect.Value{}, nil, false)
 	jsonbridge.String([]byte(`"inactive"`), reflect.Value{})
+	fake.filterResult = true
+	require.False(t, jsonbridge.HasIndexedRoots())
+	require.False(t, jsonbridge.SkipCache([]byte("inactive")), "SkipCache must be false with no indexed root")
 	require.False(t, jsonbridge.Active())
 	require.Zero(t, fake.cloneCalls)
 	require.Zero(t, fake.literalCalls)
+	require.Zero(t, fake.filterCalls)
 }
 
 // TestCaptureNeedsAConsumer checks that Capture does no lookup, and does not
@@ -424,9 +448,58 @@ func TestReaderDocumentNeedsNoIndexedRoot(t *testing.T) {
 	got := jsonbridge.ReaderDocument(binding, value)
 	require.Equal(t, 1, fake.cloneCalls)
 	require.NotSame(t, unsafe.SliceData(value), unsafe.SliceData(got))
-	// String needs an indexed root.
+	// String and SkipCache need an indexed root.
 	jsonbridge.String([]byte(`"b"`), reflect.Value{})
 	require.Zero(t, fake.literalCalls)
+	fake.filterResult = true
+	require.False(t, jsonbridge.SkipCache([]byte("bb")))
+	require.Zero(t, fake.filterCalls)
+}
+
+// TestSkipCache checks the string cache guard of encoding/json/v2: with an
+// indexed root, SkipCache returns the result of the MayBeTainted callback for
+// b itself. A string of fewer than 2 bytes needs no check. A panic gives true
+// (fail closed).
+func TestSkipCache(t *testing.T) {
+	var values atomic.Int32
+	values.Store(1)
+	previousValues := jsonbridge.BindActiveValues(&values)
+	// SkipCache does not need an active request: the runtime gate is the
+	// indexed-root counter only.
+	previousOwners := jsonbridge.BindActiveOwners(nil)
+	t.Cleanup(func() {
+		jsonbridge.BindActiveOwners(previousOwners)
+		jsonbridge.BindActiveValues(previousValues)
+	})
+	fake := &fakeCallbacks{}
+	register(t, fake)
+	require.True(t, jsonbridge.HasIndexedRoots())
+	for _, b := range [][]byte{nil, {}, []byte("x")} {
+		fake.filterResult = true
+		require.False(t, jsonbridge.SkipCache(b))
+	}
+	require.Zero(t, fake.filterCalls, "a string of fewer than 2 bytes needs no filter check")
+
+	b := []byte("attack")
+	fake.filterResult = false
+	require.False(t, jsonbridge.SkipCache(b))
+	require.Equal(t, 1, fake.filterCalls)
+	require.Same(t, unsafe.SliceData(b), unsafe.SliceData(fake.filterInput))
+	require.Len(t, fake.filterInput, len(b))
+	fake.filterResult = true
+	require.True(t, jsonbridge.SkipCache(b))
+	require.Equal(t, 2, fake.filterCalls)
+
+	fake.filterPanics = true
+	require.NotPanics(t, func() {
+		require.True(t, jsonbridge.SkipCache(b), "a panic in the callback must fail closed")
+	})
+
+	values.Store(0)
+	fake.filterPanics = false
+	require.False(t, jsonbridge.HasIndexedRoots())
+	require.False(t, jsonbridge.SkipCache(b), "the gate is off")
+	require.Equal(t, 3, fake.filterCalls)
 }
 
 func TestString(t *testing.T) {
@@ -451,6 +524,8 @@ func TestString(t *testing.T) {
 		Literal: func([]byte, []byte, reflect.Value, error) { panic("literal") },
 		Owner:   func(any) jsonbridge.OwnerToken { return jsonbridge.OwnerToken{} },
 		Clone:   func(any, jsonbridge.OwnerToken, []byte) ([]byte, bool) { return nil, false },
+		// MayBeTainted is necessary for a complete set.
+		MayBeTainted: func([]byte) bool { return false },
 	})
 	require.NotPanics(t, func() { jsonbridge.String(raw, value) })
 }
@@ -485,6 +560,8 @@ func TestGateOffDoesNotAllocate(t *testing.T) {
 		}
 		jsonbridge.Document(state, value)
 		jsonbridge.String(raw, destination)
+		_ = jsonbridge.HasIndexedRoots()
+		_ = jsonbridge.SkipCache(raw)
 		_ = jsonbridge.Active()
 	}))
 }

@@ -16,8 +16,11 @@ import (
 )
 
 // instrumentedPropagationPoints is the number of aspects of orchestrion.yml
-// with the join point clause "import-path: encoding/json".
-const instrumentedPropagationPoints = 6
+// with the join point clause "import-path: encoding/json" (this count also
+// includes "import-path: encoding/json/v2"). The count is the same on all
+// variants of encoding/json until plan encoding-json-v2, step 6, counts the
+// aspects of each variant.
+const instrumentedPropagationPoints = 8
 
 func init() {
 	telemetry.InstrumentedPropagation += instrumentedPropagationPoints
@@ -30,6 +33,8 @@ func callbacks() jsonbridge.Callbacks {
 		Literal: propagateLiteral,
 		Owner:   request.ReaderOwnerToken,
 		Clone:   request.CloneForOwner,
+		// The string cache guard of encoding/json/v2 (jsonbridge.SkipCache).
+		MayBeTainted: propagation.JSONMayBeTainted,
 	}
 }
 
