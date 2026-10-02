@@ -25,8 +25,17 @@ func logPayloadTruncation(payload LimitedPayload) {
 // Finished is called by [*tracer.Span.Finish] and removes the [*Annotation]
 // from storage, as the span is defunct.
 func Finished(span *tracer.Span) {
+	// The store keys are root spans or spans without a root (see
+	// AnnotationFor, BindScope and NewOrphanTaintedSpan). The root of a span
+	// does not change, thus a span with a different root is not a key. This cheap check comes first: weak.Make allocates for a span
+	// that has no weak pointer yet.
+	if root := span.Root(); root != nil && root != span {
+		return
+	}
 	ann, ok := store.LoadAndDelete(weak.Make(span))
-	if !ok {
+	if !ok || ann == nil || !ann.Sampled {
+		// A negative decision is the shared nonSampledAnnotation: it has no
+		// event, no source identities, and no telemetry.
 		return
 	}
 

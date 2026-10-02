@@ -25,7 +25,10 @@ import (
 
 var (
 	// nonSampledAnnotation is immutable by convention. Reporting returns before
-	// touching Event or RequestTainted when Sampled is false.
+	// touching Event or RequestTainted when Sampled is false. The store keeps
+	// this one value for each negative span decision: a sampled-out request
+	// does not allocate an annotation. Finished and releaseDeadAnnotation only
+	// remove its entries, they do not close it.
 	nonSampledAnnotation = new(Annotation)
 	// store is the association of tracer spans to annotation objects.
 	store = xsync.NewMap[weak.Pointer[tracer.Span], *Annotation](xsync.WithPresize(2 * config.MaxConcurrentRequests))
@@ -252,7 +255,10 @@ func AnnotationFor(span *tracer.Span) *Annotation {
 				Warn("iast/annotation: max concurrent requests reached, not storing annotation for span", slog.Any("span", spanID))
 			return nil, true
 		}
-		return &Annotation{Sampled: samplingDecision()}, false
+		if !samplingDecision() {
+			return nonSampledAnnotation, false
+		}
+		return &Annotation{Sampled: true}, false
 	})
 	if ann == nil {
 		ann = nonSampledAnnotation
@@ -315,7 +321,10 @@ func BindScope(span *tracer.Span, scope *request.Scope) *Annotation {
 		if !hasSpace {
 			return nil, true
 		}
-		return &Annotation{Sampled: active}, false
+		if !active {
+			return nonSampledAnnotation, false
+		}
+		return &Annotation{Sampled: true}, false
 	})
 	if ann == nil || !ann.Sampled {
 		root.SetTag(SpanTagEnabled, 0)
@@ -353,6 +362,10 @@ func trimStore() bool {
 func releaseDeadAnnotation(key weak.Pointer[tracer.Span], ann *Annotation) (delete bool, stop bool) {
 	if key.Value() != nil || ann == nil {
 		return false, false
+	}
+	if !ann.Sampled {
+		// The shared negative decision has no state to release.
+		return true, false
 	}
 	if !ann.RWMutex.TryLock() {
 		return false, false

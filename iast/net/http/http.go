@@ -18,9 +18,15 @@ import (
 // BindStartSpan binds an already-created span context to its request scope and
 // returns the span and context unchanged. It supports the multi-result expression
 // wrapper for tracer.StartSpanFromContext call sites.
+//
+// span must be the span that ctx carries, as tracer.StartSpanFromContext
+// returns them. BindStartSpan binds the scope of ctx to span directly.
 func BindStartSpan(ctx context.Context, span *tracer.Span) (*tracer.Span, context.Context) {
-	if request.FromContext(ctx) != nil {
-		spans.BindScopeFromContext(ctx)
+	// tracer.StartSpanFromContext returns ctx with span as its active span.
+	// Thus bind span directly: tracer.SpanFromContext(ctx) gives the same
+	// span, but it allocates a context wrapper.
+	if scope := request.FromContext(ctx); scope != nil && span != nil {
+		spans.BindScope(span, scope)
 	}
 	return span, ctx
 }

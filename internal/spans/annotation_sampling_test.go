@@ -141,9 +141,17 @@ func TestNegativeAnnotationsFinishIndependently(t *testing.T) {
 	config.RequestSamplingPct = 0
 	first, second := samplingSpan(t), samplingSpan(t)
 	firstAnnotation, secondAnnotation := spans.AnnotationFor(first), spans.AnnotationFor(second)
+	if firstAnnotation.Sampled || secondAnnotation.Sampled {
+		t.Fatal("zero rate accepted a span")
+	}
 	spans.Finished(first)
-	if !firstAnnotation.Closed() || secondAnnotation.Closed() || spans.AnnotationFor(nil).Closed() {
-		t.Fatal("finishing one rejection changed another rejection or the shared fallback")
+	// Negative decisions share one immutable annotation: finishing a span
+	// removes its entry, and does not close the shared value.
+	if firstAnnotation.Closed() || secondAnnotation.Closed() || spans.AnnotationFor(nil).Closed() {
+		t.Fatal("finishing one rejection closed the shared negative decision")
+	}
+	if _, _, found := spans.ExistingForSpan(first); found {
+		t.Fatal("finishing the span kept its negative decision")
 	}
 	config.RequestSamplingPct = 100
 	if got := spans.AnnotationFor(second); got != secondAnnotation || got.Sampled {

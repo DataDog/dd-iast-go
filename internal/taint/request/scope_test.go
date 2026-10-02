@@ -56,6 +56,56 @@ func TestBeginCapacityDropped(t *testing.T) {
 	require.Zero(t, scope.EnabledTagValue())
 }
 
+// TestInactiveScopeAllocations pins the cost of a request without analysis:
+// one allocation (the context value). The scope is shared, and Finish and the
+// readers do not change it.
+func TestInactiveScopeAllocations(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		sampling int
+		capacity int
+		decision request.Decision
+	}{
+		{name: "sampled-out", sampling: 0, capacity: 1, decision: request.DecisionSampledOut},
+		{name: "capacity-dropped", sampling: 100, capacity: 0, decision: request.DecisionCapacityDropped},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			restoreConfig(t)
+			config.Enabled = true
+			config.RequestSamplingPct = tc.sampling
+			config.MaxConcurrentRequests = tc.capacity
+			parent := context.Background()
+			for _, entry := range []request.Entry{request.EntryFallback, request.EntryServer} {
+				begin := request.BeginContext
+				if entry == request.EntryServer {
+					begin = request.BeginServerContext
+				}
+				ctx, created := begin(parent)
+				require.True(t, created)
+				scope := request.FromContext(ctx)
+				require.Equal(t, entry, scope.Entry())
+				require.Equal(t, tc.decision, scope.Decision())
+				require.False(t, scope.Active())
+				require.Zero(t, scope.EnabledTagValue())
+				_, ok := scope.Analysis()
+				require.False(t, ok)
+				request.FinishContext(ctx, created)
+				require.Equal(t, tc.decision, scope.Decision())
+				require.Equal(t, entry, scope.Entry())
+
+				allocations := testing.AllocsPerRun(100, func() {
+					ctx, created := begin(parent)
+					scope := request.FromContext(ctx)
+					_ = scope.Active()
+					_ = scope.Decision()
+					request.FinishContext(ctx, created)
+				})
+				require.Equal(t, 1.0, allocations, "entry %d", entry)
+			}
+		})
+	}
+}
+
 func TestServerContextEntryAndNestedFinish(t *testing.T) {
 	restoreConfig(t)
 	config.Enabled = true

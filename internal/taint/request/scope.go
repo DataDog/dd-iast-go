@@ -71,6 +71,30 @@ type Scope struct {
 	// +checklocks:mu
 	decision Decision
 	entry    Entry
+	// inactive is the decision of a shared scope without analysis (see
+	// inactiveScopes). It is DecisionDisabled for the scope of one request.
+	// It does not change, thus the methods read it without mu, and they do not
+	// lock or change a shared scope.
+	inactive Decision
+}
+
+// inactiveScopes are the shared scopes of the requests that have no analysis
+// (sampled out or capacity dropped), for each entry. A request of this type
+// thus does not allocate a scope: only the context value. The scopes do not
+// change. No caller compares scope pointers.
+var inactiveScopes = func() (scopes [EntryServer + 1][DecisionActive]*Scope) {
+	for entry := range scopes {
+		for _, decision := range []Decision{DecisionSampledOut, DecisionCapacityDropped} {
+			scopes[entry][decision] = &Scope{decision: decision, entry: Entry(entry), inactive: decision}
+		}
+	}
+	return scopes
+}()
+
+// inactiveScope returns the shared scope of the given inactive decision and
+// entry.
+func inactiveScope(decision Decision, entry Entry) *Scope {
+	return inactiveScopes[entry][decision]
 }
 
 // Begin makes one sampling decision and, when sampled, acquires one bounded
@@ -89,17 +113,14 @@ func begin(ctx context.Context, entry Entry) (derived context.Context, scope *Sc
 	if !config.Enabled {
 		return ctx, nil, false
 	}
-	decision := sampleDecision(config.RequestSamplingPct)
-	scope = &Scope{decision: decision, entry: entry}
-	if decision == DecisionActive {
-		if config.MaxConcurrentRequests <= 0 {
-			scope.decision = DecisionCapacityDropped
-		} else {
-			analysis, ok := defaultManager().Acquire(config.MaxConcurrentRequests)
-			if !ok {
-				scope.decision = DecisionCapacityDropped
-			} else {
-				scope.analysis = analysis
+	// The decision comes first: a request without analysis uses a shared
+	// scope and allocates only the context value.
+	scope = inactiveScope(DecisionSampledOut, entry)
+	if sampleDecision(config.RequestSamplingPct) == DecisionActive {
+		scope = inactiveScope(DecisionCapacityDropped, entry)
+		if config.MaxConcurrentRequests > 0 {
+			if analysis, ok := defaultManager().Acquire(config.MaxConcurrentRequests); ok {
+				scope = &Scope{analysis: analysis, decision: DecisionActive, entry: entry}
 			}
 		}
 	}
@@ -184,6 +205,9 @@ func (s *Scope) Decision() Decision {
 	if s == nil {
 		return DecisionDisabled
 	}
+	if s.inactive != DecisionDisabled {
+		return s.inactive
+	}
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.decision
@@ -191,7 +215,7 @@ func (s *Scope) Decision() Decision {
 
 // Active reports whether the scope owns a live analysis.
 func (s *Scope) Active() bool {
-	if s == nil {
+	if s == nil || s.inactive != DecisionDisabled {
 		return false
 	}
 	s.mu.RLock()
@@ -201,7 +225,7 @@ func (s *Scope) Active() bool {
 
 // Analysis returns a copy of the generation-captured analysis handle.
 func (s *Scope) Analysis() (Analysis, bool) {
-	if s == nil {
+	if s == nil || s.inactive != DecisionDisabled {
 		return Analysis{}, false
 	}
 	s.mu.RLock()
@@ -219,7 +243,7 @@ func (s *Scope) EnabledTagValue() int {
 
 // Finish releases this scope's analysis. It is idempotent.
 func (s *Scope) Finish() {
-	if s == nil {
+	if s == nil || s.inactive != DecisionDisabled {
 		return
 	}
 	s.mu.Lock()
