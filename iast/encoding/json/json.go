@@ -20,7 +20,7 @@ import (
 // includes "import-path: encoding/json/v2"). The count is the same on all
 // variants of encoding/json until plan encoding-json-v2, step 6, counts the
 // aspects of each variant.
-const instrumentedPropagationPoints = 8
+const instrumentedPropagationPoints = 9
 
 func init() {
 	telemetry.InstrumentedPropagation += instrumentedPropagationPoints

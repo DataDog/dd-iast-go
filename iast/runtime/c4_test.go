@@ -99,8 +99,9 @@ func TestWrapExpressionAspectsWrapOnlyCalls(t *testing.T) {
 		}
 	}
 	require.Equal(t, map[string]int{
-		"../../iast/propagation": 32,
-		"../../iast/net/http":    1,
-		"../../iast/os/exec":     1,
+		"../../iast/propagation":   32,
+		"../../iast/net/http":      1,
+		"../../iast/os/exec":       1,
+		"../../iast/encoding/json": 1,
 	}, wrappers)
 }

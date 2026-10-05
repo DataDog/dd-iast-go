@@ -28,9 +28,8 @@ import (
 // sections 6.3, 6.5, and 6.7 (step 3a): NewDecoder takes the owner token of
 // its reader BEFORE the first byte flows, and each Decode revalidates the
 // token (rule (f)) before it attributes a value. A miss is never attributed
-// to any request. On the v2 variant, the decoder does not propagate yet
-// (decoderPropagates is false, plan step 5): the miss checks pass, and the
-// controls expect no taint.
+// to any request. The tests run on all variants: on the v2 variant, the
+// ReadValue wrapper of Decode (plan step 5) uses the same token.
 
 func requireWoven(t *testing.T) {
 	t.Helper()
@@ -444,11 +443,12 @@ func TestNewDecoderGateOffDoesNotAllocate(t *testing.T) {
 }
 
 // TestNewDecoderLooksUpOnlyForAConsumer checks that NewDecoder looks up the
-// owner of its reader only when Decode can use the token: on the v1 variant
-// (the v1 Document path), not on the v2 variant before plan step 5 (the v2
-// Decode does not use the token yet). A request is active and the reader is
-// bound, thus only the consumer gate can stop the lookup. With no consumer,
-// NewDecoder adds no allocation.
+// owner of its reader only when Decode can use the token. Each variant
+// installs a consumer: the v1 Document path (EnableV1), or the v2 Decode
+// path (EnableV2, plan encoding-json-v2, step 5). Thus NewDecoder does one
+// lookup on each variant. A request is active and the reader is bound, thus
+// with no consumer, only the consumer gate can stop the lookup. With no
+// consumer, NewDecoder adds no allocation.
 func TestNewDecoderLooksUpOnlyForAConsumer(t *testing.T) {
 	requireWoven(t)
 	ctx, _ := beginRequest(t)
@@ -464,10 +464,14 @@ func TestNewDecoderLooksUpOnlyForAConsumer(t *testing.T) {
 	t.Cleanup(func() { jsonbridge.Register(callbacks()) })
 
 	noRequestSink = json.NewDecoder(reader)
-	if decoderPropagates {
-		require.Equal(t, int32(1), lookups.Load(), "the v1 NewDecoder must take the owner token")
-		return
-	}
+	require.Equal(t, int32(1), lookups.Load(), "NewDecoder must take the owner token for the Decode of this variant")
+
+	restoreV1 := jsonbridge.SetV1ForTest(false)
+	t.Cleanup(restoreV1)
+	restoreV2 := jsonbridge.SetV2ForTest(false)
+	t.Cleanup(restoreV2)
+	lookups.Store(0)
+	noRequestSink = json.NewDecoder(reader)
 	require.Zero(t, lookups.Load(), "NewDecoder looked up the reader, but no Decode uses the token")
 	require.Equal(t, float64(newDecoderAllocations), testing.AllocsPerRun(200, func() {
 		noRequestSink = json.NewDecoder(reader)

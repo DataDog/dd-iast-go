@@ -195,9 +195,11 @@ aspects:
             jsontext: encoding/json/jsontext
           template: |-
             func init() {
-              // The Decode document (jsonbridge.EnableV2) comes with the
-              // ReadValue wrapper of plan encoding-json-v2, step 5.
               __dd_iast_stringWrap = __dd_iast_wrapStringUnmarshal
+              // The v2 Decode path ("[v2] encoding/json Decoder.Decode value
+              // document") uses the owner token of NewDecoder. Before this
+              // call, NewDecoder does no lookup on this variant.
+              iastjsonbridge.EnableV2()
             }
 
             // __dd_iast_wrapStringUnmarshal returns an unmarshaler that calls
@@ -244,6 +246,52 @@ aspects:
               inner, err := jsontext.AppendUnquote(buffer[:0], raw)
               return err == nil && string(inner) == "null"
             }
+
+  # The value document of the v2 Decode (plan encoding-json-v2, section 6.3).
+  # In the v2 files of encoding/json, (*Decoder).Decode reads one value with
+  # dec.dec.ReadValue(). The value is an alias of the stream buffer of the
+  # decoder. The wrapper replaces it with an immutable clone that the
+  # exclusive owner of the reader adopted (jsonbridge.ReaderDocument). Then
+  # jsonv2.Unmarshal decodes the clone, and the raw token of each string
+  # aliases tainted memory. ReaderDocument revalidates, at each Decode, the
+  # owner token that NewDecoder captured (section 6.5, rule (f)).
+  #
+  # The join point also matches the two other ReadValue calls of the package,
+  # in checkValid and in (*Number).UnmarshalJSONFrom. No join point can limit a
+  # call to its enclosing function, thus the template does it: only a call in
+  # a function with the name Decode changes. The other calls stay as they are.
+  # The template engine does not evaluate the branch that it does not take,
+  # thus .Function.Receiver is never used in checkValid (not a method) or in
+  # UnmarshalJSONFrom (*Number has no __dd_iast_binding field).
+  # TestV2ReadValueHookScope checks the woven result. The v1 files do not
+  # import jsontext, thus the join point does not match on v1. On Go 1.26 with
+  # GOEXPERIMENT=jsonv2, no init calls EnableV2, and ReaderDocument returns
+  # the original value.
+  - id: "[v2] encoding/json Decoder.Decode value document"
+    join-point:
+      all-of:
+        - import-path: encoding/json
+        - method-call:
+            receiver: encoding/json/jsontext.Decoder
+            name: ReadValue
+            match: pointer-only
+    advice:
+      - wrap-expression:
+          imports:
+            iastjsonbridge: github.com/DataDog/dd-iast-go/internal/taint/jsonbridge
+            jsontext: encoding/json/jsontext
+          template: |-
+            {{- if eq .Function.Name "Decode" -}}
+            func() (jsontext.Value, error) {
+              __dd_iast_value, __dd_iast_err := {{ . }}
+              if __dd_iast_err == nil {
+                __dd_iast_value = iastjsonbridge.ReaderDocument(&{{ .Function.Receiver }}.__dd_iast_binding, __dd_iast_value)
+              }
+              return __dd_iast_value, __dd_iast_err
+            }()
+            {{- else -}}
+            {{ . }}
+            {{- end -}}
 
   - id: encoding/json decode state lifetime
     join-point:

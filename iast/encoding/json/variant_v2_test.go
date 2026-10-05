@@ -8,9 +8,22 @@
 package json
 
 // decoderPropagates reports whether (*json.Decoder).Decode propagates taint
-// on this variant of encoding/json. The v2 variant does not propagate yet
-// (plan encoding-json-v2, step 5).
-const decoderPropagates = false
+// on this variant of encoding/json. The v2 variant does: the ReadValue
+// wrapper of Decode gives the value bytes to the owner of the reader (plan
+// encoding-json-v2, section 6.3).
+const decoderPropagates = true
+
+// decoderSourceHasLeadingWhitespace reports whether the source value of a
+// Decode can start with the whitespace before the value. The v2 decoder
+// reads the whitespace before it reads the value (jsontext ReadValue), thus
+// the source value starts at the first byte of the value.
+const decoderSourceHasLeadingWhitespace = false
+
+// decoderTaintsNumberTokens reports whether a json.Number that Decode makes
+// from a number token has taint. The v2 decoder decodes the tainted clone,
+// and the runtime hooks taint the string conversion of
+// (*Number).UnmarshalJSONFrom.
+const decoderTaintsNumberTokens = true
 
 // newDecoderAllocations is the number of allocations of json.NewDecoder in
 // the unwoven v2 variant: the Decoder and its jsontext.Decoder.

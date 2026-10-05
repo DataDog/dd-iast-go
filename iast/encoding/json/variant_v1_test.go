@@ -11,6 +11,16 @@ package json
 // on this variant of encoding/json. The v1 variant does.
 const decoderPropagates = true
 
+// decoderSourceHasLeadingWhitespace reports whether the source value of a
+// Decode can start with the whitespace before the value. The v1 decoder
+// reads a value from the end of the previous value (stream.go, readValue).
+const decoderSourceHasLeadingWhitespace = true
+
+// decoderTaintsNumberTokens reports whether a json.Number that Decode makes
+// from a number token has taint. The v1 decoder decodes its clean buffer,
+// and the v1 Literal path takes only string tokens.
+const decoderTaintsNumberTokens = false
+
 // newDecoderAllocations is the number of allocations of json.NewDecoder in
 // the unwoven v1 variant: the Decoder.
 const newDecoderAllocations = 1

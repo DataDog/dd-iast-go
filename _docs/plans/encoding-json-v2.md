@@ -1845,6 +1845,9 @@ Each step lists its exit criteria and an estimate for one engineer.
    wrapper (step 4 did not call it). Then update
    `TestNewDecoderLooksUpOnlyForAConsumer`: on lane B, `NewDecoder` now
    does a lookup.
+
+   **Step 5: done.** See "Appendix: Implementation notes (step 5)" for the
+   deviations.
 6. **Variant-aware shape and telemetry tests (3-4 h).** Section 6.4. Exit:
    tests pass on all lanes and fail when a pinned symbol is renamed (check
    with a patched copy of the GOROOT package directory).
@@ -2815,3 +2818,75 @@ the direct `encoding/json/v2` `any` fast path (escaped object names and
 escaped strings, section 6.2, "String cache"; decision Q3). The cost of the
 guard while an indexed root exists (one filter check for each decoded
 string of 2 bytes or more) is not benchmarked; step 8 measures it.
+
+## Appendix: Implementation notes (step 5)
+
+Changed files: `iast/encoding/json/orchestrion.yml` (new aspect
+`[v2] encoding/json Decoder.Decode value document`; the v2 `init` calls
+`jsonbridge.EnableV2`), `iast/encoding/json/json.go` (telemetry count),
+`iast/encoding/json/testdata/scopeprobe/main.go`, and the tests
+(`scope_v2_test.go`, `decoder_test.go`, `decoder_exclusive_test.go`,
+`variant_v1_test.go`, `variant_v2_test.go`, `iast/runtime/c4_test.go`).
+No change in `jsonbridge` or `request`: `ReaderDocument` and
+`CloneForOwner` of step 3 already revalidate the token of `NewDecoder` at
+each `Decode` (rule (f)).
+
+Deviations from the text of the plan, with the reason for each:
+
+1. Section 6.3, join point. Orchestrion v1.13.1 rejects a pointer sigil in
+   the `method-call` receiver. The aspect uses
+   `receiver: encoding/json/jsontext.Decoder` with `match: pointer-only`.
+   The three calls have a `*jsontext.Decoder` receiver.
+2. `TestV2ReadValueHookScope` has the build tags
+   `go1.27 && goexperiment.jsonv2` (as `unmarshal_v2_test.go`): on Go 1.26
+   with `jsonv2`, no `init` calls `EnableV2`, thus the taint control of the
+   probe does not apply. The test runs only in a woven test binary
+   (`requireWoven`), so that the unwoven run of lane B does not do a second
+   `-a` build. The builds use `-buildvcs=false`: in the agent sandbox, the
+   VCS stamping of a nested build can fail (`exit status 126`). The probe
+   prints `result` lines (compared with the unwoven build) and `taint`
+   lines (control: the woven `Decode` taints, the unwoven does not).
+3. The step 5 `Decoder` tests (`decoder_test.go`) run on all lanes, with
+   two new variant constants: `decoderSourceHasLeadingWhitespace` (the v1
+   source value starts after the previous value, section 6.3) and
+   `decoderTaintsNumberTokens`. On v2, a `json.Number` from a number
+   token has taint: `(*Number).UnmarshalJSONFrom` converts the tainted
+   clone, and the runtime hooks taint the conversion (accurate: the bytes
+   come from the body). On v1, it is clean. A quoted number is tainted on
+   all lanes. Steps 7 and 10 must list this difference.
+4. `TestDecoderClosedAfterForeignBind` is the rule (f) test of this step
+   (root and `bufio` wrapper; control: own rebind). It also shows that the
+   decoder is closed: the next `Decode` does not call the `Clone`
+   callback. `decoderPropagates` is true on all variants now; the step 3a
+   tests run with propagation on lane B and pass.
+5. `TestNewDecoderLooksUpOnlyForAConsumer` expects one lookup on all
+   variants, and checks the consumer gate with both consumer bits cleared
+   (`SetV1ForTest(false)`, `SetV2ForTest(false)`): no lookup, no
+   allocation.
+6. Telemetry: the new aspect has `import-path: encoding/json`, thus
+   `instrumentedPropagationPoints` is 9 until step 6.
+   `TestWrapExpressionAspectsWrapOnlyCalls` (`iast/runtime`) pins the
+   wrap-expression aspects: it now counts 1 in `iast/encoding/json`.
+
+Revert evidence (lane B, woven): with a `CloneForOwner` that accepts any
+complete lookup with one owner (no token revalidation),
+`TestDecoderClosedAfterForeignBind` (root, `bufio`) and
+`TestDecoderBoundAfterNewDecoderIsMiss` (second owner ended before
+`Decode`, root and `bufio`) fail ("the value is tainted").
+
+Cost (lane B, darwin/arm64, woven): with no request, `NewDecoder` has the
+same number of allocations as unwoven (2), and `EnableV2` adds no
+measurable time (about 101 ns/op with the consumer bits, 99 ns/op with
+none). With an active request, `NewDecoder` on a bound reader takes about
+131 ns/op, against 113 ns/op on an unbound reader (the lookup and the
+token), with no allocation. `NewDecoder` + `Decode` of a small bound body
+adds one allocation (the clone). The woven `NewDecoder` with no request is
+slower than the unwoven one (about 100 ns/op against 60 ns/op; 416 B
+against 368 B). This was so before step 5 (the binding field and the
+defer of step 3a). Step 8 measures it with the gates of section 7.2.
+
+Lane B status after step 5: `TestSourceShape` (step 6) fails. In
+`iast/integration/testapp`, only `TestJSONDecoderPropagatesOwnerBoundBody`
+(the v1 source value with leading whitespace, step 7) and
+`TestJSONDestinationClassesPreserveTheirContracts` (decision Q1, step 7)
+fail. The other 7 JSON tests of step 1 pass.
