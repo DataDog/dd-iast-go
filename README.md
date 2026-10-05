@@ -23,6 +23,207 @@ Many of the functionality provided by this module relies on taint tracking:
   query execution function), and no corresponding safety _mark_ has been placed,
   a _vulnerability_ is reported.
 
+### Allocator-Backed Taint Bits
+
+> [!NOTE]
+> This storage is in the internal package `internal/taint/heapbits`. The
+> `taint` package does not use it yet. Origins (sources), marks and
+> propagation are not in this storage: they come in later phases.
+
+The quick check "does this value have taint?" must be cheap, because it runs
+on hot paths of the application. To make it cheap, the module keeps **one
+taint bit for each byte of heap memory**, next to the metadata of the Go
+allocator:
+
+- bit `0`: the byte is not tainted;
+- bit `1`: the byte is tainted.
+
+The check is then a few memory loads, with no lock and no map lookup. The bits
+only tell the caller that a slower lookup (origins, marks) is necessary.
+
+#### How the bits get into the runtime
+
+Orchestrion weaves the aspects of
+[`internal/taint/heapbits/orchestrion.yml`](internal/taint/heapbits/orchestrion.yml)
+into package `runtime` at build time:
+
+Aspect | Change in the runtime | Purpose
+---|---|---
+`runtime.heapArena` | New field `__dd_taint` (a `uintptr`), plus all injected code | Points to the bit directory of the arena
+`runtime.mspan` | New field `__dd_taint` (a `uint8`) | Flag: "one bit was set in this span"
+`(*sweepLocked).sweep` | Hook at the start | Clears the bits of dead objects
+`freegc` | Hook at the start | Clears the bits of an object that `freegc` frees at once
+`mmap` | Injected non-fatal allocator, and an `init` function | Gets storage from the OS; turns the feature on (supported platforms only)
+
+The runtime gives its functions to `heapbits` with push `//go:linkname`
+variables (`__dd_iast_heapbits.set`, ...). Without weaving, these variables
+are `nil`: all `heapbits` functions do nothing and report "not tainted".
+
+#### Relationship to the Go heap
+
+The Go heap is divided into **arenas** (64 MiB on 64-bit Linux and macOS).
+Each arena has a metadata record (`heapArena`). An arena contains **spans**,
+and a span contains **object slots** of one size class. The taint storage
+follows this structure:
+
+```text
+ mheap_.arenas[l1][l2]
+        │
+        ▼
+ ┌────────────── heapArena (metadata of one 64 MiB arena) ──────────────┐
+ │ spans, pageInUse, ... (Go runtime)                                   │
+ │ __dd_taint ─────────────┐  (0 = no taint in this arena)              │
+ └─────────────────────────┼────────────────────────────────────────────┘
+                           ▼
+            ┌ directory (512 slots, one for each 128 KiB) ┐
+            │ slot 0 │ slot 1 │ slot 2 │  ...  │ slot 511 │
+            └────┬───┴────────┴────┬───┴───────┴──────────┘
+                 │                 │  slot 1 = 0: no chunk, no taint
+                 ▼                 ▼
+         ┌─ chunk (16 KiB) ─┐ ┌─ chunk (16 KiB) ─┐
+         │ 2048 x uint64    │ │ 2048 x uint64    │
+         │ = bits of 128 KiB│ │ = bits of 128 KiB│
+         │   of heap        │ │   of heap        │
+         └──────────────────┘ └──────────────────┘
+
+ The same 64 MiB arena, seen as heap memory:
+ ┌─────────────────────────┬─────────────────────┬───────────────┬─────┐
+ │ span (size class 48 B)  │ span (large object) │ span (stack)  │ ... │
+ │ [obj][obj][obj][obj]... │ [      object     ] │ (mSpanManual) │     │
+ └─────────────────────────┴─────────────────────┴───────────────┴─────┘
+   mspan.__dd_taint = 1      mspan.__dd_taint = 0  never tainted
+   (one bit was set)         (no sweep hook)       (Set refuses it)
+```
+
+The storage is lazy. An arena with no taint has no directory. A 128 KiB region
+with no taint has no chunk. A missing directory or chunk means "no taint".
+
+#### From an address to its bit
+
+The Go garbage collector does not move heap objects. Thus the address of a
+byte identifies the byte for all the life of the object:
+
+```text
+ address p
+   │
+   ├─ arena  = arena index of p            → heapArena → directory
+   ├─ off    = p - arena base              (0 .. 64 MiB)
+   ├─ slot   = off / 128 KiB               → chunk (or none: not tainted)
+   ├─ word   = (off % 128 KiB) / 64        → one uint64 in the chunk
+   └─ bit    = off % 64                    → 1 = tainted
+
+ One uint64 word = the bits of 64 consecutive heap bytes:
+
+   heap bytes:  [b0][b1][b2] ... [b63]
+   word bits:    0   1   2  ...   63
+```
+
+The bits describe **memory**, not values. A sub-string or a sub-slice of a
+tainted value uses the same memory, so it has the same bits. No key and no
+length is stored.
+
+Operation | Same memory? | Taint of the result
+---|:---:|---
+`s[i:j]`, `b[i:j]` | Yes | Same bits (tainted where the source is tainted)
+`[]byte(s)` that the compiler makes without a copy | Yes | Same bits
+`copy(dst, src)`, `string(b)` that allocates, concatenation | No | Not tainted (only `heapbits.Copy` copies the bits)
+Stack values, global variables, read-only data | Not heap | Never tainted (`Set` refuses them)
+
+#### Where the bits are stored: slabs, chunks and the budget
+
+The feature gets memory from the OS only in **slabs** of 1 MiB. Each slab holds
+64 chunks of 16 KiB. A directory also uses one chunk.
+
+```text
+ slab descriptors (fixed array in the runtime, 1024 entries = max 1 GiB)
+ ┌────────────┬────────────┬─────┐
+ │ slab 0     │ slab 1     │ ... │   base  = address of the 1 MiB mapping
+ │ base, free │ base, free │     │   free  = 64-bit mask (1 = free chunk)
+ └─────┬──────┴────────────┴─────┘
+       ▼
+ ┌──────────────────── slab 0 (1 MiB, from mmap) ─────────────────────┐
+ │ chunk 0 │ chunk 1 │ chunk 2 │ chunk 3 │       ...       │ chunk 63 │
+ │ (dir)   │ (bits)  │ (free)  │ (bits)  │                 │ (free)   │
+ └─────────┴─────────┴─────────┴─────────┴─────────────────┴──────────┘
+
+ A slot does not hold a pointer. It holds a code:
+   0                         → empty (no chunk)
+   1                         → claimed (allocation in progress: read as empty)
+   2 + slab*64 + chunk       → this chunk of this slab
+```
+
+- **Ratio.** 1 bit for 1 byte: the bits use 1/8 of the size of the tainted
+  heap regions (with a granularity of 128 KiB).
+- **Budget.** The default budget is 64 MiB of slabs (enough for taint in up to
+  512 MiB of heap). The maximum is 1 GiB. The budget is reserved before each
+  `mmap`, so the feature never maps more than the budget. The mapped memory
+  counts in the memory limit of the Go runtime (`GOMEMLIMIT`).
+- **Drop, do not wait.** When the budget is used, when the OS refuses the
+  memory, or when another goroutine gets the same storage, `Set` changes no bit
+  and returns `false`. It never blocks.
+- **Recycling.** When a dead object fully covers a 128 KiB chunk, the sweeper
+  gives the chunk back to its slab (it sets the free bit). Slabs are never
+  unmapped, but their chunks are used again before a new slab is mapped.
+
+#### Life cycle of a taint bit
+
+The bits must never stay on memory that the allocator gives to a new object.
+The Go allocator uses memory again only after the sweeper frees it (or after
+`freegc` frees it). The hooks clear the bits at these 2 points, so the
+allocation path (`mallocgc`) has no added work:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant App as Application
+    participant HB as heapbits
+    participant RT as Woven runtime
+    participant GC as Garbage collector
+
+    App->>HB: SetString(s)
+    HB->>RT: set(p, n)
+    RT->>RT: Find the span of p. Refuse non-heap memory,<br/>user arena memory, spans > 64 MiB,<br/>and ranges that cross into a neighbour object.
+    RT->>RT: Get the directory and the chunks<br/>(from a slab, or drop if the budget is used)
+    RT->>RT: Write the bits, then set mspan.__dd_taint = 1
+    HB-->>App: true
+
+    App->>HB: AnyString(s[3:7])
+    HB->>RT: any(p+3, 4)
+    RT-->>App: true (a few loads, no lock)
+
+    Note over App: s is not used anymore
+    GC->>GC: Mark phase: s is dead
+    GC->>RT: sweep(span) — hook runs only if mspan.__dd_taint != 0
+    RT->>RT: Set mspan.__dd_taint = 0.<br/>Clear the bits of dead objects<br/>(or recycle whole chunks).<br/>Set the flag again if a live object has taint.
+    Note over GC: The slot can now hold a new object,<br/>with no old taint
+```
+
+Special cases:
+
+- **Spans with no taint.** The sweep hook reads only the 1-byte span flag. With
+  no taint in the process, this is the only added work.
+- **Finalizers.** The sweeper can make a dead object with a finalizer live
+  again. The hook does not clear the bits of such an object.
+- **`freegc`** (`GOEXPERIMENT=runtimefreegc`) frees an object without a sweep.
+  A hook clears the bits of its slot first.
+- **User arenas** (`GOEXPERIMENT=arenas`) free memory without a sweep. Thus
+  `Set` refuses user arena memory.
+- **Tiny allocator.** Several small pointer-free values can share one 16-byte
+  slot. The bits stay exact for each byte, but the runtime cannot check the
+  bounds of each value in such a slot. Use the `String` and `Bytes` helpers to
+  always give correct ranges.
+
+#### Platforms
+
+The feature is on only for:
+
+- `linux` and `darwin`;
+- on `amd64`, and on `arm64` with LSE atomics.
+
+It is off in ASan and MSan builds. On all other targets, the woven runtime
+compiles, `heapbits.Enabled()` returns `false`, and `Set` always returns
+`false`.
+
 ## Cost Control
 
 Taint tracking has non-trivial associated cost; both in terms of memory and
