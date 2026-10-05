@@ -48,3 +48,11 @@ const unmarshalHasStringCache = true
 // (TestUnmarshalAllocationBaseline). With the gate off, the woven build must
 // have the same number.
 const unmarshalCleanAllocations = 5
+
+// variantTag is the tag of the aspect ids of orchestrion.yml that apply only
+// to this variant (TestInstrumentedPropagationTelemetry).
+const variantTag = "[v2]"
+
+// variantJSONv2 reports whether the test binary has the v2 files of
+// encoding/json. The shape tests parse the files of this variant.
+const variantJSONv2 = true

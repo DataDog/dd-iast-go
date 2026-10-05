@@ -15,13 +15,6 @@ import (
 	"github.com/DataDog/dd-iast-go/internal/taint/request"
 )
 
-// instrumentedPropagationPoints is the number of aspects of orchestrion.yml
-// with the join point clause "import-path: encoding/json" (this count also
-// includes "import-path: encoding/json/v2"). The count is the same on all
-// variants of encoding/json until plan encoding-json-v2, step 6, counts the
-// aspects of each variant.
-const instrumentedPropagationPoints = 9
-
 func init() {
 	telemetry.InstrumentedPropagation += instrumentedPropagationPoints
 	jsonbridge.Register(callbacks())

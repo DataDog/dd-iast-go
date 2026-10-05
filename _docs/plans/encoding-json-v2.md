@@ -1851,6 +1851,9 @@ Each step lists its exit criteria and an estimate for one engineer.
 6. **Variant-aware shape and telemetry tests (3-4 h).** Section 6.4. Exit:
    tests pass on all lanes and fail when a pinned symbol is renamed (check
    with a patched copy of the GOROOT package directory).
+
+   **Step 6: done.** See "Appendix: Implementation notes (step 6)" for the
+   deviations and the rename evidence.
 7. **Integration tests (7-10 h).** Make `json_destinations_test.go` and
    `json_controls_test.go` variant-aware (build-tagged expectation helpers).
    Add these cases, with the expected result for each variant:
@@ -2890,3 +2893,108 @@ Lane B status after step 5: `TestSourceShape` (step 6) fails. In
 (the v1 source value with leading whitespace, step 7) and
 `TestJSONDestinationClassesPreserveTheirContracts` (decision Q1, step 7)
 fail. The other 7 JSON tests of step 1 pass.
+
+## Appendix: Implementation notes (step 6)
+
+Changed files: `internal/sourceshape/sourceshape.go` (new, used by tests
+only), `iast/encoding/json/points_v1.go`, `points_v2.go` (new),
+`json.go` (constant removed), `orchestrion.yml` (tags of 5 ids),
+`json_test.go` (telemetry test), `shape_v1_test.go`, `shape_v2_test.go`
+(new, `TestSourceShape` moved out of `json_test.go`), `variant_v1_test.go`,
+`variant_v2_test.go` (`variantTag`, `variantJSONv2`),
+`iast/io/source_shape_test.go` (new), and the ids in
+`_docs/plans/propagation-coverage-matrix.md`.
+
+Deviations from the text of the plan, with the reason for each:
+
+1. Telemetry counts. A propagation point of a variant is an aspect with
+   the tag of the variant or `[shared]`, with a join point clause
+   `import-path: encoding/json` or `encoding/json/v2` (exact values, not a
+   substring count), and not in the list `notPropagationPoints` of the
+   test. The list has `[shared] encoding/json Decoder reader binding` on v2
+   (only the v1 `init` sets its dispatch variables) and `[v2] ... string
+   cache guard` (it propagates nothing, step 4 note 4). Thus v1 is 6 (as
+   at step 3a) and v2 is 3, not 2: the `[shared]` `NewDecoder` capture of
+   step 3a is a v2 point too (the v2 `Decode` uses its token). The test
+   also requires a known tag on each id, and unique ids. The untagged ids
+   now have a tag: `[shared] application JSON propagation bootstrap`, and
+   `[v1]` on the four `decodeState` aspects.
+2. Go 1.26 with `GOEXPERIMENT=jsonv2` (not supported) reports the v2 count.
+   `shape_v2_test.go` has the tags `go1.27 && goexperiment.jsonv2`, as
+   `unmarshal_v2_test.go`.
+3. The shape tests parse the files of the variant of the test binary: the
+   build context of `sourceshape.Load` sets or removes the tag
+   `goexperiment.jsonv2` from `variantJSONv2`, not from the environment.
+4. The `.ReadValue()` calls are found by syntax, not with `go/types`: three
+   calls, in `(*Decoder).Decode` (receiver `dec.dec`, the field of type
+   `*jsontext.Decoder`), `checkValid`, and `(*Number).UnmarshalJSONFrom`.
+   A type check of `encoding/json` from source needs all its dependencies.
+5. Added pins (used by the aspects or the Read rule): the signatures of
+   all targets and of `makeString`; `addressableValue` embeds
+   `reflect.Value`; `export` is
+   `jsontext.Internal.Export(&internal.AllowInternalUse)`; the `stringify`
+   rule of the closure; v2 `NewDecoder` wraps a `*bytes.Buffer` in
+   `struct{ io.Reader }` (else `jsontext.fetch` reads it with `Next`, not
+   `Read`); `jsontext.fetch` calls only `Read` on `d.rd`; jsonflags
+   `Flags.Has`/`Get` and jsonopts `Struct.Flags`. "No package-level
+   initializer calls `lookupArshaler`" is transitive and conservative (by
+   name, review finding of step 6): a function or a package-level
+   variable "reaches" `lookupArshaler` when its body or initializer
+   refers to a name that reaches it, as a call or as a value, also in a
+   function literal. An initializer or an `init` body must not refer to a
+   name that reaches it. Only a function literal that is all the
+   initializer of a variable is not examined (it does not run at
+   initialization); a later reference to the variable is examined.
+6. The io side: `TestReaderWrapperShape` uses `reflect` (the compiled
+   standard library), thus a GOROOT copy cannot change it.
+   `TestReadGuardShape` parses `bufio`, `io`, and `net/http`.
+
+Rename evidence. The test binaries were built once for each lane (`go test
+-c`), then run with `GOROOT` set to a copy of GOROOT (`src/<top>` copied,
+the other `src` entries are symbolic links) with one change for each run.
+`runtime.GOROOT()` returns the `GOROOT` of the environment. Control (no
+change): pass on lanes A, B, C. Each change below fails (exit 1) with the
+message of the pin:
+- v1 (lanes A and C, same results): `decodeState.literalStore` renamed;
+  `type decodeState` renamed; field `Decoder.r` renamed to `rd`;
+  `valueQuoted` returns `(any, bool)`; `refill` calls `dec.r.ReadByte`.
+- v2 (lane B): `makeStringArshaler`, `errInvalidStringTag`,
+  `PreviousTokenOrValue`, `jsonflags.StringTag`, and the field
+  `arshaler.unmarshal` renamed; `makeString` gets a third parameter;
+  `InputOffset` returns `int`; `decoderState` has a named field `buffer
+  decodeBuffer` in place of the embedded `decodeBuffer`; `Decoder.dec` is a
+  `*jsontext.Encoder`; a fourth `dec.dec.ReadValue()` call in `Decode`;
+  `NewDecoder` does not wrap `*bytes.Buffer`; `fetch` calls `d.rd.ReadAt`;
+  the null test is `len(val) == 4 && string(val) == "null"`;
+  `xd.SkipValue()` after `va.SetString(str)`; `var _ =
+  lookupArshaler(nil)`; `var _ = func() int { makeStructFields(nil); ...
+  }()` (transitive); after the review fix, also `var __shapeInit = func()
+  *arshaler { return lookupArshaler(reflect.TypeOf("")) }; var _ =
+  __shapeInit()` (passed before the fix), `var __f = lookupArshaler; var
+  _ = __f(nil)`, an `init` that calls a local function literal that calls
+  `lookupArshaler`, a function literal argument of a called function, and
+  a function literal in a struct field that an initializer calls, and
+  (second review fix) a method named `init` with a receiver that an
+  initializer calls (`var _ = (__shapeCarrier{}).init()`).
+  Negative controls: `var _ = func() int { lookupArshaler(nil); ... }`
+  and `var __shapeInit = func() ... ` alone (not called) pass.
+- io (lane A; the `reset` rename also on lanes B and C): `(*Reader).reset`
+  renamed; `Reset` assigns `b.rd`; `reset` sets `w: 1`; `NewReaderSize`
+  returns `b` for each `*Reader` (no size check); a third `reset` call;
+  `Read` copies `b.buf[b.r:]`; `LimitReader` returns
+  `&LimitedReader{r, 0}`; `l.R.Close()` in `(*LimitedReader).Read`;
+  `r.WriteTo(nil)` in `io.ReadAll`; `mr.readers[0].Close()` in
+  `(*multiReader).Read` (lane B); `l.r.Close()` in `(*maxBytesReader).Read`
+  (lanes A and C).
+
+Validation (darwin/arm64, own `GOCACHE` for each lane and flag set,
+`GOFLAGS=-buildvcs=false`): `gofmt -l .` empty; `go vet ./...`,
+`go vet ./.github`, and `go tool checklocks ./...` clean on lanes A, B, C;
+plain and woven `go test -count=1 -shuffle=on ./...` pass on lanes A, B,
+C (lane B woven: no failure); lane A woven with `-race` and coverage
+(the CI command), `go test -race ./.github`, and `go test -race
+./internal/taint/...` pass; the 5 other modules (CI command, lane A,
+with `go vet`) pass. `iast/integration/testapp` on lane B: only
+`TestJSONDecoderPropagatesOwnerBoundBody` and
+`TestJSONDestinationClassesPreserveTheirContracts` fail (step 7); lane C
+passes.

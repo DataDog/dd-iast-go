@@ -8,8 +8,14 @@ meta:
   name: github.com/DataDog/dd-iast-go/iast/encoding/json
   description: Request-scoped encoding/json propagation
 
+# Each aspect id starts with a variant tag (plan encoding-json-v2, section
+# 6.4). The tag tells the variants of encoding/json where the join point of the
+# aspect can match: [v1] for the v1 files (!goexperiment.jsonv2), [v2] for the
+# v2 files (goexperiment.jsonv2), and [shared] for all variants.
+# TestInstrumentedPropagationTelemetry uses the tags to count the propagation
+# points of each variant (instrumentedPropagationPoints).
 aspects:
-  - id: application JSON propagation bootstrap
+  - id: "[shared] application JSON propagation bootstrap"
     join-point:
       all-of:
         - package-filter: {root: true, pattern: "**"}
@@ -293,7 +299,7 @@ aspects:
             {{ . }}
             {{- end -}}
 
-  - id: encoding/json decode state lifetime
+  - id: "[v1] encoding/json decode state lifetime"
     join-point:
       all-of:
         - import-path: encoding/json
@@ -310,7 +316,7 @@ aspects:
               defer iastjsonbridge.Unbind({{ .Function.Receiver }})
             }
 
-  - id: encoding/json quoted string source
+  - id: "[v1] encoding/json quoted string source"
     join-point:
       all-of:
         - import-path: encoding/json
@@ -334,7 +340,7 @@ aspects:
               )
             }()
 
-  - id: encoding/json document publication
+  - id: "[v1] encoding/json document publication"
     join-point:
       all-of:
         - import-path: encoding/json
@@ -349,7 +355,7 @@ aspects:
           template: |-
             iastjsonbridge.Document({{ .Function.Receiver }}, {{ .Function.Argument 0 }})
 
-  - id: encoding/json typed string materialization
+  - id: "[v1] encoding/json typed string materialization"
     join-point:
       all-of:
         - import-path: encoding/json

@@ -8,16 +8,10 @@ package json
 import (
 	"context"
 	"errors"
-	"go/ast"
-	"go/build"
-	"go/parser"
-	"go/token"
-	"go/types"
 	"os"
-	"path/filepath"
 	"reflect"
 	"regexp"
-	"runtime"
+	"slices"
 	"strings"
 	"testing"
 
@@ -29,72 +23,68 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestInstrumentedPropagationTelemetry(t *testing.T) {
-	contents, err := os.ReadFile("orchestrion.yml")
-	require.NoError(t, err)
-	registered := strings.Count(string(contents), "- import-path: encoding/json")
-	require.Equal(t, registered, instrumentedPropagationPoints)
-	require.GreaterOrEqual(t, telemetry.InstrumentedPropagation, uint(registered))
+// notPropagationPoints are the aspects that change code of encoding/json or
+// encoding/json/v2 on a variant, but that move no taint on that variant. The
+// key is the aspect id, the value is the variant tag.
+var notPropagationPoints = map[string]string{
+	// Only the v1 init sets the dispatch variables of this aspect.
+	"[shared] encoding/json Decoder reader binding": "[v2]",
+	// The guard keeps strings out of the string cache. It propagates nothing.
+	"[v2] encoding/json/v2 string cache guard": "[v2]",
 }
 
-func TestSourceShape(t *testing.T) {
-	directory := filepath.Join(runtime.GOROOT(), "src", "encoding", "json")
-	pkg, err := build.ImportDir(directory, 0)
+// aspectTags are the variant tags of the aspect ids of orchestrion.yml.
+var aspectTags = []string{"[v1]", "[v2]", "[shared]"}
+
+// jsonAspect is one aspect of orchestrion.yml.
+type jsonAspect struct {
+	id          string
+	importPaths []string
+}
+
+// readJSONAspects returns the aspects of orchestrion.yml, with the values of
+// their import-path join point clauses.
+func readJSONAspects(t *testing.T) []jsonAspect {
+	t.Helper()
+	contents, err := os.ReadFile("orchestrion.yml")
 	require.NoError(t, err)
-	found := map[string]bool{}
-	fields := map[string]string{}
-	for _, name := range pkg.GoFiles {
-		file, err := parser.ParseFile(token.NewFileSet(), filepath.Join(directory, name), nil, 0)
-		if err != nil {
-			t.Fatal(err)
+	var aspects []jsonAspect
+	for line := range strings.SplitSeq(string(contents), "\n") {
+		if id, ok := strings.CutPrefix(line, "  - id: "); ok {
+			aspects = append(aspects, jsonAspect{id: strings.Trim(id, `"`)})
+			continue
 		}
-		for _, declaration := range file.Decls {
-			if general, ok := declaration.(*ast.GenDecl); ok {
-				for _, specification := range general.Specs {
-					typeSpec, ok := specification.(*ast.TypeSpec)
-					if !ok || (typeSpec.Name.Name != "Decoder" && typeSpec.Name.Name != "decodeState") {
-						continue
-					}
-					structure, ok := typeSpec.Type.(*ast.StructType)
-					if !ok {
-						continue
-					}
-					for _, field := range structure.Fields.List {
-						for _, name := range field.Names {
-							fields[typeSpec.Name.Name+"."+name.Name] = types.ExprString(field.Type)
-						}
-					}
-				}
-			}
-			function, ok := declaration.(*ast.FuncDecl)
-			if !ok || function.Recv == nil || len(function.Recv.List) != 1 {
-				continue
-			}
-			receiver, ok := function.Recv.List[0].Type.(*ast.StarExpr)
-			if !ok {
-				continue
-			}
-			identifier, ok := receiver.X.(*ast.Ident)
-			if !ok {
-				continue
-			}
-			key := identifier.Name + "." + function.Name.Name
-			switch key {
-			case "Decoder.Decode", "decodeState.init", "decodeState.literalStore", "decodeState.unmarshal", "decodeState.valueQuoted":
-				found[key] = true
-			}
+		trimmed := strings.TrimSpace(line)
+		if path, ok := strings.CutPrefix(trimmed, "- import-path: "); ok && len(aspects) > 0 {
+			last := &aspects[len(aspects)-1]
+			last.importPaths = append(last.importPaths, path)
 		}
 	}
-	for _, key := range []string{"Decoder.Decode", "decodeState.init", "decodeState.literalStore", "decodeState.unmarshal", "decodeState.valueQuoted"} {
-		if !found[key] {
-			t.Errorf("missing encoding/json instrumentation target %s", key)
+	require.NotEmpty(t, aspects)
+	return aspects
+}
+
+func TestInstrumentedPropagationTelemetry(t *testing.T) {
+	registered := 0
+	seen := map[string]bool{}
+	for _, aspect := range readJSONAspects(t) {
+		tag, _, _ := strings.Cut(aspect.id, " ")
+		require.Contains(t, aspectTags, tag, "aspect %q has no variant tag", aspect.id)
+		require.False(t, seen[aspect.id], "aspect %q is not unique", aspect.id)
+		seen[aspect.id] = true
+		changesJSON := slices.ContainsFunc(aspect.importPaths, func(path string) bool {
+			return path == "encoding/json" || path == "encoding/json/v2"
+		})
+		if !changesJSON || (tag != variantTag && tag != "[shared]") || notPropagationPoints[aspect.id] == variantTag {
+			continue
 		}
+		registered++
 	}
-	for key, want := range map[string]string{"Decoder.r": "io.Reader", "Decoder.d": "decodeState", "decodeState.data": "[]byte"} {
-		if got := fields[key]; got != want {
-			t.Errorf("encoding/json field %s has type %q, want %q", key, got, want)
-		}
+	for id := range notPropagationPoints {
+		require.True(t, seen[id], "notPropagationPoints has the unknown aspect %q", id)
 	}
+	require.Equal(t, instrumentedPropagationPoints, registered)
+	require.GreaterOrEqual(t, telemetry.InstrumentedPropagation, uint(registered))
 }
 
 type customJSONString string
