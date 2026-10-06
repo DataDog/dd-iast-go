@@ -479,5 +479,30 @@ func init() {
 		if cnt != 0 {
 			c.Count(instrumentation.TelemetryNamespaceIAST, "source.dropped", nil).Submit(float64(cnt))
 		}
+		cnt = ownBusyDropsDelta()
+		if cnt != 0 {
+			c.Count(instrumentation.TelemetryNamespaceIAST, "owner.busy_dropped", nil).Submit(float64(cnt))
+		}
 	})
+}
+
+var (
+	// ownBusyDropsTotal is request.OwnBusyDrops (a variable for the tests).
+	ownBusyDropsTotal = request.OwnBusyDrops
+	// reportedOwnBusyDrops is the value of ownBusyDropsTotal at the last
+	// report.
+	reportedOwnBusyDrops atomic.Uint64
+)
+
+// ownBusyDropsDelta returns the number of own-slot accesses that the request
+// package dropped (slot busy for all the attempts) since the last call.
+// request.OwnBusyDrops is a total that only increases, thus the delta is the
+// change of the total.
+func ownBusyDropsDelta() uint64 {
+	total := ownBusyDropsTotal()
+	previous := reportedOwnBusyDrops.Swap(total)
+	if total < previous {
+		return 0
+	}
+	return total - previous
 }

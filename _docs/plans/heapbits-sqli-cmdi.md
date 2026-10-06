@@ -231,6 +231,7 @@ operands). Thus each run is cut into **segments**, from left to right. The
    then the body copy). The segment is that prefix. Needed for copies
    (concatenation, Builder, `string(b)`). A match of **1 byte** is valid
    (critic round 2 item 10): the 2-byte rule is for source admission only.
+   A short match is **weak** (4.5.2, strong-match rule).
 3. A derived candidate gives the source of each part of the segment from its
    own segments.
 4. Tie rule: the address match wins; then the longest prefix; then the
@@ -253,6 +254,22 @@ Only owner copies and the sink value itself (on the sink goroutine) are read.
 - The finding is reported only when at least one segment matches a source of
   the owner. Thus bits that stay on reused memory (section 12, R2) do not make
   a report unless their bytes equal a source of the current request.
+- **Strong-match rule (user decision, T5.21).** A finding needs at least one
+  **strong** segment of the owner:
+  - an address match (4.5.1 step 1, with the check of the bytes), of any
+    length (also 1 byte); or
+  - a content match (4.5.1 step 2) of at least `min(4, length of the matched
+    candidate copy)` bytes. Thus a full copy of a 2-byte or 3-byte source is
+    strong.
+
+  A shorter content match (1 to 3 bytes of a longer copy) is **weak**: equal
+  bytes of a different request (for example a `-`) can match by chance. A
+  weak segment still gives its range and source inside a reported finding,
+  but weak segments alone do not make a report. Derived entries count like
+  sources (their copy length is the candidate length). The same rule applies
+  to `IsTainted*` and `Visit*` (4.8): a value with only weak segments is not
+  tainted. A derived entry is made only from an input with a strong segment,
+  because a later address match of the entry is strong.
 
 #### 4.5.3 Owner search without a context
 
@@ -296,8 +313,8 @@ Port the PR #39 API: constants, `Source`, `SourceValue`, `Marks`, `Range`,
   fails).
 - `IsTainted*` (round 3 M4): `heapbits.AnyString/AnyBytes` is the cheap
   gate; after a hit, the value is tainted only when the attribution of 4.5
-  finds at least one source of an **active** owner (owner search of 4.5.3,
-  generation-safe). Thus `IsTainted*` returns `false` after `Finish`, as in
+  finds at least one **strong** segment (4.5.2) of a source of an **active**
+  owner (owner search of 4.5.3, generation-safe). Thus `IsTainted*` returns `false` after `Finish`, as in
   PR #39 (`P/taint/taint.go:155-165`, `P/taint/taint_test.go:72-73`,
   `:152-155`).
 - `Visit*`: the segments of 4.5 for the owner of the context. Foreign
@@ -623,6 +640,7 @@ request URL (no retention; no match on a reused address) (round 3 M5).
 | `TestReplacerReplacementProvenanceIsUnsupported` | The replacement text of `singleStringReplacer` is tainted when it is tainted | Builder hook |
 | Store, reader binding, decoder slot, writer store and mark tests | Dropped | Code not ported (section 2, 4.7) |
 | Equal bytes in 2 requests keep separate sources | Not supported | Content match (4.5.4) |
+| A 1-byte copy (for example `"'" + v[i:i+1]`) of a longer source is reported | Not reported when it is the only tainted part (weak match, also `IsTainted*` false); a window with the address of the source still reports | Strong-match rule (4.5.2): a short content match can be a chance match of a different request |
 | Body bytes after 64 KiB | Bits stay, but foreign at the sink | Same 64 KiB limit as PR #39 (4.4) |
 | User `copy`/`append` of tainted bytes | Taint lost | Same as PR #39 (5.1) |
 

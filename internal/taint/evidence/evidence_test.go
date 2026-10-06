@@ -143,6 +143,32 @@ func TestBuildWithoutSourceIsNone(t *testing.T) {
 	require.Nil(t, snapshot)
 }
 
+// TestBuildNeedsStrongSegment: a weak segment alone makes no snapshot; in a
+// snapshot with a strong segment, a weak segment keeps its source.
+func TestBuildNeedsStrongSegment(t *testing.T) {
+	weak := attributedSegment(5, 1, "short")
+	weak.Weak = true
+	snapshot, status := Build(testOwner, "0123456789", []Segment{foreignSegment(0, 2), weak})
+	require.Equal(t, StatusNone, status, "a report needs at least one strong segment (plan 4.5.2)")
+	require.Nil(t, snapshot)
+
+	snapshot = build(t, "0123456789", attributedSegment(0, 4, "long"), weak)
+	require.Equal(t, []string{"long", "short"}, sourceNames(snapshot))
+	require.Contains(t, parts(snapshot), Part{Start: 5, Length: 1, Source: 1})
+
+	// A weak segment merged into a strong segment of the same source.
+	merged := attributedSegment(4, 2, "long")
+	merged.Weak = true
+	snapshot = build(t, "0123456789", attributedSegment(0, 4, "long"), merged)
+	require.Contains(t, parts(snapshot), Part{Start: 0, Length: 6, Source: 0})
+
+	// A strong segment that a bound makes foreign does not count.
+	setRangeCount(t, 1)
+	snapshot, status = Build(testOwner, "0123456789", []Segment{weak, attributedSegment(7, 3, "late")})
+	require.Equal(t, StatusNone, status)
+	require.Nil(t, snapshot)
+}
+
 func TestBuildCutsInvalidSegments(t *testing.T) {
 	snapshot := build(t, "0123",
 		attributedSegment(0, 3, "a"),

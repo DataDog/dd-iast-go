@@ -182,8 +182,10 @@ func (d *ownerData) addDerived(out unsafe.Pointer, outLen uintptr, segs []segmen
 
 // recordBody records a body Read of n bytes at p, at offset of the body.
 // located is true when the bytes have taint bits (they are heap memory):
-// only then is the chunk locator kept.
-func (d *ownerData) recordBody(p unsafe.Pointer, n uintptr, offset uint64, located bool) {
+// only then is the chunk locator kept. It returns false when the budget
+// stopped the copy for this Read (a source drop, for telemetry).
+func (d *ownerData) recordBody(p unsafe.Pointer, n uintptr, offset uint64, located bool) bool {
+	ok := true
 	b := &d.body
 	if !b.stopped && offset == uint64(len(b.copy)) && len(b.copy) < MaxBodyCopy {
 		take := min(int(n), MaxBodyCopy-len(b.copy))
@@ -194,6 +196,7 @@ func (d *ownerData) recordBody(p unsafe.Pointer, n uintptr, offset uint64, locat
 				b.copy = cloneBytes(b.copy, newCap)
 			} else {
 				b.stopped = true
+				ok = false
 			}
 		}
 		if !b.stopped {
@@ -211,4 +214,5 @@ func (d *ownerData) recordBody(p unsafe.Pointer, n uintptr, offset uint64, locat
 		b.chunks[b.nextChunk] = bodyChunk{loc: locator{addr: uintptr(p), n: n}, offset: offset, order: d.nextOrder()}
 		b.nextChunk = (b.nextChunk + 1) % MaxBodyChunks
 	}
+	return ok
 }

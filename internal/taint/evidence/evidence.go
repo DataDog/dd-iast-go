@@ -145,7 +145,9 @@ func anyTainted(values []string) bool {
 // CollectStringFor assembles the unsafe provenance of value for the one owner
 // of target. Every tainted byte that is not attributed to a source of this
 // owner is a foreign part (see [Part.Foreign]). It returns StatusNone when
-// no byte is attributed to a source of the owner.
+// no byte is attributed to a source of the owner with a strong match (see
+// [request.Segment.Strong]). Weak parts have their source in a collected
+// snapshot.
 func CollectStringFor(target Target, value string, vulnerability constants.VulnerabilityType) (*Snapshot, Status) {
 	if !validVulnerability(vulnerability) {
 		return nil, StatusDropped
@@ -266,6 +268,9 @@ type collector struct {
 	sourceCount int
 	sourceBytes int
 	sources     [MaxSources]Source
+	// strong is true when at least one part with a source has a strong
+	// match (see [request.Segment.Strong]).
+	strong bool
 }
 
 func newCollector() *collector {
@@ -297,7 +302,7 @@ func (c *collector) addAttribution(offset uint32) {
 			c.addForeign(offset+segment.Start, segment.Length)
 			continue
 		}
-		c.addSource(offset+segment.Start, segment.Length, Source{Origin: source.Origin, Name: source.Name, Value: source.Value})
+		c.addSource(offset+segment.Start, segment.Length, Source{Origin: source.Origin, Name: source.Name, Value: source.Value}, segment.Strong)
 	}
 	r.Reset()
 }
@@ -308,14 +313,17 @@ type Segment struct {
 	// Foreign is true when the bytes are not attributed to a source of the
 	// owner. Source is then not used.
 	Foreign bool
-	Source  Source
+	// Weak is true when the segment has a source from a weak match (see
+	// [request.Segment.Strong]). The zero value is a strong segment.
+	Weak   bool
+	Source Source
 }
 
 // Build assembles the snapshot of value for owner from segments, with the
 // bounds of a collection: a segment that a bound does not permit is foreign.
 // The segments must be in the order of Start; a segment that overlaps a
 // previous segment is cut, a segment out of value is ignored. It returns
-// StatusNone when no segment has a source. A collection does the same work
+// StatusNone when no segment has a source with a strong match. A collection does the same work
 // with the segments of the attribution of value.
 func Build(owner OwnerIdentity, value string, segments []Segment) (*Snapshot, Status) {
 	if len(value) == 0 || len(value) > MaxValueBytes {
@@ -331,16 +339,16 @@ func Build(owner OwnerIdentity, value string, segments []Segment) (*Snapshot, St
 		if segment.Foreign {
 			c.addForeign(segment.Start, length)
 		} else {
-			c.addSource(segment.Start, length, segment.Source)
+			c.addSource(segment.Start, length, segment.Source, !segment.Weak)
 		}
 	}
 	return c.result(value)
 }
 
-// addSource adds an attributed part of length bytes at start. When a bound
-// does not permit the part, the bytes are foreign: the report never shows
-// them as clean evidence.
-func (c *collector) addSource(start, length uint32, source Source) {
+// addSource adds an attributed part of length bytes at start; strong tells
+// whether its match is strong. When a bound does not permit the part, the
+// bytes are foreign: the report never shows them as clean evidence.
+func (c *collector) addSource(start, length uint32, source Source, strong bool) {
 	if length == 0 {
 		return
 	}
@@ -357,6 +365,7 @@ func (c *collector) addSource(start, length uint32, source Source) {
 		last := &c.parts[c.count-1]
 		if last.source == index && last.end == start {
 			last.end = start + length
+			c.strong = c.strong || strong
 			return
 		}
 	}
@@ -368,6 +377,7 @@ func (c *collector) addSource(start, length uint32, source Source) {
 	c.parts[c.count] = tainted{start: start, end: start + length, source: index}
 	c.count++
 	c.attributed++
+	c.strong = c.strong || strong
 }
 
 // addForeign adds a foreign part of length bytes at start. When no slot is
@@ -421,9 +431,9 @@ func (c *collector) sourceIndex(source Source) (int16, bool) {
 }
 
 // result returns the snapshot of value. It returns StatusNone when no part
-// has a source of the owner.
+// has a source of the owner with a strong match.
 func (c *collector) result(value string) (*Snapshot, Status) {
-	if c.attributed == 0 {
+	if c.attributed == 0 || !c.strong {
 		return nil, StatusNone
 	}
 	return c.finish(value), StatusCollected

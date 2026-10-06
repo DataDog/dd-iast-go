@@ -63,7 +63,10 @@ func (m *Manager) deriveAll(out unsafe.Pointer, outLen uintptr, in unsafe.Pointe
 		m.use(s, generation, id, func(d *ownerData) {
 			r.Reset()
 			d.attribute(in, inLen, matchAll, MaxAttributed, &w, &r)
-			if r.Attributed == 0 {
+			// Only an input with a strong segment makes an entry: an
+			// address match of the entry is strong, thus an entry from
+			// weak (chance) matches only would make them strong.
+			if !r.strong {
 				return
 			}
 			var segs [MaxDerivedSegments]segment

@@ -10,6 +10,7 @@ import (
 	"unsafe"
 	"weak"
 
+	"github.com/DataDog/dd-iast-go/internal/instrumentation/telemetry"
 	"github.com/DataDog/dd-iast-go/internal/model/constants"
 )
 
@@ -66,16 +67,28 @@ func (a Analysis) TaintBytesInPlace(origin constants.Origin, name string, value 
 	return ok
 }
 
+// taint is the work of TaintString, TaintBytes and their InPlace forms. When
+// the analysis is active, each source that it drops (admission, table full,
+// budget, busy slot, bits not set and no clone) increments
+// telemetry.DroppedSource. A source of an inactive (not sampled, finished)
+// analysis is not a drop.
 func (a Analysis) taint(origin constants.Origin, name string, value []byte, kind SourceKind, mayClone bool) ([]byte, bool) {
-	if !a.Active() || !admitted(len(name), len(value)) || !validOrigin(origin) {
+	if !a.Active() {
+		return value, false
+	}
+	if !admitted(len(name), len(value)) || !validOrigin(origin) {
+		telemetry.DroppedSource.Add(1)
 		return value, false
 	}
 	result := value
 	done := false
-	a.manager.use(a.slot, a.generation, a.id, func(d *ownerData) {
+	access := a.manager.tryUse(a.slot, a.generation, a.id, func(d *ownerData) {
 		result, done = d.taint(origin, name, value, kind, mayClone)
 	})
 	if !done {
+		if access != accessGone {
+			telemetry.DroppedSource.Add(1)
+		}
 		return value, false
 	}
 	return result, true

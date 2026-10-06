@@ -9,9 +9,10 @@ import "unsafe"
 
 // AttributeString attributes the tainted bytes of s to the sources of the
 // owner of a (plan section 4.5). r is reset first. It returns true when at
-// least one segment is attributed to a source of the owner; when it returns
-// false, r can still have foreign segments (tainted bytes of no source of
-// the owner). r has no segment when the analysis is not active, the slot is
+// least one segment is attributed to a source of the owner with a strong
+// match (see [Segment.Strong]); when it returns false, r can still have
+// foreign segments (tainted bytes of no source of the owner) and weak
+// attributed segments. r has no segment when the analysis is not active, the slot is
 // busy, or s has no tainted byte. The caller must call it on the
 // goroutine that owns s (the sink goroutine).
 func (a Analysis) AttributeString(s string, r *Attribution) bool {
@@ -47,7 +48,7 @@ func (m *Manager) attributeOwner(s *slot, generation uint32, id uint64, own bool
 	} else {
 		m.use(s, generation, id, f)
 	}
-	return r.Attributed != 0
+	return r.strong
 }
 
 // AttributeStringAny attributes s for an ownerless sink (plan section
@@ -100,7 +101,8 @@ func (m *Manager) attributeAny(p unsafe.Pointer, n uintptr, prefer Owner, r *Att
 }
 
 // IsTaintedString reports whether s has at least one byte that the
-// attribution gives to a source of an active owner (plan section 4.8). The
+// attribution gives to a source of an active owner with a strong match (plan
+// section 4.8, and [Segment.Strong]). The
 // cheap check of the bits comes first. It returns false after the owner
 // finished, and when the slots are busy.
 func IsTaintedString(s string) bool {
@@ -139,7 +141,8 @@ type ResolvedRange struct {
 }
 
 // VisitStringOwner visits the attributed segments of s for owner (foreign
-// segments are not visited). The visit runs after the slot lock is
+// segments are not visited). It visits nothing when no segment is strong
+// (see [Segment.Strong]); else it visits also the weak segments. The visit runs after the slot lock is
 // released. It returns true when it delivered at least one range, also when
 // visit stopped early.
 func VisitStringOwner(s string, owner Owner, visit func(ResolvedRange) bool) bool {

@@ -604,14 +604,16 @@ func TestCheckBudgetExhausted(t *testing.T) {
 	// Run 1 ("a", 1 check), run 2 ("ab": the checks stop), run 3.
 	value := taintRuns(f, "a-ab-ab", "t-tt-tt")
 	var r Attribution
-	require.True(t, a.AttributeBytes(value, &r))
+	// The 1-byte match is weak: the segments stay, but the value is not
+	// tainted for the owner.
+	require.False(t, a.AttributeBytes(value, &r))
 	require.True(t, r.Stopped())
 	require.Equal(t, "0-1=s 2-4=foreign 5-7=foreign", describeNames(&r))
 
 	// In one run: "zz" matches with 1 check, then "ab" uses all the checks;
 	// the remaining bytes of the run are foreign.
 	value = taintRuns(f, "zzab", "tttt")
-	require.True(t, a.AttributeBytes(value, &r))
+	require.True(t, a.AttributeBytes(value, &r), "zz is a full copy of a 2-byte source: strong")
 	require.True(t, r.Stopped())
 	require.Equal(t, "0-2=z 2-4=foreign", describeNames(&r))
 }
@@ -630,14 +632,15 @@ func TestCompareBudgetExhausted(t *testing.T) {
 	}
 	value := taintRuns(f, "a-a-a-a-a-a", "t-t-t-t-t-t")
 	var r Attribution
-	require.True(t, a.AttributeBytes(value, &r))
+	// 1-byte matches only (weak): the segments stay, not tainted.
+	require.False(t, a.AttributeBytes(value, &r))
 	require.True(t, r.Stopped())
 	// Equal matches: the last registered source wins.
 	require.Equal(t, "0-1=s3 2-3=s3 4-5=s3 6-7=s3 8-9=foreign 10-11=foreign", describeNames(&r))
 
 	// In one run (the adjacent segments of one source merge).
 	value = taintRuns(f, "aaaaaa", "tttttt")
-	require.True(t, a.AttributeBytes(value, &r))
+	require.False(t, a.AttributeBytes(value, &r))
 	require.True(t, r.Stopped())
 	require.Equal(t, "0-4=s3 4-6=foreign", describeNames(&r))
 }

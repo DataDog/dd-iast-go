@@ -27,6 +27,11 @@ const (
 	// maxSegments bounds all segments: foreign segments are always between
 	// attributed segments (adjacent foreign segments are merged).
 	maxSegments = 2*MaxAttributed + 1
+
+	// StrongMatchBytes is the length of a strong content match (see
+	// [Segment.Strong]): a content match of at least
+	// min(StrongMatchBytes, length of the candidate copy) bytes.
+	StrongMatchBytes = 4
 )
 
 // Segment is one part of the tainted bytes of a value.
@@ -36,6 +41,14 @@ type Segment struct {
 	// owner: bytes of a different request, stale bits, or bytes after a
 	// bound. A report must show them redacted, never as clean evidence.
 	Foreign bool
+	// Strong is true when at least one match of the segment is strong: an
+	// address match (with the check of the bytes), or a content match of
+	// at least min([StrongMatchBytes], length of the candidate copy) bytes.
+	// Derived entries count as sources. A short content match (1 to 3
+	// bytes of a longer copy) can be equal bytes of a different request by
+	// chance: such a weak segment is attributed, but only a strong segment
+	// makes a value tainted for the owner (plan section 4.5.2).
+	Strong bool
 	// source is the index in Attribution.sources (when Foreign is false).
 	source uint8
 }
@@ -55,6 +68,8 @@ type Attribution struct {
 	ids      [MaxAttributed]SourceID
 	// stopped is true when a bound stopped the attribution.
 	stopped bool
+	// strong is true when at least one attributed segment is strong.
+	strong bool
 }
 
 // Reset makes r empty.
@@ -65,6 +80,7 @@ func (r *Attribution) Reset() {
 	clear(r.sources[:r.nsources])
 	r.nsources = 0
 	r.stopped = false
+	r.strong = false
 }
 
 // Source returns the source of the segment i (false for a foreign segment).
@@ -87,6 +103,11 @@ func (r *Attribution) SourceID(i int) (SourceID, bool) {
 // Stopped reports whether a bound (the range count, or the work budget)
 // stopped the attribution. Then all the remaining tainted bytes are foreign.
 func (r *Attribution) Stopped() bool { return r.stopped }
+
+// Strong reports whether at least one attributed segment is strong (see
+// [Segment.Strong]). Only then is the value tainted for the owner: a value
+// with only weak segments makes no report.
+func (r *Attribution) Strong() bool { return r.strong }
 
 func (r *Attribution) addForeign(start, end int) {
 	if end <= start {
@@ -111,9 +132,10 @@ func (r *Attribution) addForeign(start, end int) {
 	r.N++
 }
 
-// addAttributed adds an attributed segment. It returns false when the range
-// count limit does not permit it (then nothing changed).
-func (r *Attribution) addAttributed(start, end int, id SourceID, limit int, d *ownerData) bool {
+// addAttributed adds an attributed segment; strong tells whether its match
+// is strong. It returns false when the range count limit does not permit it
+// (then nothing changed).
+func (r *Attribution) addAttributed(start, end int, id SourceID, strong bool, limit int, d *ownerData) bool {
 	if end <= start {
 		return true
 	}
@@ -121,6 +143,8 @@ func (r *Attribution) addAttributed(start, end int, id SourceID, limit int, d *o
 		last := &r.Segments[r.N-1]
 		if !last.Foreign && int(last.Start+last.Length) == start && r.ids[last.source] == id {
 			last.Length = uint32(end) - last.Start
+			last.Strong = last.Strong || strong
+			r.strong = r.strong || strong
 			return true
 		}
 	}
@@ -145,9 +169,10 @@ func (r *Attribution) addAttributed(start, end int, id SourceID, limit int, d *o
 		r.sources[index] = source
 		r.nsources++
 	}
-	r.Segments[r.N] = Segment{Start: uint32(start), Length: uint32(end - start), source: uint8(index)}
+	r.Segments[r.N] = Segment{Start: uint32(start), Length: uint32(end - start), Strong: strong, source: uint8(index)}
 	r.N++
 	r.Attributed++
+	r.strong = r.strong || strong
 	return true
 }
 
@@ -219,6 +244,11 @@ func (c candidate) better(o candidate) bool {
 		return c.size < o.size
 	}
 	return c.order > o.order
+}
+
+// strong reports whether the match c is strong (see [Segment.Strong]).
+func (c candidate) strong() bool {
+	return c.address || c.length >= min(StrongMatchBytes, c.size)
 }
 
 // lcp returns the length of the longest common prefix of a and b. It
@@ -398,14 +428,15 @@ func (d *ownerData) matchAt(value []byte, base uintptr, pos, end, mode, limit in
 
 // addCandidate adds the segments of the match c at pos of the value.
 func (d *ownerData) addCandidate(c candidate, pos, limit int, r *Attribution) (int, bool) {
+	strong := c.strong()
 	switch c.kind {
 	case kindSource:
-		if !r.addAttributed(pos, pos+c.length, SourceID(c.index), limit, d) {
+		if !r.addAttributed(pos, pos+c.length, SourceID(c.index), strong, limit, d) {
 			return 0, true
 		}
 		return c.length, false
 	case kindBody:
-		if !r.addAttributed(pos, pos+c.length, BodySourceID, limit, d) {
+		if !r.addAttributed(pos, pos+c.length, BodySourceID, strong, limit, d) {
 			return 0, true
 		}
 		return c.length, false
@@ -429,7 +460,7 @@ func (d *ownerData) addCandidate(c candidate, pos, limit int, r *Attribution) (i
 		if start > at {
 			r.addForeign(pos+at-from, pos+start-from)
 		}
-		if !r.addAttributed(pos+start-from, pos+end-from, s.source, limit, d) {
+		if !r.addAttributed(pos+start-from, pos+end-from, s.source, strong, limit, d) {
 			return start - from, true
 		}
 		at = end

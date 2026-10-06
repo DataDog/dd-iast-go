@@ -5,12 +5,18 @@
 
 package request
 
-import "unsafe"
+import (
+	"unsafe"
+
+	"github.com/DataDog/dd-iast-go/internal/instrumentation/telemetry"
+)
 
 // bodyRead is the propbridge BodyRead callback: when body is the registered
 // body of an owner, it taints the n bytes at p, and records them in the owner
 // (plan section 4.4). It does nothing for other objects (for example the body
-// of a client response, which uses the same type).
+// of a client response, which uses the same type). A Read that it cannot
+// record (busy slot, bits not set, budget used) increments
+// telemetry.DroppedSource.
 func (m *Manager) bodyRead(body, p unsafe.Pointer, n uintptr) {
 	defer func() { _ = recover() }()
 	if !m.Active() || body == nil || n == 0 {
@@ -26,9 +32,15 @@ func (m *Manager) bodyRead(body, p unsafe.Pointer, n uintptr) {
 		// so that copy offsets stay equal to body offsets).
 		offset := ref.offset.Add(uint64(n)) - uint64(n)
 		located := bitsSet(p, n)
-		m.use(s, generation, id, func(d *ownerData) {
-			d.recordBody(p, n, offset, located)
+		dropped := !located
+		access := m.tryUse(s, generation, id, func(d *ownerData) {
+			if !d.recordBody(p, n, offset, located) {
+				dropped = true
+			}
 		})
+		if access == accessBusy || (access == accessDone && dropped) {
+			telemetry.DroppedSource.Add(1)
+		}
 		return false
 	})
 }

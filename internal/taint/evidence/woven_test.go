@@ -178,6 +178,39 @@ func TestCollectStringForeignOnlyIsNone(t *testing.T) {
 	require.Nil(t, snapshot)
 }
 
+// TestCollectStringSharedByteIsNone: a byte of a different request that is
+// equal to a byte of a source of the owner is a weak (1-byte) content
+// match: alone, it makes no report (plan 4.5.2).
+func TestCollectStringSharedByteIsNone(t *testing.T) {
+	requireBits(t)
+	configure(t)
+	alpha, bravo := begin(t), begin(t)
+	alpha.taint("alpha", "abc-def")
+	b := bravo.taint("bravo", "LMN-OPQ")
+	query := join("SELECT ", b)
+	snapshot, status := evidence.CollectStringFor(alpha.target(), query, constants.VulnerabilityTypeSqlInjection)
+	require.Equal(t, evidence.StatusNone, status)
+	require.Nil(t, snapshot)
+	// Parity with IsTainted*: the copy of the '-' of bravo is weak for both
+	// owners (1 byte of a 7-byte source).
+	require.False(t, taint.IsTaintedString(join("x", b[3:4])))
+	require.True(t, taint.IsTaintedString(query))
+
+	snapshot, status = evidence.CollectStringFor(bravo.target(), query, constants.VulnerabilityTypeSqlInjection)
+	require.Equal(t, evidence.StatusCollected, status)
+	require.Equal(t, []evidence.Part{
+		{Start: 0, Length: 7, Source: -1},
+		{Start: 7, Length: 7, Source: 0},
+	}, parts(snapshot))
+
+	// Joined values: the weak value alone makes no report.
+	values := []string{"echo", join("", b[3:4])}
+	result := strings.Join(values, " ")
+	snapshot, status = evidence.CollectJoinedStringsFor(alpha.target(), values, " ", result, constants.VulnerabilityTypeCommandInjection)
+	require.Equal(t, evidence.StatusNone, status)
+	require.Nil(t, snapshot)
+}
+
 func TestCollectJoinedStringsPreservesArgumentOffsets(t *testing.T) {
 	requireBits(t)
 	configure(t)
