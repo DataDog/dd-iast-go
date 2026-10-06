@@ -1919,6 +1919,10 @@ Each step lists its exit criteria and an estimate for one engineer.
 9. **CI matrix (1-2 h).** Add lanes B and C to the unit-test job for every
    module (`go-version: 1.27.x`, `GOTOOLCHAIN=local`; lane C sets
    `GOEXPERIMENT=nojsonv2`). Exit: all lanes are green and required.
+
+   **Step 9: done locally.** See "Appendix: Implementation notes (step
+   9)". GitHub must confirm the lanes are green, and the branch
+   protection must require the new job names (through `Green CI`).
 10. **Review and docs (2-3 h).** Run the multi-agent code review. Update the
     README support matrix (Go 1.26 v1, Go 1.27 default and `nojsonv2`;
     Go 1.26 + `jsonv2` unsupported), the Phase 8 notes, the v1 behavior
@@ -3298,3 +3302,39 @@ no extra allocation). The measurements below meet these gates.
 with `-bench='^Benchmark(JSON|IO|ReadGuard)' -benchtime=1x` passes on lanes
 A, B, C (the woven runs check the guard state of each `ReadGuard` case),
 and the unwoven run passes on lane A.
+
+## Appendix: Implementation notes (step 9)
+
+Changed file: `.github/workflows/ci.yml`.
+
+1. The `test` job has a `lane` axis (A, B, C) for each module. Lane A
+   uses the `go.mod` version; lanes B and C use `1.27.x`; lane C sets
+   `GOEXPERIMENT=nojsonv2`. All lanes set `GOTOOLCHAIN=local`. The job
+   name has the lane: `Unit Tests (<module>, lane <X>)`.
+2. Each lane has its own `GOCACHE` (`.gocache/lane-<X>` in the
+   workspace). The cache path is a part of the setup-go cache version,
+   thus lanes B and C (same Go version and `go.sum`) do not share a
+   setup-go cache entry. The bootstrap build keeps its own GOCACHE.
+3. Coverage: only lane A uploads. Go 1.26.6 and Go 1.27.1 give different
+   coverage blocks for the same file (example:
+   `internal/taint/ranges/canonical.go`), and `merge-coverage.py` sums
+   identical blocks only. Lanes B and C still run the coverage commands.
+   Thus `points_v2.go` and the other lane B files have no coverage in
+   the report.
+4. The fuzz campaigns run on lane A only (section 7.1, command 9).
+5. The `woven-runtime` Go 1.27 cells do not set `GOEXPERIMENT=nojsonv2`
+   anymore: they use the v2 default.
+6. `runtime-bench.yml` (go.mod version) and `system-tests.yml` (the
+   system-tests build) have no `nojsonv2` setting. No change.
+
+
+Validation (darwin/arm64, go1.27.1, lanes B and C at the same time, cold
+GOCACHE for each lane, a copy of the repository for each lane): the
+`Unit Tests` and bootstrap step scripts, taken from `ci.yml`, pass for all
+6 modules on lanes B and C. Wall times (B / C): root 1122 s / 1127 s;
+`benchmarks/overhead` 235 / 232 s; `iast/database/sql/testapp` 201 /
+204 s; `iast/integration/testapp` 153 / 147 s; `iast/os/exec/testapp`
+109 / 110 s; `iast/runtime/testapp` 136 / 135 s. `actionlint` and
+`shellcheck .github/*.sh` are clean. `go test -count=1 ./.github` passes
+(127 s); a first run at the same time as the lane runs hit the 10 min
+test timeout (machine load).

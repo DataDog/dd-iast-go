@@ -104,24 +104,55 @@ jobs:
   test:
     needs: modules
     runs-on: ubuntu-latest
-    name: Unit Tests (${{ matrix.module }})
+    name: Unit Tests (${{ matrix.module }}, lane ${{ matrix.lane }})
     strategy:
       fail-fast: false
       matrix:
         module: ${{ fromJSON(needs.modules.outputs.modules) }}
+        # The encoding/json lanes (plan encoding-json-v2, section 7.1):
+        # A is the go.mod version (v1 encoding/json), B is Go 1.27 with its
+        # default encoding/json (v2), and C is Go 1.27 with the v1
+        # encoding/json (GOEXPERIMENT=nojsonv2).
+        lane: [A, B, C]
+        include:
+          - lane: A
+            go: go.mod
+            goexperiment: ''
+          - lane: B
+            go: 1.27.x
+            goexperiment: ''
+          - lane: C
+            go: 1.27.x
+            goexperiment: nojsonv2
     defaults:
       run:
         working-directory: ${{ matrix.module }}
     env:
       MODULE: ${{ matrix.module }}
+      LANE: ${{ matrix.lane }}
+      # Use the Go version that setup-go installed, not a toolchain download.
+      GOTOOLCHAIN: local
+      GOEXPERIMENT: ${{ matrix.goexperiment }}
+      # Each lane has its own GOCACHE. Orchestrion adds dependency archives
+      # that the Go action ID of the dependent package does not include
+      # (plan runtime-operator-hooks, step 6), thus two lanes must not share
+      # build results. Lanes B and C have the same Go version and the same
+      # go.sum. The cache path is a part of the setup-go cache version, thus
+      # a different path also gives a different setup-go cache entry.
+      GOCACHE: ${{ github.workspace }}/.gocache/lane-${{ matrix.lane }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Setup Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version-file: ${{ matrix.module }}/go.mod
+          go-version: ${{ matrix.go != 'go.mod' && matrix.go || '' }}
+          go-version-file: ${{ matrix.go == 'go.mod' && format('{0}/go.mod', matrix.module) || '' }}
           cache-dependency-path: ${{ matrix.module }}/go.sum
+      - name: Toolchain
+        run: |
+          go version
+          go env GOEXPERIMENT GOCACHE
       - name: Unit Tests
         shell: bash
         run: |
@@ -157,8 +188,10 @@ jobs:
             go test -race -shuffle=on ./.github
             go test -race -count=1 -shuffle=on ./internal/taint/...
           fi
+      # The fuzz campaigns do not depend on the encoding/json variant, thus
+      # they run on lane A only (plan encoding-json-v2, section 7.1).
       - name: Bounded propagation fuzz campaigns
-        if: matrix.module == '.'
+        if: matrix.module == '.' && matrix.lane == 'A'
         shell: bash
         run: |
           for target in FuzzCanonicalize FuzzSliceAndCopy; do
@@ -172,7 +205,7 @@ jobs:
           go test -run='^$' -fuzz='^FuzzInteriorIndex$' -fuzztime=10000x \
             -fuzzminimizetime=1000x -parallel=4 -timeout=5m ./internal/taint/store
       - name: Upload failing fuzz inputs
-        if: ${{ failure() && matrix.module == '.' }}
+        if: ${{ failure() && matrix.module == '.' && matrix.lane == 'A' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: propagation-fuzz-failures
@@ -204,8 +237,12 @@ jobs:
               grep -F -- "$symbol" "$RUNNER_TEMP/iast-bootstrap.nm"
             done < cmd/bootstrap/symbols.txt
           fi
+      # Go 1.26 and Go 1.27 put different coverage blocks in the same file,
+      # and the merge of overlapping blocks gives an incorrect report. Thus
+      # only lane A uploads its profiles. Lanes B and C run the same coverage
+      # commands, to test the woven coverage build.
       - name: Upload coverage artifact
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && matrix.lane == 'A' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: coverage-profile-${{ strategy.job-index }}
@@ -243,11 +280,10 @@ jobs:
       DD_IAST_REQUIRE_WOVEN: '1'
       # Use the Go version that setup-go installed, not a toolchain download.
       GOTOOLCHAIN: local
-      # The encoding/json aspects do not build yet on the default
-      # encoding/json of Go 1.27 (v2). Until the plan
-      # _docs/plans/encoding-json-v2.md is done, the Go 1.27 cells use the v1
-      # implementation.
-      GOEXPERIMENT: ${{ startsWith(matrix.go, '1.27') && 'nojsonv2' || '' }}
+      # The Go 1.27 cells use the default encoding/json of Go 1.27 (v2). The
+      # unit-test job also tests the v1 encoding/json of Go 1.27 (lane C,
+      # GOEXPERIMENT=nojsonv2). The runtime hooks do not depend on the
+      # encoding/json variant (plan encoding-json-v2, step 9).
       MODE: ${{ matrix.mode }}
       WOVEN_OUT: ${{ github.workspace }}/woven-runtime-out
     steps:
