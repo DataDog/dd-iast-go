@@ -57,7 +57,21 @@ var (
 
 	//go:linkname rtTestKnobs __dd_iast_heapbits.testknobs
 	rtTestKnobs func(movestack, forceyield bool) (probe, workerProbe uint32, yields uint64)
+
+	//go:linkname rtGateKnob __dd_iast_heapbits.gateknob
+	rtGateKnob func(noSetGate bool) bool
 )
+
+// SetNoGateFromSet stops (true) or starts again (false) the store of the
+// sticky gate (heapbits.Live) by Set. Copy and heapbits.MarkLive still store
+// it. Only for the tests of the gate. It returns the gate value, or false
+// when the runtime is not woven.
+func SetNoGateFromSet(off bool) bool {
+	if rtGateKnob == nil {
+		return false
+	}
+	return rtGateKnob(off)
+}
 
 // Probe results of [Knobs].
 const (

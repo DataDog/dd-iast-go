@@ -59,6 +59,15 @@ The runtime gives its functions to `heapbits` with push `//go:linkname`
 variables (`__dd_iast_heapbits.set`, ...). Without weaving, these variables
 are `nil`: all `heapbits` functions do nothing and report "not tainted".
 
+The runtime also gives a pointer to a **sticky gate** word
+(`__dd_taint_gate.seen`, in its own cache line, pushed as
+`__dd_iast_heapbits.seen`). It is 0 until
+taint can be live: the first successful `Set`, the first `Copy` of tainted
+bits, or the first `heapbits.MarkLive()`. Then it is 1 for all the life of the
+process. `heapbits.Live()` reads it (2 loads, inlinable). While it is 0, no
+byte is tainted, so a propagation hook can skip all its work after one atomic
+load.
+
 #### Relationship to the Go heap
 
 The Go heap is divided into **arenas** (64 MiB on 64-bit Linux and macOS).
