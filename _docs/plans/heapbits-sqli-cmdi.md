@@ -680,7 +680,7 @@ harness `P/.github/runtime-bench.{sh,py}` with `PROFILES` `local` and `ci`
 |---|---|---|---|
 | G-A1 HTTP sampled out | `HTTPRoundTrip`, sampling 0 | control vs iast | ≤ +3.70 % local, ≤ +6 % ci (`runtime-operator-hooks.md:1189`, `:1368`; `runtime-bench.py` `http` row) |
 | G-A2 HTTP sampled | `HTTPRoundTrip`, sampling 100 | control vs iast | record only |
-| G-A3 disabled / no request | 21 `Strings*`/`Bytes*`/`Fmt*`/`URL*`/`Strconv*` + `BytesBufferCopies` | control vs iast | < 80 ns: ≤ +4 ns; ≥ 80 ns: ≤ +5 %; +0 allocs; estimate and paired-bootstrap 95 % upper bound (`phase-5.md:113`, `phase-6.md:344-348`) |
+| G-A3 disabled / no request | 21 `Strings*`/`Bytes*`/`Fmt*`/`URL*`/`Strconv*` (`BytesBufferCopies` is record-only: it is **not** in G-A3) | control vs iast | < 80 ns: ≤ +4 ns; ≥ 80 ns: ≤ +5 %; +0 allocs; estimate and paired-bootstrap 95 % upper bound (`phase-5.md:113`, `phase-6.md:344-348`) |
 | G-A4 active, untainted | `PropagationActiveUntainted/*` | control vs iast | same as G-A3 |
 | G-A5 concat chain | `a+b+c+d` | control vs iast | same allocs |
 | G-B (runtime) | `P/iast/runtime/bench_test.go:133-240`: `RuntimeOff`, `RuntimeClean`, `RuntimeS2SOff`, `RuntimeTainted`; concat 2/4/6/16 heap and stack; `b2s`, `s2b`, `r2s`, `s2r` | hook vs nohook woven builds, ≥ 8 code placements, ≥ 8 runs, bootstrap CI (`runtime-bench.sh`) | `local` profile shown: off ≤ +2 ns; clean ≤ +3 ns + 1.5 ns/operand; rune clean ≤ +6 ns; s2s-off ≤ +2 ns; tainted ≤ 1 µs and +1 alloc (`runtime-operator-hooks.md` §9.3). The port keeps both `local` and `ci` profile maps |
@@ -715,6 +715,9 @@ harness `P/.github/runtime-bench.{sh,py}` with `PROFILES` `local` and `ci`
 ### 10.3 Protocol
 
 - `GOTOOLCHAIN=go1.26.6`, same machine, idle, on power.
+- Run the gates in **separate passes** (the 5-pass protocol; the passes are listed in
+  `benchmarks/overhead/README.md`), because the sticky gate stays on
+  after the first taint in a process (see `benchmarks/overhead/README.md`).
 - Overhead runner: `-count=20 -benchtime=1s -cpu=1` (PR #39 rule for G-A3/G-A4:
   20 samples of 1 s); sampling 100 and 0; with and without "taint live
   elsewhere". The 2 trees are **interleaved by sample** (a small driver
