@@ -324,6 +324,7 @@ jobs:
       # A test that needs the woven runtime fails instead of a skip.
       DD_IAST_REQUIRE_WOVEN: '1'
       MODE: ${{ matrix.mode }}
+      GO_CHANNEL: ${{ matrix.go }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -341,11 +342,19 @@ jobs:
             race) args+=(-race -short) ;;
             *) echo "unknown mode $MODE"; exit 1 ;;
           esac
-          go tool orchestrion go test "${args[@]}" \
-            ./iast/propagation/text \
-            ./iast/propagation/stream \
-            ./iast/net/http \
+          pkgs=(
+            ./iast/propagation/text
+            ./iast/propagation/stream
+            ./iast/net/http
             ./iast/net/url
+          )
+          # From Go 1.27, encoding/json uses the v2 implementation by
+          # default: the hooks of iast/propagation/jsonv2 apply. The default
+          # mode also runs the guard tests of the package (not -short).
+          if [[ "$GO_CHANNEL" == stable ]]; then
+            pkgs+=(./iast/propagation/jsonv2)
+          fi
+          go tool orchestrion go test "${args[@]}" "${pkgs[@]}"
       - name: Woven tests (encoding/json v1)
         # From Go 1.27, encoding/json uses the v2 implementation by default,
         # and the hooks apply only to v1 (the v1 tests do not compile). With
@@ -362,6 +371,76 @@ jobs:
           fi
           go tool orchestrion go test "${args[@]}" ./iast/propagation/stream | tee json-v1.log
           grep -q -- '--- PASS: TestJSONDecoderRefillSlide' json-v1.log
+
+  testapps:
+    # Woven tests of the nested test application modules: the sink testapps
+    # and the end-to-end scenarios of iast/integration/testapp (plan
+    # _docs/plans/heapbits-sqli-cmdi.md, section 9.1 item 1). Each module has
+    # its own go.mod, so the root test jobs do not run them. The race mode
+    # adds -race -short (-short skips the build tests).
+    name: Test apps (${{ matrix.module }}, ${{ matrix.go }}, ${{ matrix.mode }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        module:
+          - iast/database/sql/testapp
+          - iast/integration/testapp
+          - iast/os/exec/testapp
+        go: [oldstable, stable]
+        mode: [default, race]
+    env:
+      GOTOOLCHAIN: local
+      DD_IAST_REQUIRE_WOVEN: '1'
+      MODE: ${{ matrix.mode }}
+    defaults:
+      run:
+        working-directory: ${{ matrix.module }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Setup Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ matrix.go }}
+          cache-dependency-path: ${{ matrix.module }}/go.sum
+      - name: Vet
+        run: go vet ./...
+      - name: Woven tests
+        shell: bash
+        run: |
+          go version
+          args=(-shuffle=on -count=1)
+          case "$MODE" in
+            default) ;;
+            race) args+=(-race -short) ;;
+            *) echo "unknown mode $MODE"; exit 1 ;;
+          esac
+          go tool orchestrion go test "${args[@]}" ./...
+      - name: Sink executable bootstrap test
+        # The main package of cmd/bootstrap imports no integration. The woven
+        # executable must have the symbols of cmd/bootstrap/symbols.txt.
+        # The woven tests above have other build flags, and Orchestrion does
+        # not put the build flags in the cache key of its dependency
+        # archives, thus this build has its own GOCACHE.
+        if: ${{ matrix.mode == 'default' }}
+        shell: bash
+        run: |
+          if [[ ! -s cmd/bootstrap/symbols.txt ]]; then
+            echo 'Bootstrap fixture must declare its expected symbols in cmd/bootstrap/symbols.txt'
+            exit 1
+          fi
+          GOCACHE="$RUNNER_TEMP/gocache-bootstrap" \
+            go tool orchestrion go build -o "$RUNNER_TEMP/iast-bootstrap" ./cmd/bootstrap
+          go tool nm "$RUNNER_TEMP/iast-bootstrap" > "$RUNNER_TEMP/iast-bootstrap.nm"
+          while IFS= read -r symbol || [[ -n "$symbol" ]]; do
+            if [[ -z "$symbol" ]]; then
+              echo 'Bootstrap symbol must not be empty'
+              exit 1
+            fi
+            grep -F -- "$symbol" "$RUNNER_TEMP/iast-bootstrap.nm"
+          done < cmd/bootstrap/symbols.txt
 
   heapbits-feature-off:
     # The woven runtime must compile on every target, with the feature off
@@ -447,7 +526,7 @@ jobs:
   green-ci:
     runs-on: ubuntu-latest
     name: Green CI
-    needs: [validate-licenses, lint, test, upload-coverage, benchmark, heapbits, runtime-race, propagation, heapbits-feature-off]
+    needs: [validate-licenses, lint, test, upload-coverage, benchmark, heapbits, runtime-race, propagation, testapps, heapbits-feature-off]
     if: always()
     steps:
       - name: Success
@@ -460,6 +539,7 @@ jobs:
           && needs.heapbits.result        == 'success'
           && needs['runtime-race'].result == 'success'
           && needs.propagation.result     == 'success'
+          && needs.testapps.result        == 'success'
           && needs['heapbits-feature-off'].result == 'success'
         run: echo "Success!"
       - name: Failure
@@ -472,5 +552,6 @@ jobs:
           || needs.heapbits.result        != 'success'
           || needs['runtime-race'].result != 'success'
           || needs.propagation.result     != 'success'
+          || needs.testapps.result        != 'success'
           || needs['heapbits-feature-off'].result != 'success'
         run: echo "Failure!" && exit 1
