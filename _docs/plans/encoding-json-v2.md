@@ -3052,3 +3052,249 @@ and `-race -count=3` (lane A) pass; woven root `./...` pass on lanes A,
 B, C; the CI command (lane A, with coverage, and `go vet`) passes for the
 5 other modules.
 
+
+## Appendix: Implementation notes (step 8)
+
+**Result: step 8 is closed by user decision.** The `Read` guard gate
+(b)/(c) was <= +5 ns/op; it passed only when the CPU ran at full speed.
+Romain accepted <= +6 ns/op (0 allocations), the +48 B / +32 B for each
+`NewDecoder`, about +40 ns of inactive time for each `NewDecoder` (Go 1.27),
+and waived the "before step 2a" `MultiReader` measurement. No code was
+tuned. The verdicts are point estimates on a loaded machine (95 % CIs of
+the paired guard rounds reach about +7.5 ns).
+The first measurements failed in some cases. The user then asked for a
+re-measure (Table 4). The machine was not quiet during the re-measure
+(load average 10 to 60, median 32). All other gates are listed below.
+
+Changed files: `benchmarks/overhead/jsonio_test.go` (new: the workloads of
+section 7.2) and `benchmarks/overhead/README.md` (the new workloads).
+
+### Environment and method
+
+- darwin/arm64, Apple M5 Pro (18 CPUs), Orchestrion v1.13.1. Lanes: A
+  go1.26.6; B go1.27.1 (v2 default); C go1.27.1 `GOEXPERIMENT=nojsonv2`.
+  Own `GOCACHE` under `/tmp/t81` for each lane and flag set.
+- **The machine was loaded by other processes during all the runs (load
+  average 15 to 31).** The unwoven-to-unwoven noise is 5 % to 25 % for
+  most workloads. Thus the time gates of small deltas are not precise.
+  The byte and allocation gates are exact (equal in all samples).
+- Runner runs (interleaved processes, the runner's alternate order):
+  `go -C benchmarks/overhead run ./runner -count=20 -benchtime=300ms`:
+  - B-s0: lane B, `-sampling=0`, all workloads ("woven inactive" for the
+    HTTP workloads);
+  - B-s100: lane B, `-sampling=100`, all workloads ("woven active");
+  - A and C: lanes A and C, `-sampling=0`,
+    `-bench='^Benchmark(JSON|IO|ReadGuard)'`.
+  The sub-benchmarks of `jsonio_test.go` set their own state (`inactive`,
+  `active`, `request`), thus B-s100 is a second independent measurement
+  of them. The noise band is the control (unwoven) of B-s0 against the
+  control of B-s100: the same unwoven binary source, two runs (the
+  sampling flag has no effect on the control build).
+- Focused runs (after the runner runs): control and IAST test binaries
+  of the 3 lanes (6 binaries, built as the runner does), 20 rounds of
+  `-test.bench='^BenchmarkReadGuard$' -test.benchtime=300ms`, then 15
+  rounds of `-test.bench='^Benchmark(JSON|IO)'`; in each round each
+  binary runs once, and the order rotates each round.
+- Code placements (step 5 method of runtime-operator-hooks) were not
+  used: the noise comes from the machine load, not from one code
+  placement, and the gate (b)/(c) says to stop.
+- States: `inactive` = no request active; `active` = one clean active
+  request, the readers have no binding (no taint); `request` = each
+  iteration begins a request, binds the readers (`request.BindReader`),
+  runs the workload, and finishes the request (the control build does the
+  same calls, thus the delta is the cost of the aspects, with taint).
+
+### Table 1: lane B, runner (median, delta = woven - unwoven)
+
+"Noise" = unwoven run 2 - unwoven run 1. "Run 1" = B-s0, "run 2" =
+B-s100.
+
+| Workload | Unwoven ns | Noise | Run 1 delta | Run 2 delta | Delta B/op | Delta allocs |
+|---|---:|---:|---:|---:|---:|---:|
+| JSONUnmarshal20/inactive | 1612 | +18.4 % | -44 ns (-2.7 %) | -230 ns (-12.0 %) | 0 | 0 |
+| JSONUnmarshal20/active | 1552 | +17.0 % | +81 ns (+5.2 %) | -190 ns (-10.4 %) | 0 | 0 |
+| JSONDecoder20/inactive | 2281 | +19.0 % | +79 ns (+3.5 %) | -233 ns (-8.6 %) | **+48** | 0 |
+| JSONDecoder20/active | 2206 | +21.0 % | +388 ns (+17.6 %) | -119 ns (-4.4 %) | +48 | 0 |
+| JSONDecoder20/inactive-bufio | 2758 | +14.1 % | +250 ns (+9.1 %) | +123 ns (+3.9 %) | **+48** | 0 |
+| JSONDecoder20/active-bufio (macro) | 2998 | +6.3 % | +99 ns (+3.3 %) | +299 ns (+9.4 %) | +48 | 0 |
+| JSONDecoder20/request-bufio (macro, bound body) | 5955 | +4.7 % | +619 ns (+10.4 %) | +307 ns (+4.9 %) | +96 | +1 |
+| JSONDecoderSmall/inactive | 312 | +5.2 % | +47 ns (+15.1 %) | +37 ns (+11.2 %) | **+48** | 0 |
+| JSONDecoderSmall/active | 328 | +0.9 % | +40 ns (+12.2 %) | +28 ns (+8.4 %) | +48 | 0 |
+| JSONDecoderSmall/request | 2305 | +10.5 % | +291 ns (+12.6 %) | -134 ns (-5.3 %) | +48 | 0 |
+| JSONDecoderMore100/inactive | 18860 | +1.0 % | +1456 ns (+7.7 %) | -113 ns (-0.6 %) | **+48** | 0 |
+| JSONDecoderMore100/active | 19850 | -1.7 % | -15 ns (-0.1 %) | -847 ns (-4.3 %) | +48 | 0 |
+| IOMultiReader/2/inactive | 32.6 | +6.2 % | +9.9 ns (+30.5 %) | +6.3 ns (+18.3 %) | 0 | 0 |
+| IOMultiReader/2/request | 1812 | +10.6 % | +340 ns (+18.7 %) | +121 ns (+6.0 %) | 0 | 0 |
+| IOMultiReader/8/inactive | 54.5 | +26.5 % | +26.3 ns (+48.3 %) | +3.7 ns (+5.4 %) | 0 | 0 |
+| IOMultiReader/8/request | 2230 | +17.1 % | +1799 ns (+80.7 %) | +1224 ns (+46.9 %) | 0 | 0 |
+| IOReadAll1KiB/inactive | 317 | +23.8 % | +75 ns (+23.7 %) | +11 ns (+2.7 %) | 0 | 0 |
+| IOReadAll1KiB/active | 362 | +8.1 % | +83 ns (+23.0 %) | +90 ns (+23.1 %) | 0 | 0 |
+| IOReadAll1KiB/request | 2890 | +1.5 % | +1134 ns (+39.2 %) | +1255 ns (+42.8 %) | +1024 | +1 |
+
+The other runner workloads (B-s0, sampling 0): all string, bytes, `fmt`,
+`url`, `strconv`, `Health`, `RequestProcessing`, `HTTPRoundTrip` deltas
+are inside the noise band, with 0 extra bytes and allocations (except
+`HTTPRoundTrip`: +416 B, +5 allocations at sampling 0). `WeakHash*`,
+`WeakCipher*` (sinks that report) and `BytesBufferCopies` (a woven fixture
+with an active tainted request) are slower by design; they are not JSON
+paths. Sampling 100: `HTTPRoundTrip` +74 % (+97 allocations),
+`WeakHashActiveSpan` and `WeakCipherActiveSpan` +266 % to +311 % (the
+vulnerability report); not changed by this plan.
+
+### Table 2: lanes A and C, runner (median, delta = woven - unwoven)
+
+| Workload | A unwoven ns | A delta | A B/op | C unwoven ns | C delta | C B/op |
+|---|---:|---:|---:|---:|---:|---:|
+| JSONUnmarshal20/inactive | 2916 | +46 ns (+1.6 %) | 0 | 3138 | +580 ns (+18.5 %) | 0 |
+| JSONUnmarshal20/active | 2605 | +88 ns (+3.4 %) | 0 | 2968 | +277 ns (+9.3 %) | 0 |
+| JSONDecoder20/inactive | 2848 | +122 ns (+4.3 %) | **+32** | 3310 | +117 ns (+3.5 %) | **+32** |
+| JSONDecoder20/active | 2793 | +121 ns (+4.3 %) | +32 | 3512 | -25 ns (-0.7 %) | +32 |
+| JSONDecoder20/active-bufio | 3446 | +104 ns (+3.0 %) | +32 | 3848 | +446 ns (+11.6 %) | +32 |
+| JSONDecoder20/request-bufio | 5866 | +217 ns (+3.7 %) | +80 (+1 alloc) | 6496 | +959 ns (+14.8 %) | +80 (+1 alloc) |
+| JSONDecoderSmall/inactive | 394 | +14 ns (+3.5 %) | **+32** | 444 | +51 ns (+11.6 %) | **+32** |
+| JSONDecoderSmall/active | 399 | +15 ns (+3.7 %) | +32 | 419 | +119 ns (+28.3 %) | +32 |
+| JSONDecoderMore100/inactive | 15730 | +1046 ns (+6.6 %) | **+32** | 18420 | +3004 ns (+16.3 %) | **+32** |
+| JSONDecoderMore100/active | 15900 | +3139 ns (+19.7 %) | +32 | 18530 | +4429 ns (+23.9 %) | +32 |
+| IOMultiReader/2/inactive | 32.5 | +7.2 ns | 0 | 31.5 | +11.1 ns | 0 |
+| IOMultiReader/8/inactive | 52.2 | +7.4 ns | 0 | 59.1 | +17.1 ns | 0 |
+| IOMultiReader/2/request | 1684 | +68 ns (+4.0 %) | 0 | 1894 | +259 ns (+13.7 %) | 0 |
+| IOMultiReader/8/request | 1859 | +1159 ns (+62.3 %) | 0 | 2159 | +1710 ns (+79.2 %) | 0 |
+| IOReadAll1KiB/inactive | 270 | +5 ns (+1.8 %) | 0 | 305 | +98 ns (+32.1 %) | 0 |
+| IOReadAll1KiB/active | 278 | +51 ns (+18.2 %) | 0 | 333 | +132 ns (+39.8 %) | 0 |
+| IOReadAll1KiB/request | 2548 | +823 ns (+32.3 %) | +1024 (+1 alloc) | 2762 | +1635 ns (+59.2 %) | +1024 (+1 alloc) |
+
+Allocation counts: equal in all `inactive` and `active` rows of all lanes.
+Lane C ran last, with the highest machine load: its unwoven times are
+higher, and its deltas are less reliable.
+
+### Table 3: `Read` guard (section 6.6), delta ns/op = woven - unwoven
+
+"Focused" = 20 interleaved rounds of the 6 binaries (the most reliable
+numbers). "Runner" = the runner runs (B-s0 / B-s100 for lane B). Allocations:
+0 in all rows, all lanes (gate pass). Unwoven: 2.0 to 3.5 ns (9 ns for
+`bufio` 512 B).
+
+| Case | Focused A | Focused B | Focused C | Runner A | Runner B (run 1 / run 2) | Runner C |
+|---|---:|---:|---:|---:|---:|---:|
+| bufio/1B/a-none | +0.33 | +0.40 | +0.44 | +0.33 | +0.80 / +1.05 | +1.27 |
+| bufio/1B/b-other | +3.84 | +3.40 | +3.78 | +3.11 | +4.39 / +4.87 | +5.00 |
+| bufio/1B/c-self | +4.34 | +3.59 | +4.29 | +3.55 | **+5.25 / +5.37** | **+5.64** |
+| bufio/512B/a-none | +0.90 | -0.75 | +0.55 | -0.05 | +0.99 / +0.57 | +1.00 |
+| bufio/512B/b-other | +3.05 | +1.57 | +3.48 | +2.72 | +3.32 / +3.88 | +4.12 |
+| bufio/512B/c-self | **+5.56** | +3.12 | +4.92 | +3.91 | +4.06 / +4.77 | **+6.26** |
+| bufio/4096B/a-none | +0.17 | -0.03 | +0.53 | +0.11 | +0.07 / +0.72 | +0.68 |
+| bufio/4096B/b-other | +3.23 | +2.95 | +3.31 | +2.91 | +2.70 / +4.08 | +3.73 |
+| bufio/4096B/c-self | +3.80 | +3.44 | +3.91 | +3.39 | +3.74 / +4.48 | +4.98 |
+| limited/1B/a-none | +0.34 | -0.07 | +0.11 | +0.06 | +0.14 / +0.41 | +0.61 |
+| limited/1B/b-other | +3.80 | +3.92 | +3.90 | +3.47 | +4.65 / **+5.05** | +4.84 |
+| limited/1B/c-self | +3.80 | +3.54 | +3.79 | +3.34 | +4.30 / +4.62 | **+5.79** |
+| limited/512B/a-none | +0.52 | +0.03 | +0.11 | +0.17 | +0.33 / +0.23 | +1.11 |
+| limited/512B/b-other | +3.43 | +3.11 | +3.44 | +2.80 | +4.84 / +4.39 | **+5.24** |
+| limited/512B/c-self | +4.10 | +3.63 | +3.77 | +3.24 | **+5.83** / +4.14 | **+5.85** |
+| limited/4096B/a-none | +0.33 | +0.02 | +0.20 | +0.22 | +0.65 / +0.04 | +0.92 |
+| limited/4096B/b-other | +3.74 | +3.72 | +4.17 | +3.44 | +4.82 / +3.98 | **+5.40** |
+| limited/4096B/c-self | +3.81 | +3.61 | +3.91 | +3.32 | +4.87 / +3.84 | **+5.65** |
+
+The cost of a live guard is approximately +3 to +4 ns for each `Read`
+(focused medians), and it does not depend on the read size. It is the
+call of `checkRead` (not inlined), the `words` of `self`, and 4 probe
+loads with `Same` checks. Under load, it goes up to +5.2 to +6.3 ns. The
+5 ns limit is inside the measured range.
+
+`(*io.LimitedReader).Read` inlining (`-gcflags='io=-m -m'`, lanes A and
+B): it is NOT inlined in the unwoven build ("function too complex: cost 90
+exceeds budget 80") and NOT inlined in the woven build (cost 168). Thus
+the guard does not remove an inlining. `iobridge.CheckRead` is inlined
+into the woven `Read` (one atomic load and a branch in state (a)).
+
+### Table 4: `Read` guard re-measure (paired rounds)
+
+Method: the 6 binaries of the focused run, 40 rounds,
+`-test.bench='^BenchmarkReadGuard$' -test.benchtime=200ms`. In each round
+and lane, the unwoven and the woven binary run back to back (the order
+alternates each round). Thus each pair has almost the same machine load.
+Delta = woven - unwoven of the same pair, in ns/op. "Paired median" = the
+median of the 40 pair deltas, with a 95 % bootstrap confidence interval.
+"Quiet median" = the median of the pairs where both binaries are within
+15 % of their fastest round (the CPU ran at full speed for both). The load
+average was 10 to 60 (median 32) during all the rounds, thus no round was
+on a quiet machine.
+
+| Case | A paired median [95% CI] (n) | A quiet median (n) | B paired median [95% CI] (n) | B quiet median (n) | C paired median [95% CI] (n) | C quiet median (n) |
+|---|---:|---:|---:|---:|---:|---:|
+| bufio/1B/a-none | +0.45 [+0.18, +1.26] (40) | +0.04 (6) | +0.74 [+0.45, +0.99] (40) | +0.61 (6) | +0.55 [+0.23, +1.00] (40) | +0.29 (5) |
+| bufio/1B/b-other | +4.51 [+3.71, +5.49] (40) | +3.44 (5) | +4.58 [+3.85, +5.09] (40) | +3.65 (4) | +3.92 [+2.93, +4.51] (40) | +3.05 (6) |
+| bufio/1B/c-self | +5.64 [+4.59, +7.04] (40) | +3.97 (8) | +5.40 [+4.67, +6.29] (40) | +4.29 (4) | +4.90 [+4.08, +5.93] (40) | +3.68 (4) |
+| bufio/512B/a-none | +0.61 [-0.24, +1.61] (40) | -0.03 (7) | -0.07 [-1.18, +1.19] (40) | +0.26 (5) | +0.33 [-1.11, +0.91] (40) | +0.43 (6) |
+| bufio/512B/b-other | +3.70 [+2.95, +5.77] (40) | +3.06 (7) | +3.53 [+2.54, +4.31] (40) | +2.65 (5) | +2.85 [+1.93, +4.12] (40) | +3.00 (4) |
+| bufio/512B/c-self | +5.30 [+4.69, +7.50] (40) | +4.77 (8) | +5.81 [+4.50, +6.45] (40) | +4.50 (6) | +4.52 [+3.59, +5.50] (40) | +4.52 (6) |
+| bufio/4096B/a-none | +0.17 [+0.08, +0.48] (40) | +0.09 (8) | +0.03 [-0.55, +0.35] (40) | +0.13 (4) | +0.45 [+0.02, +0.65] (40) | +0.43 (5) |
+| bufio/4096B/b-other | +3.68 [+3.10, +4.02] (40) | +3.04 (9) | +3.29 [+2.83, +3.80] (40) | +2.89 (6) | +3.39 [+3.10, +4.01] (40) | +3.00 (6) |
+| bufio/4096B/c-self | +4.29 [+3.85, +5.45] (40) | +3.73 (7) | +4.48 [+3.78, +4.95] (40) | +3.49 (6) | +4.74 [+3.75, +5.24] (40) | +3.58 (5) |
+| limited/1B/a-none | +0.10 [-0.03, +0.33] (40) | +0.10 (7) | +0.16 [-0.03, +0.33] (40) | -0.01 (5) | +0.14 [+0.00, +0.39] (40) | +0.07 (5) |
+| limited/1B/b-other | +4.27 [+3.75, +5.56] (40) | +3.48 (7) | +4.16 [+3.70, +4.68] (40) | +3.54 (5) | +4.19 [+3.89, +4.69] (40) | +3.64 (5) |
+| limited/1B/c-self | +4.05 [+3.46, +5.06] (40) | +3.39 (7) | +4.38 [+3.69, +5.22] (40) | +3.22 (5) | +4.09 [+3.67, +4.65] (40) | +3.51 (5) |
+| limited/512B/a-none | +0.20 [+0.03, +0.42] (40) | +0.18 (6) | +0.10 [-0.14, +0.60] (40) | -0.08 (6) | -0.03 [-0.36, +0.16] (40) | +0.05 (5) |
+| limited/512B/b-other | +3.47 [+2.95, +4.03] (40) | +2.80 (8) | +3.72 [+3.21, +4.46] (40) | +2.74 (5) | +3.61 [+3.16, +4.02] (40) | +3.10 (5) |
+| limited/512B/c-self | +4.27 [+3.37, +4.96] (40) | +3.36 (8) | +4.39 [+3.59, +5.52] (40) | +3.56 (6) | +4.38 [+3.66, +4.68] (40) | +3.47 (5) |
+| limited/4096B/a-none | +0.12 [-0.34, +0.28] (40) | +0.12 (8) | +0.12 [-0.14, +0.50] (40) | +0.08 (8) | +0.10 [-0.08, +0.40] (40) | +0.09 (7) |
+| limited/4096B/b-other | +3.89 [+3.50, +4.87] (40) | +3.41 (8) | +4.26 [+4.03, +5.17] (40) | +3.83 (7) | +4.10 [+3.71, +4.62] (40) | +3.58 (6) |
+| limited/4096B/c-self | +4.18 [+3.58, +4.88] (40) | +3.52 (8) | +4.93 [+3.96, +5.49] (40) | +3.39 (6) | +4.06 [+3.61, +4.72] (40) | +3.49 (6) |
+
+Verdict:
+
+- (a): pass on all lanes (paired medians -0.07 to +0.74 ns; 0
+  allocations).
+- (b) and (c) at full CPU speed ("quiet median"): **pass** on all lanes,
+  +2.6 to +4.8 ns. The smallest margin is `bufio/512B/c-self` on lane A:
+  +4.77 ns (n = 8), 0.23 ns below the limit.
+- (b) and (c) for all pairs (under load): **fail** in 4 cases (+5.30 to
+  +5.81 ns, `bufio` `c-self` on lanes A and B). Under load, the unwoven
+  time is also 2 to 5 times larger. Thus the extra instructions take more
+  ns, not more instructions.
+- Allocations: 0 in all rows (pass).
+- Code placements (step 5 method of runtime-operator-hooks) were not
+  used: the noise of this machine load (+-1 to +-10 ns) is larger than a
+  placement effect. A run on a quiet machine is still necessary for a
+  final number.
+
+### Focused JSON and IO run
+
+The 15 focused rounds of `^Benchmark(JSON|IO)` had a noise of +-30 % to
++-500 % (benchstat confidence intervals; peak machine load), and no delta
+is significant (p >= 0.16 for all rows on lane B). The byte and
+allocation deltas are the same as in Tables 1 and 2. This run does not
+change a verdict.
+
+### Gates (section 7.2)
+
+**User decision (Romain, after step 8):** accept the `Read` guard gate
+(b)/(c) at <= +6 ns/op with 0 allocations (was <= +5 ns), and accept the
++48 B (v2) / +32 B (v1) for each `NewDecoder` (the `ReaderBinding` field;
+no extra allocation). The measurements below meet these gates.
+
+| Gate | Result |
+|---|---|
+| Inactive, lane B: time inside the noise band | Pass for `Unmarshal20`, `Decoder20`, `More100`, `ReadAll1KiB` (both runs inside or near the band). `JSONDecoderSmall/inactive`: +47 ns and +37 ns in the 2 runs (+11 % to +15 %), noise +5 %: **accepted by user decision** (about +40 ns for each `NewDecoder`: the `ReaderBinding` field and the defer of step 3a; step 5 notes). |
+| Inactive, lane B: 0 extra allocations | Pass (all rows). |
+| Inactive, lane B: 0 extra bytes | **FAIL for each `NewDecoder`: +48 B/op** (one allocation larger: the `__dd_iast_binding` field, `jsonbridge.ReaderBinding`, 48 bytes, appendix steps 1 to 2b, note 1). `Unmarshal`, `MultiReader`, `ReadAll`: 0 B. By design; the review decides. |
+| Lane A, inactive v1: inside the noise band | Time: pass (+1.6 % to +6.6 %). Bytes: **+32 B/op for each `NewDecoder`** (the same field, in the v1 `Decoder` size class). Allocations: equal. |
+| Lane A, active: `NewDecoder` lookup delta | Recorded: `JSONDecoderSmall/active` +15 ns (+3.7 %), `JSONDecoder20/active` +121 ns (+4.3 %), `More100/active` +3.1 us (+19.7 %). |
+| Lane B, active: `NewDecoder` + `Decode` small body; `More()` loop of 100 | Recorded: small +28 to +40 ns (+8 % to +12 %), +48 B; `More100` inside noise (-0.1 % / -4.3 %), +48 B. |
+| `MultiReader` 2 and 8, lanes A and B, inactive: 0 extra allocations | Pass. (Time: +6 to +26 ns on all lanes: the defer, the 8-input array, and one callback that returns at once.) |
+| `MultiReader`, active: record | Recorded (request state, 2 / 8 bound inputs): B +121 to +340 ns / +1.2 to +1.8 us; A +68 ns / +1.16 us. "Before step 2a" was not measured: there is no build of the code before step 2a; the comparison is with the unwoven build (waived by user decision). |
+| `Read` guard (a): inside noise, 0 allocations | Pass (focused: -0.75 to +0.90 ns; runner: up to +1.27 ns; 0 allocations). |
+| **`Read` guard (b) and (c): <= +6 ns (user decision; was +5 ns), 0 allocations** | **Pass (point estimates; 95 % CIs up to about +7.5 ns).** Allocations: pass. Re-measure (Table 4): at full CPU speed +2.6 to +4.8 ns on all lanes (smallest margin: lane A `bufio/512B/c-self` +4.77 ns); median of all pairs +2.9 to +5.8 ns, 4 cases above +5 ns (`bufio` `c-self`, lanes A and B). First runs: focused medians +1.6 to +5.56 ns; runner runs up to +6.26 ns (lane C). |
+| `io.ReadAll` 1 KiB, inactive: 0 allocations, inside noise | Allocations: pass (all lanes). Time: pass on A (+1.8 %) and B (+23.7 % / +2.7 %, noise +23.8 %); lane C +32 % (highest load, unclear). |
+| `io.ReadAll`, active: record the second lookup | Recorded. Unbound reader (first lookup only): +51 to +132 ns. Bound reader (`request`: token, revalidation, adoption): +0.8 to +1.6 us, +1 allocation, +1024 B (the adopted copy of the 1 KiB result). |
+| Macro check lane B: `Decoder` through `bufio.NewReader(body)`, active clean | Recorded: +99 ns / +299 ns (+3.3 % / +9.4 %), +48 B, 0 allocations. With a bound body (`request-bufio`, taint of 20 strings): +307 to +619 ns (+5 % to +10 %), +96 B, +1 allocation. |
+
+### Validation
+
+`gofmt -l .` is empty. `go vet ./...` in the root (lane A) and
+`go -C benchmarks/overhead vet ./...` (lanes A, B, C) pass.
+`go test -count=1 ./...` (root, lane A) passes. Woven
+`go -C benchmarks/overhead tool orchestrion go test -shuffle=on -count=1`
+with `-bench='^Benchmark(JSON|IO|ReadGuard)' -benchtime=1x` passes on lanes
+A, B, C (the woven runs check the guard state of each `ReadGuard` case),
+and the unwoven run passes on lane A.
