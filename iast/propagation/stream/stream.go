@@ -36,11 +36,14 @@
 //
 // The read rule: before a delegated Read into memory that has taint bits
 // (64 KiB or less), the hook keeps the first 16 tainted runs (on the stack, no
-// allocation), clears all the bits, calls Read, then puts the bits of the
-// saved runs back on the bytes that Read did not write. The new bytes have
+// allocation). The limit is the start of the 17th run (or the end of the
+// memory). The hook clears the bits before the limit only, calls Read, then
+// puts the bits of the saved runs back on the bytes that Read did not write.
+// When Read writes bytes after the limit, the hook clears the bits of these
+// bytes (taint loss, never stale taint). The new bytes before the limit have
 // only the bits that the Read sets (for example the bits of the request
-// body). When the memory has more than 16 tainted runs, the runs after the
-// 16th lose their bits (taint loss, never stale taint).
+// body), and the bytes that Read did not write keep their bits. The cost of
+// each read is O(limit/64 + n/64) words of bits, with no allocation.
 //
 // Known limits: copy and append(x, y...) in application code lose the taint;
 // bufio.Writer, bufio.Scanner and fmt.Append* are not hooked.

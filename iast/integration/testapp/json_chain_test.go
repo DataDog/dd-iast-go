@@ -75,7 +75,8 @@ func TestHTTPBodyReaderJSONWriterToSQL(t *testing.T) {
 // TestHTTPLargeJSONBodyFieldAfter4KiBToSQL decodes an 8 KiB JSON body. The
 // only value that goes to the sink is the last field, after byte 4096 of
 // the body (plan 9.1 item 4). The body is decoded with json.Unmarshal (after
-// io.ReadAll) and with json.Decoder. The decoded value goes through a
+// io.ReadAll), with json.Decoder, and with json.Decoder on a bytes.Reader
+// (after io.ReadAll). The decoded value goes through a
 // bytes.Buffer to the SQL sink.
 func TestHTTPLargeJSONBodyFieldAfter4KiBToSQL(t *testing.T) {
 	requireWoven(t)
@@ -86,7 +87,7 @@ func TestHTTPLargeJSONBodyFieldAfter4KiBToSQL(t *testing.T) {
 	// makes it shorter.
 	wantSource := model.NewSourceString(constants.OriginHttpRequestBody, "", document)
 
-	for _, mode := range []testapp.JSONDecodeMode{testapp.JSONUnmarshal, testapp.JSONDecoder} {
+	for _, mode := range []testapp.JSONDecodeMode{testapp.JSONUnmarshal, testapp.JSONDecoder, testapp.JSONDecoderOnBytesReader} {
 		t.Run(mode.String(), func(t *testing.T) {
 			incoming, err := http.NewRequestWithContext(t.Context(), http.MethodPost, "http://iast.test/", strings.NewReader(document))
 			require.NoError(t, err)

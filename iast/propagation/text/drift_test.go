@@ -35,6 +35,7 @@ var driftItems = map[string][]string{
 		"(*Builder).Write", "(*Builder).WriteString", "(*Builder).grow",
 		"Clone", "Repeat", "repeatedSpaces", "ToUpper", "ToLower", "ToTitle", "Map", "ToValidUTF8",
 		"Replacer", "(*Replacer).Replace", "(*Replacer).buildOnce", "replacer",
+		"Reader", "(*Reader).Read", "(*Reader).ReadAt", "(*Reader).WriteTo",
 	},
 	"internal/stringslite": {"Clone"},
 	"bytes": {
@@ -42,6 +43,7 @@ var driftItems = map[string][]string{
 		"(*Buffer).Write", "(*Buffer).WriteString", "(*Buffer).WriteByte", "(*Buffer).WriteRune", "(*Buffer).ReadFrom",
 		"smallBufferSize", "MinRead", "opInvalid",
 		"Clone", "Join", "Repeat", "Replace", "ReplaceAll", "ToValidUTF8", "ToUpper", "ToLower", "ToTitle", "Map",
+		"Reader", "(*Reader).Read", "(*Reader).ReadAt", "(*Reader).WriteTo",
 	},
 	"strconv": {"quoteWith", "unquote", "Quote", "QuoteToASCII", "QuoteToGraphic", "Unquote", "QuotedPrefix"},
 	"net/url": {"escape", "unescape", "QueryEscape", "PathEscape", "QueryUnescape", "PathUnescape", "EscapeError", "InvalidHostError"},

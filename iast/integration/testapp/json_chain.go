@@ -65,11 +65,17 @@ const (
 	JSONUnmarshal JSONDecodeMode = iota
 	// JSONDecoder decodes the body with json.NewDecoder.
 	JSONDecoder
+	// JSONDecoderOnBytesReader reads all the body with io.ReadAll, then
+	// decodes it with json.NewDecoder(bytes.NewReader(data)).
+	JSONDecoderOnBytesReader
 )
 
 func (mode JSONDecodeMode) String() string {
-	if mode == JSONDecoder {
+	switch mode {
+	case JSONDecoder:
 		return "decoder"
+	case JSONDecoderOnBytesReader:
+		return "decoder on bytes.Reader"
 	}
 	return "unmarshal"
 }
@@ -88,6 +94,14 @@ func BuildLargeJSONQuery(body io.Reader, mode JSONDecodeMode) (string, error) {
 	switch mode {
 	case JSONDecoder:
 		if err := json.NewDecoder(body).Decode(&document); err != nil {
+			return "", err
+		}
+	case JSONDecoderOnBytesReader:
+		data, err := io.ReadAll(body)
+		if err != nil {
+			return "", err
+		}
+		if err := json.NewDecoder(bytes.NewReader(data)).Decode(&document); err != nil {
 			return "", err
 		}
 	default:

@@ -145,19 +145,18 @@ func TestJSONDecoderPanicThenCleanReader(t *testing.T) {
 // the body copy has the body source, and the bytes after the copy are
 // foreign (Visit does not show them). The clean value is not tainted.
 //
-// The value has a unique first byte, and its tail has bytes that are not in
-// the body copy. Thus the content match finds one candidate offset, and
-// the tail cannot match by chance. (A value of one repeated byte uses all
-// the compare budget of the content match, and is then foreign.)
+// The value has a unique first byte. Thus the content match finds one
+// candidate offset. The bytes of the value after the body copy are 'Z', and
+// the body copy has no 'Z': they cannot match by chance.
 func TestJSONDecoderOversizedThenCleanReader(t *testing.T) {
 	requireWoven(t)
 	const prefix = `{"value":"`
 	var head strings.Builder
 	head.WriteString("#")
-	for index := 0; len(prefix)+head.Len() < taintrequest.MaxBodyCopy+16; index++ {
+	for index := 0; len(prefix)+head.Len() < taintrequest.MaxBodyCopy; index++ {
 		fmt.Fprintf(&head, "%05x,", index)
 	}
-	large := head.String() + strings.Repeat("Z", 32)
+	large := head.String()[:taintrequest.MaxBodyCopy-len(prefix)] + strings.Repeat("Z", 32)
 	document := prefix + large + `"}`
 	observed := make(chan bool, 1)
 	serveRequest(t, strings.NewReader(document), func(ctx context.Context, r *http.Request) {

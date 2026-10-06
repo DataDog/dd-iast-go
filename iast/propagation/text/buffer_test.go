@@ -12,6 +12,7 @@ import (
 	"io"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/DataDog/dd-iast-go/internal/taint/heapbits"
 	"github.com/stretchr/testify/require"
@@ -396,12 +397,69 @@ func TestBufferReadFromReadRuleNoAllocation(t *testing.T) {
 	require.Equal(t, []string{fmt.Sprintf("%d-%d=q", data, size)}, attributedBytes(t, a, storage))
 }
 
+// TestBufferReadFromReadRuleWork checks the CPU cost of the read rule. Each
+// ReadFrom below gives a 1-byte delegated read and a 0-byte delegated read
+// (io.EOF) into a 64 KiB buffer with a tainted tail (one run). For each read,
+// the read rule scans, clears and sets about 1,024 words of bits
+// (O(limit/64) words, no allocation). The test does 64 Ki delegated reads like
+// this, and compares the time with the same loop on a buffer with no bits
+// (the read rule then only checks the bits). The limits are generous (a
+// factor of readRuleWorkFactor, and readRuleWorkFloor) to find a cost that
+// grows more than linearly, not small changes.
+func TestBufferReadFromReadRuleWork(t *testing.T) {
+	a := begin(t)
+	const size = 64 << 10
+	input := source(t, a, "q", strings.Repeat("A", size))
+	run := func(tainted bool) time.Duration {
+		storage := make([]byte, size)
+		escapeBytes(storage)
+		buffer := bytes.NewBuffer(storage[:0])
+		buffer.WriteString(input)
+		if !tainted {
+			heapbits.ClearBytes(storage)
+		}
+		reader := &oneByteReader{data: "c"}
+		var failures int
+		start := time.Now()
+		for range size / 2 {
+			buffer.Reset()
+			reader.off = 0
+			if n, err := buffer.ReadFrom(reader); n != 1 || err != nil {
+				failures++
+			}
+		}
+		elapsed := time.Since(start)
+		require.Zero(t, failures)
+		if tainted {
+			require.Equal(t, []span{{1, size}}, bytesSpans(storage), "clean written byte, tainted tail")
+		} else {
+			require.Empty(t, bytesSpans(storage))
+		}
+		return elapsed
+	}
+	clean := run(false)
+	tainted := run(true)
+	t.Logf("%d delegated reads: %v with no bits, %v with a tainted 64 KiB tail (%.1fx)", size, clean, tainted, float64(tainted)/float64(clean))
+	require.Less(t, tainted, max(readRuleWorkFactor*clean, readRuleWorkFloor), "the read rule work for each read must stay bounded")
+}
+
+// readRuleWorkFactor and readRuleWorkFloor are the limits of
+// TestBufferReadFromReadRuleWork: the time with a tainted tail must be less
+// than the largest of readRuleWorkFactor times the time with no bits, and
+// readRuleWorkFloor.
+const (
+	readRuleWorkFactor = 100
+	readRuleWorkFloor  = 5 * time.Second
+)
+
 // TestBufferReadFromReadRuleManyRuns checks the read rule when the reused
-// memory has more than 16 tainted runs: the snapshot keeps the first 16 runs
-// (the runs that a short read can overwrite). All of the memory is cleared
-// before the read, and only the saved runs get their bits again in the part
-// that the read did not write: the runs from the 17th lose their bits (taint
-// loss only), and a written byte never keeps its old bits (no stale taint).
+// memory has more than 16 tainted runs: the snapshot keeps the first 16 runs,
+// and limit is the start of the 17th run. Only the bits before limit are
+// cleared before the read; the saved runs get their bits again in the part
+// that the read did not write. The read clears the bits of the bytes that it
+// wrote from limit (taint loss only). Thus the runs from the 17th keep their
+// bits when the read does not write them, and a written byte never keeps its
+// old bits (no stale taint).
 func TestBufferReadFromReadRuleManyRuns(t *testing.T) {
 	a := begin(t)
 	const old = "0123456789"
@@ -423,17 +481,22 @@ func TestBufferReadFromReadRuleManyRuns(t *testing.T) {
 		buffer.Reset()
 		return buffer, storage
 	}
-
-	t.Run("short read", func(t *testing.T) {
-		buffer, storage := setup(t)
-		n, err := buffer.ReadFrom(strings.NewReader("clean"))
-		require.NoError(t, err)
-		require.Equal(t, int64(5), n)
-		want := []span{{5, 10}}
-		for i := 1; i < 16; i++ {
+	// runs returns the tainted runs from the run index first (0-based).
+	runs := func(first int) []span {
+		var want []span
+		for i := first; i < 20; i++ {
 			want = append(want, span{100 * i, 100*i + 10})
 		}
-		require.Equal(t, want, bytesSpans(storage), "clean written prefix, the saved runs of the tail")
+		return want
+	}
+
+	t.Run("1-byte read", func(t *testing.T) {
+		buffer, storage := setup(t)
+		n, err := buffer.ReadFrom(strings.NewReader("c"))
+		require.NoError(t, err)
+		require.Equal(t, int64(1), n)
+		want := append([]span{{1, 10}}, runs(1)...)
+		require.Equal(t, want, bytesSpans(storage), "clean written byte, all of the tail keeps its bits (also the runs 17 to 20)")
 		require.Empty(t, bytesSpans(buffer.Bytes()))
 	})
 
@@ -442,7 +505,10 @@ func TestBufferReadFromReadRuleManyRuns(t *testing.T) {
 		n, err := buffer.ReadFrom(strings.NewReader(strings.Repeat("c", 1650)))
 		require.NoError(t, err)
 		require.Equal(t, int64(1650), n)
-		require.Empty(t, bytesSpans(storage), "no stale taint on the written bytes, taint loss on the tail")
+		// The read writes storage (one Read of 1650 bytes), then ReadFrom
+		// grows the Buffer: check storage.
+		require.Empty(t, bytesSpans(storage[:1650]), "no stale taint on the written bytes (also from limit)")
+		require.Equal(t, runs(17), bytesSpans(storage), "the tail after the written bytes keeps its bits")
 	})
 
 	t.Run("clean overwrite with the same bytes on the 17th run", func(t *testing.T) {
@@ -460,8 +526,9 @@ func TestBufferReadFromReadRuleManyRuns(t *testing.T) {
 		require.Equal(t, string(data), string(got))
 		require.Equal(t, old, string(got[1600:1610]))
 		require.Equal(t, old, string(got[1700:1710]))
-		require.Empty(t, bytesSpans(storage), "no stale taint")
+		require.Empty(t, bytesSpans(got), "no stale taint")
 		require.Empty(t, attributedBytes(t, a, got), "no source match, thus no report")
+		require.Equal(t, runs(18), bytesSpans(storage), "the tail after the written bytes keeps its bits")
 	})
 }
 

@@ -30,9 +30,11 @@ import (
 // hookedFuncs are the functions that orchestrion.yml hooks, by package
 // ("name" or "(*Type).name").
 var hookedFuncs = map[string][]string{
-	"strings": {"Clone", "(*Builder).Write", "(*Builder).WriteString", "(*Builder).grow", "Repeat", "ToUpper", "ToLower", "Map", "ToValidUTF8", "(*Replacer).Replace"},
+	"strings": {"Clone", "(*Builder).Write", "(*Builder).WriteString", "(*Builder).grow", "Repeat", "ToUpper", "ToLower", "Map", "ToValidUTF8", "(*Replacer).Replace",
+		"(*Reader).Read", "(*Reader).ReadAt"},
 	"bytes": {"Clone", "Join", "Repeat", "Replace", "ToValidUTF8", "ToUpper", "ToLower", "Map",
-		"(*Buffer).grow", "(*Buffer).Write", "(*Buffer).WriteString", "(*Buffer).WriteByte", "(*Buffer).WriteRune", "(*Buffer).ReadFrom"},
+		"(*Buffer).grow", "(*Buffer).Write", "(*Buffer).WriteString", "(*Buffer).WriteByte", "(*Buffer).WriteRune", "(*Buffer).ReadFrom",
+		"(*Reader).Read", "(*Reader).ReadAt"},
 	"strconv": {"quoteWith", "unquote"},
 	"net/url": {"escape", "unescape"},
 }
@@ -52,6 +54,10 @@ var mustInline = []string{
 // or a new loss, fails the test.
 var lostInline = []string{
 	"strings.(*Builder).Write", "strings.(*Builder).WriteString", "strings.Clone", "bytes.Clone", "strconv.quoteWith",
+	// The Reader methods cost 28 (Read) and 41 (ReadAt) without the hooks.
+	// The callers usually call them through io.Reader or io.ReaderAt (an
+	// interface call is not inlined).
+	"strings.(*Reader).Read", "strings.(*Reader).ReadAt", "bytes.(*Reader).Read", "bytes.(*Reader).ReadAt",
 }
 
 func skipBuildTest(t *testing.T) {

@@ -21,4 +21,4 @@ package text
 // hooks). The application does not link this package, thus the aspect
 // strings-telemetry-decls gives the number to telemetry (see
 // internal/taint/request/telemetry.go). TestAspectCount checks both values.
-const instrumentedPropagationPoints = 28
+const instrumentedPropagationPoints = 32

@@ -231,7 +231,11 @@ operands). Thus each run is cut into **segments**, from left to right. The
    then the body copy). The segment is that prefix. Needed for copies
    (concatenation, Builder, `string(b)`). A match of **1 byte** is valid
    (critic round 2 item 10): the 2-byte rule is for source admission only.
-   A short match is **weak** (4.5.2, strong-match rule).
+   A short match is **weak** (4.5.2, strong-match rule). The search is not
+   a compare at each offset of the copy (quadratic, for example on a run of
+   one repeated byte, T5.34): after the first match, each step finds (with
+   `bytes.Index`) the first later offset with a longer match, and it stops
+   when no later offset has enough bytes for a longer match.
 3. A derived candidate gives the source of each part of the segment from its
    own segments.
 4. Tie rule: the address match wins; then the longest prefix; then the
@@ -452,7 +456,10 @@ pointer to the gate word (pattern of `internal/taint/heapbits/heapbits.go:40-60`
    `Grow` and `strconv.quoteWith` stop being inlined (go1.26.6 costs 32, 32,
    55, 78, 73; budget 80; each call to a function that is not inlined costs
    57, `G/cmd/compile/internal/inline/inl.go:50-56`). No supported pattern
-   avoids this. Accepted by the user; measured by G-A3. A woven
+   avoids this. Accepted by the user; measured by G-A3. The hooks of
+   `(*bytes.Reader).Read`, `ReadAt` and `(*strings.Reader).Read`, `ReadAt`
+   (T5.34) also stop the inlining of these methods (costs 28 and 41); the
+   callers usually call them through `io.Reader` (no inlining). A woven
    `-gcflags=-m` test lists the hooked functions that must stay inlinable
    (`fmt.(*buffer).write*`, `(*bytes.Buffer).Reset`, `strings.Clone`,
    `bytes.Clone`). An escape comparison runs for each hooked stdlib function.
@@ -487,6 +494,7 @@ pointer to the gate word (pattern of `internal/taint/heapbits/heapbits.go:40-60`
 | strings | `Repeat` (`G/strings/strings.go:616`) | `Any(s)` | Skip the read-only fast path (`:640-655`) when `s` is tainted; the Builder hook copies the bits |
 | bytes | `(*Buffer).Write` (`G/bytes/buffer.go:193`), `WriteString` (`:205`), `WriteByte`, `WriteRune`, `ReadFrom`, `grow` (`:144`), `growSlice` (`:247`) | `Any(src) \|\| Any(dst)` | Copy only on the bytes that are overwritten (with a clean source, `Copy` clears the destination). The old tail after the slide of `grow` (`:160-166`) is **not** cleared: a value copy of the Buffer can still show it (critic round 2 item 4) |
 | bytes | `Clone`, `Join`, `Repeat`, `Replace` (+`ReplaceAll`), `ToValidUTF8` | `Any(inputs)` | Copy |
+| bytes, strings | `(*Reader).Read`, `ReadAt` (`G/bytes/reader.go:39`, `:50`; `G/strings/reader.go:39`, `:50`) | `Any(src) \|\| Any(dst)` | Copy on the written bytes only (with a clean source, `Copy` clears the destination; the bytes after `n` keep their bits). `WriteTo` gives its data to `Write` with no copy (bytes) or through `io.WriteString` (strings: `WriteString` of the writer, or the runtime `[]byte(s)` hook): no hook. Pattern: `json.NewDecoder(bytes.NewReader(b))` (T5.34) |
 | fmt | `(*buffer).write` (`G/fmt/print.go:103`), `(*buffer).writeString` (`:107`) | `Any(src) \|\| Any(dst)` | Copy (`%s`, `%v` of strings and `[]byte`, format text, `Errorf`, `Fprint*`); a clean source clears the destination |
 | fmt | `(*fmt).writePadding` (`G/fmt/format.go:74-78`) | `Any(buf)` | Copy of the old output into the new buffer (unhooked `make` + `copy`); the padding region is clean (round 3 M2) |
 | io | `ReadAll` (`G/io/io.go:709`) | `Live()` only | Copy of each chunk into the final slice |
@@ -496,16 +504,32 @@ pointer to the gate word (pattern of `internal/taint/heapbits/heapbits.go:40-60`
 
 **Read rule** (a delegated `Read` into reused storage `dst`): when
 `Any(dst)` is false, call `Read` (the body hook sets new bits). Else, when
-`len(dst)` ≤ 64 KiB: allocate a heap shadow of `len(dst)` bytes, `Copy`
-the bits of `dst` to the shadow, `Clear(dst)`, call `Read` and get `n`, then
-`Copy` the shadow bits back to `dst[n:]` only. Thus `dst[:n]` has only the
-bits of the new data, and the untouched tail (and its aliases) keeps its old
-bits. When `len(dst)` > 64 KiB, call `Read` with no change (stale bits can
-stay; the sink match check of 4.5.1 limits the effect). When `Read` panics,
-the panic goes on unchanged; the old bits of the tail are then lost (taint
-loss only, never a crash). Tests: zero read and short read into a tainted
-`dst` (clean written prefix, tainted tail, the tail of a Buffer value copy
-stays tainted), and a panicking reader.
+`len(dst)` ≤ 64 KiB, with no allocation:
+1. Save at most 16 tainted runs of `dst` (offset and end) in a fixed array
+   on the stack. `limit` is the start of the 17th run, or `len(dst)` when
+   `dst` has 16 runs or less.
+2. `Clear(dst[:limit])` only.
+3. Call `Read` and get `n` (a negative `n`, or an `n` more than `len(dst)`,
+   counts as a write of all of `dst`).
+4. Set again the bits of the saved runs in `dst[n:limit]`. If `n > limit`,
+   `Clear(dst[limit:n])`: the bytes that `Read` wrote from `limit` lose
+   their bits (also the new bits: taint loss only, never stale bits).
+
+Thus a written byte never keeps its old bits, and the unwritten tail (all
+bytes from `max(n, limit)`, and the saved runs in `dst[n:limit]`, and the
+values that alias it) keeps its old bits. The CPU cost of each read is
+O(`limit`/64 + `n`/64) bitmap words (at most 1,024 words for each step
+with 64 KiB), with no allocation. When `len(dst)` > 64 KiB, call `Read`
+with no change (stale bits can stay; the sink match check of 4.5.1 limits
+the effect). When `Read` panics, the panic goes on unchanged; the saved
+bits of `dst[:limit]` are then lost (taint loss only, never a crash).
+Tests: zero read and short read into a tainted `dst` (clean written prefix,
+tainted tail, the tail of a Buffer value copy stays tainted), a panicking
+reader, no allocation, 20 runs (a 1-byte read keeps the runs 17 to 20; a
+read past `limit` clears `dst[limit:n]` and the tail after `n` keeps its
+bits; a clean overwrite with the same bytes on the 17th run gives no
+taint), and the work of 64 Ki 1-byte reads with a tainted 64 KiB tail
+(less than the larger of 100 times the time with no bits and 5 s).
 | encoding/json | `valueQuoted` (`G/encoding/json/decode.go:408`) and `,string` path (`:760`) | `Any(item)` | Covers `,string` fields without the string-to-slice switch (critic minor 11) |
 
 ### 6.3 Changed bytes (coarse + derived table)

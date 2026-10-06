@@ -429,20 +429,29 @@ aspects:
             // __dd_iast_jsontext_read is the read rule of plan section 6.2 (the
             // same code as in bufio and in the v1 encoding/json): a delegated
             // Read into reused memory dst. When dst has bits (and is 64 KiB or
-            // less), the tainted runs of dst (offset and end) go to a fixed
-            // array on the stack (no allocation), all of dst is cleared, Read
-            // runs, and the parts of the saved runs in dst[n:] get their bits
-            // again. Thus the new bytes have only the bits that Read sets, and
-            // the tail that Read did not write (and its aliases) keeps its
-            // bits. The cost is O(runs + words of bits), with no allocation.
+            // less), these steps run, with no allocation:
+            //   1. Save at most 16 tainted runs of dst (offset and end) in a
+            //      fixed array on the stack. limit is the start of the 17th
+            //      run, or len(dst) when dst has 16 runs or less.
+            //   2. Clear dst[:limit] only.
+            //   3. Call Read, which returns n.
+            //   4. Set again the bits of the saved runs in dst[n:limit]. If n
+            //      is more than limit, clear dst[limit:n].
             //
-            // The snapshot keeps at most 16 runs: the first 16, because a
-            // short read writes the start of dst. When dst has more runs, the
-            // runs from the 17th lose their bits (taint loss only). A byte that
-            // Read writes never keeps its old bits (no stale taint). When the
-            // bits cannot be set again (no storage), the tail loses them
-            // (taint loss only). When Read panics, the panic goes on, and the
-            // tail loses its saved bits (taint loss only).
+            // Thus a byte that Read writes never keeps its old bits (no stale
+            // taint): a written byte before limit is cleared before Read, and a
+            // written byte from limit is cleared after Read (it also loses its
+            // new bits: taint loss only). The tail that Read did not write (all
+            // bytes from max(n, limit), and the saved runs in dst[n:limit])
+            // keeps its bits, and the values that alias it keep them too.
+            //
+            // The CPU cost of each read is O(limit/64 + n/64) words of bits for
+            // the scan, the clear and the set (at most 1,024 words for each
+            // step with 64 KiB), with no allocation. A negative Read result n,
+            // or an n that is more than len(dst), counts as a write of all of
+            // dst. When the bits cannot be set again (no storage), the tail
+            // loses them (taint loss only). When Read panics, the panic goes
+            // on, and the saved bits in dst[:limit] are lost (taint loss only).
             func __dd_iast_jsontext_read(rd io.Reader, dst []byte) (int, error) {
               l := len(dst)
               p := unsafe.Pointer(unsafe.SliceData(dst))
@@ -450,38 +459,44 @@ aspects:
                 return rd.Read(dst)
               }
               // The snapshot: at most 16 tainted runs [start, end), on the
-              // stack.
+              // stack. limit is the start of the first run that is not in the
+              // snapshot, or l.
               var starts, ends [16]int
-              k := 0
+              k, limit := 0, l
               for off := __dd_iast_jsontext_find(p, l, 0, true); off < l; {
                 end := __dd_iast_jsontext_find(p, l, off, false)
                 if k == len(starts) || end <= off {
-                  // Too many runs, or a concurrent change of the bits: the
-                  // runs after the snapshot lose their bits (all of dst is
-                  // cleared below).
+                  // Too many runs, or a concurrent change of the bits: the bits
+                  // from off are not in the snapshot, and they are not cleared
+                  // before Read.
+                  limit = off
                   break
                 }
                 starts[k], ends[k] = off, end
                 k++
                 off = __dd_iast_jsontext_find(p, l, end, true)
               }
-              if k == 0 {
+              if k == 0 && limit == l {
                 return rd.Read(dst)
               }
-              // Clear all of dst: Read can write any byte of dst, and a
-              // written byte must have only the bits of the new data.
-              __dd_iast_clear(p, uintptr(l))
+              // Clear dst[:limit]: Read can write any byte, and a written byte
+              // must have only the bits of the new data.
+              __dd_iast_clear(p, uintptr(limit))
               n, err := rd.Read(dst)
-              if n >= 0 && n < l {
-                for i := 0; i < k; i++ {
-                  start := starts[i]
-                  if start < n {
-                    start = n
-                  }
-                  if start < ends[i] {
-                    __dd_iast_set(unsafe.Add(p, start), uintptr(ends[i]-start))
-                  }
+              w := n
+              if w < 0 || w > l {
+                // A wrong result: all of dst can be written.
+                w = l
+              }
+              for i := 0; i < k; i++ {
+                start, end := max(starts[i], w), min(ends[i], limit)
+                if start < end {
+                  __dd_iast_set(unsafe.Add(p, start), uintptr(end-start))
                 }
+              }
+              if w > limit {
+                // The written bytes from limit can have old bits: clear them.
+                __dd_iast_clear(unsafe.Add(p, limit), uintptr(w-limit))
               }
               runtime.KeepAlive(p)
               return n, err

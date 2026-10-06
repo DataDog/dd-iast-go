@@ -11,6 +11,7 @@ import (
 	"io"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/DataDog/dd-iast-go/internal/taint/request"
 	"github.com/stretchr/testify/require"
@@ -266,12 +267,64 @@ func TestBufioReadRuleNoAllocation(t *testing.T) {
 	require.Equal(t, []string{fmt.Sprintf("1-%d=%s", size, bodyLabel)}, attributedBytes(t, a, alias))
 }
 
+// Plan section 6.2, read rule: the CPU cost. Each ReadByte below gives a
+// 1-byte delegated read into the full 64 KiB buffer with a tainted tail (one
+// run). For each byte, the read rule scans, clears and sets about 1,024 words
+// of bits (O(limit/64) words, no allocation). The test reads 64 KiB bytes like
+// this, and compares the time with the same loop on a buffer with no bits
+// (the read rule then only checks the bits). The limits are generous (a factor
+// of readRuleWorkFactor, and readRuleWorkFloor) to find a cost that grows
+// more than linearly, not small changes.
+func TestBufioReadRuleWork(t *testing.T) {
+	_, a := begin(t)
+	const size = 64 << 10
+	run := func(first io.Reader, tainted bool) time.Duration {
+		r := bufio.NewReaderSize(&oneByteAfter{first: first}, size)
+		alias, err := r.Peek(size)
+		require.NoError(t, err)
+		if tainted {
+			require.Equal(t, [][2]int{{0, size}}, rangesBytes(alias))
+		} else {
+			require.Empty(t, rangesBytes(alias))
+		}
+		_, err = r.Discard(size)
+		require.NoError(t, err)
+		var failures int
+		start := time.Now()
+		for range size {
+			if c, err := r.ReadByte(); c != 'c' || err != nil {
+				failures++
+			}
+		}
+		elapsed := time.Since(start)
+		require.Zero(t, failures)
+		if tainted {
+			require.Equal(t, [][2]int{{1, size}}, rangesBytes(alias), "clean written byte, tainted tail")
+		}
+		return elapsed
+	}
+	clean := run(strings.NewReader(heapString(strings.Repeat("a", size))), false)
+	tainted := run(newBody(t, a, strings.Repeat("a", size), 0), true)
+	t.Logf("%d 1-byte reads: %v with no bits, %v with a tainted 64 KiB tail (%.1fx)", size, clean, tainted, float64(tainted)/float64(clean))
+	require.Less(t, tainted, max(readRuleWorkFactor*clean, readRuleWorkFloor), "the read rule work for each byte must stay bounded")
+}
+
+// readRuleWorkFactor and readRuleWorkFloor are the limits of
+// TestBufioReadRuleWork: the time with a tainted tail must be less than the
+// largest of readRuleWorkFactor times the time with no bits, and
+// readRuleWorkFloor.
+const (
+	readRuleWorkFactor = 100
+	readRuleWorkFloor  = 5 * time.Second
+)
+
 // Plan section 6.2, read rule with more than 16 tainted runs in the buffer:
-// the snapshot keeps the first 16 runs (the runs that a short read can
-// overwrite). All of the buffer is cleared before the read, and only the
-// saved runs get their bits again in the part that the read did not write:
-// the runs from the 17th lose their bits (taint loss only), and a written
-// byte never keeps its old bits (no stale taint).
+// the snapshot keeps the first 16 runs, and limit is the start of the 17th
+// run. Only the bits before limit are cleared before the read; the saved runs
+// get their bits again in the part that the read did not write. The read
+// clears the bits of the bytes that it wrote from limit (taint loss only).
+// Thus the runs from the 17th keep their bits when the read does not write
+// them, and a written byte never keeps its old bits (no stale taint).
 func TestBufioReadRuleManyRuns(t *testing.T) {
 	const size = 2000
 	const old = "0123456789"
@@ -293,25 +346,31 @@ func TestBufioReadRuleManyRuns(t *testing.T) {
 		require.NoError(t, err)
 		return r, alias, a
 	}
-
-	t.Run("short read", func(t *testing.T) {
-		r, alias, _ := setup(t, "ccccc")
-		got, err := r.Peek(5)
-		require.NoError(t, err)
-		require.Equal(t, "ccccc", string(got))
-		require.Empty(t, rangesBytes(got))
-		want := [][2]int{{5, 10}}
-		for i := 1; i < 16; i++ {
+	// runs returns the tainted runs from the run index first (0-based).
+	runs := func(first int) [][2]int {
+		var want [][2]int
+		for i := first; i < 20; i++ {
 			want = append(want, [2]int{100 * i, 100*i + 10})
 		}
-		require.Equal(t, want, rangesBytes(alias), "clean written prefix, the saved runs of the tail")
+		return want
+	}
+
+	t.Run("1-byte read", func(t *testing.T) {
+		r, alias, _ := setup(t, "c")
+		got, err := r.Peek(1)
+		require.NoError(t, err)
+		require.Equal(t, "c", string(got))
+		require.Empty(t, rangesBytes(got))
+		want := append([][2]int{{1, 10}}, runs(1)...)
+		require.Equal(t, want, rangesBytes(alias), "clean written byte, all of the tail keeps its bits (also the runs 17 to 20)")
 	})
 	t.Run("read after the 17th run start", func(t *testing.T) {
 		r, alias, _ := setup(t, strings.Repeat("c", 1650))
 		got, err := r.Peek(1650)
 		require.NoError(t, err)
 		require.Equal(t, strings.Repeat("c", 1650), string(got))
-		require.Empty(t, rangesBytes(alias), "no stale taint on the written bytes, taint loss on the tail")
+		require.Empty(t, rangesBytes(got), "no stale taint on the written bytes (also from limit)")
+		require.Equal(t, runs(17), rangesBytes(alias), "the tail after the written bytes keeps its bits")
 	})
 	t.Run("clean overwrite with the same bytes on the 17th run", func(t *testing.T) {
 		// The clean data has the bytes of the old tainted source at the
@@ -323,8 +382,9 @@ func TestBufioReadRuleManyRuns(t *testing.T) {
 		got, err := r.Peek(len(data))
 		require.NoError(t, err)
 		require.Equal(t, string(data), string(got))
-		require.Empty(t, rangesBytes(alias), "no stale taint")
+		require.Empty(t, rangesBytes(got), "no stale taint")
 		require.Empty(t, attributedBytes(t, a, got), "no source match, thus no report")
+		require.Equal(t, runs(18), rangesBytes(alias), "the tail after the written bytes keeps its bits")
 	})
 }
 

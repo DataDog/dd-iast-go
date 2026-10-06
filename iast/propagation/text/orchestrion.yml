@@ -25,9 +25,11 @@ meta:
 #     operations, and returns true with the results. A few twins always do
 #     the work (the bytes.Buffer writes: their gate is "the source or the
 #     destination is tainted", and the destination is known only after the
-#     growth of the buffer).
-#  3. Exact copies (Builder and Buffer writes, Clone, Join, Repeat, Replace,
-#     bytes.ToValidUTF8) copy the bits with heapbits.Copy. The positional
+#     growth of the buffer; and the bytes.Reader and strings.Reader reads,
+#     with the same gate).
+#  3. Exact copies (Builder and Buffer writes, bytes.Reader and
+#     strings.Reader reads, Clone, Join, Repeat, Replace, bytes.ToValidUTF8)
+#     copy the bits with heapbits.Copy. The positional
 #     transforms (ASCII ToUpper and ToLower) copy the bits and record a
 #     positional derived entry (propbridge.Derived). The coarse transforms
 #     (Map, strings.ToValidUTF8, Replacer.Replace, quote, unquote, URL escape
@@ -630,6 +632,92 @@ aspects:
             if __dd_iast_live() {
               if __dd_iast_out, __dd_iast_ok := __dd_iast_replacer_replace({{ $r }}, {{ $s }}); __dd_iast_ok {
                 return __dd_iast_out
+              }
+            }
+
+  - id: strings.Reader.Read
+    join-point:
+      all-of:
+        - import-path: strings
+        - function-body:
+            function:
+              - receiver: "*strings.Reader"
+              - name: Read
+    advice:
+      - inject-declarations:
+          imports:
+            unsafe: unsafe
+          template: |-
+            // __dd_iast_overwrites makes the bits of dst equal to the bits of
+            // src (same length) when one of them is tainted: dst is reused
+            // memory that can have old bits (a clean source clears them).
+            func __dd_iast_overwrites(dst []byte, src string) {
+              if len(src) != 0 && (__dd_iast_anys(src) || __dd_iast_anyb(dst)) {
+                __dd_iast_copyp(unsafe.Pointer(unsafe.SliceData(dst)), __dd_iast_ptr(src), len(src))
+              }
+            }
+
+            // __dd_iast_sreader_read is the body with the bit copy on the
+            // written bytes. It returns false at the end of the data (then
+            // the original body runs and returns io.EOF).
+            func __dd_iast_sreader_read(r *Reader, b []byte) (int, bool) {
+              if r.i >= int64(len(r.s)) {
+                return 0, false
+              }
+              r.prevRune = -1
+              src := r.s[r.i:]
+              n := copy(b, src)
+              __dd_iast_overwrites(b[:n], src[:n])
+              r.i += int64(n)
+              return n, true
+            }
+      - prepend-statements:
+          template: |-
+            {{- $r := .Function.Receiver -}}
+            {{- $b := .Function.Argument 0 -}}
+            if __dd_iast_live() {
+              if __dd_iast_n, __dd_iast_ok := __dd_iast_sreader_read({{ $r }}, {{ $b }}); __dd_iast_ok {
+                return __dd_iast_n, nil
+              }
+            }
+
+  - id: strings.Reader.ReadAt
+    join-point:
+      all-of:
+        - import-path: strings
+        - function-body:
+            function:
+              - receiver: "*strings.Reader"
+              - name: ReadAt
+    advice:
+      - inject-declarations:
+          imports:
+            io: io
+          template: |-
+            // __dd_iast_sreader_readat is the body with the bit copy on the
+            // written bytes. It returns false for a negative offset and at
+            // the end of the data (then the original body runs and returns
+            // the error).
+            func __dd_iast_sreader_readat(r *Reader, b []byte, off int64) (int, error, bool) {
+              if off < 0 || off >= int64(len(r.s)) {
+                return 0, nil, false
+              }
+              src := r.s[off:]
+              n := copy(b, src)
+              __dd_iast_overwrites(b[:n], src[:n])
+              if n < len(b) {
+                return n, io.EOF, true
+              }
+              return n, nil, true
+            }
+      - prepend-statements:
+          template: |-
+            {{- $r := .Function.Receiver -}}
+            {{- $b := .Function.Argument 0 -}}
+            {{- $off := .Function.Argument 1 -}}
+            if __dd_iast_live() {
+              if __dd_iast_n, __dd_iast_err, __dd_iast_ok := __dd_iast_sreader_readat({{ $r }}, {{ $b }}, {{ $off }}); __dd_iast_ok {
+                return __dd_iast_n, __dd_iast_err
               }
             }
 
@@ -1461,61 +1549,76 @@ aspects:
             // snapshot of the read rule.
             const __dd_iast_rr_runs = 16
 
-            // __dd_iast_read is the read rule of plan section 6.2: a Read into
-            // reused memory dst. When dst has taint (and is at most 64 KiB),
-            // it saves the tainted runs of dst (offset and end) in a fixed
-            // array on the stack (no allocation), clears dst, calls Read, and
-            // sets again the parts of the saved runs that Read did not write
-            // (dst[n:]). Thus the written bytes have only the bits of the new
-            // data (set by the source hooks), and the tail (and the values that
-            // alias it) keeps its old bits. The cost is O(runs + words of
-            // bits), with no allocation.
+            // __dd_iast_read is the read rule of plan section 6.2: a delegated
+            // Read into reused memory dst. When dst has bits (and is 64 KiB or
+            // less), these steps run, with no allocation:
+            //   1. Save at most 16 tainted runs of dst (offset and end) in a
+            //      fixed array on the stack. limit is the start of the 17th
+            //      run, or len(dst) when dst has 16 runs or less.
+            //   2. Clear dst[:limit] only.
+            //   3. Call Read, which returns n.
+            //   4. Set again the bits of the saved runs in dst[n:limit]. If n
+            //      is more than limit, clear dst[limit:n].
             //
-            // The snapshot keeps at most 16 runs: the first 16, because a
-            // short read writes the start of dst. When dst has more runs, all
-            // of dst is cleared, and only the 16 saved runs get their bits
-            // again in dst[n:]: the runs from the 17th lose their bits (taint
-            // loss only). A byte that Read writes never keeps its old bits (no
-            // stale taint). When the bits cannot be set again (no storage),
-            // the tail loses them (taint loss only). When Read panics, the
-            // saved bits of the tail are lost (taint loss only).
+            // Thus a byte that Read writes never keeps its old bits (no stale
+            // taint): a written byte before limit is cleared before Read, and a
+            // written byte from limit is cleared after Read (it also loses its
+            // new bits: taint loss only). The tail that Read did not write (all
+            // bytes from max(n, limit), and the saved runs in dst[n:limit])
+            // keeps its bits, and the values that alias it keep them too.
+            //
+            // The CPU cost of each read is O(limit/64 + n/64) words of bits for
+            // the scan, the clear and the set (at most 1,024 words for each
+            // step with 64 KiB), with no allocation. A negative Read result n,
+            // or an n that is more than len(dst), counts as a write of all of
+            // dst. When the bits cannot be set again (no storage), the tail
+            // loses them (taint loss only). When Read panics, the panic goes
+            // on, and the saved bits in dst[:limit] are lost (taint loss only).
             func __dd_iast_read(r io.Reader, dst []byte) (int, error) {
               l := len(dst)
+              p := unsafe.Pointer(unsafe.SliceData(dst))
               if l == 0 || l > 64<<10 || !__dd_iast_anyb(dst) {
                 return r.Read(dst)
               }
-              p := unsafe.Pointer(unsafe.SliceData(dst))
+              // The snapshot: at most 16 tainted runs [start, end), on the
+              // stack. limit is the start of the first run that is not in the
+              // snapshot, or l.
               var starts, ends [__dd_iast_rr_runs]int
-              k := 0
+              k, limit := 0, l
               for off := __dd_iast_rr_find(p, l, 0, true); off < l; {
                 end := __dd_iast_rr_find(p, l, off, false)
-                if k == __dd_iast_rr_runs || end <= off {
-                  // Too many runs, or a concurrent change of the bits: the
-                  // runs after the snapshot lose their bits (all of dst is
-                  // cleared below).
+                if k == len(starts) || end <= off {
+                  // Too many runs, or a concurrent change of the bits: the bits
+                  // from off are not in the snapshot, and they are not cleared
+                  // before Read.
+                  limit = off
                   break
                 }
                 starts[k], ends[k] = off, end
                 k++
                 off = __dd_iast_rr_find(p, l, end, true)
               }
-              if k == 0 {
+              if k == 0 && limit == l {
                 return r.Read(dst)
               }
-              // Clear all of dst: Read can write any byte of dst, and a
-              // written byte must have only the bits of the new data.
-              __dd_iast_clear(p, l)
+              // Clear dst[:limit]: Read can write any byte, and a written byte
+              // must have only the bits of the new data.
+              __dd_iast_clear(p, limit)
               n, err := r.Read(dst)
-              if n >= 0 && n < l {
-                for i := 0; i < k; i++ {
-                  start := starts[i]
-                  if start < n {
-                    start = n
-                  }
-                  if start < ends[i] {
-                    __dd_iast_set(unsafe.Add(p, start), ends[i]-start)
-                  }
+              w := n
+              if w < 0 || w > l {
+                // A wrong result: all of dst can be written.
+                w = l
+              }
+              for i := 0; i < k; i++ {
+                start, end := max(starts[i], w), min(ends[i], limit)
+                if start < end {
+                  __dd_iast_set(unsafe.Add(p, start), end-start)
                 }
+              }
+              if w > limit {
+                // The written bytes from limit can have old bits: clear them.
+                __dd_iast_clear(unsafe.Add(p, limit), w-limit)
               }
               runtime.KeepAlive(p)
               return n, err
@@ -1547,6 +1650,82 @@ aspects:
             {{- $r := .Function.Argument 0 -}}
             if __dd_iast_live() {
               return __dd_iast_buffer_readfrom({{ $b }}, {{ $r }})
+            }
+
+  - id: bytes.Reader.Read
+    join-point:
+      all-of:
+        - import-path: bytes
+        - function-body:
+            function:
+              - receiver: "*bytes.Reader"
+              - name: Read
+    advice:
+      - inject-declarations:
+          template: |-
+            // __dd_iast_reader_read is the body with the bit copy on the
+            // written bytes (reused memory: a clean source clears old bits
+            // there). It returns false at the end of the data (then the
+            // original body runs and returns io.EOF).
+            func __dd_iast_reader_read(r *Reader, b []byte) (int, bool) {
+              if r.i >= int64(len(r.s)) {
+                return 0, false
+              }
+              r.prevRune = -1
+              src := r.s[r.i:]
+              n := copy(b, src)
+              __dd_iast_overwrite(b[:n], src[:n])
+              r.i += int64(n)
+              return n, true
+            }
+      - prepend-statements:
+          template: |-
+            {{- $r := .Function.Receiver -}}
+            {{- $b := .Function.Argument 0 -}}
+            if __dd_iast_live() {
+              if __dd_iast_n, __dd_iast_ok := __dd_iast_reader_read({{ $r }}, {{ $b }}); __dd_iast_ok {
+                return __dd_iast_n, nil
+              }
+            }
+
+  - id: bytes.Reader.ReadAt
+    join-point:
+      all-of:
+        - import-path: bytes
+        - function-body:
+            function:
+              - receiver: "*bytes.Reader"
+              - name: ReadAt
+    advice:
+      - inject-declarations:
+          imports:
+            io: io
+          template: |-
+            // __dd_iast_reader_readat is the body with the bit copy on the
+            // written bytes. It returns false for a negative offset and at
+            // the end of the data (then the original body runs and returns
+            // the error).
+            func __dd_iast_reader_readat(r *Reader, b []byte, off int64) (int, error, bool) {
+              if off < 0 || off >= int64(len(r.s)) {
+                return 0, nil, false
+              }
+              src := r.s[off:]
+              n := copy(b, src)
+              __dd_iast_overwrite(b[:n], src[:n])
+              if n < len(b) {
+                return n, io.EOF, true
+              }
+              return n, nil, true
+            }
+      - prepend-statements:
+          template: |-
+            {{- $r := .Function.Receiver -}}
+            {{- $b := .Function.Argument 0 -}}
+            {{- $off := .Function.Argument 1 -}}
+            if __dd_iast_live() {
+              if __dd_iast_n, __dd_iast_err, __dd_iast_ok := __dd_iast_reader_readat({{ $r }}, {{ $b }}, {{ $off }}); __dd_iast_ok {
+                return __dd_iast_n, __dd_iast_err
+              }
             }
 
   # ---------------------------------------------------------------- strconv
@@ -2062,7 +2241,7 @@ aspects:
             // Exported to package internal/taint/request (push linkname).
             //
             //go:linkname __dd_iast_text_points __dd_iast_telemetry.text_points
-            var __dd_iast_text_points uint32 = 28
+            var __dd_iast_text_points uint32 = 32
 
             // The linkname directive needs the import of unsafe.
             var _ unsafe.Pointer

@@ -598,24 +598,161 @@ func TestCheckBudgetExhausted(t *testing.T) {
 	f := useFakeBits(t)
 	setRangeLimit(t, 10)
 	a := newAnalysis(t, NewManager())
-	// 5000 occurrences of 'a': a content match of "ab" checks each of them.
-	taintBytes(t, a, "s", strings.Repeat("a", 5000))
+	// 255 sources "ab": the content match of a byte 'a' uses 1 check for each
+	// of them (255 checks). The source "zz" is the last one (256 sources).
+	for i := 0; i < MaxSources-1; i++ {
+		taintBytes(t, a, fmt.Sprintf("s%d", i), "ab")
+	}
 	taintBytes(t, a, "z", "zz")
-	// Run 1 ("a", 1 check), run 2 ("ab": the checks stop), run 3.
-	value := taintRuns(f, "a-ab-ab", "t-tt-tt")
+	// "zz" uses 1 check. 16 bytes 'a' use 16 x 255 = 4080 checks. The 17th
+	// 'a' (offset 18) uses the last 15 checks and stops: the remaining bytes
+	// of the run and the next run are foreign.
+	value := taintRuns(f, "zz"+strings.Repeat("a", 18)+"-a", "tt"+strings.Repeat("t", 18)+"-t")
 	var r Attribution
-	// The 1-byte match is weak: the segments stay, but the value is not
-	// tainted for the owner.
-	require.False(t, a.AttributeBytes(value, &r))
-	require.True(t, r.Stopped())
-	require.Equal(t, "0-1=s 2-4=foreign 5-7=foreign", describeNames(&r))
-
-	// In one run: "zz" matches with 1 check, then "ab" uses all the checks;
-	// the remaining bytes of the run are foreign.
-	value = taintRuns(f, "zzab", "tttt")
 	require.True(t, a.AttributeBytes(value, &r), "zz is a full copy of a 2-byte source: strong")
 	require.True(t, r.Stopped())
-	require.Equal(t, "0-2=z 2-4=foreign", describeNames(&r))
+	// Equal matches: the last registered "ab" source wins.
+	require.Equal(t, "0-2=z 2-18=s254 18-20=foreign 21-22=foreign", describeNames(&r))
+
+	// Without "zz": the 1-byte matches are weak. The segments stay, but the
+	// value is not tainted for the owner.
+	value = taintRuns(f, strings.Repeat("a", 18), strings.Repeat("t", 18))
+	require.False(t, a.AttributeBytes(value, &r))
+	require.True(t, r.Stopped())
+	require.Equal(t, "0-16=s254 16-18=foreign", describeNames(&r))
+}
+
+// TestContentMatchOfRepeatedByte: a copy of one repeated byte (no address
+// match) is attributed with a small part of the budgets. (A compare at each
+// offset of the copy is quadratic: it used all the compare budget, and the
+// value was foreign.)
+func TestContentMatchOfRepeatedByte(t *testing.T) {
+	f := useFakeBits(t)
+	setRangeLimit(t, 10)
+	a := newAnalysis(t, NewManager())
+	taintBytes(t, a, "s", strings.Repeat("x", MaxValueBytes))
+	for _, size := range []int{MaxValueBytes, MaxValueBytes + 1, 4 * MaxValueBytes} {
+		t.Run(fmt.Sprint(size), func(t *testing.T) {
+			value := taintRuns(f, strings.Repeat("x", size), strings.Repeat("t", size))
+			var r Attribution
+			require.True(t, a.AttributeBytes(value, &r), "strong")
+			require.False(t, r.Stopped(), "in the budgets")
+			require.Equal(t, fmt.Sprintf("0-%d=s", size), describeNames(&r))
+		})
+	}
+}
+
+// TestContentMatchOfRepeatedByteFromBody: the same for a value that is
+// longer than the body copy (64 KiB of one byte): the part in the body copy
+// has the body source, and is strong.
+func TestContentMatchOfRepeatedByteFromBody(t *testing.T) {
+	f := useFakeBits(t)
+	setRangeLimit(t, 10)
+	m := NewManager()
+	a := newAnalysis(t, m)
+	body := new([64]byte)
+	require.True(t, a.RegisterBody(unsafe.Pointer(body)))
+	chunk := heapBytes(strings.Repeat("x", MaxBodyCopy+1))
+	m.bodyRead(unsafe.Pointer(body), unsafe.Pointer(&chunk[0]), uintptr(len(chunk)))
+	// A copy (no address match): a content match of the body copy.
+	value := taintRuns(f, string(chunk), strings.Repeat("t", len(chunk)))
+	var r Attribution
+	require.True(t, a.AttributeBytes(value, &r), "strong")
+	require.False(t, r.Stopped(), "in the budgets")
+	require.Equal(t, fmt.Sprintf("0-%d=body", len(chunk)), attributeBytes(t, a, value))
+}
+
+// naiveLongestPrefix is the reference of longestPrefix: a compare at each
+// offset (the first offset for equal lengths).
+func naiveLongestPrefix(data, rest []byte) (offset, length int) {
+	for i := range data {
+		k := 0
+		for k < len(rest) && i+k < len(data) && data[i+k] == rest[k] {
+			k++
+		}
+		if k > length {
+			offset, length = i, k
+		}
+	}
+	return offset, length
+}
+
+// TestLongestPrefixMatchesReference compares longestPrefix with the naive
+// reference on all the values of a small alphabet (many repeats and
+// periods), and on random values.
+func TestLongestPrefixMatchesReference(t *testing.T) {
+	check := func(data, rest []byte) {
+		t.Helper()
+		w := newWork()
+		offset, length, ok := longestPrefix(data, rest, &w)
+		require.True(t, ok)
+		wantOffset, wantLength := naiveLongestPrefix(data, rest)
+		require.Equal(t, [2]int{wantOffset, wantLength}, [2]int{offset, length}, "data=%q rest=%q", data, rest)
+	}
+	// All the values of 0 to 7 bytes of "ab" (data), and of 1 to 5 bytes
+	// (rest).
+	values := [][]byte{{}}
+	for size := 1; size <= 7; size++ {
+		for bits := 0; bits < 1<<size; bits++ {
+			v := make([]byte, size)
+			for i := range v {
+				v[i] = "ab"[bits>>i&1]
+			}
+			values = append(values, v)
+		}
+	}
+	for _, data := range values {
+		for _, rest := range values {
+			if len(rest) > 0 && len(rest) <= 5 {
+				check(data, rest)
+			}
+		}
+	}
+	// Random values with many 'a' bytes, with a fixed seed.
+	seed := uint32(1)
+	next := func(n int) int {
+		seed = seed*1664525 + 1013904223
+		return int(seed>>16) % n
+	}
+	for range 2000 {
+		data := make([]byte, next(200))
+		for i := range data {
+			data[i] = "aaab"[next(4)]
+		}
+		rest := make([]byte, 1+next(60))
+		for i := range rest {
+			rest[i] = "aaab"[next(4)]
+		}
+		check(data, rest)
+	}
+}
+
+// TestLongestPrefixWorkIsLinear: the work of longestPrefix on long runs of
+// one byte and on periodic values is a small multiple of the length of the
+// data (a compare at each offset is quadratic).
+func TestLongestPrefixWorkIsLinear(t *testing.T) {
+	periodic := strings.Repeat("xy", MaxValueBytes/4)
+	cases := []struct {
+		name, data, rest string
+		offset, length   int
+	}{
+		{"run, rest longer", strings.Repeat("x", MaxValueBytes), strings.Repeat("x", MaxValueBytes+1), 0, MaxValueBytes},
+		{"run, rest shorter", strings.Repeat("x", MaxValueBytes), strings.Repeat("x", 1000) + "y", 0, 1000},
+		{"run with a break", strings.Repeat("x", MaxValueBytes/2) + "y" + strings.Repeat("x", MaxValueBytes/2-1), strings.Repeat("x", MaxValueBytes), 0, MaxValueBytes / 2},
+		{"periodic with a break", periodic + "z" + periodic, periodic + periodic, 0, len(periodic)},
+		{"tail match", strings.Repeat("x", MaxValueBytes-4) + "xxyz", "xxyz", MaxValueBytes - 4, 4},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			w := newWork()
+			offset, length, ok := longestPrefix([]byte(c.data), []byte(c.rest), &w)
+			require.True(t, ok)
+			require.Equal(t, [2]int{c.offset, c.length}, [2]int{offset, length})
+			used := CompareBudget - w.bytes
+			require.LessOrEqual(t, used, 4*(len(c.data)+len(c.rest)), "compared bytes")
+			require.LessOrEqual(t, CheckBudget-w.checks, 8, "checks")
+		})
+	}
 }
 
 // TestCompareBudgetExhausted: the 1 MiB compare budget stops the

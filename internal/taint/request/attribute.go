@@ -498,37 +498,52 @@ func (d *ownerData) addCandidate(c candidate, pos, limit int, r *Attribution) (i
 // longestPrefix returns the offset and length of the longest prefix of rest
 // that is in data (the first offset for equal lengths). ok is false when the
 // work budget is used.
+//
+// The search does not compare rest at each offset of data (that is
+// quadratic: for example on a long run of one repeated byte). It finds the
+// first offset with the first byte of rest, and the length of the match
+// there. Then each step finds (with bytes.Index) the first later offset that
+// has a match of at least length+1 bytes, and extends that match. Thus each
+// step makes the match longer, and the offsets between two steps cannot have
+// a longer match. The search stops when the match is all of rest, or when no
+// later offset has enough bytes in data for a longer match. Each step costs
+// one check, and bytes for the scan of data and for the extension.
 func longestPrefix(data, rest []byte, w *work) (offset, length int, ok bool) {
 	if len(rest) == 0 || len(data) == 0 {
 		return 0, 0, true
 	}
-	first := rest[0]
-	for i := 0; i < len(data); {
-		j := bytes.IndexByte(data[i:], first)
+	i := bytes.IndexByte(data, rest[0])
+	if i < 0 {
+		if !w.take(len(data)) {
+			return 0, 0, false
+		}
+		return 0, 0, true
+	}
+	if !w.take(i+1) || !w.check() {
+		return 0, 0, false
+	}
+	k := lcp(rest, data[i:], w)
+	if k < 0 {
+		return 0, 0, false
+	}
+	offset, length = i, k
+	// An offset after offset has at most len(data)-offset-1 bytes: it can
+	// have a longer match only when that is more than length.
+	for length < len(rest) && len(data)-offset-1 > length {
+		from := offset + 1
+		if !w.check() || !w.take(len(data)-from+length+1) {
+			return 0, 0, false
+		}
+		j := bytes.Index(data[from:], rest[:length+1])
 		if j < 0 {
-			if !w.take(len(data) - i) {
-				return 0, 0, false
-			}
 			break
 		}
-		if !w.take(j + 1) {
-			return 0, 0, false
-		}
-		i += j
-		if !w.check() {
-			return 0, 0, false
-		}
-		k := lcp(rest, data[i:], w)
+		j += from
+		k := lcp(rest[length+1:], data[j+length+1:], w)
 		if k < 0 {
 			return 0, 0, false
 		}
-		if k > length {
-			offset, length = i, k
-			if k == len(rest) {
-				break
-			}
-		}
-		i++
+		offset, length = j, length+1+k
 	}
 	return offset, length, true
 }
