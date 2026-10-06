@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"os"
+	"slices"
 	"testing"
 	"time"
 
@@ -81,27 +82,86 @@ func collectEvent(t *testing.T, mt mocktracer.Tracer) *iastEvent {
 	return nil
 }
 
+// The trees whose expected evidence differs (envTree). The runner of each
+// tree sets the variable for its validation step.
+const (
+	envTree      = "DD_IAST_BENCH_TREE"
+	treeHeapbits = "heapbits"
+	treePR39     = "pr39"
+)
+
+// part is one expected evidence part: its text, and whether it comes from
+// the source (index 0, the parameter "q").
+type part struct {
+	value   string
+	tainted bool
+}
+
+func clean(v string) part   { return part{v, false} }
+func tainted(v string) part { return part{v, true} }
+
+// expectedParts returns the exact evidence parts (with redaction off) of a
+// sink call. The SQL evidence is the query; the command evidence is the
+// joined argument list "/bin/sh -c <argument>". In both trees, concatenation
+// and strings.Builder keep the exact range of the value. In the tree of
+// PR #39, fmt.Sprintf is coarse: the whole result (or the whole argument) is
+// tainted. In the heapbits tree it keeps the exact range.
+func expectedParts(tree, sinkName, kind string) []part {
+	exactSprintf := tree == treeHeapbits
+	switch sinkName {
+	case "SinkSQL":
+		switch {
+		case kind == "tainted":
+			return []part{tainted(sinkSQLValue)}
+		case kind == "taintedSprintf" && !exactSprintf:
+			return []part{tainted(sinkSQLPrefix + sinkSQLValue + sinkSQLSuffix)}
+		default: // taintedConcat, taintedBuilder, taintedSprintf (exact)
+			return []part{clean(sinkSQLPrefix), tainted(sinkSQLValue), clean(sinkSQLSuffix)}
+		}
+	case "SinkCommand":
+		command := sinkCmdShell + " -c "
+		switch {
+		case kind == "tainted":
+			return []part{clean(command), tainted(sinkCmdValue)}
+		case kind == "taintedSprintf" && !exactSprintf:
+			return []part{clean(command), tainted(sinkCmdPrefix + sinkCmdValue)}
+		default:
+			return []part{clean(command + sinkCmdPrefix), tainted(sinkCmdValue)}
+		}
+	}
+	panic("unknown sink " + sinkName)
+}
+
+// TestSinkWorkloads checks each sink workload: no vulnerability for the clean
+// call; exactly 1 vulnerability for each tainted call, with one source (the
+// parameter "q") and the exact expected evidence parts of the tree
+// (DD_IAST_BENCH_TREE). The exact values need DD_IAST_REDACTION_ENABLED=false
+// (the runner validation sets it); with redaction on, the test checks the
+// number of tainted parts and their source only.
 func TestSinkWorkloads(t *testing.T) {
 	requireIAST(t)
+	tree := os.Getenv(envTree)
+	if tree != treeHeapbits && tree != treePR39 {
+		t.Fatalf("set %s=%s or %s (the expected evidence ranges differ between the trees)", envTree, treeHeapbits, treePR39)
+	}
+	redacted := os.Getenv("DD_IAST_REDACTION_ENABLED") != "false"
 	type sink struct {
 		name     string
 		vuln     string
 		value    string
-		prefix   string
-		suffix   string
 		argument func(kind, v string) string
 		run      func(ctx context.Context, argument string)
 	}
 	db := newNoopDB()
 	defer db.Close()
 	sinks := []sink{
-		{"SinkSQL", "SQL_INJECTION", sinkSQLValue, sinkSQLPrefix, sinkSQLSuffix, sqlArgument,
+		{"SinkSQL", "SQL_INJECTION", sinkSQLValue, sqlArgument,
 			func(ctx context.Context, argument string) {
 				if err := sqlSink(ctx, db, argument); err != nil {
 					t.Errorf("query failed: %v", err)
 				}
 			}},
-		{"SinkCommand", "COMMAND_INJECTION", sinkCmdValue, "-c " + sinkCmdPrefix, "", cmdArgument,
+		{"SinkCommand", "COMMAND_INJECTION", sinkCmdValue, cmdArgument,
 			func(ctx context.Context, argument string) {
 				if err := cmdSink(ctx, argument); err == nil {
 					t.Error("command unexpectedly started")
@@ -130,35 +190,32 @@ func TestSinkWorkloads(t *testing.T) {
 				if vulnerability.Type != sink.vuln {
 					t.Fatalf("type = %q, want %q", vulnerability.Type, sink.vuln)
 				}
-				if len(event.Sources) != 1 || event.Sources[0].Origin != "http.request.parameter" || event.Sources[0].Name != "q" {
-					t.Fatalf("sources = %+v, want one http.request.parameter named q", event.Sources)
+				if len(event.Sources) != 1 || event.Sources[0].Origin != "http.request.parameter" || event.Sources[0].Name != "q" ||
+					(!redacted && event.Sources[0].Value != sink.value) {
+					t.Fatalf("sources = %+v, want one http.request.parameter named q with the value %q", event.Sources, sink.value)
 				}
-				var taintedParts []string
-				for _, part := range vulnerability.Evidence.ValueParts {
-					if part.Source == nil {
-						continue
+				want := expectedParts(tree, sink.name, kind)
+				var got []part
+				for _, p := range vulnerability.Evidence.ValueParts {
+					if p.Source != nil && *p.Source != 0 {
+						t.Fatalf("value part source index = %d, want 0", *p.Source)
 					}
-					if *part.Source != 0 {
-						t.Fatalf("value part source index = %d, want 0", *part.Source)
-					}
-					// Redaction of a tainted SQL literal or command argument can
-					// empty the value. Otherwise it is exactly the source value.
-					if !part.Redacted && part.Value != "" && part.Value != sink.value {
-						t.Errorf("tainted part = %q, want %q", part.Value, sink.value)
-					}
-					taintedParts = append(taintedParts, part.Value)
+					got = append(got, part{p.Value, p.Source != nil})
 				}
-				// Concatenation and Builder keep the exact range of the SQL text:
-				// clean prefix, tainted value, clean suffix. The other shapes
-				// taint the whole value (coarse) or the whole argument.
-				if sink.name == "SinkSQL" && (kind == "taintedConcat" || kind == "taintedBuilder") {
-					parts := vulnerability.Evidence.ValueParts
-					if len(parts) != 3 || parts[0].Value != sink.prefix || parts[1].Source == nil || parts[2].Value != sink.suffix {
-						t.Errorf("value parts = %+v, want prefix %q, tainted, suffix %q", parts, sink.prefix, sink.suffix)
+				if redacted {
+					count := func(parts []part) (n int) {
+						for _, p := range parts {
+							if p.tainted {
+								n++
+							}
+						}
+						return n
 					}
-				}
-				if len(taintedParts) == 0 {
-					t.Fatalf("no tainted value part: %+v", vulnerability.Evidence)
+					if count(got) != count(want) {
+						t.Errorf("tainted parts = %d, want %d: %+v", count(got), count(want), vulnerability.Evidence)
+					}
+				} else if !slices.Equal(got, want) {
+					t.Errorf("value parts (tree %s) = %+v, want %+v", tree, got, want)
 				}
 				t.Logf("evidence: %+v", vulnerability.Evidence)
 			})

@@ -38,7 +38,7 @@ func TestParseFlags(t *testing.T) {
 				"-sampling=0",
 				"-bench=Hash/.+",
 			},
-			want: options{outputDir: "results", count: 3, benchtime: "2s", cpu: 4, benchmark: "Hash/.+", sampling: 0},
+			want: options{outputDir: "results", count: 3, benchtime: "2s", cpu: 4, benchmark: "Hash/.+", sampling: 0, countSet: true, samplingSet: true},
 		},
 		{
 			name:      "iteration benchtime",
@@ -56,6 +56,13 @@ func TestParseFlags(t *testing.T) {
 		{name: "negative sampling", arguments: []string{"-sampling=-1"}, wantError: "-sampling must be an integer from 0 to 100"},
 		{name: "high sampling", arguments: []string{"-sampling=101"}, wantError: "-sampling must be an integer from 0 to 100"},
 		{name: "gate with few samples", arguments: []string{"-gate", "-count=3"}, wantError: "-gate needs -count=4 or more, got 3"},
+		{
+			// -evaluate takes the count of metadata.txt; an enforced gate
+			// fails each row with fewer than 4 pairs (INCOMPLETE).
+			name:      "evaluate gate with few samples",
+			arguments: []string{"-evaluate", "-outputdir=r", "-gate", "-count=3"},
+			want:      options{outputDir: "r", count: 3, benchtime: "500ms", cpu: 1, benchmark: ".", sampling: 100, evaluate: true, gate: true, countSet: true},
+		},
 		{name: "invalid count", arguments: []string{"-count=many"}, wantError: "-count must be a single positive integer"},
 		{name: "zero CPU", arguments: []string{"-cpu=0"}, wantError: "-cpu must be a single positive integer"},
 		{name: "CPU list", arguments: []string{"-cpu=1,2"}, wantError: `-cpu must be a single positive integer: "1,2"`},
@@ -284,7 +291,10 @@ HeapBitsGC,100,0%,200,0%,+100.00%,p=0.000 n=10
 		t.Error("an informative report must not fail for a rule that did not run")
 	}
 	if _, failed := formatGateReport(none, true); !failed {
-		t.Error("an enforced report must fail for a rule that did not run")
+		t.Error("an enforced report must fail when no rule checked a workload")
+	}
+	if _, failed := formatGateReport(append(none, gateResult{rule: "r", benchmark: "b", pass: true}), true); failed {
+		t.Error("an enforced report must not fail for a skipped rule when another rule passed")
 	}
 	custom, err := evaluateGate(gateRule{name: "B/op", prefix: "HeapBitsGC", unit: "B/op", maxIncrease: 10}, output)
 	if err != nil || len(custom) != 1 || custom[0].pass {
@@ -315,21 +325,21 @@ func TestEvaluatePaired(t *testing.T) {
 	small := pairedRule{name: "small", kind: limitSmall, allocs: true}
 	// 10 ns, +1 ns: pass.
 	d := comparePaired(series(10, 10, 10, 10, 10), series(11, 11, 11, 11, 11))
-	if r := evaluatePaired(small, "X", d, "local"); !r.pass || r.info {
+	if r := evaluatePaired(small, "X", d, "local", d.n, false); !r.pass || r.info {
 		t.Errorf("+1 ns under 80 ns must pass: %+v", r)
 	}
 	// 10 ns, +6 ns: fail.
 	d = comparePaired(series(10, 10, 10, 10, 10), series(16, 16, 16, 16, 16))
-	if r := evaluatePaired(small, "X", d, "local"); r.pass {
+	if r := evaluatePaired(small, "X", d, "local", d.n, false); r.pass {
 		t.Errorf("+6 ns under 80 ns must fail: %+v", r)
 	}
 	// 100 ns, +4 ns is +4 %: pass. +8 ns: fail.
 	d = comparePaired(series(100, 100, 100, 100), series(104, 104, 104, 104))
-	if r := evaluatePaired(small, "X", d, "local"); !r.pass {
+	if r := evaluatePaired(small, "X", d, "local", d.n, false); !r.pass {
 		t.Errorf("+4 %% at 100 ns must pass: %+v", r)
 	}
 	d = comparePaired(series(100, 100, 100, 100), series(108, 108, 108, 108))
-	if r := evaluatePaired(small, "X", d, "local"); r.pass {
+	if r := evaluatePaired(small, "X", d, "local", d.n, false); r.pass {
 		t.Errorf("+8 %% at 100 ns must fail: %+v", r)
 	}
 	// One more allocation fails whatever the time.
@@ -338,7 +348,7 @@ func TestEvaluatePaired(t *testing.T) {
 		more[i].allocs = 1
 	}
 	d = comparePaired(series(10, 10, 10, 10), more)
-	if r := evaluatePaired(small, "X", d, "local"); r.pass {
+	if r := evaluatePaired(small, "X", d, "local", d.n, false); r.pass {
 		t.Errorf("+1 alloc must fail: %+v", r)
 	}
 	// A noisy pair set: the estimate passes but the upper bound does not.
@@ -346,24 +356,24 @@ func TestEvaluatePaired(t *testing.T) {
 	if d.upper <= smallLimitNs || d.estimate > smallLimitNs {
 		t.Errorf("expected estimate <= %g < upper, got %+v", smallLimitNs, d)
 	}
-	if r := evaluatePaired(small, "X", d, "local"); r.pass {
+	if r := evaluatePaired(small, "X", d, "local", d.n, false); r.pass {
 		t.Errorf("upper bound over the limit must fail: %+v", r)
 	}
 	// G-A1 uses the profile and the estimate.
 	http := pairedRule{name: "http", kind: limitHTTP}
 	d = comparePaired(series(1000, 1000, 1000, 1000), series(1050, 1050, 1050, 1050))
-	if r := evaluatePaired(http, "HTTPRoundTrip", d, "local"); r.pass {
+	if r := evaluatePaired(http, "HTTPRoundTrip", d, "local", 4, false); r.pass {
 		t.Errorf("+5 %% must fail the local profile: %+v", r)
 	}
-	if r := evaluatePaired(http, "HTTPRoundTrip", d, "ci"); !r.pass {
+	if r := evaluatePaired(http, "HTTPRoundTrip", d, "ci", 4, false); !r.pass {
 		t.Errorf("+5 %% must pass the ci profile: %+v", r)
 	}
 	// Record only.
 	info := pairedRule{name: "info", kind: limitNone}
-	if r := evaluatePaired(info, "HTTPRoundTrip", d, "local"); !r.info || !r.pass {
+	if r := evaluatePaired(info, "HTTPRoundTrip", d, "local", 4, false); !r.info || !r.pass {
 		t.Errorf("record-only rule: %+v", r)
 	}
-	if _, failed := formatGateReport([]gateResult{{rule: "r", benchmark: "b", info: true, pass: true}, {rule: "r", benchmark: "b", na: true, pass: true}}, true); failed {
+	if _, failed := formatGateReport([]gateResult{{rule: "r", benchmark: "b", info: true, pass: true}, {rule: "r", benchmark: "b", na: true, pass: true}, {rule: "r", benchmark: "c", pass: true}}, true); failed {
 		t.Error("INFO and N/A rows must not fail an enforced report")
 	}
 }

@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -53,13 +54,21 @@ type gateResult struct {
 	id       string
 	stats    pairedDelta
 	hasStats bool
+	// timeVerdict and allocsVerdict are the verdicts of the limits (PASS,
+	// FAIL or "-" when the rule has no such limit), also for the
+	// record-only rules.
+	timeVerdict, allocsVerdict string
 }
 
 // checkGates evaluates the gate rules, writes gate.txt, and returns an error
 // if a rule fails and cfg.gate is set. Without -gate the report is only
 // informative (shared CI runners are too noisy for hard thresholds). With
-// -gate, a rule without a selected benchmark (see -bench) also fails.
+// -gate, a run in which no rule checked a workload (all rows SKIP, N/A or
+// INFO) also fails. Incomplete results always give an error.
 func checkGates(cfg configuration) error {
+	if err := validateSampleCounts(cfg, presentResults(cfg)); err != nil {
+		return err
+	}
 	var results []gateResult
 	paired, err := checkPairedGates(cfg)
 	if err != nil {
@@ -67,6 +76,11 @@ func checkGates(cfg configuration) error {
 	}
 	results = append(results, paired...)
 	for _, rule := range gateRules {
+		if !resultsExist(cfg, rule.cmp) && resultsExist(cfg, rule.base) && hasWorkload(cfg, rule.base, rule.prefix) {
+			// For example a HeapBits workload with no active variant.
+			results = append(results, gateResult{rule: rule.name, benchmark: rule.prefix + "*", delta: "INCOMPLETE: missing variant " + rule.cmp})
+			continue
+		}
 		if !resultsExist(cfg, rule.base, rule.cmp) {
 			results = append(results, gateResult{rule: rule.name, benchmark: rule.prefix + "*", delta: "no results file", pass: true, na: true})
 			continue
@@ -97,6 +111,24 @@ func checkGates(cfg configuration) error {
 		return errors.New("a regression gate failed (see gate.txt)")
 	}
 	return nil
+}
+
+// presentResults returns the results files that have data.
+func presentResults(cfg configuration) []string {
+	var present []string
+	for _, name := range []string{controlResultsFile, iastResultsFile, activeResultsFile} {
+		if resultsExist(cfg, name) {
+			present = append(present, name)
+		}
+	}
+	return present
+}
+
+// hasWorkload reports whether the results file has a workload whose name
+// starts with prefix.
+func hasWorkload(cfg configuration, file, prefix string) bool {
+	_, order, err := readSamples(filepath.Join(cfg.output.Name(), file))
+	return err == nil && slices.ContainsFunc(order, func(name string) bool { return strings.HasPrefix(name, prefix) })
 }
 
 // resultsExist reports whether all the named results files have data.
@@ -178,12 +210,17 @@ func formatGateReport(results []gateResult, enforced bool) (string, bool) {
 		mode = "enforced"
 	}
 	fmt.Fprintf(&b, "Regression gates (G-A1 to G-A5 of plan heapbits-sqli-cmdi 10.1, G-C of the HeapBits workloads), %s:\n", mode)
-	failed := false
+	failed, checked := false, false
 	for _, r := range results {
 		status := gateStatus(r)
-		// An enforced gate must check something.
-		failed = failed || status == "FAIL" || (status == "SKIP" && enforced)
+		failed = failed || status == "FAIL"
+		checked = checked || status == "PASS" || status == "FAIL"
 		fmt.Fprintf(&b, "%-4s  %-44s %-46s %s\n", status, r.rule, r.benchmark, r.delta)
+	}
+	// An enforced gate must check something.
+	if enforced && !checked {
+		failed = true
+		b.WriteString("FAIL  no rule checked a workload (see -bench, -sampling and " + taintLiveEnvironment + ")\n")
 	}
 	return b.String(), failed
 }
@@ -193,15 +230,24 @@ func formatGateReport(results []gateResult, enforced bool) (string, bool) {
 // percentages and the interval are relative to the median ns/op of the base.
 func formatGateTable(results []gateResult, enforced bool) string {
 	var b strings.Builder
-	b.WriteString("status\tgate\tbenchmark\tn\tbase_ns\testimate_ns\testimate_pct\tlo_pct\thi_pct\tupper_pct\tallocs_base\tallocs_cmp\n")
+	b.WriteString("status\tgate\tbenchmark\tn\tbase_ns\testimate_ns\testimate_pct\tlo_pct\thi_pct\tupper_pct\tallocs_base\tallocs_cmp\tbytes_base\tbytes_cmp\ttime_verdict\tallocs_verdict\n")
 	for _, r := range results {
 		if !r.hasStats {
 			continue
 		}
 		d := r.stats
 		pct := func(ns float64) float64 { return 100 * ns / d.base }
-		fmt.Fprintf(&b, "%s\t%s\t%s\t%d\t%.4f\t%.4f\t%.3f\t%.3f\t%.3f\t%.3f\t%g\t%g\n",
-			gateStatus(r), r.id, r.benchmark, d.n, d.base, d.estimate, pct(d.estimate), pct(d.lo), pct(d.hi), pct(d.upper), d.allocsBase, d.allocs)
+		optional := func(ok bool, v float64) string {
+			if !ok {
+				return verdictNone
+			}
+			return strconv.FormatFloat(v, 'g', -1, 64)
+		}
+		fmt.Fprintf(&b, "%s\t%s\t%s\t%d\t%.4f\t%.4f\t%.3f\t%.3f\t%.3f\t%.3f\t%s\t%s\t%s\t%s\t%s\t%s\n",
+			gateStatus(r), r.id, r.benchmark, d.n, d.base, d.estimate, pct(d.estimate), pct(d.lo), pct(d.hi), pct(d.upper),
+			optional(d.hasAllocs, d.allocsBase), optional(d.hasAllocs, d.allocs),
+			optional(d.hasBytes, d.bytesBase), optional(d.hasBytes, d.bytes),
+			r.timeVerdict, r.allocsVerdict)
 	}
 	return b.String()
 }

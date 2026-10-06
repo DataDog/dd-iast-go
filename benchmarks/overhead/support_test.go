@@ -38,8 +38,14 @@ import (
 
 // envTaintLive selects the "taint live elsewhere" variant: when it is "1", an
 // active request holds a tainted value for the whole run of the process, while
-// the workloads run. In the heapbits tree the taint gate is then on.
-const envTaintLive = "DD_IAST_BENCH_TAINT_LIVE"
+// the workloads run. In the heapbits tree the taint gate is then on. The live
+// request must be sampled (DD_IAST_REQUEST_SAMPLING=100): in each variant
+// other than control (envExpect), the process fails when the live value is
+// not tainted.
+const (
+	envTaintLive = "DD_IAST_BENCH_TAINT_LIVE"
+	envExpect    = "DD_IAST_BENCH_EXPECT"
+)
 
 var (
 	liveValue   string // keeps the tainted value reachable
@@ -60,6 +66,11 @@ func runMain(m *testing.M) int {
 	}
 	stop := startTaintLive()
 	defer stop()
+	if !liveTainted && os.Getenv(envExpect) != "control" {
+		os.Stderr.WriteString("taint live elsewhere: FAIL: the live value is NOT tainted; " +
+			"use DD_IAST_REQUEST_SAMPLING=100, or set " + envExpect + "=control for the control variant\n")
+		return 1
+	}
 	return m.Run()
 }
 
@@ -72,7 +83,7 @@ func startTaintLive() (stop func()) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		liveValue = req.FormValue("live")
 		liveBytes = taint.TaintBytes(req.Context(), taint.Source{Origin: taint.OriginHttpRequestParameter, Name: "live-bytes"}, []byte("live-tainted-bytes"))
-		liveTainted = taint.IsTaintedString(liveValue)
+		liveTainted = taint.IsTaintedString(liveValue) && taint.IsTaintedBytes(liveBytes)
 		close(ready)
 		<-release
 		w.WriteHeader(http.StatusNoContent)
@@ -89,7 +100,7 @@ func startTaintLive() (stop func()) {
 	if liveTainted {
 		os.Stderr.WriteString("taint live elsewhere: a tainted value is live in an active request\n")
 	} else {
-		os.Stderr.WriteString("taint live elsewhere: the live value is NOT tainted (expected for the control variant)\n")
+		os.Stderr.WriteString("taint live elsewhere: the live value is NOT tainted (correct for the control variant only)\n")
 	}
 	var once sync.Once
 	return func() {
