@@ -11,6 +11,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 	"unsafe"
 
 	"github.com/DataDog/dd-iast-go/internal/model/constants"
@@ -169,12 +170,32 @@ func TestBusySlotDropsAccess(t *testing.T) {
 // and cross-owner reads on many goroutines before, during and after the
 // Finish of the owners (use -race). A start barrier starts the workers at
 // the same time. The parent waits until each worker has one successful
-// operation while the owners are live; then it pins the slots (a controlled
-// accessor), calls Finish while the workers run, and checks that all the
-// operations that start during the closing and after the cleanup fail.
+// operation while the owners are live. Then it latches one operation of each
+// worker: the operation stops in tryUse after its pin (testHookPinned). With
+// all six operations in flight, the parent pins the slots (a controlled
+// accessor) and calls Finish. It checks that the latched pins delay the
+// cleanup, that the latched operations complete after Finish, that all the
+// operations that start during the closing and after the cleanup fail, and
+// that the cleanup removes the data of the latched writes.
 func TestConcurrentWritersReadersAndFinish(t *testing.T) {
 	f := useFakeBits(t)
 	manager := NewManager()
+	// The latch: when armed, each access of manager stops after its pin
+	// until release closes. A blocked worker cannot arrive again, thus
+	// arrived counts the workers.
+	var (
+		armed   atomic.Bool
+		arrived atomic.Int32
+		release chan struct{}
+	)
+	testHookPinned = func(m *Manager, _ *slot) {
+		if m != manager || !armed.Load() {
+			return
+		}
+		arrived.Add(1)
+		<-release
+	}
+	t.Cleanup(func() { testHookPinned = nil })
 	const workers = 6
 	const phaseOps = 20
 	const (
@@ -279,21 +300,50 @@ func TestConcurrentWritersReadersAndFinish(t *testing.T) {
 		close(start)
 		live.Wait()
 
+		// Latch one phaseBefore operation of each worker after its pin.
+		release = make(chan struct{})
+		arrived.Store(0)
+		armed.Store(true)
+		deadline := time.Now().Add(10 * time.Second)
+		for arrived.Load() < workers {
+			if time.Now().After(deadline) {
+				armed.Store(false)
+				close(release)
+				t.Fatalf("round %d: %d of %d workers latched", round, arrived.Load(), workers)
+			}
+			runtime.Gosched()
+		}
+
 		// The controlled accessors: the slots stay pinned while closing.
 		pinLive(t, manager, alpha)
 		pinLive(t, manager, bravo)
-		// The workers still run phaseBefore operations during Finish.
+		// Finish runs while the six latched operations hold their pins.
 		alpha.Finish()
 		bravo.Finish()
 		require.False(t, alpha.Active())
 		require.False(t, bravo.Active())
+		require.NotZero(t, manager.used.Load(), "round %d: no cleanup while pinned", round)
 		phase.Store(phaseDuring)
+		armed.Store(false)
+		close(release)
+		// A worker counts phaseOps phaseDuring operations only after its
+		// latched operation completed.
 		during.Wait()
 		require.NotZero(t, manager.used.Load(), "round %d: no cleanup while pinned", round)
 
 		manager.unpin(alpha.slot)
 		manager.unpin(bravo.slot)
 		require.Zero(t, manager.used.Load(), "round %d: the last unpin does the cleanup", round)
+		for _, a := range []Analysis{alpha, bravo} {
+			a.slot.mu.Lock()
+			sources, derived := a.slot.data.table.Len(), a.slot.data.nderived
+			bodyCopy := len(a.slot.data.body.copy)
+			a.slot.mu.Unlock()
+			require.Zero(t, sources, "round %d: the cleanup removes the sources of the latched writes", round)
+			require.Zero(t, derived, "round %d: the cleanup removes the derived entries", round)
+			require.Zero(t, bodyCopy, "round %d: the cleanup removes the body copy", round)
+			require.Nil(t, a.slot.body.Load(), "round %d: the cleanup removes the body registration", round)
+		}
 		phase.Store(phaseAfter)
 		after.Wait()
 		phase.Store(phaseStop)
@@ -460,7 +510,15 @@ func TestOwnAccessRetries(t *testing.T) {
 	require.Equal(t, drops+1, OwnBusyDrops())
 	require.False(t, manager.AttributeStringAny(value, Owner{}, &r), "a scan: one attempt")
 	require.Equal(t, drops+1, OwnBusyDrops(), "a scan does not count")
+	// The per-call reason (the seam of the woven tests): a busy drop.
+	strong, busy := AttributeBytesBusy(analysis, bytesOf(value), &r)
+	require.False(t, strong)
+	require.True(t, busy, "the call counted a busy drop")
+	require.Equal(t, drops+2, OwnBusyDrops())
 	s.mu.Unlock()
+	strong, busy = AttributeBytesBusy(analysis, bytesOf(value), &r)
+	require.True(t, strong)
+	require.False(t, busy)
 
 	// The holder releases the slot during the retries.
 	s.mu.Lock()
@@ -483,6 +541,9 @@ func TestOwnAccessRetries(t *testing.T) {
 	drops = OwnBusyDrops()
 	require.False(t, analysis.AttributeString(value, &r))
 	require.Equal(t, drops, OwnBusyDrops())
+	strong, busy = AttributeBytesBusy(analysis, bytesOf(value), &r)
+	require.False(t, strong)
+	require.False(t, busy, "a finished owner is not a busy drop")
 }
 
 // TestPausedWriterWhileFinish: a writer that holds the slot when Finish

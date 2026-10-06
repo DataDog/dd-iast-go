@@ -470,6 +470,12 @@ func TestAspectCount(t *testing.T) {
 		require.True(t, a.isFunction, "%s: a hook must have a function-body join point", a.id)
 	}
 	require.Equal(t, instrumentedPoints(t), len(hooks), "instrumentedPropagationPoints of stream.go and the hooks of orchestrion.yml (ids: %v)", sortedKeys(hooks))
+	// The aspect fmt-telemetry-decls pushes the same number to telemetry.
+	contents, err := os.ReadFile("orchestrion.yml")
+	require.NoError(t, err)
+	pushed := regexp.MustCompile(`\n *var __dd_iast_stream_points uint32 = (\d+)\n`).FindStringSubmatch(string(contents))
+	require.NotNil(t, pushed, "the pushed telemetry count is not in orchestrion.yml")
+	require.Equal(t, strconv.Itoa(instrumentedPoints(t)), pushed[1], "the pushed telemetry count")
 	require.Equal(t, len(hookedFuncs), len(hooks), "hookedFuncs of this test and the hooks of orchestrion.yml")
 
 	// Each hook names a function of the standard library source, and its id

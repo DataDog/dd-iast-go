@@ -32,9 +32,12 @@ var (
 	nonSampledAnnotation = new(Annotation)
 	// store is the association of tracer spans to annotation objects.
 	store = xsync.NewMap[weak.Pointer[tracer.Span], *Annotation](xsync.WithPresize(2 * config.MaxConcurrentRequests))
-	// triggerTrimThreshold is the threshold utilization at which we start
-	// actively trying to remove dead keys from the map.
-	triggerTrimThreshold = max(config.MaxConcurrentRequests*3/4, 1)
+	// storeSlots is the number of capacity permits in use: one for each
+	// store entry, and one for each insertion that is in progress. Only
+	// acquireStoreSlot increments it, thus the store never has more than
+	// [config.MaxConcurrentRequests] entries, also with concurrent
+	// insertions of different keys.
+	storeSlots atomic.Int64
 )
 
 type Annotation struct {
@@ -260,12 +263,15 @@ func AnnotationFor(span *tracer.Span) *Annotation {
 
 	spanID := root.Context().SpanID()
 
-	// Can't do this within the TryCompute callback as this would deadlock.
-	hasSpace := trimStore()
+	// Can't do this within the LoadOrCompute callback as this would
+	// deadlock.
+	trimStore()
 
 	ptr := weak.Make(root)
 	ann, _ := store.LoadOrCompute(ptr, func() (*Annotation, bool) {
-		if !hasSpace {
+		// The map stores the returned value when the callback does not
+		// cancel: the permit then belongs to the new entry.
+		if !acquireStoreSlot() {
 			instrumentation.Instance.TelemetryLog().
 				Warn("iast/annotation: max concurrent requests reached, not storing annotation for span", slog.Any("span", spanID))
 			return nil, true
@@ -331,9 +337,9 @@ func BindScope(span *tracer.Span, scope *request.Scope) *Annotation {
 		return existing
 	}
 	active := scope.Active()
-	hasSpace := trimStore()
+	trimStore()
 	ann, _ := store.LoadOrCompute(ptr, func() (*Annotation, bool) {
-		if !hasSpace {
+		if !acquireStoreSlot() {
 			return nil, true
 		}
 		if !active {
@@ -358,19 +364,42 @@ func (a *Annotation) submitTelemetry() {
 	client.Count(instrumentation.TelemetryNamespaceIAST, "request.tainted", nil).Submit(float64(a.RequestTainted.Load()))
 }
 
-// trimStore removes keys from the map where the [weak.Pointer] has turned nil,
-// if the current utilization is over [triggerTrimThreshold]. Returns true if
-// there are available slots in the map after the trim (i.e, the map is below
-// [config.MaxConcurrentRequests]).
-func trimStore() bool {
-	if config.MaxConcurrentRequests == 0 {
+// acquireStoreSlot gets one capacity permit for a new store entry. It returns
+// false when [config.MaxConcurrentRequests] permits are in use. The caller
+// must call it in the store insertion callback, and only insert when it
+// returns true: the new entry then owns the permit, and the removal of the
+// entry releases it (see releaseStoreSlot).
+func acquireStoreSlot() bool {
+	limit := int64(config.MaxConcurrentRequests)
+	if limit <= 0 {
 		return false
 	}
-	if store.Size() < triggerTrimThreshold {
+	if storeSlots.Add(1) <= limit {
 		return true
 	}
+	// The store is full. Return the permit: a concurrent caller can see a
+	// full store for this short time, which only drops data.
+	storeSlots.Add(-1)
+	return false
+}
+
+// releaseStoreSlot releases the permit of one store entry that was removed.
+func releaseStoreSlot() {
+	storeSlots.Add(-1)
+}
+
+// trimStore removes keys from the map where the [weak.Pointer] has turned nil,
+// if the current utilization is at or over 3/4 of
+// [config.MaxConcurrentRequests]. It must not be called in a store callback.
+func trimStore() {
+	limit := config.MaxConcurrentRequests
+	if limit <= 0 {
+		return
+	}
+	if storeSlots.Load() < int64(max(limit*3/4, 1)) {
+		return
+	}
 	store.DeleteMatching(releaseDeadAnnotation)
-	return store.Size() < config.MaxConcurrentRequests
 }
 
 // +checklocksignore
@@ -380,6 +409,8 @@ func releaseDeadAnnotation(key weak.Pointer[tracer.Span], ann *Annotation) (dele
 	}
 	if !ann.Sampled {
 		// The shared negative decision has no state to release.
+		// DeleteMatching removes the entry when this returns true.
+		releaseStoreSlot()
 		return true, false
 	}
 	if !ann.RWMutex.TryLock() {
@@ -388,6 +419,7 @@ func releaseDeadAnnotation(key weak.Pointer[tracer.Span], ann *Annotation) (dele
 	defer ann.RWMutex.Unlock() // +checklocksforce: TryLock.
 	ann.closed.Store(true)
 	ann.releaseSourceIdentities()
+	releaseStoreSlot()
 	return true, false
 }
 

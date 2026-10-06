@@ -189,10 +189,12 @@ func TestWovenConcurrentRequests(t *testing.T) {
 					continue
 				}
 				var r request.Attribution
-				before := request.OwnBusyDrops()
-				if !analysis.AttributeBytes(query, &r) {
+				// The reason of a miss is the result of this call: the
+				// process-wide OwnBusyDrops can change because of a
+				// different worker.
+				if attributed, busy := request.AttributeBytesBusy(analysis, query, &r); !attributed {
 					o.attributeMissed++
-					if request.OwnBusyDrops() == before {
+					if !busy {
 						failures <- fmt.Sprintf("worker %d: attribution missed, but not by a busy drop", worker)
 					}
 				} else if source, _ := r.Source(0); r.Attributed != 1 || r.N != 1 || source.Name != name || r.Segments[0].Start != 7 || r.Segments[0].Length != 6 {

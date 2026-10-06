@@ -218,6 +218,105 @@ func TestBufioReadRulePanickingReader(t *testing.T) {
 	}()
 }
 
+// oneByteAfter gives the result of one Read of first, then the byte 'c' for
+// each Read (never io.EOF). It does not allocate.
+type oneByteAfter struct {
+	first io.Reader
+	done  bool
+}
+
+func (r *oneByteAfter) Read(p []byte) (int, error) {
+	if !r.done {
+		r.done = true
+		return r.first.Read(p)
+	}
+	if len(p) == 0 {
+		return 0, nil
+	}
+	p[0] = 'c'
+	return 1, nil
+}
+
+// Plan section 6.2, read rule: no allocation. Each ReadByte below gives a
+// 1-byte delegated read into the full 64 KiB buffer with a tainted tail. (A
+// heap copy of the bits for each read allocated 64 KiB for each byte read.)
+func TestBufioReadRuleNoAllocation(t *testing.T) {
+	_, a := begin(t)
+	const size = 64 << 10
+	r := bufio.NewReaderSize(&oneByteAfter{first: newBody(t, a, strings.Repeat("a", size), 0)}, size)
+	alias, err := r.Peek(size)
+	require.NoError(t, err)
+	require.Equal(t, [][2]int{{0, size}}, rangesBytes(alias))
+	_, err = r.Discard(size)
+	require.NoError(t, err)
+
+	var failures int
+	allocs := testing.AllocsPerRun(10, func() {
+		for range 100 {
+			if c, err := r.ReadByte(); c != 'c' || err != nil {
+				failures++
+			}
+		}
+	})
+	require.Zero(t, failures)
+	require.Zero(t, allocs, "the read rule must not allocate")
+	require.Equal(t, byte('c'), alias[0])
+	require.Equal(t, [][2]int{{1, size}}, rangesBytes(alias), "clean written byte, tainted tail")
+	require.Equal(t, []string{fmt.Sprintf("1-%d=%s", size, bodyLabel)}, attributedBytes(t, a, alias))
+}
+
+// Plan section 6.2, read rule with more than 16 tainted runs in the buffer:
+// the snapshot keeps the first 16 runs (the runs that a short read can
+// overwrite). The bytes from the start of the 17th run do not change: when
+// the read writes them, they keep their old bits.
+func TestBufioReadRuleManyRuns(t *testing.T) {
+	const size = 2000
+	// setup returns a reader whose buffer has 20 tainted runs of 10 bytes, at
+	// offsets 0, 100, ..., 1900, all discarded (alias shows them). The next
+	// delegated read writes next.
+	setup := func(t *testing.T, next string) (*bufio.Reader, []byte) {
+		t.Helper()
+		_, a := begin(t)
+		var first []seg
+		for range 20 {
+			first = append(first, seg{"0123456789", true}, seg{strings.Repeat("-", 90), false})
+		}
+		r := bufio.NewReaderSize(newScripted(t, a, first, []seg{{next, false}}), size)
+		alias, err := r.Peek(size)
+		require.NoError(t, err)
+		require.Len(t, rangesBytes(alias), 20)
+		_, err = r.Discard(size)
+		require.NoError(t, err)
+		return r, alias
+	}
+	runs := func(first [2]int, from int) [][2]int {
+		out := [][2]int{first}
+		for i := from; i < 20; i++ {
+			out = append(out, [2]int{100 * i, 100*i + 10})
+		}
+		return out
+	}
+
+	t.Run("short read", func(t *testing.T) {
+		r, alias := setup(t, "ccccc")
+		got, err := r.Peek(5)
+		require.NoError(t, err)
+		require.Equal(t, "ccccc", string(got))
+		require.Empty(t, rangesBytes(got))
+		require.Equal(t, runs([2]int{5, 10}, 1), rangesBytes(alias), "clean written prefix, all the runs of the tail")
+	})
+	t.Run("read after the 17th run start", func(t *testing.T) {
+		r, alias := setup(t, strings.Repeat("c", 1650))
+		got, err := r.Peek(1650)
+		require.NoError(t, err)
+		require.Equal(t, strings.Repeat("c", 1650), string(got))
+		// The first 16 runs are clean. The written bytes [1600, 1610) are
+		// outside the snapshot: they keep their old bits (stale taint, limited
+		// by the sink match check of plan section 4.5.1).
+		require.Equal(t, runs([2]int{1600, 1610}, 17), rangesBytes(alias))
+	})
+}
+
 // Port of PR #39 TestKnownLimitBufioValueCopySharesBuffer (residual R15). A
 // copy of a bufio.Reader value shares its buffer with the original. The
 // program bug stays (the original returns the bytes of the reader of the

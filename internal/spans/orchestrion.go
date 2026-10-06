@@ -33,6 +33,9 @@ func Finished(span *tracer.Span) {
 		return
 	}
 	ann, ok := store.LoadAndDelete(weak.Make(span))
+	if ok {
+		releaseStoreSlot()
+	}
 	if !ok || ann == nil || !ann.Sampled {
 		// A negative decision is the shared nonSampledAnnotation: it has no
 		// event, no source identities, and no telemetry.

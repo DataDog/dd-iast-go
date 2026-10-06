@@ -44,13 +44,10 @@
 // bufio.Writer, bufio.Scanner and fmt.Append* are not hooked.
 package stream
 
-import "github.com/DataDog/dd-iast-go/internal/instrumentation/telemetry"
-
 // instrumentedPropagationPoints is the number of hooked standard library
 // functions in orchestrion.yml (the aspects that are not declarations; the 2
-// variants of (*fmt.pp).fmtString count as one).
+// variants of (*fmt.pp).fmtString count as one). The application does not
+// link this package, thus the aspect fmt-telemetry-decls gives the number to
+// telemetry (see internal/taint/request/telemetry.go). TestAspectCount checks
+// both values.
 const instrumentedPropagationPoints = 18
-
-func init() {
-	telemetry.InstrumentedPropagation += instrumentedPropagationPoints
-}

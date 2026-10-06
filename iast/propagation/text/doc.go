@@ -16,12 +16,9 @@
 // source of the output (plan heapbits-sqli-cmdi, sections 6.2 and 6.3).
 package text
 
-import "github.com/DataDog/dd-iast-go/internal/instrumentation/telemetry"
-
-// instrumentedPropagationPoints is the number of aspects of orchestrion.yml
-// (one for each hooked function).
+// instrumentedPropagationPoints is the number of hook aspects of
+// orchestrion.yml (one for each hooked function; the "-decls" aspects are not
+// hooks). The application does not link this package, thus the aspect
+// strings-telemetry-decls gives the number to telemetry (see
+// internal/taint/request/telemetry.go). TestAspectCount checks both values.
 const instrumentedPropagationPoints = 28
-
-func init() {
-	telemetry.InstrumentedPropagation += instrumentedPropagationPoints
-}

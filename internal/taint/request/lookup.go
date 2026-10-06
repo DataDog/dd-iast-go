@@ -25,12 +25,20 @@ func (a Analysis) AttributeBytes(b []byte, r *Attribution) bool {
 }
 
 func (a Analysis) attribute(p unsafe.Pointer, n uintptr, r *Attribution) bool {
+	strong, _ := a.attributeAccess(p, n, r)
+	return strong
+}
+
+// attributeAccess is attribute, and also returns the result of the access
+// to the slot (accessBusy: a busy drop). The tests use the result to know
+// the reason of a miss of one call.
+func (a Analysis) attributeAccess(p unsafe.Pointer, n uintptr, r *Attribution) (bool, access) {
 	r.Reset()
 	if n == 0 || !a.Active() || !bitsAny(p, n) {
-		return false
+		return false, accessGone
 	}
 	w := newWork()
-	return a.manager.attributeOwner(a.slot, a.generation, a.id, true, p, n, matchAll, &w, r)
+	return a.manager.attributeOwnerAccess(a.slot, a.generation, a.id, true, p, n, matchAll, &w, r)
 }
 
 // attributeOwner attributes the n bytes at p to the owner (s, generation,
@@ -38,17 +46,25 @@ func (a Analysis) attribute(p unsafe.Pointer, n uintptr, r *Attribution) bool {
 // its context): then the access is useOwn (bounded retries), else use (one
 // attempt).
 func (m *Manager) attributeOwner(s *slot, generation uint32, id uint64, own bool, p unsafe.Pointer, n uintptr, mode int, w *work, r *Attribution) bool {
+	strong, _ := m.attributeOwnerAccess(s, generation, id, own, p, n, mode, w, r)
+	return strong
+}
+
+// attributeOwnerAccess is attributeOwner, and also returns the result of the
+// access to the slot.
+func (m *Manager) attributeOwnerAccess(s *slot, generation uint32, id uint64, own bool, p unsafe.Pointer, n uintptr, mode int, w *work, r *Attribution) (bool, access) {
 	r.Reset()
 	f := func(d *ownerData) {
 		r.Owner = Owner{ID: id, Generation: uint64(generation), Index: s.index}
 		d.attribute(p, n, mode, rangeLimit(), w, r)
 	}
+	var result access
 	if own {
-		m.useOwn(s, generation, id, f)
+		result = m.useOwnAccess(s, generation, id, f)
 	} else {
-		m.use(s, generation, id, f)
+		result = m.tryUse(s, generation, id, f)
 	}
-	return r.strong
+	return r.strong, result
 }
 
 // AttributeStringAny attributes s for an ownerless sink (plan section

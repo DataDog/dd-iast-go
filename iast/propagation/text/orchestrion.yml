@@ -1432,37 +1432,92 @@ aspects:
             runtime: runtime
             unsafe: unsafe
           template: |-
-            // __dd_iast_shadow returns new heap memory of n bytes (not
-            // inlined: the result escapes, so it is never on the stack).
+            // __dd_iast_rr_next is heapbits.Next (want true) and
+            // heapbits.NextClean (want false), pulled from the woven runtime
+            // (nil without weaving).
+            //
+            //go:linkname __dd_iast_rr_next __dd_iast_heapbits.next
+            var __dd_iast_rr_next func(p, n, from uintptr, want bool) uintptr
+
+            // __dd_iast_rr_find returns the first offset in [from, n) of the n
+            // bytes at p with a bit equal to want, or n. A result out of
+            // [from, n] gives n (no panic on a wrong value).
             //
             //go:noinline
-            func __dd_iast_shadow(n int) []byte {
-              return make([]byte, n)
+            func __dd_iast_rr_find(p unsafe.Pointer, n, from int, want bool) int {
+              f := __dd_iast_rr_next
+              if f == nil || from >= n {
+                return n
+              }
+              r := int(f(uintptr(p), uintptr(n), uintptr(from), want))
+              runtime.KeepAlive(p)
+              if r < from || r > n {
+                return n
+              }
+              return r
             }
+
+            // __dd_iast_rr_runs is the maximum number of tainted runs in the
+            // snapshot of the read rule.
+            const __dd_iast_rr_runs = 16
 
             // __dd_iast_read is the read rule of plan section 6.2: a Read into
             // reused memory dst. When dst has taint (and is at most 64 KiB),
-            // it saves the bits of dst, clears them, calls Read, and gives
-            // back the saved bits to the bytes that Read did not write. Thus
-            // the written bytes have only the bits of the new data (set by the
-            // source hooks), and the tail (and the values that alias it) keeps
-            // its old bits. When the bits cannot be saved, Read runs with no
-            // change (old bits can stay on the written bytes). When Read
-            // panics, the bits of the tail are lost (taint loss only).
+            // it saves the tainted runs of dst (offset and end) in a fixed
+            // array on the stack (no allocation), clears dst, calls Read, and
+            // sets again the parts of the saved runs that Read did not write
+            // (dst[n:]). Thus the written bytes have only the bits of the new
+            // data (set by the source hooks), and the tail (and the values that
+            // alias it) keeps its old bits. The cost is O(runs + words of
+            // bits), with no allocation.
+            //
+            // The snapshot keeps at most 16 runs: the first 16, because a
+            // short read writes the start of dst. When dst has more runs, the
+            // bytes from the start of the 17th run do not change: the tail
+            // there keeps its bits, but bytes that Read writes there keep
+            // their old bits (stale taint; the sink match check of plan
+            // section 4.5.1 limits the effect). When the bits cannot be set
+            // again (no storage), the tail loses them (taint loss only). When
+            // Read panics, the saved bits of the tail are lost (taint loss
+            // only).
             func __dd_iast_read(r io.Reader, dst []byte) (int, error) {
-              if len(dst) == 0 || len(dst) > 64<<10 || !__dd_iast_anyb(dst) {
+              l := len(dst)
+              if l == 0 || l > 64<<10 || !__dd_iast_anyb(dst) {
                 return r.Read(dst)
               }
-              shadow := __dd_iast_shadow(len(dst))
-              if !__dd_iast_copyp(unsafe.Pointer(unsafe.SliceData(shadow)), unsafe.Pointer(unsafe.SliceData(dst)), len(dst)) {
+              p := unsafe.Pointer(unsafe.SliceData(dst))
+              var starts, ends [__dd_iast_rr_runs]int
+              k := 0
+              // dst[limit:] is out of the snapshot: it does not change.
+              limit := l
+              for off := __dd_iast_rr_find(p, l, 0, true); off < l; {
+                end := __dd_iast_rr_find(p, l, off, false)
+                if k == __dd_iast_rr_runs || end <= off {
+                  // Too many runs, or a concurrent change of the bits.
+                  limit = off
+                  break
+                }
+                starts[k], ends[k] = off, end
+                k++
+                off = __dd_iast_rr_find(p, l, end, true)
+              }
+              if k == 0 {
                 return r.Read(dst)
               }
-              __dd_iast_clearb(dst)
+              __dd_iast_clear(p, limit)
               n, err := r.Read(dst)
-              if n >= 0 && n < len(dst) {
-                __dd_iast_copyp(unsafe.Pointer(&dst[n]), unsafe.Pointer(&shadow[n]), len(dst)-n)
+              if n >= 0 && n < limit {
+                for i := 0; i < k; i++ {
+                  start := starts[i]
+                  if start < n {
+                    start = n
+                  }
+                  if start < ends[i] {
+                    __dd_iast_set(unsafe.Add(p, start), ends[i]-start)
+                  }
+                }
               }
-              runtime.KeepAlive(unsafe.Pointer(unsafe.SliceData(shadow)))
+              runtime.KeepAlive(p)
               return n, err
             }
 
@@ -1985,3 +2040,29 @@ aspects:
                 return __dd_iast_out, __dd_iast_err
               }
             }
+
+  # ---------------------------------------------------------------- telemetry
+
+  # Not a hook: TestAspectCount does not count the "-decls" aspects. The
+  # application does not link this package (orchestrion.tool.go imports it
+  # only with the "tools" build tag), thus its init function cannot give the
+  # number of hooks to telemetry. Package strings (linked by all programs)
+  # pushes the number; package internal/taint/request pulls it in its init
+  # function (0 without weaving).
+  - id: strings-telemetry-decls
+    join-point:
+      struct-definition: strings.Builder
+    advice:
+      - inject-declarations:
+          imports:
+            unsafe: unsafe
+          template: |-
+            // __dd_iast_text_points is instrumentedPropagationPoints of
+            // iast/propagation/text (TestAspectCount checks the value).
+            // Exported to package internal/taint/request (push linkname).
+            //
+            //go:linkname __dd_iast_text_points __dd_iast_telemetry.text_points
+            var __dd_iast_text_points uint32 = 28
+
+            // The linkname directive needs the import of unsafe.
+            var _ unsafe.Pointer

@@ -121,10 +121,21 @@ func (r *Attribution) addForeign(start, end int) {
 		}
 	}
 	if r.N >= len(r.Segments) {
-		// Cannot happen (see maxSegments); stay safe: extend the last
-		// segment as foreign.
+		// The array is full: after a bound stopped the attribution, each
+		// tainted run (with clean bytes between the runs) adds one
+		// foreign segment. Extend the last segment as foreign over the
+		// new bytes (and the clean bytes before them): a report shows
+		// them redacted. addAttributed keeps the last slot free, thus the
+		// last segment is foreign here. If it is not, remove its
+		// attribution and calculate the strong flag again: else the flag
+		// of a replaced strong segment stays.
 		last := &r.Segments[r.N-1]
-		last.Foreign = true
+		if !last.Foreign {
+			last.Foreign = true
+			last.Strong = false
+			r.Attributed--
+			r.updateStrong()
+		}
 		last.Length = uint32(end) - last.Start
 		return
 	}
@@ -148,7 +159,9 @@ func (r *Attribution) addAttributed(start, end int, id SourceID, strong bool, li
 			return true
 		}
 	}
-	if r.Attributed >= limit || r.N >= len(r.Segments) {
+	// Keep the last slot free for a foreign segment: addForeign never
+	// replaces an attributed segment then.
+	if r.Attributed >= limit || r.N >= len(r.Segments)-1 {
 		return false
 	}
 	index := -1
@@ -174,6 +187,17 @@ func (r *Attribution) addAttributed(start, end int, id SourceID, strong bool, li
 	r.Attributed++
 	r.strong = r.strong || strong
 	return true
+}
+
+// updateStrong sets r.strong from the attributed segments of r.
+func (r *Attribution) updateStrong() {
+	r.strong = false
+	for i := 0; i < r.N; i++ {
+		if s := &r.Segments[i]; !s.Foreign && s.Strong {
+			r.strong = true
+			return
+		}
+	}
 }
 
 // work is the shared work budget of one attribution call.

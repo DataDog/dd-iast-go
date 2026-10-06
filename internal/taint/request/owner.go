@@ -250,6 +250,9 @@ func (m *Manager) tryUse(s *slot, generation uint32, id uint64, f func(d *ownerD
 		return result
 	}
 	defer m.unpin(s)
+	if hook := testHookPinned; hook != nil {
+		hook(m, s)
+	}
 	if !s.mu.TryLock() {
 		return accessBusy
 	}
@@ -284,16 +287,20 @@ func OwnBusyDrops() uint64 { return ownBusyDrops.Load() }
 // all the attempts fail, it counts the drop in ownBusyDrops. The scans of
 // all the owners use only one attempt (use).
 func (m *Manager) useOwn(s *slot, generation uint32, id uint64, f func(d *ownerData)) bool {
+	return m.useOwnAccess(s, generation, id, f) == accessDone
+}
+
+// useOwnAccess is useOwn, and returns the result of the last attempt:
+// accessBusy when it counted a busy drop.
+func (m *Manager) useOwnAccess(s *slot, generation uint32, id uint64, f func(d *ownerData)) access {
 	for attempt := 1; ; attempt++ {
-		switch m.tryUse(s, generation, id, f) {
-		case accessDone:
-			return true
-		case accessGone:
-			return false
+		result := m.tryUse(s, generation, id, f)
+		if result != accessBusy {
+			return result
 		}
 		if attempt >= ownAttempts {
 			ownBusyDrops.Add(1)
-			return false
+			return accessBusy
 		}
 		if hook := testHookOwnRetry; hook != nil {
 			hook()
@@ -305,6 +312,11 @@ func (m *Manager) useOwn(s *slot, generation uint32, id uint64, f func(d *ownerD
 // testHookOwnRetry is nil, except in the unit tests: useOwn calls it before
 // each retry.
 var testHookOwnRetry func()
+
+// testHookPinned is nil, except in the unit tests: tryUse calls it after the
+// pin of the slot, before the slot lock. A test can stop accessors there
+// while a different goroutine calls Finish.
+var testHookPinned func(m *Manager, s *slot)
 
 // Active reports whether the captured analysis is the live owner of its slot
 // and not closing.

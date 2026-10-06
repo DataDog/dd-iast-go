@@ -10,23 +10,28 @@ import (
 	"os/exec"
 	"reflect"
 	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 	_ "unsafe" // linkname
 
-	"github.com/DataDog/dd-iast-go/internal/instrumentation/telemetry"
 	"github.com/DataDog/dd-iast-go/internal/taint/propbridge"
 	"github.com/stretchr/testify/require"
 )
 
 // TestAspectCount is the aspect count guard (plan section 6.1 rule 6, PR #39
-// strings_test.go:25): the telemetry count is the number of aspects.
+// strings_test.go:25): the telemetry count is the number of hook aspects (the
+// "-decls" aspects are not hooks), and the aspect strings-telemetry-decls
+// pushes this number.
 func TestAspectCount(t *testing.T) {
 	contents, err := os.ReadFile("orchestrion.yml")
 	require.NoError(t, err)
 	registered := strings.Count(string(contents), "\n  - id:")
-	require.Equal(t, registered, instrumentedPropagationPoints)
-	require.GreaterOrEqual(t, telemetry.InstrumentedPropagation, uint(instrumentedPropagationPoints))
+	decls := regexp.MustCompile(`\n  - id: \S+-decls\n`).FindAllString(string(contents), -1)
+	require.Equal(t, registered-len(decls), instrumentedPropagationPoints)
+	pushed := regexp.MustCompile(`\n *var __dd_iast_text_points uint32 = (\d+)\n`).FindStringSubmatch(string(contents))
+	require.NotNil(t, pushed, "the pushed telemetry count is not in orchestrion.yml")
+	require.Equal(t, strconv.Itoa(instrumentedPropagationPoints), pushed[1], "the pushed telemetry count")
 }
 
 // TestHookImports checks rule 1 of plan section 6.1, in the form that

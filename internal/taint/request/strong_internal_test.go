@@ -223,3 +223,88 @@ func TestDroppedSourceTelemetry(t *testing.T) {
 		requireDrop(t, 0, func() { _, _ = Analysis{}.TaintString(param, "q", heapString("value")) })
 	})
 }
+
+// TestStrongSegmentOverflow fills the segment array: 65 foreign runs and 64
+// attributed runs, with clean bytes between the runs. The 63 first
+// attributed runs are weak (1-byte content matches of a longer source); the
+// last attributed run is the only strong run. One more foreign run comes
+// after it. The last slot of the array stays free for a foreign segment,
+// thus the strong run cannot get an attributed segment that a foreign
+// segment replaces later. The value has only weak segments: it is not
+// tainted for the owner, and it makes no derived entry.
+func TestStrongSegmentOverflow(t *testing.T) {
+	f := useFakeBits(t)
+	setRangeLimit(t, MaxAttributed)
+	m := NewManager()
+	useProcessManager(t, m)
+	a := newAnalysis(t, m)
+	taintBytes(t, a, "weak", "abcdefgh")
+	taintBytes(t, a, "strong", "ST")
+
+	var value, mask strings.Builder
+	run := func(text string) {
+		value.WriteString(text + ".")
+		mask.WriteString(strings.Repeat("t", len(text)) + ".")
+	}
+	run("#")
+	run("#")
+	for range MaxAttributed - 1 {
+		run("a")
+		run("#")
+	}
+	run("ST")
+	run("#")
+	input := taintRuns(f, value.String(), mask.String())
+
+	var r Attribution
+	require.False(t, a.AttributeBytes(input, &r), "AttributeBytes")
+	require.False(t, r.Strong(), "Strong")
+	require.True(t, r.Stopped())
+	require.Equal(t, len(r.Segments), r.N, "the segment array is full")
+	attributed := 0
+	for i := 0; i < r.N; i++ {
+		s := r.Segments[i]
+		if s.Foreign {
+			continue
+		}
+		attributed++
+		require.False(t, s.Strong, "segment %d is weak", i)
+	}
+	require.Equal(t, r.Attributed, attributed)
+	require.Equal(t, MaxAttributed-1, attributed)
+	last := r.Segments[r.N-1]
+	require.True(t, last.Foreign)
+	require.Equal(t, len(input)-1, int(last.Start+last.Length), "the last foreign segment covers the tail (the last byte is clean)")
+
+	require.False(t, IsTaintedBytes(input), "IsTaintedBytes")
+	owner, ok := a.Owner()
+	require.True(t, ok)
+	require.False(t, VisitBytesOwner(input, owner, func(ResolvedRange) bool { return true }), "VisitBytesOwner")
+
+	out := heapBytes(value.String())
+	f.set(uintptr(unsafeData(out)), uintptr(len(out)))
+	m.derived(unsafeData(out), uintptr(len(out)), unsafeData(input), uintptr(len(input)), propbridge.Positional)
+	m.use(a.slot, a.generation, a.id, func(d *ownerData) {
+		require.Equal(t, 0, d.nderived, "weak segments made a derived entry")
+	})
+}
+
+// TestStrongFlagAfterReplacedSegment checks the defensive path of addForeign:
+// when the array is full and the last segment is attributed, addForeign
+// removes its attribution and calculates the strong flag again.
+func TestStrongFlagAfterReplacedSegment(t *testing.T) {
+	var r Attribution
+	for i := range len(r.Segments) {
+		r.Segments[i] = Segment{Start: uint32(2 * i), Length: 1, Foreign: i%2 == 0}
+	}
+	r.N = len(r.Segments)
+	r.Segments[r.N-1] = Segment{Start: uint32(2 * (r.N - 1)), Length: 1, Strong: true}
+	r.Attributed = r.N / 2
+	r.strong = true
+	before := r.Attributed
+	r.addForeign(2*r.N, 2*r.N+1)
+	require.False(t, r.Strong())
+	require.True(t, r.Segments[r.N-1].Foreign)
+	require.False(t, r.Segments[r.N-1].Strong)
+	require.Equal(t, before-1, r.Attributed)
+}

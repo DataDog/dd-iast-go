@@ -105,6 +105,10 @@ func TestReadAllThroughWrappers(t *testing.T) {
 			require.ErrorIs(t, err, errRead)
 			require.True(t, strings.HasSuffix(string(data), "request-body"))
 			require.Equal(t, "request-body", side.String())
+			// The side writer is a hooked bytes.Buffer: its copy keeps the
+			// bits and the source of the body (plan section 9.2).
+			require.Equal(t, [][2]int{{0, len("request-body")}}, rangesBytes(side.Bytes()))
+			require.Equal(t, []string{fmt.Sprintf("0-%d=%s", len("request-body"), bodyLabel)}, attributedBytes(t, a, side.Bytes()))
 			start := len(data) - len("request-body")
 			require.Equal(t, [][2]int{{start, len(data)}}, rangesBytes(data))
 			require.Equal(t, []string{fmt.Sprintf("%d-%d=%s", start, len(data), bodyLabel)}, attributedBytes(t, a, data))

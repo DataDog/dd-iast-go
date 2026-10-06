@@ -347,6 +347,108 @@ func TestBufferReadFromReadRule(t *testing.T) {
 	})
 }
 
+// oneByteReader gives the bytes of data one at a time, then io.EOF. It does
+// not allocate.
+type oneByteReader struct {
+	data string
+	off  int
+}
+
+func (r *oneByteReader) Read(p []byte) (int, error) {
+	if r.off >= len(r.data) {
+		return 0, io.EOF
+	}
+	if len(p) == 0 {
+		return 0, nil
+	}
+	p[0] = r.data[r.off]
+	r.off++
+	return 1, nil
+}
+
+// TestBufferReadFromReadRuleNoAllocation checks that the read rule does not
+// allocate: 1-byte reads into a 64 KiB buffer with a tainted tail. (A heap
+// copy of the bits for each read allocated 64 KiB for each byte read.)
+func TestBufferReadFromReadRuleNoAllocation(t *testing.T) {
+	a := begin(t)
+	const size = 64 << 10
+	input := source(t, a, "q", strings.Repeat("A", size))
+	storage := make([]byte, size)
+	escapeBytes(storage)
+	buffer := bytes.NewBuffer(storage[:0])
+	buffer.WriteString(input)
+	require.Equal(t, []span{{0, size}}, bytesSpans(storage))
+
+	const data = 1000
+	reader := &oneByteReader{data: strings.Repeat("c", data)}
+	var failures int
+	allocs := testing.AllocsPerRun(10, func() {
+		buffer.Reset()
+		reader.off = 0
+		if n, err := buffer.ReadFrom(reader); n != data || err != nil {
+			failures++
+		}
+	})
+	require.Zero(t, failures)
+	require.Zero(t, allocs, "the read rule must not allocate")
+	require.Equal(t, strings.Repeat("c", data), buffer.String())
+	require.Equal(t, []span{{data, size}}, bytesSpans(storage), "clean written prefix, tainted tail")
+	require.Equal(t, []string{fmt.Sprintf("%d-%d=q", data, size)}, attributedBytes(t, a, storage))
+}
+
+// TestBufferReadFromReadRuleManyRuns checks the read rule when the reused
+// memory has more than 16 tainted runs: the snapshot keeps the first 16 runs
+// (the runs that a short read can overwrite). The bytes from the start of the
+// 17th run do not change: when the read writes them, they keep their old bits.
+func TestBufferReadFromReadRuleManyRuns(t *testing.T) {
+	a := begin(t)
+	input := source(t, a, "q", "0123456789")
+	gap := strings.Repeat("-", 90)
+
+	// setup returns a Buffer on storage with 20 tainted runs of 10 bytes, at
+	// offsets 0, 100, ..., 1900.
+	setup := func(t *testing.T) (*bytes.Buffer, []byte) {
+		t.Helper()
+		storage := make([]byte, 2048)
+		escapeBytes(storage)
+		buffer := bytes.NewBuffer(storage[:0])
+		for range 20 {
+			buffer.WriteString(input)
+			buffer.WriteString(gap)
+		}
+		require.Len(t, bytesSpans(storage), 20)
+		buffer.Reset()
+		return buffer, storage
+	}
+	runs := func(first span, from int) []span {
+		out := []span{first}
+		for i := from; i < 20; i++ {
+			out = append(out, span{100 * i, 100*i + 10})
+		}
+		return out
+	}
+
+	t.Run("short read", func(t *testing.T) {
+		buffer, storage := setup(t)
+		n, err := buffer.ReadFrom(strings.NewReader("clean"))
+		require.NoError(t, err)
+		require.Equal(t, int64(5), n)
+		require.Equal(t, runs(span{5, 10}, 1), bytesSpans(storage), "clean written prefix, all the runs of the tail")
+		require.Empty(t, bytesSpans(buffer.Bytes()))
+	})
+
+	t.Run("read after the 17th run start", func(t *testing.T) {
+		buffer, storage := setup(t)
+		n, err := buffer.ReadFrom(strings.NewReader(strings.Repeat("c", 1650)))
+		require.NoError(t, err)
+		require.Equal(t, int64(1650), n)
+		// The first 16 runs are clean. The written bytes [1600, 1610) are
+		// outside the snapshot: they keep their old bits (stale taint, limited
+		// by the sink match check of plan section 4.5.1).
+		require.Equal(t, runs(span{1600, 1610}, 17), bytesSpans(storage))
+	})
+}
+
 // TestBufferResultsUnchanged checks that the Buffer hooks keep the results of
 // a mix of operations.
 func TestBufferResultsUnchanged(t *testing.T) {

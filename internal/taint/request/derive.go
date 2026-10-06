@@ -6,9 +6,11 @@
 package request
 
 import (
+	"sync/atomic"
 	"unicode/utf8"
 	"unsafe"
 
+	"github.com/DataDog/dd-iast-go/internal/instrumentation/telemetry"
 	"github.com/DataDog/dd-iast-go/internal/taint/propbridge"
 )
 
@@ -26,11 +28,11 @@ func (m *Manager) derived(out unsafe.Pointer, outLen uintptr, in unsafe.Pointer,
 	if mode != propbridge.Positional || outLen != inLen {
 		mode = propbridge.Coarse
 	}
-	m.deriveAll(out, outLen, in, inLen, func(r *Attribution, segs *[MaxDerivedSegments]segment) int {
+	m.deriveAll(out, outLen, in, inLen, func(r *Attribution, segs *[MaxDerivedSegments]segment) (int, bool) {
 		if mode == propbridge.Positional {
-			return positionalSegments(r, segs)
+			return positionalSegments(r, segs), false
 		}
-		return coarseSegments(r, outLen, segs)
+		return coarseSegments(r, outLen, segs), true
 	})
 }
 
@@ -42,25 +44,39 @@ func (m *Manager) runes(out unsafe.Pointer, outLen uintptr, in unsafe.Pointer, i
 		return
 	}
 	input := unsafe.Slice((*byte)(in), inLen)
-	m.deriveAll(out, outLen, in, inLen, func(r *Attribution, segs *[MaxDerivedSegments]segment) int {
+	m.deriveAll(out, outLen, in, inLen, func(r *Attribution, segs *[MaxDerivedSegments]segment) (int, bool) {
 		if count, ok := runeSegments(r, input, outLen, kind, segs); ok {
-			return count
+			return count, false
 		}
-		return coarseSegments(r, outLen, segs)
+		return coarseSegments(r, outLen, segs), true
 	})
 }
 
 // deriveAll attributes the input for each active owner (shared work
 // budget), and adds the derived entry that build makes for each owner with
-// a match.
-func (m *Manager) deriveAll(out unsafe.Pointer, outLen uintptr, in unsafe.Pointer, inLen uintptr, build func(r *Attribution, segs *[MaxDerivedSegments]segment) int) {
+// a match. build returns the number of segments, and true when it used the
+// coarse rule.
+//
+// Telemetry (at most three atomic additions for each call):
+//   - ExecutedPropagation: one for each derived entry that was added.
+//   - CoarsenedPropagation: one for each added entry of the coarse rule.
+//   - DroppedPropagation: one for each owner with a strong match whose
+//     entry was refused (derived table full, or memory budget used); one
+//     for each owner whose slot was busy; and one when the check budget
+//     stopped the call before an active owner.
+func (m *Manager) deriveAll(out unsafe.Pointer, outLen uintptr, in unsafe.Pointer, inLen uintptr, build func(r *Attribution, segs *[MaxDerivedSegments]segment) (int, bool)) {
 	if !m.Active() || outLen == 0 || inLen == 0 || outLen > MaxValueBytes || !bitsAny(in, inLen) {
 		return
 	}
 	var r Attribution
 	w := newWork()
+	var executed, coarsened, dropped uint64
 	m.forEachActive(func(s *slot, generation uint32, id uint64) bool {
-		m.use(s, generation, id, func(d *ownerData) {
+		if w.checks <= 0 {
+			dropped++
+			return false
+		}
+		result := m.tryUse(s, generation, id, func(d *ownerData) {
 			r.Reset()
 			d.attribute(in, inLen, matchAll, MaxAttributed, &w, &r)
 			// Only an input with a strong segment makes an entry: an
@@ -70,12 +86,35 @@ func (m *Manager) deriveAll(out unsafe.Pointer, outLen uintptr, in unsafe.Pointe
 				return
 			}
 			var segs [MaxDerivedSegments]segment
-			if count := build(&r, &segs); count > 0 {
-				d.addDerived(out, outLen, segs[:count])
+			count, coarse := build(&r, &segs)
+			if count <= 0 {
+				return
+			}
+			if !d.addDerived(out, outLen, segs[:count]) {
+				dropped++
+				return
+			}
+			executed++
+			if coarse {
+				coarsened++
 			}
 		})
-		return w.checks > 0
+		if result == accessBusy {
+			dropped++
+		}
+		return true
 	})
+	addCount(&telemetry.ExecutedPropagation, executed)
+	addCount(&telemetry.CoarsenedPropagation, coarsened)
+	addCount(&telemetry.DroppedPropagation, dropped)
+}
+
+// addCount adds n to c when n is not zero (no shared write for a call that
+// changed nothing).
+func addCount(c *atomic.Uint64, n uint64) {
+	if n != 0 {
+		c.Add(n)
+	}
 }
 
 // attributedSegments calls f for each attributed segment of r, in order.
