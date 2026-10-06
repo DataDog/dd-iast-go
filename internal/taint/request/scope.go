@@ -13,9 +13,11 @@ import (
 	"unsafe"
 
 	"github.com/DataDog/dd-iast-go/internal/config"
+	"github.com/DataDog/dd-iast-go/internal/taint/commandbridge"
 	"github.com/DataDog/dd-iast-go/internal/taint/httpbridge"
 	"github.com/DataDog/dd-iast-go/internal/taint/propbridge"
 	"github.com/DataDog/dd-iast-go/internal/taint/scopebridge"
+	"github.com/DataDog/dd-iast-go/internal/taint/sqlbridge"
 	"github.com/DataDog/dd-iast-go/internal/taint/urlbridge"
 )
 
@@ -44,6 +46,10 @@ var (
 	processManager atomic.Pointer[Manager]
 	defaultManager = sync.OnceValue(func() *Manager {
 		manager := NewManager()
+		// The sink bridges in database/sql and os/exec use the permit
+		// bits as their cheap "is an analysis active" check.
+		commandbridge.BindActiveOwners(&manager.used)
+		sqlbridge.BindActiveOwners(&manager.used)
 		processManager.Store(manager)
 		return manager
 	})
