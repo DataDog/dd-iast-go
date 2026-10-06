@@ -1912,6 +1912,9 @@ Each step lists its exit criteria and an estimate for one engineer.
    - v1 lanes: all reader cases above have the same expected result as
      lane B (section 6.7). Only the source value whitespace differs.
    Exit: all pass on all lanes; no vulnerability is invented.
+
+   **Step 7: done.** See "Appendix: Implementation notes (step 7)" for the
+   deviations.
 8. **Benchmarks (3-4 h).** Section 7.2. Exit: gates of section 7.2 pass.
 9. **CI matrix (1-2 h).** Add lanes B and C to the unit-test job for every
    module (`go-version: 1.27.x`, `GOTOOLCHAIN=local`; lane C sets
@@ -2998,3 +3001,54 @@ with `go vet`) pass. `iast/integration/testapp` on lane B: only
 `TestJSONDecoderPropagatesOwnerBoundBody` and
 `TestJSONDestinationClassesPreserveTheirContracts` fail (step 7); lane C
 passes.
+
+## Appendix: Implementation notes (step 7)
+
+Changed files (all in `iast/integration/testapp`): `json_variant_v1_test.go`
+and `json_variant_v2_test.go` (new, build-tagged expectations:
+`jsonV2`, `jsonTaintsKeysAndAny`, `decoderSourcePrefix`,
+`decoderTaintsNumberTokens`, `unmarshalHasStringCache`),
+`live_request_test.go` (new: a server whose requests stay live, with the
+steps of each request in its handler goroutine), `json_readers_test.go`
+(new: the reader cases), `json_v2_misses_test.go` (new, tags
+`go1.27 && goexperiment.jsonv2`: `jsonv2.UnmarshalRead`,
+`jsontext.Decoder`), `json_destinations_test.go`, `json_controls_test.go`,
+`e2e_test.go` (`TestJSONDecoderPropagatesOwnerBoundBody`), and `chains.go`
+(`BuildTableQuery`).
+
+Deviations from the text of the plan, with the reason for each:
+
+1. NDJSON and semantic error: the strings have 2 bytes or more (`x1`,
+   `y1`, `x_value`). The store does not taint a value of less than 2 bytes
+   (`internal/taint/store/root.go`), on all lanes.
+2. The sink queries use `BuildTableQuery` (`SELECT id FROM <value>`): the
+   SQL analyzer redacts the source of a value in a literal, thus the
+   event keeps the source value only for an identifier. The values have
+   `_`, not `-`. The `json.Number` case sends a number, thus its source is
+   redacted: the test checks the origin only.
+3. Decision Q1 with the exact token: `TestJSONKeysAndInterfaceStringsUseTheirOwnToken`
+   puts one escaped request parameter in each token of a `json.Unmarshal`
+   document (string concatenation keeps the ranges). On lane B each key and
+   `interface{}` string has the source of its own parameter (5 findings);
+   on lanes A and C only the typed map value (1 finding).
+4. The second-owner cases use `request.BindReader(ctxB, rA.Body)` (the bind
+   of a second owner). The 20 KiB refill case binds its 7-byte custom
+   reader with `request.PropagateReader` (a custom reader has no binding).
+5. Added `TestJSONDecoderNumberTokens` (step 5, note 3): tainted on lane
+   B, clean on lanes A and C.
+6. The string cache test runs across two live HTTP requests, with one P,
+   no GC, and the probe proof of step 4 (note 1). Revert evidence (lane
+   B): with the string cache guard disabled (`if false && ...` in the
+   `makeString` aspect), `TestJSONStringCacheKeepsRequestsApart` fails
+   ("Should be false": request B got the tainted string of request A).
+
+No bug found: every case has the expected result of the plan on each
+lane. Validation (darwin/arm64, own `GOCACHE` for each lane, module, and
+flag set, `GOFLAGS=-buildvcs=false`): `gofmt -l` empty; `go vet ./...`
+(root, `./.github`, testapp) and `go tool checklocks ./...` clean on lanes
+A, B, C; woven testapp `go test -count=1 -shuffle=on ./...` pass on lanes
+A, B, C, and with `-race` on lane A; JSON tests with `-count=10` (lane B)
+and `-race -count=3` (lane A) pass; woven root `./...` pass on lanes A,
+B, C; the CI command (lane A, with coverage, and `go vet`) passes for the
+5 other modules.
+

@@ -118,7 +118,9 @@ func TestJSONDecoderPropagatesOwnerBoundBody(t *testing.T) {
 		firstSource, secondSource := "", ""
 		taint.VisitString(ctx, first.Value, func(found taint.Range) bool { firstSource = found.Source.Value; return false })
 		taint.VisitString(ctx, second.Value, func(found taint.Range) bool { secondSource = found.Source.Value; return false })
-		ok := err1 == nil && err2 == nil && taint.IsTaintedString(first.Value) && taint.IsTaintedString(second.Value) && firstSource == `{"value":"first"}` && secondSource == ` {"value":"second"}`
+		// The v1 source value keeps the space before the second value. The
+		// v2 source value starts at the value.
+		ok := err1 == nil && err2 == nil && taint.IsTaintedString(first.Value) && taint.IsTaintedString(second.Value) && firstSource == `{"value":"first"}` && secondSource == decoderSourcePrefix(" ")+`{"value":"second"}`
 		if !ok {
 			t.Errorf("decoder sources = first:%q second:%q errors:%v/%v", firstSource, secondSource, err1, err2)
 		}

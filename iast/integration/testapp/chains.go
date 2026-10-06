@@ -31,3 +31,10 @@ func BuildSQLChain(column, table string) SQLChainValues {
 	result.Query = fmt.Sprintf("%s", result.Joined)
 	return result
 }
+
+// BuildTableQuery builds a query that uses table as an identifier. The SQL
+// analyzer does not redact an identifier, thus the event keeps the source
+// values of table.
+func BuildTableQuery(table string) string {
+	return "SELECT id FROM " + table
+}
