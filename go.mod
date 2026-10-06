@@ -14,7 +14,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/puzpuzpuz/xsync/v4 v4.5.0
 	github.com/stretchr/testify v1.12.1
-	github.com/tinylib/msgp v1.6.4
+	github.com/tinylib/msgp v1.6.5
 	golang.org/x/crypto v0.57.0
 )
 
