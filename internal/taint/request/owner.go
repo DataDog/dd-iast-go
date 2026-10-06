@@ -68,6 +68,9 @@ type slot struct {
 	// body is the request body object of the owner (see RegisterBody). It
 	// is read without the lock by the Read hook.
 	body atomic.Pointer[bodyRef]
+	// url is the request URL object of the owner (see registerURL). It is
+	// read without the lock by the URL.Query hook.
+	url atomic.Pointer[urlRef]
 
 	mu sync.Mutex
 	// +checklocks:mu
@@ -230,6 +233,7 @@ func (m *Manager) unpin(s *slot) {
 // does not wait.
 func (m *Manager) cleanup(s *slot) {
 	s.body.Store(nil)
+	s.url.Store(nil)
 	s.mu.Lock()
 	s.data.clear()
 	s.mu.Unlock()

@@ -13,8 +13,10 @@ import (
 	"unsafe"
 
 	"github.com/DataDog/dd-iast-go/internal/config"
+	"github.com/DataDog/dd-iast-go/internal/taint/httpbridge"
 	"github.com/DataDog/dd-iast-go/internal/taint/propbridge"
 	"github.com/DataDog/dd-iast-go/internal/taint/scopebridge"
+	"github.com/DataDog/dd-iast-go/internal/taint/urlbridge"
 )
 
 // Decision is the immutable sampling/capacity outcome for a request scope. It
@@ -166,8 +168,12 @@ func init() {
 			processManager.Load().bodyRead(body, p, n)
 		},
 	})
-	// The source bridges (httpbridge, urlbridge) are registered here by
-	// step 6 of the plan (sources).
+	httpbridge.Register(BeginServerContext, FinishContext, EagerHTTP)
+	httpbridge.RegisterLazy(
+		ManageForm, ManageParameter, ManageMultipartParameter,
+		ManagePathParameter, ManageCookie, ManageMultipart,
+	)
+	urlbridge.Register(ManageURLQuery)
 }
 
 func sampleDecision(percent int) Decision {
