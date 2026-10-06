@@ -398,11 +398,14 @@ func TestBufferReadFromReadRuleNoAllocation(t *testing.T) {
 
 // TestBufferReadFromReadRuleManyRuns checks the read rule when the reused
 // memory has more than 16 tainted runs: the snapshot keeps the first 16 runs
-// (the runs that a short read can overwrite). The bytes from the start of the
-// 17th run do not change: when the read writes them, they keep their old bits.
+// (the runs that a short read can overwrite). All of the memory is cleared
+// before the read, and only the saved runs get their bits again in the part
+// that the read did not write: the runs from the 17th lose their bits (taint
+// loss only), and a written byte never keeps its old bits (no stale taint).
 func TestBufferReadFromReadRuleManyRuns(t *testing.T) {
 	a := begin(t)
-	input := source(t, a, "q", "0123456789")
+	const old = "0123456789"
+	input := source(t, a, "q", old)
 	gap := strings.Repeat("-", 90)
 
 	// setup returns a Buffer on storage with 20 tainted runs of 10 bytes, at
@@ -420,20 +423,17 @@ func TestBufferReadFromReadRuleManyRuns(t *testing.T) {
 		buffer.Reset()
 		return buffer, storage
 	}
-	runs := func(first span, from int) []span {
-		out := []span{first}
-		for i := from; i < 20; i++ {
-			out = append(out, span{100 * i, 100*i + 10})
-		}
-		return out
-	}
 
 	t.Run("short read", func(t *testing.T) {
 		buffer, storage := setup(t)
 		n, err := buffer.ReadFrom(strings.NewReader("clean"))
 		require.NoError(t, err)
 		require.Equal(t, int64(5), n)
-		require.Equal(t, runs(span{5, 10}, 1), bytesSpans(storage), "clean written prefix, all the runs of the tail")
+		want := []span{{5, 10}}
+		for i := 1; i < 16; i++ {
+			want = append(want, span{100 * i, 100*i + 10})
+		}
+		require.Equal(t, want, bytesSpans(storage), "clean written prefix, the saved runs of the tail")
 		require.Empty(t, bytesSpans(buffer.Bytes()))
 	})
 
@@ -442,10 +442,26 @@ func TestBufferReadFromReadRuleManyRuns(t *testing.T) {
 		n, err := buffer.ReadFrom(strings.NewReader(strings.Repeat("c", 1650)))
 		require.NoError(t, err)
 		require.Equal(t, int64(1650), n)
-		// The first 16 runs are clean. The written bytes [1600, 1610) are
-		// outside the snapshot: they keep their old bits (stale taint, limited
-		// by the sink match check of plan section 4.5.1).
-		require.Equal(t, runs(span{1600, 1610}, 17), bytesSpans(storage))
+		require.Empty(t, bytesSpans(storage), "no stale taint on the written bytes, taint loss on the tail")
+	})
+
+	t.Run("clean overwrite with the same bytes on the 17th run", func(t *testing.T) {
+		buffer, storage := setup(t)
+		// The clean data has the bytes of the old tainted source at the
+		// offsets of the 17th and 18th runs.
+		data := []byte(strings.Repeat("c", 1700) + old)
+		copy(data[1600:], old)
+		n, err := buffer.ReadFrom(bytes.NewReader(data))
+		require.NoError(t, err)
+		require.Equal(t, int64(len(data)), n)
+		// The read writes storage (one Read of 1710 bytes), then ReadFrom
+		// grows the Buffer: check storage.
+		got := storage[:len(data)]
+		require.Equal(t, string(data), string(got))
+		require.Equal(t, old, string(got[1600:1610]))
+		require.Equal(t, old, string(got[1700:1710]))
+		require.Empty(t, bytesSpans(storage), "no stale taint")
+		require.Empty(t, attributedBytes(t, a, got), "no source match, thus no report")
 	})
 }
 

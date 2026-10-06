@@ -401,37 +401,89 @@ aspects:
               _ error     = ioError{}.err
             )
 
-            // __dd_iast_jsontext_shadow returns new heap memory of n bytes (the
-            // result escapes: it is never on the stack).
+            // __dd_iast_jsontext_next is heapbits.Next (want true) and
+            // heapbits.NextClean (want false), pulled from the woven runtime
+            // (nil without weaving).
+            //
+            //go:linkname __dd_iast_jsontext_next __dd_iast_heapbits.next
+            var __dd_iast_jsontext_next func(p, n, from uintptr, want bool) uintptr
+
+            // __dd_iast_jsontext_find returns the first offset in [from, n) of
+            // the n bytes at p with a bit equal to want, or n. A result out of
+            // [from, n] gives n (no panic on a wrong value).
             //
             //go:noinline
-            func __dd_iast_jsontext_shadow(n int) []byte {
-              return make([]byte, n)
+            func __dd_iast_jsontext_find(p unsafe.Pointer, n, from int, want bool) int {
+              f := __dd_iast_jsontext_next
+              if f == nil || from >= n {
+                return n
+              }
+              r := int(f(uintptr(p), uintptr(n), uintptr(from), want))
+              runtime.KeepAlive(p)
+              if r < from || r > n {
+                return n
+              }
+              return r
             }
 
             // __dd_iast_jsontext_read is the read rule of plan section 6.2 (the
             // same code as in bufio and in the v1 encoding/json): a delegated
             // Read into reused memory dst. When dst has bits (and is 64 KiB or
-            // less), the bits go to a heap shadow, dst is cleared, Read runs,
-            // and the old bits go back to dst[n:] only. When Read panics, the
-            // panic goes on, and the tail loses its old bits.
+            // less), the tainted runs of dst (offset and end) go to a fixed
+            // array on the stack (no allocation), all of dst is cleared, Read
+            // runs, and the parts of the saved runs in dst[n:] get their bits
+            // again. Thus the new bytes have only the bits that Read sets, and
+            // the tail that Read did not write (and its aliases) keeps its
+            // bits. The cost is O(runs + words of bits), with no allocation.
+            //
+            // The snapshot keeps at most 16 runs: the first 16, because a
+            // short read writes the start of dst. When dst has more runs, the
+            // runs from the 17th lose their bits (taint loss only). A byte that
+            // Read writes never keeps its old bits (no stale taint). When the
+            // bits cannot be set again (no storage), the tail loses them
+            // (taint loss only). When Read panics, the panic goes on, and the
+            // tail loses its saved bits (taint loss only).
             func __dd_iast_jsontext_read(rd io.Reader, dst []byte) (int, error) {
               l := len(dst)
               p := unsafe.Pointer(unsafe.SliceData(dst))
               if l == 0 || l > 64<<10 || !__dd_iast_any(p, uintptr(l)) {
                 return rd.Read(dst)
               }
-              shadow := __dd_iast_jsontext_shadow(l)
-              if !__dd_iast_copy(unsafe.Pointer(unsafe.SliceData(shadow)), p, uintptr(l)) {
-                // No storage for the bits of the shadow: read with no change.
+              // The snapshot: at most 16 tainted runs [start, end), on the
+              // stack.
+              var starts, ends [16]int
+              k := 0
+              for off := __dd_iast_jsontext_find(p, l, 0, true); off < l; {
+                end := __dd_iast_jsontext_find(p, l, off, false)
+                if k == len(starts) || end <= off {
+                  // Too many runs, or a concurrent change of the bits: the
+                  // runs after the snapshot lose their bits (all of dst is
+                  // cleared below).
+                  break
+                }
+                starts[k], ends[k] = off, end
+                k++
+                off = __dd_iast_jsontext_find(p, l, end, true)
+              }
+              if k == 0 {
                 return rd.Read(dst)
               }
+              // Clear all of dst: Read can write any byte of dst, and a
+              // written byte must have only the bits of the new data.
               __dd_iast_clear(p, uintptr(l))
               n, err := rd.Read(dst)
               if n >= 0 && n < l {
-                __dd_iast_copy(unsafe.Pointer(&dst[n]), unsafe.Pointer(&shadow[n]), uintptr(l-n))
+                for i := 0; i < k; i++ {
+                  start := starts[i]
+                  if start < n {
+                    start = n
+                  }
+                  if start < ends[i] {
+                    __dd_iast_set(unsafe.Add(p, start), uintptr(ends[i]-start))
+                  }
+                }
               }
-              runtime.KeepAlive(unsafe.Pointer(unsafe.SliceData(shadow)))
+              runtime.KeepAlive(p)
               return n, err
             }
 

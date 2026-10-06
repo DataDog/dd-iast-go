@@ -35,19 +35,27 @@
 //     With GOEXPERIMENT=jsonv2, the hooks do not apply.
 //
 // The read rule: before a delegated Read into memory that has taint bits
-// (64 KiB or less), the hook keeps a copy of the bits, clears them, calls
-// Read, then puts the old bits back on the bytes that Read did not write.
-// The new bytes have only the bits that the Read sets (for example the bits
-// of the request body).
+// (64 KiB or less), the hook keeps the first 16 tainted runs (on the stack, no
+// allocation), clears all the bits, calls Read, then puts the bits of the
+// saved runs back on the bytes that Read did not write. The new bytes have
+// only the bits that the Read sets (for example the bits of the request
+// body). When the memory has more than 16 tainted runs, the runs after the
+// 16th lose their bits (taint loss, never stale taint).
 //
 // Known limits: copy and append(x, y...) in application code lose the taint;
 // bufio.Writer, bufio.Scanner and fmt.Append* are not hooked.
 package stream
 
 // instrumentedPropagationPoints is the number of hooked standard library
-// functions in orchestrion.yml (the aspects that are not declarations; the 2
-// variants of (*fmt.pp).fmtString count as one). The application does not
-// link this package, thus the aspect fmt-telemetry-decls gives the number to
-// telemetry (see internal/taint/request/telemetry.go). TestAspectCount checks
-// both values.
-const instrumentedPropagationPoints = 18
+// functions in orchestrion.yml that are not in encoding/json (the aspects that
+// are not declarations; the 2 variants of (*fmt.pp).fmtString count as one).
+// instrumentedJSONPropagationPoints is the number of hooked functions in
+// encoding/json: they apply only without GOEXPERIMENT=jsonv2 (the v1 files of
+// encoding/json). The application does not link this package, thus the
+// aspects fmt-telemetry-decls and encoding/json-telemetry-decls give the
+// numbers to telemetry (see internal/taint/request/telemetry.go).
+// TestAspectCount checks all the values.
+const (
+	instrumentedPropagationPoints     = 14
+	instrumentedJSONPropagationPoints = 4
+)

@@ -837,14 +837,14 @@ aspects:
             // bits. The cost is O(runs + words of bits), with no allocation.
             //
             // The snapshot keeps at most 16 runs: the first 16, because a
-            // short read writes the start of dst. When dst has more runs, the
-            // bytes from the start of the 17th run do not change: the tail
-            // there keeps its bits, but bytes that Read writes there keep
-            // their old bits (stale taint; the sink match check of plan
-            // section 4.5.1 limits the effect). When the bits cannot be set
-            // again (no storage), the tail loses them (taint loss only). When
-            // Read panics, the panic goes on, and the tail loses its saved
-            // bits (taint loss only).
+            // short read writes the start of dst. When dst has more runs, all
+            // of dst is cleared, and only the 16 saved runs get their bits
+            // again in dst[n:]: the runs from the 17th lose their bits (taint
+            // loss only). A byte that Read writes never keeps its old bits (no
+            // stale taint). When the bits cannot be set again (no storage),
+            // the tail loses them (taint loss only). When Read panics, the
+            // panic goes on, and the tail loses its saved bits (taint loss
+            // only).
             func __dd_iast_bufio_read(rd io.Reader, dst []byte) (int, error) {
               l := len(dst)
               p := unsafe.Pointer(unsafe.SliceData(dst))
@@ -855,13 +855,12 @@ aspects:
               // stack.
               var starts, ends [16]int
               k := 0
-              // dst[limit:] is out of the snapshot: it does not change.
-              limit := l
               for off := __dd_iast_bufio_find(p, l, 0, true); off < l; {
                 end := __dd_iast_bufio_find(p, l, off, false)
                 if k == len(starts) || end <= off {
-                  // Too many runs, or a concurrent change of the bits.
-                  limit = off
+                  // Too many runs, or a concurrent change of the bits: the
+                  // runs after the snapshot lose their bits (all of dst is
+                  // cleared below).
                   break
                 }
                 starts[k], ends[k] = off, end
@@ -871,9 +870,11 @@ aspects:
               if k == 0 {
                 return rd.Read(dst)
               }
-              __dd_iast_clear(p, uintptr(limit))
+              // Clear all of dst: Read can write any byte of dst, and a
+              // written byte must have only the bits of the new data.
+              __dd_iast_clear(p, uintptr(l))
               n, err := rd.Read(dst)
-              if n >= 0 && n < limit {
+              if n >= 0 && n < l {
                 for i := 0; i < k; i++ {
                   start := starts[i]
                   if start < n {
@@ -1107,13 +1108,12 @@ aspects:
               // stack.
               var starts, ends [16]int
               k := 0
-              // dst[limit:] is out of the snapshot: it does not change.
-              limit := l
               for off := __dd_iast_json_find(p, l, 0, true); off < l; {
                 end := __dd_iast_json_find(p, l, off, false)
                 if k == len(starts) || end <= off {
-                  // Too many runs, or a concurrent change of the bits.
-                  limit = off
+                  // Too many runs, or a concurrent change of the bits: the
+                  // runs after the snapshot lose their bits (all of dst is
+                  // cleared below).
                   break
                 }
                 starts[k], ends[k] = off, end
@@ -1123,9 +1123,11 @@ aspects:
               if k == 0 {
                 return rd.Read(dst)
               }
-              __dd_iast_clear(p, uintptr(limit))
+              // Clear all of dst: Read can write any byte of dst, and a
+              // written byte must have only the bits of the new data.
+              __dd_iast_clear(p, uintptr(l))
               n, err := rd.Read(dst)
-              if n >= 0 && n < limit {
+              if n >= 0 && n < l {
                 for i := 0; i < k; i++ {
                   start := starts[i]
                   if start < n {
@@ -1394,11 +1396,13 @@ aspects:
   # telemetry
   # ---------------------------------------------------------------------------
 
-  # Not a hook (a "-decls" aspect). The application does not link this
+  # Not hooks (two "-decls" aspects). The application does not link this
   # package (orchestrion.tool.go imports it only with the "tools" build tag),
   # thus its init function cannot give the number of hooks to telemetry.
-  # Package fmt pushes the number; package internal/taint/request pulls it in
-  # its init function (0 without weaving).
+  # Package fmt pushes the number of the hooks that are not in encoding/json;
+  # package encoding/json pushes the number of its hooks. Package
+  # internal/taint/request pulls them in its init function (0 without
+  # weaving).
   - id: fmt-telemetry-decls
     join-point:
       struct-definition: fmt.pp
@@ -1408,11 +1412,37 @@ aspects:
             unsafe: unsafe
           template: |-
             // __dd_iast_stream_points is instrumentedPropagationPoints of
-            // iast/propagation/stream (TestAspectCount checks the value).
-            // Exported to package internal/taint/request (push linkname).
+            // iast/propagation/stream: the hooks that are not in
+            // encoding/json (TestAspectCount checks the value). Exported to
+            // package internal/taint/request (push linkname).
             //
             //go:linkname __dd_iast_stream_points __dd_iast_telemetry.stream_points
-            var __dd_iast_stream_points uint32 = 18
+            var __dd_iast_stream_points uint32 = 14
+
+            // The linkname directive needs the import of unsafe.
+            var _ unsafe.Pointer
+
+  # The type decodeState is only in the v1 files of encoding/json (decode.go:
+  # "//go:build !goexperiment.jsonv2"). Thus this number is in the build only
+  # when the 4 encoding/json hooks apply (Go 1.26 by default, Go 1.27 with
+  # GOEXPERIMENT=nojsonv2). With GOEXPERIMENT=jsonv2, the hooks of
+  # iast/propagation/jsonv2 apply, and encoding/json/jsontext pushes their
+  # number.
+  - id: encoding/json-telemetry-decls
+    join-point:
+      struct-definition: encoding/json.decodeState
+    advice:
+      - inject-declarations:
+          imports:
+            unsafe: unsafe
+          template: |-
+            // __dd_iast_stream_json_points is instrumentedJSONPropagationPoints
+            // of iast/propagation/stream: the hooks in encoding/json
+            // (TestAspectCount checks the value). Exported to package
+            // internal/taint/request (push linkname).
+            //
+            //go:linkname __dd_iast_stream_json_points __dd_iast_telemetry.stream_json_points
+            var __dd_iast_stream_json_points uint32 = 4
 
             // The linkname directive needs the import of unsafe.
             var _ unsafe.Pointer

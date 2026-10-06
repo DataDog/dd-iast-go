@@ -10,6 +10,7 @@ import (
 	"flag"
 	"fmt"
 	"go/ast"
+	"go/build/constraint"
 	"go/parser"
 	"go/printer"
 	"go/token"
@@ -56,7 +57,8 @@ func (h hookRef) String() string {
 // Full returns the name with the package: "fmt.(*pp).free".
 func (h hookRef) Full() string { return h.pkg + "." + h.String() }
 
-// hookedFuncs are the 18 hooked functions of orchestrion.yml.
+// hookedFuncs are the 18 hooked functions of orchestrion.yml (14 out of
+// encoding/json and 4 in encoding/json).
 var hookedFuncs = []hookRef{
 	{"fmt", "*fmt", "pad"},
 	{"fmt", "*fmt", "padString"},
@@ -419,9 +421,10 @@ func readAspects(t *testing.T) []aspect {
 	return aspects
 }
 
-// instrumentedPoints reads the constant instrumentedPropagationPoints of
-// stream.go (this is an external test package).
-func instrumentedPoints(t *testing.T) int {
+// instrumentedPoints reads the constant name (instrumentedPropagationPoints
+// or instrumentedJSONPropagationPoints) of stream.go (this is an external
+// test package).
+func instrumentedPoints(t *testing.T, name string) int {
 	t.Helper()
 	f, err := parser.ParseFile(token.NewFileSet(), "stream.go", nil, 0)
 	require.NoError(t, err)
@@ -433,26 +436,28 @@ func instrumentedPoints(t *testing.T) int {
 		for _, spec := range gd.Specs {
 			vs := spec.(*ast.ValueSpec)
 			for i, id := range vs.Names {
-				if id.Name != "instrumentedPropagationPoints" {
+				if id.Name != name {
 					continue
 				}
 				lit, ok := vs.Values[i].(*ast.BasicLit)
-				require.True(t, ok, "instrumentedPropagationPoints is not an integer literal")
+				require.True(t, ok, "%s is not an integer literal", name)
 				n, err := strconv.Atoi(lit.Value)
 				require.NoError(t, err)
 				return n
 			}
 		}
 	}
-	t.Fatal("instrumentedPropagationPoints not found in stream.go")
+	t.Fatalf("%s not found in stream.go", name)
 	return 0
 }
 
-// TestAspectCount checks that the constant instrumentedPropagationPoints of
-// stream.go is the number of hooked functions of orchestrion.yml (every
-// aspect that is not a declaration; the aspects of a variant, with the suffix
-// " [go1.27]" in the id, count with the aspect of the same function), and
-// that each hook names a function of the standard library.
+// TestAspectCount checks that the constants instrumentedPropagationPoints
+// and instrumentedJSONPropagationPoints of stream.go are the numbers of
+// hooked functions of orchestrion.yml (every aspect that is not a
+// declaration; the aspects of a variant, with the suffix " [go1.27]" in the
+// id, count with the aspect of the same function) out of encoding/json and in
+// encoding/json, that the telemetry aspects push the same numbers, and that
+// each hook names a function of the standard library.
 func TestAspectCount(t *testing.T) {
 	aspects := readAspects(t)
 	require.NotEmpty(t, aspects)
@@ -469,13 +474,33 @@ func TestAspectCount(t *testing.T) {
 		}
 		require.True(t, a.isFunction, "%s: a hook must have a function-body join point", a.id)
 	}
-	require.Equal(t, instrumentedPoints(t), len(hooks), "instrumentedPropagationPoints of stream.go and the hooks of orchestrion.yml (ids: %v)", sortedKeys(hooks))
-	// The aspect fmt-telemetry-decls pushes the same number to telemetry.
+	jsonHooks := 0
+	for _, a := range hooks {
+		if a.importPath == "encoding/json" {
+			jsonHooks++
+		}
+	}
+	general, jsonV1 := instrumentedPoints(t, "instrumentedPropagationPoints"), instrumentedPoints(t, "instrumentedJSONPropagationPoints")
+	require.Equal(t, jsonV1, jsonHooks, "instrumentedJSONPropagationPoints of stream.go and the encoding/json hooks of orchestrion.yml (ids: %v)", sortedKeys(hooks))
+	require.Equal(t, general, len(hooks)-jsonHooks, "instrumentedPropagationPoints of stream.go and the other hooks of orchestrion.yml (ids: %v)", sortedKeys(hooks))
+	// The aspects fmt-telemetry-decls and encoding/json-telemetry-decls push
+	// the same numbers to telemetry. The second one has a join point that
+	// exists only in the v1 files of encoding/json (with its hooks).
 	contents, err := os.ReadFile("orchestrion.yml")
 	require.NoError(t, err)
-	pushed := regexp.MustCompile(`\n *var __dd_iast_stream_points uint32 = (\d+)\n`).FindStringSubmatch(string(contents))
-	require.NotNil(t, pushed, "the pushed telemetry count is not in orchestrion.yml")
-	require.Equal(t, strconv.Itoa(instrumentedPoints(t)), pushed[1], "the pushed telemetry count")
+	for _, c := range []struct {
+		variable, aspect, joinPoint string
+		want                        int
+	}{
+		{"__dd_iast_stream_points", "fmt-telemetry-decls", "fmt.pp", general},
+		{"__dd_iast_stream_json_points", "encoding/json-telemetry-decls", "encoding/json.decodeState", jsonV1},
+	} {
+		re := regexp.MustCompile(`\n  - id: ` + regexp.QuoteMeta(c.aspect) + `\n    join-point:\n      struct-definition: ` + regexp.QuoteMeta(c.joinPoint) + `\n(?:[^\n]*\n)*? *var ` + c.variable + ` uint32 = (\d+)\n`)
+		pushed := re.FindStringSubmatch(string(contents))
+		require.NotNil(t, pushed, "the pushed telemetry count %s of aspect %s is not in orchestrion.yml", c.variable, c.aspect)
+		require.Equal(t, strconv.Itoa(c.want), pushed[1], "the pushed telemetry count %s", c.variable)
+		require.Equal(t, 1, strings.Count(string(contents), "var "+c.variable+" "), "one definition of %s", c.variable)
+	}
 	require.Equal(t, len(hookedFuncs), len(hooks), "hookedFuncs of this test and the hooks of orchestrion.yml")
 
 	// Each hook names a function of the standard library source, and its id
@@ -513,6 +538,62 @@ func TestAspectCount(t *testing.T) {
 		seen[h.Full()] = true
 	}
 	require.Len(t, seen, len(hookedFuncs))
+}
+
+// TestJSONTelemetryJoinPoint checks that the join point of the aspect
+// encoding/json-telemetry-decls (the type decodeState) and the 4 hooked
+// functions of encoding/json are in v1 files only: files that the build
+// compiles without GOEXPERIMENT=jsonv2, and does not compile with it. Thus
+// the pushed number is in the build if and only if the hooks apply.
+func TestJSONTelemetryJoinPoint(t *testing.T) {
+	_, files, names := stdlibFiles(t, "encoding/json")
+	dir := filepath.Join(goroot(t), "src", "encoding", "json")
+	// v1 tells if the build constraint of the file name is true without
+	// goexperiment.jsonv2 and false with it.
+	v1 := func(name string) bool {
+		f, err := parser.ParseFile(token.NewFileSet(), filepath.Join(dir, name), nil, parser.PackageClauseOnly|parser.ParseComments)
+		require.NoError(t, err)
+		for _, g := range f.Comments {
+			for _, c := range g.List {
+				if !constraint.IsGoBuild(c.Text) {
+					continue
+				}
+				expr, err := constraint.Parse(c.Text)
+				require.NoError(t, err, "%s: %s", name, c.Text)
+				on := expr.Eval(func(tag string) bool { return tag == "goexperiment.jsonv2" })
+				off := expr.Eval(func(string) bool { return false })
+				return off && !on
+			}
+		}
+		return false
+	}
+	var typeFiles []string
+	for _, name := range names {
+		for _, d := range files[name].Decls {
+			if gd, ok := d.(*ast.GenDecl); ok && gd.Tok == token.TYPE {
+				for _, spec := range gd.Specs {
+					if spec.(*ast.TypeSpec).Name.Name == "decodeState" {
+						typeFiles = append(typeFiles, name)
+					}
+				}
+			}
+		}
+	}
+	require.Len(t, typeFiles, 1, "the type decodeState of encoding/json")
+	require.True(t, v1(typeFiles[0]), "%s (type decodeState) must be a v1 file (//go:build !goexperiment.jsonv2)", typeFiles[0])
+	jsonHooks := 0
+	for _, h := range hookedFuncs {
+		if h.pkg != "encoding/json" {
+			continue
+		}
+		jsonHooks++
+		_, in := findFuncs(files, names, h)
+		require.NotEmpty(t, in, "%s not found", h.Full())
+		for _, name := range in {
+			require.True(t, v1(name), "%s (%s) must be a v1 file (//go:build !goexperiment.jsonv2)", name, h.Full())
+		}
+	}
+	require.Equal(t, instrumentedPoints(t, "instrumentedJSONPropagationPoints"), jsonHooks)
 }
 
 func sortedKeys[V any](m map[string]V) []string {

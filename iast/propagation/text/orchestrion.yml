@@ -1472,14 +1472,13 @@ aspects:
             // bits), with no allocation.
             //
             // The snapshot keeps at most 16 runs: the first 16, because a
-            // short read writes the start of dst. When dst has more runs, the
-            // bytes from the start of the 17th run do not change: the tail
-            // there keeps its bits, but bytes that Read writes there keep
-            // their old bits (stale taint; the sink match check of plan
-            // section 4.5.1 limits the effect). When the bits cannot be set
-            // again (no storage), the tail loses them (taint loss only). When
-            // Read panics, the saved bits of the tail are lost (taint loss
-            // only).
+            // short read writes the start of dst. When dst has more runs, all
+            // of dst is cleared, and only the 16 saved runs get their bits
+            // again in dst[n:]: the runs from the 17th lose their bits (taint
+            // loss only). A byte that Read writes never keeps its old bits (no
+            // stale taint). When the bits cannot be set again (no storage),
+            // the tail loses them (taint loss only). When Read panics, the
+            // saved bits of the tail are lost (taint loss only).
             func __dd_iast_read(r io.Reader, dst []byte) (int, error) {
               l := len(dst)
               if l == 0 || l > 64<<10 || !__dd_iast_anyb(dst) {
@@ -1488,13 +1487,12 @@ aspects:
               p := unsafe.Pointer(unsafe.SliceData(dst))
               var starts, ends [__dd_iast_rr_runs]int
               k := 0
-              // dst[limit:] is out of the snapshot: it does not change.
-              limit := l
               for off := __dd_iast_rr_find(p, l, 0, true); off < l; {
                 end := __dd_iast_rr_find(p, l, off, false)
                 if k == __dd_iast_rr_runs || end <= off {
-                  // Too many runs, or a concurrent change of the bits.
-                  limit = off
+                  // Too many runs, or a concurrent change of the bits: the
+                  // runs after the snapshot lose their bits (all of dst is
+                  // cleared below).
                   break
                 }
                 starts[k], ends[k] = off, end
@@ -1504,9 +1502,11 @@ aspects:
               if k == 0 {
                 return r.Read(dst)
               }
-              __dd_iast_clear(p, limit)
+              // Clear all of dst: Read can write any byte of dst, and a
+              // written byte must have only the bits of the new data.
+              __dd_iast_clear(p, l)
               n, err := r.Read(dst)
-              if n >= 0 && n < limit {
+              if n >= 0 && n < l {
                 for i := 0; i < k; i++ {
                   start := starts[i]
                   if start < n {

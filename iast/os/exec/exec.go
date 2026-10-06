@@ -67,10 +67,12 @@ func Report(ctx context.Context, argv []string) {
 }
 
 // mayContainArgument is the cheap gate of Report: it returns true only when a
-// request analysis is active and at least one argument has a taint bit. It
-// does not allocate.
+// request analysis is active, the joined command line is not larger than
+// maxJoinedBytes, and at least one argument has a taint bit. It examines the
+// lengths before it reads the heap taint bits, so that an oversized command
+// line causes no scan. It does not allocate.
 func mayContainArgument(argv []string) bool {
-	if len(argv) == 0 || len(argv) > evidence.MaxJoinedValues || !request.ProcessManager().Active() {
+	if !joinedLengthFits(argv) || !request.ProcessManager().Active() {
 		return false
 	}
 	for _, argument := range argv {
@@ -81,16 +83,27 @@ func mayContainArgument(argv []string) bool {
 	return false
 }
 
-func boundedJoin(argv []string) (string, bool) {
+// joinedLengthFits returns true when argv has between 1 and
+// evidence.MaxJoinedValues arguments, and when the arguments joined with one
+// space separator are not larger than maxJoinedBytes. It reads only the
+// lengths, not the bytes, and it cannot overflow.
+func joinedLengthFits(argv []string) bool {
 	if len(argv) == 0 || len(argv) > evidence.MaxJoinedValues {
-		return "", false
+		return false
 	}
 	length := len(argv) - 1
 	for _, argument := range argv {
 		if len(argument) > maxJoinedBytes-length {
-			return "", false
+			return false
 		}
 		length += len(argument)
+	}
+	return true
+}
+
+func boundedJoin(argv []string) (string, bool) {
+	if !joinedLengthFits(argv) {
+		return "", false
 	}
 	return strings.Join(argv, " "), true
 }

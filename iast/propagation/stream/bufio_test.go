@@ -12,6 +12,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/DataDog/dd-iast-go/internal/taint/request"
 	"github.com/stretchr/testify/require"
 )
 
@@ -267,19 +268,22 @@ func TestBufioReadRuleNoAllocation(t *testing.T) {
 
 // Plan section 6.2, read rule with more than 16 tainted runs in the buffer:
 // the snapshot keeps the first 16 runs (the runs that a short read can
-// overwrite). The bytes from the start of the 17th run do not change: when
-// the read writes them, they keep their old bits.
+// overwrite). All of the buffer is cleared before the read, and only the
+// saved runs get their bits again in the part that the read did not write:
+// the runs from the 17th lose their bits (taint loss only), and a written
+// byte never keeps its old bits (no stale taint).
 func TestBufioReadRuleManyRuns(t *testing.T) {
 	const size = 2000
+	const old = "0123456789"
 	// setup returns a reader whose buffer has 20 tainted runs of 10 bytes, at
 	// offsets 0, 100, ..., 1900, all discarded (alias shows them). The next
 	// delegated read writes next.
-	setup := func(t *testing.T, next string) (*bufio.Reader, []byte) {
+	setup := func(t *testing.T, next string) (*bufio.Reader, []byte, request.Analysis) {
 		t.Helper()
 		_, a := begin(t)
 		var first []seg
 		for range 20 {
-			first = append(first, seg{"0123456789", true}, seg{strings.Repeat("-", 90), false})
+			first = append(first, seg{old, true}, seg{strings.Repeat("-", 90), false})
 		}
 		r := bufio.NewReaderSize(newScripted(t, a, first, []seg{{next, false}}), size)
 		alias, err := r.Peek(size)
@@ -287,33 +291,40 @@ func TestBufioReadRuleManyRuns(t *testing.T) {
 		require.Len(t, rangesBytes(alias), 20)
 		_, err = r.Discard(size)
 		require.NoError(t, err)
-		return r, alias
-	}
-	runs := func(first [2]int, from int) [][2]int {
-		out := [][2]int{first}
-		for i := from; i < 20; i++ {
-			out = append(out, [2]int{100 * i, 100*i + 10})
-		}
-		return out
+		return r, alias, a
 	}
 
 	t.Run("short read", func(t *testing.T) {
-		r, alias := setup(t, "ccccc")
+		r, alias, _ := setup(t, "ccccc")
 		got, err := r.Peek(5)
 		require.NoError(t, err)
 		require.Equal(t, "ccccc", string(got))
 		require.Empty(t, rangesBytes(got))
-		require.Equal(t, runs([2]int{5, 10}, 1), rangesBytes(alias), "clean written prefix, all the runs of the tail")
+		want := [][2]int{{5, 10}}
+		for i := 1; i < 16; i++ {
+			want = append(want, [2]int{100 * i, 100*i + 10})
+		}
+		require.Equal(t, want, rangesBytes(alias), "clean written prefix, the saved runs of the tail")
 	})
 	t.Run("read after the 17th run start", func(t *testing.T) {
-		r, alias := setup(t, strings.Repeat("c", 1650))
+		r, alias, _ := setup(t, strings.Repeat("c", 1650))
 		got, err := r.Peek(1650)
 		require.NoError(t, err)
 		require.Equal(t, strings.Repeat("c", 1650), string(got))
-		// The first 16 runs are clean. The written bytes [1600, 1610) are
-		// outside the snapshot: they keep their old bits (stale taint, limited
-		// by the sink match check of plan section 4.5.1).
-		require.Equal(t, runs([2]int{1600, 1610}, 17), rangesBytes(alias))
+		require.Empty(t, rangesBytes(alias), "no stale taint on the written bytes, taint loss on the tail")
+	})
+	t.Run("clean overwrite with the same bytes on the 17th run", func(t *testing.T) {
+		// The clean data has the bytes of the old tainted source at the
+		// offsets of the 17th and 18th runs.
+		data := []byte(strings.Repeat("c", 1710))
+		copy(data[1600:], old)
+		copy(data[1700:], old)
+		r, alias, a := setup(t, string(data))
+		got, err := r.Peek(len(data))
+		require.NoError(t, err)
+		require.Equal(t, string(data), string(got))
+		require.Empty(t, rangesBytes(alias), "no stale taint")
+		require.Empty(t, attributedBytes(t, a, got), "no source match, thus no report")
 	})
 }
 

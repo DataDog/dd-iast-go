@@ -11,6 +11,7 @@ import (
 	_ "github.com/DataDog/orchestrion" // integration
 
 	_ "github.com/DataDog/dd-iast-go/iast/os/exec"            // integration
+	_ "github.com/DataDog/dd-iast-go/iast/propagation/jsonv2" // integration
 	_ "github.com/DataDog/dd-iast-go/iast/propagation/stream" // integration
 	_ "github.com/DataDog/dd-iast-go/iast/propagation/text"   // integration
 	_ "github.com/DataDog/dd-iast-go/iast/runtime"            // integration

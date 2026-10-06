@@ -72,6 +72,17 @@ func TestMayContainArgumentAndReport(t *testing.T) {
 	tainted := taint.TaintString(ctx, taint.Source{Origin: constants.OriginHttpRequestParameter, Name: "cmd"}, "attack")
 	require.True(t, mayContainArgument([]string{"echo", tainted}))
 
+	// The gate must drop an oversized joined command line before it reads the
+	// heap taint bits: a tainted argument does not open the gate when the
+	// joined length is larger than maxJoinedBytes.
+	source := taint.Source{Origin: constants.OriginHttpRequestParameter, Name: "cmd"}
+	largest := taint.TaintString(ctx, source, strings.Repeat("y", maxJoinedBytes-len("echo ")))
+	require.True(t, heapbits.AnyString(largest))
+	require.True(t, mayContainArgument([]string{"echo", largest}))
+	require.False(t, mayContainArgument([]string{"echo", largest, ""}))
+	require.False(t, mayContainArgument([]string{largest, tainted}))
+	require.False(t, mayContainArgument([]string{tainted, largest}))
+
 	before := telemetry.ExecutedSink.CommandInjection.Load()
 	Report(ctx, nil)
 	Report(ctx, []string{"echo", tainted})

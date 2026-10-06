@@ -6,6 +6,7 @@
 package request
 
 import (
+	_ "encoding/json" // the woven encoding/json pushes the number of its hooks
 	"testing"
 
 	"github.com/DataDog/dd-iast-go/internal/instrumentation/telemetry"
@@ -14,20 +15,31 @@ import (
 )
 
 // TestStdlibPropagationPoints: this test program does not import
-// iast/propagation/text or iast/propagation/stream (their init functions do
-// not run), but the woven packages strings and fmt give the number of their
-// hooks to telemetry. The numbers are instrumentedPropagationPoints of
-// iast/propagation/text (28) and iast/propagation/stream (18), plus
-// iast/propagation/jsonv2 (3) when encoding/json/jsontext is in the build
-// (GOEXPERIMENT=jsonv2, the default of Go 1.27).
+// iast/propagation/text, iast/propagation/stream or iast/propagation/jsonv2
+// (their init functions do not run), but the woven standard library packages
+// give the number of their hooks to telemetry. The numbers are
+// instrumentedPropagationPoints of iast/propagation/text (28) and
+// iast/propagation/stream (14), plus the hooks of the encoding/json variant
+// of the build:
+//
+//   - without GOEXPERIMENT=jsonv2 (Go 1.26.6 by default, Go 1.27.1 with
+//     GOEXPERIMENT=nojsonv2): the 4 encoding/json hooks of
+//     iast/propagation/stream (total 46);
+//   - with GOEXPERIMENT=jsonv2 (Go 1.27.1 by default): the 3 hooks of
+//     iast/propagation/jsonv2 (total 45).
 func TestStdlibPropagationPoints(t *testing.T) {
 	if !built.WithOrchestrion {
 		t.Skip("orchestrion is not enabled, use `go tool orchestrion go test` to run this test suite")
 	}
-	want := uint(28 + 18)
-	if jsonv2Points != 0 {
+	require.Equal(t, uint32(28), textPoints)
+	require.Equal(t, uint32(14), streamPoints)
+	if jsonv2Experiment {
+		require.Zero(t, streamJSONPoints, "the v1 files of encoding/json are not in the build")
 		require.Equal(t, uint32(3), jsonv2Points)
-		want += 3
+		require.Equal(t, uint(45), telemetry.InstrumentedPropagation)
+	} else {
+		require.Equal(t, uint32(4), streamJSONPoints)
+		require.Zero(t, jsonv2Points, "encoding/json/jsontext is not in the build")
+		require.Equal(t, uint(46), telemetry.InstrumentedPropagation)
 	}
-	require.Equal(t, want, telemetry.InstrumentedPropagation)
 }
