@@ -1,0 +1,1153 @@
+# Inventory of the standard library code that the hooks of orchestrion.yml
+# depend on (TestStdlibDrift). Update with -update-drift after a review.
+
+## func fmt.(*buffer).write (print.go)
+func (b *buffer) write(p []byte) {
+	*b = append(*b, p...)
+}
+
+## func fmt.(*buffer).writeString (print.go)
+func (b *buffer) writeString(s string) {
+	*b = append(*b, s...)
+}
+
+## func fmt.(*fmt).fmtBs (format.go)
+func (f *fmt) fmtBs(b []byte) {
+	b = f.truncate(b)
+	f.pad(b)
+}
+
+## func fmt.(*fmt).fmtS (format.go)
+func (f *fmt) fmtS(s string) {
+	s = f.truncateString(s)
+	f.padString(s)
+}
+
+## func fmt.(*fmt).pad (format.go)
+func (f *fmt) pad(b []byte) {
+	if !f.widPresent || f.wid == 0 {
+		f.buf.write(b)
+		return
+	}
+	width := f.wid - utf8.RuneCount(b)
+	if !f.minus {
+		f.writePadding(width)
+		f.buf.write(b)
+	} else {
+		f.buf.write(b)
+		f.writePadding(width)
+	}
+}
+
+## func fmt.(*fmt).padString (format.go)
+func (f *fmt) padString(s string) {
+	if !f.widPresent || f.wid == 0 {
+		f.buf.writeString(s)
+		return
+	}
+	width := f.wid - utf8.RuneCountInString(s)
+	if !f.minus {
+		f.writePadding(width)
+		f.buf.writeString(s)
+	} else {
+		f.buf.writeString(s)
+		f.writePadding(width)
+	}
+}
+
+## func fmt.(*fmt).truncateString (format.go)
+func (f *fmt) truncateString(s string) string {
+	if f.precPresent {
+		n := f.prec
+		for i := range s {
+			n--
+			if n < 0 {
+				return s[:i]
+			}
+		}
+	}
+	return s
+}
+
+## func fmt.(*fmt).writePadding (format.go)
+func (f *fmt) writePadding(n int) {
+	if n <= 0 {
+		return
+	}
+	buf := *f.buf
+	oldLen := len(buf)
+	newLen := oldLen + n
+	if newLen > cap(buf) {
+		buf = make(buffer, cap(buf)*2+n)
+		copy(buf, *f.buf)
+	}
+	padByte := byte(' ')
+	if f.zero && !f.minus {
+		padByte = byte('0')
+	}
+	padding := buf[oldLen:newLen]
+	for i := range padding {
+		padding[i] = padByte
+	}
+	*f.buf = buf[:newLen]
+}
+
+## func fmt.(*pp).Write (print.go)
+func (p *pp) Write(b []byte) (ret int, err error) {
+	p.buf.write(b)
+	return len(b), nil
+}
+
+## func fmt.(*pp).WriteString (print.go)
+func (p *pp) WriteString(s string) (ret int, err error) {
+	p.buf.writeString(s)
+	return len(s), nil
+}
+
+## func fmt.(*pp).doPrintf (print.go)
+func (p *pp) doPrintf(format string, a []any) {
+	end := len(format)
+	argNum := 0
+	afterIndex := false
+	p.reordered = false
+formatLoop:
+	for i := 0; i < end; {
+		p.goodArgNum = true
+		lasti := i
+		for i < end && format[i] != '%' {
+			i++
+		}
+		if i > lasti {
+			p.buf.writeString(format[lasti:i])
+		}
+		if i >= end {
+			break
+		}
+		i++
+		p.fmt.clearflags()
+	simpleFormat:
+		for ; i < end; i++ {
+			c := format[i]
+			switch c {
+			case '#':
+				p.fmt.sharp = true
+			case '0':
+				p.fmt.zero = true
+			case '+':
+				p.fmt.plus = true
+			case '-':
+				p.fmt.minus = true
+			case ' ':
+				p.fmt.space = true
+			default:
+				if 'a' <= c && c <= 'z' && argNum < len(a) {
+					switch c {
+					case 'w':
+						p.wrappedErrs = append(p.wrappedErrs, argNum)
+						fallthrough
+					case 'v':
+						p.fmt.sharpV = p.fmt.sharp
+						p.fmt.sharp = false
+						p.fmt.plusV = p.fmt.plus
+						p.fmt.plus = false
+					}
+					p.printArg(a[argNum], rune(c))
+					argNum++
+					i++
+					continue formatLoop
+				}
+				break simpleFormat
+			}
+		}
+		argNum, i, afterIndex = p.argNumber(argNum, format, i, len(a))
+		if i < end && format[i] == '*' {
+			i++
+			p.fmt.wid, p.fmt.widPresent, argNum = intFromArg(a, argNum)
+			if !p.fmt.widPresent {
+				p.buf.writeString(badWidthString)
+			}
+			if p.fmt.wid < 0 {
+				p.fmt.wid = -p.fmt.wid
+				p.fmt.minus = true
+				p.fmt.zero = false
+			}
+			afterIndex = false
+		} else {
+			p.fmt.wid, p.fmt.widPresent, i = parsenum(format, i, end)
+			if afterIndex && p.fmt.widPresent {
+				p.goodArgNum = false
+			}
+		}
+		if i+1 < end && format[i] == '.' {
+			i++
+			if afterIndex {
+				p.goodArgNum = false
+			}
+			argNum, i, afterIndex = p.argNumber(argNum, format, i, len(a))
+			if i < end && format[i] == '*' {
+				i++
+				p.fmt.prec, p.fmt.precPresent, argNum = intFromArg(a, argNum)
+				if p.fmt.prec < 0 {
+					p.fmt.prec = 0
+					p.fmt.precPresent = false
+				}
+				if !p.fmt.precPresent {
+					p.buf.writeString(badPrecString)
+				}
+				afterIndex = false
+			} else {
+				p.fmt.prec, p.fmt.precPresent, i = parsenum(format, i, end)
+				if !p.fmt.precPresent {
+					p.fmt.prec = 0
+					p.fmt.precPresent = true
+				}
+			}
+		}
+		if !afterIndex {
+			argNum, i, afterIndex = p.argNumber(argNum, format, i, len(a))
+		}
+		if i >= end {
+			p.buf.writeString(noVerbString)
+			break
+		}
+		verb, size := utf8.DecodeRuneInString(format[i:])
+		i += size
+		switch {
+		case verb == '%':
+			p.buf.writeByte('%')
+		case !p.goodArgNum:
+			p.badArgNum(verb)
+		case argNum >= len(a):
+			p.missingArg(verb)
+		case verb == 'w':
+			p.wrappedErrs = append(p.wrappedErrs, argNum)
+			fallthrough
+		case verb == 'v':
+			p.fmt.sharpV = p.fmt.sharp
+			p.fmt.sharp = false
+			p.fmt.plusV = p.fmt.plus
+			p.fmt.plus = false
+			fallthrough
+		default:
+			p.printArg(a[argNum], verb)
+			argNum++
+		}
+	}
+	if !p.reordered && argNum < len(a) {
+		p.fmt.clearflags()
+		p.buf.writeString(extraString)
+		for i, arg := range a[argNum:] {
+			if i > 0 {
+				p.buf.writeString(commaSpaceString)
+			}
+			if arg == nil {
+				p.buf.writeString(nilAngleString)
+			} else {
+				p.buf.writeString(reflect.TypeOf(arg).String())
+				p.buf.writeByte('=')
+				p.printArg(arg, 'v')
+			}
+		}
+		p.buf.writeByte(')')
+	}
+}
+
+## func fmt.(*pp).fmtBytes (print.go)
+func (p *pp) fmtBytes(v []byte, verb rune, typeString string) {
+	switch verb {
+	case 'v', 'd':
+		if p.fmt.sharpV {
+			p.buf.writeString(typeString)
+			if v == nil {
+				p.buf.writeString(nilParenString)
+				return
+			}
+			p.buf.writeByte('{')
+			for i, c := range v {
+				if i > 0 {
+					p.buf.writeString(commaSpaceString)
+				}
+				p.fmt0x64(uint64(c), true)
+			}
+			p.buf.writeByte('}')
+		} else {
+			p.buf.writeByte('[')
+			for i, c := range v {
+				if i > 0 {
+					p.buf.writeByte(' ')
+				}
+				p.fmt.fmtInteger(uint64(c), 10, unsigned, verb, ldigits)
+			}
+			p.buf.writeByte(']')
+		}
+	case 's':
+		p.fmt.fmtBs(v)
+	case 'x':
+		p.fmt.fmtBx(v, ldigits)
+	case 'X':
+		p.fmt.fmtBx(v, udigits)
+	case 'q':
+		p.fmt.fmtQ(string(v))
+	default:
+		p.printValue(reflect.ValueOf(v), verb, 0)
+	}
+}
+
+## func fmt.(*pp).fmtString (print.go)
+func (p *pp) fmtString(v string, verb rune) {
+	switch verb {
+	case 'v':
+		if p.fmt.sharpV {
+			p.fmt.fmtQ(v)
+		} else {
+			p.fmt.fmtS(v)
+		}
+	case 's':
+		p.fmt.fmtS(v)
+	case 'x':
+		p.fmt.fmtSx(v, ldigits)
+	case 'X':
+		p.fmt.fmtSx(v, udigits)
+	case 'q':
+		p.fmt.fmtQ(v)
+	default:
+		p.badVerb(verb)
+	}
+}
+
+## func fmt.(*pp).free (print.go)
+func (p *pp) free() {
+	if cap(p.buf) > 64*1024 {
+		p.buf = nil
+	} else {
+		p.buf = p.buf[:0]
+	}
+	if cap(p.wrappedErrs) > 8 {
+		p.wrappedErrs = nil
+	}
+	p.arg = nil
+	p.value = reflect.Value{}
+	p.wrappedErrs = p.wrappedErrs[:0]
+	ppFree.Put(p)
+}
+
+## func fmt.(*pp).handleMethods (print.go)
+func (p *pp) handleMethods(verb rune) (handled bool) {
+	if p.erroring {
+		return
+	}
+	if verb == 'w' {
+		_, ok := p.arg.(error)
+		if !ok || !p.wrapErrs {
+			p.badVerb(verb)
+			return true
+		}
+		verb = 'v'
+	}
+	if formatter, ok := p.arg.(Formatter); ok {
+		handled = true
+		defer p.catchPanic(p.arg, verb, "Format")
+		formatter.Format(p, verb)
+		return
+	}
+	if p.fmt.sharpV {
+		if stringer, ok := p.arg.(GoStringer); ok {
+			handled = true
+			defer p.catchPanic(p.arg, verb, "GoString")
+			p.fmt.fmtS(stringer.GoString())
+			return
+		}
+	} else {
+		switch verb {
+		case 'v', 's', 'x', 'X', 'q':
+			switch v := p.arg.(type) {
+			case error:
+				handled = true
+				defer p.catchPanic(p.arg, verb, "Error")
+				p.fmtString(v.Error(), verb)
+				return
+			case Stringer:
+				handled = true
+				defer p.catchPanic(p.arg, verb, "String")
+				p.fmtString(v.String(), verb)
+				return
+			}
+		}
+	}
+	return false
+}
+
+## func fmt.(*pp).printArg (print.go)
+func (p *pp) printArg(arg any, verb rune) {
+	p.arg = arg
+	p.value = reflect.Value{}
+	if arg == nil {
+		switch verb {
+		case 'T', 'v':
+			p.fmt.padString(nilAngleString)
+		default:
+			p.badVerb(verb)
+		}
+		return
+	}
+	switch verb {
+	case 'T':
+		p.fmt.fmtS(reflect.TypeOf(arg).String())
+		return
+	case 'p':
+		p.fmtPointer(reflect.ValueOf(arg), 'p')
+		return
+	}
+	switch f := arg.(type) {
+	case bool:
+		p.fmtBool(f, verb)
+	case float32:
+		p.fmtFloat(float64(f), 32, verb)
+	case float64:
+		p.fmtFloat(f, 64, verb)
+	case complex64:
+		p.fmtComplex(complex128(f), 64, verb)
+	case complex128:
+		p.fmtComplex(f, 128, verb)
+	case int:
+		p.fmtInteger(uint64(f), signed, verb)
+	case int8:
+		p.fmtInteger(uint64(f), signed, verb)
+	case int16:
+		p.fmtInteger(uint64(f), signed, verb)
+	case int32:
+		p.fmtInteger(uint64(f), signed, verb)
+	case int64:
+		p.fmtInteger(uint64(f), signed, verb)
+	case uint:
+		p.fmtInteger(uint64(f), unsigned, verb)
+	case uint8:
+		p.fmtInteger(uint64(f), unsigned, verb)
+	case uint16:
+		p.fmtInteger(uint64(f), unsigned, verb)
+	case uint32:
+		p.fmtInteger(uint64(f), unsigned, verb)
+	case uint64:
+		p.fmtInteger(f, unsigned, verb)
+	case uintptr:
+		p.fmtInteger(uint64(f), unsigned, verb)
+	case string:
+		p.fmtString(f, verb)
+	case []byte:
+		p.fmtBytes(f, verb, "[]byte")
+	case reflect.Value:
+		if f.IsValid() && f.CanInterface() {
+			p.arg = f.Interface()
+			if p.handleMethods(verb) {
+				return
+			}
+		}
+		p.printValue(f, verb, 0)
+	default:
+		if !p.handleMethods(verb) {
+			p.printValue(reflect.ValueOf(f), verb, 0)
+		}
+	}
+}
+
+## type fmt.fmt (format.go)
+fmt struct {
+	buf	*buffer
+	fmtFlags
+	wid		int
+	prec	int
+	intbuf	[68]byte
+}
+
+## type fmt.fmtFlags (format.go)
+fmtFlags struct {
+	widPresent	bool
+	precPresent	bool
+	minus		bool
+	plus		bool
+	sharp		bool
+	space		bool
+	zero		bool
+	plusV	bool
+	sharpV	bool
+}
+
+## type fmt.pp (print.go)
+pp struct {
+	buf	buffer
+	arg	any
+	value	reflect.Value
+	fmt	fmt
+	reordered	bool
+	goodArgNum	bool
+	panicking	bool
+	erroring	bool
+	wrapErrs	bool
+	wrappedErrs	[]int
+}
+
+## func io.ReadAll (io.go)
+func ReadAll(r Reader) ([]byte, error) {
+	b := make([]byte, 0, 512)
+	next := 256
+	chunks := make([][]byte, 0, 4)
+	var finalSize int
+	for {
+		n, err := r.Read(b[len(b):cap(b)])
+		b = b[:len(b)+n]
+		if err != nil {
+			if err == EOF {
+				err = nil
+			}
+			if len(chunks) == 0 {
+				return b, err
+			}
+			finalSize += len(b)
+			final := append([]byte(nil), make([]byte, finalSize)...)[:0]
+			for _, chunk := range chunks {
+				final = append(final, chunk...)
+			}
+			final = append(final, b...)
+			return final, err
+		}
+		if cap(b)-len(b) < cap(b)/16 {
+			chunks = append(chunks, b)
+			finalSize += len(b)
+			b = append([]byte(nil), make([]byte, next)...)[:0]
+			next += next / 2
+		}
+	}
+}
+
+## func bufio.(*Reader).Buffered (bufio.go)
+func (b *Reader) Buffered() int	{ return b.w - b.r }
+
+## func bufio.(*Reader).Read (bufio.go)
+func (b *Reader) Read(p []byte) (n int, err error) {
+	n = len(p)
+	if n == 0 {
+		if b.Buffered() > 0 {
+			return 0, nil
+		}
+		return 0, b.readErr()
+	}
+	if b.r == b.w {
+		if b.err != nil {
+			return 0, b.readErr()
+		}
+		if len(p) >= len(b.buf) {
+			n, b.err = b.rd.Read(p)
+			if n < 0 {
+				panic(errNegativeRead)
+			}
+			if n > 0 {
+				b.lastByte = int(p[n-1])
+				b.lastRuneSize = -1
+			}
+			return n, b.readErr()
+		}
+		b.r = 0
+		b.w = 0
+		n, b.err = b.rd.Read(b.buf)
+		if n < 0 {
+			panic(errNegativeRead)
+		}
+		if n == 0 {
+			return 0, b.readErr()
+		}
+		b.w += n
+	}
+	n = copy(p, b.buf[b.r:b.w])
+	b.r += n
+	b.lastByte = int(b.buf[b.r-1])
+	b.lastRuneSize = -1
+	return n, nil
+}
+
+## func bufio.(*Reader).ReadBytes (bufio.go)
+func (b *Reader) ReadBytes(delim byte) ([]byte, error) {
+	full, frag, n, err := b.collectFragments(delim)
+	buf := make([]byte, n)
+	n = 0
+	for i := range full {
+		n += copy(buf[n:], full[i])
+	}
+	copy(buf[n:], frag)
+	return buf, err
+}
+
+## func bufio.(*Reader).fill (bufio.go)
+func (b *Reader) fill() {
+	if b.r > 0 {
+		copy(b.buf, b.buf[b.r:b.w])
+		b.w -= b.r
+		b.r = 0
+	}
+	if b.w >= len(b.buf) {
+		panic("bufio: tried to fill full buffer")
+	}
+	for i := maxConsecutiveEmptyReads; i > 0; i-- {
+		n, err := b.rd.Read(b.buf[b.w:])
+		if n < 0 {
+			panic(errNegativeRead)
+		}
+		b.w += n
+		if err != nil {
+			b.err = err
+			return
+		}
+		if n > 0 {
+			return
+		}
+	}
+	b.err = io.ErrNoProgress
+}
+
+## func bufio.(*Reader).readErr (bufio.go)
+func (b *Reader) readErr() error {
+	err := b.err
+	b.err = nil
+	return err
+}
+
+## type bufio.Reader (bufio.go)
+Reader struct {
+	buf				[]byte
+	rd				io.Reader
+	r, w			int
+	err				error
+	lastByte		int
+	lastRuneSize	int
+}
+
+## func encoding/json.(*Decoder).refill (stream.go)
+func (dec *Decoder) refill() error {
+	if dec.scanp > 0 {
+		dec.scanned += int64(dec.scanp)
+		n := copy(dec.buf, dec.buf[dec.scanp:])
+		dec.buf = dec.buf[:n]
+		dec.scanp = 0
+	}
+	const minRead = 512
+	if cap(dec.buf)-len(dec.buf) < minRead {
+		newBuf := make([]byte, len(dec.buf), 2*cap(dec.buf)+minRead)
+		copy(newBuf, dec.buf)
+		dec.buf = newBuf
+	}
+	n, err := dec.r.Read(dec.buf[len(dec.buf):cap(dec.buf)])
+	dec.buf = dec.buf[0 : len(dec.buf)+n]
+	return err
+}
+
+## func encoding/json.(*decodeState).literalStore (decode.go)
+func (d *decodeState) literalStore(item []byte, v reflect.Value, fromQuoted bool) error {
+	if len(item) == 0 {
+		d.saveError(fmt.Errorf("json: invalid use of ,string struct tag, trying to unmarshal %q into %v", item, v.Type()))
+		return nil
+	}
+	isNull := item[0] == 'n'
+	u, ut, pv := indirect(v, isNull)
+	if u != nil {
+		return u.UnmarshalJSON(item)
+	}
+	if ut != nil {
+		if item[0] != '"' {
+			if fromQuoted {
+				d.saveError(fmt.Errorf("json: invalid use of ,string struct tag, trying to unmarshal %q into %v", item, v.Type()))
+				return nil
+			}
+			val := "number"
+			switch item[0] {
+			case 'n':
+				val = "null"
+			case 't', 'f':
+				val = "bool"
+			}
+			d.saveError(&UnmarshalTypeError{Value: val, Type: v.Type(), Offset: int64(d.readIndex())})
+			return nil
+		}
+		s, ok := unquoteBytes(item)
+		if !ok {
+			if fromQuoted {
+				return fmt.Errorf("json: invalid use of ,string struct tag, trying to unmarshal %q into %v", item, v.Type())
+			}
+			panic(phasePanicMsg)
+		}
+		return ut.UnmarshalText(s)
+	}
+	v = pv
+	switch c := item[0]; c {
+	case 'n':
+		if fromQuoted && string(item) != "null" {
+			d.saveError(fmt.Errorf("json: invalid use of ,string struct tag, trying to unmarshal %q into %v", item, v.Type()))
+			break
+		}
+		switch v.Kind() {
+		case reflect.Interface, reflect.Pointer, reflect.Map, reflect.Slice:
+			v.SetZero()
+		}
+	case 't', 'f':
+		value := item[0] == 't'
+		if fromQuoted && string(item) != "true" && string(item) != "false" {
+			d.saveError(fmt.Errorf("json: invalid use of ,string struct tag, trying to unmarshal %q into %v", item, v.Type()))
+			break
+		}
+		switch v.Kind() {
+		default:
+			if fromQuoted {
+				d.saveError(fmt.Errorf("json: invalid use of ,string struct tag, trying to unmarshal %q into %v", item, v.Type()))
+			} else {
+				d.saveError(&UnmarshalTypeError{Value: "bool", Type: v.Type(), Offset: int64(d.readIndex())})
+			}
+		case reflect.Bool:
+			v.SetBool(value)
+		case reflect.Interface:
+			if v.NumMethod() == 0 {
+				v.Set(reflect.ValueOf(value))
+			} else {
+				d.saveError(&UnmarshalTypeError{Value: "bool", Type: v.Type(), Offset: int64(d.readIndex())})
+			}
+		}
+	case '"':
+		s, ok := unquoteBytes(item)
+		if !ok {
+			if fromQuoted {
+				return fmt.Errorf("json: invalid use of ,string struct tag, trying to unmarshal %q into %v", item, v.Type())
+			}
+			panic(phasePanicMsg)
+		}
+		switch v.Kind() {
+		default:
+			d.saveError(&UnmarshalTypeError{Value: "string", Type: v.Type(), Offset: int64(d.readIndex())})
+		case reflect.Slice:
+			if v.Type().Elem().Kind() != reflect.Uint8 {
+				d.saveError(&UnmarshalTypeError{Value: "string", Type: v.Type(), Offset: int64(d.readIndex())})
+				break
+			}
+			b := make([]byte, base64.StdEncoding.DecodedLen(len(s)))
+			n, err := base64.StdEncoding.Decode(b, s)
+			if err != nil {
+				d.saveError(err)
+				break
+			}
+			v.SetBytes(b[:n])
+		case reflect.String:
+			t := string(s)
+			if v.Type() == numberType && !isValidNumber(t) {
+				return fmt.Errorf("json: invalid number literal, trying to unmarshal %q into Number", item)
+			}
+			v.SetString(t)
+		case reflect.Interface:
+			if v.NumMethod() == 0 {
+				v.Set(reflect.ValueOf(string(s)))
+			} else {
+				d.saveError(&UnmarshalTypeError{Value: "string", Type: v.Type(), Offset: int64(d.readIndex())})
+			}
+		}
+	default:
+		if c != '-' && (c < '0' || c > '9') {
+			if fromQuoted {
+				return fmt.Errorf("json: invalid use of ,string struct tag, trying to unmarshal %q into %v", item, v.Type())
+			}
+			panic(phasePanicMsg)
+		}
+		switch v.Kind() {
+		default:
+			if v.Kind() == reflect.String && v.Type() == numberType {
+				v.SetString(string(item))
+				break
+			}
+			if fromQuoted {
+				return fmt.Errorf("json: invalid use of ,string struct tag, trying to unmarshal %q into %v", item, v.Type())
+			}
+			d.saveError(&UnmarshalTypeError{Value: "number", Type: v.Type(), Offset: int64(d.readIndex())})
+		case reflect.Interface:
+			n, err := d.convertNumber(string(item))
+			if err != nil {
+				d.saveError(err)
+				break
+			}
+			if v.NumMethod() != 0 {
+				d.saveError(&UnmarshalTypeError{Value: "number", Type: v.Type(), Offset: int64(d.readIndex())})
+				break
+			}
+			v.Set(reflect.ValueOf(n))
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			n, err := strconv.ParseInt(string(item), 10, 64)
+			if err != nil || v.OverflowInt(n) {
+				d.saveError(&UnmarshalTypeError{Value: "number " + string(item), Type: v.Type(), Offset: int64(d.readIndex())})
+				break
+			}
+			v.SetInt(n)
+		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+			n, err := strconv.ParseUint(string(item), 10, 64)
+			if err != nil || v.OverflowUint(n) {
+				d.saveError(&UnmarshalTypeError{Value: "number " + string(item), Type: v.Type(), Offset: int64(d.readIndex())})
+				break
+			}
+			v.SetUint(n)
+		case reflect.Float32, reflect.Float64:
+			n, err := strconv.ParseFloat(string(item), v.Type().Bits())
+			if err != nil || v.OverflowFloat(n) {
+				d.saveError(&UnmarshalTypeError{Value: "number " + string(item), Type: v.Type(), Offset: int64(d.readIndex())})
+				break
+			}
+			v.SetFloat(n)
+		}
+	}
+	return nil
+}
+
+## func encoding/json.(*decodeState).object (decode.go)
+func (d *decodeState) object(v reflect.Value) error {
+	u, ut, pv := indirect(v, false)
+	if u != nil {
+		start := d.readIndex()
+		d.skip()
+		return u.UnmarshalJSON(d.data[start:d.off])
+	}
+	if ut != nil {
+		d.saveError(&UnmarshalTypeError{Value: "object", Type: v.Type(), Offset: int64(d.off)})
+		d.skip()
+		return nil
+	}
+	v = pv
+	t := v.Type()
+	if v.Kind() == reflect.Interface && v.NumMethod() == 0 {
+		oi := d.objectInterface()
+		v.Set(reflect.ValueOf(oi))
+		return nil
+	}
+	var fields structFields
+	switch v.Kind() {
+	case reflect.Map:
+		switch t.Key().Kind() {
+		case reflect.String,
+			reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+			reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+		default:
+			if !reflect.PointerTo(t.Key()).Implements(textUnmarshalerType) {
+				d.saveError(&UnmarshalTypeError{Value: "object", Type: t, Offset: int64(d.off)})
+				d.skip()
+				return nil
+			}
+		}
+		if v.IsNil() {
+			v.Set(reflect.MakeMap(t))
+		}
+	case reflect.Struct:
+		fields = cachedTypeFields(t)
+	default:
+		d.saveError(&UnmarshalTypeError{Value: "object", Type: t, Offset: int64(d.off)})
+		d.skip()
+		return nil
+	}
+	var mapElem reflect.Value
+	var origErrorContext errorContext
+	if d.errorContext != nil {
+		origErrorContext = *d.errorContext
+	}
+	for {
+		d.scanWhile(scanSkipSpace)
+		if d.opcode == scanEndObject {
+			break
+		}
+		if d.opcode != scanBeginLiteral {
+			panic(phasePanicMsg)
+		}
+		start := d.readIndex()
+		d.rescanLiteral()
+		item := d.data[start:d.readIndex()]
+		key, ok := unquoteBytes(item)
+		if !ok {
+			panic(phasePanicMsg)
+		}
+		var subv reflect.Value
+		destring := false
+		if v.Kind() == reflect.Map {
+			elemType := t.Elem()
+			if !mapElem.IsValid() {
+				mapElem = reflect.New(elemType).Elem()
+			} else {
+				mapElem.SetZero()
+			}
+			subv = mapElem
+		} else {
+			f := fields.byExactName[string(key)]
+			if f == nil {
+				f = fields.byFoldedName[string(foldName(key))]
+			}
+			if f != nil {
+				subv = v
+				destring = f.quoted
+				if d.errorContext == nil {
+					d.errorContext = new(errorContext)
+				}
+				for i, ind := range f.index {
+					if subv.Kind() == reflect.Pointer {
+						if subv.IsNil() {
+							if !subv.CanSet() {
+								d.saveError(fmt.Errorf("json: cannot set embedded pointer to unexported struct: %v", subv.Type().Elem()))
+								subv = reflect.Value{}
+								destring = false
+								break
+							}
+							subv.Set(reflect.New(subv.Type().Elem()))
+						}
+						subv = subv.Elem()
+					}
+					if i < len(f.index)-1 {
+						d.errorContext.FieldStack = append(
+							d.errorContext.FieldStack,
+							subv.Type().Field(ind).Name,
+						)
+					}
+					subv = subv.Field(ind)
+				}
+				d.errorContext.Struct = t
+				d.errorContext.FieldStack = append(d.errorContext.FieldStack, f.name)
+			} else if d.disallowUnknownFields {
+				d.saveError(fmt.Errorf("json: unknown field %q", key))
+			}
+		}
+		if d.opcode == scanSkipSpace {
+			d.scanWhile(scanSkipSpace)
+		}
+		if d.opcode != scanObjectKey {
+			panic(phasePanicMsg)
+		}
+		d.scanWhile(scanSkipSpace)
+		if destring {
+			switch qv := d.valueQuoted().(type) {
+			case nil:
+				if err := d.literalStore(nullLiteral, subv, false); err != nil {
+					return err
+				}
+			case string:
+				if err := d.literalStore([]byte(qv), subv, true); err != nil {
+					return err
+				}
+			default:
+				d.saveError(fmt.Errorf("json: invalid use of ,string struct tag, trying to unmarshal unquoted value into %v", subv.Type()))
+			}
+		} else {
+			if err := d.value(subv); err != nil {
+				return err
+			}
+		}
+		if v.Kind() == reflect.Map {
+			kt := t.Key()
+			var kv reflect.Value
+			if reflect.PointerTo(kt).Implements(textUnmarshalerType) {
+				kv = reflect.New(kt)
+				if err := d.literalStore(item, kv, true); err != nil {
+					return err
+				}
+				kv = kv.Elem()
+			} else {
+				switch kt.Kind() {
+				case reflect.String:
+					kv = reflect.New(kt).Elem()
+					kv.SetString(string(key))
+				case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+					s := string(key)
+					n, err := strconv.ParseInt(s, 10, 64)
+					if err != nil || kt.OverflowInt(n) {
+						d.saveError(&UnmarshalTypeError{Value: "number " + s, Type: kt, Offset: int64(start + 1)})
+						break
+					}
+					kv = reflect.New(kt).Elem()
+					kv.SetInt(n)
+				case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+					s := string(key)
+					n, err := strconv.ParseUint(s, 10, 64)
+					if err != nil || kt.OverflowUint(n) {
+						d.saveError(&UnmarshalTypeError{Value: "number " + s, Type: kt, Offset: int64(start + 1)})
+						break
+					}
+					kv = reflect.New(kt).Elem()
+					kv.SetUint(n)
+				default:
+					panic("json: Unexpected key type")
+				}
+			}
+			if kv.IsValid() {
+				v.SetMapIndex(kv, subv)
+			}
+		}
+		if d.opcode == scanSkipSpace {
+			d.scanWhile(scanSkipSpace)
+		}
+		if d.errorContext != nil {
+			d.errorContext.FieldStack = d.errorContext.FieldStack[:len(origErrorContext.FieldStack)]
+			d.errorContext.Struct = origErrorContext.Struct
+		}
+		if d.opcode == scanEndObject {
+			break
+		}
+		if d.opcode != scanObjectValue {
+			panic(phasePanicMsg)
+		}
+	}
+	return nil
+}
+
+## func encoding/json.(*decodeState).valueQuoted (decode.go)
+func (d *decodeState) valueQuoted() any {
+	switch d.opcode {
+	default:
+		panic(phasePanicMsg)
+	case scanBeginArray, scanBeginObject:
+		d.skip()
+		d.scanNext()
+	case scanBeginLiteral:
+		v := d.literalInterface()
+		switch v.(type) {
+		case nil, string:
+			return v
+		}
+	}
+	return unquotedValue{}
+}
+
+## func encoding/json.getu4 (decode.go)
+func getu4(s []byte) rune {
+	if len(s) < 6 || s[0] != '\\' || s[1] != 'u' {
+		return -1
+	}
+	var r rune
+	for _, c := range s[2:6] {
+		switch {
+		case '0' <= c && c <= '9':
+			c = c - '0'
+		case 'a' <= c && c <= 'f':
+			c = c - 'a' + 10
+		case 'A' <= c && c <= 'F':
+			c = c - 'A' + 10
+		default:
+			return -1
+		}
+		r = r*16 + rune(c)
+	}
+	return r
+}
+
+## func encoding/json.unquoteBytes (decode.go)
+func unquoteBytes(s []byte) (t []byte, ok bool) {
+	if len(s) < 2 || s[0] != '"' || s[len(s)-1] != '"' {
+		return
+	}
+	s = s[1 : len(s)-1]
+	r := 0
+	for r < len(s) {
+		c := s[r]
+		if c == '\\' || c == '"' || c < ' ' {
+			break
+		}
+		rr, size := utf8.DecodeRune(s[r:])
+		if rr == utf8.RuneError && size == 1 {
+			break
+		}
+		r += size
+	}
+	if r == len(s) {
+		return s, true
+	}
+	b := make([]byte, len(s)+2*utf8.UTFMax)
+	w := copy(b, s[0:r])
+	for r < len(s) {
+		if w >= len(b)-2*utf8.UTFMax {
+			nb := make([]byte, (len(b)+utf8.UTFMax)*2)
+			copy(nb, b[0:w])
+			b = nb
+		}
+		switch c := s[r]; {
+		case c == '\\':
+			r++
+			if r >= len(s) {
+				return
+			}
+			switch s[r] {
+			default:
+				return
+			case '"', '\\', '/', '\'':
+				b[w] = s[r]
+				r++
+				w++
+			case 'b':
+				b[w] = '\b'
+				r++
+				w++
+			case 'f':
+				b[w] = '\f'
+				r++
+				w++
+			case 'n':
+				b[w] = '\n'
+				r++
+				w++
+			case 'r':
+				b[w] = '\r'
+				r++
+				w++
+			case 't':
+				b[w] = '\t'
+				r++
+				w++
+			case 'u':
+				r--
+				rr := getu4(s[r:])
+				if rr < 0 {
+					return
+				}
+				r += 6
+				if utf16.IsSurrogate(rr) {
+					rr1 := getu4(s[r:])
+					if dec := utf16.DecodeRune(rr, rr1); dec != unicode.ReplacementChar {
+						r += 6
+						w += utf8.EncodeRune(b[w:], dec)
+						break
+					}
+					rr = unicode.ReplacementChar
+				}
+				w += utf8.EncodeRune(b[w:], rr)
+			}
+		case c == '"', c < ' ':
+			return
+		case c < utf8.RuneSelf:
+			b[w] = c
+			r++
+			w++
+		default:
+			rr, size := utf8.DecodeRune(s[r:])
+			r += size
+			w += utf8.EncodeRune(b[w:], rr)
+		}
+	}
+	return b[0:w], true
+}
+
+## type encoding/json.Decoder (stream.go)
+Decoder struct {
+	r		io.Reader
+	buf		[]byte
+	d		decodeState
+	scanp	int
+	scanned	int64
+	scan	scanner
+	err		error
+	tokenState	int
+	tokenStack	[]int
+}
+
+## type encoding/json.decodeState (decode.go)
+decodeState struct {
+	data					[]byte
+	off						int
+	opcode					int
+	scan					scanner
+	errorContext			*errorContext
+	savedError				error
+	useNumber				bool
+	disallowUnknownFields	bool
+}

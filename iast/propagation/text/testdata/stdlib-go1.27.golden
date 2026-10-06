@@ -1,0 +1,1012 @@
+# Inventory of the standard library declarations that the aspects of
+# orchestrion.yml depend on (TestStdlibDrift). Update with -update-drift
+# after a review.
+
+## bytes Buffer
+(buffer.go)
+type Buffer struct {
+	buf			[]byte
+	off			int
+	lastRead	readOp
+}
+
+## bytes (*Buffer).Len
+(buffer.go)
+func (b *Buffer) Len() int	{ return len(b.buf) - b.off }
+
+## bytes (*Buffer).Reset
+(buffer.go)
+func (b *Buffer) Reset() {
+	b.buf = b.buf[:0]
+	b.off = 0
+	b.lastRead = opInvalid
+}
+
+## bytes (*Buffer).tryGrowByReslice
+(buffer.go)
+func (b *Buffer) tryGrowByReslice(n int) (int, bool) {
+	if l := len(b.buf); n <= cap(b.buf)-l {
+		b.buf = b.buf[:l+n]
+		return l, true
+	}
+	return 0, false
+}
+
+## bytes (*Buffer).grow
+(buffer.go)
+func (b *Buffer) grow(n int) int {
+	m := b.Len()
+	if m == 0 && b.off != 0 {
+		b.Reset()
+	}
+	if i, ok := b.tryGrowByReslice(n); ok {
+		return i
+	}
+	if b.buf == nil && n <= smallBufferSize {
+		b.buf = make([]byte, n, smallBufferSize)
+		return 0
+	}
+	c := cap(b.buf)
+	if n <= c/2-m {
+		copy(b.buf, b.buf[b.off:])
+	} else if c > maxInt-c-n {
+		panic(ErrTooLarge)
+	} else {
+		b.buf = growSlice(b.buf[b.off:], b.off+n)
+	}
+	b.off = 0
+	b.buf = b.buf[:m+n]
+	return m
+}
+
+## bytes growSlice
+(buffer.go)
+func growSlice(b []byte, n int) []byte {
+	defer func() {
+		if recover() != nil {
+			panic(ErrTooLarge)
+		}
+	}()
+	c := len(b) + n
+	if c < 2*cap(b) {
+		c = 2 * cap(b)
+	}
+	b2 := append([]byte(nil), make([]byte, c)...)
+	i := copy(b2, b)
+	return b2[:i]
+}
+
+## bytes (*Buffer).Write
+(buffer.go)
+func (b *Buffer) Write(p []byte) (n int, err error) {
+	b.lastRead = opInvalid
+	m, ok := b.tryGrowByReslice(len(p))
+	if !ok {
+		m = b.grow(len(p))
+	}
+	return copy(b.buf[m:], p), nil
+}
+
+## bytes (*Buffer).WriteString
+(buffer.go)
+func (b *Buffer) WriteString(s string) (n int, err error) {
+	b.lastRead = opInvalid
+	m, ok := b.tryGrowByReslice(len(s))
+	if !ok {
+		m = b.grow(len(s))
+	}
+	return copy(b.buf[m:], s), nil
+}
+
+## bytes (*Buffer).WriteByte
+(buffer.go)
+func (b *Buffer) WriteByte(c byte) error {
+	b.lastRead = opInvalid
+	m, ok := b.tryGrowByReslice(1)
+	if !ok {
+		m = b.grow(1)
+	}
+	b.buf[m] = c
+	return nil
+}
+
+## bytes (*Buffer).WriteRune
+(buffer.go)
+func (b *Buffer) WriteRune(r rune) (n int, err error) {
+	if uint32(r) < utf8.RuneSelf {
+		b.WriteByte(byte(r))
+		return 1, nil
+	}
+	b.lastRead = opInvalid
+	m, ok := b.tryGrowByReslice(utf8.UTFMax)
+	if !ok {
+		m = b.grow(utf8.UTFMax)
+	}
+	b.buf = utf8.AppendRune(b.buf[:m], r)
+	return len(b.buf) - m, nil
+}
+
+## bytes (*Buffer).ReadFrom
+(buffer.go)
+func (b *Buffer) ReadFrom(r io.Reader) (n int64, err error) {
+	b.lastRead = opInvalid
+	for {
+		i := b.grow(MinRead)
+		b.buf = b.buf[:i]
+		m, e := r.Read(b.buf[i:cap(b.buf)])
+		if m < 0 {
+			panic(errNegativeRead)
+		}
+		b.buf = b.buf[:i+m]
+		n += int64(m)
+		if e == io.EOF {
+			return n, nil
+		}
+		if e != nil {
+			return n, e
+		}
+	}
+}
+
+## bytes smallBufferSize
+(buffer.go)
+const smallBufferSize = 64
+
+## bytes MinRead
+(buffer.go)
+const MinRead = 512
+
+## bytes opInvalid
+(buffer.go)
+const (
+	opRead		readOp	= -1
+	opInvalid	readOp	= 0
+	opReadRune1	readOp	= 1
+	opReadRune2	readOp	= 2
+	opReadRune3	readOp	= 3
+	opReadRune4	readOp	= 4
+)
+
+## bytes Clone
+(bytes.go)
+func Clone(b []byte) []byte {
+	if b == nil {
+		return nil
+	}
+	return append([]byte{}, b...)
+}
+
+## bytes Join
+(bytes.go)
+func Join(s [][]byte, sep []byte) []byte {
+	if len(s) == 0 {
+		return []byte{}
+	}
+	if len(s) == 1 {
+		return append([]byte(nil), s[0]...)
+	}
+	var n int
+	if len(sep) > 0 {
+		if len(sep) >= maxInt/(len(s)-1) {
+			panic("bytes: Join output length overflow")
+		}
+		n += len(sep) * (len(s) - 1)
+	}
+	for _, v := range s {
+		if len(v) > maxInt-n {
+			panic("bytes: Join output length overflow")
+		}
+		n += len(v)
+	}
+	b := bytealg.MakeNoZero(n)[:n:n]
+	bp := copy(b, s[0])
+	for _, v := range s[1:] {
+		bp += copy(b[bp:], sep)
+		bp += copy(b[bp:], v)
+	}
+	return b
+}
+
+## bytes Repeat
+(bytes.go)
+func Repeat(b []byte, count int) []byte {
+	if count == 0 {
+		return []byte{}
+	}
+	if count < 0 {
+		panic("bytes: negative Repeat count")
+	}
+	hi, lo := bits.Mul(uint(len(b)), uint(count))
+	if hi > 0 || lo > uint(maxInt) {
+		panic("bytes: Repeat output length overflow")
+	}
+	n := int(lo)
+	if len(b) == 0 {
+		return []byte{}
+	}
+	const chunkLimit = 8 * 1024
+	chunkMax := n
+	if chunkMax > chunkLimit {
+		chunkMax = chunkLimit / len(b) * len(b)
+		if chunkMax == 0 {
+			chunkMax = len(b)
+		}
+	}
+	nb := bytealg.MakeNoZero(n)[:n:n]
+	bp := copy(nb, b)
+	for bp < n {
+		chunk := min(bp, chunkMax)
+		bp += copy(nb[bp:], nb[:chunk])
+	}
+	return nb
+}
+
+## bytes Replace
+(bytes.go)
+func Replace(s, old, new []byte, n int) []byte {
+	m := 0
+	if n != 0 {
+		m = Count(s, old)
+	}
+	if m == 0 {
+		return append([]byte(nil), s...)
+	}
+	if n < 0 || m < n {
+		n = m
+	}
+	t := make([]byte, len(s)+n*(len(new)-len(old)))
+	w := 0
+	start := 0
+	if len(old) > 0 {
+		for range n {
+			j := start + Index(s[start:], old)
+			w += copy(t[w:], s[start:j])
+			w += copy(t[w:], new)
+			start = j + len(old)
+		}
+	} else {
+		w += copy(t[w:], new)
+		for range n - 1 {
+			_, wid := utf8.DecodeRune(s[start:])
+			j := start + wid
+			w += copy(t[w:], s[start:j])
+			w += copy(t[w:], new)
+			start = j
+		}
+	}
+	w += copy(t[w:], s[start:])
+	return t[0:w]
+}
+
+## bytes ReplaceAll
+(bytes.go)
+func ReplaceAll(s, old, new []byte) []byte {
+	return Replace(s, old, new, -1)
+}
+
+## bytes ToValidUTF8
+(bytes.go)
+func ToValidUTF8(s, replacement []byte) []byte {
+	b := make([]byte, 0, len(s)+len(replacement))
+	invalid := false
+	for i := 0; i < len(s); {
+		c := s[i]
+		if c < utf8.RuneSelf {
+			i++
+			invalid = false
+			b = append(b, c)
+			continue
+		}
+		_, wid := utf8.DecodeRune(s[i:])
+		if wid == 1 {
+			i++
+			if !invalid {
+				invalid = true
+				b = append(b, replacement...)
+			}
+			continue
+		}
+		invalid = false
+		b = append(b, s[i:i+wid]...)
+		i += wid
+	}
+	return b
+}
+
+## bytes ToUpper
+(bytes.go)
+func ToUpper(s []byte) []byte {
+	isASCII, hasLower := true, false
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if c >= utf8.RuneSelf {
+			isASCII = false
+			break
+		}
+		hasLower = hasLower || ('a' <= c && c <= 'z')
+	}
+	if isASCII {
+		if !hasLower {
+			return append([]byte(""), s...)
+		}
+		b := bytealg.MakeNoZero(len(s))[:len(s):len(s)]
+		for i := 0; i < len(s); i++ {
+			c := s[i]
+			if 'a' <= c && c <= 'z' {
+				c -= 'a' - 'A'
+			}
+			b[i] = c
+		}
+		return b
+	}
+	return Map(unicode.ToUpper, s)
+}
+
+## bytes ToLower
+(bytes.go)
+func ToLower(s []byte) []byte {
+	isASCII, hasUpper := true, false
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if c >= utf8.RuneSelf {
+			isASCII = false
+			break
+		}
+		hasUpper = hasUpper || ('A' <= c && c <= 'Z')
+	}
+	if isASCII {
+		if !hasUpper {
+			return append([]byte(""), s...)
+		}
+		b := bytealg.MakeNoZero(len(s))[:len(s):len(s)]
+		for i := 0; i < len(s); i++ {
+			c := s[i]
+			if 'A' <= c && c <= 'Z' {
+				c += 'a' - 'A'
+			}
+			b[i] = c
+		}
+		return b
+	}
+	return Map(unicode.ToLower, s)
+}
+
+## bytes ToTitle
+(bytes.go)
+func ToTitle(s []byte) []byte	{ return Map(unicode.ToTitle, s) }
+
+## bytes Map
+(bytes.go)
+func Map(mapping func(r rune) rune, s []byte) []byte {
+	b := make([]byte, 0, len(s))
+	for i := 0; i < len(s); {
+		r, wid := utf8.DecodeRune(s[i:])
+		r = mapping(r)
+		if r >= 0 {
+			b = utf8.AppendRune(b, r)
+		}
+		i += wid
+	}
+	return b
+}
+
+## internal/stringslite Clone
+(strings.go)
+func Clone(s string) string {
+	if len(s) == 0 {
+		return ""
+	}
+	b := make([]byte, len(s))
+	copy(b, s)
+	return unsafe.String(&b[0], len(b))
+}
+
+## net/url escape
+(url.go)
+func escape(s string, mode encoding) string {
+	spaceCount, hexCount := 0, 0
+	for _, c := range []byte(s) {
+		if shouldEscape(c, mode) {
+			if c == ' ' && mode == encodeQueryComponent {
+				spaceCount++
+			} else {
+				hexCount++
+			}
+		}
+	}
+	if spaceCount == 0 && hexCount == 0 {
+		return s
+	}
+	var buf [64]byte
+	var t []byte
+	required := len(s) + 2*hexCount
+	if required <= len(buf) {
+		t = buf[:required]
+	} else {
+		t = make([]byte, required)
+	}
+	if hexCount == 0 {
+		copy(t, s)
+		for i := 0; i < len(s); i++ {
+			if s[i] == ' ' {
+				t[i] = '+'
+			}
+		}
+		return string(t)
+	}
+	j := 0
+	for _, c := range []byte(s) {
+		switch {
+		case c == ' ' && mode == encodeQueryComponent:
+			t[j] = '+'
+			j++
+		case shouldEscape(c, mode):
+			t[j] = '%'
+			t[j+1] = upperhex[c>>4]
+			t[j+2] = upperhex[c&15]
+			j += 3
+		default:
+			t[j] = c
+			j++
+		}
+	}
+	return string(t)
+}
+
+## net/url unescape
+(url.go)
+func unescape(s string, mode encoding) (string, error) {
+	n := 0
+	hasPlus := false
+	for i := 0; i < len(s); {
+		switch s[i] {
+		case '%':
+			n++
+			if i+2 >= len(s) || !ishex(s[i+1]) || !ishex(s[i+2]) {
+				s = s[i:]
+				if len(s) > 3 {
+					s = s[:3]
+				}
+				return "", EscapeError(s)
+			}
+			if mode == encodeHost && unhex(s[i+1]) < 8 && s[i:i+3] != "%25" {
+				return "", EscapeError(s[i : i+3])
+			}
+			if mode == encodeZone {
+				v := unhex(s[i+1])<<4 | unhex(s[i+2])
+				if s[i:i+3] != "%25" && v != ' ' && shouldEscape(v, encodeHost) {
+					return "", EscapeError(s[i : i+3])
+				}
+			}
+			i += 3
+		case '+':
+			hasPlus = mode == encodeQueryComponent
+			i++
+		default:
+			if (mode == encodeHost || mode == encodeZone) && s[i] < 0x80 && shouldEscape(s[i], mode) {
+				return "", InvalidHostError(s[i : i+1])
+			}
+			i++
+		}
+	}
+	if n == 0 && !hasPlus {
+		return s, nil
+	}
+	var unescapedPlusSign byte
+	switch mode {
+	case encodeQueryComponent:
+		unescapedPlusSign = ' '
+	default:
+		unescapedPlusSign = '+'
+	}
+	var t strings.Builder
+	t.Grow(len(s) - 2*n)
+	for i := 0; i < len(s); i++ {
+		switch s[i] {
+		case '%':
+			t.WriteByte(unhex(s[i+1])<<4 | unhex(s[i+2]))
+			i += 2
+		case '+':
+			t.WriteByte(unescapedPlusSign)
+		default:
+			t.WriteByte(s[i])
+		}
+	}
+	return t.String(), nil
+}
+
+## net/url QueryEscape
+(url.go)
+func QueryEscape(s string) string {
+	return escape(s, encodeQueryComponent)
+}
+
+## net/url PathEscape
+(url.go)
+func PathEscape(s string) string {
+	return escape(s, encodePathSegment)
+}
+
+## net/url QueryUnescape
+(url.go)
+func QueryUnescape(s string) (string, error) {
+	return unescape(s, encodeQueryComponent)
+}
+
+## net/url PathUnescape
+(url.go)
+func PathUnescape(s string) (string, error) {
+	return unescape(s, encodePathSegment)
+}
+
+## net/url EscapeError
+(url.go)
+type EscapeError string
+
+## net/url InvalidHostError
+(url.go)
+type InvalidHostError string
+
+## strconv quoteWith
+(quote.go)
+func quoteWith(s string, quote byte, ASCIIonly, graphicOnly bool) string {
+	return string(appendQuotedWith(make([]byte, 0, 3*len(s)/2), s, quote, ASCIIonly, graphicOnly))
+}
+
+## strconv unquote
+(quote.go)
+func unquote(in string, unescape bool) (out, rem string, err error) {
+	if len(in) < 2 {
+		return "", in, ErrSyntax
+	}
+	quote := in[0]
+	end := index(in[1:], quote)
+	if end < 0 {
+		return "", in, ErrSyntax
+	}
+	end += 2
+	switch quote {
+	case '`':
+		switch {
+		case !unescape:
+			out = in[:end]
+		case !contains(in[:end], '\r'):
+			out = in[len("`") : end-len("`")]
+		default:
+			buf := make([]byte, 0, end-len("`")-len("\r")-len("`"))
+			for i := len("`"); i < end-len("`"); i++ {
+				if in[i] != '\r' {
+					buf = append(buf, in[i])
+				}
+			}
+			out = string(buf)
+		}
+		return out, in[end:], nil
+	case '"', '\'':
+		if !contains(in[:end], '\\') && !contains(in[:end], '\n') {
+			var valid bool
+			switch quote {
+			case '"':
+				valid = utf8.ValidString(in[len(`"`) : end-len(`"`)])
+			case '\'':
+				r, n := utf8.DecodeRuneInString(in[len("'") : end-len("'")])
+				valid = len("'")+n+len("'") == end && (r != utf8.RuneError || n != 1)
+			}
+			if valid {
+				out = in[:end]
+				if unescape {
+					out = out[1 : end-1]
+				}
+				return out, in[end:], nil
+			}
+		}
+		var buf []byte
+		in0 := in
+		in = in[1:]
+		if unescape {
+			buf = make([]byte, 0, 3*end/2)
+		}
+		for len(in) > 0 && in[0] != quote {
+			r, multibyte, rem, err := UnquoteChar(in, quote)
+			if in[0] == '\n' || err != nil {
+				return "", in0, ErrSyntax
+			}
+			in = rem
+			if unescape {
+				if r < utf8.RuneSelf || !multibyte {
+					buf = append(buf, byte(r))
+				} else {
+					buf = utf8.AppendRune(buf, r)
+				}
+			}
+			if quote == '\'' {
+				break
+			}
+		}
+		if !(len(in) > 0 && in[0] == quote) {
+			return "", in0, ErrSyntax
+		}
+		in = in[1:]
+		if unescape {
+			return string(buf), in, nil
+		}
+		return in0[:len(in0)-len(in)], in, nil
+	default:
+		return "", in, ErrSyntax
+	}
+}
+
+## strconv Quote
+(quote.go)
+func Quote(s string) string {
+	return quoteWith(s, '"', false, false)
+}
+
+## strconv QuoteToASCII
+(quote.go)
+func QuoteToASCII(s string) string {
+	return quoteWith(s, '"', true, false)
+}
+
+## strconv QuoteToGraphic
+(quote.go)
+func QuoteToGraphic(s string) string {
+	return quoteWith(s, '"', false, true)
+}
+
+## strconv Unquote
+(quote.go)
+func Unquote(s string) (string, error) {
+	out, rem, err := unquote(s, true)
+	if len(rem) > 0 {
+		return "", ErrSyntax
+	}
+	return out, err
+}
+
+## strconv QuotedPrefix
+(quote.go)
+func QuotedPrefix(s string) (string, error) {
+	out, _, err := unquote(s, false)
+	return out, err
+}
+
+## strings Builder
+(builder.go)
+type Builder struct {
+	addr	*Builder
+	buf	[]byte
+}
+
+## strings (*Builder).copyCheck
+(builder.go)
+func (b *Builder) copyCheck() {
+	if b.addr == nil {
+		b.addr = (*Builder)(abi.NoEscape(unsafe.Pointer(b)))
+	} else if b.addr != b {
+		panic("strings: illegal use of non-zero Builder copied by value")
+	}
+}
+
+## strings (*Builder).String
+(builder.go)
+func (b *Builder) String() string {
+	return unsafe.String(unsafe.SliceData(b.buf), len(b.buf))
+}
+
+## strings (*Builder).Len
+(builder.go)
+func (b *Builder) Len() int	{ return len(b.buf) }
+
+## strings (*Builder).Grow
+(builder.go)
+func (b *Builder) Grow(n int) {
+	b.copyCheck()
+	if n < 0 {
+		panic("strings.Builder.Grow: negative count")
+	}
+	if cap(b.buf)-len(b.buf) < n {
+		b.grow(n)
+	}
+}
+
+## strings (*Builder).Write
+(builder.go)
+func (b *Builder) Write(p []byte) (int, error) {
+	b.copyCheck()
+	b.buf = append(b.buf, p...)
+	return len(p), nil
+}
+
+## strings (*Builder).WriteString
+(builder.go)
+func (b *Builder) WriteString(s string) (int, error) {
+	b.copyCheck()
+	b.buf = append(b.buf, s...)
+	return len(s), nil
+}
+
+## strings (*Builder).grow
+(builder.go)
+func (b *Builder) grow(n int) {
+	buf := bytealg.MakeNoZero(2*cap(b.buf) + n)[:len(b.buf)]
+	copy(buf, b.buf)
+	b.buf = buf
+}
+
+## strings Clone
+(clone.go)
+func Clone(s string) string {
+	return stringslite.Clone(s)
+}
+
+## strings Repeat
+(strings.go)
+func Repeat(s string, count int) string {
+	switch count {
+	case 0:
+		return ""
+	case 1:
+		return s
+	}
+	if count < 0 {
+		panic("strings: negative Repeat count")
+	}
+	hi, lo := bits.Mul(uint(len(s)), uint(count))
+	if hi > 0 || lo > uint(maxInt) {
+		panic("strings: Repeat output length overflow")
+	}
+	n := int(lo)
+	if len(s) == 0 {
+		return ""
+	}
+	switch s[0] {
+	case ' ', '-', '0', '=', '\t':
+		switch {
+		case n <= len(repeatedSpaces) && HasPrefix(repeatedSpaces, s):
+			return repeatedSpaces[:n]
+		case n <= len(repeatedDashes) && HasPrefix(repeatedDashes, s):
+			return repeatedDashes[:n]
+		case n <= len(repeatedZeroes) && HasPrefix(repeatedZeroes, s):
+			return repeatedZeroes[:n]
+		case n <= len(repeatedEquals) && HasPrefix(repeatedEquals, s):
+			return repeatedEquals[:n]
+		case n <= len(repeatedTabs) && HasPrefix(repeatedTabs, s):
+			return repeatedTabs[:n]
+		}
+	}
+	const chunkLimit = 8 * 1024
+	chunkMax := n
+	if n > chunkLimit {
+		chunkMax = chunkLimit / len(s) * len(s)
+		if chunkMax == 0 {
+			chunkMax = len(s)
+		}
+	}
+	var b Builder
+	b.Grow(n)
+	b.WriteString(s)
+	for b.Len() < n {
+		chunk := min(n-b.Len(), b.Len(), chunkMax)
+		b.WriteString(b.String()[:chunk])
+	}
+	return b.String()
+}
+
+## strings repeatedSpaces
+(strings.go)
+const (
+	repeatedSpaces	= "" +
+		"                                                                " +
+		"                                                                "
+	repeatedDashes	= "" +
+		"----------------------------------------------------------------" +
+		"----------------------------------------------------------------"
+	repeatedZeroes	= "" +
+		"0000000000000000000000000000000000000000000000000000000000000000"
+	repeatedEquals	= "" +
+		"================================================================" +
+		"================================================================"
+	repeatedTabs	= "" +
+		"\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t" +
+		"\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t"
+)
+
+## strings ToUpper
+(strings.go)
+func ToUpper(s string) string {
+	isASCII, hasLower := true, false
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if c >= utf8.RuneSelf {
+			isASCII = false
+			break
+		}
+		hasLower = hasLower || ('a' <= c && c <= 'z')
+	}
+	if isASCII {
+		if !hasLower {
+			return s
+		}
+		var (
+			b	Builder
+			pos	int
+		)
+		b.Grow(len(s))
+		for i := 0; i < len(s); i++ {
+			c := s[i]
+			if 'a' <= c && c <= 'z' {
+				c -= 'a' - 'A'
+				if pos < i {
+					b.WriteString(s[pos:i])
+				}
+				b.WriteByte(c)
+				pos = i + 1
+			}
+		}
+		if pos < len(s) {
+			b.WriteString(s[pos:])
+		}
+		return b.String()
+	}
+	return Map(unicode.ToUpper, s)
+}
+
+## strings ToLower
+(strings.go)
+func ToLower(s string) string {
+	isASCII, hasUpper := true, false
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if c >= utf8.RuneSelf {
+			isASCII = false
+			break
+		}
+		hasUpper = hasUpper || ('A' <= c && c <= 'Z')
+	}
+	if isASCII {
+		if !hasUpper {
+			return s
+		}
+		var (
+			b	Builder
+			pos	int
+		)
+		b.Grow(len(s))
+		for i := 0; i < len(s); i++ {
+			c := s[i]
+			if 'A' <= c && c <= 'Z' {
+				c += 'a' - 'A'
+				if pos < i {
+					b.WriteString(s[pos:i])
+				}
+				b.WriteByte(c)
+				pos = i + 1
+			}
+		}
+		if pos < len(s) {
+			b.WriteString(s[pos:])
+		}
+		return b.String()
+	}
+	return Map(unicode.ToLower, s)
+}
+
+## strings ToTitle
+(strings.go)
+func ToTitle(s string) string	{ return Map(unicode.ToTitle, s) }
+
+## strings Map
+(strings.go)
+func Map(mapping func(rune) rune, s string) string {
+	var b Builder
+	for i, c := range s {
+		r := mapping(c)
+		if r == c && c != utf8.RuneError {
+			continue
+		}
+		var width int
+		if c == utf8.RuneError {
+			c, width = utf8.DecodeRuneInString(s[i:])
+			if width != 1 && r == c {
+				continue
+			}
+		} else {
+			width = utf8.RuneLen(c)
+		}
+		b.Grow(len(s) + utf8.UTFMax)
+		b.WriteString(s[:i])
+		if r >= 0 {
+			b.WriteRune(r)
+		}
+		s = s[i+width:]
+		break
+	}
+	if b.Cap() == 0 {
+		return s
+	}
+	for _, c := range s {
+		r := mapping(c)
+		if r >= 0 {
+			if r < utf8.RuneSelf {
+				b.WriteByte(byte(r))
+			} else {
+				b.WriteRune(r)
+			}
+		}
+	}
+	return b.String()
+}
+
+## strings ToValidUTF8
+(strings.go)
+func ToValidUTF8(s, replacement string) string {
+	var b Builder
+	for i, c := range s {
+		if c != utf8.RuneError {
+			continue
+		}
+		_, wid := utf8.DecodeRuneInString(s[i:])
+		if wid == 1 {
+			b.Grow(len(s) + len(replacement))
+			b.WriteString(s[:i])
+			s = s[i:]
+			break
+		}
+	}
+	if b.Cap() == 0 {
+		return s
+	}
+	invalid := false
+	for i := 0; i < len(s); {
+		c := s[i]
+		if c < utf8.RuneSelf {
+			i++
+			invalid = false
+			b.WriteByte(c)
+			continue
+		}
+		_, wid := utf8.DecodeRuneInString(s[i:])
+		if wid == 1 {
+			i++
+			if !invalid {
+				invalid = true
+				b.WriteString(replacement)
+			}
+			continue
+		}
+		invalid = false
+		b.WriteString(s[i : i+wid])
+		i += wid
+	}
+	return b.String()
+}
+
+## strings Replacer
+(replace.go)
+type Replacer struct {
+	once	sync.Once
+	r		replacer
+	oldnew	[]string
+}
+
+## strings (*Replacer).Replace
+(replace.go)
+func (r *Replacer) Replace(s string) string {
+	r.once.Do(r.buildOnce)
+	return r.r.Replace(s)
+}
+
+## strings (*Replacer).buildOnce
+(replace.go)
+func (r *Replacer) buildOnce() {
+	r.r = r.build()
+	r.oldnew = nil
+}
+
+## strings replacer
+(replace.go)
+type replacer interface {
+	Replace(s string) string
+	WriteString(w io.Writer, s string) (n int, err error)
+}

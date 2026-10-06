@@ -1,0 +1,1297 @@
+# Unless explicitly stated otherwise all files in this repository are licensed
+# under the Apache License Version 2.0.
+# This product includes software developed at Datadog (https://www.datadoghq.com/).
+# Copyright 2026-present Datadog, Inc.
+---
+# $schema: https://datadoghq.dev/orchestrion/schema.json
+meta:
+  name: github.com/DataDog/dd-iast-go/iast/propagation/stream
+  description: >-
+    Taint propagation hooks in the standard library packages fmt, io, bufio and
+    encoding/json (plan heapbits-sqli-cmdi, section 6). The hooks copy the heap
+    taint bits of internal/taint/heapbits where these packages move bytes with
+    operations that the runtime hooks cannot see (copy, append(x, y...),
+    make + copy).
+
+# How the hooks work (plan section 6.1):
+#
+#  - The prepended code of each hooked function reads the sticky gate
+#    __dd_iast_live() (heapbits.Live: 2 loads, inlined). When it is false, no byte of the heap
+#    is tainted: the original body runs. This is the only added work when no
+#    taint was ever set.
+#  - Else the code calls the twin __dd_iast_<pkg>_<fn>. The twin is declared
+#    in the same package. It checks the taint bits of the inputs (or of the
+#    destination), does the work of the body again with the bit operations,
+#    and returns true (or it always does the work, when the gate is
+#    heapbits.Live() only). When it returns false, the original body runs.
+#  - When the twin must run the original body and then look at its output
+#    (fmt printArg, fmtString, fmtBytes, doPrintf; json valueQuoted), it sets
+#    the bypass field __dd_iast_bypass of the receiver and calls the hooked
+#    method once. The prepended code of the method clears the field and runs
+#    the original body. The gate is sticky, so the inner call also sees it on.
+#
+# Rules (do not change them without the tests of this package):
+#
+#  - The hook code imports no package of dd-iast-go (see the bit functions
+#    of the &bits block): only packages of the standard library that the
+#    hooked package already imports, or that it can import without a cycle.
+#    It reaches the bits with the pull linknames of package heapbits, and
+#    propbridge.Derived with the push linkname __dd_iast_propbridge.derived
+#    of package propbridge. No "links": the hooks do not keep a package of
+#    dd-iast-go in the program.
+#  - No defer. No new panic: the twins keep the panics of the original body.
+#  - The twins pass uintptr values to propbridge only for memory that they
+#    keep alive (runtime.KeepAlive) until the call returns. KeepAlive gets an
+#    unsafe.Pointer, never a string, a slice or an interface value: that
+#    conversion makes the value leak to the heap, and changes the escape
+#    tags of the hooked function.
+#  - fmt: the scratch array (*fmt).intbuf never gets taint bits.
+#  - A twin that copies a body of the standard library must be checked when
+#    the drift golden file (testdata/stdlib-<go>.golden) changes.
+
+aspects:
+  # ---------------------------------------------------------------------------
+  # fmt
+  # ---------------------------------------------------------------------------
+
+  - id: fmt-decls
+    join-point:
+      struct-definition: fmt.pp
+    advice:
+      - add-struct-field:
+          name: __dd_iast_bypass
+          type: bool
+      - &bits
+        inject-declarations:
+          imports:
+            atomic: sync/atomic
+            runtime: runtime
+            unsafe: unsafe
+          template: |-
+            // ---- bit functions (plan section 6.1 rule 1) ----
+            //
+            // The hooks do not import packages heapbits and propbridge: go test
+            // of a package with in-package tests rebuilds the standard library
+            // packages that import it, and Orchestrion cannot rebuild them (a
+            // fingerprint cycle through reflect). Thus the hooks pull the bit
+            // functions of the woven runtime with the linknames of package
+            // heapbits (nil without weaving: then nothing is tainted), the
+            // string-to-slice switch of propbridge, and propbridge.Derived
+            // through the push linkname of package propbridge (nil when
+            // propbridge is not linked: then no request can be active).
+            var (
+              //go:linkname __dd_iast_rt_set __dd_iast_heapbits.set
+              __dd_iast_rt_set func(p, n uintptr) bool
+
+              //go:linkname __dd_iast_rt_clear __dd_iast_heapbits.clear
+              __dd_iast_rt_clear func(p, n uintptr)
+
+              //go:linkname __dd_iast_rt_any __dd_iast_heapbits.any
+              __dd_iast_rt_any func(p, n uintptr) bool
+
+              //go:linkname __dd_iast_rt_copy __dd_iast_heapbits.copy
+              __dd_iast_rt_copy func(dst, src, n uintptr) bool
+
+              //go:linkname __dd_iast_rt_seen __dd_iast_heapbits.seen
+              __dd_iast_rt_seen *uint32
+
+              //go:linkname __dd_iast_rt_s2soff __dd_iast_propbridge.s2soff
+              __dd_iast_rt_s2soff uint32
+
+              //go:linkname __dd_iast_rt_derived __dd_iast_propbridge.derived
+              __dd_iast_rt_derived func(out, outLen, in, inLen uintptr, mode uint8)
+            )
+
+            // __dd_iast_coarse is the Coarse mode of propbridge.Derived
+            // (TestBridgeModes checks the value).
+            const __dd_iast_coarse uint8 = 1
+
+            // __dd_iast_live is heapbits.Live: 2 loads, no call (inlinable).
+            func __dd_iast_live() bool {
+              p := __dd_iast_rt_seen
+              return p != nil && atomic.LoadUint32(p) != 0
+            }
+
+            // __dd_iast_s2s is propbridge.StringToSlice.
+            func __dd_iast_s2s() bool {
+              return atomic.LoadUint32(&__dd_iast_rt_s2soff) == 0
+            }
+
+            // __dd_iast_derived is propbridge.Derived. The caller keeps the
+            // memory alive until it returns.
+            func __dd_iast_derived(out, outLen, in, inLen uintptr, mode uint8) {
+              if f := __dd_iast_rt_derived; f != nil {
+                f(out, outLen, in, inLen, mode)
+              }
+            }
+
+            // The bit functions below are heapbits.Any, Set, Clear and Copy.
+            // They are not inlined (as in package heapbits): their stack check
+            // is a preemption point.
+
+            //go:noinline
+            func __dd_iast_any(p unsafe.Pointer, n uintptr) bool {
+              f := __dd_iast_rt_any
+              if f == nil || n == 0 {
+                return false
+              }
+              ok := f(uintptr(p), n)
+              runtime.KeepAlive(p)
+              return ok
+            }
+
+            //go:noinline
+            func __dd_iast_set(p unsafe.Pointer, n uintptr) bool {
+              f := __dd_iast_rt_set
+              if f == nil || n == 0 {
+                return false
+              }
+              ok := f(uintptr(p), n)
+              runtime.KeepAlive(p)
+              return ok
+            }
+
+            //go:noinline
+            func __dd_iast_clear(p unsafe.Pointer, n uintptr) {
+              f := __dd_iast_rt_clear
+              if f == nil || n == 0 {
+                return
+              }
+              f(uintptr(p), n)
+              runtime.KeepAlive(p)
+            }
+
+            //go:noinline
+            func __dd_iast_copy(dst, src unsafe.Pointer, n uintptr) bool {
+              f := __dd_iast_rt_copy
+              if f == nil || n == 0 {
+                return false
+              }
+              ok := f(uintptr(dst), uintptr(src), n)
+              runtime.KeepAlive(dst)
+              runtime.KeepAlive(src)
+              return ok
+            }
+
+            func __dd_iast_anyString(s string) bool {
+              return __dd_iast_any(unsafe.Pointer(unsafe.StringData(s)), uintptr(len(s)))
+            }
+
+            func __dd_iast_anyBytes(b []byte) bool {
+              return __dd_iast_any(unsafe.Pointer(unsafe.SliceData(b)), uintptr(len(b)))
+            }
+
+            func __dd_iast_clearBytes(b []byte) {
+              __dd_iast_clear(unsafe.Pointer(unsafe.SliceData(b)), uintptr(len(b)))
+            }
+      - inject-declarations:
+          imports:
+            reflect: reflect
+            runtime: runtime
+            unsafe: unsafe
+            utf8: unicode/utf8
+          template: |-
+            // Compile-time checks of the fields that the twins use (plan
+            // section 6.1 rule 6).
+            var (
+              _ buffer  = pp{}.buf
+              _ *buffer = fmt{}.buf
+              _ bool    = fmt{}.sharpV
+              _ bool    = fmt{}.zero
+              _ bool    = fmt{}.minus
+              _ bool    = fmt{}.widPresent
+              _ int     = fmt{}.wid
+              _ bool    = pp{}.erroring
+            )
+
+            // The exact copies of fmt (plan section 6.2) are hooked in the
+            // callers of (*buffer).write and writeString that write a value:
+            // (*fmt).pad, (*fmt).padString, (*pp).Write and (*pp).WriteString.
+            // With one more call, (*buffer).write and writeString stop being
+            // inlined (cost 87, budget 80), and the plan requires that they
+            // stay inlinable (section 6.1 rule 3). The other callers write
+            // fixed text, type names, numbers and the format text (a tainted
+            // format makes the whole output coarse, see doPrintf). The memory
+            // after len(pp.buf) has no bits (the free hook clears the buffer
+            // before it goes back to the pool, and a growth gives new memory),
+            // so a clean write needs no clear.
+
+            // __dd_iast_fmt_write appends p to *b and copies the bits of p to
+            // the appended bytes.
+            func __dd_iast_fmt_write(b *buffer, p []byte) {
+              old := len(*b)
+              *b = append(*b, p...)
+              if len(p) != 0 {
+                __dd_iast_copy(unsafe.Pointer(&(*b)[old]), unsafe.Pointer(unsafe.SliceData(p)), uintptr(len(p)))
+              }
+            }
+
+            // __dd_iast_fmt_writeString appends s to *b and copies the bits of
+            // s to the appended bytes.
+            func __dd_iast_fmt_writeString(b *buffer, s string) {
+              old := len(*b)
+              *b = append(*b, s...)
+              if len(s) != 0 {
+                __dd_iast_copy(unsafe.Pointer(&(*b)[old]), unsafe.Pointer(unsafe.StringData(s)), uintptr(len(s)))
+              }
+            }
+
+            // __dd_iast_fmt_pad is the twin of (*fmt).pad (body copy) for a
+            // tainted b.
+            func __dd_iast_fmt_pad(f *fmt, b []byte) bool {
+              if !__dd_iast_anyBytes(b) {
+                return false
+              }
+              if !f.widPresent || f.wid == 0 {
+                __dd_iast_fmt_write(f.buf, b)
+                return true
+              }
+              width := f.wid - utf8.RuneCount(b)
+              if !f.minus {
+                // left padding
+                f.writePadding(width)
+                __dd_iast_fmt_write(f.buf, b)
+              } else {
+                // right padding
+                __dd_iast_fmt_write(f.buf, b)
+                f.writePadding(width)
+              }
+              return true
+            }
+
+            // __dd_iast_fmt_padString is the twin of (*fmt).padString (body
+            // copy) for a tainted s.
+            func __dd_iast_fmt_padString(f *fmt, s string) bool {
+              if !__dd_iast_anyString(s) {
+                return false
+              }
+              if !f.widPresent || f.wid == 0 {
+                __dd_iast_fmt_writeString(f.buf, s)
+                return true
+              }
+              width := f.wid - utf8.RuneCountInString(s)
+              if !f.minus {
+                // left padding
+                f.writePadding(width)
+                __dd_iast_fmt_writeString(f.buf, s)
+              } else {
+                // right padding
+                __dd_iast_fmt_writeString(f.buf, s)
+                f.writePadding(width)
+              }
+              return true
+            }
+
+            // __dd_iast_fmt_ppWrite is the twin of (*pp).Write (the writes of
+            // a Formatter) for a tainted b.
+            func __dd_iast_fmt_ppWrite(p *pp, b []byte) bool {
+              if !__dd_iast_anyBytes(b) {
+                return false
+              }
+              __dd_iast_fmt_write(&p.buf, b)
+              return true
+            }
+
+            // __dd_iast_fmt_ppWriteString is the twin of (*pp).WriteString for
+            // a tainted s.
+            func __dd_iast_fmt_ppWriteString(p *pp, s string) bool {
+              if !__dd_iast_anyString(s) {
+                return false
+              }
+              __dd_iast_fmt_writeString(&p.buf, s)
+              return true
+            }
+
+            // __dd_iast_fmt_writePadding is the twin of (*fmt).writePadding
+            // (body copy, plan section 6.2): the growth copy keeps the bits of
+            // the old output; the padding is clean.
+            func __dd_iast_fmt_writePadding(f *fmt, n int) bool {
+              if n <= 0 {
+                return false
+              }
+              buf := *f.buf
+              oldLen := len(buf)
+              newLen := oldLen + n
+              grow := newLen > cap(buf)
+              if !__dd_iast_anyBytes(buf) && (grow || !__dd_iast_anyBytes(buf[oldLen:newLen])) {
+                return false
+              }
+              if grow {
+                buf = make(buffer, cap(buf)*2+n)
+                copy(buf, *f.buf)
+                if oldLen > 0 {
+                  __dd_iast_copy(unsafe.Pointer(&buf[0]), unsafe.Pointer(&(*f.buf)[0]), uintptr(oldLen))
+                }
+              }
+              padByte := byte(' ')
+              if f.zero && !f.minus {
+                padByte = byte('0')
+              }
+              padding := buf[oldLen:newLen]
+              for i := range padding {
+                padding[i] = padByte
+              }
+              __dd_iast_clearBytes(padding)
+              *f.buf = buf[:newLen]
+              return true
+            }
+
+            // __dd_iast_fmt_free clears the bits of the printer buffer before
+            // it goes back to the pool (plan section 6.4). A buffer larger than
+            // 64 KiB is not reused (free drops it).
+            func __dd_iast_fmt_free(p *pp) {
+              p.__dd_iast_bypass = false
+              if b := p.buf; len(b) != 0 && cap(b) <= 64*1024 {
+                ptr, n := unsafe.Pointer(unsafe.SliceData(b)), uintptr(len(b))
+                if __dd_iast_any(ptr, n) {
+                  __dd_iast_clear(ptr, n)
+                }
+              }
+            }
+
+            // __dd_iast_fmt_coarse taints the output p.buf[before:] as a whole
+            // and records it as derived from the inLen bytes at in (plan
+            // section 6.3). The caller keeps the memory at in alive.
+            func __dd_iast_fmt_coarse(p *pp, before int, in unsafe.Pointer, inLen int) {
+              after := len(p.buf)
+              if before < 0 || after <= before {
+                return
+              }
+              out := unsafe.Pointer(&p.buf[before])
+              n := uintptr(after - before)
+              if __dd_iast_set(out, n) {
+                __dd_iast_derived(uintptr(out), n, uintptr(in), uintptr(inLen), __dd_iast_coarse)
+              }
+              runtime.KeepAlive(out)
+            }
+
+            // __dd_iast_fmt_argdata returns the data of arg when it is a
+            // string or a []byte (also of a named type).
+            func __dd_iast_fmt_argdata(arg any) (unsafe.Pointer, int) {
+              switch v := arg.(type) {
+              case string:
+                return unsafe.Pointer(unsafe.StringData(v)), len(v)
+              case []byte:
+                return unsafe.Pointer(unsafe.SliceData(v)), len(v)
+              }
+              v := reflect.ValueOf(arg)
+              switch v.Kind() {
+              case reflect.String:
+                s := v.String()
+                return unsafe.Pointer(unsafe.StringData(s)), len(s)
+              case reflect.Slice:
+                if v.Type().Elem().Kind() == reflect.Uint8 {
+                  b := v.Bytes()
+                  return unsafe.Pointer(unsafe.SliceData(b)), len(b)
+                }
+              }
+              return nil, 0
+            }
+
+            // __dd_iast_fmt_printArg is the twin of (*pp).printArg. It handles
+            // a tainted string or []byte argument (also of a named type) when
+            // the output is not made by fmtString or fmtBytes: the verbs %T and
+            // %p, and the methods (Format, String, Error, GoString). This
+            // output is generated: it is tainted as a whole (coarse), also when
+            // it has bits of a different request. fmtString and fmtBytes handle
+            // the other verbs (exact or coarse).
+            func __dd_iast_fmt_printArg(p *pp, arg any, verb rune) bool {
+              switch arg.(type) {
+              case nil, bool, int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, uintptr, float32, float64, complex64, complex128:
+                return false
+              case string, []byte:
+                if verb != 'T' && verb != 'p' {
+                  return false
+                }
+              case Formatter, Stringer, error, GoStringer:
+              default:
+                if verb != 'T' && verb != 'p' {
+                  return false
+                }
+              }
+              ptr, n := __dd_iast_fmt_argdata(arg)
+              if n == 0 || !__dd_iast_any(ptr, uintptr(n)) {
+                return false
+              }
+              before := len(p.buf)
+              p.__dd_iast_bypass = true
+              p.printArg(arg, verb)
+              __dd_iast_fmt_coarse(p, before, ptr, n)
+              runtime.KeepAlive(ptr)
+              return true
+            }
+
+            // __dd_iast_fmt_exactString tells if fmtString copies v as it is
+            // (%s, and %v without the # flag).
+            func __dd_iast_fmt_exactString(p *pp, verb rune) bool {
+              return verb == 's' || (verb == 'v' && !p.fmt.sharpV)
+            }
+
+            // __dd_iast_fmt_fmtBytes is the twin of (*pp).fmtBytes: the output
+            // of all verbs except %s is generated (coarse).
+            func __dd_iast_fmt_fmtBytes(p *pp, v []byte, verb rune, typeString string) bool {
+              ptr, n := unsafe.Pointer(unsafe.SliceData(v)), len(v)
+              if verb == 's' || !__dd_iast_any(ptr, uintptr(n)) {
+                return false
+              }
+              before := len(p.buf)
+              p.__dd_iast_bypass = true
+              p.fmtBytes(v, verb, typeString)
+              __dd_iast_fmt_coarse(p, before, ptr, n)
+              runtime.KeepAlive(ptr)
+              return true
+            }
+
+            // __dd_iast_fmt_doPrintf is the twin of (*pp).doPrintf: a tainted
+            // format string makes the whole output coarse.
+            func __dd_iast_fmt_doPrintf(p *pp, format string, a []any) bool {
+              ptr, n := unsafe.Pointer(unsafe.StringData(format)), len(format)
+              if !__dd_iast_any(ptr, uintptr(n)) {
+                return false
+              }
+              before := len(p.buf)
+              p.__dd_iast_bypass = true
+              p.doPrintf(format, a)
+              __dd_iast_fmt_coarse(p, before, ptr, n)
+              runtime.KeepAlive(ptr)
+              return true
+            }
+
+  - id: fmt.fmt.pad
+    join-point:
+      all-of:
+        - import-path: fmt
+        - function-body:
+            function:
+              - receiver: "*fmt.fmt"
+              - name: pad
+    advice:
+      - prepend-statements:
+          template: |-
+            if __dd_iast_live() {
+              if __dd_iast_fmt_pad({{ .Function.Receiver }}, {{ .Function.Argument 0 }}) {
+                return
+              }
+            }
+
+  - id: fmt.fmt.padString
+    join-point:
+      all-of:
+        - import-path: fmt
+        - function-body:
+            function:
+              - receiver: "*fmt.fmt"
+              - name: padString
+    advice:
+      - prepend-statements:
+          template: |-
+            if __dd_iast_live() {
+              if __dd_iast_fmt_padString({{ .Function.Receiver }}, {{ .Function.Argument 0 }}) {
+                return
+              }
+            }
+
+  - id: fmt.pp.Write
+    join-point:
+      all-of:
+        - import-path: fmt
+        - function-body:
+            function:
+              - receiver: "*fmt.pp"
+              - name: Write
+    advice:
+      - prepend-statements:
+          template: |-
+            {{- $b := .Function.Argument 0 -}}
+            if __dd_iast_live() {
+              if __dd_iast_fmt_ppWrite({{ .Function.Receiver }}, {{ $b }}) {
+                return len({{ $b }}), nil
+              }
+            }
+
+  - id: fmt.pp.WriteString
+    join-point:
+      all-of:
+        - import-path: fmt
+        - function-body:
+            function:
+              - receiver: "*fmt.pp"
+              - name: WriteString
+    advice:
+      - prepend-statements:
+          template: |-
+            {{- $s := .Function.Argument 0 -}}
+            if __dd_iast_live() {
+              if __dd_iast_fmt_ppWriteString({{ .Function.Receiver }}, {{ $s }}) {
+                return len({{ $s }}), nil
+              }
+            }
+
+  - id: fmt.fmt.writePadding
+    join-point:
+      all-of:
+        - import-path: fmt
+        - function-body:
+            function:
+              - receiver: "*fmt.fmt"
+              - name: writePadding
+    advice:
+      - prepend-statements:
+          template: |-
+            if __dd_iast_live() {
+              if __dd_iast_fmt_writePadding({{ .Function.Receiver }}, {{ .Function.Argument 0 }}) {
+                return
+              }
+            }
+
+  - id: fmt.pp.free
+    join-point:
+      all-of:
+        - import-path: fmt
+        - function-body:
+            function:
+              - receiver: "*fmt.pp"
+              - name: free
+    advice:
+      - prepend-statements:
+          template: |-
+            if __dd_iast_live() {
+              __dd_iast_fmt_free({{ .Function.Receiver }})
+            }
+
+  - id: fmt.pp.printArg
+    join-point:
+      all-of:
+        - import-path: fmt
+        - function-body:
+            function:
+              - receiver: "*fmt.pp"
+              - name: printArg
+    advice:
+      - prepend-statements:
+          template: |-
+            {{- $p := .Function.Receiver -}}
+            if __dd_iast_live() {
+              if {{ $p }}.__dd_iast_bypass {
+                {{ $p }}.__dd_iast_bypass = false
+              } else if __dd_iast_fmt_printArg({{ $p }}, {{ .Function.Argument 0 }}, {{ .Function.Argument 1 }}) {
+                return
+              }
+            }
+
+  # (*pp).fmtString has 2 signatures: (v string, verb rune) in Go 1.26 and
+  # (arg any, value reflect.Value, v string, verb rune) in Go 1.27. One aspect
+  # for each; the twin of each is declared with it.
+  - id: fmt.pp.fmtString
+    join-point:
+      all-of:
+        - import-path: fmt
+        - function-body:
+            function:
+              - receiver: "*fmt.pp"
+              - name: fmtString
+              - signature:
+                  args: [string, rune]
+    advice:
+      - inject-declarations:
+          imports:
+            runtime: runtime
+            unsafe: unsafe
+          template: |-
+            // __dd_iast_fmt_fmtString is the twin of (*pp).fmtString: the
+            // output of the verbs that do not copy v (%q, %x, %X, %#v, bad
+            // verbs) is generated (coarse).
+            func __dd_iast_fmt_fmtString(p *pp, v string, verb rune) bool {
+              ptr, n := unsafe.Pointer(unsafe.StringData(v)), len(v)
+              if __dd_iast_fmt_exactString(p, verb) || !__dd_iast_any(ptr, uintptr(n)) {
+                return false
+              }
+              before := len(p.buf)
+              p.__dd_iast_bypass = true
+              p.fmtString(v, verb)
+              __dd_iast_fmt_coarse(p, before, ptr, n)
+              runtime.KeepAlive(ptr)
+              return true
+            }
+      - prepend-statements:
+          template: |-
+            {{- $p := .Function.Receiver -}}
+            if __dd_iast_live() {
+              if {{ $p }}.__dd_iast_bypass {
+                {{ $p }}.__dd_iast_bypass = false
+              } else if __dd_iast_fmt_fmtString({{ $p }}, {{ .Function.Argument 0 }}, {{ .Function.Argument 1 }}) {
+                return
+              }
+            }
+
+  - id: fmt.pp.fmtString [go1.27]
+    join-point:
+      all-of:
+        - import-path: fmt
+        - function-body:
+            function:
+              - receiver: "*fmt.pp"
+              - name: fmtString
+              - signature:
+                  args: [any, reflect.Value, string, rune]
+    advice:
+      - inject-declarations:
+          imports:
+            reflect: reflect
+            runtime: runtime
+            unsafe: unsafe
+          template: |-
+            // __dd_iast_fmt_fmtString is the twin of (*pp).fmtString (see the
+            // Go 1.26 variant).
+            func __dd_iast_fmt_fmtString(p *pp, arg any, value reflect.Value, v string, verb rune) bool {
+              ptr, n := unsafe.Pointer(unsafe.StringData(v)), len(v)
+              if __dd_iast_fmt_exactString(p, verb) || !__dd_iast_any(ptr, uintptr(n)) {
+                return false
+              }
+              before := len(p.buf)
+              p.__dd_iast_bypass = true
+              p.fmtString(arg, value, v, verb)
+              __dd_iast_fmt_coarse(p, before, ptr, n)
+              runtime.KeepAlive(ptr)
+              return true
+            }
+      - prepend-statements:
+          template: |-
+            {{- $p := .Function.Receiver -}}
+            if __dd_iast_live() {
+              if {{ $p }}.__dd_iast_bypass {
+                {{ $p }}.__dd_iast_bypass = false
+              } else if __dd_iast_fmt_fmtString({{ $p }}, {{ .Function.Argument 0 }}, {{ .Function.Argument 1 }}, {{ .Function.Argument 2 }}, {{ .Function.Argument 3 }}) {
+                return
+              }
+            }
+
+  - id: fmt.pp.fmtBytes
+    join-point:
+      all-of:
+        - import-path: fmt
+        - function-body:
+            function:
+              - receiver: "*fmt.pp"
+              - name: fmtBytes
+    advice:
+      - prepend-statements:
+          template: |-
+            {{- $p := .Function.Receiver -}}
+            if __dd_iast_live() {
+              if {{ $p }}.__dd_iast_bypass {
+                {{ $p }}.__dd_iast_bypass = false
+              } else if __dd_iast_fmt_fmtBytes({{ $p }}, {{ .Function.Argument 0 }}, {{ .Function.Argument 1 }}, {{ .Function.Argument 2 }}) {
+                return
+              }
+            }
+
+  - id: fmt.pp.doPrintf
+    join-point:
+      all-of:
+        - import-path: fmt
+        - function-body:
+            function:
+              - receiver: "*fmt.pp"
+              - name: doPrintf
+    advice:
+      - prepend-statements:
+          template: |-
+            {{- $p := .Function.Receiver -}}
+            if __dd_iast_live() {
+              if {{ $p }}.__dd_iast_bypass {
+                {{ $p }}.__dd_iast_bypass = false
+              } else if __dd_iast_fmt_doPrintf({{ $p }}, {{ .Function.Argument 0 }}, {{ .Function.Argument 1 }}) {
+                return
+              }
+            }
+
+  # ---------------------------------------------------------------------------
+  # io
+  # ---------------------------------------------------------------------------
+
+  - id: io.ReadAll
+    join-point:
+      all-of:
+        - import-path: io
+        - function-body:
+            function:
+              - receiver: false
+              - name: ReadAll
+    advice:
+      - *bits
+      - inject-declarations:
+          imports:
+            unsafe: unsafe
+          template: |-
+            // __dd_iast_io_append appends src to dst and copies the bits of
+            // src to the appended bytes.
+            func __dd_iast_io_append(dst, src []byte) []byte {
+              off := len(dst)
+              dst = append(dst, src...)
+              if len(src) != 0 {
+                __dd_iast_copy(unsafe.Pointer(&dst[off]), unsafe.Pointer(&src[0]), uintptr(len(src)))
+              }
+              return dst
+            }
+
+            // __dd_iast_io_ReadAll is the twin of ReadAll (body copy, plan
+            // section 6.2): the final copy of each chunk keeps its bits. The
+            // reads go into new memory (no old bits): no read rule.
+            func __dd_iast_io_ReadAll(r Reader) ([]byte, error) {
+              b := make([]byte, 0, 512)
+              next := 256
+              chunks := make([][]byte, 0, 4)
+              var finalSize int
+              for {
+                n, err := r.Read(b[len(b):cap(b)])
+                b = b[:len(b)+n]
+                if err != nil {
+                  if err == EOF {
+                    err = nil
+                  }
+                  if len(chunks) == 0 {
+                    return b, err
+                  }
+                  finalSize += len(b)
+                  final := append([]byte(nil), make([]byte, finalSize)...)[:0]
+                  for _, chunk := range chunks {
+                    final = __dd_iast_io_append(final, chunk)
+                  }
+                  final = __dd_iast_io_append(final, b)
+                  return final, err
+                }
+                if cap(b)-len(b) < cap(b)/16 {
+                  chunks = append(chunks, b)
+                  finalSize += len(b)
+                  b = append([]byte(nil), make([]byte, next)...)[:0]
+                  next += next / 2
+                }
+              }
+            }
+      - prepend-statements:
+          template: |-
+            if __dd_iast_live() {
+              return __dd_iast_io_ReadAll({{ .Function.Argument 0 }})
+            }
+
+  # ---------------------------------------------------------------------------
+  # bufio
+  # ---------------------------------------------------------------------------
+
+  - id: bufio-decls
+    join-point:
+      struct-definition: bufio.Reader
+    advice:
+      - *bits
+      - inject-declarations:
+          imports:
+            io: io
+            runtime: runtime
+            unsafe: unsafe
+          template: |-
+            // Compile-time checks of the fields that the twins use (plan
+            // section 6.1 rule 6).
+            var (
+              _ []byte    = Reader{}.buf
+              _ io.Reader = Reader{}.rd
+              _ int       = Reader{}.r
+              _ int       = Reader{}.w
+              _ error     = Reader{}.err
+              _ int       = Reader{}.lastByte
+              _ int       = Reader{}.lastRuneSize
+            )
+
+            // __dd_iast_bufio_shadow returns new heap memory of n bytes (the
+            // result escapes: it is never on the stack).
+            //
+            //go:noinline
+            func __dd_iast_bufio_shadow(n int) []byte {
+              return make([]byte, n)
+            }
+
+            // __dd_iast_bufio_read is the read rule of plan section 6.2: a
+            // delegated Read into reused memory dst. When dst has bits (and is
+            // 64 KiB or less), the bits go to a heap shadow, dst is cleared,
+            // Read runs, and the old bits go back to dst[n:] only. Thus the new
+            // bytes have only the bits that Read sets, and the tail that Read
+            // did not write (and its aliases) keeps its bits. When Read panics,
+            // the panic goes on, and the tail loses its old bits.
+            func __dd_iast_bufio_read(rd io.Reader, dst []byte) (int, error) {
+              l := len(dst)
+              p := unsafe.Pointer(unsafe.SliceData(dst))
+              if l == 0 || l > 64<<10 || !__dd_iast_any(p, uintptr(l)) {
+                return rd.Read(dst)
+              }
+              shadow := __dd_iast_bufio_shadow(l)
+              if !__dd_iast_copy(unsafe.Pointer(unsafe.SliceData(shadow)), p, uintptr(l)) {
+                // No storage for the bits of the shadow: read with no change.
+                return rd.Read(dst)
+              }
+              __dd_iast_clear(p, uintptr(l))
+              n, err := rd.Read(dst)
+              if n >= 0 && n < l {
+                __dd_iast_copy(unsafe.Pointer(&dst[n]), unsafe.Pointer(&shadow[n]), uintptr(l-n))
+              }
+              runtime.KeepAlive(unsafe.Pointer(unsafe.SliceData(shadow)))
+              return n, err
+            }
+
+            // __dd_iast_bufio_copy copies the bits of the n bytes at src to the
+            // n bytes at dst (the bytes were copied with copy).
+            func __dd_iast_bufio_copy(dst, src []byte, n int) {
+              if n > 0 {
+                __dd_iast_copy(unsafe.Pointer(unsafe.SliceData(dst)), unsafe.Pointer(unsafe.SliceData(src)), uintptr(n))
+              }
+            }
+
+            // __dd_iast_bufio_Read is the twin of (*Reader).Read (body copy):
+            // the delegated reads use the read rule, and the copy to p keeps
+            // the bits.
+            func __dd_iast_bufio_Read(b *Reader, p []byte) (n int, err error) {
+              n = len(p)
+              if n == 0 {
+                if b.Buffered() > 0 {
+                  return 0, nil
+                }
+                return 0, b.readErr()
+              }
+              if b.r == b.w {
+                if b.err != nil {
+                  return 0, b.readErr()
+                }
+                if len(p) >= len(b.buf) {
+                  n, b.err = __dd_iast_bufio_read(b.rd, p)
+                  if n < 0 {
+                    panic(errNegativeRead)
+                  }
+                  if n > 0 {
+                    b.lastByte = int(p[n-1])
+                    b.lastRuneSize = -1
+                  }
+                  return n, b.readErr()
+                }
+                b.r = 0
+                b.w = 0
+                n, b.err = __dd_iast_bufio_read(b.rd, b.buf)
+                if n < 0 {
+                  panic(errNegativeRead)
+                }
+                if n == 0 {
+                  return 0, b.readErr()
+                }
+                b.w += n
+              }
+              n = copy(p, b.buf[b.r:b.w])
+              __dd_iast_bufio_copy(p, b.buf[b.r:], n)
+              b.r += n
+              b.lastByte = int(b.buf[b.r-1])
+              b.lastRuneSize = -1
+              return n, nil
+            }
+
+            // __dd_iast_bufio_fill is the twin of (*Reader).fill (body copy):
+            // the slide copies the bits of the moved bytes (the tail keeps its
+            // bits: ReadSlice and Peek results alias the buffer), and the
+            // delegated read uses the read rule.
+            func __dd_iast_bufio_fill(b *Reader) {
+              if b.r > 0 {
+                n := copy(b.buf, b.buf[b.r:b.w])
+                __dd_iast_bufio_copy(b.buf, b.buf[b.r:], n)
+                b.w -= b.r
+                b.r = 0
+              }
+              if b.w >= len(b.buf) {
+                panic("bufio: tried to fill full buffer")
+              }
+              for i := maxConsecutiveEmptyReads; i > 0; i-- {
+                n, err := __dd_iast_bufio_read(b.rd, b.buf[b.w:])
+                if n < 0 {
+                  panic(errNegativeRead)
+                }
+                b.w += n
+                if err != nil {
+                  b.err = err
+                  return
+                }
+                if n > 0 {
+                  return
+                }
+              }
+              b.err = io.ErrNoProgress
+            }
+
+            // __dd_iast_bufio_ReadBytes is the twin of (*Reader).ReadBytes
+            // (body copy): the copies keep the bits.
+            func __dd_iast_bufio_ReadBytes(b *Reader, delim byte) ([]byte, error) {
+              full, frag, n, err := b.collectFragments(delim)
+              buf := make([]byte, n)
+              n = 0
+              for i := range full {
+                m := copy(buf[n:], full[i])
+                __dd_iast_bufio_copy(buf[n:], full[i], m)
+                n += m
+              }
+              m := copy(buf[n:], frag)
+              __dd_iast_bufio_copy(buf[n:], frag, m)
+              return buf, err
+            }
+
+  - id: bufio.Reader.Read
+    join-point:
+      all-of:
+        - import-path: bufio
+        - function-body:
+            function:
+              - receiver: "*bufio.Reader"
+              - name: Read
+    advice:
+      - prepend-statements:
+          template: |-
+            if __dd_iast_live() {
+              return __dd_iast_bufio_Read({{ .Function.Receiver }}, {{ .Function.Argument 0 }})
+            }
+
+  - id: bufio.Reader.fill
+    join-point:
+      all-of:
+        - import-path: bufio
+        - function-body:
+            function:
+              - receiver: "*bufio.Reader"
+              - name: fill
+    advice:
+      - prepend-statements:
+          template: |-
+            if __dd_iast_live() {
+              __dd_iast_bufio_fill({{ .Function.Receiver }})
+              return
+            }
+
+  - id: bufio.Reader.ReadBytes
+    join-point:
+      all-of:
+        - import-path: bufio
+        - function-body:
+            function:
+              - receiver: "*bufio.Reader"
+              - name: ReadBytes
+    advice:
+      - prepend-statements:
+          template: |-
+            if __dd_iast_live() {
+              return __dd_iast_bufio_ReadBytes({{ .Function.Receiver }}, {{ .Function.Argument 0 }})
+            }
+
+  # ---------------------------------------------------------------------------
+  # encoding/json (v1 only: the anchor type decodeState and the hooked
+  # functions exist only in the files of the v1 variant; with
+  # GOEXPERIMENT=jsonv2, no aspect of this section applies)
+  # ---------------------------------------------------------------------------
+
+  - id: encoding/json-decls
+    join-point:
+      struct-definition: encoding/json.decodeState
+    advice:
+      - add-struct-field:
+          name: __dd_iast_bypass
+          type: bool
+      - add-struct-field:
+          name: __dd_iast_quoted
+          type: string
+      - *bits
+      - inject-declarations:
+          imports:
+            io: io
+            runtime: runtime
+            unicode: unicode
+            utf16: unicode/utf16
+            utf8: unicode/utf8
+            unsafe: unsafe
+          template: |-
+            // Compile-time checks of the fields that the twins use (plan
+            // section 6.1 rule 6).
+            var (
+              _ io.Reader = Decoder{}.r
+              _ []byte    = Decoder{}.buf
+              _ int       = Decoder{}.scanp
+              _ int64     = Decoder{}.scanned
+            )
+
+            // __dd_iast_json_shadow returns new heap memory of n bytes.
+            //
+            //go:noinline
+            func __dd_iast_json_shadow(n int) []byte {
+              return make([]byte, n)
+            }
+
+            // __dd_iast_json_read is the read rule of plan section 6.2 (the
+            // same code as in package bufio).
+            func __dd_iast_json_read(rd io.Reader, dst []byte) (int, error) {
+              l := len(dst)
+              p := unsafe.Pointer(unsafe.SliceData(dst))
+              if l == 0 || l > 64<<10 || !__dd_iast_any(p, uintptr(l)) {
+                return rd.Read(dst)
+              }
+              shadow := __dd_iast_json_shadow(l)
+              if !__dd_iast_copy(unsafe.Pointer(unsafe.SliceData(shadow)), p, uintptr(l)) {
+                return rd.Read(dst)
+              }
+              __dd_iast_clear(p, uintptr(l))
+              n, err := rd.Read(dst)
+              if n >= 0 && n < l {
+                __dd_iast_copy(unsafe.Pointer(&dst[n]), unsafe.Pointer(&shadow[n]), uintptr(l-n))
+              }
+              runtime.KeepAlive(unsafe.Pointer(unsafe.SliceData(shadow)))
+              return n, err
+            }
+
+            // __dd_iast_json_refill is the twin of (*Decoder).refill (body
+            // copy, plan section 6.2): the slide and the growth copy keep the
+            // bits (no clear of the tail), and the read uses the read rule.
+            func __dd_iast_json_refill(dec *Decoder) error {
+              if dec.scanp > 0 {
+                dec.scanned += int64(dec.scanp)
+                n := copy(dec.buf, dec.buf[dec.scanp:])
+                if n > 0 {
+                  __dd_iast_copy(unsafe.Pointer(&dec.buf[0]), unsafe.Pointer(&dec.buf[dec.scanp]), uintptr(n))
+                }
+                dec.buf = dec.buf[:n]
+                dec.scanp = 0
+              }
+              const minRead = 512
+              if cap(dec.buf)-len(dec.buf) < minRead {
+                newBuf := make([]byte, len(dec.buf), 2*cap(dec.buf)+minRead)
+                copy(newBuf, dec.buf)
+                if len(dec.buf) > 0 {
+                  __dd_iast_copy(unsafe.Pointer(&newBuf[0]), unsafe.Pointer(&dec.buf[0]), uintptr(len(dec.buf)))
+                }
+                dec.buf = newBuf
+              }
+              n, err := __dd_iast_json_read(dec.r, dec.buf[len(dec.buf):cap(dec.buf)])
+              dec.buf = dec.buf[0 : len(dec.buf)+n]
+              return err
+            }
+
+            // __dd_iast_json_valueQuoted is the twin of
+            // (*decodeState).valueQuoted (",string" fields). When the
+            // string-to-slice propagation of the runtime is off, the
+            // conversion []byte(qv) of the caller has no bits: the twin keeps
+            // a tainted result, and the literalStore hook copies its bits to
+            // the converted item.
+            func __dd_iast_json_valueQuoted(d *decodeState) any {
+              d.__dd_iast_bypass = true
+              v := d.valueQuoted()
+              d.__dd_iast_quoted = ""
+              if s, ok := v.(string); ok && !__dd_iast_s2s() && __dd_iast_anyString(s) {
+                d.__dd_iast_quoted = s
+              }
+              return v
+            }
+
+            // __dd_iast_json_quotedItem copies the bits of the result of
+            // valueQuoted to item, when item is its conversion (same bytes).
+            func __dd_iast_json_quotedItem(d *decodeState, item []byte, fromQuoted bool) {
+              q := d.__dd_iast_quoted
+              d.__dd_iast_quoted = ""
+              if !fromQuoted || len(q) != len(item) || string(item) != q || __dd_iast_anyBytes(item) {
+                return
+              }
+              __dd_iast_copy(unsafe.Pointer(unsafe.SliceData(item)), unsafe.Pointer(unsafe.StringData(q)), uintptr(len(q)))
+            }
+
+            // __dd_iast_json_unquoteBytes is the twin of unquoteBytes: a new
+            // result (a string with escapes) is tainted as a whole (coarse),
+            // with a derived entry of the source of s (plan section 6.3). A
+            // result without escapes is a part of s: it has the bits of s.
+            func __dd_iast_json_unquoteBytes(s []byte) (t []byte, ok bool) {
+              t, ok = __dd_iast_json_unquoteBytesBody(s)
+              if ok && len(t) != 0 && len(s) >= 2 && unsafe.SliceData(t) != &s[1] {
+                out := unsafe.Pointer(unsafe.SliceData(t))
+                if __dd_iast_set(out, uintptr(len(t))) {
+                  __dd_iast_derived(uintptr(out), uintptr(len(t)), uintptr(unsafe.Pointer(unsafe.SliceData(s))), uintptr(len(s)), __dd_iast_coarse)
+                }
+                runtime.KeepAlive(out)
+                runtime.KeepAlive(unsafe.Pointer(unsafe.SliceData(s)))
+              }
+              return t, ok
+            }
+
+            // __dd_iast_json_unquoteBytesBody is an exact copy of the body of
+            // unquoteBytes (TestUnquoteBytesCopy checks it).
+            func __dd_iast_json_unquoteBytesBody(s []byte) (t []byte, ok bool) {
+              if len(s) < 2 || s[0] != '"' || s[len(s)-1] != '"' {
+                return
+              }
+              s = s[1 : len(s)-1]
+
+              // Check for unusual characters. If there are none,
+              // then no unquoting is needed, so return a slice of the
+              // original bytes.
+              r := 0
+              for r < len(s) {
+                c := s[r]
+                if c == '\\' || c == '"' || c < ' ' {
+                  break
+                }
+                rr, size := utf8.DecodeRune(s[r:])
+                if rr == utf8.RuneError && size == 1 {
+                  break
+                }
+                r += size
+              }
+              if r == len(s) {
+                return s, true
+              }
+
+              b := make([]byte, len(s)+2*utf8.UTFMax)
+              w := copy(b, s[0:r])
+              for r < len(s) {
+                // Out of room? Can only happen if s is full of
+                // malformed UTF-8 and we're replacing each
+                // byte with RuneError.
+                if w >= len(b)-2*utf8.UTFMax {
+                  nb := make([]byte, (len(b)+utf8.UTFMax)*2)
+                  copy(nb, b[0:w])
+                  b = nb
+                }
+                switch c := s[r]; {
+                case c == '\\':
+                  r++
+                  if r >= len(s) {
+                    return
+                  }
+                  switch s[r] {
+                  default:
+                    return
+                  case '"', '\\', '/', '\'':
+                    b[w] = s[r]
+                    r++
+                    w++
+                  case 'b':
+                    b[w] = '\b'
+                    r++
+                    w++
+                  case 'f':
+                    b[w] = '\f'
+                    r++
+                    w++
+                  case 'n':
+                    b[w] = '\n'
+                    r++
+                    w++
+                  case 'r':
+                    b[w] = '\r'
+                    r++
+                    w++
+                  case 't':
+                    b[w] = '\t'
+                    r++
+                    w++
+                  case 'u':
+                    r--
+                    rr := getu4(s[r:])
+                    if rr < 0 {
+                      return
+                    }
+                    r += 6
+                    if utf16.IsSurrogate(rr) {
+                      rr1 := getu4(s[r:])
+                      if dec := utf16.DecodeRune(rr, rr1); dec != unicode.ReplacementChar {
+                        // A valid pair; consume.
+                        r += 6
+                        w += utf8.EncodeRune(b[w:], dec)
+                        break
+                      }
+                      // Invalid surrogate; fall back to replacement rune.
+                      rr = unicode.ReplacementChar
+                    }
+                    w += utf8.EncodeRune(b[w:], rr)
+                  }
+
+                // Quote, control characters are invalid.
+                case c == '"', c < ' ':
+                  return
+
+                // ASCII
+                case c < utf8.RuneSelf:
+                  b[w] = c
+                  r++
+                  w++
+
+                // Coerce to well-formed UTF-8.
+                default:
+                  rr, size := utf8.DecodeRune(s[r:])
+                  r += size
+                  w += utf8.EncodeRune(b[w:], rr)
+                }
+              }
+              return b[0:w], true
+            }
+
+  - id: encoding/json.Decoder.refill
+    join-point:
+      all-of:
+        - import-path: encoding/json
+        - function-body:
+            function:
+              - receiver: "*encoding/json.Decoder"
+              - name: refill
+    advice:
+      - prepend-statements:
+          template: |-
+            if __dd_iast_live() {
+              return __dd_iast_json_refill({{ .Function.Receiver }})
+            }
+
+  - id: encoding/json.decodeState.valueQuoted
+    join-point:
+      all-of:
+        - import-path: encoding/json
+        - function-body:
+            function:
+              - receiver: "*encoding/json.decodeState"
+              - name: valueQuoted
+    advice:
+      - prepend-statements:
+          template: |-
+            {{- $d := .Function.Receiver -}}
+            if __dd_iast_live() {
+              if {{ $d }}.__dd_iast_bypass {
+                {{ $d }}.__dd_iast_bypass = false
+              } else {
+                return __dd_iast_json_valueQuoted({{ $d }})
+              }
+            }
+
+  - id: encoding/json.decodeState.literalStore
+    join-point:
+      all-of:
+        - import-path: encoding/json
+        - function-body:
+            function:
+              - receiver: "*encoding/json.decodeState"
+              - name: literalStore
+    advice:
+      - prepend-statements:
+          template: |-
+            {{- $d := .Function.Receiver -}}
+            if {{ $d }}.__dd_iast_quoted != "" {
+              __dd_iast_json_quotedItem({{ $d }}, {{ .Function.Argument 0 }}, {{ .Function.Argument 2 }})
+            }
+
+  - id: encoding/json.unquoteBytes
+    join-point:
+      all-of:
+        - import-path: encoding/json
+        - function-body:
+            function:
+              - receiver: false
+              - name: unquoteBytes
+    advice:
+      - prepend-statements:
+          template: |-
+            {{- $s := .Function.Argument 0 -}}
+            if __dd_iast_live() && __dd_iast_anyBytes({{ $s }}) {
+              return __dd_iast_json_unquoteBytes({{ $s }})
+            }

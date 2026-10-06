@@ -130,6 +130,17 @@ func StringToSlice() bool {
 //go:linkname runeDerived __dd_iast_propbridge.runederived
 var runeDerived = runeEntry
 
+// derivedEntry is [Derived] for the propagation hooks in the standard
+// library (iast/propagation/*). These hooks cannot import this package (an
+// import or a link from the standard library breaks go test of a package
+// with in-package tests under Orchestrion), so they read this variable with
+// a pull linkname. The value is static data (a top-level function), so it is
+// set before any init function runs. When this package is not linked, the
+// variable of the hooks is nil and they do not call it.
+//
+//go:linkname derivedEntry __dd_iast_propbridge.derived
+var derivedEntry = Derived
+
 // pointer changes an address of the caller into a pointer. It reads the
 // bits of u as a pointer (not a uintptr conversion, which checkptr refuses
 // for an address without an original pointer). The caller guarantees that
