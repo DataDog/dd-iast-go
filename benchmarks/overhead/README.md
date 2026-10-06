@@ -30,7 +30,7 @@ The active variant differs only for the `HeapBits` workloads, which then
 taint data with the allocator-backed taint bits. The runner validates the
 variants, executes independent processes in a rotating order, and writes
 `control.txt`, `iast.txt`, `active.txt`, `comparison.txt` (three columns),
-`gate.txt`, and `metadata.txt` to a temporary directory. Use `-outputdir` to
+`gate.txt`, `gate.tsv`, and `metadata.txt` to a temporary directory. Use `-outputdir` to
 retain them at a known path.
 
 Useful controls use the same names as `go test` where the concepts overlap:
@@ -42,7 +42,16 @@ Useful controls use the same names as `go test` where the concepts overlap:
 | `-cpu` | `1` | One fixed positive `GOMAXPROCS` and `-test.cpu` value |
 | `-bench` | `.` | Benchmark selection expression |
 | `-outputdir` | temporary | Artifact directory |
-| `-gate` | `false` | Fail when a `HeapBits` regression gate fails |
+| `-sampling` | `100` | `DD_IAST_REQUEST_SAMPLING` value from 0 to 100 |
+| `-gate` | `false` | Fail when a regression gate fails |
+| `-builddir` | temporary | Keep the build in a directory; a later run with the same directory reuses the binaries (same source only) |
+| `-rotation` | `0` | Start the rotation of the variants `n` samples later (for a driver that runs one sample at a time) |
+| `-evaluate` | `false` | Build and run nothing: compare the results of `-outputdir` and write `comparison.txt`, `gate.txt` and `gate.tsv` |
+
+The variable `DD_IAST_BENCH_TAINT_LIVE=1` selects the "taint live elsewhere"
+variant: a request that holds a tainted value stays active during the whole
+process, while the workloads run (see `support_test.go`). The runner passes
+the variable to the benchmark processes and records it in `metadata.txt`.
 
 Unlike `go test -count`, every runner sample starts a fresh process so global
 IAST state cannot survive between repetitions. The runner's `-cpu` flag accepts
@@ -72,6 +81,20 @@ go -C benchmarks/overhead run ./runner -count=2 -benchtime=100ms
 - `RequestProcessingParallel` reports aggregate throughput under controlled
   contention. Its `ns/op` should not be interpreted as individual request
   latency.
+- `Strings*`, `Bytes*`, `Fmt*`, `URL*` and `Strconv*` (21 workloads) and
+  `BytesBufferCopies/*` run the propagation hooks of the standard library with
+  no request, or with no tainted value (gate G-A3).
+- `PropagationActiveUntainted/*` run propagation hooks in an active request
+  that has no tainted value (gate G-A4; needs `-sampling=100`).
+- `ConcatChainHeap` and `ConcatChainStack` run a maximal `a+b+c+d` chain with
+  no request (gate G-A5: same allocations).
+- `SinkSQL/*` and `SinkCommand/*` send a tainted query parameter through
+  propagation shapes (`tainted`, `taintedConcat`, `taintedBuilder`,
+  `taintedSprintf`) to `database/sql` and `os/exec` sinks in a sampled
+  request. `sinks_validation_test.go` checks that each tainted call gives
+  exactly 1 vulnerability. There is no gate: the numbers are for the record.
+  Note that one request keeps at most `DD_IAST_VULNERABILITIES_PER_REQUEST`
+  findings: the timed loop measures the sink check and the dropped report.
 - `HeapBitsAllocChurn`, `HeapBitsGC` and `HeapBitsJSON` measure the
   allocator-backed taint bits (`internal/taint/heapbits`): allocation churn,
   a full GC of a heap with 1 Mi live objects, and JSON decoding and encoding.
@@ -80,8 +103,27 @@ go -C benchmarks/overhead run ./runner -count=2 -benchtime=100ms
 
 ## Regression gates
 
-`gate.txt` reports two gates for the `HeapBits` workloads (plan
-`_docs/plans/allocator-taint-bits.md`, section 7.2):
+`gate.txt` reports the following gates. They are informative, unless `-gate`
+is set. `gate.tsv` has the numbers of the G-A gates, one line for each
+workload (tab-separated).
+
+| Gate | Workloads | Compare | Limit |
+|---|---|---|---|
+| G-A1 | `HTTPRoundTrip`, `-sampling=0` | control, IAST | +3.70 % (+6 % with `DD_IAST_BENCH_GATE_PROFILE=ci`) |
+| G-A2 | `HTTPRoundTrip`, `-sampling=100` | control, IAST | none (record) |
+| G-A3 | `Strings*`, `Bytes*`, `Fmt*`, `URL*`, `Strconv*` | control, IAST | under 80 ns: +4 ns; else +5 %; +0 allocations |
+| G-A4 | `PropagationActiveUntainted/*`, `-sampling=100` | control, IAST | same as G-A3 |
+| G-A5 | `ConcatChain*` | control, IAST | +0 allocations |
+| G-C | `HeapBits*` | see below | see below |
+
+The gates G-A1 to G-A5 are those of PR #39. The estimate is the difference of
+the medians. For G-A3 and G-A4, the 95 % one-sided paired-bootstrap upper
+bound of the difference must also pass. The samples of the two variants are
+paired by position (the runner runs both variants in each round). G-A1 gates
+the estimate only. A gate that does not apply to the sampling is `N/A`.
+
+The gates G-C (plan `_docs/plans/allocator-taint-bits.md`, section 7.2) use
+only the `HeapBits` workloads:
 
 - IAST (the woven runtime hooks, with no taint) against control: no
   significant increase of `sec/op` greater than 2%;
@@ -89,17 +131,17 @@ go -C benchmarks/overhead run ./runner -count=2 -benchtime=100ms
   10%, for `sec/op` and for `stw-p99-ns` (the 99th percentile of the wait to
   stop the world, at the resolution of the runtime histogram).
 
-The gates use only the `HeapBits` workloads: the other workloads of the IAST
-variant also run IAST detections (for example `WeakHash*`), which cost more
-by design.
+The other workloads of the IAST variant also run IAST detections (for example
+`WeakHash*`), which cost more by design.
 
-Without `-gate`, the report is informative. Use `-gate` with enough samples
-(for example `-count=10`; at least 4, because with fewer samples `benchstat`
-never finds a significant difference) on a stable machine. With `-gate`, a gate whose
-workloads the `-bench` expression does not select (`SKIP`) also fails.
+Use `-gate` with enough samples (for example `-count=10`; at least 4, because
+with fewer samples `benchstat` never finds a significant difference) on a
+stable machine. With `-gate`, a gate whose workloads the `-bench` expression
+does not select (`SKIP`) also fails.
 
-Each workload reports `ns/op`, `B/op`, and `allocs/op`. The runner uses
-`benchstat` to compare distributions. Prefer its confidence intervals over a
-single percentage, and do not compare results collected on different machines.
-Shared CI runners are useful for diagnostics but too noisy for hard regression
-thresholds; use longer runs on a stable machine when investigating a change.
+## Runtime hooks harness
+
+`.github/runtime-bench.sh` and `.github/runtime-bench.py` measure the runtime
+hooks (`iast/runtime/bench_test.go`) in woven builds with and without the
+hooks (gate group G-B, profiles `local` and `ci`). See the header of
+`.github/runtime-bench.sh`.

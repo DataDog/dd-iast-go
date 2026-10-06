@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -25,7 +26,7 @@ func TestParseFlags(t *testing.T) {
 	}{
 		{
 			name: "defaults",
-			want: options{count: 10, benchtime: "500ms", cpu: 1, benchmark: "."},
+			want: options{count: 10, benchtime: "500ms", cpu: 1, benchmark: ".", sampling: 100},
 		},
 		{
 			name: "overrides",
@@ -34,17 +35,26 @@ func TestParseFlags(t *testing.T) {
 				"-count=3",
 				"-benchtime=2s",
 				"-cpu=4",
+				"-sampling=0",
 				"-bench=Hash/.+",
 			},
-			want: options{outputDir: "results", count: 3, benchtime: "2s", cpu: 4, benchmark: "Hash/.+"},
+			want: options{outputDir: "results", count: 3, benchtime: "2s", cpu: 4, benchmark: "Hash/.+", sampling: 0},
 		},
 		{
 			name:      "iteration benchtime",
 			arguments: []string{"-benchtime=100x"},
-			want:      options{count: 10, benchtime: "100x", cpu: 1, benchmark: "."},
+			want:      options{count: 10, benchtime: "100x", cpu: 1, benchmark: ".", sampling: 100},
 		},
 		{name: "positional argument", arguments: []string{"extra"}, wantError: "unexpected positional arguments"},
 		{name: "zero count", arguments: []string{"-count=0"}, wantError: "-count must be a single positive integer"},
+		{
+			name:      "driver flags",
+			arguments: []string{"-builddir=/tmp/b", "-rotation=2"},
+			want:      options{count: 10, benchtime: "500ms", cpu: 1, benchmark: ".", sampling: 100, buildDir: "/tmp/b", rotation: 2},
+		},
+		{name: "negative rotation", arguments: []string{"-rotation=-1"}, wantError: "-rotation must be a single non-negative integer"},
+		{name: "negative sampling", arguments: []string{"-sampling=-1"}, wantError: "-sampling must be an integer from 0 to 100"},
+		{name: "high sampling", arguments: []string{"-sampling=101"}, wantError: "-sampling must be an integer from 0 to 100"},
 		{name: "gate with few samples", arguments: []string{"-gate", "-count=3"}, wantError: "-gate needs -count=4 or more, got 3"},
 		{name: "invalid count", arguments: []string{"-count=many"}, wantError: "-count must be a single positive integer"},
 		{name: "zero CPU", arguments: []string{"-cpu=0"}, wantError: "-cpu must be a single positive integer"},
@@ -57,10 +67,10 @@ func TestParseFlags(t *testing.T) {
 		{name: "invalid benchmark", arguments: []string{"-bench=["}, wantError: "invalid -bench expression"},
 		{name: "invalid benchmark element", arguments: []string{"-bench=A/*"}, wantError: "invalid -bench expression"},
 		{name: "invalid benchmark alternative", arguments: []string{"-bench=[]|[a]"}, wantError: `invalid -bench expression "[]"`},
-		{name: "benchmark character class slash", arguments: []string{"-bench=[/]"}, want: options{count: 10, benchtime: "500ms", cpu: 1, benchmark: "[/]"}},
-		{name: "benchmark parenthesized slash", arguments: []string{"-bench=(A/B)"}, want: options{count: 10, benchtime: "500ms", cpu: 1, benchmark: "(A/B)"}},
-		{name: "benchmark character class pipe", arguments: []string{"-bench=[|]"}, want: options{count: 10, benchtime: "500ms", cpu: 1, benchmark: "[|]"}},
-		{name: "benchmark parenthesized pipe", arguments: []string{"-bench=(A|B)"}, want: options{count: 10, benchtime: "500ms", cpu: 1, benchmark: "(A|B)"}},
+		{name: "benchmark character class slash", arguments: []string{"-bench=[/]"}, want: options{count: 10, benchtime: "500ms", cpu: 1, benchmark: "[/]", sampling: 100}},
+		{name: "benchmark parenthesized slash", arguments: []string{"-bench=(A/B)"}, want: options{count: 10, benchtime: "500ms", cpu: 1, benchmark: "(A/B)", sampling: 100}},
+		{name: "benchmark character class pipe", arguments: []string{"-bench=[|]"}, want: options{count: 10, benchtime: "500ms", cpu: 1, benchmark: "[|]", sampling: 100}},
+		{name: "benchmark parenthesized pipe", arguments: []string{"-bench=(A|B)"}, want: options{count: 10, benchtime: "500ms", cpu: 1, benchmark: "(A|B)", sampling: 100}},
 		{name: "unknown flag", arguments: []string{"-unknown"}, wantError: "flag provided but not defined"},
 	}
 
@@ -83,6 +93,34 @@ func TestParseFlags(t *testing.T) {
 	}
 }
 
+func TestParseFlagsPreservesNumberErrors(t *testing.T) {
+	for _, flag := range []string{"count", "cpu", "sampling", "benchtime"} {
+		for _, value := range []string{"many", "999999999999999999999999999999"} {
+			argument := "-" + flag + "=" + value
+			if flag == "benchtime" {
+				argument += "x"
+			}
+			t.Run(argument, func(t *testing.T) {
+				_, err := parseFlags([]string{argument})
+				var numberError *strconv.NumError
+				if !errors.As(err, &numberError) {
+					t.Fatalf("parseFlags(%q) error = %v, want a wrapped strconv.NumError", argument, err)
+				}
+				if !strings.Contains(err.Error(), numberError.Error()) {
+					t.Fatalf("error %q does not include the parse error %q", err, numberError)
+				}
+			})
+		}
+	}
+}
+
+func TestParseFlagsReportsDurationErrors(t *testing.T) {
+	_, err := parseFlags([]string{"-benchtime=1fortnight"})
+	if err == nil || !strings.Contains(err.Error(), `unknown unit "fortnight"`) {
+		t.Fatalf("parseFlags() error = %v, want the duration parse error", err)
+	}
+}
+
 func TestHelp(t *testing.T) {
 	if _, err := parseFlags([]string{"-help"}); !errors.Is(err, flag.ErrHelp) {
 		t.Fatalf("parseFlags(-help) error = %v, want flag.ErrHelp", err)
@@ -92,7 +130,7 @@ func TestHelp(t *testing.T) {
 	if strings.Contains(usage.String(), "`") {
 		t.Fatalf("usage contains a stray backtick:\n%s", usage.String())
 	}
-	for _, name := range []string{"-bench", "-benchtime", "-count", "-cpu", "-outputdir"} {
+	for _, name := range []string{"-bench", "-benchtime", "-count", "-cpu", "-outputdir", "-sampling", "-builddir", "-rotation"} {
 		if !strings.Contains(usage.String(), name) {
 			t.Errorf("usage does not contain %q:\n%s", name, usage.String())
 		}
@@ -251,5 +289,81 @@ HeapBitsGC,100,0%,200,0%,+100.00%,p=0.000 n=10
 	custom, err := evaluateGate(gateRule{name: "B/op", prefix: "HeapBitsGC", unit: "B/op", maxIncrease: 10}, output)
 	if err != nil || len(custom) != 1 || custom[0].pass {
 		t.Errorf("the B/op table must be used for unit B/op: %+v, %v", custom, err)
+	}
+}
+
+func TestParseSample(t *testing.T) {
+	name, sample, ok := parseSample("BenchmarkPropagationActiveUntainted/StringWindow-1   \t 1000000\t        12.5 ns/op\t       0 B/op\t       2 allocs/op")
+	if !ok || name != "PropagationActiveUntainted/StringWindow" || sample.ns != 12.5 || !sample.hasAllocs || sample.allocs != 2 {
+		t.Fatalf("parseSample = %q, %+v, %v", name, sample, ok)
+	}
+	for _, line := range []string{"goos: darwin", "PASS", "BenchmarkX-1 notanumber 1 ns/op", "BenchmarkX-1 10 1 B/op"} {
+		if _, _, ok := parseSample(line); ok {
+			t.Errorf("parseSample(%q) must fail", line)
+		}
+	}
+}
+
+func TestEvaluatePaired(t *testing.T) {
+	series := func(values ...float64) []benchSample {
+		out := make([]benchSample, len(values))
+		for i, v := range values {
+			out[i] = benchSample{ns: v, hasAllocs: true}
+		}
+		return out
+	}
+	small := pairedRule{name: "small", kind: limitSmall, allocs: true}
+	// 10 ns, +1 ns: pass.
+	d := comparePaired(series(10, 10, 10, 10, 10), series(11, 11, 11, 11, 11))
+	if r := evaluatePaired(small, "X", d, "local"); !r.pass || r.info {
+		t.Errorf("+1 ns under 80 ns must pass: %+v", r)
+	}
+	// 10 ns, +6 ns: fail.
+	d = comparePaired(series(10, 10, 10, 10, 10), series(16, 16, 16, 16, 16))
+	if r := evaluatePaired(small, "X", d, "local"); r.pass {
+		t.Errorf("+6 ns under 80 ns must fail: %+v", r)
+	}
+	// 100 ns, +4 ns is +4 %: pass. +8 ns: fail.
+	d = comparePaired(series(100, 100, 100, 100), series(104, 104, 104, 104))
+	if r := evaluatePaired(small, "X", d, "local"); !r.pass {
+		t.Errorf("+4 %% at 100 ns must pass: %+v", r)
+	}
+	d = comparePaired(series(100, 100, 100, 100), series(108, 108, 108, 108))
+	if r := evaluatePaired(small, "X", d, "local"); r.pass {
+		t.Errorf("+8 %% at 100 ns must fail: %+v", r)
+	}
+	// One more allocation fails whatever the time.
+	more := series(10, 10, 10, 10)
+	for i := range more {
+		more[i].allocs = 1
+	}
+	d = comparePaired(series(10, 10, 10, 10), more)
+	if r := evaluatePaired(small, "X", d, "local"); r.pass {
+		t.Errorf("+1 alloc must fail: %+v", r)
+	}
+	// A noisy pair set: the estimate passes but the upper bound does not.
+	d = comparePaired(series(10, 10, 10, 10, 10, 10), series(10, 10, 10, 18, 18, 18))
+	if d.upper <= smallLimitNs || d.estimate > smallLimitNs {
+		t.Errorf("expected estimate <= %g < upper, got %+v", smallLimitNs, d)
+	}
+	if r := evaluatePaired(small, "X", d, "local"); r.pass {
+		t.Errorf("upper bound over the limit must fail: %+v", r)
+	}
+	// G-A1 uses the profile and the estimate.
+	http := pairedRule{name: "http", kind: limitHTTP}
+	d = comparePaired(series(1000, 1000, 1000, 1000), series(1050, 1050, 1050, 1050))
+	if r := evaluatePaired(http, "HTTPRoundTrip", d, "local"); r.pass {
+		t.Errorf("+5 %% must fail the local profile: %+v", r)
+	}
+	if r := evaluatePaired(http, "HTTPRoundTrip", d, "ci"); !r.pass {
+		t.Errorf("+5 %% must pass the ci profile: %+v", r)
+	}
+	// Record only.
+	info := pairedRule{name: "info", kind: limitNone}
+	if r := evaluatePaired(info, "HTTPRoundTrip", d, "local"); !r.info || !r.pass {
+		t.Errorf("record-only rule: %+v", r)
+	}
+	if _, failed := formatGateReport([]gateResult{{rule: "r", benchmark: "b", info: true, pass: true}, {rule: "r", benchmark: "b", na: true, pass: true}}, true); failed {
+		t.Error("INFO and N/A rows must not fail an enforced report")
 	}
 }
