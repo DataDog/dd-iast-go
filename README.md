@@ -135,7 +135,8 @@ Operation | Same memory? | Taint of the result
 ---|:---:|---
 `s[i:j]`, `b[i:j]` | Yes | Same bits (tainted where the source is tainted)
 `[]byte(s)` that the compiler makes without a copy | Yes | Same bits
-`copy(dst, src)`, `string(b)` that allocates, concatenation | No | Not tainted (only `heapbits.Copy` copies the bits)
+`copy(dst, src)`, the appended part of `append(x, y...)` | No | Not tainted (only `heapbits.Copy` copies the bits)
+`string(b)` that allocates, `[]byte(s)`, `[]rune(s)`, `string(runes)`, concatenation, old elements of a growing `append` | No | With the runtime hooks of `iast/runtime` (`iast/runtime/orchestrion.yml`): the hooks copy the bits (a rune is tainted when one of its bytes is tainted). Without them: not tainted
 Stack values, global variables, read-only data | Not heap | Never tainted (`Set` refuses them)
 
 #### Where the bits are stored: slabs, chunks and the budget
@@ -251,17 +252,18 @@ Environment variable | Type | Default | Description
 ---|---|---:|---
 `DD_IAST_ENABLED` | Boolean | `true` | Enables IAST.
 `DD_IAST_REQUEST_SAMPLING` | Integer from `0` to `100` | `30` | Percentage of requests sampled for IAST analysis.
-`DD_IAST_MAX_CONCURRENT_REQUESTS` | Non-negative integer | `2` | Maximum number of requests that IAST processes concurrently.
+`DD_IAST_MAX_CONCURRENT_REQUESTS` | Integer from `0` to `64` | `2` | Maximum number of requests that IAST processes concurrently.
 `DD_IAST_VULNERABILITIES_PER_REQUEST` | Integer greater than or equal to `1` | `2` | Maximum number of vulnerabilities reported for one request.
 `DD_IAST_DEDUPLICATION_ENABLED` | Boolean | `true` | Enables vulnerability deduplication.
 `DD_IAST_REDACTION_ENABLED` | Boolean | `true` | Enables sensitive data redaction.
 `DD_IAST_REDACTION_NAME_PATTERN` | `regexp` regular expression | Sensible built-in pattern | Pattern used to identify source names that must be redacted.
 `DD_IAST_REDACTION_VALUE_PATTERN` | `regexp` regular expression | Sensible built-in pattern | Pattern used to identify source values that must be redacted.
 `DD_IAST_TRUNCATION_MAX_VALUE` | Non-negative integer | `250` | Maximum number of Unicode characters retained before truncating source values, vulnerability evidence, redacted patterns, and individual evidence value parts.
-`DD_IAST_MAX_RANGE_COUNT` | Non-negative integer | `10` | Maximum number of taint ranges retained for one value.
+`DD_IAST_MAX_RANGE_COUNT` | Integer from `1` to `64` | `10` | Maximum number of source-attributed taint ranges reported for one value. When a value has more, its remaining tainted bytes are redacted in the evidence.
 `DD_IAST_TELEMETRY_VERBOSITY` | `OFF`, `MANDATORY`, `INFORMATION`, or `DEBUG` | `INFORMATION` | Sets IAST telemetry verbosity.
 `DD_IAST_DB_ROWS_TO_TAINT` | Non-negative integer | `1` | Number of database rows tainted for each request.
 `DD_IAST_STACK_TRACE_ENABLED` | Boolean | `true` | Includes stack traces in vulnerability reports.
+`DD_IAST_STRING_TO_SLICE_PROPAGATION_ENABLED` | Boolean | `true` | Propagates taint from a string to the result of `[]byte(s)` and `[]rune(s)`. Writes into these results are not tracked, so their taint can be stale.
 
 > [!NOTE]
 > Boolean values are parsed using [`strconv.ParseBool`](https://pkg.go.dev/strconv#ParseBool),
