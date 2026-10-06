@@ -27,7 +27,8 @@ Many of the functionality provided by this module relies on taint tracking:
 
 > [!NOTE]
 > This storage is in the internal package `internal/taint/heapbits`. The
-> `taint` package and all the instrumentation of `iast` use it.
+> `taint` package and the taint tracking instrumentation of `iast` (sources,
+> propagation, SQL and command injection sinks) use it.
 
 The quick check "does this value have taint?" must be cheap, because it runs
 on hot paths of the application. To make it cheap, the module keeps **one
@@ -351,6 +352,8 @@ Package | Sink | Vulnerability
 - **Go version.** The hooks depend on the code of the standard library of
   Go 1.26 and 1.27. With `GOEXPERIMENT=jsonv2` (the default of Go 1.27), the
   `encoding/json` v1 hooks do not apply, and `iast/propagation/jsonv2` applies.
+  JSON v2 propagation is supported on Go 1.27 only: on Go 1.26 with
+  `GOEXPERIMENT=jsonv2`, escaped JSON strings lose their taint.
 
 ### Integration Packages
 

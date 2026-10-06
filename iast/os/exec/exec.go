@@ -47,9 +47,10 @@ var commandSkip = vulnerability.SkipWhile{
 // shields callback panics so this function cannot replace a host result.
 func Report(ctx context.Context, argv []string) {
 	telemetry.ExecutedSink.CommandInjection.Add(1)
-	if !mayContainArgument(argv) {
+	if !mayContainArgument(argv) || !vulnerability.TryAcquireReport() {
 		return
 	}
+	defer vulnerability.ReleaseReport()
 	analysis := redaction.AnalyzeCommand(argv)
 	value := analysis.Value
 	if analysis.Status != redaction.AnalysisOK {

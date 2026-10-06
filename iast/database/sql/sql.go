@@ -34,6 +34,12 @@ var sqlSkip = vulnerability.SkipWhile{
 func Report(ctx context.Context, query string, kind sqlbridge.Kind) {
 	_ = kind
 	telemetry.ExecutedSink.SqlInjection.Add(1)
+	// The cheap value gate comes before the shared report permit, so clean
+	// queries do not write the shared counter.
+	if !evidence.MayCollectString(query) || !vulnerability.TryAcquireReport() {
+		return
+	}
+	defer vulnerability.ReleaseReport()
 	snapshot, status := vulnerability.CollectString(ctx, query, constants.VulnerabilityTypeSqlInjection)
 	if status != evidence.StatusCollected {
 		return

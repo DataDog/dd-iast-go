@@ -142,7 +142,9 @@ func TaintString[T ~string](ctx context.Context, source Source, value T) T {
 // returns it. The source value is a copy, which does not change when value
 // is changed. The taint is set in place when possible; else TaintBytes
 // returns a tainted heap clone with the same length and capacity. It returns
-// value unchanged under the same drop conditions as TaintString.
+// value unchanged under the same drop conditions as TaintString, and also
+// when a clone is necessary but cap(value) is more than 64 KiB (the clone
+// must keep the capacity, and a larger clone is not bounded).
 //
 // The taint describes the memory: after a write into the returned value,
 // the changed bytes stay tainted, but a report attributes them to the source

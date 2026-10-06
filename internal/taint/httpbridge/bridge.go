@@ -68,11 +68,13 @@ func RegisterLazy(
 // Begin starts a server request scope unless this is a connection-level h2c
 // preface or upgrade. A missing callback is a disabled no-op.
 func Begin(ctx context.Context, method, requestURI string, headers map[string][]string) (context.Context, bool) {
-	if method == "PRI" && requestURI == "*" || isH2CUpgrade(headers) {
-		return ctx, false
-	}
+	// The callback check comes first: when IAST is disabled, the headers are
+	// not read.
 	callback := registered.Load()
 	if callback == nil {
+		return ctx, false
+	}
+	if method == "PRI" && requestURI == "*" || isH2CUpgrade(headers) {
 		return ctx, false
 	}
 	return callback.begin(ctx)
@@ -215,7 +217,13 @@ func isH2CUpgrade(headers map[string][]string) bool {
 	if !headerHasToken(headers["Upgrade"], "h2c") || !headerHasToken(headers["Connection"], "upgrade") || !headerHasToken(headers["Connection"], "http2-settings") {
 		return false
 	}
-	for _, value := range headers["Http2-Settings"] {
+	size := 0
+	for i, value := range headers["Http2-Settings"] {
+		// The same bounds as headerHasToken: a real HTTP2-Settings header is
+		// one short value.
+		if size += len(value); size > maxHeaderBytes || i >= maxHeaderTokens {
+			return false
+		}
 		if strings.TrimSpace(value) != "" {
 			return true
 		}
@@ -223,9 +231,31 @@ func isH2CUpgrade(headers map[string][]string) bool {
 	return false
 }
 
+// maxHeaderBytes and maxHeaderTokens bound the work of headerHasToken for
+// one header name. The header values come from the client, so an unbounded
+// scan would let a request with a very long header add CPU work to every
+// request. A real h2c upgrade request has short Upgrade and Connection
+// headers.
+const (
+	maxHeaderBytes  = 256
+	maxHeaderTokens = 32
+)
+
+// headerHasToken reports whether values contain want as a comma-separated
+// token. When the header is longer than maxHeaderBytes or has more than
+// maxHeaderTokens tokens, it stops and reports false: such a request is not
+// a real h2c upgrade, and it is analyzed normally (as in PR #39), with
+// bounded work.
 func headerHasToken(values []string, want string) bool {
+	size, tokens := 0, 0
 	for _, value := range values {
+		if size += len(value); size > maxHeaderBytes {
+			return false
+		}
 		for token := range strings.SplitSeq(value, ",") {
+			if tokens++; tokens > maxHeaderTokens {
+				return false
+			}
 			if strings.EqualFold(strings.TrimSpace(token), want) {
 				return true
 			}
