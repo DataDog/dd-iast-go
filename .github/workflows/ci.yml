@@ -79,6 +79,18 @@ jobs:
             -coverpkg=./... \
             -coverprofile=coverage-woven.txt \
             ./...
+      - name: Runtime hooks system-stack and M state tests
+        # The tests pull runtime.systemstack and runtime.acquirem with
+        # test-only linknames: they need a build tag and -checklinkname=0.
+        # A tag that selects no file gives "[no test files]" and exit 0, so
+        # the step requires the pass line of each test.
+        run: |
+          go tool orchestrion go test -count=1 -v \
+            -tags iast_g0test -ldflags=-checklinkname=0 \
+            -run '^(TestSystemStackSkipsHook|TestMStateSkipsHook)$' \
+            ./iast/runtime/internal/g0test | tee g0test.log
+          grep -q -- '--- PASS: TestSystemStackSkipsHook' g0test.log
+          grep -q -- '--- PASS: TestMStateSkipsHook' g0test.log
       - name: Unit Tests (not woven)
         # The code for a runtime without the Orchestrion aspects (for
         # example the "feature off" paths of internal/taint/heapbits) runs
@@ -256,6 +268,41 @@ jobs:
           esac
           go tool orchestrion go test "${args[@]}" ./internal/taint/heapbits/...
 
+  runtime-race:
+    # Woven tests of the runtime hooks, of the request owners and of the
+    # public taint API with the race detector: these packages run concurrent
+    # hooks, owner accesses and callbacks. The -short flag only skips the
+    # build tests of iast/runtime (they build the runtime again; the test job
+    # runs them).
+    name: Runtime hooks race tests (${{ matrix.go }}, ${{ matrix.runner }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        go: [oldstable, stable]
+        runner: [ubuntu-latest, ubuntu-24.04-arm]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Setup Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ matrix.go }}
+      - name: Woven race tests
+        env:
+          # Test the Go version of the cell: no automatic toolchain switch.
+          GOTOOLCHAIN: local
+          # A test that needs the woven runtime fails instead of a skip.
+          DD_IAST_REQUIRE_WOVEN: '1'
+        run: |
+          go version
+          go tool orchestrion go test -race -short -shuffle=on -count=1 \
+            ./iast/runtime/... \
+            ./internal/taint/request \
+            ./internal/taint/propbridge \
+            ./taint
+
   heapbits-feature-off:
     # The woven runtime must compile on every target, with the feature off
     # where it is not supported (plan section 3.5).
@@ -340,7 +387,7 @@ jobs:
   green-ci:
     runs-on: ubuntu-latest
     name: Green CI
-    needs: [validate-licenses, lint, test, upload-coverage, benchmark, heapbits, heapbits-feature-off]
+    needs: [validate-licenses, lint, test, upload-coverage, benchmark, heapbits, runtime-race, heapbits-feature-off]
     if: always()
     steps:
       - name: Success
@@ -351,6 +398,7 @@ jobs:
           && needs.upload-coverage.result == 'success'
           && needs.benchmark.result       == 'success'
           && needs.heapbits.result        == 'success'
+          && needs['runtime-race'].result == 'success'
           && needs['heapbits-feature-off'].result == 'success'
         run: echo "Success!"
       - name: Failure
@@ -361,5 +409,6 @@ jobs:
           || needs.upload-coverage.result != 'success'
           || needs.benchmark.result       != 'success'
           || needs.heapbits.result        != 'success'
+          || needs['runtime-race'].result != 'success'
           || needs['heapbits-feature-off'].result != 'success'
         run: echo "Failure!" && exit 1

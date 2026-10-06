@@ -14,6 +14,7 @@ import (
 
 	_ "github.com/DataDog/dd-iast-go/iast/crypto/cipher"      // integration
 	_ "github.com/DataDog/dd-iast-go/iast/crypto/hash"        // integration
+	_ "github.com/DataDog/dd-iast-go/iast/runtime"            // integration
 	_ "github.com/DataDog/dd-iast-go/internal/spans"          // integration
 	_ "github.com/DataDog/dd-iast-go/internal/taint/heapbits" // integration
 	_ "github.com/DataDog/dd-iast-go/taint"                   // integration

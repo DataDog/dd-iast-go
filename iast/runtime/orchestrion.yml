@@ -1,0 +1,855 @@
+# Unless explicitly stated otherwise all files in this repository are licensed
+# under the Apache License Version 2.0.
+# This product includes software developed at Datadog (https://www.datadoghq.com/).
+# Copyright 2026-present Datadog, Inc.
+---
+# $schema: https://datadoghq.dev/orchestrion/schema.json
+meta:
+  name: github.com/DataDog/dd-iast-go/iast/runtime
+  description: >-
+    Taint propagation hooks in the Go runtime for string concatenation, for the
+    string, []byte and []rune conversions, and for the copy of the old elements
+    when append grows a slice. The hooks copy the heap taint bits of
+    internal/taint/heapbits. They do not change the application source code, so
+    the evaluation of the application code does not change.
+
+# How the hooks work (plan heapbits-sqli-cmdi, section 5.2: the "variant D"
+# template of PR #39, with direct calls to the heap taint bits):
+#
+#  1. The prepended code of each hooked runtime function reads the sticky gate
+#     word of the heap taint bits (__dd_taint_gate.seen) with one atomic load.
+#     When the gate is 0, no byte of the heap is tainted: the original body
+#     runs. This is the only added work when no taint was ever set.
+#  2. When the gate is not 0, the code reads the bypass token of the current
+#     goroutine. A token of 1 is the inner call of a wrapper: the code clears
+#     the token and runs the original body.
+#  3. Else the code calls the nosplit context check __dd_iast_ok(). When it is
+#     false (system stack, runtime lock, allocation in progress, or a rune
+#     callback on this goroutine), the original body runs directly. When it is
+#     true, the code calls the filter __dd_iast_<x>_hit. The filter calls
+#     __dd_taint_any for each input, and returns true only when one input is
+#     tainted. Then the code returns the result of the wrapper __dd_iast_<fn>.
+#     When the filter returns false (the clean path), the original body runs
+#     directly. Exception: slicerunetostring calls its filter in its wrapper
+#     (see the wrapper).
+#     The filter returns its arguments unchanged, and the code stores them in
+#     the arguments of the function. Thus no argument is live across the call,
+#     and the compiler does not spill the arguments at the entry of the
+#     function (that is, also on the gate-off path).
+#  4. The wrapper sets the token, calls the original function through the alias
+#     __dd_iast_orig_<fn> with buf == nil (the result goes to the heap, where
+#     it can have taint bits), clears the token, and copies the bits of the
+#     inputs to the result.
+#  5. growsliceBuf has no wrapper: when the old elements are tainted, it calls
+#     growslice (heap). The growslice hook then copies the bits.
+#
+# The gate is sticky: it never goes back to 0. Thus the inner call sees the
+# gate on, as the outer call did, and it reads and clears the token at its
+# entry, before its body can panic. One exception: in []byte(s) and []rune(s),
+# the string-to-slice switch is read before the token. When the switch goes off
+# between the outer and the inner call, the inner call does not read the
+# token, and the wrapper clears it after the inner call. Only when the inner
+# body also panics in this window, the token stays 1: then the next hooked call
+# on the goroutine runs without hook (one missed propagation, never a crash).
+#
+# Rules (do not change them without the escape comparison, the frame
+# comparison and the system-stack test, plan section 5.2):
+#
+#  - The wrapper calls the original function only through its body-less alias.
+#    A direct call changes the escape tags of the runtime function.
+#  - The alias and the wrapper have no other call site.
+#  - Three assignments to one func type check the signature of the original
+#    function, of the alias and of the wrapper at compile time.
+#  - The filters and the wrappers are not inlined: inlined code would make the
+#    frame of the hooked function larger (also for the gate-off path). The
+#    hooked functions call the filters through body-less //go:noescape
+#    declarations (see the filters).
+#  - The frame of a hooked function can be a few words larger (the returned
+#    arguments get new stack slots), but its prologue must not change: no new
+#    spill before the gate check, and no frame above the small-frame limit
+#    (128 bytes) when it was under it (TestFramesUnchanged).
+#  - The string-to-slice switch is a nested if, so that the gate-off path is
+#    one load and one branch.
+#  - The hooks only use the bit functions (no concatenation, conversion or
+#    append): they cannot call a hooked function again. The only call to code
+#    outside the runtime is the rune callback of propbridge (hooks of
+#    []rune(s) and string(runes)), with the guard __dd_iast_in_hook set.
+#
+# Keep the declarations aspect first and the hook aspects (prepend-statements)
+# last, in this order: the "nohook" build of the runtime benchmark removes
+# all the aspects after the line "  - id: iast-concatstrings".
+
+aspects:
+  - id: iast-runtime-decls
+    join-point:
+      struct-definition: runtime.g
+    advice:
+      - add-struct-field:
+          name: __dd_iast_in_hook
+          type: uint8
+      - add-struct-field:
+          name: __dd_iast_bypass
+          type: uint8
+      - add-struct-field:
+          name: __dd_iast_in_analysis
+          type: uint8
+      - inject-declarations:
+          imports:
+            atomic: internal/runtime/atomic
+            unsafe: unsafe
+          template: |-
+            // The hooks call the bit functions that the aspects of
+            // github.com/DataDog/dd-iast-go/internal/taint/heapbits inject in
+            // the runtime. A build error "undefined: __dd_taint_..." here means
+            // that these aspects are not woven: import
+            // github.com/DataDog/dd-iast-go/internal/taint/heapbits in the
+            // orchestrion.tool.go file of the module (as the root
+            // orchestrion.tool.go of dd-iast-go does). The assignments also
+            // check the signatures of the bit functions.
+            var (
+              __dd_iast_needs_heapbits_gate *uint32 = &__dd_taint_gate.seen
+              _ func(p, n uintptr) bool = __dd_taint_any
+              _ func(p, n uintptr) bool = __dd_taint_set
+              _ func(dst, src, n uintptr) bool = __dd_taint_copy
+              _ func(p, n, from uintptr, want bool) uintptr = __dd_taint_next
+              _ bool = __dd_taint_testing
+            )
+
+            // __dd_iast_s2soff is the string-to-slice switch
+            // (DD_IAST_STRING_TO_SLICE_PROPAGATION_ENABLED): 0 (the default)
+            // propagates the taint of []byte(s) and []rune(s), 1 does not
+            // (the mutable results can keep taint after a direct write that
+            // IAST does not see). Package propbridge stores it. Only atomic
+            // accesses.
+            //
+            //go:linkname __dd_iast_s2soff __dd_iast_propbridge.s2soff
+            var __dd_iast_s2soff uint32
+
+            // __dd_iast_runederived is the rune callback of package
+            // propbridge (nil when propbridge is not linked). The hooks of
+            // []rune(s) (kind 1) and string(runes) (kind 2) call it after they
+            // copied the bits of a tainted input, with the address and the
+            // length in bytes of the result (out) and of the input (in). Both
+            // are heap memory, kept alive until the call returns. The call
+            // runs on the user goroutine, with __dd_iast_in_hook set (the
+            // hooks do nothing during the call). It must not panic.
+            //
+            //go:linkname __dd_iast_runederived __dd_iast_propbridge.runederived
+            var __dd_iast_runederived func(out, outLen, in, inLen uintptr, kind uint8)
+
+            // __dd_iast_guard is the per-goroutine guard of the analysis code
+            // of package propbridge (plan section 6.1 rule 4). enter=true
+            // returns false when the guard is already set, else it sets the
+            // guard and returns true. enter=false clears the guard.
+            //
+            //go:nosplit
+            func __dd_iast_guard(enter bool) bool {
+              gp := getg()
+              if !enter {
+                gp.__dd_iast_in_analysis = 0
+                return true
+              }
+              if gp.__dd_iast_in_analysis != 0 {
+                return false
+              }
+              gp.__dd_iast_in_analysis = 1
+              return true
+            }
+
+            // Exported to package propbridge (push linkname).
+            //go:linkname __dd_iast_api_guard __dd_iast_propbridge.guard
+            var __dd_iast_api_guard = __dd_iast_guard
+
+            // __dd_iast_entries counts the wrapper calls (tainted paths), only
+            // when the program links package heapbits/heapbitstest (tests).
+            var __dd_iast_entries uint64
+
+            func __dd_iast_stats() uint64 {
+              return atomic.Load64(&__dd_iast_entries)
+            }
+
+            // Exported to the tests of iast/runtime (push linkname).
+            //go:linkname __dd_iast_api_stats __dd_iast_runtime.stats
+            var __dd_iast_api_stats = __dd_iast_stats
+
+            //go:nosplit
+            func __dd_iast_count() {
+              if __dd_taint_testing {
+                atomic.Xadd64(&__dd_iast_entries, 1)
+              }
+            }
+
+            //go:nosplit
+            func __dd_iast_ok() bool {
+              gp := getg()
+              mp := gp.m
+              return gp == mp.curg && mp.locks == 0 && mp.mallocing == 0 && mp.preemptoff == "" && gp.__dd_iast_in_hook == 0
+            }
+
+            // __dd_iast_strptr returns the address of the data of s.
+            //
+            //go:nosplit
+            func __dd_iast_strptr(s string) uintptr {
+              return uintptr(unsafe.Pointer(unsafe.StringData(s)))
+            }
+
+            // ---- filters (step 3 of the header) ----
+            //
+            // A filter reads only the taint bits of its inputs. It returns its
+            // arguments unchanged.
+            //
+            // The hooked functions call each filter through a body-less
+            // //go:noescape declaration (__dd_iast_<x>_hit), linked to the
+            // implementation (__dd_iast_<x>_hitimpl). The escape analysis of
+            // the hooked function then does not see that the filter returns
+            // its arguments, and the escape tags of the hooked function do not
+            // change (with the implementation visible, the bufPtr argument of
+            // growsliceBuf leaks to the heap). The filters do not keep their
+            // arguments: the declarations are correct.
+
+            //go:linkname __dd_iast_concat_hit __dd_iast_runtime.concat_hit
+            //go:noescape
+            func __dd_iast_concat_hit(buf *tmpBuf, a []string) (*tmpBuf, []string, bool)
+
+            //go:linkname __dd_iast_concat_hitimpl __dd_iast_runtime.concat_hit
+            //go:noinline
+            func __dd_iast_concat_hitimpl(buf *tmpBuf, a []string) (*tmpBuf, []string, bool) {
+              for _, x := range a {
+                if __dd_taint_any(__dd_iast_strptr(x), uintptr(len(x))) {
+                  return buf, a, true
+                }
+              }
+              return buf, a, false
+            }
+
+            //go:linkname __dd_iast_bytes_hit __dd_iast_runtime.bytes_hit
+            //go:noescape
+            func __dd_iast_bytes_hit(buf *tmpBuf, ptr *byte, n int) (*tmpBuf, *byte, int, bool)
+
+            //go:linkname __dd_iast_bytes_hitimpl __dd_iast_runtime.bytes_hit
+            //go:noinline
+            func __dd_iast_bytes_hitimpl(buf *tmpBuf, ptr *byte, n int) (*tmpBuf, *byte, int, bool) {
+              // A result of 1 byte is static memory (staticuint64s): it
+              // cannot have taint bits.
+              return buf, ptr, n, n > 1 && __dd_taint_any(uintptr(unsafe.Pointer(ptr)), uintptr(n))
+            }
+
+            //go:linkname __dd_iast_str_hit __dd_iast_runtime.str_hit
+            //go:noescape
+            func __dd_iast_str_hit(buf *tmpBuf, s string) (*tmpBuf, string, bool)
+
+            //go:linkname __dd_iast_str_hitimpl __dd_iast_runtime.str_hit
+            //go:noinline
+            func __dd_iast_str_hitimpl(buf *tmpBuf, s string) (*tmpBuf, string, bool) {
+              return buf, s, __dd_taint_any(__dd_iast_strptr(s), uintptr(len(s)))
+            }
+
+            //go:linkname __dd_iast_str_hit_runes __dd_iast_runtime.str_hit_runes
+            //go:noescape
+            func __dd_iast_str_hit_runes(buf *[tmpStringBufSize]rune, s string) (*[tmpStringBufSize]rune, string, bool)
+
+            //go:linkname __dd_iast_str_hit_runesimpl __dd_iast_runtime.str_hit_runes
+            //go:noinline
+            func __dd_iast_str_hit_runesimpl(buf *[tmpStringBufSize]rune, s string) (*[tmpStringBufSize]rune, string, bool) {
+              return buf, s, __dd_taint_any(__dd_iast_strptr(s), uintptr(len(s)))
+            }
+
+            //go:linkname __dd_iast_runes_hit __dd_iast_runtime.runes_hit
+            //go:noescape
+            func __dd_iast_runes_hit(buf *tmpBuf, a []rune) (*tmpBuf, []rune, bool)
+
+            //go:linkname __dd_iast_runes_hitimpl __dd_iast_runtime.runes_hit
+            //go:noinline
+            func __dd_iast_runes_hitimpl(buf *tmpBuf, a []rune) (*tmpBuf, []rune, bool) {
+              return buf, a, __dd_taint_any(uintptr(unsafe.Pointer(unsafe.SliceData(a))), uintptr(len(a))*4)
+            }
+
+            // __dd_iast_grow_hit tells if the old elements of a growing slice
+            // are tainted. Only element types without pointers have taint
+            // bits.
+            //
+            //go:linkname __dd_iast_grow_hit __dd_iast_runtime.grow_hit
+            //go:noescape
+            func __dd_iast_grow_hit(oldPtr unsafe.Pointer, newLen, oldCap, num int, et *_type) (unsafe.Pointer, int, int, int, *_type, bool)
+
+            //go:linkname __dd_iast_grow_hitimpl __dd_iast_runtime.grow_hit
+            //go:noinline
+            func __dd_iast_grow_hitimpl(oldPtr unsafe.Pointer, newLen, oldCap, num int, et *_type) (unsafe.Pointer, int, int, int, *_type, bool) {
+              return oldPtr, newLen, oldCap, num, et, __dd_iast_growtainted(oldPtr, newLen, num, et)
+            }
+
+            //go:linkname __dd_iast_growbuf_hit __dd_iast_runtime.growbuf_hit
+            //go:noescape
+            func __dd_iast_growbuf_hit(oldPtr unsafe.Pointer, newLen, oldCap, num int, et *_type, bufPtr unsafe.Pointer, bufLen int) (unsafe.Pointer, int, int, int, *_type, unsafe.Pointer, int, bool)
+
+            //go:linkname __dd_iast_growbuf_hitimpl __dd_iast_runtime.growbuf_hit
+            //go:noinline
+            func __dd_iast_growbuf_hitimpl(oldPtr unsafe.Pointer, newLen, oldCap, num int, et *_type, bufPtr unsafe.Pointer, bufLen int) (unsafe.Pointer, int, int, int, *_type, unsafe.Pointer, int, bool) {
+              return oldPtr, newLen, oldCap, num, et, bufPtr, bufLen, __dd_iast_growtainted(oldPtr, newLen, num, et)
+            }
+
+            func __dd_iast_growtainted(oldPtr unsafe.Pointer, newLen, num int, et *_type) bool {
+              oldLen := newLen - num
+              if oldPtr == nil || oldLen <= 0 || num < 0 || et == nil || et.Size_ == 0 || et.Pointers() {
+                return false
+              }
+              return __dd_taint_any(uintptr(oldPtr), uintptr(oldLen)*et.Size_)
+            }
+
+            // ---- bit copies ----
+
+            // __dd_iast_copyparts copies the bits of each tainted operand of a
+            // to its offset in the n bytes at dst (heap memory, new). The
+            // bytes of clean operands are new memory: they have no bits.
+            func __dd_iast_copyparts(dst, n uintptr, a []string) {
+              off := uintptr(0)
+              for _, x := range a {
+                l := uintptr(len(x))
+                if l == 0 {
+                  continue
+                }
+                if l > n-off {
+                  return
+                }
+                // A stack address is never tainted (Any is false), so a
+                // stale stack address after a stack move is not used.
+                if p := __dd_iast_strptr(x); p != dst+off && __dd_taint_any(p, l) {
+                  __dd_taint_copy(dst+off, p, l)
+                }
+                off += l
+              }
+            }
+
+            // __dd_iast_runelen is the number of UTF-8 bytes that encoderune
+            // writes for r.
+            //
+            //go:nosplit
+            func __dd_iast_runelen(r rune) uintptr {
+              switch i := uint32(r); {
+              case i <= rune1Max:
+                return 1
+              case i <= rune2Max:
+                return 2
+              case i > maxRune, surrogateMin <= i && i <= surrogateMax:
+                return 3
+              case i <= rune3Max:
+                return 3
+              default:
+                return 4
+              }
+            }
+
+            // __dd_iast_bitrun is a cursor on the tainted runs of the n bytes
+            // at p: the current run is [t0, t1); t0 == n at the end.
+            type __dd_iast_bitrun struct {
+              p, n, t0, t1 uintptr
+            }
+
+            func __dd_iast_newbitrun(p, n uintptr) __dd_iast_bitrun {
+              c := __dd_iast_bitrun{p: p, n: n}
+              c.t0 = __dd_taint_next(p, n, 0, true)
+              c.t1 = __dd_taint_next(p, n, c.t0, false)
+              return c
+            }
+
+            // tainted tells if one byte of [lo, hi) is tainted. The calls must
+            // give increasing ranges (lo of a call >= hi of the last call).
+            func (c *__dd_iast_bitrun) tainted(lo, hi uintptr) bool {
+              for c.t0 < c.n && c.t1 <= lo {
+                c.t0 = __dd_taint_next(c.p, c.n, c.t1, true)
+                c.t1 = __dd_taint_next(c.p, c.n, c.t0, false)
+              }
+              return c.t0 < c.n && c.t0 < hi
+            }
+
+            // __dd_iast_runeset collects the runs of tainted runes of a rune
+            // array at q, and taints each run with one call.
+            type __dd_iast_runeset struct {
+              q     uintptr
+              start int // first rune of the current run, or -1
+              set   bool
+            }
+
+            func (r *__dd_iast_runeset) add(idx int, tainted bool) {
+              if !tainted {
+                r.flush(idx)
+              } else if r.start < 0 {
+                r.start = idx
+              }
+            }
+
+            // flush taints the current run, up to the rune end (excluded).
+            func (r *__dd_iast_runeset) flush(end int) {
+              if r.start >= 0 {
+                r.set = __dd_taint_set(r.q+uintptr(r.start)*4, uintptr(end-r.start)*4) || r.set
+                r.start = -1
+              }
+            }
+
+            // __dd_iast_runebits_s2r taints rune idx of the k runes at q when
+            // one of the UTF-8 bytes of rune idx of s is tainted. It returns
+            // true when it tainted one rune. The range loop decodes s as the
+            // conversion does (an invalid byte is one rune).
+            func __dd_iast_runebits_s2r(q uintptr, k int, s string) bool {
+              c := __dd_iast_newbitrun(__dd_iast_strptr(s), uintptr(len(s)))
+              rs := __dd_iast_runeset{q: q, start: -1}
+              idx, prev, done := 0, 0, false
+              for i := range s {
+                if i > 0 { // rune idx is [prev, i)
+                  if idx >= k || c.t0 >= c.n {
+                    done = true
+                    break
+                  }
+                  rs.add(idx, c.tainted(uintptr(prev), uintptr(i)))
+                  idx++
+                }
+                prev = i
+              }
+              if !done && len(s) != 0 && idx < k && c.t0 < c.n {
+                rs.add(idx, c.tainted(uintptr(prev), uintptr(len(s))))
+                idx++
+              }
+              rs.flush(idx)
+              return rs.set
+            }
+
+            // __dd_iast_runebits_r2s taints the UTF-8 bytes of rune j in the
+            // n bytes at q when one of the 4 bytes of a[j] is tainted (an
+            // invalid rune gives the 3 bytes of U+FFFD). It returns true when
+            // it tainted one byte.
+            func __dd_iast_runebits_r2s(q, n uintptr, a []rune) bool {
+              c := __dd_iast_newbitrun(uintptr(unsafe.Pointer(unsafe.SliceData(a))), uintptr(len(a))*4)
+              set := false
+              start := uintptr(0)
+              open := false
+              off := uintptr(0)
+              for j := 0; j < len(a) && off < n && c.t0 < c.n; j++ {
+                w := __dd_iast_runelen(a[j])
+                if w > n-off {
+                  w = n - off
+                }
+                if c.tainted(uintptr(j)*4, uintptr(j)*4+4) {
+                  if !open {
+                    start, open = off, true
+                  }
+                } else if open {
+                  set = __dd_taint_set(q+start, off-start) || set
+                  open = false
+                }
+                off += w
+              }
+              if open {
+                set = __dd_taint_set(q+start, off-start) || set
+              }
+              return set
+            }
+
+            // __dd_iast_callrunes calls the rune callback of propbridge, with
+            // the guard set.
+            func __dd_iast_callrunes(gp *g, out, outLen, in, inLen uintptr, kind uint8) {
+              f := atomic.Loadp(unsafe.Pointer(&__dd_iast_runederived))
+              if f == nil {
+                return
+              }
+              cb := *(*func(out, outLen, in, inLen uintptr, kind uint8))(unsafe.Pointer(&f))
+              gp.__dd_iast_in_hook = 1
+              cb(out, outLen, in, inLen, kind)
+              gp.__dd_iast_in_hook = 0
+            }
+
+            // ---- aliases and wrappers ----
+
+            //go:linkname __dd_iast_orig_concatstrings runtime.concatstrings
+            //go:noescape
+            func __dd_iast_orig_concatstrings(buf *tmpBuf, a []string) string
+
+            var _ func(*tmpBuf, []string) string = concatstrings
+            var _ func(*tmpBuf, []string) string = __dd_iast_orig_concatstrings
+            var _ func(*tmpBuf, []string) string = __dd_iast_concatstrings
+
+            // The only caller is the prepended code of the original function,
+            // after __dd_iast_ok() returned true and a hit of the filter.
+            // Thus this function has no context check.
+            //
+            //go:noinline
+            func __dd_iast_concatstrings(_ *tmpBuf, a []string) string {
+              __dd_iast_count()
+              gp := getg()
+              gp.__dd_iast_bypass = 1
+              r := __dd_iast_orig_concatstrings(nil, a)
+              gp.__dd_iast_bypass = 0
+              if len(r) != 0 {
+                __dd_iast_copyparts(__dd_iast_strptr(r), uintptr(len(r)), a)
+              }
+              return r
+            }
+
+            //go:linkname __dd_iast_orig_concatbytes runtime.concatbytes
+            //go:noescape
+            func __dd_iast_orig_concatbytes(buf *tmpBuf, a []string) []byte
+
+            var _ func(*tmpBuf, []string) []byte = concatbytes
+            var _ func(*tmpBuf, []string) []byte = __dd_iast_orig_concatbytes
+            var _ func(*tmpBuf, []string) []byte = __dd_iast_concatbytes
+
+            //go:noinline
+            func __dd_iast_concatbytes(_ *tmpBuf, a []string) []byte {
+              __dd_iast_count()
+              gp := getg()
+              gp.__dd_iast_bypass = 1
+              r := __dd_iast_orig_concatbytes(nil, a)
+              gp.__dd_iast_bypass = 0
+              if len(r) != 0 {
+                __dd_iast_copyparts(uintptr(unsafe.Pointer(unsafe.SliceData(r))), uintptr(len(r)), a)
+              }
+              return r
+            }
+
+            //go:linkname __dd_iast_orig_slicebytetostring runtime.slicebytetostring
+            //go:noescape
+            func __dd_iast_orig_slicebytetostring(buf *tmpBuf, ptr *byte, n int) string
+
+            var _ func(*tmpBuf, *byte, int) string = slicebytetostring
+            var _ func(*tmpBuf, *byte, int) string = __dd_iast_orig_slicebytetostring
+            var _ func(*tmpBuf, *byte, int) string = __dd_iast_slicebytetostring
+
+            //go:noinline
+            func __dd_iast_slicebytetostring(_ *tmpBuf, ptr *byte, n int) string {
+              __dd_iast_count()
+              gp := getg()
+              gp.__dd_iast_bypass = 1
+              r := __dd_iast_orig_slicebytetostring(nil, ptr, n)
+              gp.__dd_iast_bypass = 0
+              if len(r) == n && n > 1 {
+                __dd_taint_copy(__dd_iast_strptr(r), uintptr(unsafe.Pointer(ptr)), uintptr(n))
+              }
+              KeepAlive(ptr)
+              return r
+            }
+
+            //go:linkname __dd_iast_orig_stringtoslicebyte runtime.stringtoslicebyte
+            //go:noescape
+            func __dd_iast_orig_stringtoslicebyte(buf *tmpBuf, s string) []byte
+
+            var _ func(*tmpBuf, string) []byte = stringtoslicebyte
+            var _ func(*tmpBuf, string) []byte = __dd_iast_orig_stringtoslicebyte
+            var _ func(*tmpBuf, string) []byte = __dd_iast_stringtoslicebyte
+
+            //go:noinline
+            func __dd_iast_stringtoslicebyte(_ *tmpBuf, s string) []byte {
+              __dd_iast_count()
+              gp := getg()
+              gp.__dd_iast_bypass = 1
+              r := __dd_iast_orig_stringtoslicebyte(nil, s)
+              gp.__dd_iast_bypass = 0
+              if len(r) == len(s) && len(r) != 0 {
+                __dd_taint_copy(uintptr(unsafe.Pointer(unsafe.SliceData(r))), __dd_iast_strptr(s), uintptr(len(s)))
+              }
+              KeepAlive(unsafe.StringData(s))
+              return r
+            }
+
+            //go:linkname __dd_iast_orig_stringtoslicerune runtime.stringtoslicerune
+            //go:noescape
+            func __dd_iast_orig_stringtoslicerune(buf *[tmpStringBufSize]rune, s string) []rune
+
+            var _ func(*[tmpStringBufSize]rune, string) []rune = stringtoslicerune
+            var _ func(*[tmpStringBufSize]rune, string) []rune = __dd_iast_orig_stringtoslicerune
+            var _ func(*[tmpStringBufSize]rune, string) []rune = __dd_iast_stringtoslicerune
+
+            //go:noinline
+            func __dd_iast_stringtoslicerune(_ *[tmpStringBufSize]rune, s string) []rune {
+              __dd_iast_count()
+              gp := getg()
+              gp.__dd_iast_bypass = 1
+              r := __dd_iast_orig_stringtoslicerune(nil, s)
+              gp.__dd_iast_bypass = 0
+              if len(r) != 0 {
+                q := uintptr(unsafe.Pointer(unsafe.SliceData(r)))
+                if __dd_iast_runebits_s2r(q, len(r), s) {
+                  __dd_iast_callrunes(gp, q, uintptr(len(r))*4, __dd_iast_strptr(s), uintptr(len(s)), 1)
+                }
+              }
+              KeepAlive(unsafe.SliceData(r))
+              KeepAlive(unsafe.StringData(s))
+              return r
+            }
+
+            //go:linkname __dd_iast_orig_slicerunetostring runtime.slicerunetostring
+            //go:noescape
+            func __dd_iast_orig_slicerunetostring(buf *tmpBuf, a []rune) string
+
+            var _ func(*tmpBuf, []rune) string = slicerunetostring
+            var _ func(*tmpBuf, []rune) string = __dd_iast_orig_slicerunetostring
+            var _ func(*tmpBuf, []rune) string = __dd_iast_slicerunetostring
+
+            // The filter of this function is here, not in the prepended code:
+            // there, it makes the frame of slicerunetostring larger than the
+            // small-frame limit (128 bytes), and the prologue of the gate-off
+            // path then has one more instruction. Thus the clean path (gate
+            // on) of string(runes) also sets the token and calls the original
+            // function through its alias, with the stack buffer.
+            //
+            //go:noinline
+            func __dd_iast_slicerunetostring(buf *tmpBuf, a []rune) string {
+              gp := getg()
+              if _, _, hit := __dd_iast_runes_hit(buf, a); !hit {
+                gp.__dd_iast_bypass = 1
+                r := __dd_iast_orig_slicerunetostring(buf, a)
+                gp.__dd_iast_bypass = 0
+                return r
+              }
+              __dd_iast_count()
+              gp.__dd_iast_bypass = 1
+              r := __dd_iast_orig_slicerunetostring(nil, a)
+              gp.__dd_iast_bypass = 0
+              if len(r) != 0 {
+                q := __dd_iast_strptr(r)
+                if __dd_iast_runebits_r2s(q, uintptr(len(r)), a) {
+                  __dd_iast_callrunes(gp, q, uintptr(len(r)), uintptr(unsafe.Pointer(unsafe.SliceData(a))), uintptr(len(a))*4, 2)
+                }
+              }
+              KeepAlive(unsafe.StringData(r))
+              KeepAlive(unsafe.SliceData(a))
+              return r
+            }
+
+            //go:linkname __dd_iast_orig_growslice runtime.growslice
+            //go:noescape
+            func __dd_iast_orig_growslice(oldPtr unsafe.Pointer, newLen, oldCap, num int, et *_type) slice
+
+            var _ func(unsafe.Pointer, int, int, int, *_type) slice = growslice
+            var _ func(unsafe.Pointer, int, int, int, *_type) slice = __dd_iast_orig_growslice
+            var _ func(unsafe.Pointer, int, int, int, *_type) slice = __dd_iast_growslice
+
+            // The filter checked oldPtr, num, et and the length of the old
+            // elements.
+            //
+            //go:noinline
+            func __dd_iast_growslice(oldPtr unsafe.Pointer, newLen, oldCap, num int, et *_type) slice {
+              __dd_iast_count()
+              gp := getg()
+              gp.__dd_iast_bypass = 1
+              s := __dd_iast_orig_growslice(oldPtr, newLen, oldCap, num, et)
+              gp.__dd_iast_bypass = 0
+              if s.array != oldPtr {
+                __dd_taint_copy(uintptr(s.array), uintptr(oldPtr), uintptr(newLen-num)*et.Size_)
+              }
+              KeepAlive(oldPtr)
+              return s
+            }
+
+            // growsliceBuf has no alias and no wrapper: its hook calls
+            // growslice. This assignment checks its signature.
+            var _ func(unsafe.Pointer, int, int, int, *_type, unsafe.Pointer, int) slice = growsliceBuf
+
+  - id: iast-concatstrings
+    join-point:
+      all-of:
+        - import-path: runtime
+        - function-body:
+            function:
+              - name: concatstrings
+    advice:
+      - prepend-statements:
+          imports:
+            atomic: internal/runtime/atomic
+          template: |-
+            {{- $buf := .Function.Argument 0 -}}
+            {{- $a := .Function.Argument 1 -}}
+            if atomic.Load(&__dd_taint_gate.seen) != 0 {
+              if __dd_iast_gp := getg(); __dd_iast_gp.__dd_iast_bypass != 0 {
+                __dd_iast_gp.__dd_iast_bypass = 0
+              } else if __dd_iast_ok() {
+                var __dd_iast_hit bool
+                if {{ $buf }}, {{ $a }}, __dd_iast_hit = __dd_iast_concat_hit({{ $buf }}, {{ $a }}); __dd_iast_hit {
+                  return __dd_iast_concatstrings({{ $buf }}, {{ $a }})
+                }
+              }
+            }
+
+  - id: iast-concatbytes
+    join-point:
+      all-of:
+        - import-path: runtime
+        - function-body:
+            function:
+              - name: concatbytes
+    advice:
+      - prepend-statements:
+          imports:
+            atomic: internal/runtime/atomic
+          template: |-
+            {{- $buf := .Function.Argument 0 -}}
+            {{- $a := .Function.Argument 1 -}}
+            if atomic.Load(&__dd_taint_gate.seen) != 0 {
+              if __dd_iast_gp := getg(); __dd_iast_gp.__dd_iast_bypass != 0 {
+                __dd_iast_gp.__dd_iast_bypass = 0
+              } else if __dd_iast_ok() {
+                var __dd_iast_hit bool
+                if {{ $buf }}, {{ $a }}, __dd_iast_hit = __dd_iast_concat_hit({{ $buf }}, {{ $a }}); __dd_iast_hit {
+                  return __dd_iast_concatbytes({{ $buf }}, {{ $a }})
+                }
+              }
+            }
+
+  - id: iast-slicebytetostring
+    join-point:
+      all-of:
+        - import-path: runtime
+        - function-body:
+            function:
+              - name: slicebytetostring
+    advice:
+      - prepend-statements:
+          imports:
+            atomic: internal/runtime/atomic
+          template: |-
+            {{- $buf := .Function.Argument 0 -}}
+            {{- $ptr := .Function.Argument 1 -}}
+            {{- $n := .Function.Argument 2 -}}
+            if atomic.Load(&__dd_taint_gate.seen) != 0 {
+              if __dd_iast_gp := getg(); __dd_iast_gp.__dd_iast_bypass != 0 {
+                __dd_iast_gp.__dd_iast_bypass = 0
+              } else if __dd_iast_ok() {
+                var __dd_iast_hit bool
+                if {{ $buf }}, {{ $ptr }}, {{ $n }}, __dd_iast_hit = __dd_iast_bytes_hit({{ $buf }}, {{ $ptr }}, {{ $n }}); __dd_iast_hit {
+                  return __dd_iast_slicebytetostring({{ $buf }}, {{ $ptr }}, {{ $n }})
+                }
+              }
+            }
+
+  - id: iast-stringtoslicebyte
+    join-point:
+      all-of:
+        - import-path: runtime
+        - function-body:
+            function:
+              - name: stringtoslicebyte
+    advice:
+      - prepend-statements:
+          imports:
+            atomic: internal/runtime/atomic
+          template: |-
+            {{- $buf := .Function.Argument 0 -}}
+            {{- $s := .Function.Argument 1 -}}
+            if atomic.Load(&__dd_taint_gate.seen) != 0 {
+              if atomic.Load(&__dd_iast_s2soff) == 0 {
+                if __dd_iast_gp := getg(); __dd_iast_gp.__dd_iast_bypass != 0 {
+                  __dd_iast_gp.__dd_iast_bypass = 0
+                } else if __dd_iast_ok() {
+                  var __dd_iast_hit bool
+                  if {{ $buf }}, {{ $s }}, __dd_iast_hit = __dd_iast_str_hit({{ $buf }}, {{ $s }}); __dd_iast_hit {
+                    return __dd_iast_stringtoslicebyte({{ $buf }}, {{ $s }})
+                  }
+                }
+              }
+            }
+
+  - id: iast-slicerunetostring
+    join-point:
+      all-of:
+        - import-path: runtime
+        - function-body:
+            function:
+              - name: slicerunetostring
+    advice:
+      - prepend-statements:
+          imports:
+            atomic: internal/runtime/atomic
+          template: |-
+            {{- $buf := .Function.Argument 0 -}}
+            {{- $a := .Function.Argument 1 -}}
+            if atomic.Load(&__dd_taint_gate.seen) != 0 {
+              if __dd_iast_gp := getg(); __dd_iast_gp.__dd_iast_bypass != 0 {
+                __dd_iast_gp.__dd_iast_bypass = 0
+              } else if __dd_iast_ok() {
+                return __dd_iast_slicerunetostring({{ $buf }}, {{ $a }})
+              }
+            }
+
+  - id: iast-stringtoslicerune
+    join-point:
+      all-of:
+        - import-path: runtime
+        - function-body:
+            function:
+              - name: stringtoslicerune
+    advice:
+      - prepend-statements:
+          imports:
+            atomic: internal/runtime/atomic
+          template: |-
+            {{- $buf := .Function.Argument 0 -}}
+            {{- $s := .Function.Argument 1 -}}
+            if atomic.Load(&__dd_taint_gate.seen) != 0 {
+              if atomic.Load(&__dd_iast_s2soff) == 0 {
+                if __dd_iast_gp := getg(); __dd_iast_gp.__dd_iast_bypass != 0 {
+                  __dd_iast_gp.__dd_iast_bypass = 0
+                } else if __dd_iast_ok() {
+                  var __dd_iast_hit bool
+                  if {{ $buf }}, {{ $s }}, __dd_iast_hit = __dd_iast_str_hit_runes({{ $buf }}, {{ $s }}); __dd_iast_hit {
+                    return __dd_iast_stringtoslicerune({{ $buf }}, {{ $s }})
+                  }
+                }
+              }
+            }
+
+  - id: iast-growslice
+    join-point:
+      all-of:
+        - import-path: runtime
+        - function-body:
+            function:
+              - name: growslice
+    advice:
+      - prepend-statements:
+          imports:
+            atomic: internal/runtime/atomic
+          template: |-
+            {{- $oldPtr := .Function.Argument 0 -}}
+            {{- $newLen := .Function.Argument 1 -}}
+            {{- $oldCap := .Function.Argument 2 -}}
+            {{- $num := .Function.Argument 3 -}}
+            {{- $et := .Function.Argument 4 -}}
+            if atomic.Load(&__dd_taint_gate.seen) != 0 {
+              if __dd_iast_gp := getg(); __dd_iast_gp.__dd_iast_bypass != 0 {
+                __dd_iast_gp.__dd_iast_bypass = 0
+              } else if __dd_iast_ok() {
+                var __dd_iast_hit bool
+                if {{ $oldPtr }}, {{ $newLen }}, {{ $oldCap }}, {{ $num }}, {{ $et }}, __dd_iast_hit = __dd_iast_grow_hit({{ $oldPtr }}, {{ $newLen }}, {{ $oldCap }}, {{ $num }}, {{ $et }}); __dd_iast_hit {
+                  return __dd_iast_growslice({{ $oldPtr }}, {{ $newLen }}, {{ $oldCap }}, {{ $num }}, {{ $et }})
+                }
+              }
+            }
+
+  - id: iast-growsliceBuf
+    join-point:
+      all-of:
+        - import-path: runtime
+        - function-body:
+            function:
+              - name: growsliceBuf
+    advice:
+      - prepend-statements:
+          imports:
+            atomic: internal/runtime/atomic
+          template: |-
+            {{- $oldPtr := .Function.Argument 0 -}}
+            {{- $newLen := .Function.Argument 1 -}}
+            {{- $oldCap := .Function.Argument 2 -}}
+            {{- $num := .Function.Argument 3 -}}
+            {{- $et := .Function.Argument 4 -}}
+            {{- $bufPtr := .Function.Argument 5 -}}
+            {{- $bufLen := .Function.Argument 6 -}}
+            if atomic.Load(&__dd_taint_gate.seen) != 0 {
+              if __dd_iast_ok() {
+                var __dd_iast_hit bool
+                if {{ $oldPtr }}, {{ $newLen }}, {{ $oldCap }}, {{ $num }}, {{ $et }}, {{ $bufPtr }}, {{ $bufLen }}, __dd_iast_hit = __dd_iast_growbuf_hit({{ $oldPtr }}, {{ $newLen }}, {{ $oldCap }}, {{ $num }}, {{ $et }}, {{ $bufPtr }}, {{ $bufLen }}); __dd_iast_hit {
+                  // Tainted old elements: the new backing store must be heap
+                  // memory, which can have taint bits. The growslice hook
+                  // copies the bits.
+                  return growslice({{ $oldPtr }}, {{ $newLen }}, {{ $oldCap }}, {{ $num }}, {{ $et }})
+                }
+              }
+            }
