@@ -126,7 +126,8 @@ aspects:
             }
 
             // __dd_taint_chunk returns the chunk of the heap address p, or nil
-            // (no storage: no taint). It never allocates.
+            // (no storage: no taint). It never allocates. The fast path of
+            // __dd_taint_any has a copy of this body: keep the two the same.
             //
             //go:nosplit
             func __dd_taint_chunk(p uintptr) *__dd_taintChunk {
@@ -906,7 +907,20 @@ aspects:
               }
               cbase := p &^ (__dd_taint_chunkHeap - 1)
               if end := p + n; end-cbase <= __dd_taint_chunkHeap {
-                c := __dd_taint_chunk(p)
+                // This is the body of __dd_taint_chunk, written here because
+                // __dd_taint_chunk is too large to be inlined. Without the
+                // call, the fast path does not spill registers.
+                // __dd_taint_arena and __dd_taint_chunkaddr are inlined.
+                // TestGeneratedCode makes sure that no call is left. Keep
+                // the two copies the same.
+                var c *__dd_taintChunk
+                if ha := __dd_taint_arena(p); ha != nil {
+                  if d := atomic.Loaduintptr(&ha.__dd_taint); d >= 2 {
+                    dir := (*__dd_taintDir)(unsafe.Pointer(d))
+                    ci := ((p - arenaBaseOffset) / __dd_taint_chunkHeap) % __dd_taint_dirSlots
+                    c = (*__dd_taintChunk)(unsafe.Pointer(__dd_taint_chunkaddr(atomic.Loaduintptr(&dir[ci]))))
+                  }
+                }
                 if c == nil {
                   // No chunk: no taint. The test knob sends the call to the
                   // slow path, so that tests can check the classification of

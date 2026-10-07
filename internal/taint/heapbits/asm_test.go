@@ -104,7 +104,9 @@ func lastLines(s string, n int) string {
 //     (other than morestack in the prologue) between the conversion and the
 //     indirect call of the runtime function;
 //  4. with optimizations, no injected runtime function calls a panic or throw
-//     function (no bounds check is left).
+//     function (no bounds check is left);
+//  5. with optimizations, the fast path of __dd_taint_any has no call: the
+//     chunk lookup is inlined (this is a speed rule, not a safety rule).
 func TestGeneratedCode(t *testing.T) {
 	if !built.WithOrchestrion {
 		t.Skip("orchestrion is not enabled, use `go tool orchestrion go test` to run this test suite")
@@ -215,6 +217,19 @@ func checkAsm(t *testing.T, funcs map[string]*asmFunc, noOpt bool) {
 		}
 		if found < 20 {
 			t.Errorf("only %d injected runtime functions found in the -S output", found)
+		}
+	}
+
+	// Rule 5: the fast path of __dd_taint_any does not call the chunk
+	// lookup. The only permitted calls are the test probe, spanOfHeap and
+	// the worker (all on the slow path, or in testing mode).
+	if !noOpt {
+		for _, target := range get("runtime.__dd_taint_any").calls {
+			switch target {
+			case "runtime.__dd_taint_classifyprobe", "runtime.spanOfHeap", "runtime.__dd_taint_anyworker":
+			default:
+				t.Errorf("runtime.__dd_taint_any calls %s: the fast path must not have a call", target)
+			}
 		}
 	}
 
