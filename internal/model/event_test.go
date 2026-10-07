@@ -320,3 +320,28 @@ func TestAddVulnerabilityRejectsAtLimitWithoutMutatingEvent(t *testing.T) {
 	require.Equal(t, capacityBefore, cap(event.Vulnerabilities), "rejecting an admission must not grow the backing array")
 	require.Equal(t, valuesBefore, event.Vulnerabilities, "rejecting an admission must not modify stored vulnerabilities")
 }
+
+func TestAtCapacityAgreesWithCanAddVulnerability(t *testing.T) {
+	withConfig(t, 2, false)
+
+	var missing *model.Event
+	require.True(t, missing.AtCapacity(), "a nil event can get no vulnerability")
+
+	event := model.NewEvent()
+	for index := range 2 {
+		require.False(t, event.AtCapacity(), "the event has %d of 2 vulnerabilities", index)
+		require.True(t, event.CanAddVulnerability(model.Vulnerability{Hash: int32(index)}))
+		require.True(t, event.AddVulnerability(model.Vulnerability{Hash: int32(index)}))
+	}
+	require.True(t, event.AtCapacity())
+	require.False(t, event.CanAddVulnerability(model.Vulnerability{Hash: 99}))
+	require.Len(t, event.Vulnerabilities, 2, "AtCapacity must not change the event")
+
+	withConfig(t, model.MaxVulnerabilities+100, false)
+	event = model.NewEvent()
+	for index := range model.MaxVulnerabilities {
+		require.False(t, event.AtCapacity())
+		require.True(t, event.AddVulnerability(model.Vulnerability{Hash: int32(index)}))
+	}
+	require.True(t, event.AtCapacity(), "the hard bound applies when the configured capacity is larger")
+}

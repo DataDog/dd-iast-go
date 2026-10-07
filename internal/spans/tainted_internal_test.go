@@ -8,6 +8,7 @@ package spans
 import (
 	"context"
 	"encoding/json"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -420,4 +421,140 @@ func configureTaintedCommitTest(t *testing.T) {
 		config.RequestSamplingPct = previousSampling
 		processEventSourceBytes.Store(0)
 	})
+}
+
+// +checklocksignore
+func TestAnnotationFullForAgreesWithTryCommitTainted(t *testing.T) {
+	configureTaintedCommitTest(t)
+	config.VulnerabilitiesPerRequest = 2
+	config.DeduplicationEnabled = false
+	alpha := CommitOwner{ID: 11, Generation: 1, Index: 1}
+	bravo := CommitOwner{ID: 22, Generation: 1, Index: 2}
+	fullFor := func(a *Annotation, owner CommitOwner) bool {
+		return a.FullFor(owner.Index, owner.ID, owner.Generation)
+	}
+	release := func(a *Annotation) {
+		a.Lock()
+		a.releaseSourceIdentities()
+		a.Unlock()
+	}
+
+	var missing *Annotation
+	if fullFor(missing, alpha) {
+		t.Fatal("a nil annotation is full: the caller must use an orphan span")
+	}
+	if !fullFor(nonSampledAnnotation, alpha) || !fullFor(&Annotation{}, alpha) {
+		t.Fatal("a non-sampled annotation is not full")
+	}
+
+	ann := &Annotation{Sampled: true}
+	for hash := range int32(2) {
+		if fullFor(ann, alpha) {
+			t.Fatalf("annotation with %d of 2 vulnerabilities is full", hash)
+		}
+		if !ann.TryCommitTainted(ownedCommit(hash, "alpha", alpha), nil) {
+			t.Fatalf("commit %d failed below the capacity", hash)
+		}
+	}
+	if !fullFor(ann, alpha) {
+		t.Fatal("annotation of alpha at capacity is not full for alpha")
+	}
+	if fullFor(ann, bravo) {
+		t.Fatal("annotation of alpha is full for bravo: bravo must use an orphan span")
+	}
+	if ann.TryCommitTainted(ownedCommit(3, "alpha", alpha), nil) {
+		t.Fatal("a full annotation accepted a commit")
+	}
+	release(ann)
+
+	// A full annotation with no owner can still get a bind of a different
+	// owner: the commit must make the decision.
+	unowned := &Annotation{Sampled: true}
+	for hash := range int32(2) {
+		if !unowned.TryCommitTainted(ownedCommit(hash, "none", CommitOwner{}), nil) {
+			t.Fatalf("commit %d without owner failed", hash)
+		}
+	}
+	if fullFor(unowned, alpha) {
+		t.Fatal("a full annotation with no owner is full for alpha")
+	}
+	release(unowned)
+
+	// A busy lock gives false: the commit then makes the decision.
+	if !ann.bindOwner(alpha.Index, alpha.ID, alpha.Generation) {
+		t.Fatal("bind of the claimed owner failed")
+	}
+	ann.Lock()
+	busy := fullFor(ann, alpha)
+	ann.Unlock()
+	if busy {
+		t.Fatal("an annotation with a busy lock is full")
+	}
+
+	// A closed annotation is full only for its owner.
+	closed := &Annotation{Sampled: true}
+	closed.closed.Store(true)
+	if fullFor(closed, alpha) {
+		t.Fatal("a closed annotation with no owner is full")
+	}
+	if !closed.bindOwner(alpha.Index, alpha.ID, alpha.Generation) {
+		t.Fatal("bind failed")
+	}
+	if !fullFor(closed, alpha) || fullFor(closed, bravo) {
+		t.Fatal("a closed annotation of alpha is not full for alpha only")
+	}
+
+	if missing.FirstCapacityLog() {
+		t.Fatal("a nil annotation gave a capacity log")
+	}
+	if !ann.FirstCapacityLog() || ann.FirstCapacityLog() || ann.FirstCapacityLog() {
+		t.Fatal("the capacity log does not occur exactly once")
+	}
+}
+
+// TestAnnotationFullForTwoOwners interleaves the check of one owner and the
+// commits of a different owner on an annotation with no owner. The check
+// must never be true for alpha: bravo claims the annotation and fills it, and
+// the report of alpha then goes to an orphan span. A check that reads the
+// owner and the capacity at two different times can see no owner first, and
+// then the full event of bravo.
+// +checklocksignore
+func TestAnnotationFullForTwoOwners(t *testing.T) {
+	configureTaintedCommitTest(t)
+	config.VulnerabilitiesPerRequest = 1
+	config.DeduplicationEnabled = false
+	alpha := CommitOwner{ID: 11, Generation: 1, Index: 1}
+	bravo := CommitOwner{ID: 22, Generation: 1, Index: 2}
+	for round := range 2000 {
+		ann := &Annotation{Sampled: true}
+		done := make(chan bool)
+		go func() {
+			done <- ann.TryCommitTainted(ownedCommit(int32(round), "bravo", bravo), nil)
+		}()
+		committed := false
+	check:
+		for {
+			if ann.FullFor(alpha.Index, alpha.ID, alpha.Generation) {
+				t.Fatalf("round %d: the annotation is full for alpha", round)
+			}
+			select {
+			case committed = <-done:
+				break check
+			default:
+				runtime.Gosched()
+			}
+		}
+		if ann.FullFor(alpha.Index, alpha.ID, alpha.Generation) {
+			t.Fatalf("round %d: the annotation of bravo is full for alpha", round)
+		}
+		if committed && !ann.FullFor(bravo.Index, bravo.ID, bravo.Generation) {
+			t.Fatalf("round %d: the full annotation of bravo is not full for bravo", round)
+		}
+		if !committed && ann.FullFor(bravo.Index, bravo.ID, bravo.Generation) {
+			t.Fatalf("round %d: an annotation with no commit is full", round)
+		}
+		ann.Lock()
+		ann.releaseSourceIdentities()
+		ann.Unlock()
+	}
 }

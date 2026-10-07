@@ -69,6 +69,10 @@ type Annotation struct {
 	// releaseClaim). The annotation has no report of this owner then. It is
 	// nil for an annotation of no request.
 	owner atomic.Pointer[annotationOwner]
+
+	// capacityLogged is true after the first capacity log of a sink fast path
+	// for this annotation (see [Annotation.FirstCapacityLog]).
+	capacityLogged atomic.Bool
 }
 
 // annotationOwner is the store owner identity of one request analysis.
@@ -188,6 +192,54 @@ func (a *Annotation) releaseClaim(claimed *annotationOwner) {
 	if claimed != nil {
 		a.owner.CompareAndSwap(claimed, nil)
 	}
+}
+
+// FullFor reports whether a can get no more report of the given request
+// owner, and a also stays an annotation that can get the reports of this
+// owner (see [Annotation.OwnedBy]). Then [Annotation.TryCommitTainted] fails
+// for all commits of this owner, and the caller must not use a different
+// span. FullFor returns true when:
+//   - a is not sampled. A non-sampled annotation gets no owner and no report.
+//   - a is closed or its event is at capacity (see [model.Event.AtCapacity]),
+//     and the request owner of a is this owner.
+//
+// FullFor reads the owner and the event in one read lock. With the lock, an
+// owner that FullFor reads does not change: a claim occurs only in a commit
+// with the write lock, and a failed commit removes its claim before it
+// releases the lock. A bind changes only nil, or a claim of the same owner.
+// Thus a different owner cannot get a after a true result.
+//
+// FullFor returns false in all other cases: a is nil, a has no owner (a bind
+// of a different owner can occur after the call), a has a different owner,
+// or the lock is busy. The caller then does the usual work, and the commit
+// makes the decision. A true result stays true while the configuration does
+// not change: an annotation does not open again, and its event does not lose
+// vulnerabilities. FullFor does not log and does not block.
+// +checklocksignore
+func (a *Annotation) FullFor(index uint8, id, generation uint64) bool {
+	if a == nil {
+		return false
+	}
+	if !a.Sampled {
+		return true
+	}
+	if !a.RWMutex.TryRLock() {
+		return false
+	}
+	defer a.RWMutex.RUnlock() // +checklocksforce: TryRLock.
+	if owner := a.owner.Load(); owner == nil || !owner.is(index, id, generation) {
+		return false
+	}
+	return a.closed.Load() || a.Event.AtCapacity()
+}
+
+// FirstCapacityLog reports true for the first call on a, and false for all
+// other calls and for a nil a. A sink that drops a report before it makes the
+// vulnerability, because the event of a is at capacity, uses it to send at
+// most one capacity log for each annotation. The other calls do not log and
+// do not allocate.
+func (a *Annotation) FirstCapacityLog() bool {
+	return a != nil && !a.capacityLogged.Load() && a.capacityLogged.CompareAndSwap(false, true)
 }
 
 // Closed reports whether span finishing has closed the annotation.

@@ -10,6 +10,7 @@ import (
 
 	"github.com/DataDog/dd-iast-go/internal/config"
 	"github.com/DataDog/dd-iast-go/internal/instrumentation"
+	"github.com/DataDog/dd-iast-go/internal/model/constants"
 )
 
 //go:generate go tool msgp -io=false -tests=false
@@ -42,14 +43,35 @@ func (e *Event) AddVulnerability(vuln Vulnerability) bool {
 	return true
 }
 
+// AtCapacity reports whether the event has the maximum number of
+// vulnerabilities (the configured capacity, or [MaxVulnerabilities]). Then
+// [Event.CanAddVulnerability] returns false for all vulnerabilities. A nil
+// event is at capacity. AtCapacity does not log and does not mutate the event.
+func (e *Event) AtCapacity() bool {
+	return e == nil || len(e.Vulnerabilities) >= min(config.VulnerabilitiesPerRequest, MaxVulnerabilities)
+}
+
+// capacityWarning is the message of the telemetry log for a vulnerability
+// that an event at capacity cannot get.
+const capacityWarning = "max vulnerabilities per request reached, dropping"
+
+// WarnAtCapacity sends the capacity log of [Event.CanAddVulnerability] for a
+// report of vulnerabilityType that a sink drops before it makes the
+// vulnerability, because the event is at capacity (see [Event.AtCapacity]).
+// The log has the same level and message. The telemetry log sends one log for
+// each level and message, thus the number of logs is bounded.
+func WarnAtCapacity(vulnerabilityType constants.VulnerabilityType) {
+	instrumentation.Instance.TelemetryLog().Warn(capacityWarning, slog.String("vulnerability_type", vulnerabilityType.String()))
+}
+
 // CanAddVulnerability reports whether vuln passes the configured hard capacity
 // and event-local de-duplication checks. It does not mutate the event.
 func (e *Event) CanAddVulnerability(vuln Vulnerability) bool {
 	if e == nil {
 		return false
 	}
-	if len(e.Vulnerabilities) >= min(config.VulnerabilitiesPerRequest, MaxVulnerabilities) {
-		instrumentation.Instance.TelemetryLog().Warn("max vulnerabilities per request reached, dropping", slog.Any("vulnerability", vuln))
+	if e.AtCapacity() {
+		instrumentation.Instance.TelemetryLog().Warn(capacityWarning, slog.Any("vulnerability", vuln))
 		return false
 	}
 	if config.DeduplicationEnabled {

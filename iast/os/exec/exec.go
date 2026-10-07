@@ -61,7 +61,11 @@ func Report(ctx context.Context, argv []string) {
 		}
 	}
 	snapshot, status := vulnerability.CollectJoinedStrings(ctx, argv, " ", value, constants.VulnerabilityTypeCommandInjection)
-	if status != evidence.StatusCollected {
+	// A blocked report (for example, the request has the maximum number of
+	// vulnerabilities) does no redaction and no stack capture. The command
+	// analysis stays before the collection: it makes the joined value that
+	// the collection examines.
+	if status != evidence.StatusCollected || vulnerability.TaintedReportBlocked(ctx, constants.VulnerabilityTypeCommandInjection, snapshot) {
 		return
 	}
 	vulnerability.ReportTainted(ctx, constants.VulnerabilityTypeCommandInjection, snapshot, analysis, 2, commandSkip)

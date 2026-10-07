@@ -41,7 +41,10 @@ func Report(ctx context.Context, query string, kind sqlbridge.Kind) {
 	}
 	defer vulnerability.ReleaseReport()
 	snapshot, status := vulnerability.CollectString(ctx, query, constants.VulnerabilityTypeSqlInjection)
-	if status != evidence.StatusCollected {
+	// A blocked report (for example, the request has the maximum number of
+	// vulnerabilities) does no SQL analysis, no redaction and no stack
+	// capture.
+	if status != evidence.StatusCollected || vulnerability.TaintedReportBlocked(ctx, constants.VulnerabilityTypeSqlInjection, snapshot) {
 		return
 	}
 	vulnerability.ReportTainted(
