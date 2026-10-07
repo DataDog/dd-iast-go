@@ -317,6 +317,49 @@ aspects:
             //go:linkname __dd_iast_api_anystrs __dd_iast_runtime.anystrs
             var __dd_iast_api_anystrs = __dd_iast_anystrs
 
+            // __dd_iast_anystrsptr is __dd_iast_anystrs for the n strings at
+            // p (the data of a []string). The strings hooks of
+            // iast/propagation/text call it through a func value with
+            // uintptr arguments, so that their []string does not escape.
+            //
+            // The function is nosplit: p can be the address of a slice in
+            // stack memory, and the stack must not move during the call. It
+            // makes the slice header itself: unsafe.Slice adds a length
+            // check that calls a panic function.
+            //
+            // A nosplit function cannot be preempted. Thus the bridge scans
+            // at most __dd_iast_anystrsBatch strings: for a larger n, it
+            // returns true ("maybe tainted") and does not scan. Then the
+            // caller does its usual work, which is correct for all values.
+            // A caller with more strings (strings.Join) calls the bridge in
+            // batches from its splittable code, so that the goroutine can be
+            // preempted between the batches. The concatenation filter calls
+            // __dd_iast_anystrs directly with the operands of one
+            // concatenation: the compiler bounds their number (the operands
+            // of one expression in the source).
+            //
+            //go:nosplit
+            func __dd_iast_anystrsptr(p, n uintptr) bool {
+              if p == 0 || n == 0 {
+                return false
+              }
+              if n > __dd_iast_anystrsBatch {
+                return true
+              }
+              h := slice{array: unsafe.Pointer(p), len: int(n), cap: int(n)}
+              return __dd_iast_anystrs(*(*[]string)(unsafe.Pointer(&h)))
+            }
+
+            // __dd_iast_anystrsBatch is the largest number of strings that
+            // __dd_iast_anystrsptr scans in one call. The strings hooks of
+            // iast/propagation/text use the same value.
+            const __dd_iast_anystrsBatch = 256
+
+            // Exported to the strings hooks of iast/propagation/text and to
+            // the tests of iast/runtime (push linkname).
+            //go:linkname __dd_iast_api_anystrsptr __dd_iast_runtime.anystrsptr
+            var __dd_iast_api_anystrsptr = __dd_iast_anystrsptr
+
             //go:linkname __dd_iast_bytes_hit __dd_iast_runtime.bytes_hit
             //go:noescape
             func __dd_iast_bytes_hit(buf *tmpBuf, ptr *byte, n int) (*tmpBuf, *byte, int, bool)

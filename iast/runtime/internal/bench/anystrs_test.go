@@ -25,9 +25,16 @@ import (
 //go:linkname rtAnyStrs __dd_iast_runtime.anystrs
 var rtAnyStrs func(a []string) bool
 
+// rtAnyStrsPtr is __dd_iast_anystrsptr of the woven runtime (nil without
+// weaving).
+//
+//go:linkname rtAnyStrsPtr __dd_iast_runtime.anystrsptr
+var rtAnyStrsPtr func(p, n uintptr) bool
+
 const (
 	region = 128 << 10 // heap bytes for one taint chunk
 	inline = 1024      // __dd_iast_anystrsMax
+	batch  = 256       // __dd_iast_anystrsBatch
 )
 
 // regionBuffer is a heap buffer that holds 4 full 128 KiB regions (0 to 3):
@@ -83,6 +90,7 @@ func requireAnyStrs(t *testing.T) {
 	t.Helper()
 	requireWoven(t)
 	require.NotNil(t, rtAnyStrs, "__dd_iast_anystrs is not woven")
+	require.NotNil(t, rtAnyStrsPtr, "__dd_iast_anystrsptr is not woven")
 	require.False(t, testKnobs, "the test knobs are on: __dd_iast_anystrs does not use its own path")
 }
 
@@ -141,6 +149,7 @@ func TestAnyStrsShapes(t *testing.T) {
 			} {
 				require.Equal(t, want, oracle(a), "%s %d operands: the oracle", name, len(a))
 				require.Equal(t, want, rtAnyStrs(a), "%s %d operands", name, len(a))
+				require.Equal(t, want, anyStrsPtr(a), "%s %d operands: anystrsptr", name, len(a))
 			}
 		}
 	}
@@ -194,10 +203,47 @@ func TestAnyStrsStack(t *testing.T) {
 	require.True(t, stackAnyStrs(b.str(b.at(1, 0), 8)), "stack operands and a tainted heap operand")
 	require.False(t, rtAnyStrs([]string{"static", "", "data"}))
 	require.False(t, rtAnyStrs(nil))
+	require.False(t, rtAnyStrsPtr(0, 0))
+	require.False(t, rtAnyStrsPtr(0, 3), "a nil data address")
+	tainted := []string{b.str(b.at(1, 0), 8)}
+	require.False(t, rtAnyStrsPtr(uintptr(unsafe.Pointer(unsafe.SliceData(tainted))), 0), "no string")
+	require.True(t, anyStrsPtr(tainted))
 }
 
-// stackAnyStrs calls __dd_iast_anystrs with 3 stack operands of different
-// sizes and the heap operand h.
+// TestAnyStrsPtrBatch checks the bound of __dd_iast_anystrsptr: it scans at
+// most __dd_iast_anystrsBatch strings, and for more strings it returns true
+// ("maybe tainted") without a scan. __dd_iast_anystrs has no bound: the
+// concatenation filter gives it the operands of one expression.
+func TestAnyStrsPtrBatch(t *testing.T) {
+	requireAnyStrs(t)
+	b := newRegionBuffer()
+	defer runtime.KeepAlive(b)
+	b.clear()
+	clean := make([]string, batch+1)
+	for i := range clean {
+		clean[i] = b.str(b.at(1, 8*i), 4)
+	}
+	require.False(t, oracle(clean))
+	require.False(t, anyStrsPtr(clean[:batch]), "a full batch of clean strings")
+	require.True(t, anyStrsPtr(clean), "more strings than one batch must give true without a scan")
+	require.False(t, rtAnyStrs(clean), "the concatenation filter has no bound")
+	b.taint(t, b.at(1, 8*(batch-1)))
+	require.True(t, anyStrsPtr(clean[:batch]), "the last string of a full batch is tainted")
+}
+
+// anyStrsPtr calls __dd_iast_anystrsptr with the data and the length of a,
+// as the strings hooks do.
+func anyStrsPtr(a []string) bool {
+	r := rtAnyStrsPtr(uintptr(unsafe.Pointer(unsafe.SliceData(a))), uintptr(len(a)))
+	runtime.KeepAlive(a)
+	return r
+}
+
+// stackAnyStrs calls __dd_iast_anystrsptr (thus __dd_iast_anystrs) with 3
+// stack operands of different sizes and the heap operand h, in a stack
+// slice. It does not call rtAnyStrs: a []string argument of a func value
+// escapes, and then the operands go to the heap. The escape analysis output
+// (go test -gcflags=-m) must not show "moved to heap" for this function.
 //
 //go:noinline
 func stackAnyStrs(h string) bool {
@@ -214,7 +260,7 @@ func stackAnyStrs(h string) bool {
 		h,
 		unsafe.String(&large[0], len(large)),
 	}
-	return rtAnyStrs(a[:])
+	return anyStrsPtr(a[:])
 }
 
 // TestAnyStrsRandom compares __dd_iast_anystrs with the oracle for random
@@ -259,6 +305,7 @@ func TestAnyStrsRandom(t *testing.T) {
 			hits++
 		}
 		require.Equal(t, want, rtAnyStrs(a), "case %d", i)
+		require.Equal(t, want, anyStrsPtr(a), "case %d: anystrsptr", i)
 	}
 	require.Greater(t, hits, 100, "the random cases have too few tainted results")
 	require.Less(t, hits, 1900, "the random cases have too few clean results")

@@ -254,9 +254,11 @@ func TestFramesUnchanged(t *testing.T) {
 // only nosplit functions: the value is the set of the functions that they
 // can call with optimizations. __dd_iast_anystrs reads the addresses of its
 // operands, which can be stack addresses: the stack must not move during
-// the call.
+// the call. __dd_iast_anystrsptr also reads the address of a slice, which
+// can be a stack address.
 var nosplitFuncs = map[string][]string{
-	"__dd_iast_anystrs": {"runtime.__dd_taint_any", "runtime.__dd_taint_chunk"},
+	"__dd_iast_anystrs":    {"runtime.__dd_taint_any", "runtime.__dd_taint_chunk"},
+	"__dd_iast_anystrsptr": {"runtime.__dd_iast_anystrs", "runtime.__dd_taint_any", "runtime.__dd_taint_chunk"},
 }
 
 // TestInjectedCode checks the machine code rules of the injected runtime
