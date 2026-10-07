@@ -183,6 +183,12 @@ rows `SKIP`, `N/A` or `INFO`) also fails.
 ## Runtime hooks harness
 
 `.github/runtime-bench.sh` and `.github/runtime-bench.py` measure the runtime
-hooks (`iast/runtime/bench_test.go`) in woven builds with and without the
-hooks (gate group G-B, profiles `local` and `ci`). See the header of
-`.github/runtime-bench.sh`.
+hooks (`iast/runtime/internal/bench/bench_test.go`) in woven builds with and
+without the hooks (gate group G-B, profiles `local` and `ci`). See the header
+of `.github/runtime-bench.sh`.
+
+This harness is manual: CI does not run it (`.github/workflows/ci.yml` runs
+only the overhead runner of this module, without `-gate`). The `ci` profile
+has the gate limits of the GitHub runners, but no CI job uses it. Run the
+harness by hand after a change of the runtime hooks or of the heap taint bits,
+to measure the hook cost again.

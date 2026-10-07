@@ -38,8 +38,9 @@ func init() {
 	switch os.Getenv(childEnv) {
 	case "":
 		// The tests taint much more memory than an application. The budget
-		// must be set before the first taint. Do not taint here: the
-		// benchmarks need the gate off at the start (BenchmarkRuntimeOff).
+		// must be set before the first taint. Do not taint here. (The
+		// benchmarks of the hooks are in package internal/bench: this
+		// package links heapbitstest, which turns on the test knobs.)
 		heapbits.SetBudget(heapbits.MaxBudget)
 	case "earlyinit":
 		runEarlyInit()

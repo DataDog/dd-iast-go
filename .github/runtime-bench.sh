@@ -6,13 +6,20 @@
 
 # The benchmarks of the runtime hooks (gate group G-B of plan
 # _docs/plans/heapbits-sqli-cmdi.md, section 10) and the check of their gates.
-# A local run and a CI run use the same commands. This is the port of the
-# harness of PR #39 (.github/runtime-bench.sh of that tree).
+# This harness is manual: CI does not run it (.github/workflows/ci.yml runs
+# only the overhead runner of benchmarks/overhead). Run it by hand after a
+# change of the runtime hooks or of the heap taint bits. A local run and a
+# run on a GitHub runner use the same commands; the profile "ci" has the gate
+# limits of the GitHub runners (see RUNTIME_BENCH_PROFILE), but no CI job
+# uses it. This is the port of the harness of PR #39 (.github/runtime-bench.sh
+# of that tree).
 #
 # Method:
 #   - The hook cost is "hook - nohook". Both binaries are woven test binaries
-#     of ./iast/runtime. The nohook binary is built from a copy of the module
-#     where iast/runtime/orchestrion.yml has no hook aspect (the 8
+#     of ./iast/runtime/internal/bench (not of ./iast/runtime: its tests link
+#     heapbits/heapbitstest, which turns on the test knobs of the runtime and
+#     adds work to each bit check). The nohook binary is built from a copy of
+#     the module where iast/runtime/orchestrion.yml has no hook aspect (the 8
 #     prepend-statements aspects): the declarations stay, and the heap taint
 #     bits (internal/taint/heapbits/orchestrion.yml) stay woven. An unwoven
 #     binary is not the reference: the woven binary also links the tracer, and
@@ -118,6 +125,9 @@ tag="$(go env GOVERSION)-$(go env GOOS)-$(go env GOARCH)"
 benchstat=(go -C "$root/benchmarks/overhead" tool benchstat)
 
 yaml=iast/runtime/orchestrion.yml
+# The package of the benchmarks. It must not link heapbits/heapbitstest
+# (its TestNoTestKnobs checks this).
+bench_pkg=iast/runtime/internal/bench
 # The first hook aspect. The nohook file stops before this line.
 first_hook='  - id: iast-concatstrings'
 
@@ -225,7 +235,7 @@ build_one() {
 	mkdir -p "$out/bin" "$out/log"
 	echo "build $name (placement $k, $variant)" >&2
 	if ! (cd "$src" && GOCACHE="$out/gocache/$tag-$name" "${orchestrion[@]}" go test \
-		-c -o "$out/bin/$name.test" ./iast/runtime) >"$out/log/build-$name.log" 2>&1; then
+		-c -o "$out/bin/$name.test" "./$bench_pkg") >"$out/log/build-$name.log" 2>&1; then
 		cat "$out/log/build-$name.log" >&2
 		echo "build $name failed" >&2
 		return 1
@@ -291,7 +301,7 @@ prepare)
 	;;
 plain)
 	mkdir -p "$out/bin"
-	go test -c -o "$out/bin/plain.test" ./iast/runtime
+	go test -c -o "$out/bin/plain.test" "./$bench_pkg"
 	;;
 run)
 	mkdir -p "$out/runtime"
@@ -301,12 +311,13 @@ run)
 	# no result of a binary that was removed.
 	rm -f "$out"/runtime/*.txt
 	# The zero-allocation check (TestAllocs, gate on and
-	# clean, woven stdlib path), and a check that each hook binary is woven.
+	# clean, woven stdlib path), and a check that each hook binary is woven
+	# and has the test knobs off (TestNoTestKnobs).
 	: >"$out/runtime/allocs.txt"
 	for binary in "${binaries[@]}"; do
 		case $(basename "$binary") in
 		h*.test)
-			if ! DD_IAST_REQUIRE_WOVEN=1 "$binary" -test.run='^TestAllocs$' -test.count=1 \
+			if ! DD_IAST_REQUIRE_WOVEN=1 "$binary" -test.run='^(TestAllocs|TestNoTestKnobs)$' -test.count=1 \
 				>>"$out/runtime/allocs.txt" 2>&1; then
 				echo "TestAllocs failed in $binary" >&2
 				echo "FAIL $(basename "$binary")" >>"$out/runtime/allocs.txt"

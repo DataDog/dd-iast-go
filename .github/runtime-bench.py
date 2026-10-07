@@ -62,7 +62,7 @@ SHAPES = (
     + [f"{c}-{m}" for c in CONVERSIONS for m in ("heap", "stack")]
     + ["grow-heap", "growbuf-stack"]
 )
-# The cases of iast/runtime/bench_test.go.
+# The cases of iast/runtime/internal/bench/bench_test.go.
 EXPECTED_RUNTIME = (
     [f"RuntimeOff/{s}" for s in SHAPES]
     + [f"RuntimeClean/{s}" for s in SHAPES]

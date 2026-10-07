@@ -3,7 +3,7 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2026-present Datadog, Inc.
 
-package runtime_test
+package bench_test
 
 import (
 	"strings"
@@ -18,8 +18,13 @@ import (
 // two woven test binaries, and run them in turns with
 // -test.bench=BenchmarkRuntime:
 //
-//	go tool orchestrion go test -c -o hook.test ./iast/runtime
-//	go tool orchestrion go test -c -o nohook.test ./iast/runtime
+//	go tool orchestrion go test -c -o hook.test ./iast/runtime/internal/bench
+//	go tool orchestrion go test -c -o nohook.test ./iast/runtime/internal/bench
+//
+// .github/runtime-bench.sh does these steps. This package must not link
+// package heapbits/heapbitstest (directly or through a dependency): that
+// package turns on the test knobs of the woven runtime, and each bit check
+// then does more work than in a production program (TestNoTestKnobs).
 //
 // Build nohook.test in a copy of the module, where iast/runtime/orchestrion.yml
 // has no hook aspect (remove all the aspects after the line
