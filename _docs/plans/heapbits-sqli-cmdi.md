@@ -873,3 +873,22 @@ the same tree. Raw tables: `$TMPDIR/heapbits-bench/step11/table.md`,
 | G-B rune clean (≤ +6 ns) | PASS (+4.1 ns) | FAIL (r2s-stack +7.4 ns) |
 | G-B tainted (≤ 1 µs, +1 alloc) | PASS (concat2 +692 ns, s2r +909 ns) | PASS (concat2 +47 ns, s2r +81 ns) |
 | G-C heap bits | – | PASS |
+
+### E.2 After the optimizations
+
+Same protocol, run again after the 8 optimization change sets (both trees
+measured again; raw tables `$TMPDIR/heapbits-bench/step11-opt/table.md` and
+`rt-heapbits-opt.md`).
+
+| Gate | PR #39 | heapbits before | heapbits after |
+|---|---|---|---|
+| G-A1 HTTP sampled out | +2.00 % PASS | +2.04 % PASS | +1.89 % PASS |
+| G-A2 HTTP sampled | +37.8 %, B/op +20.6 % | +22.4 %, B/op +49.6 % | **+21.5 %, B/op +19.8 %** |
+| G-A3 gate off | 2 FAIL (Builder, Buffer) | 6 FAIL | **1 FAIL: Builder +7.7 ns (accepted D9)**; Join −1.7, Repeat −1.6, ReplaceAll −2.7, ToLower −4.7 ns |
+| G-A4 active, untainted | PASS | 2 FAIL | 1 marginal FAIL: ByteCopy +3.83 ns (upper bound +4.20, limit +4); StringCoarse −1.7 ns |
+| G-B gate on, clean concat | PASS (concat16 +12.4 ns) | FAIL (+54 ns) | **PASS (concat16 +13.5 ns)** |
+| G-B rune clean | PASS (+4.1 ns) | FAIL (+7.4 ns) | **PASS (+4.6 ns)** |
+| G-B tainted | concat2 +692 ns | +47 ns | +35 ns |
+| Tainted SQL sink in a loop | +0.7 µs (propagation dropped after 512 roots) | +15.5 µs | **+1.2 µs**, B/op +288 |
+| Taint live: Join / Repeat / ReplaceAll | +5.7 / +0.9 / +3.2 ns | +27 / +22 / +25 ns | **+5.1 / −0.5 / +0.2 ns** |
+| Taint live: concat chain | +0.9 / +2.8 ns | +11 / +12 ns | +6.3 / +6.9 ns |
