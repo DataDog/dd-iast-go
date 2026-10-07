@@ -27,8 +27,10 @@ meta:
 #     false (system stack, runtime lock, allocation in progress, or a rune
 #     callback on this goroutine), the original body runs directly. When it is
 #     true, the code calls the filter __dd_iast_<x>_hit. The filter calls
-#     __dd_taint_any for each input, and returns true only when one input is
-#     tainted. Then the code returns the result of the wrapper __dd_iast_<fn>.
+#     __dd_taint_any for each input (the concatenation filter calls
+#     __dd_iast_anystrs, which gives the same result for all the operands),
+#     and returns true only when one input is tainted. Then the code returns
+#     the result of the wrapper __dd_iast_<fn>.
 #     When the filter returns false (the clean path), the original body runs
 #     directly. Exception: slicerunetostring calls its filter in its wrapper
 #     (see the wrapper).
@@ -113,6 +115,7 @@ aspects:
               _ func(dst, src, n uintptr) bool = __dd_taint_copy
               _ func(p, n, from uintptr, want bool) uintptr = __dd_taint_next
               _ bool = __dd_taint_testing
+              _ func(p uintptr) *__dd_taintChunk = __dd_taint_chunk
             )
 
             // __dd_iast_s2soff is the string-to-slice switch
@@ -214,13 +217,105 @@ aspects:
             //go:linkname __dd_iast_concat_hitimpl __dd_iast_runtime.concat_hit
             //go:noinline
             func __dd_iast_concat_hitimpl(buf *tmpBuf, a []string) (*tmpBuf, []string, bool) {
+              return buf, a, __dd_iast_anystrs(a)
+            }
+
+            // __dd_iast_anystrsMax is the largest operand (in bytes) that
+            // __dd_iast_anystrs checks itself. A longer operand goes to
+            // __dd_taint_any. 1 KiB is at most 17 bitmap words, as in the
+            // fast path of __dd_taint_any.
+            const __dd_iast_anystrsMax = 1024
+
+            // __dd_iast_anystrs tells if one byte of one string of a is
+            // tainted (the filter of concatstrings and concatbytes). The
+            // result is the same as a loop of __dd_taint_any over the strings
+            // of a, but it costs less: the operands of a concatenation are
+            // frequently near each other, thus the function looks up the
+            // taint chunk of a 128 KiB heap region one time for all the
+            // operands in this region, in a sequence. It reads the bitmap
+            // words of an operand of at most __dd_iast_anystrsMax bytes in
+            // one region itself. A longer operand, or an operand in more
+            // than one region, goes to __dd_taint_any.
+            //
+            // When the program links heapbits/heapbitstest (tests), each
+            // operand goes to __dd_taint_any, so that the test probes and the
+            // slow-path knob see each operand.
+            //
+            // The function is nosplit: the stack cannot move during the call,
+            // thus the address of a stack operand stays correct. The bits of
+            // stack memory are always 0, so a stack operand is never tainted,
+            // as in the fast path of __dd_taint_any. A chunk that the sweeper
+            // gives back during the call stays mapped (slabs are never
+            // unmapped): its words give the old or the new bits, as in
+            // __dd_taint_any.
+            //
+            //go:nosplit
+            func __dd_iast_anystrs(a []string) bool {
+              if __dd_taint_testing {
+                for _, x := range a {
+                  if __dd_taint_any(__dd_iast_strptr(x), uintptr(len(x))) {
+                    return true
+                  }
+                }
+                return false
+              }
+              // region is the base of the region of c. 1 is no region: a
+              // region base is a multiple of 128 KiB.
+              region := uintptr(1)
+              var c *__dd_taintChunk
               for _, x := range a {
-                if __dd_taint_any(__dd_iast_strptr(x), uintptr(len(x))) {
-                  return buf, a, true
+                n := uintptr(len(x))
+                if n == 0 {
+                  continue
+                }
+                p := __dd_iast_strptr(x)
+                cbase := p &^ (__dd_taint_chunkHeap - 1)
+                b0 := p - cbase
+                b1 := b0 + n
+                if n > __dd_iast_anystrsMax || b1 > __dd_taint_chunkHeap {
+                  if __dd_taint_any(p, n) {
+                    return true
+                  }
+                  continue
+                }
+                if cbase != region {
+                  region, c = cbase, __dd_taint_chunk(p)
+                }
+                if c == nil {
+                  // No chunk: no taint in the region. The nil chunk stays
+                  // for the next operands of this region in this call. When
+                  // a different goroutine taints (in place) an operand of
+                  // this region during the call, and makes the chunk, the
+                  // call can miss this taint. This is an accepted limit:
+                  // the loop of __dd_taint_any has the same window between
+                  // the check and the copy of the concatenation, only
+                  // shorter.
+                  continue
+                }
+                w0, w1 := b0/64, (b1-1)/64
+                first := ^uint64(0) << (b0 % 64)
+                last := ^uint64(0) >> (63 - (b1-1)%64)
+                if w0 == w1 {
+                  if atomic.Load64(&c[w0&(__dd_taint_chunkWords-1)])&first&last != 0 {
+                    return true
+                  }
+                  continue
+                }
+                if atomic.Load64(&c[w0&(__dd_taint_chunkWords-1)])&first != 0 || atomic.Load64(&c[w1&(__dd_taint_chunkWords-1)])&last != 0 {
+                  return true
+                }
+                for w := w0 + 1; w < w1; w++ {
+                  if atomic.Load64(&c[w&(__dd_taint_chunkWords-1)]) != 0 {
+                    return true
+                  }
                 }
               }
-              return buf, a, false
+              return false
             }
+
+            // Exported to the tests of iast/runtime (push linkname).
+            //go:linkname __dd_iast_api_anystrs __dd_iast_runtime.anystrs
+            var __dd_iast_api_anystrs = __dd_iast_anystrs
 
             //go:linkname __dd_iast_bytes_hit __dd_iast_runtime.bytes_hit
             //go:noescape

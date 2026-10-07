@@ -250,11 +250,21 @@ func TestFramesUnchanged(t *testing.T) {
 	}
 }
 
+// nosplitFuncs are injected functions that must be nosplit and must call
+// only nosplit functions: the value is the set of the functions that they
+// can call with optimizations. __dd_iast_anystrs reads the addresses of its
+// operands, which can be stack addresses: the stack must not move during
+// the call.
+var nosplitFuncs = map[string][]string{
+	"__dd_iast_anystrs": {"runtime.__dd_taint_any", "runtime.__dd_taint_chunk"},
+}
+
 // TestInjectedCode checks the machine code rules of the injected runtime
 // functions, with and without optimizations: the functions of leafFuncs are
-// nosplit and call nothing; with optimizations, no injected function calls a
-// panic or throw function (a panic in the runtime is a fatal error of the
-// application).
+// nosplit and call nothing; the functions of nosplitFuncs are nosplit and
+// call only nosplit functions; with optimizations, no injected function
+// calls a panic or throw function (a panic in the runtime is a fatal error of
+// the application).
 func TestInjectedCode(t *testing.T) {
 	skipBuildTest(t)
 	root := moduleRoot(t)
@@ -268,6 +278,22 @@ func TestInjectedCode(t *testing.T) {
 				}
 				require.True(t, f.nosplit, "%s must be nosplit", leaf)
 				require.Empty(t, f.calls, "%s must not call a function", leaf)
+			}
+			for name, allowed := range nosplitFuncs {
+				f := funcs["runtime."+name]
+				require.NotNil(t, f, "%s not in the -S output", name)
+				require.True(t, f.nosplit, "%s must be nosplit", name)
+				for _, target := range f.calls {
+					if extra == "" {
+						require.Contains(t, allowed, target, "%s calls %s", name, target)
+					}
+					if extra != "" && strings.HasPrefix(target, "runtime.panic") {
+						continue // bounds checks that the guards make unreachable
+					}
+					callee := funcs[target]
+					require.NotNil(t, callee, "%s calls %s: not in the -S output (cannot prove that it is nosplit)", name, target)
+					require.True(t, callee.nosplit, "%s calls %s, which has a stack check", name, target)
+				}
 			}
 			if extra != "" {
 				require.NotNil(t, funcs["runtime.__dd_iast_ok"], "with -N -l, __dd_iast_ok is a function")
