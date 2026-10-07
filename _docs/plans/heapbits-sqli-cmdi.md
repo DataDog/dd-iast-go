@@ -852,3 +852,24 @@ appendix C and the bypass-field pattern.
 | 1 | Pre-read clear removes taint of an untouched tail or alias | Read rule: shadow, clear, read, restore the tail only (6.2) |
 | 2 | Existing output bits hide the `fmt` argument's owner | Generated or method output always gets the coarse entry of the argument's owner (6.3) |
 | m3 | `TryRLock` has no fixed retry bound | One `sync.Mutex.TryLock` for all accessors (4.1) |
+
+## Appendix E. Measured comparison (step 11)
+
+Machine: Apple M5 Pro, darwin/arm64, go1.26.6, idle. Overhead runner: 5
+passes, 20 interleaved pairs of 1 s for each tree. Runtime harness: 8
+placements × 10 rounds for each tree. Each Δ is IAST against the control of
+the same tree. Raw tables: `$TMPDIR/heapbits-bench/step11/table.md`,
+`rt-heapbits.md`, `rt-pr39.md`, `gc-heapbits/gate.txt`.
+
+| Gate | PR #39 | heapbits |
+|---|---|---|
+| G-A1 HTTP sampled out (≤ +3.70 %) | +1.33 % PASS | +2.04 % PASS |
+| G-A2 HTTP sampled (record) | +35.4 %, B/op +20.6 %, allocs +23.9 % | +22.4 %, B/op +49.6 %, allocs +26.3 % |
+| G-A3 gate off, 21 stdlib workloads | 2 FAIL (Builder +23.7 ns, Buffer +19.6 ns, each +1 alloc) | 6 FAIL (Builder +9.0, Join +12.5, Repeat +8.5, ReplaceAll +13.4, ToLower +5.1 ns, Quote noise), 0 allocs |
+| G-A4 active, untainted | PASS | 2 FAIL (StringCoarse +9.0 ns, ByteCopy +5.4 ns) |
+| G-A5 concat chain allocs | PASS | PASS |
+| G-B gate off (≤ +2 ns) | PASS | PASS |
+| G-B gate on, clean concat (≤ 3 + 1.5 ns/operand) | PASS (concat16 +12–14 ns) | FAIL (concat16 +54 ns, ~3.3 ns/operand) |
+| G-B rune clean (≤ +6 ns) | PASS (+4.1 ns) | FAIL (r2s-stack +7.4 ns) |
+| G-B tainted (≤ 1 µs, +1 alloc) | PASS (concat2 +692 ns, s2r +909 ns) | PASS (concat2 +47 ns, s2r +81 ns) |
+| G-C heap bits | – | PASS |
