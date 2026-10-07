@@ -10,12 +10,15 @@ import (
 	"os/exec"
 	"reflect"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"testing"
-	_ "unsafe" // linkname
+	"unsafe"
 
+	"github.com/DataDog/dd-iast-go/internal/taint/heapbits"
 	"github.com/DataDog/dd-iast-go/internal/taint/propbridge"
+	"github.com/DataDog/orchestrion/runtime/built"
 	"github.com/stretchr/testify/require"
 )
 
@@ -84,4 +87,40 @@ func TestBridgeModes(t *testing.T) {
 	require.Equal(t, uint8(2), propbridge.Positional)
 	require.NotNil(t, pbDerived)
 	require.Equal(t, reflect.ValueOf(propbridge.Derived).Pointer(), reflect.ValueOf(pbDerived).Pointer())
+}
+
+// rtAnyStrsPtr is the variable that the strings.Join hook reads (pushed by
+// the aspects of iast/runtime).
+//
+//go:linkname rtAnyStrsPtr __dd_iast_runtime.anystrsptr
+var rtAnyStrsPtr func(p, n uintptr) bool
+
+var joinBridgeSink []byte
+
+// TestJoinBridge checks that the woven runtime pushes the function that the
+// strings.Join hook uses for the check of its elements (without it, the hook
+// does one Any for each element), and the arguments that the hook gives.
+func TestJoinBridge(t *testing.T) {
+	if !built.WithOrchestrion {
+		t.Skip("orchestrion is not enabled, use `go tool orchestrion go test` to run this test suite")
+	}
+	require.NotNil(t, rtAnyStrsPtr, "the woven runtime does not push __dd_iast_runtime.anystrsptr")
+	tainted := append(make([]byte, 0, 16), "tainted-element"...)
+	joinBridgeSink = tainted // heap memory: stack memory has no bits
+	require.True(t, heapbits.SetBytes(tainted[3:5]))
+	defer heapbits.ClearBytes(tainted)
+	clean := strings.Clone("clean")
+	check := func(elems []string) bool {
+		p := unsafe.SliceData(elems)
+		ok := rtAnyStrsPtr(uintptr(unsafe.Pointer(p)), uintptr(len(elems)))
+		runtime.KeepAlive(p)
+		return ok
+	}
+	value := unsafe.String(unsafe.SliceData(tainted), len(tainted))
+	require.False(t, check(nil))
+	require.False(t, check([]string{clean, "", clean}))
+	require.False(t, check([]string{clean, value[:3], value[5:]}), "only the bytes of the strings")
+	require.True(t, check([]string{clean, "", value[4:6]}))
+	require.True(t, check([]string{value}))
+	runtime.KeepAlive(tainted)
 }

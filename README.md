@@ -279,7 +279,7 @@ can turn the propagation off.
 
 Package | Operations
 ---|---
-`iast/propagation/text` | `strings`: `Builder`, `Clone`, `Repeat`, `Map`, `ToUpper`, `ToLower`, `ToValidUTF8`, `Replacer`, `Reader`; `bytes`: `Buffer`, `Clone`, `Join`, `Repeat`, `Replace`, `ToUpper`, `ToLower`, `Map`, `Reader`; `strconv`: quote and unquote; `net/url`: escape and unescape
+`iast/propagation/text` | `strings`: `Builder`, `Clone`, `Join`, `Repeat`, `Replace`, `Map`, `ToUpper`, `ToLower`, `ToValidUTF8`, `Replacer`, `Reader`; `bytes`: `Buffer`, `Clone`, `Join`, `Repeat`, `Replace`, `ToUpper`, `ToLower`, `Map`, `Reader`; `strconv`: quote and unquote; `net/url`: escape and unescape
 `iast/propagation/stream` | `fmt` (print and format functions, padding), `io.ReadAll`, `bufio.Reader`, `encoding/json` v1 (`Decoder`, quoted fields, unquote)
 `iast/propagation/jsonv2` | `encoding/json/v2` (string decoding, and the `jsontext` decoder buffer)
 

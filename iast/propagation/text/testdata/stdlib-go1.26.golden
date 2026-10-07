@@ -782,6 +782,14 @@ func (b *Builder) WriteString(s string) (int, error) {
 	return len(s), nil
 }
 
+## strings (*Builder).WriteByte
+(builder.go)
+func (b *Builder) WriteByte(c byte) error {
+	b.copyCheck()
+	b.buf = append(b.buf, c)
+	return nil
+}
+
 ## strings (*Builder).grow
 (builder.go)
 func (b *Builder) grow(n int) {
@@ -795,6 +803,77 @@ func (b *Builder) grow(n int) {
 func Clone(s string) string {
 	return stringslite.Clone(s)
 }
+
+## strings Join
+(strings.go)
+func Join(elems []string, sep string) string {
+	switch len(elems) {
+	case 0:
+		return ""
+	case 1:
+		return elems[0]
+	}
+	var n int
+	if len(sep) > 0 {
+		if len(sep) >= maxInt/(len(elems)-1) {
+			panic("strings: Join output length overflow")
+		}
+		n += len(sep) * (len(elems) - 1)
+	}
+	for _, elem := range elems {
+		if len(elem) > maxInt-n {
+			panic("strings: Join output length overflow")
+		}
+		n += len(elem)
+	}
+	var b Builder
+	b.Grow(n)
+	b.WriteString(elems[0])
+	for _, s := range elems[1:] {
+		b.WriteString(sep)
+		b.WriteString(s)
+	}
+	return b.String()
+}
+
+## strings Replace
+(strings.go)
+func Replace(s, old, new string, n int) string {
+	if old == new || n == 0 {
+		return s
+	}
+	if m := Count(s, old); m == 0 {
+		return s
+	} else if n < 0 || m < n {
+		n = m
+	}
+	var b Builder
+	b.Grow(len(s) + n*(len(new)-len(old)))
+	start := 0
+	if len(old) > 0 {
+		for range n {
+			j := start + Index(s[start:], old)
+			b.WriteString(s[start:j])
+			b.WriteString(new)
+			start = j + len(old)
+		}
+	} else {
+		b.WriteString(new)
+		for range n - 1 {
+			_, wid := utf8.DecodeRuneInString(s[start:])
+			j := start + wid
+			b.WriteString(s[start:j])
+			b.WriteString(new)
+			start = j
+		}
+	}
+	b.WriteString(s[start:])
+	return b.String()
+}
+
+## strings maxInt
+(strings.go)
+const maxInt = int(^uint(0) >> 1)
 
 ## strings Repeat
 (strings.go)

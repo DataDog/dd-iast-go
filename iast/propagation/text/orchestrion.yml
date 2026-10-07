@@ -45,6 +45,25 @@ meta:
 #     a part of the copy into the same part of the original input (the
 #     original body returns parts of its input; they keep their exact bits),
 #     and applies the coarse rule to a new output.
+#  5. Some hooks ("plain twin" hooks: strings.Join, strings.Replace,
+#     strings.Repeat, strings.ToLower) start with "if !__dd_iast_live() ||
+#     <no input is tainted> { return __dd_iast_<fn>_plain(...) }". The
+#     check does one Any for each input before the body (strings.Join
+#     checks its elements in batches of 256 with one call of the runtime).
+#     The plain twin is a copy of the original body that uses __dd_iast_pb,
+#     a local builder without hooks (its write methods are inlinable), in
+#     place of strings.Builder: the hooks of strings.Builder stop the
+#     inlining of its methods, and do one Any for each write. The output of
+#     a plain twin has no taint bits, as the output of the original body for
+#     inputs without taint. When an input is tainted, the original body runs
+#     (with the hooks of strings.Builder), or the twin of rule 2 for its
+#     special cases. TestPlainTwins compares the plain twins with the
+#     original bodies (results, panics, allocations).
+#     Accepted limit: the check occurs one time, before the copy. When a
+#     different goroutine taints (in place) an input after the check and
+#     before the copy, the output does not get this taint. The original body
+#     has the same window between its check (in the hooked
+#     Builder.WriteString) and its copy, only shorter.
 #
 # Rules:
 #
@@ -80,6 +99,7 @@ aspects:
             runtime: runtime
             unsafe: unsafe
             stringslite: internal/stringslite
+            bytealg: internal/bytealg
           template: |-
             // ---- bit functions (plan section 6.1 rule 1) ----
             //
@@ -193,6 +213,51 @@ aspects:
               __dd_iast_clear(unsafe.Pointer(unsafe.SliceData(b)), len(b))
             }
 
+            // ---- plain builder (rule 5 of the header) ----
+
+            // __dd_iast_pb is strings.Builder without the hooks and without
+            // the copy check. Only the plain twins use it, and only as a
+            // local variable (it is never copied). Its methods do the same
+            // work as the methods of strings.Builder (the same allocation
+            // sizes and the same panics). The methods are inlinable, except
+            // grow (as in strings.Builder; TestPlainBuilderInlining).
+            type __dd_iast_pb struct {
+              buf []byte
+            }
+
+            // grow is strings.Builder.grow.
+            func (b *__dd_iast_pb) grow(n int) {
+              buf := bytealg.MakeNoZero(2*cap(b.buf) + n)[:len(b.buf)]
+              copy(buf, b.buf)
+              b.buf = buf
+            }
+
+            // Grow is strings.Builder.Grow (with the same panic value).
+            func (b *__dd_iast_pb) Grow(n int) {
+              if n < 0 {
+                panic("strings.Builder.Grow: negative count")
+              }
+              if cap(b.buf)-len(b.buf) < n {
+                b.grow(n)
+              }
+            }
+
+            func (b *__dd_iast_pb) WriteString(s string) {
+              b.buf = append(b.buf, s...)
+            }
+
+            func (b *__dd_iast_pb) WriteByte(c byte) {
+              b.buf = append(b.buf, c)
+            }
+
+            func (b *__dd_iast_pb) Len() int {
+              return len(b.buf)
+            }
+
+            func (b *__dd_iast_pb) String() string {
+              return unsafe.String(unsafe.SliceData(b.buf), len(b.buf))
+            }
+
             // ---- string helpers ----
 
             // __dd_iast_ptr returns the address of the data of s.
@@ -266,6 +331,182 @@ aspects:
               if __dd_iast_r, __dd_iast_ok := __dd_iast_clone({{ $s }}); __dd_iast_ok {
                 return __dd_iast_r
               }
+            }
+
+  - id: strings.Join
+    join-point:
+      all-of:
+        - import-path: strings
+        - function-body:
+            function:
+              - name: Join
+              - receiver: false
+    advice:
+      - inject-declarations:
+          imports:
+            runtime: runtime
+            unsafe: unsafe
+          template: |-
+            // __dd_iast_rt_anystrs is the Any of the data of the n strings at
+            // p (the data of a []string), in one call. The aspects of
+            // iast/runtime push it (nil when they are not woven: then
+            // __dd_iast_join_tainted does one Any for each string). The
+            // arguments are uintptr values: a []string given to a func value
+            // escapes, and elems must not escape. The function is nosplit:
+            // the stack does not move during the call, thus p stays correct
+            // when elems is in stack memory. runtime.KeepAlive keeps elems
+            // alive until the end of the call. The function cannot be
+            // preempted, thus it scans at most __dd_iast_join_batch strings in
+            // one call (it returns true for more strings).
+            //
+            //go:linkname __dd_iast_rt_anystrs __dd_iast_runtime.anystrsptr
+            var __dd_iast_rt_anystrs func(p, n uintptr) bool
+
+            // __dd_iast_join_batch is the number of elements for one call of
+            // __dd_iast_rt_anystrs. It is __dd_iast_anystrsBatch of the
+            // aspects of iast/runtime.
+            const __dd_iast_join_batch = 256
+
+            // __dd_iast_join_tainted reports whether an input of Join that the
+            // body copies is tainted. For 0 or 1 element, the body copies
+            // nothing (it returns "" or elems[0]). It gives the elements to
+            // __dd_iast_rt_anystrs in batches: between two calls, the
+            // goroutine can be preempted (this function is not nosplit).
+            //
+            // The check occurs one time, before the plain twin copies the
+            // inputs. When a different goroutine taints (in place) an input
+            // after the check and before the copy, the result does not get
+            // this taint. This is an accepted limit: the original body, with
+            // the hooked Builder.WriteString, has the same window between
+            // its check and its copy, only shorter.
+            func __dd_iast_join_tainted(elems []string, sep string) bool {
+              if len(elems) < 2 {
+                return false
+              }
+              if __dd_iast_anys(sep) {
+                return true
+              }
+              if f := __dd_iast_rt_anystrs; f != nil {
+                for len(elems) > 0 {
+                  n := min(len(elems), __dd_iast_join_batch)
+                  p := unsafe.SliceData(elems)
+                  ok := f(uintptr(unsafe.Pointer(p)), uintptr(n))
+                  runtime.KeepAlive(p)
+                  if ok {
+                    return true
+                  }
+                  elems = elems[n:]
+                }
+                return false
+              }
+              for _, e := range elems {
+                if __dd_iast_anys(e) {
+                  return true
+                }
+              }
+              return false
+            }
+
+            // __dd_iast_join_plain is the body of Join with __dd_iast_pb
+            // (rule 5 of the header). Keep it the same as the body.
+            func __dd_iast_join_plain(elems []string, sep string) string {
+              switch len(elems) {
+              case 0:
+                return ""
+              case 1:
+                return elems[0]
+              }
+              var n int
+              if len(sep) > 0 {
+                if len(sep) >= maxInt/(len(elems)-1) {
+                  panic("strings: Join output length overflow")
+                }
+                n += len(sep) * (len(elems) - 1)
+              }
+              for _, elem := range elems {
+                if len(elem) > maxInt-n {
+                  panic("strings: Join output length overflow")
+                }
+                n += len(elem)
+              }
+              var b __dd_iast_pb
+              b.Grow(n)
+              b.WriteString(elems[0])
+              for _, s := range elems[1:] {
+                b.WriteString(sep)
+                b.WriteString(s)
+              }
+              return b.String()
+            }
+      - prepend-statements:
+          template: |-
+            {{- $elems := .Function.Argument 0 -}}
+            {{- $sep := .Function.Argument 1 -}}
+            if !__dd_iast_live() || !__dd_iast_join_tainted({{ $elems }}, {{ $sep }}) {
+              return __dd_iast_join_plain({{ $elems }}, {{ $sep }})
+            }
+
+  - id: strings.Replace
+    join-point:
+      all-of:
+        - import-path: strings
+        - function-body:
+            function:
+              - name: Replace
+              - receiver: false # not the Replace methods of the replacers
+    advice:
+      - inject-declarations:
+          imports:
+            utf8: unicode/utf8
+          template: |-
+            // __dd_iast_replace_plain is the body of Replace with
+            // __dd_iast_pb (rule 5 of the header). Keep it the same as the
+            // body. The output has only parts of s and copies of new: the
+            // hook checks only these 2 inputs.
+            // The hook checks the inputs one time, before the copy. A taint
+            // that a different goroutine adds (in place) to an input after the
+            // check is not in the output: an accepted limit (rule 5 of the
+            // header).
+            func __dd_iast_replace_plain(s, old, new string, n int) string {
+              if old == new || n == 0 {
+                return s
+              }
+              if m := Count(s, old); m == 0 {
+                return s
+              } else if n < 0 || m < n {
+                n = m
+              }
+              var b __dd_iast_pb
+              b.Grow(len(s) + n*(len(new)-len(old)))
+              start := 0
+              if len(old) > 0 {
+                for range n {
+                  j := start + Index(s[start:], old)
+                  b.WriteString(s[start:j])
+                  b.WriteString(new)
+                  start = j + len(old)
+                }
+              } else {
+                b.WriteString(new)
+                for range n - 1 {
+                  _, wid := utf8.DecodeRuneInString(s[start:])
+                  j := start + wid
+                  b.WriteString(s[start:j])
+                  b.WriteString(new)
+                  start = j
+                }
+              }
+              b.WriteString(s[start:])
+              return b.String()
+            }
+      - prepend-statements:
+          template: |-
+            {{- $s := .Function.Argument 0 -}}
+            {{- $old := .Function.Argument 1 -}}
+            {{- $new := .Function.Argument 2 -}}
+            {{- $n := .Function.Argument 3 -}}
+            if !__dd_iast_live() || !(__dd_iast_anys({{ $s }}) || __dd_iast_anys({{ $new }})) {
+              return __dd_iast_replace_plain({{ $s }}, {{ $old }}, {{ $new }}, {{ $n }})
             }
 
   - id: strings.Builder.Write
@@ -382,13 +623,70 @@ aspects:
           imports:
             bits: math/bits
           template: |-
-            // __dd_iast_repeat does only the case of the read-only fast path
-            // (a result of at most 128 bytes from a constant): for a tainted
-            // s, it builds the result with the Builder, whose hooks copy the
-            // bits. In all other cases, the original body runs (its Builder
-            // also copies the bits).
+            // __dd_iast_repeat_plain is the body of Repeat with __dd_iast_pb
+            // (rule 5 of the header). Keep it the same as the body.
+            // The hook checks the inputs one time, before the copy. A taint
+            // that a different goroutine adds (in place) to an input after the
+            // check is not in the output: an accepted limit (rule 5 of the
+            // header).
+            func __dd_iast_repeat_plain(s string, count int) string {
+              switch count {
+              case 0:
+                return ""
+              case 1:
+                return s
+              }
+              if count < 0 {
+                panic("strings: negative Repeat count")
+              }
+              hi, lo := bits.Mul(uint(len(s)), uint(count))
+              if hi > 0 || lo > uint(maxInt) {
+                panic("strings: Repeat output length overflow")
+              }
+              n := int(lo)
+              if len(s) == 0 {
+                return ""
+              }
+              switch s[0] {
+              case ' ', '-', '0', '=', '\t':
+                switch {
+                case n <= len(repeatedSpaces) && HasPrefix(repeatedSpaces, s):
+                  return repeatedSpaces[:n]
+                case n <= len(repeatedDashes) && HasPrefix(repeatedDashes, s):
+                  return repeatedDashes[:n]
+                case n <= len(repeatedZeroes) && HasPrefix(repeatedZeroes, s):
+                  return repeatedZeroes[:n]
+                case n <= len(repeatedEquals) && HasPrefix(repeatedEquals, s):
+                  return repeatedEquals[:n]
+                case n <= len(repeatedTabs) && HasPrefix(repeatedTabs, s):
+                  return repeatedTabs[:n]
+                }
+              }
+              const chunkLimit = 8 * 1024
+              chunkMax := n
+              if n > chunkLimit {
+                chunkMax = chunkLimit / len(s) * len(s)
+                if chunkMax == 0 {
+                  chunkMax = len(s)
+                }
+              }
+              var b __dd_iast_pb
+              b.Grow(n)
+              b.WriteString(s)
+              for b.Len() < n {
+                chunk := min(n-b.Len(), b.Len(), chunkMax)
+                b.WriteString(b.String()[:chunk])
+              }
+              return b.String()
+            }
+
+            // __dd_iast_repeat runs only for a tainted s. It does only the
+            // case of the read-only fast path (a result of at most 128 bytes
+            // from a constant): it builds the result with the Builder, whose
+            // hooks copy the bits. In all other cases, the original body runs
+            // (its Builder also copies the bits).
             func __dd_iast_repeat(s string, count int) (string, bool) {
-              if count < 2 || len(s) == 0 || !__dd_iast_anys(s) {
+              if count < 2 || len(s) == 0 {
                 return "", false
               }
               switch s[0] {
@@ -414,10 +712,11 @@ aspects:
           template: |-
             {{- $s := .Function.Argument 0 -}}
             {{- $count := .Function.Argument 1 -}}
-            if __dd_iast_live() {
-              if __dd_iast_r, __dd_iast_ok := __dd_iast_repeat({{ $s }}, {{ $count }}); __dd_iast_ok {
-                return __dd_iast_r
-              }
+            if !__dd_iast_live() || !__dd_iast_anys({{ $s }}) {
+              return __dd_iast_repeat_plain({{ $s }}, {{ $count }})
+            }
+            if __dd_iast_r, __dd_iast_ok := __dd_iast_repeat({{ $s }}, {{ $count }}); __dd_iast_ok {
+              return __dd_iast_r
             }
 
   - id: strings.ToUpper
@@ -482,14 +781,58 @@ aspects:
     advice:
       - inject-declarations:
           imports:
+            unicode: unicode
             unsafe: unsafe
             utf8: unicode/utf8
           template: |-
-            // __dd_iast_tolower: see __dd_iast_toupper.
-            func __dd_iast_tolower(s string) (string, bool) {
-              if !__dd_iast_anys(s) {
-                return "", false
+            // __dd_iast_tolower_plain is the body of ToLower with
+            // __dd_iast_pb (rule 5 of the header). Keep it the same as the
+            // body.
+            // The hook checks the inputs one time, before the copy. A taint
+            // that a different goroutine adds (in place) to an input after the
+            // check is not in the output: an accepted limit (rule 5 of the
+            // header).
+            func __dd_iast_tolower_plain(s string) string {
+              isASCII, hasUpper := true, false
+              for i := 0; i < len(s); i++ {
+                c := s[i]
+                if c >= utf8.RuneSelf {
+                  isASCII = false
+                  break
+                }
+                hasUpper = hasUpper || ('A' <= c && c <= 'Z')
               }
+              if isASCII {
+                if !hasUpper {
+                  return s
+                }
+                var (
+                  b   __dd_iast_pb
+                  pos int
+                )
+                b.Grow(len(s))
+                for i := 0; i < len(s); i++ {
+                  c := s[i]
+                  if 'A' <= c && c <= 'Z' {
+                    c += 'a' - 'A'
+                    if pos < i {
+                      b.WriteString(s[pos:i])
+                    }
+                    b.WriteByte(c)
+                    pos = i + 1
+                  }
+                }
+                if pos < len(s) {
+                  b.WriteString(s[pos:])
+                }
+                return b.String()
+              }
+              return Map(unicode.ToLower, s)
+            }
+
+            // __dd_iast_tolower runs only for a tainted s: see
+            // __dd_iast_toupper.
+            func __dd_iast_tolower(s string) (string, bool) {
               hasUpper := false
               for i := 0; i < len(s); i++ {
                 c := s[i]
@@ -516,10 +859,11 @@ aspects:
       - prepend-statements:
           template: |-
             {{- $s := .Function.Argument 0 -}}
-            if __dd_iast_live() {
-              if __dd_iast_r, __dd_iast_ok := __dd_iast_tolower({{ $s }}); __dd_iast_ok {
-                return __dd_iast_r
-              }
+            if !__dd_iast_live() || !__dd_iast_anys({{ $s }}) {
+              return __dd_iast_tolower_plain({{ $s }})
+            }
+            if __dd_iast_r, __dd_iast_ok := __dd_iast_tolower({{ $s }}); __dd_iast_ok {
+              return __dd_iast_r
             }
 
   - id: strings.Map
@@ -2241,7 +2585,7 @@ aspects:
             // Exported to package internal/taint/request (push linkname).
             //
             //go:linkname __dd_iast_text_points __dd_iast_telemetry.text_points
-            var __dd_iast_text_points uint32 = 32
+            var __dd_iast_text_points uint32 = 34
 
             // The linkname directive needs the import of unsafe.
             var _ unsafe.Pointer

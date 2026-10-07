@@ -30,7 +30,7 @@ import (
 // hookedFuncs are the functions that orchestrion.yml hooks, by package
 // ("name" or "(*Type).name").
 var hookedFuncs = map[string][]string{
-	"strings": {"Clone", "(*Builder).Write", "(*Builder).WriteString", "(*Builder).grow", "Repeat", "ToUpper", "ToLower", "Map", "ToValidUTF8", "(*Replacer).Replace",
+	"strings": {"Clone", "Join", "Replace", "(*Builder).Write", "(*Builder).WriteString", "(*Builder).grow", "Repeat", "ToUpper", "ToLower", "Map", "ToValidUTF8", "(*Replacer).Replace",
 		"(*Reader).Read", "(*Reader).ReadAt"},
 	"bytes": {"Clone", "Join", "Repeat", "Replace", "ToValidUTF8", "ToUpper", "ToLower", "Map",
 		"(*Buffer).grow", "(*Buffer).Write", "(*Buffer).WriteString", "(*Buffer).WriteByte", "(*Buffer).WriteRune", "(*Buffer).ReadFrom",

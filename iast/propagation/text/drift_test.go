@@ -32,8 +32,8 @@ var updateDrift = flag.Bool("update-drift", false, "write the golden file of the
 var driftItems = map[string][]string{
 	"strings": {
 		"Builder", "(*Builder).copyCheck", "(*Builder).String", "(*Builder).Len", "(*Builder).Grow",
-		"(*Builder).Write", "(*Builder).WriteString", "(*Builder).grow",
-		"Clone", "Repeat", "repeatedSpaces", "ToUpper", "ToLower", "ToTitle", "Map", "ToValidUTF8",
+		"(*Builder).Write", "(*Builder).WriteString", "(*Builder).WriteByte", "(*Builder).grow",
+		"Clone", "Join", "Replace", "maxInt", "Repeat", "repeatedSpaces", "ToUpper", "ToLower", "ToTitle", "Map", "ToValidUTF8",
 		"Replacer", "(*Replacer).Replace", "(*Replacer).buildOnce", "replacer",
 		"Reader", "(*Reader).Read", "(*Reader).ReadAt", "(*Reader).WriteTo",
 	},
