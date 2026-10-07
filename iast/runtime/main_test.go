@@ -55,6 +55,12 @@ var (
 	//go:linkname rtStats __dd_iast_runtime.stats
 	rtStats func() uint64
 
+	// rtGrow0 returns the number of calls of the grow filter with no old
+	// element (the hooks must not make such calls).
+	//
+	//go:linkname rtGrow0 __dd_iast_runtime.grow0
+	rtGrow0 func() uint64
+
 	// rtGuard is the re-entry guard of package propbridge.
 	//
 	//go:linkname rtGuard __dd_iast_propbridge.guard

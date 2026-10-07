@@ -72,6 +72,63 @@ func TestHooksFire(t *testing.T) {
 	})
 }
 
+// TestGrowNoOldElements checks the appends with no old element (newLen ==
+// num): the growslice and growsliceBuf hooks do not call their filter and
+// their wrapper, and the new backing store has no bits, also when the old
+// backing store (after len) is tainted. The memmove of the new elements does
+// not copy bits. An append with one old element still copies its bits. The
+// test counter of the filter calls without old element (rtGrow0) stays 0:
+// it fails when the hooks call the filter for such an append.
+func TestGrowNoOldElements(t *testing.T) {
+	requireWoven(t)
+	require.NotNil(t, rtGrow0, "the woven runtime does not push __dd_iast_runtime.grow0")
+	data := taintBytes(t, "00attack99")
+	src := taintBytes(t, "attack")
+	require.Equal(t, []span{{0, 10}}, bytesSpans(data))
+
+	before := entries()
+	before0 := rtGrow0()
+	got := heapAppendTo(data[:0:0], src)
+	require.Equal(t, "attack", string(got))
+	require.NotEqual(t, bytesData(data), bytesData(got), "append made a new backing store")
+	require.Empty(t, bytesSpans(got), "no old element: no bits")
+	got = heapAppendTo(nil, src)
+	require.Equal(t, "attack", string(got))
+	require.Empty(t, bytesSpans(got), "nil slice: no bits")
+	require.Equal(t, before, entries(), "no wrapper call without old elements")
+	got = bufAppendEach(src)
+	require.Equal(t, "attack", string(got))
+	require.Empty(t, bytesSpans(got), "growsliceBuf: the old elements are clean stack memory")
+	require.Equal(t, before, entries(), "no wrapper call without old elements (growsliceBuf)")
+	require.Equal(t, before0, rtGrow0(), "a hook called the grow filter without old elements")
+
+	got = heapAppendTo(data[:1:1], src)
+	require.Equal(t, "0attack", string(got))
+	require.Equal(t, []span{{0, 1}}, bytesSpans(got), "the one old element keeps its bits")
+	require.Greater(t, entries(), before)
+}
+
+// heapAppendTo appends src to dst (a new heap backing store when cap(dst) is
+// too small).
+//
+//go:noinline
+func heapAppendTo(dst, src []byte) []byte { return append(dst, src...) }
+
+// bufAppendEach appends the bytes of src one by one to an empty slice. The
+// result escapes and the code reads its capacity, thus the compiler uses
+// growsliceBuf with a stack buffer (as in bufGrow): the first call has no old
+// element (newLen == num == 1).
+//
+//go:noinline
+func bufAppendEach(src []byte) []byte {
+	var out []byte
+	for _, c := range src {
+		out = append(out, c)
+		sinkInt += cap(out)
+	}
+	return out
+}
+
 type definedString string
 
 func genericConcat[T ~string](left, right T) T { return left + right }

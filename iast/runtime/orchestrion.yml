@@ -43,7 +43,9 @@ meta:
 #     it can have taint bits), clears the token, and copies the bits of the
 #     inputs to the result.
 #  5. growsliceBuf has no wrapper: when the old elements are tainted, it calls
-#     growslice (heap). The growslice hook then copies the bits.
+#     growslice (heap). The growslice hook then copies the bits. When there is
+#     no old element (newLen == num), the growslice and growsliceBuf hooks do
+#     not call __dd_iast_ok() and the filter: there are no bits to copy.
 #
 # The gate is sticky: it never goes back to 0. Thus the inner call sees the
 # gate on, as the outer call did, and it reads and clears the token at its
@@ -426,8 +428,27 @@ aspects:
               return oldPtr, newLen, oldCap, num, et, bufPtr, bufLen, __dd_iast_growtainted(oldPtr, newLen, num, et)
             }
 
+            // __dd_iast_grow0 counts the calls of __dd_iast_growtainted with no
+            // old element (newLen == num), only when the program links
+            // package heapbits/heapbitstest (tests). The growslice and
+            // growsliceBuf hooks do not call the filter for such an append
+            // (rule 5 of the header), thus the count stays 0 for all
+            // goroutines.
+            var __dd_iast_grow0 uint64
+
+            func __dd_iast_grow0count() uint64 {
+              return atomic.Load64(&__dd_iast_grow0)
+            }
+
+            // Exported to the tests of iast/runtime (push linkname).
+            //go:linkname __dd_iast_api_grow0 __dd_iast_runtime.grow0
+            var __dd_iast_api_grow0 = __dd_iast_grow0count
+
             func __dd_iast_growtainted(oldPtr unsafe.Pointer, newLen, num int, et *_type) bool {
               oldLen := newLen - num
+              if __dd_taint_testing && oldLen <= 0 {
+                atomic.Xadd64(&__dd_iast_grow0, 1)
+              }
               if oldPtr == nil || oldLen <= 0 || num < 0 || et == nil || et.Size_ == 0 || et.Pointers() {
                 return false
               }
@@ -953,7 +974,10 @@ aspects:
             if atomic.Load(&__dd_taint_gate.seen) != 0 {
               if __dd_iast_gp := getg(); __dd_iast_gp.__dd_iast_bypass != 0 {
                 __dd_iast_gp.__dd_iast_bypass = 0
-              } else if __dd_iast_ok() {
+              } else if {{ $newLen }} != {{ $num }} && __dd_iast_ok() {
+                // newLen == num: no old element, thus no bits to copy (an
+                // append to an empty slice). The check comes after the token,
+                // so that the inner call of a wrapper still clears it.
                 var __dd_iast_hit bool
                 if {{ $oldPtr }}, {{ $newLen }}, {{ $oldCap }}, {{ $num }}, {{ $et }}, __dd_iast_hit = __dd_iast_grow_hit({{ $oldPtr }}, {{ $newLen }}, {{ $oldCap }}, {{ $num }}, {{ $et }}); __dd_iast_hit {
                   return __dd_iast_growslice({{ $oldPtr }}, {{ $newLen }}, {{ $oldCap }}, {{ $num }}, {{ $et }})
@@ -981,7 +1005,8 @@ aspects:
             {{- $bufPtr := .Function.Argument 5 -}}
             {{- $bufLen := .Function.Argument 6 -}}
             if atomic.Load(&__dd_taint_gate.seen) != 0 {
-              if __dd_iast_ok() {
+              if {{ $newLen }} != {{ $num }} && __dd_iast_ok() {
+                // newLen == num: no old element, thus no bits to copy.
                 var __dd_iast_hit bool
                 if {{ $oldPtr }}, {{ $newLen }}, {{ $oldCap }}, {{ $num }}, {{ $et }}, {{ $bufPtr }}, {{ $bufLen }}, __dd_iast_hit = __dd_iast_growbuf_hit({{ $oldPtr }}, {{ $newLen }}, {{ $oldCap }}, {{ $num }}, {{ $et }}, {{ $bufPtr }}, {{ $bufLen }}); __dd_iast_hit {
                   // Tainted old elements: the new backing store must be heap
