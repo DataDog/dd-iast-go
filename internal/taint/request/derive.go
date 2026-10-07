@@ -28,12 +28,11 @@ func (m *Manager) derived(out unsafe.Pointer, outLen uintptr, in unsafe.Pointer,
 	if mode != propbridge.Positional || outLen != inLen {
 		mode = propbridge.Coarse
 	}
-	m.deriveAll(out, outLen, in, inLen, func(r *Attribution, segs *[MaxDerivedSegments]segment) (int, bool) {
-		if mode == propbridge.Positional {
-			return positionalSegments(r, segs), false
-		}
-		return coarseSegments(r, outLen, segs), true
-	})
+	rule := deriveRule{kind: deriveCoarse}
+	if mode == propbridge.Positional {
+		rule.kind = derivePositional
+	}
+	m.deriveAll(out, outLen, in, inLen, rule)
 }
 
 // runes is the propbridge Runes callback of the rune conversions of the
@@ -43,19 +42,58 @@ func (m *Manager) runes(out unsafe.Pointer, outLen uintptr, in unsafe.Pointer, i
 	if kind != propbridge.RunesFromString && kind != propbridge.StringFromRunes {
 		return
 	}
-	input := unsafe.Slice((*byte)(in), inLen)
-	m.deriveAll(out, outLen, in, inLen, func(r *Attribution, segs *[MaxDerivedSegments]segment) (int, bool) {
-		if count, ok := runeSegments(r, input, outLen, kind, segs); ok {
-			return count, false
-		}
-		return coarseSegments(r, outLen, segs), true
+	m.deriveAll(out, outLen, in, inLen, deriveRule{
+		kind:      deriveRunes,
+		runeKind:  kind,
+		runeInput: unsafe.Slice((*byte)(in), inLen),
 	})
 }
 
-// deriveAll attributes the input for each active owner (shared work
-// budget), and adds the derived entry that build makes for each owner with
-// a match. build returns the number of segments, and true when it used the
+// The kinds of deriveRule.
+const (
+	// deriveCoarse makes one segment over the whole output.
+	deriveCoarse uint8 = iota
+	// derivePositional keeps the segments of the input: byte i of the
+	// output comes from byte i of the input.
+	derivePositional
+	// deriveRunes maps the segments of the input of a rune conversion to the
+	// output. When it cannot, it uses the coarse rule.
+	deriveRunes
+)
+
+// deriveRule tells deriveAll how to make the segments of the output. It is a
+// value with a static switch, not a func value: with an indirect call, the
+// compiler cannot prove that the attribution and the segments do not escape.
+// Then they move to the heap, which costs about 5 KB for each derived
+// call.
+type deriveRule struct {
+	// kind is deriveCoarse, derivePositional or deriveRunes.
+	kind uint8
+	// runeKind is the propbridge rune conversion kind (deriveRunes only).
+	runeKind uint8
+	// runeInput is the input of the rune conversion (deriveRunes only).
+	runeInput []byte
+}
+
+// segments makes the segments of the output from r, the attribution of the
+// input. It returns the number of segments, and true when it used the
 // coarse rule.
+func (rule deriveRule) segments(r *Attribution, outLen uintptr, segs *[MaxDerivedSegments]segment) (int, bool) {
+	switch rule.kind {
+	case derivePositional:
+		return positionalSegments(r, segs), false
+	case deriveRunes:
+		if count, ok := runeSegments(r, rule.runeInput, outLen, rule.runeKind, segs); ok {
+			return count, false
+		}
+	}
+	return coarseSegments(r, outLen, segs), true
+}
+
+// deriveAll attributes the input for each active owner (shared work
+// budget), and adds the derived entry that rule makes for each owner with a
+// match (see deriveRule.segments). The attribution and the segments stay on
+// the stack (the escape test of this package checks it).
 //
 // Telemetry (at most three atomic additions for each call):
 //   - ExecutedPropagation: one for each derived entry that was added.
@@ -64,7 +102,7 @@ func (m *Manager) runes(out unsafe.Pointer, outLen uintptr, in unsafe.Pointer, i
 //     entry was refused (derived table full, or memory budget used); one
 //     for each owner whose slot was busy; and one when the check budget
 //     stopped the call before an active owner.
-func (m *Manager) deriveAll(out unsafe.Pointer, outLen uintptr, in unsafe.Pointer, inLen uintptr, build func(r *Attribution, segs *[MaxDerivedSegments]segment) (int, bool)) {
+func (m *Manager) deriveAll(out unsafe.Pointer, outLen uintptr, in unsafe.Pointer, inLen uintptr, rule deriveRule) {
 	if !m.Active() || outLen == 0 || inLen == 0 || outLen > MaxValueBytes || !bitsAny(in, inLen) {
 		return
 	}
@@ -86,7 +124,7 @@ func (m *Manager) deriveAll(out unsafe.Pointer, outLen uintptr, in unsafe.Pointe
 				return
 			}
 			var segs [MaxDerivedSegments]segment
-			count, coarse := build(&r, &segs)
+			count, coarse := rule.segments(&r, outLen, &segs)
 			if count <= 0 {
 				return
 			}
