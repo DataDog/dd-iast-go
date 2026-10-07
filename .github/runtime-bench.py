@@ -48,31 +48,73 @@ MIN_PLACEMENTS = 8
 # section 9.2: 8 runs); for each store and admission row; for each side of
 # the HTTP benchmark.
 MIN_RUNS = 8
+# The maximum median drops/op of a hook RuntimeTainted row. A drop is a
+# refused adoption: then the row measures the drop path, not the tainted path.
+# bench_test.go starts a new request scope often, so that the owner quota
+# does not refuse the new roots (runTainted): a hook run has approx. 0.
+MAX_TAINTED_DROPS = 0.01
 MIN_HTTP_RUNS = 10
 
 CONVERSIONS = ["b2s", "s2b", "r2s", "s2r"]
-SHAPES = [f"concat{n}-{m}" for m in ("heap", "stack") for n in (2, 4, 6, 16)] + [
-    f"{c}-{m}" for c in CONVERSIONS for m in ("heap", "stack")
-]
+# The rune conversions with 8 and 1 000 runes, ASCII and multi-byte ("mb").
+# With 1 000 runes, the result is always on the heap: no stack case.
+RUNE_SHAPES = [
+    f"{c}{n}-{m}" for c in ("r2s", "s2r") for n, m in (("8", "heap"), ("8", "stack"), ("8mb", "heap"), ("8mb", "stack"))
+] + [f"{c}{n}-heap" for c in ("r2s", "s2r") for n in ("1000", "1000mb")]
+SHAPES = (
+    [f"concat{n}-{m}" for m in ("heap", "stack") for n in (2, 4, 6, 16)]
+    + [f"{c}-{m}" for c in CONVERSIONS for m in ("heap", "stack")]
+    + RUNE_SHAPES
+)
+
+# The exact size class of the one allocation of each tainted stack case, and
+# 0 for a tainted heap case (no extra allocation). bench_test.go: "x" +
+# "short-value" is 12 B; the 4, 6 and 16 operand concats are 32, 30 and 32 B;
+# "short-bytes" is 11 B; string(runes) allocates the UTF-8 size + 3 B (11 + 3,
+# 8 + 3, 22 + 3); []rune("short-value") is 11 x 4 = 44 B; 8 runes are 32 B.
+TAINTED_BYTES = {
+    "concat2-stack": 16,
+    "concat4-stack": 32,
+    "concat6-stack": 32,
+    "concat16-stack": 32,
+    "concat2-heap": 0,
+    "b2s-stack": 16,
+    "s2b-stack": 16,
+    "r2s-stack": 16,
+    "s2r-stack": 48,
+    "r2s8-stack": 16,
+    "r2s8mb-stack": 32,
+    "r2s1000-heap": 0,
+    "r2s1000mb-heap": 0,
+    "s2r8-stack": 32,
+    "s2r8mb-stack": 32,
+    "s2r1000-heap": 0,
+    "s2r1000mb-heap": 0,
+}
+
+# The number of runes of each tainted rune case (bench_test.go): "short runes"
+# and "short-value" have 11 runes.
+TAINTED_RUNES = {
+    "r2s-stack": 11,
+    "s2r-stack": 11,
+    "r2s8-stack": 8,
+    "r2s8mb-stack": 8,
+    "s2r8-stack": 8,
+    "s2r8mb-stack": 8,
+    "r2s1000-heap": 1000,
+    "r2s1000mb-heap": 1000,
+    "s2r1000-heap": 1000,
+    "s2r1000mb-heap": 1000,
+}
+
 # The cases of iast/runtime/bench_test.go.
 EXPECTED_RUNTIME = (
     [f"RuntimeOff/{s}" for s in SHAPES]
     + [f"RuntimeClean/{s}" for s in SHAPES]
     + [f"RuntimeS2SOff/{c}-{m}" for c in ("s2b", "s2r") for m in ("heap", "stack")]
     + ["RuntimeCleanHit/s2b-stack", "RuntimeCleanHit/concat2-stack"]
-    + [f"RuntimeTainted/{c}-stack" for c in ["concat2"] + CONVERSIONS]
+    + [f"RuntimeTainted/{name}" for name in TAINTED_BYTES]
 )
-
-# The exact size class of the one allocation of each tainted stack case
-# (bench_test.go: "x" + "short-value" is 12 B, "short-bytes" and
-# "short runes" are 11 B, []rune("short-value") is 11 x 4 = 44 B).
-TAINTED_BYTES = {
-    "concat2-stack": 16,
-    "b2s-stack": 16,
-    "s2b-stack": 16,
-    "r2s-stack": 16,
-    "s2r-stack": 48,
-}
 
 LOADS = ["sparse", "typical", "full"]
 ADMISSION_APIS = ["TaintString", "TaintBytes", "TaintSourceString", "TaintSourceBytes", "AdoptSourceBytes"]
@@ -96,8 +138,14 @@ EXPECTED_ADMISSION = (
 #   clean_rune           gate on, clean, rune conversion
 #   hit                  filter hit, for each operand that hits
 #   full2                2-operand stack concat, full index
-#   tainted, tainted_rune
-#                        gate on, tainted (+1 allocation of the exact size)
+#   tainted_base, tainted_operand
+#                        gate on, tainted, not rune: base + operand x each
+#                        operand above 2 (+1 allocation of the exact size in
+#                        a stack case, 0 in a heap case)
+#   tainted_rune_base, tainted_rune_per
+#                        gate on, tainted rune conversion: base + per x runes
+#   rune1000_rel         gate off and gate on clean, 1 000 runes: the maximum
+#                        hook - nohook as a fraction of the nohook median
 #   maycontain_hit, maycontain_random (sparse, typical, full), maycontain_miss
 #   s2s_off              Q2 switch off
 #   http, http_note      HTTP overhead in %, and the reason of the limit
@@ -111,8 +159,12 @@ PROFILES = {
         "clean_rune": 6.0,
         "hit": 50.0,
         "full2": 100.0,
-        "tainted": 1000.0,
-        "tainted_rune": 1000.0,
+        # User decision after T11.2: the tainted cost scales with the size.
+        "tainted_base": 900.0,
+        "tainted_operand": 120.0,
+        "tainted_rune_base": 1100.0,
+        "tainted_rune_per": 4.0,
+        "rune1000_rel": 0.01,
         "maycontain_hit": 45.0,
         "maycontain_random": (4.0, 10.0, 45.0),
         "maycontain_miss": 3.0,
@@ -131,8 +183,12 @@ PROFILES = {
         "clean_rune": 25.0,
         "hit": 100.0,
         "full2": 200.0,
-        "tainted": 1500.0,
-        "tainted_rune": 1750.0,
+        # 1.5 x the local tainted gates.
+        "tainted_base": 1350.0,
+        "tainted_operand": 180.0,
+        "tainted_rune_base": 1650.0,
+        "tainted_rune_per": 6.0,
+        "rune1000_rel": 0.01,
         "maycontain_hit": 45.0,
         "maycontain_random": (5.0, 10.0, 45.0),
         "maycontain_miss": 5.0,
@@ -218,10 +274,19 @@ def is_rune(name):
     return name.startswith(("r2s", "s2r"))
 
 
-def runtime_limit(case, g):
+def is_rune1000(name):
+    return is_rune(name) and "1000" in name
+
+
+def runtime_limit(case, g, nohook):
     """Returns (limit ns, extra allocations, text) of the case, with the
-    limits g of the active profile."""
+    limits g of the active profile. nohook is the pooled nohook median (ns)."""
     group, name = case.split("/", 1)
+    if group in ("RuntimeOff", "RuntimeClean") and is_rune1000(name):
+        # 1 000 runes: the conversion costs microseconds, and the noise is
+        # larger than a fixed ns gate.
+        limit = g["rune1000_rel"] * nohook
+        return limit, 0, f"<= +{100 * g['rune1000_rel']:g} % of nohook (+{limit:.2f} ns)"
     if group == "RuntimeOff":
         limit = g["off_rune"] if is_rune(name) else g["off"]
     elif group == "RuntimeS2SOff":
@@ -232,7 +297,13 @@ def runtime_limit(case, g):
         # Each operand is a clean filter hit.
         limit = g["hit"] * operands(name)
     elif group == "RuntimeTainted":
-        limit = g["tainted_rune"] if is_rune(name) else g["tainted"]
+        if is_rune(name):
+            limit = g["tainted_rune_base"] + g["tainted_rune_per"] * TAINTED_RUNES[name]
+        else:
+            limit = g["tainted_base"] + g["tainted_operand"] * max(0, operands(name) - 2)
+        # A heap case already allocates its result: no extra allocation.
+        if name.endswith("-heap"):
+            return limit, 0, f"<= +{us(limit)}, +0 alloc"
         return limit, 1, f"<= +{us(limit)}, +1 alloc"
     else:
         return None, None, "-"
@@ -271,11 +342,18 @@ def runtime_rows(out, g):
         extra_allocs = med(runs_h, "allocs/op") - med(runs_n, "allocs/op")
         extra_bytes = med(runs_h, "B/op") - med(runs_n, "B/op")
         woven = st.median(b) - med(plain[case]) if case in plain else None
-        limit, allocs, text = runtime_limit(case, g)
+        limit, allocs, text = runtime_limit(case, g, st.median(a))
         ok = delta <= limit and extra_allocs == allocs
         name = case.split("/", 1)[1]
+        dropped = None
         if case.startswith("RuntimeTainted/"):
             ok = ok and extra_bytes == TAINTED_BYTES[name]
+            # An old binary (without "drops/op") or a drop path fails.
+            drops = med(runs_h, "drops/op")
+            if drops is None or drops > MAX_TAINTED_DROPS:
+                ok = False
+                dropped = "no drops/op" if drops is None else f"drops/op {drops:g} > {MAX_TAINTED_DROPS:g}"
+                text += f"; {dropped}"
         rows[case] = {
             "delta": delta,
             "ci": (lo, hi),
@@ -286,6 +364,8 @@ def runtime_rows(out, g):
             "woven": woven,
             "text": text,
             "ok": ok,
+            "limit": limit,
+            "dropped": dropped,
             "n": (len(a), len(b)),
         }
     return ks, rows, problems
@@ -316,11 +396,14 @@ def main():
         if absent:
             missing(key, title, gate, f"`{absent[0]}`: {problems.get(absent[0], 'no data')}")
             return
-        worst = max(selected, key=lambda c: rows[c]["delta"] - runtime_limit(c, g)[0])
+        worst = max(selected, key=lambda c: rows[c]["delta"] - rows[c]["limit"])
         r = rows[worst]
         value = f"worst margin: `{worst}` {fmt(r['delta'])} ns (gate {r['text']}), allocs {fmt(r['allocs'], 0)}"
         if worst.startswith("RuntimeTainted/"):
             value += f", {fmt(r['bytes'], 0)} B"
+        dropped = [c for c in selected if rows[c]["dropped"]]
+        if dropped:
+            value += f"; drop path: `{dropped[0]}` ({rows[dropped[0]]['dropped']})"
         gates.append((key, title, gate, value, all(rows[c]["ok"] for c in selected)))
 
     def store_values(names):
@@ -339,6 +422,8 @@ def main():
     off = f"0 extra allocations; <= +{ns(g['off'])} pooled"
     if g["off_rune"] != g["off"]:
         off += f" (rune conversion: <= +{ns(g['off_rune'])})"
+    rune1000 = f"; 1 000 runes: <= +{100 * g['rune1000_rel']:g} % of nohook"
+    off += rune1000
     runtime_gate("off", "Gate off, any concat or conversion", off, select("RuntimeOff"))
     clean = f"0 extra allocations; <= +{ns(g['clean_base'])} + {ns(g['clean_operand'])} for each operand"
     runtime_gate(
@@ -402,7 +487,8 @@ def main():
     runtime_gate(
         "tainted",
         "Gate on, tainted, stack buffer",
-        f"+1 allocation of the exact result size; <= +{us(g['tainted'])}",
+        f"+1 allocation of the exact result size (stack), +0 (heap); "
+        f"<= +{us(g['tainted_base'])} + {ns(g['tainted_operand'])} for each operand above 2",
         select("RuntimeTainted", lambda n: not is_rune(n)),
     )
 
@@ -430,7 +516,7 @@ def main():
     runtime_gate(
         "rune-clean",
         "Gate on, clean, rune conversion, escaping or stack",
-        f"0 extra allocations; <= +{ns(g['clean_rune'])}",
+        f"0 extra allocations; <= +{ns(g['clean_rune'])}{rune1000}",
         select("RuntimeClean", is_rune),
     )
     runtime_gate(
@@ -442,7 +528,8 @@ def main():
     runtime_gate(
         "tainted-rune",
         "Gate on, tainted rune conversion",
-        f"+1 allocation of the exact result size; <= +{us(g['tainted_rune'])}",
+        f"+1 allocation of the exact result size (stack), +0 (heap); "
+        f"<= +{us(g['tainted_rune_base'])} + {ns(g['tainted_rune_per'])} for each rune",
         select("RuntimeTainted", is_rune),
     )
 

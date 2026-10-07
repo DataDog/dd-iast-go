@@ -353,9 +353,10 @@ http)
 	# result (+2.70 %), thus -sampling=0.
 	mkdir -p "$out/http"
 	# The runner writes the output of "git rev-parse HEAD" to its metadata.
-	# A jj workspace has no .git directory: then a git command on PATH gives
-	# the jj commit ID. It does not run git.
-	if [[ ! -e .git ]] && [[ -d .jj ]] && command -v jj >/dev/null; then
+	# In a jj repository (also a colocated one, with a .git directory), a git
+	# command on PATH gives the jj commit ID. It does not run git: a jj
+	# workspace can have no .git directory, and a sandbox can refuse git.
+	if [[ -d .jj ]] && command -v jj >/dev/null; then
 		mkdir -p "$out/jj-shim"
 		printf '#!/bin/sh\necho %s\n' "$(jj log --ignore-working-copy -r @ --no-graph -T commit_id)" >"$out/jj-shim/git"
 		chmod +x "$out/jj-shim/git"

@@ -26,6 +26,18 @@ var (
 		"concat2-stack", "concat4-stack", "concat6-stack", "concat16-stack",
 		"b2s-heap", "b2s-stack", "s2b-heap", "s2b-stack",
 		"r2s-heap", "r2s-stack", "s2r-heap", "s2r-stack",
+		"r2s8-heap", "r2s8-stack", "r2s8mb-heap", "r2s8mb-stack",
+		"s2r8-heap", "s2r8-stack", "s2r8mb-heap", "s2r8mb-stack",
+		"r2s1000-heap", "r2s1000mb-heap", "s2r1000-heap", "s2r1000mb-heap",
+	}
+	// benchTaintedBytes is the extra size of each tainted case: the exact
+	// size class of the one allocation of a stack case, 0 for a heap case (no
+	// extra allocation).
+	benchTaintedBytes = map[string]int{
+		"concat2-stack": 16, "concat4-stack": 32, "concat6-stack": 32, "concat16-stack": 32, "concat2-heap": 0,
+		"b2s-stack": 16, "s2b-stack": 16, "r2s-stack": 16, "s2r-stack": 48,
+		"r2s8-stack": 16, "r2s8mb-stack": 32, "s2r8-stack": 32, "s2r8mb-stack": 32,
+		"r2s1000-heap": 0, "r2s1000mb-heap": 0, "s2r1000-heap": 0, "s2r1000mb-heap": 0,
 	}
 	benchLoads = []string{"sparse", "typical", "full"}
 )
@@ -53,6 +65,9 @@ type benchData struct {
 	httpIAST     float64           // ns/op of the IAST side (control: 50 000)
 	allocs       bool
 	profile      string // RUNTIME_BENCH_PROFILE ("" is the default)
+	// drops is the drops/op of the hook runs of a RuntimeTainted case (no
+	// entry: 0; a negative value: no drops/op metric).
+	drops map[string]float64
 }
 
 // newBenchData returns data where every gate passes. The hook cost of a
@@ -83,7 +98,12 @@ func newBenchData() *benchData {
 	}
 	for _, group := range []string{"RuntimeOff", "RuntimeClean"} {
 		for _, shape := range benchShapes {
-			add(group+"/"+shape, benchResult{20, 48, 1}, benchResult{20, 48, 1})
+			base := 20.0
+			if strings.Contains(shape, "1000") {
+				// The gate of a 1 000-rune row is 1 % of nohook: +20 ns.
+				base = 2000
+			}
+			add(group+"/"+shape, benchResult{base, 48, 1}, benchResult{base, 48, 1})
 		}
 	}
 	for _, shape := range []string{"s2b-heap", "s2b-stack", "s2r-heap", "s2r-stack"} {
@@ -91,8 +111,12 @@ func newBenchData() *benchData {
 	}
 	add("RuntimeCleanHit/s2b-stack", benchResult{10, 0, 0}, benchResult{40, 0, 0})
 	add("RuntimeCleanHit/concat2-stack", benchResult{10, 0, 0}, benchResult{60, 0, 0})
-	for name, bytes := range map[string]int{"concat2": 16, "b2s": 16, "s2b": 16, "r2s": 16, "s2r": 48} {
-		add("RuntimeTainted/"+name+"-stack", benchResult{10, 0, 0}, benchResult{600, bytes, 1})
+	for name, bytes := range benchTaintedBytes {
+		allocs := 0
+		if strings.HasSuffix(name, "-stack") {
+			allocs = 1
+		}
+		add("RuntimeTainted/"+name, benchResult{10, 0, 0}, benchResult{600, bytes, allocs})
 	}
 	for _, load := range benchLoads {
 		for _, c := range []string{"clean-random", "clean-miss", "clean-neighbor"} {
@@ -169,7 +193,11 @@ func (d *benchData) files(t *testing.T) string {
 		for run := range d.runs {
 			for name, byPlacement := range d.hook {
 				if r, ok := byPlacement[k]; ok && (run < d.runs-1 || d.short[name] != k) {
-					file("runtime/h" + k + ".txt").WriteString(d.line(name, r, ""))
+					extra := ""
+					if drops := d.drops[name]; strings.HasPrefix(name, "RuntimeTainted/") && drops >= 0 {
+						extra = fmt.Sprintf(" %g drops/op\t", drops)
+					}
+					file("runtime/h" + k + ".txt").WriteString(d.line(name, r, extra))
 				}
 			}
 			for name, byPlacement := range d.nohook {
@@ -254,9 +282,11 @@ func TestRuntimeBenchReportDefaultProfileIsLocal(t *testing.T) {
 		d.profile = profile
 		requireVerdict(t, d, "", "PASS",
 			"plan section 9.3 gates, profile `local` (darwin/arm64)",
-			"| 0 extra allocations; <= +2 ns pooled |",
+			"| 0 extra allocations; <= +2 ns pooled; 1 000 runes: <= +1 % of nohook |",
 			"<= +3 ns + 1.5 ns for each operand",
-			"<= +1 us, +1 alloc",
+			"<= +0.9 us + 120 ns for each operand above 2",
+			"<= +1.1 us + 4 ns for each rune",
+			"| <= +1 % of nohook (+20.00 ns) | PASS |",
 			"<= 4 / 10 / 45 ns, 0 allocations",
 			"<= +3.70 % (Phase 6: +2.70 %, + 1 point)")
 	}
@@ -290,11 +320,12 @@ func ciMeasured() *benchData {
 func TestRuntimeBenchReportCIProfile(t *testing.T) {
 	requireVerdict(t, ciMeasured(), "", "PASS",
 		"plan section 9.3 gates, profile `ci` (GitHub runners)",
-		"| 0 extra allocations; <= +8 ns pooled (rune conversion: <= +25 ns) |",
+		"| 0 extra allocations; <= +8 ns pooled (rune conversion: <= +25 ns); 1 000 runes: <= +1 % of nohook |",
 		"<= +4 ns + 2 ns for each operand",
 		"= 89.21 ns", "= 175.89 ns",
 		"| RuntimeClean/concat16-stack | **+29.59**", "| <= +36 ns | PASS |",
-		"<= +1.5 us, +1 alloc", "<= +1.75 us, +1 alloc",
+		"<= +1.35 us + 180 ns for each operand above 2", "<= +1.65 us + 6 ns for each rune",
+		"| <= +1.35 us, +1 alloc | PASS |", "| <= +1.716 us, +1 alloc | PASS |",
 		"<= 5 / 10 / 45 ns, 0 allocations",
 		"+5.17 %", "<= +6.00 %",
 		"**Verdict: PASS**")
@@ -315,8 +346,11 @@ func TestRuntimeBenchReportCIProfile(t *testing.T) {
 		"clean conversion": {func(d *benchData) { d.setDelta("RuntimeClean/s2b-stack", 6.01) }, "clean-stack"},
 		"clean rune":       {func(d *benchData) { d.setDelta("RuntimeClean/r2s-heap", 25.01) }, "rune-clean"},
 		"s2s off":          {func(d *benchData) { d.setDelta("RuntimeS2SOff/s2r-heap", 5.01) }, "s2s-off"},
-		"tainted":          {func(d *benchData) { d.setDelta("RuntimeTainted/concat2-stack", 1500.01) }, "tainted"},
-		"tainted rune":     {func(d *benchData) { d.setDelta("RuntimeTainted/s2r-stack", 1750.01) }, "tainted-rune"},
+		"tainted":          {func(d *benchData) { d.setDelta("RuntimeTainted/concat2-stack", 1350.01) }, "tainted"},
+		"tainted concat16": {func(d *benchData) { d.setDelta("RuntimeTainted/concat16-stack", 3870.01) }, "tainted"},
+		"tainted rune":     {func(d *benchData) { d.setDelta("RuntimeTainted/s2r-stack", 1716.01) }, "tainted-rune"},
+		"tainted rune1000": {func(d *benchData) { d.setDelta("RuntimeTainted/s2r1000mb-heap", 7650.01) }, "tainted-rune"},
+		"off rune1000":     {func(d *benchData) { d.setDelta("RuntimeOff/s2r1000-heap", 20.01) }, "off"},
 		"hit":              {func(d *benchData) { d.setDelta("RuntimeCleanHit/s2b-stack", 100.01-15.98) }, "hit"},
 		"full2":            {func(d *benchData) { d.setDelta("RuntimeCleanHit/concat2-stack", 200.01-31.44) }, "full2"},
 		"maycontain hit": {func(d *benchData) {
@@ -428,6 +462,139 @@ func TestRuntimeBenchReportFailsTaintedAllocation(t *testing.T) {
 		d.hook["RuntimeTainted/s2r-stack"][k] = r
 	}
 	requireVerdict(t, d, "", "FAIL", "(tainted-rune)")
+	// A tainted heap case already allocates its result: an extra allocation
+	// fails.
+	for name, c := range map[string]struct{ key, gate string }{
+		"concat2-heap":   {"tainted", "<= +0.9 us, +0 alloc"},
+		"s2r1000mb-heap": {"tainted-rune", "<= +5.1 us, +0 alloc"},
+	} {
+		d = newBenchData()
+		for k, r := range d.hook["RuntimeTainted/"+name] {
+			r.allocs, r.bytes = 1, 16
+			d.hook["RuntimeTainted/"+name][k] = r
+		}
+		requireVerdict(t, d, "", "FAIL", "("+c.key+")", c.gate)
+	}
+	// A tainted row of the drop path (refused adoptions), or of an old binary
+	// without the drops/op metric, fails.
+	for drops, want := range map[float64]string{0.5: "drops/op 0.5 > 0.01", -1: "no drops/op"} {
+		d = newBenchData()
+		d.drops = map[string]float64{"RuntimeTainted/concat4-stack": drops}
+		requireVerdict(t, d, "", "FAIL", "(tainted)", "drop path: `RuntimeTainted/concat4-stack` ("+want+")")
+	}
+	d = newBenchData()
+	d.drops = map[string]float64{"RuntimeTainted/s2r8-stack": 0.005}
+	requireVerdict(t, d, "", "PASS")
+}
+
+// localTainted is the worst pooled hook - nohook (ns) of each tainted case on
+// darwin/arm64 (T11.2: Go 1.26.6 and Go 1.27.1, the larger value).
+var localTainted = map[string]float64{
+	"concat2-stack": 830.68, "concat4-stack": 1046.60, "concat6-stack": 1240.91, "concat16-stack": 2160.55,
+	"concat2-heap": 837.73, "b2s-stack": 606.32, "s2b-stack": 584.13,
+	"r2s-stack": 1013.87, "s2r-stack": 1059.38, "r2s8-stack": 1008.57, "r2s8mb-stack": 1011.96,
+	"s2r8-stack": 1031.01, "s2r8mb-stack": 1044.85,
+	"r2s1000-heap": 1548.50, "r2s1000mb-heap": 2052.50, "s2r1000-heap": 2339.70, "s2r1000mb-heap": 4027.50,
+}
+
+// TestRuntimeBenchReportScaledTaintedGates checks the local tainted gates:
+// 0.9 us + 120 ns for each concat operand above 2, and 1.1 us + 4 ns for each
+// rune of a rune conversion.
+func TestRuntimeBenchReportScaledTaintedGates(t *testing.T) {
+	measured := func() *benchData {
+		d := newBenchData()
+		for name, delta := range localTainted {
+			d.setDelta("RuntimeTainted/"+name, delta)
+		}
+		return d
+	}
+	requireVerdict(t, measured(), "", "PASS",
+		"| RuntimeTainted/concat16-stack | **+2160.55**", "| <= +2.58 us, +1 alloc | PASS |",
+		"| RuntimeTainted/s2r-stack | **+1059.38**", "| <= +1.144 us, +1 alloc | PASS |",
+		"| RuntimeTainted/s2r1000mb-heap | **+4027.50**", "| <= +5.1 us, +0 alloc | PASS |")
+	// Just above the limit of each case.
+	limits := map[string]float64{
+		"concat2-stack": 900, "concat4-stack": 1140, "concat6-stack": 1380, "concat16-stack": 2580,
+		"concat2-heap": 900, "b2s-stack": 900, "s2b-stack": 900,
+		"r2s-stack": 1144, "s2r-stack": 1144, "r2s8-stack": 1132, "r2s8mb-stack": 1132,
+		"s2r8-stack": 1132, "s2r8mb-stack": 1132,
+		"r2s1000-heap": 5100, "r2s1000mb-heap": 5100, "s2r1000-heap": 5100, "s2r1000mb-heap": 5100,
+	}
+	for name, limit := range limits {
+		t.Run(name, func(t *testing.T) {
+			key := "tainted"
+			if strings.HasPrefix(name, "r2s") || strings.HasPrefix(name, "s2r") {
+				key = "tainted-rune"
+			}
+			d := measured()
+			d.setDelta("RuntimeTainted/"+name, limit)
+			requireVerdict(t, d, "", "PASS")
+			d.setDelta("RuntimeTainted/"+name, limit+0.01)
+			requireVerdict(t, d, "", "FAIL", "**Verdict: FAIL** ("+key+")")
+		})
+	}
+}
+
+// setNohook sets the nohook ns/op of a runtime case, and keeps its pooled
+// hook - nohook.
+func (d *benchData) setNohook(name string, value float64) {
+	for k, r := range d.nohook[name] {
+		delta := d.hook[name][k].ns - r.ns
+		r.ns = value
+		d.nohook[name][k] = r
+		h := d.hook[name][k]
+		h.ns = value + delta
+		d.hook[name][k] = h
+	}
+}
+
+// TestRuntimeBenchReportRelativeRune1000Gates checks the 1 000-rune rows of
+// the gate-off and clean modes: hook - nohook <= 1 % of nohook. The values are
+// of T11.2 (darwin/arm64) rows that pass.
+func TestRuntimeBenchReportRelativeRune1000Gates(t *testing.T) {
+	cases := []struct {
+		name          string
+		nohook, delta float64
+		key           string
+	}{
+		{"RuntimeOff/s2r1000mb-heap", 3602.5, 34.5, "off"},
+		{"RuntimeOff/r2s1000-heap", 2331, -14, "off"},
+		{"RuntimeClean/s2r1000-heap", 882.95, 7.75, "rune-clean"},
+		{"RuntimeClean/r2s1000mb-heap", 3760.5, 19, "rune-clean"},
+	}
+	measured := func() *benchData {
+		d := newBenchData()
+		for _, c := range cases {
+			d.setNohook(c.name, c.nohook)
+			d.setDelta(c.name, c.delta)
+		}
+		return d
+	}
+	requireVerdict(t, measured(), "", "PASS",
+		"| RuntimeOff/s2r1000mb-heap | **+34.50**", "| <= +1 % of nohook (+36.02 ns) | PASS |",
+		"| RuntimeClean/s2r1000-heap | **+7.75**", "| <= +1 % of nohook (+8.83 ns) | PASS |")
+	for _, profile := range []string{"local", "ci"} {
+		for _, c := range cases {
+			t.Run(profile+" "+c.name, func(t *testing.T) {
+				d := measured()
+				d.profile = profile
+				d.setDelta(c.name, c.nohook/100+0.01)
+				requireVerdict(t, d, "", "FAIL", "**Verdict: FAIL** ("+c.key+")")
+			})
+		}
+	}
+	// A short rune row keeps its fixed gate (local: +2 ns gate off, +6 ns
+	// clean), also with a large nohook time.
+	for name, delta := range map[string]float64{"RuntimeOff/r2s8-heap": 2.01, "RuntimeClean/s2r8mb-heap": 6.01} {
+		d := newBenchData()
+		d.setNohook(name, 3000)
+		d.setDelta(name, delta)
+		key := "off"
+		if strings.HasPrefix(name, "RuntimeClean/") {
+			key = "rune-clean"
+		}
+		requireVerdict(t, d, "", "FAIL", "**Verdict: FAIL** ("+key+")")
+	}
 }
 
 func TestRuntimeBenchReportIsIncompleteWithMissingData(t *testing.T) {

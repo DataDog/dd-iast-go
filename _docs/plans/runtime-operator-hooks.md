@@ -1152,22 +1152,29 @@ Median of 8 runs, `-benchmem`, `benchstat`, go1.26.6 and go1.27.x:
 
 | Case | Gate |
 |---|---|
-| Gate off, any concat or conversion | 0 extra allocations; <= +2 ns as the pooled median of hook - nohook (woven) builds over >= 8 code placements (user decision after step 5); the worst single placement is reported, not gated (variant D, darwin/arm64, step 2: <= +0.54 ns resolved median; amd64 in step 7) |
+| Gate off, any concat or conversion | 0 extra allocations; <= +2 ns as the pooled median of hook - nohook (woven) builds over >= 8 code placements (user decision after step 5); the worst single placement is reported, not gated (variant D, darwin/arm64, step 2: <= +0.54 ns resolved median; amd64 in step 7). 1 000-rune rows: <= +1 % of the nohook median (user decision after T11.2, section 13.5) |
 | Gate on, clean, escaping (`buf == nil`) | 0 extra allocations; <= +3 ns + 1.5 ns for each operand (user decision after step 5; was <= +3 ns) |
 | Gate on, clean, stack buffer, filter miss | 0 extra allocations; <= +3 ns + 1.5 ns for each operand (user decision after step 5; was <= +8 ns) |
 | Gate on, clean, stack buffer, filter hit | 0 extra allocations; <= +50 ns for each operand that hits |
 | Gate on, clean, 2-operand stack concat, full index | 0 extra allocations; <= +100 ns (both operands can hit) |
-| Gate on, tainted, stack buffer | exactly +1 allocation of the exact result size (<= 32 B for strings and bytes; 4 B for each rune for `[]rune`); <= +1 us (user decision after step 5; was <= +60 ns and <= 32 B) |
+| Gate on, tainted, stack buffer | exactly +1 allocation of the exact result size (<= 32 B for strings and bytes; 4 B for each rune for `[]rune`), +0 in a heap case; <= +0.9 us + 120 ns for each operand above 2 (`b2s` and `s2b`: 0.9 us) (user decision after T11.2; was <= +1 us after step 5, and <= +60 ns and <= 32 B before) |
 | `MayContain` filter hit, clean | <= 45 ns, 0 allocations |
 | `MayContain` clean, mean over random pointers, sparse / typical / full | <= 4 ns / <= 10 ns / <= 45 ns, 0 allocations |
-| Gate on, clean, rune conversion (`[]rune(s)`, `string(runes)`), escaping or stack | 0 extra allocations; <= +6 ns (user decision after step 5: `s2r-heap` measured +5.49 ns pooled, noisy) |
+| Gate on, clean, rune conversion (`[]rune(s)`, `string(runes)`), escaping or stack | 0 extra allocations; <= +6 ns (user decision after step 5: `s2r-heap` measured +5.49 ns pooled, noisy). 1 000-rune rows: <= +1 % of the nohook median (user decision after T11.2) |
 | Gate on, `[]byte(s)` / `[]rune(s)` with the Q2 switch off | 0 extra allocations; <= +2 ns (one more load) |
-| Gate on, tainted rune conversion | +1 allocation only in the stack case, of the exact result size; <= +1 us (user decision after step 5; was <= +60 ns + 2 ns for each rune) |
+| Gate on, tainted rune conversion | +1 allocation only in the stack case, of the exact result size; <= +1.1 us + 4 ns for each rune of the case (11, 8 or 1 000 runes: 1.144 / 1.132 / 5.1 us) (user decision after T11.2; was <= +1 us after step 5, and <= +60 ns + 2 ns for each rune before) |
 | `MayContain` filter miss (any load) | <= 3 ns, 0 allocations |
 | HTTP overhead benchmark | not worse than the Phase 6 result (+2.70 %) by more than 1 point |
 | Source-root admission loss (Q9), old admitted % - new admitted %, every workload of 9.2 | sparse: 0 points; stressed: <= 1 point; saturated: no gate, reported in `REPORT.md` |
 
 A failed gate stops the plan for user review (section 11).
+
+**User decision after T11.2 (size-scaled gates).** With the corrected tainted method (section 13.5), a tainted operation costs more for each concat operand (approx. +90 to +110 ns for each operand above 2) and for each rune (approx. 1.5 to 4 ns). Romain decided that the tainted gates scale with the size, and that the 1 000-rune gate-off and clean rows have a relative gate, because their noise (approx. ±100 to ±300 ns) is much larger than a fixed +2 or +6 ns gate:
+
+- tainted concat, `b2s`, `s2b`: local <= 0.9 us + 0.12 us for each operand above 2 (the operand count of the case: `concat2` is 2, a conversion is 1); ci = 1.5 x local (1.35 us + 180 ns);
+- tainted rune conversion: local <= 1.1 us + 4 ns for each rune of the case; ci = 1.5 x local (1.65 us + 6 ns);
+- gate off and clean, 1 000 runes (`r2s1000*`, `s2r1000*`): hook - nohook <= +1 % of the pooled nohook median, local and ci; the short rune rows keep their fixed gates;
+- the allocation, bytes and `drops/op` rules do not change (tainted: exactly +1 allocation in a stack case, +0 in a heap case, the exact bytes, median `drops/op` <= 0.01).
 
 **Step 5 measurement and user decision.** On darwin/arm64 (20 interleaved rounds, GOGC=off), the gate-on clean path cost +5 to +19 ns for a concat (about +1.2 ns for each operand: one filter check for each operand) and +4 to +5 ns for a conversion; the tainted stack path cost +450 to +930 ns (store adoption is about 170 ns; GOGC=off adds `madvise` time). The gate is on whenever any request of the process has taint, so under load this cost applies to every concat and conversion of the process, also in the standard library and the tracer. Romain accepted these measured costs and the three new gates above.
 
@@ -1175,13 +1182,13 @@ A failed gate stops the plan for user review (section 11).
 
 | Key | Local (darwin/arm64) | CI (GitHub runners) | CI worst, run 36992589970 |
 |---|---|---|---|
-| off | <= +2 ns | <= +8 ns; rune rows (`r2s`, `s2r`): <= +25 ns (noisy) | +6.87 ns (`concat16-stack`, arm64); rune +21.85 ns (`r2s-heap`, amd64) |
+| off | <= +2 ns; 1 000-rune rows: <= +1 % of nohook | <= +8 ns; rune rows (`r2s`, `s2r`): <= +25 ns (noisy); 1 000-rune rows: <= +1 % of nohook | +6.87 ns (`concat16-stack`, arm64); rune +21.85 ns (`r2s-heap`, amd64) |
 | clean-heap, clean-stack | <= +3 ns + 1.5 ns for each operand | <= +4 ns + 2 ns for each operand (concat 2 / 4 / 6 / 16: 8 / 12 / 16 / 36 ns; conversions 6 ns) | `concat16-stack` +29.59 ns (amd64); `s2b-stack` +4.06 ns (amd64) |
-| rune-clean | <= +6 ns | <= +25 ns | +20.85 ns (`r2s-heap`, amd64) |
+| rune-clean | <= +6 ns; 1 000-rune rows: <= +1 % of nohook | <= +25 ns; 1 000-rune rows: <= +1 % of nohook | +20.85 ns (`r2s-heap`, amd64) |
 | hit | <= +50 ns for each operand that hits | <= +100 ns for each operand that hits | 89.21 ns (arm64) |
 | full2 | <= +100 ns | <= +200 ns | 175.89 ns (arm64) |
-| tainted | <= +1 us | <= +1.5 us | +1167.55 ns (`concat2-stack`, amd64) |
-| tainted-rune | <= +1 us | <= +1.75 us | +1438.09 ns (`s2r-stack`, arm64) |
+| tainted | <= +0.9 us + 120 ns for each operand above 2 | <= +1.35 us + 180 ns for each operand above 2 | +1167.55 ns (`concat2-stack`, amd64; drop path, section 13.5) |
+| tainted-rune | <= +1.1 us + 4 ns for each rune | <= +1.65 us + 6 ns for each rune | +1438.09 ns (`s2r-stack`, arm64; drop path, section 13.5) |
 | maycontain-hit | <= 45 ns | <= 45 ns | 4.37 ns (amd64) |
 | maycontain-random | <= 4 / 10 / 45 ns | <= 5 / 10 / 45 ns | 4.13 / 4.12 / 4.17 ns (amd64) |
 | maycontain-miss | <= 3 ns | <= 5 ns | 4.15 ns (amd64) |
@@ -1458,8 +1465,9 @@ The rune rows (`r2s`, `s2r`) have the most noise on CI: the placement range of `
 
 ### 13.3 Not measured, and corrections
 
-- go1.27.x (section 9.2 asks for go1.26.6 and go1.27.x): not measured in step 7. Step 5 measured the gate-off rows on go1.27.1 (pooled, all pass).
-- Section 9.2 cases that `iast/runtime/bench_test.go` does not have: tainted concat with 4, 6 and 16 operands, and a tainted heap concat; rune conversions with 8 and 1 000 runes, and multi-byte text (the benchmarks use 11 and 40 ASCII runes). The 9.3 gates above are proven only for the measured cases. To add them: new cases in `bench_test.go`, then a new build and run (approx. 1 hour).
+- go1.27.x (section 9.2 asks for go1.26.6 and go1.27.x): not measured in step 7. Step 5 measured the gate-off rows on go1.27.1 (pooled, all pass). Done in section 13.5.
+- Section 9.2 cases that `iast/runtime/bench_test.go` did not have: tainted concat with 4, 6 and 16 operands, and a tainted heap concat; rune conversions with 8 and 1 000 runes, and multi-byte text (the benchmarks used 11 and 40 ASCII runes). Added and measured in section 13.5 (some gates fail there).
+- The tainted rows of sections 13.1, 13.2 and 13.4 measured mostly the **drop path** (refused adoption), not a successful adoption. Corrected in section 13.5.
 - In step 7, no woven benchmark had a clean filter hit, thus the `hit` and `full2` gates are estimates (see above; `hit` is 4.9 ns below its gate). Done in section 13.4. To measure them: woven one-hit and two-hit stack cases at the full load in `bench_test.go` (with two neighbors in different granules), then a new build and run.
 - Section 9.2 says "median of 8 runs". After step 5, the gate rows use the pooled method above (80 runs for each side); section 9.2 is not changed.
 - Correction outside the plan: the comment of `BenchmarkRuntimeTainted` (`iast/runtime/bench_test.go`) gave the old gate (<= +60 ns); it now gives <= +1 us (user decision after step 5). No factual error was found in the other sections of this plan.
@@ -1510,6 +1518,162 @@ All other rows pass. The gate-off concat rows are 0.2 to 0.5 ns higher than befo
 Validation: `go vet` (also `./.github`), `gofmt`, `go tool checklocks ./...`, `go test ./internal/taint/... ./.github`; `.github/woven-runtime.sh` in the modes default, race and nol: test, g0, escape (identical), and in default also linknames and link; `GOOS=linux GOARCH=386 go build ./internal/taint/...`.
 
 **CI must run again** (linux/amd64 and linux/arm64, workflow `runtime-bench.yml`): the CI numbers of run 36834964455 are for the code before this change.
+
+### 13.5 go1.27.1, the remaining section 9.2 cases, and the tainted method correction
+
+Status: **measured; re-evaluated with the size-scaled gates of the user decision after T11.2 (section 9.3)**. With the new gates, the tainted gates PASS; one 1 000-rune row FAILS on each Go version (noise, see "Re-evaluation" below). The code of the hooks and of the store did not change. The verdict tables and the "Gate" columns below the re-evaluation give the **old** gates (before the user decision).
+
+**Changes to the benchmarks** (`iast/runtime/bench_test.go`, `.github/runtime-bench.py`, `.github/runtime_bench_test.go`, `.github/runtime-bench.sh`):
+
+1. New cases (section 9.2): tainted `concat4-stack`, `concat6-stack`, `concat16-stack` and `concat2-heap`; rune conversions with 8 and 1 000 runes, ASCII and multi-byte (`benchMultiByte`: 8 runes of 2, 3 and 4 bytes, 22 bytes), in the modes gate off, gate on clean and gate on tainted: `r2s8-heap`, `r2s8-stack`, `r2s8mb-heap`, `r2s8mb-stack`, `r2s1000-heap`, `r2s1000mb-heap`, and the same 6 for `s2r`. With 1 000 runes, the result is always on the heap: no stack case. Now 79 runtime cases.
+2. Tainted method correction. Before, `BenchmarkRuntimeTainted` used one request scope for all the operations. Each tainted result is a new root of the request owner, and the owner keeps at most `store.MaxRootsPerOwner` (512) roots until the scope finishes. Thus after approx. 500 operations, the owner refused each new root, and nearly all the measured operations took the drop path (filter check, pre-check, refused adoption). Now `runTainted` starts a new scope (with new inputs) after each 256 operations, with the timer stopped, and reports `drops/op`. In all 2 176 hook runs of the tainted cases below, `drops/op` is 0. `runtime-bench.py` now fails a tainted row when the median `drops/op` of the hook runs is more than 0.01, or when the metric is missing (an old binary). A tainted heap case must have +0 extra allocations (the result is already on the heap).
+3. Correction of a clean input: in the first run, the clean multi-byte input of `s2r8mb` (22 bytes, size class 24 B) was in the granule of the tainted root of `BenchmarkRuntimeClean` (23 bytes, the same size class). It was a filter hit, thus `RuntimeClean/s2r8mb-heap` measured the clean-hit path (+175 ns). That run is not used. Now this input is the start of a 32-byte allocation, and `requireFilterMiss` stops a clean benchmark when one of its inputs is a filter hit.
+4. `runtime-bench.sh http`: in a jj repository, the git shim is used also when a `.git` directory is there (colocated repository; a sandbox can refuse git).
+
+**Run.** darwin/arm64, Apple M5 Pro, Orchestrion v1.13.1, parent revision `b9e09d0d` plus the changes above. 16 woven binaries and 1 unwoven binary for each Go version (go1.26.6 and go1.27.1). The 34 binaries ran in the **same** interleaved rounds (8 rounds, 300ms, the order rotates each round; 64 runs for each side and case). Rounds: 16:46 to 19:05, load average 4 to 21 (other work ran on the machine). Store and HTTP (n=20) after the rounds, load average 3 to 12. `TestAllocs`: PASS in all 16 hook binaries. Raw data and reports: `/tmp/t112/v2-go1.26.6`, `/tmp/t112/v2-go1.27.1` (not kept).
+
+**Re-evaluation with the size-scaled gates** (user decision after T11.2, section 9.3). `.github/runtime-bench.sh report` on the same data (`RUNTIME_BENCH_OPTIONAL=admission`). The "ci" columns apply the ci limits to the darwin/arm64 data: they do not replace a CI run.
+
+| Key | go1.26.6 local | go1.27.1 local | go1.26.6 ci | go1.27.1 ci |
+|---|---|---|---|---|
+| tainted | PASS (closest: `concat2-heap` +837.73 ns, gate 0.9 us) | PASS (`concat2-heap` +829.40 ns) | PASS | PASS |
+| tainted-rune | PASS (closest: `s2r-stack` +1059.38 ns, gate 1.144 us) | PASS (`s2r8mb-stack` +1044.85 ns, gate 1.132 us) | PASS | PASS |
+| off | PASS | FAIL (`r2s1000mb-heap` +56.00 [-90.00, +165.00] ns, gate +38.73 ns) | PASS | FAIL (the same row) |
+| rune-clean | FAIL (`r2s1000-heap` +42.50 [-69.00, +93.00] ns, gate +22.46 ns) | PASS | FAIL (the same row) | PASS |
+| clean-heap, clean-stack, s2s-off, hit, full2, maycontain-*, http, allocs | PASS | PASS | PASS | PASS |
+| Verdict | FAIL (rune-clean) | FAIL (off) | FAIL (rune-clean) | FAIL (off) |
+
+The two failed rows are noise: their 95 % intervals include 0 and are wider than ±100 ns, and the same row passes on the other Go version in the same rounds (go1.26.6 `RuntimeOff/r2s1000mb-heap` -155.00 ns; go1.27.1 `RuntimeClean/r2s1000-heap` -16.50 ns). The other 14 of the 16 1 000-rune rows pass. A new local run (more runs for each side) can give a PASS; that is a measurement, not a gate change.
+
+**CI must run again.** The CI tainted rows of section 13.2.1 (run 36992589970) measured the drop path (one request scope, refused adoptions). The corrected benchmark and the new gates are not measured on the GitHub runners yet.
+
+**Verdicts with the old gates** (`RUNTIME_BENCH_OPTIONAL=admission`: no old store; the admission gate is not measured again):
+
+| Key | go1.26.6 local | go1.27.1 local | go1.26.6 ci | go1.27.1 ci |
+|---|---|---|---|---|
+| off | PASS | FAIL (only 1 000-rune rows, noise) | PASS | FAIL (only 1 000-rune rows, noise) |
+| clean-heap, clean-stack, s2s-off, hit, full2, maycontain-*, allocs | PASS | PASS | PASS | PASS |
+| rune-clean | FAIL (only 1 000-rune rows, noise) | FAIL (only 1 000-rune rows, noise) | FAIL (`r2s1000-heap`, noise) | PASS |
+| tainted | FAIL | FAIL | FAIL (`concat16-stack`) | FAIL (`concat16-stack`) |
+| tainted-rune | FAIL | FAIL | FAIL (1 000-rune rows) | FAIL (1 000-rune rows) |
+| http | PASS (+3.07 %) | PASS (+1.84 %) | PASS | PASS |
+| Verdict | FAIL | FAIL | FAIL | FAIL |
+
+`hit` / `full2`: go1.26.6 29.20 / 53.04 ns, go1.27.1 25.84 / 49.11 ns.
+
+**Failures for user review** (not tuned; the user decision after T11.2 in section 9.3 answers items 1 and 2):
+
+1. **Tainted, corrected method** (local gate <= +1 us; ci <= +1.5 us, rune <= +1.75 us). A successful adoption costs approx. +165 to +230 ns more than the drop-path rows of section 13.1 (other runs; see the table below). Local FAIL: `concat4-stack`, `concat6-stack`, `concat16-stack`, `r2s-stack`, `s2r-stack` and all the new rune stack cases (+1.005 to +1.06 us), and the 1 000-rune heap rows. ci FAIL: `concat16-stack` (+2.14 to +2.16 us) and `r2s1000mb-heap`, `s2r1000-heap`, `s2r1000mb-heap`. The tainted concat cost grows with the operand count (approx. +90 to +110 ns for each operand after the second one). The tainted 1 000-rune cost grows with the rune count: approx. 1.5 to 2.1 ns for each rune (`r2s`) and 2.3 to 4.0 ns for each rune (`s2r`). The plan has no gate for each rune now (the gate "+60 ns + 2 ns for each rune" was replaced by "<= +1 us" after step 5). With that old formula (2.06 us for 1 000 runes), `r2s1000-heap` and `r2s1000mb-heap` pass, and `s2r1000-heap` and `s2r1000mb-heap` fail. Decision necessary: new tainted gates (for each operand, for each rune), or work on the adoption cost.
+2. **Gate off and clean, 1 000 runes.** One operation is 1.1 to 4.0 us (nohook median), and the noise between runs is approx. ±100 to ±300 ns. The 95 % intervals are wide and include 0 (for example go1.27.1 `RuntimeOff/r2s1000mb-heap` +56.00 [-90.00, +165.00] ns; go1.26.6 `RuntimeClean/r2s1000-heap` +42.50 [-69.00, +93.00] ns). The gate-off and filter-miss paths do not depend on the length (one filter check of the first granule). A fixed gate of +2 or +6 ns cannot be resolved for these rows. Decision necessary: a relative gate for long inputs, a separate report-only row, or more runs.
+3. The 8-rune rows (ASCII and multi-byte) pass all the gate-off and clean gates on the two Go versions.
+
+**go1.27.1 vs go1.26.6.** In the same rounds, the two versions give the same costs within the noise: no row changes by more than 1.96 ns (gate off and clean, `RuntimeClean/r2s-heap`; 1 000-rune rows not included), 0.51 ns (`CleanHit`) or 1.7 % (tainted; 1 000-rune rows: 6.9 %). These benchmarks do not use `encoding/json`.
+
+New rune cases, gate off and gate on clean (hook - nohook, ns):
+
+| Case | go1.26.6 pooled [95 % CI] | go1.27.1 pooled [95 % CI] | Gate local / ci | Result go1.26.6 (local / ci) | Result go1.27.1 (local / ci) |
+|---|---:|---:|---|---|---|
+| RuntimeOff/r2s8-heap | -0.77 [-1.93, -0.14] | +0.38 [-0.34, +1.34] | <= +2 ns / <= +25 ns | PASS / PASS | PASS / PASS |
+| RuntimeOff/r2s8-stack | -1.25 [-1.65, -0.76] | +0.26 [-0.36, +0.84] | <= +2 ns / <= +25 ns | PASS / PASS | PASS / PASS |
+| RuntimeOff/r2s8mb-heap | -1.04 [-2.88, +0.33] | +0.89 [-0.40, +1.84] | <= +2 ns / <= +25 ns | PASS / PASS | PASS / PASS |
+| RuntimeOff/r2s8mb-stack | -0.86 [-2.57, +0.06] | +0.41 [-0.59, +1.63] | <= +2 ns / <= +25 ns | PASS / PASS | PASS / PASS |
+| RuntimeOff/r2s1000-heap | -14.00 [-83.50, +72.50] | -13.00 [-69.00, +60.50] | <= +2 ns / <= +25 ns | PASS / PASS | PASS / PASS |
+| RuntimeOff/r2s1000mb-heap | -155.00 [-326.00, +0.00] | +56.00 [-90.00, +165.00] | <= +2 ns / <= +25 ns | PASS / PASS | FAIL / FAIL |
+| RuntimeOff/s2r8-heap | +0.08 [-0.45, +0.41] | -0.15 [-0.50, +0.23] | <= +2 ns / <= +25 ns | PASS / PASS | PASS / PASS |
+| RuntimeOff/s2r8-stack | -0.21 [-0.67, +0.44] | -0.34 [-0.75, +0.31] | <= +2 ns / <= +25 ns | PASS / PASS | PASS / PASS |
+| RuntimeOff/s2r8mb-heap | +0.15 [-0.66, +0.80] | -0.11 [-0.75, +0.42] | <= +2 ns / <= +25 ns | PASS / PASS | PASS / PASS |
+| RuntimeOff/s2r8mb-stack | -0.10 [-0.55, +0.46] | +0.18 [-0.30, +0.71] | <= +2 ns / <= +25 ns | PASS / PASS | PASS / PASS |
+| RuntimeOff/s2r1000-heap | -12.50 [-41.00, +17.50] | -2.00 [-34.00, +32.50] | <= +2 ns / <= +25 ns | PASS / PASS | PASS / PASS |
+| RuntimeOff/s2r1000mb-heap | -69.50 [-122.00, +38.00] | +34.50 [-37.00, +89.00] | <= +2 ns / <= +25 ns | PASS / PASS | FAIL / FAIL |
+| RuntimeClean/r2s8-heap | +2.13 [+1.64, +2.74] | +2.65 [+1.92, +3.49] | <= +6 ns / <= +25 ns | PASS / PASS | PASS / PASS |
+| RuntimeClean/r2s8-stack | +2.59 [+2.01, +2.91] | +3.72 [+2.95, +4.21] | <= +6 ns / <= +25 ns | PASS / PASS | PASS / PASS |
+| RuntimeClean/r2s8mb-heap | +1.77 [+0.38, +2.92] | +2.87 [+1.58, +4.27] | <= +6 ns / <= +25 ns | PASS / PASS | PASS / PASS |
+| RuntimeClean/r2s8mb-stack | +1.04 [+0.26, +2.20] | +2.68 [+1.65, +4.08] | <= +6 ns / <= +25 ns | PASS / PASS | PASS / PASS |
+| RuntimeClean/r2s1000-heap | +42.50 [-69.00, +93.00] | -16.50 [-93.00, +39.50] | <= +6 ns / <= +25 ns | FAIL / FAIL | PASS / PASS |
+| RuntimeClean/r2s1000mb-heap | -174.50 [-275.50, +6.50] | +19.00 [-119.50, +143.50] | <= +6 ns / <= +25 ns | PASS / PASS | FAIL / PASS |
+| RuntimeClean/s2r8-heap | +1.58 [+0.99, +1.94] | +1.08 [+0.74, +1.54] | <= +6 ns / <= +25 ns | PASS / PASS | PASS / PASS |
+| RuntimeClean/s2r8-stack | +1.16 [+0.76, +1.84] | +1.17 [+0.77, +1.72] | <= +6 ns / <= +25 ns | PASS / PASS | PASS / PASS |
+| RuntimeClean/s2r8mb-heap | +1.24 [+0.27, +1.92] | +0.95 [+0.29, +1.48] | <= +6 ns / <= +25 ns | PASS / PASS | PASS / PASS |
+| RuntimeClean/s2r8mb-stack | +1.17 [+0.63, +1.75] | +1.67 [+1.31, +2.25] | <= +6 ns / <= +25 ns | PASS / PASS | PASS / PASS |
+| RuntimeClean/s2r1000-heap | +7.75 [-12.20, +20.20] | -7.10 [-24.70, +11.15] | <= +6 ns / <= +25 ns | FAIL / PASS | PASS / PASS |
+| RuntimeClean/s2r1000mb-heap | -12.00 [-90.00, +32.00] | +8.00 [-59.50, +57.00] | <= +6 ns / <= +25 ns | PASS / PASS | FAIL / PASS |
+
+Tainted cases, corrected method (hook - nohook, ns; "Allocs, B": median extra allocations and bytes, the same on the two versions):
+
+| Case | go1.26.6 pooled [95 % CI] | go1.27.1 pooled [95 % CI] | Allocs, B | Gate local / ci | Result go1.26.6 (local / ci) | Result go1.27.1 (local / ci) |
+|---|---:|---:|---|---|---|---|
+| RuntimeTainted/concat2-stack | +830.68 [+821.45, +847.12] | +816.73 [+804.77, +827.42] | +1, +16 | <= +1 us / <= +1.5 us | PASS / PASS | PASS / PASS |
+| RuntimeTainted/concat4-stack | +1046.60 [+1034.19, +1060.03] | +1042.27 [+1029.29, +1063.28] | +1, +32 | <= +1 us / <= +1.5 us | FAIL / PASS | FAIL / PASS |
+| RuntimeTainted/concat6-stack | +1238.63 [+1221.20, +1257.57] | +1240.91 [+1222.98, +1258.37] | +1, +32 | <= +1 us / <= +1.5 us | FAIL / PASS | FAIL / PASS |
+| RuntimeTainted/concat16-stack | +2160.55 [+2146.28, +2179.35] | +2143.00 [+2121.56, +2184.16] | +1, +32 | <= +1 us / <= +1.5 us | FAIL / FAIL | FAIL / FAIL |
+| RuntimeTainted/concat2-heap | +837.73 [+826.29, +847.34] | +829.40 [+820.00, +850.67] | +0, +0 | <= +1 us / <= +1.5 us | PASS / PASS | PASS / PASS |
+| RuntimeTainted/b2s-stack | +606.19 [+601.95, +614.32] | +606.32 [+599.73, +617.37] | +1, +16 | <= +1 us / <= +1.5 us | PASS / PASS | PASS / PASS |
+| RuntimeTainted/s2b-stack | +583.94 [+578.05, +596.08] | +584.13 [+576.98, +595.25] | +1, +16 | <= +1 us / <= +1.5 us | PASS / PASS | PASS / PASS |
+| RuntimeTainted/r2s-stack | +1011.38 [+1003.96, +1022.28] | +1013.87 [+1003.87, +1034.01] | +1, +16 | <= +1 us / <= +1.75 us | FAIL / PASS | FAIL / PASS |
+| RuntimeTainted/s2r-stack | +1059.38 [+1053.63, +1067.51] | +1053.69 [+1044.47, +1067.43] | +1, +48 | <= +1 us / <= +1.75 us | FAIL / PASS | FAIL / PASS |
+| RuntimeTainted/r2s8-stack | +1008.57 [+1000.81, +1011.86] | +1005.49 [+989.53, +1020.09] | +1, +16 | <= +1 us / <= +1.75 us | FAIL / PASS | FAIL / PASS |
+| RuntimeTainted/r2s8mb-stack | +1005.86 [+992.84, +1012.37] | +1011.96 [+999.22, +1035.29] | +1, +32 | <= +1 us / <= +1.75 us | FAIL / PASS | FAIL / PASS |
+| RuntimeTainted/r2s1000-heap | +1516.00 [+1465.00, +1585.50] | +1548.50 [+1454.00, +1600.00] | +0, +0 | <= +1 us / <= +1.75 us | FAIL / PASS | FAIL / PASS |
+| RuntimeTainted/r2s1000mb-heap | +1920.50 [+1796.00, +2018.00] | +2052.50 [+1926.50, +2192.00] | +0, +0 | <= +1 us / <= +1.75 us | FAIL / FAIL | FAIL / FAIL |
+| RuntimeTainted/s2r8-stack | +1031.01 [+1021.87, +1045.90] | +1024.35 [+1012.84, +1041.85] | +1, +32 | <= +1 us / <= +1.75 us | FAIL / PASS | FAIL / PASS |
+| RuntimeTainted/s2r8mb-stack | +1041.27 [+1032.03, +1051.91] | +1044.85 [+1029.54, +1058.45] | +1, +32 | <= +1 us / <= +1.75 us | FAIL / PASS | FAIL / PASS |
+| RuntimeTainted/s2r1000-heap | +2339.70 [+2312.55, +2393.95] | +2339.45 [+2285.10, +2386.90] | +0, +0 | <= +1 us / <= +1.75 us | FAIL / FAIL | FAIL / FAIL |
+| RuntimeTainted/s2r1000mb-heap | +4027.50 [+3933.00, +4132.00] | +3883.00 [+3827.00, +3946.50] | +0, +0 | <= +1 us / <= +1.75 us | FAIL / FAIL | FAIL / FAIL |
+
+The old tainted rows (drop path, one scope; section 13.1 run 2, go1.26.6) and the corrected rows (go1.26.6, this run), hook - nohook, ns:
+
+| Case | Drop path (13.1) | Corrected (13.5) |
+|---|---:|---:|
+| `RuntimeTainted/concat2-stack` | +620.06 (13.4: +590.30) | +830.68 |
+| `RuntimeTainted/b2s-stack` | +415.44 | +606.19 |
+| `RuntimeTainted/s2b-stack` | +418.40 | +583.94 |
+| `RuntimeTainted/r2s-stack` | +815.34 | +1011.38 |
+| `RuntimeTainted/s2r-stack` | +833.12 | +1059.38 |
+
+The CI numbers of section 13.2.1 (run 36992589970) are also for the drop path: CI must run again with the corrected benchmark.
+
+Rows of step 7, go1.26.6 vs go1.27.1 (hook - nohook, ns; all PASS with the local gates):
+
+| Case | go1.26.6 | go1.27.1 | Gate (local) |
+|---|---:|---:|---|
+| RuntimeOff/concat2-heap | **+0.63** [-0.00, +1.09] | **+0.64** [+0.06, +1.14] | <= +2 ns |
+| RuntimeOff/concat4-heap | **+0.74** [+0.34, +1.26] | **+0.30** [-0.42, +0.83] | <= +2 ns |
+| RuntimeOff/concat6-heap | **+1.30** [+0.41, +2.05] | **-0.04** [-0.91, +0.56] | <= +2 ns |
+| RuntimeOff/concat16-heap | **+1.16** [-0.27, +2.39] | **-0.24** [-1.73, +0.96] | <= +2 ns |
+| RuntimeOff/concat2-stack | **+0.60** [+0.31, +0.75] | **+0.47** [+0.13, +0.75] | <= +2 ns |
+| RuntimeOff/concat4-stack | **+0.38** [+0.21, +0.62] | **+0.46** [+0.19, +0.68] | <= +2 ns |
+| RuntimeOff/concat6-stack | **+0.58** [+0.02, +0.98] | **+0.54** [+0.19, +0.86] | <= +2 ns |
+| RuntimeOff/concat16-stack | **+0.87** [-0.45, +1.94] | **+0.52** [-0.14, +1.65] | <= +2 ns |
+| RuntimeOff/b2s-heap | **+0.16** [-0.30, +0.40] | **+0.08** [-0.63, +0.79] | <= +2 ns |
+| RuntimeOff/b2s-stack | **+0.18** [+0.14, +0.21] | **+0.19** [+0.15, +0.25] | <= +2 ns |
+| RuntimeOff/s2b-heap | **-0.26** [-0.83, +0.21] | **+0.24** [-0.51, +0.97] | <= +2 ns |
+| RuntimeOff/s2b-stack | **+0.30** [+0.23, +0.36] | **+0.23** [+0.11, +0.33] | <= +2 ns |
+| RuntimeOff/r2s-heap | **-0.20** [-3.95, +2.05] | **+0.85** [-1.80, +3.69] | <= +2 ns |
+| RuntimeOff/r2s-stack | **-0.81** [-1.60, -0.19] | **+0.31** [-0.28, +1.24] | <= +2 ns |
+| RuntimeOff/s2r-heap | **-1.29** [-2.92, +0.04] | **-0.16** [-2.64, +1.83] | <= +2 ns |
+| RuntimeOff/s2r-stack | **+0.05** [-0.37, +0.70] | **+0.24** [-0.52, +0.99] | <= +2 ns |
+| RuntimeClean/concat2-heap | **+2.48** [+2.19, +2.82] | **+2.51** [+2.13, +3.02] | <= +6 ns |
+| RuntimeClean/concat4-heap | **+3.85** [+3.49, +4.29] | **+3.91** [+3.49, +4.14] | <= +9 ns |
+| RuntimeClean/concat6-heap | **+4.92** [+4.26, +5.63] | **+4.46** [+3.86, +4.97] | <= +12 ns |
+| RuntimeClean/concat16-heap | **+12.77** [+11.55, +13.70] | **+13.25** [+12.00, +14.55] | <= +27 ns |
+| RuntimeClean/concat2-stack | **+2.99** [+2.73, +3.14] | **+2.79** [+2.52, +3.01] | <= +6 ns |
+| RuntimeClean/concat4-stack | **+4.10** [+3.88, +4.37] | **+3.77** [+3.60, +4.09] | <= +9 ns |
+| RuntimeClean/concat6-stack | **+4.81** [+4.47, +5.43] | **+4.23** [+3.85, +4.84] | <= +12 ns |
+| RuntimeClean/concat16-stack | **+12.79** [+12.08, +14.14] | **+13.23** [+12.53, +13.99] | <= +27 ns |
+| RuntimeClean/b2s-heap | **+1.31** [+1.12, +1.48] | **+0.99** [+0.80, +1.26] | <= +4.5 ns |
+| RuntimeClean/b2s-stack | **+1.32** [+1.24, +1.39] | **+1.36** [+1.30, +1.40] | <= +4.5 ns |
+| RuntimeClean/s2b-heap | **+1.33** [+1.06, +1.49] | **+0.78** [+0.40, +1.08] | <= +4.5 ns |
+| RuntimeClean/s2b-stack | **+1.60** [+1.51, +1.69] | **+1.49** [+1.43, +1.57] | <= +4.5 ns |
+| RuntimeClean/r2s-heap | **+2.53** [+0.64, +5.90] | **+0.57** [-2.72, +4.55] | <= +6 ns |
+| RuntimeClean/r2s-stack | **+3.10** [+2.56, +3.54] | **+4.12** [+3.58, +4.69] | <= +6 ns |
+| RuntimeClean/s2r-heap | **+0.10** [-1.53, +1.76] | **-0.44** [-2.34, +1.80] | <= +6 ns |
+| RuntimeClean/s2r-stack | **+1.33** [+0.80, +2.17] | **+1.24** [+0.48, +1.79] | <= +6 ns |
+| RuntimeS2SOff/s2b-heap | **+0.06** [-0.19, +0.39] | **+0.09** [-0.24, +0.32] | <= +2 ns |
+| RuntimeS2SOff/s2b-stack | **+0.35** [+0.31, +0.40] | **+0.19** [+0.12, +0.26] | <= +2 ns |
+| RuntimeS2SOff/s2r-heap | **-0.56** [-2.01, +1.36] | **-0.62** [-2.09, +0.56] | <= +2 ns |
+| RuntimeS2SOff/s2r-stack | **+0.43** [-0.11, +0.97] | **+0.17** [-0.59, +0.59] | <= +2 ns |
+| RuntimeCleanHit/s2b-stack | **+24.04** [+23.81, +24.28] | **+23.71** [+23.52, +24.22] | <= +50 ns |
+| RuntimeCleanHit/concat2-stack | **+43.22** [+42.69, +43.69] | **+42.71** [+42.18, +43.55] | <= +100 ns |
 
 ## Appendix A. Critic round 1 responses
 

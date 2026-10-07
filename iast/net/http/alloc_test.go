@@ -96,3 +96,44 @@ func TestBindStartSpanBindsTheGivenSpan(t *testing.T) {
 	got, _ = iasthttp.BindStartSpan(ctx, nil)
 	require.Nil(t, got)
 }
+
+// TestBindStartSpanCapacityDroppedAllocations pins the span binding cost of a
+// request that the request capacity dropped: one active request holds the
+// only analysis permit. The cost is the cost of a sampled-out request:
+// weak.Make of the root span and the store entry of the negative decision.
+func TestBindStartSpanCapacityDroppedAllocations(t *testing.T) {
+	testConfig(t, 100, 1)
+	mockTracer := mocktracer.Start()
+	t.Cleanup(mockTracer.Stop)
+	holder, holderCreated := request.BeginServerContext(context.Background())
+	require.True(t, holderCreated)
+	t.Cleanup(func() { request.FinishContext(holder, holderCreated) })
+	require.True(t, request.FromContext(holder).Active())
+	ctx, created := request.BeginServerContext(context.Background())
+	require.True(t, created)
+	t.Cleanup(func() { request.FinishContext(ctx, created) })
+	require.Equal(t, request.DecisionCapacityDropped, request.FromContext(ctx).Decision())
+
+	const runs = 100
+	starts := make([]*tracer.Span, runs+1)
+	contexts := make([]context.Context, runs+1)
+	for i := range starts {
+		starts[i] = tracer.StartSpan("capacity-dropped")
+		contexts[i] = tracer.ContextWithSpan(ctx, starts[i])
+	}
+	t.Cleanup(func() {
+		for _, span := range starts {
+			span.Finish()
+		}
+	})
+	next := 0
+	allocations := testing.AllocsPerRun(runs, func() {
+		span, spanCtx := iasthttp.BindStartSpan(contexts[next], starts[next])
+		if span != starts[next] || spanCtx != contexts[next] {
+			t.Fatal("BindStartSpan changed its results")
+		}
+		spans.Finished(span)
+		next++
+	})
+	require.LessOrEqual(t, allocations, 2.0)
+}
