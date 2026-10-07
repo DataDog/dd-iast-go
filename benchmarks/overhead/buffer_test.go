@@ -12,7 +12,6 @@ import (
 
 	"github.com/DataDog/dd-iast-go/benchmarks/overhead"
 	"github.com/DataDog/dd-iast-go/internal/config"
-	"github.com/DataDog/dd-iast-go/internal/instrumentation/telemetry"
 	"github.com/DataDog/dd-iast-go/internal/taint/request"
 	"github.com/DataDog/dd-iast-go/internal/taint/writerbridge"
 	"github.com/DataDog/dd-iast-go/taint"
@@ -38,7 +37,7 @@ func BenchmarkBytesBufferCopies(b *testing.B) {
 			input := taint.TaintString(ctx, taint.Source{Origin: taint.OriginHttpRequestParameter, Name: "buffer"}, "attacker")
 			buffer := overhead.NewTrackedBuffer(input)
 			// The runner's control build has no IAST propagation aspects.
-			if telemetry.InstrumentedPropagation != 0 && !writerbridge.Active() {
+			if iastBuild() && !writerbridge.Active() {
 				b.Fatal("ordinary-call fixture did not establish writer state")
 			}
 			var unrelated bytes.Buffer

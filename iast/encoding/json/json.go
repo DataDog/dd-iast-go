@@ -4,6 +4,18 @@
 // Copyright 2026-present Datadog, Inc.
 
 // Package json propagates request taint through encoding/json decoding.
+//
+// It supports the v1 decoder (Go 1.26, and Go 1.27 with
+// GOEXPERIMENT=nojsonv2) and the v2-backed decoder (Go 1.27 default). On
+// Go 1.26 with GOEXPERIMENT=jsonv2, the program compiles, but this package
+// does not propagate taint.
+//
+// json.Decoder.Decode gives provenance to a value only when the reader of
+// the decoder has one exclusive request owner. The direct encoding/json/v2
+// and encoding/json/jsontext streaming APIs (UnmarshalRead, UnmarshalDecode,
+// and jsontext.Decoder) do not propagate taint. The README section "JSON
+// decoding" gives the full list of supported values, safe misses, and known
+// limits.
 package json
 
 import (

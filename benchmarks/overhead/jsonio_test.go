@@ -28,13 +28,20 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"reflect"
 	"strings"
+	"sync"
 	"testing"
 
+	// The bootstrap aspect of iast/encoding/json does not match a test main.
+	// Thus this import links the package, and its init registers the JSON
+	// callbacks (owner lookup, clone, taint). Without it, the IAST build
+	// does not propagate JSON taint.
+	_ "github.com/DataDog/dd-iast-go/iast/encoding/json"
 	"github.com/DataDog/dd-iast-go/internal/config"
-	"github.com/DataDog/dd-iast-go/internal/instrumentation/telemetry"
 	"github.com/DataDog/dd-iast-go/internal/taint/iobridge"
 	"github.com/DataDog/dd-iast-go/internal/taint/request"
+	"github.com/DataDog/dd-iast-go/taint"
 )
 
 var (
@@ -103,9 +110,14 @@ func arrayDocument(items int) []byte {
 	return buffer.Bytes()
 }
 
-// iastBuild reports whether this is the IAST build of the runner. The
-// control build has no IAST propagation aspects.
-func iastBuild() bool { return telemetry.InstrumentedPropagation != 0 }
+// iastBuild reports whether this is the IAST build of the runner. Only the
+// IAST build adds the __dd_iast_binding field to json.Decoder. The
+// telemetry counter is not a correct signal: the import of
+// iast/encoding/json increments it also in the control build.
+var iastBuild = sync.OnceValue(func() bool {
+	_, found := reflect.TypeFor[json.Decoder]().FieldByName("__dd_iast_binding")
+	return found
+})
 
 // enableRequests makes request.Begin create active requests until the end of
 // the benchmark.
@@ -203,6 +215,16 @@ func BenchmarkJSONDecoder20(b *testing.B) {
 	b.Run("request-bufio", func(b *testing.B) {
 		enableRequests(b)
 		body := bytes.NewReader(nil)
+		// One check before the measured loop: in the IAST build, the
+		// decoded strings of a bound body are tainted.
+		ctx, finish := beginRequest(b)
+		body.Reset(jsonRecordDocument)
+		request.BindReader(ctx, body)
+		decode(b, bufio.NewReader(body))
+		if iastBuild() && !taint.IsTaintedString(resultRecord.F20) {
+			b.Fatal("the last decoded field is not tainted")
+		}
+		finish()
 		b.ReportAllocs()
 		for b.Loop() {
 			ctx, finish := beginRequest(b)
@@ -240,6 +262,16 @@ func BenchmarkJSONDecoderSmall(b *testing.B) {
 	b.Run("request", func(b *testing.B) {
 		enableRequests(b)
 		body := bytes.NewReader(nil)
+		// One check before the measured loop: in the IAST build, the
+		// decoded string of a bound body is tainted.
+		ctx, finish := beginRequest(b)
+		body.Reset(jsonSmallDocument)
+		request.BindReader(ctx, body)
+		decode(b, body)
+		if iastBuild() && !taint.IsTaintedString(resultSmall.Name) {
+			b.Fatal("the decoded field is not tainted")
+		}
+		finish()
 		b.ReportAllocs()
 		for b.Loop() {
 			ctx, finish := beginRequest(b)
@@ -253,35 +285,64 @@ func BenchmarkJSONDecoderSmall(b *testing.B) {
 
 // BenchmarkJSONDecoderMore100 measures a More loop over an array of 100
 // objects (one reader lookup for each item in the IAST build on Go 1.27).
+// In the active state, the body has no binding, thus the decoder has no
+// token and the Decode calls do no owner check. In the request state, the
+// body is bound before NewDecoder, thus each Decode checks the owner of the
+// token and the decoded strings are tainted in the IAST build.
 func BenchmarkJSONDecoderMore100(b *testing.B) {
+	decodeAll := func(b *testing.B, body io.Reader) {
+		decoder := json.NewDecoder(body)
+		if _, err := decoder.Token(); err != nil {
+			b.Fatal(err)
+		}
+		items := 0
+		for decoder.More() {
+			var destination jsonSmall
+			if err := decoder.Decode(&destination); err != nil {
+				b.Fatal(err)
+			}
+			resultSmall = destination
+			items++
+		}
+		if items != 100 {
+			b.Fatalf("decoded %d items, want 100", items)
+		}
+		resultCount = items
+	}
 	run := func(b *testing.B) {
 		body := bytes.NewReader(nil)
 		b.ReportAllocs()
 		for b.Loop() {
 			body.Reset(jsonArrayDocument)
-			decoder := json.NewDecoder(body)
-			if _, err := decoder.Token(); err != nil {
-				b.Fatal(err)
-			}
-			items := 0
-			for decoder.More() {
-				var destination jsonSmall
-				if err := decoder.Decode(&destination); err != nil {
-					b.Fatal(err)
-				}
-				resultSmall = destination
-				items++
-			}
-			if items != 100 {
-				b.Fatalf("decoded %d items, want 100", items)
-			}
-			resultCount = items
+			decodeAll(b, body)
 		}
 	}
 	b.Run("inactive", run)
 	b.Run("active", func(b *testing.B) {
 		activeRequest(b)
 		run(b)
+	})
+	b.Run("request", func(b *testing.B) {
+		enableRequests(b)
+		body := bytes.NewReader(nil)
+		// One check before the measured loop: in the IAST build, the
+		// decoded strings of a bound body are tainted.
+		ctx, finish := beginRequest(b)
+		body.Reset(jsonArrayDocument)
+		request.BindReader(ctx, body)
+		decodeAll(b, body)
+		if iastBuild() && !taint.IsTaintedString(resultSmall.Name) {
+			b.Fatal("the last decoded item is not tainted")
+		}
+		finish()
+		b.ReportAllocs()
+		for b.Loop() {
+			ctx, finish := beginRequest(b)
+			body.Reset(jsonArrayDocument)
+			request.BindReader(ctx, body)
+			decodeAll(b, body)
+			finish()
+		}
 	})
 }
 

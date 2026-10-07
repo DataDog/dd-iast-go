@@ -106,6 +106,13 @@ func (b *ReaderBinding) capture(reader any) {
 	}
 }
 
+// Exclusive reports whether Capture found one exclusive owner of the reader
+// of b, and no proof failed since. When it is false, BindDecoder binds
+// nothing. It is inlinable: the Decode aspect calls it before the
+// variant-specific bind function, thus a decoder that cannot propagate
+// makes no call.
+func (b *ReaderBinding) Exclusive() bool { return b != nil && b.state == bindingExclusive }
+
 // clone revalidates the token of b and returns the clone of data that the
 // Clone callback adopted into the owner of the token. It returns nil when b
 // is not exclusive, when the proof fails (then b becomes "closed"), or when
@@ -187,6 +194,11 @@ func setConsumerForTest(bit uint32, enabled bool) (restore func()) {
 	return func() { set(previous) }
 }
 
+// RequestActive reports whether a request is active. When it is false, Bind
+// and Document do nothing. The v1 aspects use it as the cheap gate of these
+// calls. It is inlinable: two loads, no call.
+func RequestActive() bool { return active() }
+
 // Active reports whether a request is active and the process has an indexed
 // root. The v2 string wrapper uses it as its cheap gate.
 func Active() bool { return active() && hasValues() }
@@ -265,6 +277,18 @@ var activeOwners atomic.Pointer[atomic.Uint64]
 var activeValues atomic.Pointer[atomic.Int32]
 var decoderStates [64]decoderSlot
 
+// boundStates is the number of slots of decoderStates that are in use (their
+// pointer is not zero). addDecoderState adds 1 when it takes a free slot, and
+// the final Unbind subtracts 1 when it releases the slot. When it is zero,
+// findDecoderState finds no slot for any state.
+var boundStates atomic.Int32
+
+// HasDecoderStates reports whether a decoder slot is in use. When it is
+// false, no state has a slot: Quoted does nothing, and Literal does nothing
+// unless Active is true. The v1 aspects use it as the cheap gate of the
+// valueQuoted and literalStore defers. It is inlinable: one load, no call.
+func HasDecoderStates() bool { return boundStates.Load() != 0 }
+
 // BindActiveValues replaces the process active-value counter (the number of
 // indexed roots of the process store) and returns the previous counter.
 func BindActiveValues(values *atomic.Int32) *atomic.Int32 { return activeValues.Swap(values) }
@@ -285,7 +309,8 @@ func hasValues() bool { values := activeValues.Load(); return values != nil && v
 
 // Bind adds one binding depth to the slot of state until the matching Unbind.
 // A new slot has no reader binding. A nested Bind keeps the reader binding of
-// the outer BindDecoder.
+// the outer BindDecoder. It is not inlinable: the v1 aspect calls it only when
+// RequestActive is true.
 func Bind(state any) bool {
 	if !active() {
 		return false
@@ -296,9 +321,11 @@ func Bind(state any) bool {
 // BindDecoder associates state with the reader binding of a v1 decoder until
 // the matching Unbind (plan encoding-json-v2, section 6.7). Document then uses
 // the token that NewDecoder captured in binding. It returns false, and binds
-// nothing, when binding is not exclusive: then Document cannot propagate.
+// nothing, when binding is not exclusive: then Document cannot propagate. It
+// is not inlinable: the Decode aspect calls it only when binding.Exclusive is
+// true.
 func BindDecoder(binding *ReaderBinding, state any) bool {
-	if binding == nil || binding.state != bindingExclusive || !active() {
+	if !binding.Exclusive() || !active() {
 		return false
 	}
 	slot := addDecoderState(pointerOf(state))
@@ -330,8 +357,8 @@ func Unbind(state any) {
 		slot.quoted.Store(nil)
 		slot.document.Store(nil)
 		slot.binding.Store(nil)
-		if slot.depth.Load() == 0 {
-			slot.pointer.CompareAndSwap(pointer, 0)
+		if slot.depth.Load() == 0 && slot.pointer.CompareAndSwap(pointer, 0) {
+			boundStates.Add(-1)
 		}
 		return
 	}
@@ -340,7 +367,8 @@ func Unbind(state any) {
 // Document publishes data, a value that the v1 decoder of state read from
 // its reader. The decodeState.init aspect calls it, after the bytes of data
 // flowed. It clones data for the owner that NewDecoder captured, only when
-// the token of that owner is still valid (ReaderBinding.clone).
+// the token of that owner is still valid (ReaderBinding.clone). It is not
+// inlinable: the v1 aspect calls it only when RequestActive is true.
 func Document(state any, data []byte) {
 	if !active() {
 		return
@@ -363,7 +391,12 @@ func Document(state any, data []byte) {
 }
 
 // Quoted records the outer token when valueQuoted returns an encoded string.
+// It does nothing when state has no slot.
 func Quoted(state any, original []byte, start, end int, result any) {
+	if !HasDecoderStates() {
+		// No state has a slot: findDecoderState finds nothing.
+		return
+	}
 	slot := findDecoderState(pointerOf(state))
 	if slot == nil {
 		return
@@ -389,10 +422,16 @@ func Quoted(state any, original []byte, start, end int, result any) {
 	})
 }
 
-// Literal publishes a decoded typed string and its exact source token.
+// Literal publishes a decoded typed string and its exact source token. With
+// no slot for state, it uses original and item as they are (for example when
+// all the slots that Bind probed were in use).
 func Literal(state any, original, item []byte, value reflect.Value, err error, fromQuoted bool) {
-	slot := findDecoderState(pointerOf(state))
+	var slot *decoderSlot
 	var quoted *quotedLiteral
+	if HasDecoderStates() {
+		// Else no state has a slot: findDecoderState finds nothing.
+		slot = findDecoderState(pointerOf(state))
+	}
 	if slot != nil {
 		quoted = slot.quoted.Swap(nil)
 	}
@@ -467,6 +506,7 @@ func addDecoderState(pointer uintptr) *decoderSlot {
 			return slot
 		}
 		if slot.pointer.CompareAndSwap(0, 1) {
+			boundStates.Add(1)
 			slot.binding.Store(nil)
 			slot.document.Store(nil)
 			slot.quoted.Store(nil)

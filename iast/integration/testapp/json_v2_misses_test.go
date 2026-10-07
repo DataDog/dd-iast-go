@@ -31,6 +31,11 @@ func TestJSONV2StreamingAPIsAreMiss(t *testing.T) {
 			err := jsonv2.UnmarshalRead(r.Body, &destination)
 			return destination.Value, err
 		},
+		"UnmarshalDecode": func(r *http.Request) (string, error) {
+			var destination jsonValue
+			err := jsonv2.UnmarshalDecode(jsontext.NewDecoder(r.Body), &destination)
+			return destination.Value, err
+		},
 		"jsontext.Decoder": func(r *http.Request) (string, error) {
 			decoder := jsontext.NewDecoder(r.Body)
 			for {

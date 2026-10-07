@@ -29,6 +29,14 @@ input already carries byte provenance.
 
 ## Semantics and limits
 
+> [!NOTE]
+> Later change (plan `encoding-json-v2`): JSON propagation also supports the
+> Go 1.27 v2-backed decoder. There, typed map keys, interface values, and
+> `map[string]any` keys and values are tainted. `Decoder.Decode` and
+> `io.ReadAll` now give provenance only when the reader has one exclusive
+> request owner; the readers of more than one request are safe misses. The
+> README section "JSON decoding" gives the current behavior.
+
 - Only strings whose exact raw literal intersects tainted document ranges are
   propagated. Escaped and unescaped output is coarse because JSON unquoting is
   not affine in the general case.

@@ -1931,6 +1931,17 @@ Each step lists its exit criteria and an estimate for one engineer.
     `iast/bufio` package doc note of section 6.6). Exit: all review
     findings closed.
 
+    **Step 10 docs: done.** `README.md` has a new section "JSON
+    decoding" (support matrix, values that keep taint, v1/v2 differences,
+    safe misses, "Request body readers" with the exclusive-owner rule and
+    the behavior changes of section 6.7, "Known limits" with R15 and the
+    v2 string cache race). The old JSON and reader paragraphs of
+    "Propagation coverage" and the string cache note of "Request
+    isolation" moved there. The package doc of `iast/encoding/json` gives
+    the support matrix in short; the `iast/bufio` package doc already had
+    the R15 note. The Phase 8 plan has a pointer to the new behavior. The
+    multi-agent review of step 10 is a separate task.
+
 Step order: 1, 2, 2a, 2b, 3, 3a, 4, 5, 6, 7, 8, 9, 10. Step 3a needs
 steps 2b and 3. The consumer tests of retargeted readers are in step 3a
 (v1 `Decode`, `io.ReadAll`) and step 5 (v2 `Decode`), after the code
@@ -3282,7 +3293,7 @@ no extra allocation). The measurements below meet these gates.
 | Inactive, lane B: time inside the noise band | Pass for `Unmarshal20`, `Decoder20`, `More100`, `ReadAll1KiB` (both runs inside or near the band). `JSONDecoderSmall/inactive`: +47 ns and +37 ns in the 2 runs (+11 % to +15 %), noise +5 %: **accepted by user decision** (about +40 ns for each `NewDecoder`: the `ReaderBinding` field and the defer of step 3a; step 5 notes). |
 | Inactive, lane B: 0 extra allocations | Pass (all rows). |
 | Inactive, lane B: 0 extra bytes | **FAIL for each `NewDecoder`: +48 B/op** (one allocation larger: the `__dd_iast_binding` field, `jsonbridge.ReaderBinding`, 48 bytes, appendix steps 1 to 2b, note 1). `Unmarshal`, `MultiReader`, `ReadAll`: 0 B. By design; the review decides. |
-| Lane A, inactive v1: inside the noise band | Time: pass (+1.6 % to +6.6 %). Bytes: **+32 B/op for each `NewDecoder`** (the same field, in the v1 `Decoder` size class). Allocations: equal. |
+| Lane A, inactive v1: inside the noise band | Time: **Pass after the fix** (Table 6, "Result after the fix": `Unmarshal20` -0.9 %, `Decoder20` +0.8 %, `More100` +2.1 %, all inside the noise band of about +-3 %; benchstat: no significant delta, p >= 0.08). `JSONDecoderSmall/inactive` +4.1 % (+21 ns): the `NewDecoder` cost, **accepted by user decision** (as on lane B). Before the fix: FAIL (+3.8 % to +7.5 %, the v1 hooks called the bridge when IAST was inactive). Table 2 (+1.6 % to +6.6 %) did not link the JSON callbacks. Bytes: **+32 B/op for each `NewDecoder`** (the same field, in the v1 `Decoder` size class). Allocations: equal. |
 | Lane A, active: `NewDecoder` lookup delta | Recorded: `JSONDecoderSmall/active` +15 ns (+3.7 %), `JSONDecoder20/active` +121 ns (+4.3 %), `More100/active` +3.1 us (+19.7 %). |
 | Lane B, active: `NewDecoder` + `Decode` small body; `More()` loop of 100 | Recorded: small +28 to +40 ns (+8 % to +12 %), +48 B; `More100` inside noise (-0.1 % / -4.3 %), +48 B. |
 | `MultiReader` 2 and 8, lanes A and B, inactive: 0 extra allocations | Pass. (Time: +6 to +26 ns on all lanes: the defer, the 8-input array, and one callback that returns at once.) |
@@ -3292,6 +3303,176 @@ no extra allocation). The measurements below meet these gates.
 | `io.ReadAll` 1 KiB, inactive: 0 allocations, inside noise | Allocations: pass (all lanes). Time: pass on A (+1.8 %) and B (+23.7 % / +2.7 %, noise +23.8 %); lane C +32 % (highest load, unclear). |
 | `io.ReadAll`, active: record the second lookup | Recorded. Unbound reader (first lookup only): +51 to +132 ns. Bound reader (`request`: token, revalidation, adoption): +0.8 to +1.6 us, +1 allocation, +1024 B (the adopted copy of the 1 KiB result). |
 | Macro check lane B: `Decoder` through `bufio.NewReader(body)`, active clean | Recorded: +99 ns / +299 ns (+3.3 % / +9.4 %), +48 B, 0 allocations. With a bound body (`request-bufio`, taint of 20 strings): +307 to +619 ns (+5 % to +10 %), +96 B, +1 allocation. |
+
+### Table 5: re-measure with the JSON callbacks (final review)
+
+**The rows of Tables 1 and 2 for the JSON workloads do not include the
+JSON callbacks.** The overhead test binaries did not link
+`iast/encoding/json` (its bootstrap aspect does not match a test main).
+Thus `jsonbridge.Register` did not run: no owner lookup, no clone, and no
+taint. `jsonio_test.go` now has a blank import of the package, and
+`iastBuild` checks the `__dd_iast_binding` field of `json.Decoder` (the
+import also increments the telemetry counter in the control build). The
+new `JSONDecoderMore100/request` state binds the body before `NewDecoder`
+(each `Decode` revalidates the owner token), and it checks that the
+decoded strings are tainted. `JSONDecoder20/request-bufio` and
+`JSONDecoderSmall/request` do the same check before the measured loop.
+Thus a missing callback registration makes the setup fail (checked: a
+build without the blank import fails the 3 `request` states). Method: 4 test binaries (A and B, control and
+IAST), 10 interleaved rounds of `-test.bench='^BenchmarkJSON'
+-test.benchmem -test.benchtime=500ms`, `benchstat` (load average 9 to
+15). Median, delta = woven - unwoven (p = 0.000 if not given).
+
+| Workload | A unwoven | A delta | A B / allocs | B unwoven | B delta | B B / allocs |
+|---|---:|---:|---:|---:|---:|---:|
+| JSONUnmarshal20/inactive | 2.46 us | +9.4 % | 0 / 0 | 1.34 us | ~ (p=0.53) | 0 / 0 |
+| JSONDecoder20/active-bufio | 2.86 us | +13.3 % | +32 / 0 | 2.18 us | +5.4 % | +48 / 0 |
+| JSONDecoder20/request-bufio (20 tainted strings) | 4.50 us | +17.3 us (+384 %) | +1.4 KiB / +24 | 3.70 us | +27.1 us (+731 %) | +1.4 KiB / +24 |
+| JSONDecoderSmall/active | 284 ns | +105 ns (+37 %) | +32 / 0 | 218 ns | +75 ns (+34 %) | +48 / 0 |
+| JSONDecoderSmall/request | 1.74 us | +1.58 us (+91 %) | +144 / +4 | 1.72 us | +2.08 us (+121 %) | +128 / +4 |
+| JSONDecoderMore100/inactive | 15.0 us | +13.1 % | +32 / 0 | 14.8 us | ~ (p=0.54) | +48 / 0 |
+| JSONDecoderMore100/active (no binding) | 15.3 us | +21.4 % | +32 / 0 | 14.7 us | ~ (p=0.14) | +48 / 0 |
+| **JSONDecoderMore100/request (bound, 100 items)** | 16.6 us | **+134.8 us (+813 %)** | +10.2 KiB / +400 | 16.6 us | **+188.0 us (+1135 %)** | +5.5 KiB / +300 |
+
+With a bound body, the `More` loop costs about +1.35 us (A) and +1.9 us
+(B) and 3 to 4 allocations for each item (the owner revalidation of
+section 7.2, "one scan for each item", and the taint of the decoded
+string). The unbound `active` state has no per-item cost on lane B. These
+deltas were not compared with a gate; the review decides.
+
+### Table 6: lane A inactive re-measure (final review)
+
+Method: lane A (go1.26.6), the control and IAST test binaries built as
+the runner does (own `GOCACHE` for each). For each benchmark of each
+round, the binaries run back to back (`-test.benchtime=200ms`,
+`GOMAXPROCS=1`, sampling 0); the order changes each round. Delta = IAST -
+control of the same round, median of the rounds, 95 % bootstrap CI.
+Noise = control - control (the same binary, 2 runs in each round). Code
+placements (step 5 method of runtime-operator-hooks): a pad function with
+k stores injected into `strconv` (both builds) moves the text of
+`reflect` and `encoding/json` by 0, +80, +112, +128, +144 and +176 bytes
+(k = 0, 1, 3, 7, 10, 14; checked with `go tool nm`). 20 rounds, 6
+placements (120 pairs). Load average 6.2 to 8.3 (median 7.5).
+
+| Workload | Control | Noise [95 % CI] | Pooled delta [95 % CI] | Per placement (k0..k14) | benchstat, 5 pad placements (n=100) |
+|---|---:|---:|---:|---:|---:|
+| JSONUnmarshal20/inactive | 2.93 us | -0.0 % [-1.6, +2.0] | **+3.8 % [+3.0, +4.3]** | +2.3..+5.4 % | +3.6 % (p=0.000) |
+| JSONDecoder20/inactive | 3.18 us | -0.6 % [-2.2, +1.8] | **+4.9 % [+3.6, +5.6]** | +3.3..+6.0 % | +4.5 % (p=0.000) |
+| JSONDecoderMore100/inactive | 18.5 us | +1.4 % [-0.1, +3.0] | **+7.5 % [+6.9, +8.3]** | +6.9..+8.5 % | +8.0 % (p=0.000) |
+| JSONDecoderSmall/inactive | 439 ns | -2.9 % [-5.7, +0.6] | **+6.7 % [+5.8, +7.7]** | +5.6..+8.2 % | +7.4 % (p=0.000) |
+
+Bytes and allocations: as in Table 5 (+32 B for each `NewDecoder`, 0
+allocations). Two other runs agree: 60 rounds, repository placement only
+(load 22 to 73): +3.8 %, +5.1 %, +6.3 %, +4.2 %, noise <= 2 %; 16 rounds,
+6 placements, `GOGC=off`: +4.4 %, +4.8 %, +9.8 %, +6.3 %. Thus the delta
+is not a code placement effect and not the GC cost of a larger heap.
+
+Verdict (before the fix): **the lane A inactive gate fails** (all 4 rows
+are above the noise band). No production code was changed. After the fix
+(below): pass, except the accepted `NewDecoder` cost.
+
+Cause (pprof, `go tool objdump`, and 2 experiment builds in a copy of the
+repository):
+
+- The `[v1] typed string materialization` aspect adds an open-coded defer
+  to `literalStore` (frame 976 -> 1040 bytes). At each return, the closure
+  calls `jsonbridge.Literal`, also when IAST is inactive. `Literal` calls
+  `pointerOf` (`reflect.ValueOf`, not inlined) and `findDecoderState` (4
+  atomic probes that miss) BEFORE its `active()` check. This is one call
+  for each decoded string (20 in `Unmarshal20`, 100 in `More100`).
+- The other v1 hooks also call the bridge when inactive: `Bind` in
+  `unmarshal`, `Document` in `init`, and the `__dd_iast_decodeBind`
+  closure (`BindDecoder`) in each `Decode`. Each call returns at its
+  `active()` check, but `Bind`, `Document` and `BindDecoder` are not
+  inlined (cost 154, 423, 240).
+- Experiment E1 (the `literalStore` defer only in
+  `if iastjsonbridge.Active() { ... }`): `Unmarshal20` +107 ns -> -2 ns,
+  `Decoder20` +146 ns -> -43 ns, `More100` +1211 ns -> +558 ns, `Small`
+  +26 ns -> +18 ns. Experiment E2 (E1, and an inlined `active()` check
+  before the `Bind`, `Document` and `BindDecoder` calls): `More100` +86 ns
+  (+0.5 % [-0.4, +1.7]), `Unmarshal20` -2.5 %, `Decoder20` -1.6 %; `Small`
+  stays at +21 ns (+4.8 %): the `NewDecoder` defer and `Capture` (the
+  accepted cost of each `NewDecoder`). 30 rounds, repository placement.
+
+Proposed fix (done by user decision; see "Result after the fix"):
+
+1. Gate the defers of the `literalStore` and `valueQuoted` aspects with
+   one inlined load: `if iastjsonbridge.HasDecoderStates() { defer ... }`.
+   `HasDecoderStates` reads a counter of the bound decoder slots
+   (`addDecoderState` adds 1 for a new slot, the final `Unbind` subtracts
+   1). With no slot, `Literal` and `Quoted` have nothing to clear, thus the
+   behavior does not change. (A gate on `Active()` alone can keep a stale
+   `quoted` value in a slot until `Unbind`.)
+2. Put an inlined `active()` check (a new exported function of
+   `jsonbridge`) before the calls of `Bind`, `Document` and `BindDecoder`
+   in the v1 aspects.
+3. In `Literal` and `Quoted`, do the cheap gate before `pointerOf`.
+4. Re-measure Table 6 (expected: E2, inside the noise band except the
+   `NewDecoder` cost).
+
+#### Result after the fix
+
+The fix as it is in the code (`internal/taint/jsonbridge/bridge.go`,
+`iast/encoding/json/orchestrion.yml`). It is different from the proposal
+in 2 items:
+
+1. `boundStates` counts the decoder slots in use (`addDecoderState` adds 1
+   when it takes a free slot, the final `Unbind` subtracts 1 when its
+   `CompareAndSwap` releases the slot). `HasDecoderStates()` reads it.
+   - `valueQuoted` gate: `HasDecoderStates()`. With no slot, `Quoted` does
+     nothing.
+   - `literalStore` gate: `HasDecoderStates() || Active()`, **not**
+     `HasDecoderStates()` alone. With no slot, `Literal` still publishes
+     the original token when `Active()` is true. This occurs when all the
+     slots that `Bind` probed were in use (and then released by other
+     decoders). `HasDecoderStates()` alone drops this propagation.
+   - The gates run at the start of the function, thus the defer and its
+     closure are not made when the gate is false. `Bind` takes the slot of
+     this decode in `unmarshal`, before `literalStore` and `valueQuoted`,
+     in the same goroutine, thus the gate sees it. The only difference
+     from before: a request that becomes active during one `literalStore`
+     call of a decode that started with no active request. That decode had
+     no slot, and its bytes came from before the request.
+2. `Bind`, `Document` and `BindDecoder` cannot be inlinable wrappers (cost
+   90 to 103, budget 80). Thus the gates are in the templates:
+   `RequestActive()` (a new inlinable function, `active()`) before `Bind`
+   and `Document`, and `dec.__dd_iast_binding.Exclusive()` (a new
+   inlinable method) before the indirect `__dd_iast_decodeBind` call in
+   `Decode`. A decoder that `NewDecoder` made with no active request is
+   not exclusive, thus its `Decode` makes no call.
+3. `Literal` and `Quoted` read `HasDecoderStates()` before `pointerOf`.
+
+When IAST is inactive, the v1 decode path makes no call to the bridge. The
+gates are 1 to 3 loads. Tests: `TestFastPathGatesAreInlinable` (the 4 gates
+are inlinable, `go build -gcflags=-m`), `TestInactiveFastPath` (no slot, no
+callback, 0 allocations), `TestHasDecoderStatesCountsBoundSlots`,
+`TestLiteralWithNoSlotPublishes` (bridgetests), and
+`TestV1BridgeCallsAreGated` (each bridge call of a v1 template comes after
+its gate, and the gate is the first statement). The existing woven tests
+(taint through `Unmarshal`, `Decode` and `,string` on v1) pass on lanes A,
+B and C.
+
+Re-measure, the same method as above (`/tmp/t1027`, 20 rounds, 6
+placements, 120 pairs). Load average 8.6 to 36 (median 12.7):
+
+| Workload | Control | Noise [95 % CI] | Pooled delta [95 % CI] (before) | Per placement (k0..k14) | benchstat, 5 pad placements (n=100) |
+|---|---:|---:|---:|---:|---:|
+| JSONUnmarshal20/inactive | 3.11 us | +0.6 % [-2.5, +4.0] | **-0.9 % [-1.7, +0.4]** (+3.8 %) | -1.9..+1.9 % | ~ (p=0.70) |
+| JSONDecoder20/inactive | 3.36 us | -1.7 % [-4.5, +4.1] | **+0.8 % [-0.3, +1.5]** (+4.9 %) | -0.6..+2.6 % | ~ (p=0.59) |
+| JSONDecoderMore100/inactive | 19.5 us | +1.2 % [-1.8, +3.7] | **+2.1 % [+1.2, +2.7]** (+7.5 %) | +1.1..+3.5 % | ~ (p=0.08) |
+| JSONDecoderSmall/inactive | 509 ns | -1.1 % [-5.6, +3.8] | **+4.1 % [+2.2, +5.2]** (+6.7 %) | +2.2..+5.5 % | +5.0 % (p=0.03) |
+
+Bytes and allocations: unchanged (+32 B for each `NewDecoder`, 0
+allocations). `More100` is inside the noise band, but its CI does not
+include 0 (about +4 ns for each item: the gates, and the larger frame of
+`literalStore`). `Small` is the accepted `NewDecoder` cost (E2: +4.8 %).
+
+Lane B check (go1.27.1, 20 rounds, control - control - IAST, load 6.0 to
+7.0): `Unmarshal20` +0.9 % [-0.8, +2.8], `Decoder20` -0.1 % [-2.4, +1.0],
+`More100` +0.5 % [-0.1, +1.5], all inside the noise band (+-1.5 % to
++-4.4 %). `Small` +4.9 % (+14 ns, the accepted `NewDecoder` cost; Table 5
+gate row: +37 to +47 ns). No regression: on v2, `__dd_iast_decodeBind` is
+nil, thus the new `Exclusive` check does not run.
 
 ### Validation
 

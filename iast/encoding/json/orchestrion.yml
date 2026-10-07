@@ -33,9 +33,12 @@ aspects:
 
   # The Decoder type has different fields in the v1 and in the v2 variant of
   # encoding/json (plan encoding-json-v2, section 4). This aspect matches on
-  # all variants, thus it uses only the symbols that it declares itself. A
-  # variant-specific aspect sets the two variables in an init function. If no
-  # aspect sets them, Decode does not propagate.
+  # all variants, thus it uses only the symbols that it declares itself and
+  # the __dd_iast_binding field (all variants have it). A variant-specific
+  # aspect sets the two variables in an init function. If no aspect sets them,
+  # Decode does not propagate. The inlined Exclusive check comes before the
+  # indirect call: a decoder that cannot propagate (for example a decoder made
+  # with no active request) makes no call.
   - id: "[shared] encoding/json Decoder reader binding"
     join-point:
       all-of:
@@ -57,7 +60,7 @@ aspects:
             var __dd_iast_decodeUnbind func(*Decoder)
       - prepend-statements:
           template: |-
-            if __dd_iast_bind := __dd_iast_decodeBind; __dd_iast_bind != nil && __dd_iast_bind({{ .Function.Receiver }}) {
+            if __dd_iast_bind := __dd_iast_decodeBind; __dd_iast_bind != nil && {{ .Function.Receiver }}.__dd_iast_binding.Exclusive() && __dd_iast_bind({{ .Function.Receiver }}) {
               if __dd_iast_unbind := __dd_iast_decodeUnbind; __dd_iast_unbind != nil {
                 defer __dd_iast_unbind({{ .Function.Receiver }})
               }
@@ -299,6 +302,14 @@ aspects:
             {{ . }}
             {{- end -}}
 
+  # The v1 aspects below call the bridge only after an inlined gate (two loads
+  # at most, no call). When IAST is inactive, the v1 decode path makes no call
+  # to the bridge (plan encoding-json-v2, step 8 appendix, Table 6):
+  # - Bind and Document do nothing when no request is active (RequestActive).
+  # - Quoted does nothing when no decoder slot is in use (HasDecoderStates).
+  # - Literal does nothing when no decoder slot is in use and Active is
+  #   false. Bind takes the slot in unmarshal, before the defer of
+  #   literalStore, thus the gate sees the slot of this decode.
   - id: "[v1] encoding/json decode state lifetime"
     join-point:
       all-of:
@@ -312,7 +323,7 @@ aspects:
           imports:
             iastjsonbridge: github.com/DataDog/dd-iast-go/internal/taint/jsonbridge
           template: |-
-            if iastjsonbridge.Bind({{ .Function.Receiver }}) {
+            if iastjsonbridge.RequestActive() && iastjsonbridge.Bind({{ .Function.Receiver }}) {
               defer iastjsonbridge.Unbind({{ .Function.Receiver }})
             }
 
@@ -329,16 +340,18 @@ aspects:
           imports:
             iastjsonbridge: github.com/DataDog/dd-iast-go/internal/taint/jsonbridge
           template: |-
-            __dd_iast_quoted_start := {{ .Function.Receiver }}.readIndex()
-            defer func() {
-              iastjsonbridge.Quoted(
-                {{ .Function.Receiver }},
-                {{ .Function.Receiver }}.data,
-                __dd_iast_quoted_start,
-                {{ .Function.Receiver }}.readIndex(),
-                {{ .Function.Result 0 }},
-              )
-            }()
+            if iastjsonbridge.HasDecoderStates() {
+              __dd_iast_quoted_start := {{ .Function.Receiver }}.readIndex()
+              defer func() {
+                iastjsonbridge.Quoted(
+                  {{ .Function.Receiver }},
+                  {{ .Function.Receiver }}.data,
+                  __dd_iast_quoted_start,
+                  {{ .Function.Receiver }}.readIndex(),
+                  {{ .Function.Result 0 }},
+                )
+              }()
+            }
 
   - id: "[v1] encoding/json document publication"
     join-point:
@@ -353,7 +366,9 @@ aspects:
           imports:
             iastjsonbridge: github.com/DataDog/dd-iast-go/internal/taint/jsonbridge
           template: |-
-            iastjsonbridge.Document({{ .Function.Receiver }}, {{ .Function.Argument 0 }})
+            if iastjsonbridge.RequestActive() {
+              iastjsonbridge.Document({{ .Function.Receiver }}, {{ .Function.Argument 0 }})
+            }
 
   - id: "[v1] encoding/json typed string materialization"
     join-point:
@@ -368,13 +383,15 @@ aspects:
           imports:
             iastjsonbridge: github.com/DataDog/dd-iast-go/internal/taint/jsonbridge
           template: |-
-            defer func() {
-              iastjsonbridge.Literal(
-                {{ .Function.Receiver }},
-                {{ .Function.Receiver }}.data,
-                {{ .Function.Argument 0 }},
-                {{ .Function.Argument 1 }},
-                {{ .Function.Result 0 }},
-                {{ .Function.Argument 2 }},
-              )
-            }()
+            if iastjsonbridge.HasDecoderStates() || iastjsonbridge.Active() {
+              defer func() {
+                iastjsonbridge.Literal(
+                  {{ .Function.Receiver }},
+                  {{ .Function.Receiver }}.data,
+                  {{ .Function.Argument 0 }},
+                  {{ .Function.Argument 1 }},
+                  {{ .Function.Result 0 }},
+                  {{ .Function.Argument 2 }},
+                )
+              }()
+            }

@@ -33,7 +33,7 @@ Formatting and encoding | `fmt.Sprint*`, `net/url` escape and unescape functions
 Byte windows | Every subslice of a tracked value, with no instrumentation (for example two- and three-index `[]byte` slicing, `Cut*`, `Split*`, `Fields*`, and `Trim*`)
 Byte copies and transforms | `[]byte(s)` through a runtime hook (see `DD_IAST_STRING_TO_SLICE_PROPAGATION_ENABLED`); `Clone`, `Join`, `Repeat`, `Replace*`, case conversion, `Map`, and `ToValidUTF8`
 Stateful writers | Direct `strings.Builder` and `bytes.Buffer` writes, `Grow`, `Reset`, `Truncate`, and `String`; exact current `bytes.Buffer` value copies
-JSON decoding | Go 1.26 `json.Unmarshal` and `json.Decoder.Decode` string values in nested structs, arrays, slices, and typed map values, including named string types and `,string` fields
+JSON decoding | `json.Unmarshal` and `json.Decoder.Decode` string values in nested structs, arrays, slices, and typed map values, including named string types and `,string` fields, on Go 1.26 and Go 1.27 (see [JSON decoding](#json-decoding))
 
 Migration note: the exported window wrappers of `iast/propagation`
 (`StringsCut`, `StringsSplit*`, `StringsFields*`, `StringsTrim*`,
@@ -80,56 +80,6 @@ original receiver after this transfer. Backing writes and mutable exposure
 conservatively invalidate overlapping views, including views whose bytes the
 operation does not ultimately change.
 
-JSON string output uses coarse whole-value ranges while retaining the exact
-intersecting source identity. Custom unmarshaler output, decoded byte slices,
-interface values, typed map keys, and `map[string]any` keys are not propagated.
-Decoder documents larger than 64 KiB safely drop provenance. Decoder tracking uses 64 process
-slots with four-probe admission; excess or colliding concurrent decodes drop
-provenance. Decoder state associations last only for the outer decode call and
-are cleared on return or panic. Reentrant use of the same decoder can lose
-outer-decode provenance.
-
-Request body readers: `io.ReadAll` and `json.Decoder.Decode` give
-request-body provenance to the bytes that they read only when the reader is
-exclusive to one request. This is true for the request body, and for
-`io.TeeReader`, `http.MaxBytesReader`, `io.LimitReader`,
-`bufio.NewReader(Size)`, and `io.MultiReader` with 1 to 8 inputs, when all
-their inputs are exclusive to the same request. `io.ReadAll` takes the owner
-of its reader before the first read. `json.NewDecoder` takes the owner of its
-reader when it makes the decoder, and each `Decode` checks that owner again
-before it attributes a value. In the cases below, the bytes get no provenance (a
-safe miss):
-
-- `io.MultiReader` with an input that is not tracked, for example
-  `io.MultiReader(strings.NewReader("prefix"), r.Body)`;
-- `io.MultiReader` with more than 8 inputs;
-- a reader that is not exclusive: a `bufio.Reader` of the manual helper
-  `iast/bufio.Propagate`, a `bufio.Reader` or `io.LimitedReader` that got a
-  new input after its construction (for example `Reset`), a wrapper that got
-  no `Read` guard (more than 128 guarded wrappers at the same time), and a
-  reader that a different request also tracked, also after that request
-  finished;
-- a reader that a concurrent operation locks while `io.ReadAll` or a
-  `json.Decoder` checks it;
-- a reader that gets its request binding (or a second request) after
-  `io.ReadAll` started or after `json.NewDecoder` made the decoder;
-- a `json.Decoder` that `json.NewDecoder` made while no request was active;
-- all the values of a `json.Decoder` after one failed check (for example one
-  locked check, or a retargeted input): the decoder never gives provenance
-  again.
-
-Before this release, the Go 1.26 `json.Decoder` gave provenance to each
-request that tracked its reader at `Decode` time, also for a reader that was
-not exclusive (for example `io.MultiReader(bodyA, bodyB)` of two requests, or
-`io.MultiReader(bytes.NewReader(prefix), r.Body)`). These cases are now safe
-misses. A decoder that is used again by a later request gives provenance only
-to the request whose reader it read, while that request is active.
-
-Known limit: do not copy a `bufio.Reader` by value. If code copies a
-`bufio.Reader`, then resets and reads the copy, the two values share one
-buffer. Then IAST can attribute the bytes of the new reader of the copy to the
-request of the original reader.
-
 Tracking a stateful writer uses a strong request-bounded receiver anchor. This
 can make a stack receiver escape. Writer state is limited to eight receivers per
 request owner, four owners per receiver, and 64 KiB of charged visible capacity.
@@ -138,6 +88,160 @@ buffer can refer to a short slice of a larger allocation, and a bound reader can
 retain other readers and their data. The number of these references is bounded,
 and they are released when the tracking owner ends. Their full retained size is
 not known. This is an accepted trade-off to preserve useful taint propagation.
+
+### JSON decoding
+
+The `encoding/json` decoder that a program uses depends on the Go toolchain.
+IAST supports these combinations:
+
+Go toolchain | `encoding/json` implementation | JSON propagation
+---|---|---
+Go 1.26 | v1 | Supported
+Go 1.27 (default) | v1 API on the v2 decoder (`encoding/json/v2`) | Supported
+Go 1.27 with `GOEXPERIMENT=nojsonv2` | v1 | Supported
+Go 1.26 with `GOEXPERIMENT=jsonv2` | v1 API on the v2 decoder | Not supported: the program compiles and runs, but the JSON instrumentation does not propagate taint
+
+Values that keep taint, on all supported toolchains:
+
+- `json.Unmarshal` of tainted bytes (for example the result of `io.ReadAll`
+  on a request body), and `json.Decoder.Decode` on a request body reader
+  (see "Request body readers" below);
+- string values in structs, nested structs, arrays, slices, pointers, and
+  typed map values, also named string types and `,string` fields.
+
+Each decoded string gets one range on the full string (also for an escaped
+string), with the exact source of its JSON token.
+
+Differences between v1 and v2. For the same request, the reported
+vulnerabilities and evidence can be different on Go 1.26 and on Go 1.27:
+
+Value | v1 (Go 1.26, Go 1.27 with `nojsonv2`) | v2 (Go 1.27 default)
+---|---|---
+Typed map keys, `interface{}` strings, `map[string]any` keys and values | Not propagated by the JSON instrumentation (1) | Tainted, each with the taint of its own token
+`json.Number` from a number token, through `json.Decoder.Decode` | Clean | Tainted
+Source value of the second and later values of one `json.Decoder` (for example NDJSON lines) | Can start with the whitespace before the value (for example `"\n{\"a\":\"y\"}"`) | Starts at the first byte of the value (`{"a":"y"}`)
+
+(1) On v1, `json.Unmarshal` of tainted bytes can still give taint to a key
+or an `interface{}` string that has no escape sequence: the runtime hooks of
+`iast/runtime` taint the string conversion of the decoder. Keys and
+`interface{}` strings with escape sequences stay clean. The keys of
+`json.Decoder.Decode` stay clean.
+
+Values that do not get taint (safe misses):
+
+- the output of custom `UnmarshalJSON`, `UnmarshalText`, and
+  `UnmarshalJSONFrom` methods (a method that converts its input bytes to a
+  string can get the taint of the runtime hooks);
+- decoded `[]byte` values, numbers into numeric types, booleans, `null`,
+  and a `,string` value whose inner token is `null`;
+- strings that `json.Decoder.Token` returns;
+- strings of less than 2 bytes;
+- a JSON value of more than 64 KiB;
+- the direct `encoding/json/v2` and `encoding/json/jsontext` streaming APIs:
+  `jsonv2.UnmarshalRead`, `jsonv2.UnmarshalDecode`, and `jsontext.Decoder`.
+  Direct `jsonv2.Unmarshal` of tainted bytes propagates, but on its `any`
+  path, object names and `any` strings with escape sequences stay clean.
+
+Failed documents: a syntax error decodes nothing, thus no string gets taint.
+After a semantic error (for example a number into a `string` field), the
+strings that the decoder set stay tainted. Each of these strings comes from
+its own token, thus its provenance is correct.
+
+On v1, decoder tracking uses 64 process slots with four-probe admission;
+excess or colliding concurrent decodes drop provenance. Decoder state
+associations last only for the outer decode call and are cleared on return
+or panic. Reentrant use of the same decoder can lose outer-decode
+provenance.
+
+#### Request body readers
+
+`io.ReadAll` and `json.Decoder.Decode` give request-body provenance to the
+bytes that they read only when the reader has one exclusive owner: one
+request owns the reader, and no other request bound the reader after that
+request got it. A reader that a finished request used can be exclusive again
+for a later request.
+
+These readers keep taint when all their inputs are exclusive to the same
+request:
+
+- the request body (`r.Body`);
+- `http.MaxBytesReader` and `io.TeeReader`;
+- `io.LimitReader` and `bufio.NewReader` (or `bufio.NewReaderSize` with a
+  size of at most 4096 bytes), while the code does not change their input;
+- `io.MultiReader` with 1 to 8 inputs.
+
+`io.ReadAll` takes the owner of its reader before the first read, and
+checks it again after the last read. `json.NewDecoder` takes the owner of
+its reader when it makes the decoder, and each `Decode` checks that owner
+again before it attributes a value. In the cases below, the bytes get no
+provenance (a safe miss):
+
+- `io.MultiReader` with an input that is not tracked, for example
+  `io.MultiReader(strings.NewReader("prefix"), r.Body)` or
+  `io.MultiReader(bytes.NewReader(peeked), r.Body)`;
+- `io.MultiReader` with more than 8 inputs;
+- `io.MultiReader` with inputs of two requests, for example
+  `io.MultiReader(bodyA, bodyB)`;
+- `gzip.NewReader(r.Body)` and other readers that IAST does not instrument;
+- a retargeted wrapper: a `bufio.Reader` or `io.LimitedReader` that got a
+  new input after its construction (for example `Reset`, `lr.R = x`, or a
+  value assignment `*lr = io.LimitedReader{...}`), and all the readers over
+  it. One retarget removes exclusivity from all the `bufio.Reader` and
+  `io.LimitedReader` wrappers of that request;
+- a `bufio.Reader` that `bufio.NewReader(Size)` did not make (for example a
+  zero value, or a reader from a pool that gets `Reset`), a `bufio.Reader`
+  with a buffer of more than 4096 bytes, and an `io.LimitedReader` from a
+  composite literal (`&io.LimitedReader{...}`);
+- a `bufio.Reader` of the manual helper `iast/bufio.Propagate`;
+- a wrapper that got no `Read` guard (more than 128 guarded wrappers at the
+  same time);
+- a reader that a second request also tracked (for example with
+  `request.BindReader`), also after that second request finished;
+- a reader that a concurrent operation locks while `io.ReadAll` or a
+  `json.Decoder` checks it;
+- a reader that gets its request binding (or a second request) after
+  `io.ReadAll` started or after `json.NewDecoder` made the decoder;
+- a `json.Decoder` that `json.NewDecoder` made while no request was active;
+- all the values of a `json.Decoder` after one failed check (for example
+  one locked check, or a retargeted input): the decoder never gives
+  provenance again.
+
+A decoder that a later request uses again gives provenance only to the
+request whose reader it read, while that request is active. It never gives
+provenance to the later request.
+
+Behavior changes in this release. These inputs gave provenance before, and
+are now safe misses, for `io.ReadAll` (all toolchains) and for the v1
+`json.Decoder.Decode`:
+
+Input | Before | Now
+---|---|---
+Reader of two live requests (`io.MultiReader(bodyA, bodyB)`, `BindReader` in two requests) | Provenance in both requests | Miss
+`io.MultiReader` with an input that is not tracked | Provenance in the request of the body | Miss
+`io.MultiReader` with more than 8 inputs | Provenance in the requests of the first 8 inputs (can be wrong) | Miss
+Contended lookup (lock busy, too many owners) | Provenance in the requests that the lookup found | Miss
+Retargeted `bufio.Reader` or `io.LimitedReader` | Provenance in the first request (wrong) | Miss
+`bufio.Reader` of the manual helper `iast/bufio.Propagate` | Provenance | Miss
+`io.ReadAll` on a reader that gets its binding (or a second request) after `io.ReadAll` started | Provenance in the requests bound at the end | Miss
+v1 `json.Decoder` made while no request was active, or on a reader bound after `json.NewDecoder` | Provenance in the requests bound at `Decode` | Miss
+v1 `json.Decoder` after one failed check | Provenance in the requests bound at each `Decode` | Miss for the life of the decoder
+
+These cases do not change: `r.Body`, `http.MaxBytesReader`,
+`io.TeeReader`, `io.LimitReader` and `bufio.NewReader(Size)` that are not
+retargeted, and `io.MultiReader` of at most 8 inputs that are all exclusive
+to one request.
+
+#### Known limits
+
+- Do not copy a `bufio.Reader` by value. If code copies a `bufio.Reader`,
+  then resets and reads the copy, the two values share one buffer. Then IAST
+  can attribute the bytes of the new reader of the copy to the request of
+  the original reader.
+- Go 1.27 `encoding/json`: the decoder keeps a cache of decoded strings.
+  Strings from bytes that can have taint do not go into this cache. If
+  another goroutine taints the same byte buffer while it is being decoded,
+  one tainted string can still go into the cache, and a later request that
+  decodes the same value can show a false source.
 
 ### Sink coverage
 
@@ -182,12 +286,6 @@ Known limit: when a different request finishes before the report is made, its
 taint is not tracked any more. Its bytes are then shown as untainted text, like
 any other untainted text in the value (for example, a value read from a
 database).
-
-Known limit (Go 1.27 `encoding/json`): the decoder keeps a cache of decoded
-strings. Strings from bytes that can have taint do not go into this cache. If
-another goroutine taints the same byte buffer while it is being decoded, one
-tainted string can still go into the cache, and a later request that decodes
-the same value can show a false source.
 
 `taint.VisitString` and `taint.VisitBytes` take a `context.Context`. They visit
 only the ranges of the request of this context, and return `false` when the

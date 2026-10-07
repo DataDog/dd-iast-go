@@ -175,3 +175,61 @@ func BenchmarkLiteralActiveClean(b *testing.B) {
 	}
 	_ = scope
 }
+
+// aspectTemplate returns the text of the aspect id in orchestrion.yml, from
+// its id line to the next id line.
+func aspectTemplate(t *testing.T, id string) string {
+	t.Helper()
+	contents, err := os.ReadFile("orchestrion.yml")
+	require.NoError(t, err)
+	_, rest, found := strings.Cut(string(contents), "  - id: \""+id+"\"\n")
+	require.True(t, found, "no aspect %q in orchestrion.yml", id)
+	text, _, _ := strings.Cut(rest, "\n  - id: ")
+	return text
+}
+
+// TestV1BridgeCallsAreGated pins the inactive fast path of the v1 aspects
+// (plan encoding-json-v2, step 8 appendix, Table 6). Each call of the bridge
+// in the v1 decode path comes after an inlined gate, and the gate comes
+// first in the template. TestFastPathGatesAreInlinable (bridgetests) checks
+// that the gates are inlinable. Thus, when IAST is inactive, the v1 decode
+// path makes no call to the bridge.
+func TestV1BridgeCallsAreGated(t *testing.T) {
+	for id, test := range map[string]struct{ gate, call string }{
+		"[shared] encoding/json Decoder reader binding": {
+			gate: "__dd_iast_bind != nil && {{ .Function.Receiver }}.__dd_iast_binding.Exclusive() && __dd_iast_bind(",
+			call: "__dd_iast_bind(",
+		},
+		"[v1] encoding/json decode state lifetime": {
+			gate: "if iastjsonbridge.RequestActive() && iastjsonbridge.Bind(",
+			call: "iastjsonbridge.Bind(",
+		},
+		"[v1] encoding/json document publication": {
+			gate: "if iastjsonbridge.RequestActive() {\n",
+			call: "iastjsonbridge.Document(",
+		},
+		"[v1] encoding/json quoted string source": {
+			gate: "if iastjsonbridge.HasDecoderStates() {\n",
+			call: "iastjsonbridge.Quoted(",
+		},
+		"[v1] encoding/json typed string materialization": {
+			gate: "if iastjsonbridge.HasDecoderStates() || iastjsonbridge.Active() {\n",
+			call: "iastjsonbridge.Literal(",
+		},
+	} {
+		t.Run(id, func(t *testing.T) {
+			// The last template of the aspect has the statements.
+			text := aspectTemplate(t, id)
+			start := strings.LastIndex(text, "template: |-\n")
+			require.NotEqual(t, -1, start, "the aspect has no template")
+			template := text[start+len("template: |-\n"):]
+			gate := strings.Index(template, test.gate)
+			require.NotEqual(t, -1, gate, "the template has no gate %q:\n%s", test.gate, template)
+			require.Equal(t, 1, strings.Count(template, test.call), "the template must have exactly one call %q", test.call)
+			require.Less(t, gate, strings.Index(template, test.call)+1, "the gate must come before the call")
+			// No statement comes before the gate: the gate is the first
+			// statement of the template.
+			require.Empty(t, strings.TrimSpace(template[:strings.LastIndex(template[:gate+1], "\n")+1]), "a statement comes before the gate")
+		})
+	}
+}
