@@ -153,6 +153,9 @@ EXPECTED_ADMISSION = (
 #   maycontain_hit, maycontain_random (sparse, typical, full), maycontain_miss
 #   s2s_off              Q2 switch off
 #   http, http_note      HTTP overhead in %, and the reason of the limit
+#   http_runner          optional: {RUNNER_LABEL: (http, http_note)}; it
+#                        replaces http and http_note on that runner (an
+#                        unknown or empty RUNNER_LABEL keeps the default)
 PROFILES = {
     "local": {
         "title": "darwin/arm64",
@@ -204,6 +207,11 @@ PROFILES = {
         "s2s_off": 5.0,
         "http": 6.0,
         "http_note": "CI run 36992589970: +5.17 %, + margin",
+        # User decision after CI run 37757857256 (n=30): amd64 +5.26 %,
+        # arm64 +7.11 %. The arm64 runner gets its own limit.
+        "http_runner": {
+            "ubuntu-24.04-arm": (8.0, "CI run 37757857256: arm64 +7.11 %, + margin"),
+        },
     },
 }
 
@@ -214,7 +222,11 @@ def profile():
     if name not in PROFILES:
         print(f"runtime-bench.py: unknown RUNTIME_BENCH_PROFILE {name!r} (use one of {', '.join(PROFILES)})", file=sys.stderr)
         sys.exit(2)
-    return name, PROFILES[name]
+    g = dict(PROFILES[name])
+    runner = os.environ.get("RUNNER_LABEL", "")
+    if runner in g.get("http_runner", {}):
+        g["http"], g["http_note"] = g["http_runner"][runner]
+    return name, g
 
 
 def ns(v):

@@ -1182,6 +1182,8 @@ A failed gate stops the plan for user review (section 11).
 
 **User decision after CI run 37750452315** (the first CI run with the corrected tainted method, section 13.5): (1) the ci tainted gates are 2 x the local gates (tainted concat, `b2s`, `s2b`: <= +1.8 us + 240 ns for each operand above 2; tainted rune conversion: <= +2.2 us + 8 ns for each rune); the local profile does not change. (2) On the ci profile, the 1 000-rune rows of the gate-off and clean modes have a **record-only time**: the report table has them (result `REPORTED`), and their time does not change the verdict (noise on linux/amd64 up to +322.50 ns, more than 1 % of nohook); the 0 extra allocations rule does not change and stays a gate (an extra allocation fails the verdict); the local profile keeps the +1 % relative gate. (3) The CI HTTP job runs 30 samples of each side (`RUNTIME_BENCH_HTTP_COUNT=30` in the workflow; the local default stays 10), because the runner noise is large (linux/arm64 +6.75 % with 10 samples).
 
+**User decision after CI run 37757857256** (n=30; HTTP sampled out: linux/amd64 +5.26 %, linux/arm64 +7.11 %): on the ci profile, the HTTP gate is <= +6 % on `ubuntu-latest` (amd64) and <= +8 % on `ubuntu-24.04-arm` (arm64). `.github/runtime-bench.py` selects the limit by `RUNNER_LABEL` (the workflow sets it in the report step; key `http_runner` of the ci profile). An unknown or empty runner label uses the +6 % default. The local profile does not change (+3.70 %).
+
 | Key | Local (darwin/arm64) | CI (GitHub runners) | CI worst, run 36992589970 | CI worst, run 37750452315 |
 |---|---|---|---|---|
 | off | <= +2 ns; 1 000-rune rows: <= +1 % of nohook | <= +8 ns; rune rows (`r2s`, `s2r`): <= +25 ns (noisy); 1 000-rune rows: time record-only, 0 extra allocations gated | +6.87 ns (`concat16-stack`, arm64); rune +21.85 ns (`r2s-heap`, amd64) | +5.69 ns (`concat16-stack`, arm64); rune +8.10 ns (`r2s-heap`, amd64); 1 000 runes (reported) +322.50 ns (`r2s1000-heap`, amd64) |
@@ -1195,7 +1197,7 @@ A failed gate stops the plan for user review (section 11).
 | maycontain-random | <= 4 / 10 / 45 ns | <= 5 / 10 / 45 ns | 4.13 / 4.12 / 4.17 ns (amd64) | 4.17 / 4.12 / 4.18 ns (amd64) |
 | maycontain-miss | <= 3 ns | <= 5 ns | 4.15 ns (amd64) | 4.13 ns (amd64) |
 | s2s-off | <= +2 ns | <= +5 ns | +4.08 ns (`s2r-heap`, arm64) | +4.03 ns (`s2r-heap`, arm64) |
-| http | <= +3.70 % (n=10) | <= +6.00 % (n=30) | +5.17 % (arm64) | +6.75 % (arm64, n=10) |
+| http | <= +3.70 % (n=10) | amd64 <= +6.00 %, arm64 <= +8.00 % (n=30; run 37757857256: +5.26 % / +7.11 %) | +5.17 % (arm64) | +6.75 % (arm64, n=10) |
 | admission | sparse 0, stressed <= 1 point | the same, optional (no old store) | not measured | not measured |
 | allocs | 0 | 0 | 8 PASS on each runner | 8 PASS on each runner |
 
@@ -1606,7 +1608,7 @@ The CI tainted cost is approx. 1.8 to 2.0 x the darwin/arm64 cost (for example `
 
 The values go in the two directions (amd64 up to +322.50 ns, arm64 down to -201.00 ns), and the gate-off path does not depend on the length: this is noise of the runners, not a hook cost.
 
-**Open item.** With the new gates, the arm64 verdict is FAIL only for `http` (+6.75 %, n=10). The next CI run uses n=30; the HTTP gate does not change.
+**Closed item.** With the new gates, the arm64 verdict was FAIL only for `http` (+6.75 %, n=10). CI run 37757857256 (n=30) measured amd64 +5.26 % and arm64 +7.11 %. User decision: the arm64 HTTP gate is +8 % (amd64 stays +6 %; section 9.3).
 
 **Verdicts with the old gates** (`RUNTIME_BENCH_OPTIONAL=admission`: no old store; the admission gate is not measured again):
 

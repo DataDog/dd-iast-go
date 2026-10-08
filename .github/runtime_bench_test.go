@@ -65,6 +65,7 @@ type benchData struct {
 	httpIAST     float64           // ns/op of the IAST side (control: 50 000)
 	allocs       bool
 	profile      string // RUNTIME_BENCH_PROFILE ("" is the default)
+	runner       string // RUNNER_LABEL ("" is no runner)
 	// drops is the drops/op of the hook runs of a RuntimeTainted case (no
 	// entry: 0; a negative value: no drops/op metric).
 	drops map[string]float64
@@ -153,7 +154,7 @@ func (d *benchData) line(name string, r benchResult, extra string) string {
 func (d *benchData) write(t *testing.T, optional string) (string, string) {
 	t.Helper()
 	directory := d.files(t)
-	output, err := runReport(t, directory, optional, d.profile)
+	output, err := runReport(t, directory, optional, d.profile, d.runner)
 	if err != nil {
 		t.Fatalf("runtime-bench.py: %v\n%s", err, output)
 	}
@@ -165,14 +166,14 @@ func (d *benchData) write(t *testing.T, optional string) (string, string) {
 }
 
 // runReport runs runtime-bench.py on directory, and returns its output.
-func runReport(t *testing.T, directory, optional, profile string) (string, error) {
+func runReport(t *testing.T, directory, optional, profile, runner string) (string, error) {
 	t.Helper()
 	script, err := filepath.Abs("runtime-bench.py")
 	if err != nil {
 		t.Fatal(err)
 	}
 	command := exec.Command("python3", script, directory)
-	command.Env = append(os.Environ(), "RUNTIME_BENCH_OPTIONAL="+optional, "RUNTIME_BENCH_PROFILE="+profile)
+	command.Env = append(os.Environ(), "RUNTIME_BENCH_OPTIONAL="+optional, "RUNTIME_BENCH_PROFILE="+profile, "RUNNER_LABEL="+runner)
 	output, err := command.CombinedOutput()
 	return string(output), err
 }
@@ -315,8 +316,8 @@ var ciRune1000 = map[string]float64{
 
 // ciMeasured returns data with the worst values of CI run 37750452315
 // (linux/amd64 and linux/arm64) for each gate of the ci profile. The HTTP
-// value is the linux/amd64 value (+3.87 %): the linux/arm64 value (+6.75 %,
-// 10 samples) is above the gate (see the "http arm64" case).
+// value is the linux/amd64 value (+3.87 %). The linux/arm64 runner has its own
+// HTTP gate (see TestRuntimeBenchReportCIArm64HTTP).
 func ciMeasured() *benchData {
 	d := newBenchData()
 	d.profile = "ci"
@@ -397,8 +398,10 @@ func TestRuntimeBenchReportCIProfile(t *testing.T) {
 			d.store["MayContain/clean-miss/full"] = benchResult{5.01, 0, 0}
 		}, "maycontain-miss"},
 		"http": {func(d *benchData) { d.httpIAST = 50000 * 1.0601 }, "http"},
-		// CI run 37750452315, linux/arm64, 10 samples.
-		"http arm64": {func(d *benchData) { d.httpIAST = 50000 * 1.0675 }, "http"},
+		// The +6 % default is for amd64 and for an unknown runner.
+		"http amd64":          {func(d *benchData) { d.runner = "ubuntu-latest"; d.httpIAST = 50000 * 1.0601 }, "http"},
+		"http unknown runner": {func(d *benchData) { d.runner = "other"; d.httpIAST = 50000 * 1.0711 }, "http"},
+		"http arm64":          {func(d *benchData) { d.runner = "ubuntu-24.04-arm"; d.httpIAST = 50000 * 1.0801 }, "http"},
 		// The allocation rules do not change.
 		"off allocation": {func(d *benchData) {
 			for k, r := range d.hook["RuntimeOff/s2b-stack"] {
@@ -421,9 +424,23 @@ func TestRuntimeBenchReportCIProfile(t *testing.T) {
 	}
 }
 
+// User decision after CI run 37757857256 (n=30): the HTTP gate is +8 % on the
+// ubuntu-24.04-arm runner (measured: +7.11 %).
+func TestRuntimeBenchReportCIArm64HTTP(t *testing.T) {
+	d := ciMeasured()
+	d.runner = "ubuntu-24.04-arm"
+	d.httpIAST = 50000 * 1.0711
+	requireVerdict(t, d, "", "PASS", "+7.11 %", "<= +8.00 % (CI run 37757857256", "**Verdict: PASS**")
+	// The local profile ignores the runner.
+	d = newBenchData()
+	d.runner = "ubuntu-24.04-arm"
+	d.httpIAST = 50000 * 1.0371
+	requireVerdict(t, d, "", "FAIL", "<= +3.70 %", "**Verdict: FAIL** (http)")
+}
+
 func TestRuntimeBenchReportRejectsUnknownProfile(t *testing.T) {
 	d := newBenchData()
-	output, err := runReport(t, d.files(t), "", "other")
+	output, err := runReport(t, d.files(t), "", "other", "")
 	var exit *exec.ExitError
 	if !errors.As(err, &exit) || exit.ExitCode() != 2 || !strings.Contains(output, "unknown RUNTIME_BENCH_PROFILE") {
 		t.Fatalf("error %v, output %q; want exit code 2 and the unknown profile", err, output)
