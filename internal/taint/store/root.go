@@ -187,8 +187,8 @@ func (o *Owner) TaintSourceBytes(value []byte, name string, source ranges.Source
 // capacity must describe the complete retained allocation. Later writes require
 // normal root-generation invalidation. The source table must retain managedName
 // and managedValue for exactly the root lifetime; both are included in the
-// charge. A second adoption of the same allocation by the same owner extends the
-// first root (plan section 5.2.2, "Extension") and returns its RootRef.
+// charge. A second adoption of the same allocation by the same owner extends
+// the first root (see "Extension" in the package doc) and returns its RootRef.
 func (o *Owner) AdoptSourceBytes(value []byte, name string, source ranges.SourceID) (managedName, managedValue string, ref RootRef, ok bool) {
 	if !o.beginWrite() {
 		return "", "", RootRef{}, false
@@ -249,9 +249,9 @@ func (o *Owner) AdoptString(value string, set *ranges.Set) (RootRef, bool) {
 }
 
 // AdoptStringAlloc adopts an audited complete string allocation whose size is
-// at most allocBound bytes (plan section 4.5). The span is len(value) and the
-// charge is sizeClass(allocBound). It refuses allocBound values above
-// MaxRootBytes or below len(value)+3.
+// at most allocBound bytes. The span is len(value) and the charge is
+// sizeClass(allocBound). It refuses allocBound values above MaxRootBytes or
+// below len(value)+3.
 func (o *Owner) AdoptStringAlloc(value string, allocBound int, set *ranges.Set) (RootRef, bool) {
 	key, ok := StringKey(value)
 	if !ok || len(value) < 2 {
@@ -276,9 +276,9 @@ func (o *Owner) AdoptBytes(value []byte, set *ranges.Set) (RootRef, bool) {
 }
 
 // AdoptRunes adopts an audited complete []rune allocation without cloning it
-// (plan section 4.5). The caller must prove that value starts at the
-// allocation base. The root uses the byte coordinates of the rune array: span
-// and charge are 4*cap(value) bytes, and set must be valid for that span.
+// The caller must prove that value starts at the allocation base. The root uses
+// the byte coordinates of the rune array: span and charge are 4*cap(value)
+// bytes, and set must be valid for that span.
 func (o *Owner) AdoptRunes(value []rune, set *ranges.Set) (RootRef, bool) {
 	key, ok := RunesKey(value)
 	if !ok {

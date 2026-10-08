@@ -9,17 +9,16 @@ package testapp_test
 
 // The constants of this file give the expected results of the v1 variant of
 // encoding/json (Go 1.26, and Go 1.27 with GOEXPERIMENT=nojsonv2). The v2
-// variant has the same constants in json_variant_v2_test.go (plan
-// encoding-json-v2, step 7).
+// variant has the same constants in json_variant_v2_test.go.
 
 // jsonV2 reports whether encoding/json is the v2-backed variant.
 const jsonV2 = false
 
 // jsonTaintsKeysAndAny reports whether the JSON aspects taint map keys and
-// interface{} strings. The v1 aspects do not (decision Q1). The runtime hooks
-// can still taint a verbatim key or interface{} string of json.Unmarshal (a
-// conversion of the tainted input bytes). Thus the tests use escaped keys and
-// strings for this case.
+// interface{} strings. The v1 aspects do not (see "JSON decoding" in the
+// README). The runtime hooks can still taint a verbatim key or interface{}
+// string of json.Unmarshal (a conversion of the tainted input bytes). Thus the
+// tests use escaped keys and strings for this case.
 const jsonTaintsKeysAndAny = false
 
 // decoderSourcePrefix is the part of the bytes before a value that the source

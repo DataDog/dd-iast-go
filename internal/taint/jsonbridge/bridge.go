@@ -20,13 +20,14 @@ type Callbacks struct {
 	// Owner returns the exclusive owner token of reader (ReaderBinding.Capture,
 	// before the first byte of reader flows). The token is OK only when a
 	// complete lookup finds exactly one owner of reader, with an effectively
-	// exclusive binding (plan encoding-json-v2, section 6.5).
+	// exclusive binding (see the reader binding rules in the
+	// internal/taint/store package doc).
 	Owner func(reader any) OwnerToken
-	// Clone revalidates token for reader (plan encoding-json-v2, section 6.5,
-	// rule (f)), and then adopts an exact-length clone of data into the owner
-	// of token only. proven is false when the revalidation fails. When proven
-	// is true and clone is nil, it is a miss for this data only (for example
-	// data larger than the root limit).
+	// Clone revalidates token for reader (reader binding rule (f)), and then
+	// adopts an exact-length clone of data into the owner of token only. proven
+	// is false when the revalidation fails. When proven is true and clone is
+	// nil, it is a miss for this data only (for example data larger than the
+	// root limit).
 	Clone func(reader any, token OwnerToken, data []byte) (clone []byte, proven bool)
 	// MayBeTainted reports whether the store filter matches data. A false
 	// result proves that data has no taint. It does no lookup and no lock.
@@ -57,11 +58,11 @@ const (
 	bindingClosed
 )
 
-// ReaderBinding is the owner of the reader of one json.Decoder (plan
-// encoding-json-v2, sections 6.1 and 6.3). An aspect adds it as a field to
-// json.Decoder. NewDecoder calls Capture BEFORE the first byte of the reader
-// flows. Each Decode revalidates the captured token AFTER the bytes of the
-// value flowed, before it attributes them. The zero value never propagates.
+// ReaderBinding is the owner of the reader of one json.Decoder. An aspect adds
+// it as a field to json.Decoder. NewDecoder calls Capture BEFORE the first byte
+// of the reader flows. Each Decode revalidates the captured token AFTER the
+// bytes of the value flowed, before it attributes them. The zero value never
+// propagates.
 //
 // A Decoder is not safe for concurrent use, thus the fields have no lock.
 type ReaderBinding struct {
@@ -134,9 +135,9 @@ func (b *ReaderBinding) clone(callback *Callbacks, data []byte) []byte {
 
 // ReaderDocument returns an immutable clone of value that the owner of b
 // adopted, or value itself. The v2 Decode aspect calls it for the value bytes
-// of each Decode (plan encoding-json-v2, section 6.3). It returns value
-// unless EnableV2 ran, a request is active, and b is exclusive. It does not
-// need an indexed root: the clone can be the first root of the request.
+// of each Decode. It returns value unless EnableV2 ran, a request is active,
+// and b is exclusive. It does not need an indexed root: the clone can be the
+// first root of the request.
 func ReaderDocument[V ~[]byte](b *ReaderBinding, value V) V {
 	if consumers.Load()&consumerV2 == 0 || b == nil || b.state != bindingExclusive || !active() {
 		return value
@@ -216,21 +217,19 @@ func String(raw []byte, value reflect.Value) {
 }
 
 // HasIndexedRoots reports whether the process has an indexed root. It is the
-// gate of the string cache guard of encoding/json/v2 (plan encoding-json-v2,
-// section 6.2, "String cache"): the guard calls SkipCache only when it is
-// true. The runtime gate has the same value (the store changes both at the
-// same time). With the gate off, the runtime hooks do not taint. It is
-// inlinable: two loads, no call.
+// gate of the string cache guard of encoding/json/v2: the guard calls SkipCache
+// only when it is true. The runtime gate has the same value (the store changes
+// both at the same time). With the gate off, the runtime hooks do not taint. It
+// is inlinable: two loads, no call.
 func HasIndexedRoots() bool { return hasValues() }
 
 // SkipCache reports whether makeString of encoding/json/v2 must not use its
-// string cache for the unquoted string bytes b (plan encoding-json-v2,
-// section 6.2, "String cache"). Call it only when HasIndexedRoots is true.
-// The runtime hooks taint string(b) when b has taint. The cache of a pooled
-// decoder keeps that string for later decodes, in this request and in other
-// requests. Thus a later decode of clean bytes could get a tainted string: a
-// false source. When SkipCache is true, makeString returns string(b) and does
-// not read or change the cache.
+// string cache for the unquoted string bytes b. Call it only when
+// HasIndexedRoots is true. The runtime hooks taint string(b) when b has taint.
+// The cache of a pooled decoder keeps that string for later decodes, in this
+// request and in other requests. Thus a later decode of clean bytes could get a
+// tainted string: a false source. When SkipCache is true, makeString returns
+// string(b) and does not read or change the cache.
 //
 // The result is the store filter of b: it is never false for tainted bytes.
 // No indexed root, or fewer than 2 bytes, gives false. A missing callback or
@@ -319,11 +318,10 @@ func Bind(state any) bool {
 }
 
 // BindDecoder associates state with the reader binding of a v1 decoder until
-// the matching Unbind (plan encoding-json-v2, section 6.7). Document then uses
-// the token that NewDecoder captured in binding. It returns false, and binds
-// nothing, when binding is not exclusive: then Document cannot propagate. It
-// is not inlinable: the Decode aspect calls it only when binding.Exclusive is
-// true.
+// the matching Unbind. Document then uses the token that NewDecoder captured in
+// binding. It returns false, and binds nothing, when binding is not exclusive:
+// then Document cannot propagate. It is not inlinable: the Decode aspect calls
+// it only when binding.Exclusive is true.
 func BindDecoder(binding *ReaderBinding, state any) bool {
 	if !binding.Exclusive() || !active() {
 		return false

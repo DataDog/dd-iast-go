@@ -18,9 +18,9 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// TestJSONV2StreamingAPIsAreMiss checks the documented misses of decision
-// Q3: the direct encoding/json/v2 streaming APIs on the request body give
-// no taint, and the request reports no finding.
+// TestJSONV2StreamingAPIsAreMiss checks the documented misses of "JSON
+// decoding" in the README: the direct encoding/json/v2 streaming APIs on the
+// request body give no taint, and the request reports no finding.
 func TestJSONV2StreamingAPIsAreMiss(t *testing.T) {
 	requireWoven(t)
 	db := openDB(t)

@@ -178,8 +178,9 @@ func TestBeginActiveAndFinish(t *testing.T) {
 }
 
 // TestProcessManagerBindsRuntimeBridge checks that the process manager binds
-// its store to the runtime bridge (plan runtime-operator-hooks, section 3.2
-// rule 6) with the string-to-slice switch of the configuration.
+// its store to the runtime bridge (see the runtime hook rules in the
+// internal/taint/runtimebridge package doc, rule 6) with the string-to-slice
+// switch of the configuration.
 func TestProcessManagerBindsRuntimeBridge(t *testing.T) {
 	restoreConfig(t)
 	config.Enabled = true

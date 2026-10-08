@@ -18,7 +18,7 @@ import (
 
 const bridgePackage = "github.com/DataDog/dd-iast-go/internal/taint/runtimebridge"
 
-// TestDependencies checks plan section 3.2 rule 1 (and section 9.1 item 9):
+// TestDependencies checks rule 1 of the runtime hook rules in the package doc:
 // the woven runtime links the bridge, so the bridge must not import a package
 // that the runtime hooks weave. Only sync/atomic, unsafe and the runtime and
 // its dependencies are permitted.
@@ -49,7 +49,8 @@ func TestDependencies(t *testing.T) {
 }
 
 // TestLinkerSymbols calls every bridge function through the linker symbols
-// that the woven runtime uses (plan section 2.2).
+// that the woven runtime uses (the body-less //go:linkname declarations of
+// iast/runtime/orchestrion.yml).
 func TestLinkerSymbols(t *testing.T) {
 	var filter runtimebridge.Filter
 	tainted := heapString("linker-symbol-input")
@@ -132,7 +133,7 @@ func TestLinkerSymbols(t *testing.T) {
 	bridgetest.SetS2SGate(previous)
 }
 
-// TestFilterChecks checks the filter checks (plan section 3.2.1) with filters
+// TestFilterChecks checks the filter checks ("hit" functions) with filters
 // that give a known result: they return their arguments unchanged, and true
 // only when the filter has a bucket of one input.
 func TestFilterChecks(t *testing.T) {

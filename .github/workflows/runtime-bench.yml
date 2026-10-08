@@ -1,6 +1,6 @@
 name: Runtime benchmarks
-# The benchmarks of plan runtime-operator-hooks, section 9.2, and the check of
-# the numeric gates of section 9.3 (plan step 7), on native linux/amd64 and
+# The benchmarks of the runtime hooks, and the check of their numeric gates,
+# on native linux/amd64 and
 # linux/arm64. The logic is in .github/runtime-bench.sh, so that a local run
 # uses the same commands.
 #
@@ -14,7 +14,8 @@ name: Runtime benchmarks
 # that the pooled median compares runs of the same machine.
 #
 # The measure jobs use the "ci" gate profile of .github/runtime-bench.py
-# (plan section 9.3, user decisions after runs 36992589970 and 37750452315),
+# (the limits are the user decisions after CI runs 36992589970, 37750452315
+# and 37757857256: the worst value of the two runners, plus a margin),
 # and they are report-only: a FAIL or INCOMPLETE verdict is in the job
 # summary, in the artifact and in a warning, but it does not fail the job. An
 # error of the scripts still fails the job.
@@ -49,8 +50,8 @@ jobs:
       fail-fast: true
       matrix:
         runner: [ubuntu-latest, ubuntu-24.04-arm]
-        # k stores in the padding function (plan step 5 results: 8 code
-        # placements). 0 is the repository code.
+        # k stores in the padding function: 8 code placements, because the
+        # code placement changes a case with a loop by some ns. 0 is the repository code.
         placement: [0, 1, 3, 5, 7, 9, 11, 13]
     env:
       PLACEMENT: ${{ matrix.placement }}
@@ -128,11 +129,11 @@ jobs:
       RUNTIME_BENCH_ROUNDS: '10'
       RUNTIME_BENCH_BENCHTIME: 100ms
       RUNTIME_BENCH_STORE_COUNT: '8'
-      # CI has no old store (the parent commit of plan step 3), thus the
+      # CI has no old store (the store before the interior-pointer index), thus the
       # source-root admission gate is not measured. All other gates must have
       # data, else the report is INCOMPLETE.
       RUNTIME_BENCH_OPTIONAL: admission
-      # The gate limits of the GitHub runners (plan section 9.3).
+      # The gate limits of the GitHub runners (the "ci" profile).
       RUNTIME_BENCH_PROFILE: ci
       # The verdict does not fail the job (see the top of this file).
       RUNTIME_BENCH_REPORT_ONLY: '1'

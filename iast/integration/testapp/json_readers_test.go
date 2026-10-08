@@ -28,7 +28,7 @@ import (
 )
 
 // The tests of this file check json.Decoder on the readers of HTTP request
-// bodies (plan encoding-json-v2, step 7, sections 6.5 to 6.7). The decoder
+// bodies (see "Request body readers" in the README). The decoder
 // attributes a value only to the one exclusive owner of its reader. All
 // other cases are a miss: the value has no taint, no request gets a source,
 // and no request reports a finding. The expected results are the same on
@@ -234,7 +234,7 @@ func TestJSONDecoderReusedAcrossRequests(t *testing.T) {
 }
 
 // TestJSONDecoderTwoOwners checks that a reader with the bytes of two live
-// requests is a miss for both (plan encoding-json-v2, section 6.7).
+// requests is a miss for both.
 func TestJSONDecoderTwoOwners(t *testing.T) {
 	requireWoven(t)
 	db := openDB(t)
@@ -421,11 +421,11 @@ func TestJSONDecoderContendedLookup(t *testing.T) {
 	})
 }
 
-// TestJSONDecoderPooledReaderReset checks the pool pattern: request A makes
-// a bufio.Reader of its body, and request B resets it to its own body or to
-// clean bytes while A is live. The Read guard removes the exclusivity of A
-// (plan encoding-json-v2, section 6.6), thus the Decode in B is a miss: no
-// new source in A, no source in B.
+// TestJSONDecoderPooledReaderReset checks the pool pattern: request A makes a
+// bufio.Reader of its body, and request B resets it to its own body or to clean
+// bytes while A is live. The Read guard removes the exclusivity of A (see
+// "Request body readers" in the README), thus the Decode in B is a miss: no new
+// source in A, no source in B.
 func TestJSONDecoderPooledReaderReset(t *testing.T) {
 	requireWoven(t)
 	db := openDB(t)
@@ -459,9 +459,10 @@ func TestJSONDecoderPooledReaderReset(t *testing.T) {
 	}
 }
 
-// TestJSONDecoderWrappersKeepTaint checks the readers that keep the
-// exclusive binding of the body (decision Q8): the value is tainted with the
-// body source, and the request reports the finding.
+// TestJSONDecoderWrappersKeepTaint checks the readers that keep the exclusive
+// binding of the body (the Read guard keeps io.LimitReader and bufio.NewReader
+// exclusive): the value is tainted with the body source, and the request
+// reports the finding.
 func TestJSONDecoderWrappersKeepTaint(t *testing.T) {
 	requireWoven(t)
 	db := openDB(t)

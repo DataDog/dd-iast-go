@@ -52,9 +52,9 @@ var (
 		commandbridge.BindActiveOwners(&manager.used)
 		jsonbridge.BindActiveOwners(&manager.used)
 		jsonbridge.BindActiveValues(manager.store.IndexedRoots())
-		// Only the process store is visible to the runtime hooks (plan
-		// runtime-operator-hooks, section 3.2 rule 6). The store is not
-		// shared yet, as BindRuntimeBridge requires.
+		// Only the process store is visible to the runtime hooks (rule 6 of the
+		// runtime hook rules in the internal/taint/runtimebridge package doc).
+		// The store is not shared yet, as BindRuntimeBridge requires.
 		manager.store.BindRuntimeBridge(runtimebridge.Options{StringToSlice: config.StringToSlicePropagationEnabled})
 		sqlbridge.BindActiveOwners(&manager.used)
 		processManager.Store(manager)

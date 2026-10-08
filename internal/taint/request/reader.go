@@ -17,7 +17,7 @@ import (
 )
 
 // incompleteLookupForTest makes each reader lookup incomplete. Only tests set
-// it (plan encoding-json-v2, section 6.5, the lookup stub). It is a flag and
+// it, to check that an incomplete lookup is a miss (rule (b)). It is a flag and
 // not a function variable: an indirect call would move the lookup result
 // arrays of the callers to the heap.
 var incompleteLookupForTest atomic.Bool
@@ -60,14 +60,15 @@ func SetIncompleteReaderLookupsForTest() (restore func()) {
 // request, thus the binding is exclusive. Non-pointer and zero-sized values
 // are safe misses.
 //
-// Contract (plan encoding-json-v2, section 6.5, assumption (A2)): the
-// assertion applies to all the bytes that reader gives while it is bound,
-// not only to the bytes that it holds now. Thus do not bind a reader that
-// code can reset to other data (for example a *strings.Reader, a
-// *bytes.Reader, or a *bytes.Buffer that is used again) while the request
-// is active. A reset keeps the address and the bind counter of the reader.
-// Thus no lookup and no token revalidation can find it, and a consumer that
-// took its token before the reset attributes the new bytes to this request.
+// Contract (assumption (A2) of the reader binding rules in the
+// internal/taint/store package doc): the assertion applies to all the bytes
+// that reader gives while it is bound, not only to the bytes that it holds now.
+// Thus do not bind a reader that code can reset to other data (for example a
+// *strings.Reader, a *bytes.Reader, or a *bytes.Buffer that is used again)
+// while the request is active. A reset keeps the address and the bind counter
+// of the reader. Thus no lookup and no token revalidation can find it, and a
+// consumer that took its token before the reset attributes the new bytes to
+// this request.
 func BindReader(ctx context.Context, reader any) bool {
 	analysis, ok := FromContext(ctx).Analysis()
 	if !ok {
@@ -94,16 +95,16 @@ func PropagateSharedReader(input, output any) {
 	propagateReader(input, output, false)
 }
 
-// Invariant of the derived exclusive bindings (plan encoding-json-v2, section
-// 6.5, rule (e)): a wrapper binding is exclusive only with a proof from its
-// inputs, and it records these inputs (store.BindDerivedReaderValue). Each
-// reader lookup revalidates the inputs. Thus when an input gets a second
-// owner, or stops being effectively exclusive, each wrapper over it stops
-// being exclusive too, before the next attribution. The loss is sticky: the
-// store counts the reader binds of each reader, and a reader binding is
-// effectively exclusive only when no other owner did a reader bind with its
-// counter since the binding was made (rule (f)). Thus a wrapper stays not
-// exclusive also after the second owner ends.
+// Invariant of the derived exclusive bindings (reader binding rule (e) in the
+// internal/taint/store package doc): a wrapper binding is exclusive only with a
+// proof from its inputs, and it records these inputs
+// (store.BindDerivedReaderValue). Each reader lookup revalidates the inputs.
+// Thus when an input gets a second owner, or stops being effectively exclusive,
+// each wrapper over it stops being exclusive too, before the next attribution.
+// The loss is sticky: the store counts the reader binds of each reader, and a
+// reader binding is effectively exclusive only when no other owner did a reader
+// bind with its counter since the binding was made (rule (f)). Thus a wrapper
+// stays not exclusive also after the second owner ends.
 
 func propagateReader(input, output any, allow bool) {
 	var refs [store.MaxSnapshotOwners]store.OwnerRef
@@ -192,11 +193,12 @@ func sameOwner(a, b store.OwnerRef) bool {
 }
 
 // PropagateGuardedReader binds a wrapper output that user code can retarget
-// (io.LimitReader, bufio.NewReaderSize) to the owners of input (plan
-// encoding-json-v2, section 6.6). When a complete lookup finds exactly one
-// owner of input, with an effectively exclusive binding, it adds a Read guard
-// for output, then binds output exclusively, with viaGuard and with input as
-// its input (rule (e)). In all other cases, the binding is not exclusive.
+// (io.LimitReader, bufio.NewReaderSize) to the owners of input (see the Read
+// guard in the internal/taint/store package doc). When a complete lookup finds
+// exactly one owner of input, with an effectively exclusive binding, it adds a
+// Read guard for output, then binds output exclusively, with viaGuard and with
+// input as its input (rule (e)). In all other cases, the binding is not
+// exclusive.
 func PropagateGuardedReader(input, output any) {
 	var refs [store.MaxSnapshotOwners]store.OwnerRef
 	count, complete := lookupReader(input, refs[:])
@@ -220,11 +222,10 @@ func PropagateGuardedReader(input, output any) {
 	bindReaderOwners(refs[:count], output)
 }
 
-// ReaderToken is the exclusive owner of a reader at one lookup (plan
-// encoding-json-v2, section 6.5, rule (f)). A consumer takes it with
-// ReaderOwner BEFORE the first byte of the reader flows, and checks it again
-// with RevalidateReader AFTER the bytes flowed, at attribution time. The
-// zero value is not OK.
+// ReaderToken is the exclusive owner of a reader at one lookup (reader binding
+// rule (f)). A consumer takes it with ReaderOwner BEFORE the first byte of the
+// reader flows, and checks it again with RevalidateReader AFTER the bytes
+// flowed, at attribution time. The zero value is not OK.
 type ReaderToken struct {
 	token store.ReaderToken
 }
@@ -242,11 +243,11 @@ func (t ReaderToken) Identity() (index uint8, generation uint64, ok bool) {
 }
 
 // ReaderOwner returns the owner token of input. The token is OK only when a
-// complete lookup finds exactly one active owner, with an effectively
-// exclusive binding (plan encoding-json-v2, section 6.5). A consumer that
-// attributes bytes of input must call RevalidateReader with the token after
-// the bytes flowed: an OK token alone does not prove that the bytes that
-// flowed after the lookup are data of the owner.
+// complete lookup finds exactly one active owner, with an effectively exclusive
+// binding (rule (a2)). A consumer that attributes bytes of input must call
+// RevalidateReader with the token after the bytes flowed: an OK token alone
+// does not prove that the bytes that flowed after the lookup are data of the
+// owner.
 func ReaderOwner(input any) ReaderToken {
 	var refs [store.MaxSnapshotOwners]store.OwnerRef
 	count, complete := lookupReader(input, refs[:])
@@ -329,9 +330,9 @@ func retargetReader(index uint8, generation uint64) {
 
 // CloneReaderBytes takes the owner token of input, and then calls
 // CloneReaderBytesForToken. Thus it returns a clone only when input has
-// exactly one effectively exclusive owner (plan encoding-json-v2, section
-// 6.7). Only tests call it, as a probe: a consumer must take the token before
-// the first byte of input flows (ReaderOwner, ReaderOwnerToken).
+// exactly one effectively exclusive owner. Only tests call it, as a probe: a
+// consumer must take the token before the first byte of input flows
+// (ReaderOwner, ReaderOwnerToken).
 func CloneReaderBytes(input any, data []byte) []byte {
 	return CloneReaderBytesForToken(ReaderOwner(input), input, data)
 }
@@ -351,15 +352,14 @@ func ReaderOwnerToken(reader any) jsonbridge.OwnerToken {
 }
 
 // CloneForOwner is the Clone callback of the JSON bridge. A decoder calls it
-// for each value that it read from reader, with the token that
-// ReaderOwnerToken returned when the decoder was made. proven is false when
-// the token is not valid for reader any more (RevalidateReader, plan
-// encoding-json-v2, section 6.5, rule (f)): then the decoder never propagates
-// again. Else it adopts an exact-capacity clone of data into the owner of
-// token only, and returns it. When data is too short or larger than the root
-// limit, or when the adoption fails, it returns (nil, true): a miss for this
-// value only. An oversized value with a valid token counts a drop for that
-// owner only.
+// for each value that it read from reader, with the token that ReaderOwnerToken
+// returned when the decoder was made. proven is false when the token is not
+// valid for reader any more (RevalidateReader, rule (f)): then the decoder
+// never propagates again. Else it adopts an exact-capacity clone of data into
+// the owner of token only, and returns it. When data is too short or larger
+// than the root limit, or when the adoption fails, it returns (nil, true): a
+// miss for this value only. An oversized value with a valid token counts a drop
+// for that owner only.
 func CloneForOwner(reader any, token jsonbridge.OwnerToken, data []byte) (clone []byte, proven bool) {
 	owner, _ := token.Store.(*store.Store)
 	if !token.OK || owner == nil {
@@ -424,10 +424,10 @@ func ReadAllBytes(input any, data []byte) {
 }
 
 // ReadAllBytesForToken adopts an io.ReadAll result of input into the owner of
-// token only, without changing the result slice (plan encoding-json-v2,
-// section 6.7). The caller takes token before the first read. When the owner
-// of token is not the exclusive owner of input any more (RevalidateReader),
-// it is a miss. An oversized result counts a drop for that owner only.
+// token only, without changing the result slice. The caller takes token before
+// the first read. When the owner of token is not the exclusive owner of input
+// any more (RevalidateReader), it is a miss. An oversized result counts a drop
+// for that owner only.
 func ReadAllBytesForToken(token ReaderToken, input any, data []byte) {
 	if !token.token.OK || len(data) < 2 {
 		return

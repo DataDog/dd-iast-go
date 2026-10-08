@@ -15,8 +15,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestC4ConstantExpressionsAreNotEvaluated checks plan section 9.1 item 7
-// (finding C4). Go does not evaluate these operands. The runtime hooks run
+// TestC4ConstantExpressionsAreNotEvaluated checks finding C4 (an AST rewrite
+// made Go evaluate operands of constant expressions). Go does not evaluate these operands. The runtime hooks run
 // only when Go calls the runtime function, so they cannot change this.
 func TestC4ConstantExpressionsAreNotEvaluated(t *testing.T) {
 	requireWoven(t)
@@ -62,7 +62,7 @@ func TestC4EvaluationOrder(t *testing.T) {
 	sinkString = value[0 : len(value)+1]
 }
 
-// TestWrapExpressionAspectsWrapOnlyCalls checks plan section 7 (C4): every
+// TestWrapExpressionAspectsWrapOnlyCalls checks finding C4: every
 // remaining wrap-expression aspect wraps a call expression. A call is already
 // not constant, so a wrapper call does not change the evaluation. No aspect
 // uses a source-expression join point of the unreleased Orchestrion.

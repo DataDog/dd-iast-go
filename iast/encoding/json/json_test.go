@@ -188,12 +188,12 @@ func aspectTemplate(t *testing.T, id string) string {
 	return text
 }
 
-// TestV1BridgeCallsAreGated pins the inactive fast path of the v1 aspects
-// (plan encoding-json-v2, step 8 appendix, Table 6). Each call of the bridge
-// in the v1 decode path comes after an inlined gate, and the gate comes
-// first in the template. TestFastPathGatesAreInlinable (bridgetests) checks
-// that the gates are inlinable. Thus, when IAST is inactive, the v1 decode
-// path makes no call to the bridge.
+// TestV1BridgeCallsAreGated pins the inactive fast path of the v1 aspects when
+// IAST is inactive. Each call of the bridge in the v1 decode path comes after
+// an inlined gate, and the gate comes first in the template.
+// TestFastPathGatesAreInlinable (bridgetests) checks that the gates are
+// inlinable. Thus, when IAST is inactive, the v1 decode path makes no call to
+// the bridge.
 func TestV1BridgeCallsAreGated(t *testing.T) {
 	for id, test := range map[string]struct{ gate, call string }{
 		"[shared] encoding/json Decoder reader binding": {

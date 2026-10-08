@@ -4,8 +4,8 @@
 # This product includes software developed at Datadog (https://www.datadoghq.com/).
 # Copyright 2026-present Datadog, Inc.
 
-# Checks of one cell of the woven-runtime CI job (plan runtime-operator-hooks,
-# section 9.4). The CI job and a local run use the same commands.
+# Checks of one cell of the woven-runtime CI job (one Go version, runner and
+# build mode). The CI job and a local run use the same commands.
 #
 # Usage: .github/woven-runtime.sh <mode> <check> [outdir]
 #   mode   = default | race | nol   (nol is -gcflags=all=-N -l)
@@ -77,15 +77,15 @@ woven() {
 case $CHECK in
 test)
 	# The link of each test binary is also the link check of the bridge
-	# symbols and of the self-linkname aliases (plan section 3.9 items 1 and
-	# 5).
+	# symbols (defined in runtimebridge with a push linkname) and of the
+	# self-linkname aliases __dd_iast_orig_<fn> of the runtime.
 	woven woven go test ${flags[@]+"${flags[@]}"} -ldflags=-checklinkname=1 \
 		-count=1 -shuffle=on "${packages[@]}"
 	;;
 g0)
 	# The system-stack test pulls runtime.systemstack with a test-only
-	# linkname. Only this package uses -checklinkname=0 (plan section 9.4
-	# item 3b).
+	# linkname. Only this package uses -checklinkname=0: all other packages
+	# keep the default link check.
 	# A tag that selects no file gives "[no test files]" and exit 0. Thus
 	# require the pass line of the test in the output.
 	mkdir -p "$out"
@@ -99,7 +99,7 @@ g0)
 	fi
 	;;
 link)
-	# The link check of plan section 3.9 item 4: build the two fixtures of the
+	# The link check of each toolchain: build the two fixtures of the
 	# runtime-only test application with -checklinkname=1, run them, and
 	# find the expected symbols. The fixture module has other aspects, thus
 	# it has its own GOCACHE.
@@ -135,8 +135,8 @@ link)
 	echo "link $tag: bootstrap and nohook link with -checklinkname=1 and run"
 	;;
 linknames)
-	# No hook name is in the blockedLinknames list of the linker (plan
-	# section 3.9 items 2 and 5). The mode has no effect on this check.
+	# No hook name (no __dd_iast name, and none of the 6 runtime functions of
+	# the aliases) is in the blockedLinknames list of the linker. The mode has no effect on this check.
 	loader=${LOADER_GO:-$(go env GOROOT)/src/cmd/link/internal/loader/loader.go}
 	block=$(awk '/^var blockedLinknames = map\[string\]\[\]string\{/ {b=1} b {print} b && /^\}/ {exit}' "$loader")
 	if [[ $(grep -c '^[[:space:]]*"' <<<"$block" || true) -eq 0 ]]; then
@@ -152,7 +152,8 @@ linknames)
 	echo "linknames $(go env GOVERSION): no hook name in blockedLinknames ($(grep -c '^[[:space:]]*"' <<<"$block") entries)"
 	;;
 escape)
-	# The escape comparison of plan section 3.8, with -m and -m=2. Each run
+	# The escape comparison (see runtime-escape-compare.sh), with -m and -m=2.
+	# Each run
 	# builds with -a and has its own GOCACHE.
 	for level in m m2; do
 		GOCACHE="$cache_root/gocache-escape-$level-$tag" ORCHESTRION="${orchestrion[*]}" \
@@ -160,10 +161,10 @@ escape)
 	done
 	;;
 bench)
-	# The gate-off benchmark of plan section 9.2 (not a gate: CI runners are
+	# The gate-off benchmark (not a gate: CI runners are
 	# noisy). It compares the woven and the unwoven test binary, in turns.
 	# The woven binary also links the tracer, so the difference also has a GC
-	# cost that is not a hook cost. Step 7 of the plan measures the gate
+	# cost that is not a hook cost. runtime-bench.sh measures the gate
 	# (hook - nohook). The output is Markdown for the job summary.
 	dir="$out/bench-$tag"
 	mkdir -p "$dir"

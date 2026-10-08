@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestHooksFire checks plan section 9.1 item 1: each of the 6 hooked runtime
+// TestHooksFire checks that each of the 6 hooked runtime
 // functions propagates the exact ranges of its input.
 func TestHooksFire(t *testing.T) {
 	requireWoven(t)
@@ -87,7 +87,9 @@ func concat18(a []string) string {
 		a[9] + a[10] + a[11] + a[12] + a[13] + a[14] + a[15] + a[16] + a[17]
 }
 
-// TestConcatCases checks plan section 9.1 item 2.
+// TestConcatCases checks the concatenation forms: 2, 3, 6, 17 and 40
+// operands (17 and 40 are above the exact limit), strconv.Quote, +=, defined
+// and generic string types, []byte(a+b) and the identity case.
 func TestConcatCases(t *testing.T) {
 	requireWoven(t)
 	ctx := begin(t)

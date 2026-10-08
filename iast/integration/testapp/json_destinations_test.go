@@ -57,10 +57,10 @@ func TestJSONDestinationClassesPreserveTheirContracts(t *testing.T) {
 			return
 		}
 		assert.Equal(t, "dynamic", dynamic)
-		// Map keys and interface{} strings: tainted with the body source on
-		// the v2 variant, clean on the v1 variant (decision Q1). The v1
-		// decoder decodes its clean buffer, thus the runtime hooks do not
-		// taint its verbatim keys.
+		// Map keys and interface{} strings: tainted with the body source on the
+		// v2 variant, clean on the v1 variant (see "JSON decoding" in the
+		// README). The v1 decoder decodes its clean buffer, thus the runtime
+		// hooks do not taint its verbatim keys.
 		keysAndAny := []string{dynamic}
 		for key := range destination.Named {
 			assert.Equal(t, testapp.JSONName("key"), key)
@@ -104,13 +104,13 @@ func TestJSONDestinationClassesPreserveTheirContracts(t *testing.T) {
 	requireSQLFindings(t, event, 4, document)
 }
 
-// TestJSONKeysAndInterfaceStringsUseTheirOwnToken checks decision Q1 with
-// one request parameter in each token of a json.Unmarshal document. On the v2
-// variant, each map key and interface{} string gets the taint of its own
-// token only. On the v1 variant, only the typed map value (the control) gets
-// taint. Each token has an escape: the runtime hooks of the v1 variant would
-// taint a verbatim key or interface{} string (a conversion of the tainted
-// input bytes), but not an unquoted copy.
+// TestJSONKeysAndInterfaceStringsUseTheirOwnToken checks the v2 coverage of map
+// keys and interface{} strings with one request parameter in each token of a
+// json.Unmarshal document. On the v2 variant, each map key and interface{}
+// string gets the taint of its own token only. On the v1 variant, only the
+// typed map value (the control) gets taint. Each token has an escape: the
+// runtime hooks of the v1 variant would taint a verbatim key or interface{}
+// string (a conversion of the tainted input bytes), but not an unquoted copy.
 func TestJSONKeysAndInterfaceStringsUseTheirOwnToken(t *testing.T) {
 	requireWoven(t)
 	db := openDB(t)

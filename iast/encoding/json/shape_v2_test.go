@@ -19,9 +19,9 @@ import (
 
 // TestSourceShape checks the symbols of the v2 files of encoding/json, and of
 // encoding/json/v2 and its internal packages, that the [shared] and [v2]
-// aspects of orchestrion.yml use (plan encoding-json-v2, section 6.4). The
-// build tags are the tags of the "[v2] encoding/json/v2 string unmarshal
-// source" aspect: its anchor errInvalidStringTag exists only in Go 1.27.
+// aspects of orchestrion.yml use. The build tags are the tags of the "[v2]
+// encoding/json/v2 string unmarshal source" aspect: its anchor
+// errInvalidStringTag exists only in Go 1.27.
 func TestSourceShape(t *testing.T) {
 	t.Run("encoding/json", testShapeJSON)
 	t.Run("encoding/json/v2", testShapeV2)
@@ -73,7 +73,7 @@ func loadShape(t *testing.T, importPath string) *sourceshape.Package {
 }
 
 // testShapeJSON checks the v2 files of encoding/json: the NewDecoder capture
-// and the Decode value document (plan sections 6.3 and 6.7).
+// and the Decode value document.
 func testShapeJSON(t *testing.T) {
 	pkg := loadShape(t, "encoding/json")
 	requireTargets(t, pkg,
@@ -131,7 +131,7 @@ func testShapeJSON(t *testing.T) {
 }
 
 // testShapeV2 checks encoding/json/v2: the string arshaler wrap, the string
-// cache guard, and the string unmarshal source (plan section 6.2).
+// cache guard, and the string unmarshal source.
 func testShapeV2(t *testing.T) {
 	pkg := loadShape(t, "encoding/json/v2")
 	requireTargets(t, pkg,
@@ -346,7 +346,7 @@ func referredNames(node ast.Node) []string {
 
 // testShapeJSONText checks encoding/json/jsontext: the raw token of the
 // wrapper, the Decoder methods that the aspects and the v2 Decode path use,
-// and the Read of the stream reader (plan sections 6.2, 6.3, and 6.6).
+// and the Read of the stream reader.
 func testShapeJSONText(t *testing.T) {
 	pkg := loadShape(t, "encoding/json/jsontext")
 	requireTargets(t, pkg,

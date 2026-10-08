@@ -3,11 +3,6 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2026-present Datadog, Inc.
 
-// Package store implements the bounded request-owned taint identity store.
-// Numeric data addresses are comparison keys only and are never converted back
-// to pointers. Strong managed roots are released synchronously when their owner
-// finishes. Adoption APIs are only for audited results known to begin at their
-// complete allocation base; ordinary callers must use cloning APIs.
 package store
 
 import (
@@ -85,8 +80,8 @@ type rootRecord struct {
 	count        uint8
 	limit        ranges.Limit
 	// indexed is true only after all index refs of this root are published
-	// (plan section 5.2.2). Lookups ignore a root that is not indexed. It is
-	// guarded by owner.rootsMu.
+	// (see "Interior index" in the package doc). Lookups ignore a root that is
+	// not indexed. It is guarded by owner.rootsMu.
 	indexed bool
 	// kind is the kind of the first adoption of this root.
 	kind   Kind
@@ -103,15 +98,15 @@ type owner struct {
 	rootNext    uint16
 	rootFree    [MaxRootsPerOwner]uint16
 	rootFreeN   uint16
-	// retargeted is the sticky bit of plan encoding-json-v2, section 6.5,
-	// rule (a2). A per-Read guard sets it when a guarded reader of this
+	// retargeted is the sticky bit of reader binding rule (a2) in the
+	// package doc. A per-Read guard sets it when a guarded reader of this
 	// owner gets a new target. Acquire clears it for each new generation.
 	// It uses the padding before charged.
 	retargeted atomic.Bool
 	charged    atomic.Int64
 	rootCount  atomic.Int32
 	// extending is true while an extension of a root of this owner runs
-	// (plan section 5.2.2, "Extension"). It is guarded by rootsMu.
+	// (see "Extension" in the package doc). It is guarded by rootsMu.
 	extending      bool
 	bindings       bindingTable
 	writersMu      sync.RWMutex
@@ -146,17 +141,17 @@ type dropCounters struct {
 	// a TryRLock failed.
 	preContention atomic.Uint64
 	// preStale counts runtime pre-checks that found a tainted operand whose
-	// owner finished before the result hook ran (runtime bridge, step 4).
+	// owner finished before the result hook ran (runtime bridge).
 	preStale atomic.Uint64
 	// dupOwner counts lookup refs that were skipped because the snapshot
 	// already had a contribution of the same owner.
 	dupOwner atomic.Uint64
 	// guardFull counts guarded reader wrappers that got no Read guard entry
-	// because the guard table was full (plan encoding-json-v2, section 6.6).
+	// because the guard table was full (see the Read guard in the package doc).
 	// Such a wrapper gets a non-exclusive binding.
 	guardFull atomic.Uint64
 	// retargets counts the Read guard checks that found a new target of a
-	// guarded reader of this owner (plan encoding-json-v2, section 6.6).
+	// guarded reader of this owner (see the Read guard in the package doc).
 	retargets atomic.Uint64
 }
 
@@ -211,8 +206,8 @@ type Store struct {
 	charged      atomic.Int64
 	// indexedRoots is the number of roots with indexed == true. It is
 	// incremented before a root becomes indexed and decremented after it
-	// stops being indexed (plan section 5.2.2), so it is never lower than
-	// the number of visible roots.
+	// stops being indexed (see "Gate" in the package doc), so it is never
+	// lower than the number of visible roots.
 	indexedRoots atomic.Int32
 	// indexMaxProbe is the largest bucket distance that an insert used.
 	indexMaxProbe atomic.Uint32
@@ -227,14 +222,15 @@ type Store struct {
 	overflowMu   sync.Mutex
 	index        [IndexShards]indexShard
 	filter       runtimebridge.Filter
-	// readerBinds are the reader bind counters of plan encoding-json-v2,
-	// section 6.5, rule (f). Each reader bind attempt of any owner adds 1 to
+	// readerBinds are the reader bind counters of reader binding rule (f) in
+	// the package doc. Each reader bind attempt of any owner adds 1 to
 	// the counter of its object (readerBindSlot). A counter never decreases.
 	readerBinds [readerBindSlots]atomic.Uint64
 }
 
 // addIndexedRoots changes the indexed-root counter and its mirror, the
-// runtime gate (plan section 3.2 rule 3).
+// runtime gate (see the runtime hook rules in the internal/taint/runtimebridge
+// package doc, rule 3).
 func (s *Store) addIndexedRoots(delta int32) {
 	s.indexedRoots.Add(delta)
 	if gate := s.runtimeGate.Load(); gate != nil {
@@ -250,12 +246,13 @@ var runtimeStore atomic.Pointer[Store]
 // filter and confirm function.
 func RuntimeStore() *Store { return runtimeStore.Load() }
 
-// BindRuntimeBridge makes s the store of the runtime bridge (plan section 3.2
-// rule 6). Only the process request manager calls it. It installs the filter
-// and the Confirm function of s in the bridge, stores the string-to-slice
-// switch word, and then binds the indexed-root counter of s to the runtime
-// gate. It returns false and changes nothing when a binding exists, when the
-// Go release is not supported, or when s already has an indexed root.
+// BindRuntimeBridge makes s the store of the runtime bridge (see the runtime
+// hook rules in the internal/taint/runtimebridge package doc, rule 6). Only the
+// process request manager calls it. It installs the filter and the Confirm
+// function of s in the bridge, stores the string-to-slice switch word, and then
+// binds the indexed-root counter of s to the runtime gate. It returns false and
+// changes nothing when a binding exists, when the Go release is not supported,
+// or when s already has an indexed root.
 //
 // The caller must call it before it shares s with other goroutines: a root
 // that is indexed during the call is not counted in the gate.

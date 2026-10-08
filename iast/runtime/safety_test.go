@@ -112,7 +112,7 @@ func nested() {
 }
 
 // grow uses about depth frames of stack, so that the goroutine stack grows
-// and moves during the tainted path (plan section 3.8).
+// and moves during the tainted path.
 //
 //go:noinline
 func grow(depth int) int {
@@ -126,8 +126,9 @@ func grow(depth int) int {
 }
 
 // TestStackResults checks the stack case of each operation: a clean result
-// is not tainted; a tainted result goes to the heap and is tainted (plan
-// sections 3.8 and R5). TestAllocs checks that the clean results stay on the
+// is not tainted; a tainted result goes to the heap and is tainted (the
+// pre-check sets the stack buffer to nil, and every runtime caller accepts a
+// nil buffer). TestAllocs checks that the clean results stay on the
 // stack.
 func TestStackResults(t *testing.T) {
 	requireWoven(t)
@@ -152,7 +153,9 @@ func TestStackResults(t *testing.T) {
 	}
 }
 
-// TestAllocs checks the allocation gates of plan section 9.3.
+// TestAllocs checks the allocation gates: 0 extra allocations for a clean
+// operation, and +1 allocation of the exact result size for a tainted stack
+// case.
 func TestAllocs(t *testing.T) {
 	requireWoven(t)
 	x, s := "x", strings.Clone("short-value")
@@ -189,7 +192,7 @@ func TestAllocs(t *testing.T) {
 	}
 }
 
-// TestSparseRoot checks plan section 9.1 item 4b: a clean window of a sparse
+// TestSparseRoot checks that the pre-check has no false result: a clean window of a sparse
 // tainted root stays on the stack with 0 allocations; a tainted window goes
 // to the heap with the correct ranges.
 func TestSparseRoot(t *testing.T) {
@@ -209,7 +212,8 @@ func TestSparseRoot(t *testing.T) {
 	require.Equal(t, []span{{1, 2, "q"}}, spansOf(heapConcat2("x", root[2:6])))
 }
 
-// TestConfirmUnknownForcesHeap checks plan section 9.1 item 4b: when confirm
+// TestConfirmUnknownForcesHeap checks that the pre-check never loses taint:
+// when confirm
 // cannot take a lock (ConfirmUnknown), each hooked operation puts its result
 // on the heap, and the result hook adopts it with the correct taint. A clean
 // window of a sparse root (a filter hit) shows that the heap is forced by the
@@ -282,8 +286,8 @@ func TestConfirmUnknownForcesHeap(t *testing.T) {
 	testConfirmMode.Store(int32(confirmNormal))
 }
 
-// TestForcedIndexFullIsNotTainted checks plan section 9.1 item 4b: when the
-// index refuses a root (forced indexFull), the admission fails. The value is
+// TestForcedIndexFullIsNotTainted checks that no live root is invisible to
+// the filter: when the index refuses a root (forced indexFull), the admission fails. The value is
 // not tainted, no lookup reports it, the gate and the filter do not change,
 // and the hooked operations see a clean operand (the stack results stay on
 // the stack).
@@ -349,7 +353,8 @@ func filterSum(f *runtimebridge.Filter) uint64 {
 	return sum
 }
 
-// TestConfirmPanic checks plan sections 3.4.1 and 9.1 items 12 and 13: a
+// TestConfirmPanic checks the recursion guard and rule 5 (see the runtime hook rules in the internal/taint/runtimebridge package
+// doc): a
 // panic in confirm or in a callback is recovered, the guard is cleared, and
 // the next operation enters the bridge again.
 func TestConfirmPanic(t *testing.T) {
@@ -379,7 +384,7 @@ func TestConfirmPanic(t *testing.T) {
 	require.Greater(t, entries(), before, "the guard is clear after a callback panic")
 }
 
-// TestRecursionGuard checks plan sections 3.4.1 and 9.1 item 8: operations
+// TestRecursionGuard checks the recursion guard: operations
 // inside confirm and inside a callback do not enter the bridge.
 func TestRecursionGuard(t *testing.T) {
 	requireWoven(t)
@@ -401,7 +406,7 @@ func TestRecursionGuard(t *testing.T) {
 	require.Equal(t, probe{tainted: true}, p)
 }
 
-// TestStackGrowth checks plan section 3.8: confirm and the callback grow the
+// TestStackGrowth checks the callback contract: confirm and the callback grow the
 // goroutine stack during the tainted path. The result is on the heap, it is
 // tainted, and it survives two garbage collections.
 func TestStackGrowth(t *testing.T) {
@@ -422,7 +427,7 @@ func TestStackGrowth(t *testing.T) {
 	require.Equal(t, []span{{1, 3, "q"}}, spansOf(r))
 }
 
-// TestHeapRetention checks plan section 3.8: the store keeps an adopted
+// TestHeapRetention checks the callback contract: the store keeps an adopted
 // result live. The data and the ranges do not change after two garbage
 // collections.
 func TestHeapRetention(t *testing.T) {
@@ -441,7 +446,7 @@ func TestHeapRetention(t *testing.T) {
 	require.Equal(t, []span{{40, 6, "q"}}, spansOf(again))
 }
 
-// TestAddressReuse checks plan section 9.1 item 6: after the owner finished,
+// TestAddressReuse checks that taint does not stay on reused memory: after the owner finished,
 // a new allocation at the same address is not tainted.
 func TestAddressReuse(t *testing.T) {
 	requireWoven(t)
@@ -461,7 +466,7 @@ func TestAddressReuse(t *testing.T) {
 	}
 }
 
-// TestIndependentStores checks plan section 9.1 item 6b in the woven build.
+// TestIndependentStores checks rule 6 (one binding) in the woven build.
 // Two stores from store.New() and the process store are used, also at the
 // same time (run it with -race). Taint in a store that is not the process
 // store never changes the gate or the bridge filter, and no hook sees it.
@@ -557,7 +562,7 @@ func foreignFindings(others []*store.Store, process *store.Store, value string) 
 	return findings
 }
 
-// TestFanout checks plan section 9.1 item 4b: an allocation with the maximum
+// TestFanout checks the pre-check with a full fanout: an allocation with the maximum
 // number of owners keeps the taint of the admitted owners. The refused owner
 // is not visible.
 func TestFanout(t *testing.T) {

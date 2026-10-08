@@ -109,8 +109,8 @@ jobs:
       fail-fast: false
       matrix:
         module: ${{ fromJSON(needs.modules.outputs.modules) }}
-        # The encoding/json lanes (plan encoding-json-v2, section 7.1):
-        # A is the go.mod version (v1 encoding/json), B is Go 1.27 with its
+        # The encoding/json lanes (see "JSON decoding" in README.md): A is
+        # the go.mod version (v1 encoding/json), B is Go 1.27 with its
         # default encoding/json (v2), and C is Go 1.27 with the v1
         # encoding/json (GOEXPERIMENT=nojsonv2).
         lane: [A, B, C]
@@ -134,9 +134,9 @@ jobs:
       GOTOOLCHAIN: local
       GOEXPERIMENT: ${{ matrix.goexperiment }}
       # Each lane has its own GOCACHE. Orchestrion adds dependency archives
-      # that the Go action ID of the dependent package does not include
-      # (plan runtime-operator-hooks, step 6), thus two lanes must not share
-      # build results. Lanes B and C have the same Go version and the same
+      # that the Go action ID of the dependent package does not include, and
+      # its tool ID does not include the build flags, thus two lanes must not
+      # share build results. Lanes B and C have the same Go version and the same
       # go.sum. The cache path is a part of the setup-go cache version, thus
       # a different path also gives a different setup-go cache entry.
       GOCACHE: ${{ github.workspace }}/.gocache/lane-${{ matrix.lane }}
@@ -176,8 +176,8 @@ jobs:
             coverage_packages=$(IFS=,; printf '%s' "${packages[*]}")
           fi
           coverage_flags=(-covermode=atomic "-coverpkg=$coverage_packages")
-          # The woven run of the root module also uses the race detector
-          # (plan runtime-operator-hooks, section 9.4).
+          # The woven run of the root module also uses the race detector, to
+          # find data races in the woven runtime hooks.
           race_flags=()
           if [[ "$MODULE" == '.' ]]; then
             race_flags=(-race)
@@ -189,7 +189,7 @@ jobs:
             go test -race -count=1 -shuffle=on ./internal/taint/...
           fi
       # The fuzz campaigns do not depend on the encoding/json variant, thus
-      # they run on lane A only (plan encoding-json-v2, section 7.1).
+      # they run on lane A only.
       - name: Bounded propagation fuzz campaigns
         if: matrix.module == '.' && matrix.lane == 'A'
         shell: bash
@@ -225,7 +225,7 @@ jobs:
             # The woven test run above has coverage flags, and this woven
             # build has none. Orchestrion does not put the build flags in
             # the cache key of its dependency archives, thus this build has
-            # its own GOCACHE (plan runtime-operator-hooks, step 6).
+            # its own GOCACHE.
             GOCACHE="$RUNNER_TEMP/gocache-bootstrap" \
               go tool orchestrion go build -o "$RUNNER_TEMP/iast-bootstrap" ./cmd/bootstrap
             go tool nm "$RUNNER_TEMP/iast-bootstrap" > "$RUNNER_TEMP/iast-bootstrap.nm"
@@ -252,12 +252,13 @@ jobs:
 
   woven-runtime:
     # The woven tests of the runtime hooks, for each supported Go version,
-    # architecture and build mode (plan runtime-operator-hooks, section 9.4).
-    # Root module only.
+    # architecture and build mode. Root module only. Each cell runs the
+    # checks of .github/woven-runtime.sh (tests, system-stack test, link
+    # check, blockedLinknames check, escape comparison).
     runs-on: ${{ matrix.runner }}
     name: Woven runtime (go ${{ matrix.go }}, ${{ matrix.runner }}, ${{ matrix.mode }}, orchestrion ${{ matrix.orchestrion }})
     # 2 x the slowest cell of the first CI run (10m18s, go.mod, amd64,
-    # -race), rounded up (plan step 6).
+    # -race), rounded up.
     timeout-minutes: 21
     strategy:
       fail-fast: false
@@ -270,7 +271,7 @@ jobs:
         orchestrion: [go.mod]
         include:
           # One more cell uses the latest Orchestrion release, so that a
-          # release that breaks the aspects is found (plan section 6.3).
+          # release that breaks the aspects is found.
           # This entry changes the value of an axis, thus it is a new cell.
           - go: 1.27.x
             runner: ubuntu-latest
@@ -283,7 +284,7 @@ jobs:
       # The Go 1.27 cells use the default encoding/json of Go 1.27 (v2). The
       # unit-test job also tests the v1 encoding/json of Go 1.27 (lane C,
       # GOEXPERIMENT=nojsonv2). The runtime hooks do not depend on the
-      # encoding/json variant (plan encoding-json-v2, step 9).
+      # encoding/json variant.
       MODE: ${{ matrix.mode }}
       WOVEN_OUT: ${{ github.workspace }}/woven-runtime-out
     steps:

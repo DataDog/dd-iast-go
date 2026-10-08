@@ -13,11 +13,25 @@ import (
 	"github.com/DataDog/dd-iast-go/internal/taint/store"
 )
 
-// This file has the tainted-path callbacks of the runtime bridge (plan
-// runtime-operator-hooks, sections 3.6, 4.2, 4.3 and 4.5). The bridge calls
-// them only after a filter hit, in a function that recovers a panic.
+// This file has the tainted-path callbacks of the runtime bridge. The bridge
+// calls them only after a filter hit, in a function that recovers a panic.
+// The runtime hook rules in the internal/taint/runtimebridge package doc give
+// the full contract.
 //
-// Contract (plan section 3.8): a callback reads operands and inputs only
+// Conversion rules:
+//
+//   - string(b) and []byte(s): the result gets the ranges of the input window.
+//     A one-byte result is not tainted (string(b) of one byte returns shared
+//     static memory, and a root has at least 2 bytes).
+//   - []byte(s) and []rune(s): the result is a new mutable root. Writes that
+//     dd-iast-go does not see (b[i] = x, copy, append in capacity) keep the
+//     old ranges, so they can over-report. The string-to-slice switch
+//     (DD_IAST_STRING_TO_SLICE_PROPAGATION_ENABLED, on by default) turns these
+//     two conversions off. It does not gate []byte(a + b).
+//   - []rune values use the byte coordinates of the rune array: rune i is
+//     bytes [4i, 4i+4). runes.go maps the ranges between the two forms.
+//
+// Contract (escape and GC): a callback reads operands and inputs only
 // during the call, and only through store keys (a uintptr and a length). It
 // never keeps them. It can keep the result, because the result is a fresh
 // heap allocation from the runtime that starts at its allocation base: it
@@ -26,8 +40,9 @@ import (
 // The callbacks use store.RuntimeStore(), so they always use the store of the
 // bridge filter and confirm function.
 //
-// The init function registers the callbacks. The runtime aspect of step 5
-// must name this package in its links list (plan section 3.2 rule 6).
+// The init function registers the callbacks. The runtime declarations aspect
+// of iast/runtime must name this package in its links list (rule 6 of the
+// runtime hook rules in the internal/taint/runtimebridge package doc).
 // Orchestrion then imports it in the main package, so this init function
 // runs also when no other code imports this package.
 
@@ -288,7 +303,7 @@ func findCoarseConcatOwner(owners []coarseConcatOwner, entry *store.Entry) *coar
 }
 
 // coarseConcatHit is the provenance of a concatenation with more than
-// maxInputs operands (plan section 3.6 step 7). It scans all operands, not a
+// maxInputs operands (the exact path handles at most maxInputs). It scans all operands, not a
 // prefix, so a taint in a late operand is not lost. It keeps at most
 // store.MaxSnapshotOwners owners.
 //
@@ -429,7 +444,7 @@ func recordKeyBytesDrop(s *store.Store, key store.Key, dropped *uint64) {
 	}
 }
 
-// runtimeFromBytes is the callback of string(b) (plan section 4.2).
+// runtimeFromBytes is the callback of string(b).
 func runtimeFromBytes(result string, input []byte) {
 	s := store.RuntimeStore()
 	key, ok := store.BytesKey(input)
@@ -445,7 +460,7 @@ func runtimeFromBytes(result string, input []byte) {
 	publishBytesToString(s, key, result)
 }
 
-// runtimeToBytes is the callback of []byte(s) (plan sections 4.3 and 4.4).
+// runtimeToBytes is the callback of []byte(s).
 // The result is a new mutable bytes root: its ranges cover [0, len) and its
 // span is cap(result).
 func runtimeToBytes(result []byte, input string) {
@@ -485,7 +500,7 @@ func runtimeToBytes(result []byte, input string) {
 	}
 }
 
-// runtimeFromRunes is the callback of string(rs) (plan section 4.5). The
+// runtimeFromRunes is the callback of string(rs). The
 // charge comes from len(input), which cannot change during the conversion:
 // sizeClass(4*len(input)+3).
 func runtimeFromRunes(result string, input []rune) {
@@ -520,7 +535,7 @@ func runtimeFromRunes(result string, input []rune) {
 	}
 }
 
-// runtimeToRunes is the callback of []rune(s) (plan section 4.5).
+// runtimeToRunes is the callback of []rune(s).
 func runtimeToRunes(result []rune, input string) {
 	s := store.RuntimeStore()
 	key, ok := store.StringKey(input)

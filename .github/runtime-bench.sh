@@ -4,11 +4,11 @@
 # This product includes software developed at Datadog (https://www.datadoghq.com/).
 # Copyright 2026-present Datadog, Inc.
 
-# The benchmarks of plan runtime-operator-hooks, section 9.2, and the check of
-# the numeric gates of section 9.3 (plan step 7). The CI workflow
+# The benchmarks of the runtime hooks, and the check of their numeric gates
+# (the limits are in PROFILES of runtime-bench.py). The CI workflow
 # runtime-bench.yml and a local run use the same commands.
 #
-# Method (plan _docs/plans/runtime-operator-hooks-step5-results.md):
+# Method:
 #   - The hook cost is "hook - nohook". Both binaries are woven test binaries
 #     of ./iast/runtime. The nohook binary is built from a copy of the module
 #     where iast/runtime/orchestrion.yml has no prepend-statements aspect (the
@@ -51,8 +51,9 @@
 #   RUNTIME_BENCH_HTTP_COUNT -count of "http" (default: 10)
 #   RUNTIME_BENCH_JOBS       parallel builds of "build" (default: 4)
 #   RUNTIME_BENCH_OLD_TREE   optional: a copy of the module at the parent
-#                            commit of plan step 3, with the store benchmark
-#                            files. "store" then also runs the old store (the
+#                            commit before the interior-pointer index
+#                            replaced the value table of the store, with the
+#                            store benchmark files. "store" then also runs the old store (the
 #                            old side of the source-root admission gate).
 #   RUNTIME_BENCH_OPTIONAL   gate keys that "report" accepts as not measured
 #                            (comma-separated, or "all" for a partial run)
@@ -66,7 +67,7 @@
 # Run it from the repository root. RUNTIME_BENCH_OUT must be outside the
 # repository. Each woven build has its own GOCACHE:
 # Orchestrion v1.13.1 does not put the aspects or the build flags in the
-# action IDs of the woven packages (plan step 6). Use only one -gcflags flag
+# action IDs of the woven packages. Use only one -gcflags flag
 # if you add build flags: Orchestrion keeps only the last one.
 set -euo pipefail
 
@@ -295,7 +296,7 @@ run)
 	# A new run does not add to the results of an earlier run, and it keeps
 	# no result of a binary that was removed.
 	rm -f "$out"/runtime/*.txt
-	# The zero-allocation check of plan section 9.2 (TestAllocs, gate on and
+	# The zero-allocation check (TestAllocs, gate on and
 	# clean, woven stdlib path), and a check that each hook binary is woven.
 	: >"$out/runtime/allocs.txt"
 	for binary in "${binaries[@]}"; do
@@ -318,7 +319,7 @@ run)
 	;;
 store)
 	# The store part of the pre-check (MayContain, Confirm), the lookup path,
-	# the sink check and the source-root admission (plan section 9.2). These
+	# the sink check and the source-root admission. These
 	# benchmarks do not need a woven build. With RUNTIME_BENCH_OLD_TREE, the
 	# old and the new store run in turns.
 	mkdir -p "$out/store" "$out/bin-store"
@@ -349,8 +350,8 @@ store)
 	done
 	;;
 http)
-	# The HTTP gate of plan section 9.3 compares with the sampled-out Phase 6
-	# result (+2.70 %), thus -sampling=0.
+	# The HTTP gate compares with the sampled-out baseline (+2.70 %: the
+	# overhead before the runtime hooks), thus -sampling=0.
 	mkdir -p "$out/http"
 	# The runner writes the output of "git rev-parse HEAD" to its metadata.
 	# In a jj repository (also a colocated one, with a .git directory), a git

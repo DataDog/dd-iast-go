@@ -246,7 +246,8 @@ var cacheRuns atomic.Int32
 const cacheAttempts = 50
 
 // TestJSONStringCacheKeepsRequestsApart checks the string cache of the v2
-// decoder across two live requests (plan encoding-json-v2, risk R5):
+// decoder across two live requests: a later request must not get the taint
+// of a cached string:
 //
 //  1. request B decodes clean bytes, and the string probe goes into the cache;
 //  2. request A decodes tainted bytes of the string value;
@@ -352,7 +353,7 @@ func TestJSONCustomUnmarshalersStayClean(t *testing.T) {
 // TestJSONSemanticErrorKeepsEarlierStrings checks a valid string member
 // followed by a semantic error (a number into a string field): the decode
 // returns the error, the earlier string is tainted, and the failed field is
-// not changed (plan encoding-json-v2, section 3, "Failed documents").
+// not changed (propagation is per string, with no whole-document staging).
 func TestJSONSemanticErrorKeepsEarlierStrings(t *testing.T) {
 	requireWoven(t)
 	db := openDB(t)

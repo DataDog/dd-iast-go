@@ -16,8 +16,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// The tests of this file check the io.ReadAll consumer of plan
-// encoding-json-v2, sections 6.5 rule (f) and 6.7: the aspect takes the owner
+// The tests of this file check the io.ReadAll consumer of reader binding rule
+// (f) (see the internal/taint/store package doc): the aspect takes the owner
 // token BEFORE the first read, and checks it again AFTER the reads.
 
 // steppedReader returns 7 bytes for each Read, and calls onRead (when it is
@@ -86,7 +86,7 @@ func TestReadAllMissesSecondOwnerThatEndedDuringRead(t *testing.T) {
 }
 
 // TestReadAllLateBindIsMiss checks that a binding made during io.ReadAll does
-// not claim the bytes that flowed before it (section 6.7).
+// not claim the bytes that flowed before it.
 func TestReadAllLateBindIsMiss(t *testing.T) {
 	requireWoven(t)
 	ctx, scope := activeContext(t)
@@ -105,7 +105,7 @@ func TestReadAllLateBindIsMiss(t *testing.T) {
 }
 
 // TestReadAllSecondOwnerDuringReadIsMiss checks that a second owner that is
-// added during the reads, and that is still live, gives a miss (section 6.7).
+// added during the reads, and that is still live, gives a miss.
 func TestReadAllSecondOwnerDuringReadIsMiss(t *testing.T) {
 	requireWoven(t)
 	ctx, scope := activeContext(t)

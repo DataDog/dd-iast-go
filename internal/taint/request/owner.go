@@ -28,7 +28,7 @@ type analysisSlot struct {
 }
 
 // Manager owns the fixed request-analysis permits and taint store. Sampling is
-// intentionally deferred to Phase 3 and occurs before Acquire.
+// not part of Manager: it occurs before Acquire.
 type Manager struct {
 	store     *store.Store
 	used      atomic.Uint64
@@ -270,9 +270,9 @@ func (a Analysis) Finish() {
 	if owner := a.slot.owner.Swap(nil); owner != nil {
 		owner.Finish()
 		// The Read guards refer to owners of the process store only
-		// (PropagateGuardedReader uses the process manager). The owner is
-		// not active, and its bindings are cleared, thus its guards are not
-		// necessary (plan encoding-json-v2, section 6.6).
+		// (PropagateGuardedReader uses the process manager). The owner is not
+		// active, and its bindings are cleared, thus its guards are not
+		// necessary.
 		if index, ok := owner.Index(); ok && a.manager == processManager.Load() {
 			iobridge.ReleaseOwner(index, owner.Generation())
 		}

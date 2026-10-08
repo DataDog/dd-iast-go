@@ -9,8 +9,7 @@ package json
 
 // decoderPropagates reports whether (*json.Decoder).Decode propagates taint
 // on this variant of encoding/json. The v2 variant does: the ReadValue
-// wrapper of Decode gives the value bytes to the owner of the reader (plan
-// encoding-json-v2, section 6.3).
+// wrapper of Decode gives the value bytes to the owner of the reader.
 const decoderPropagates = true
 
 // decoderSourceHasLeadingWhitespace reports whether the source value of a
@@ -31,7 +30,7 @@ const newDecoderAllocations = 2
 
 // unmarshalTaintsKeysAndAny reports whether json.Unmarshal taints map keys
 // and interface{} strings on this variant. The v2 variant does: they use the
-// default string arshaler (plan encoding-json-v2, decision Q1).
+// default string arshaler (see "JSON decoding" in the README).
 const unmarshalTaintsKeysAndAny = true
 
 // activeStringTagAllocations is the number of allocations that the JSON

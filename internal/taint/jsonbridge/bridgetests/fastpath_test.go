@@ -16,10 +16,9 @@ import (
 )
 
 // TestFastPathGatesAreInlinable checks that the gates of the v1 aspects are
-// inlinable (plan encoding-json-v2, step 8 appendix, Table 6). The aspects
-// call the bridge only when a gate is true. Thus, when IAST is inactive, the
-// v1 decode path makes no call to the bridge. If a gate is not inlinable, the
-// gate itself is a call.
+// inlinable. The aspects call the bridge only when a gate is true. Thus, when
+// IAST is inactive, the v1 decode path makes no call to the bridge. If a gate
+// is not inlinable, the gate itself is a call.
 func TestFastPathGatesAreInlinable(t *testing.T) {
 	gotool, err := exec.LookPath("go")
 	if err != nil {

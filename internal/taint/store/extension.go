@@ -73,7 +73,7 @@ func (e *extension) finish() {
 }
 
 // extendRoot adds a new adoption of the same allocation by the same owner to
-// the existing root rootID (plan section 5.2.2, "Extension", steps E1 to E5).
+// the existing root rootID (steps E1 to E5 of "Extension" in the package doc).
 // One owner has at most one root for one allocation. After the extension, the
 // root covers every value of the earlier adoptions and of the new adoption, and
 // its ranges are the union of both range sets (the new ranges win on the bytes
@@ -206,8 +206,9 @@ func (o *Owner) extendRoot(rootID uint16, base uintptr, span uint32, charge int6
 }
 
 // unionLocked computes the union of the new ranges and the stored ranges of
-// root (plan section 5.2.2, "Union rule"). The new ranges come first, so they
-// win on the bytes that both sets describe. The caller holds rootsMu.
+// root (the union rule of "Extension" in the package doc). The new ranges come
+// first, so they win on the bytes that both sets describe. The caller holds
+// rootsMu.
 func (o *Owner) unionLocked(root *rootRecord, set *ranges.Set, span uint32, dst *ranges.Set) ranges.Outcome {
 	var all [2 * MaxRanges]ranges.Range
 	count := set.CopyTo(all[:MaxRanges])

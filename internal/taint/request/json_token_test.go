@@ -19,10 +19,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// The tests of this file check the JSON bridge helpers of plan
-// encoding-json-v2, section 6.1 (step 3): ReaderOwnerToken and CloneForOwner,
-// through jsonbridge.ReaderBinding, with the real store. The woven decoder
-// tests are in iast/encoding/json.
+// The tests of this file check the JSON bridge helpers ReaderOwnerToken and
+// CloneForOwner, through jsonbridge.ReaderBinding, with the real store. The
+// woven decoder tests are in iast/encoding/json.
 
 // registerJSONForTest registers the request helpers as the JSON bridge
 // callbacks, and turns the v2 flag on, so that jsonbridge.ReaderDocument
@@ -276,7 +275,7 @@ func TestCloneForOwnerValues(t *testing.T) {
 
 // TestReaderDocumentWithNoIndexedRoot checks that the first source of a
 // request can be its JSON body: the binding needs an active owner, not an
-// indexed root (plan encoding-json-v2, section 6.1).
+// indexed root.
 func TestReaderDocumentWithNoIndexedRoot(t *testing.T) {
 	enableForTest(t)
 	registerJSONForTest(t)

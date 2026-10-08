@@ -7,11 +7,11 @@
 // dependency on the request owner lifetime, the identity store, instrumentation,
 // redaction, or model serialization.
 //
-// Phase 1 provides the bounded request source table: a fixed-capacity,
+// This file provides the bounded request source table: a fixed-capacity,
 // deduplicating table of request sources. Source equality is exact over
 // (origin, name, full unredacted value). The table keeps the full strings;
-// truncation and redaction are later concerns, applied only when materializing a
-// report model.
+// truncation and redaction are later concerns, applied only when materializing
+// a report model.
 package request
 
 import (

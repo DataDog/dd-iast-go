@@ -8,9 +8,9 @@ package request
 import "github.com/DataDog/dd-iast-go/internal/taint/store"
 
 // The functions in this file adapt sink_bench_test.go to one store
-// implementation. The baseline run of plan section 9.2 uses a copy of the
-// benchmark on the parent revision, with a version of this file for the
-// exact-key value table.
+// implementation. To compare with an older revision, run a copy of the
+// benchmark on that revision, with a version of this file for its store (for
+// example the exact-key value table).
 
 const benchCapacity = store.IndexShards * store.IndexBucketsPerShard * store.IndexBucketSize
 

@@ -26,8 +26,8 @@ const decoderTaintsNumberTokens = false
 const newDecoderAllocations = 1
 
 // unmarshalTaintsKeysAndAny reports whether json.Unmarshal taints map keys
-// and interface{} strings on this variant. The v1 variant does not (plan
-// encoding-json-v2, decision Q1).
+// and interface{} strings on this variant. The v1 variant does not (see "JSON
+// decoding" in the README).
 const unmarshalTaintsKeysAndAny = false
 
 // activeStringTagAllocations is the number of allocations that the JSON

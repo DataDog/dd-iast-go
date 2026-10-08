@@ -17,8 +17,8 @@ import (
 	"github.com/DataDog/dd-iast-go/internal/taint/store"
 )
 
-// The benchmarks of plan section 9.2 for the concatenation and conversion
-// gates of section 9.3. To measure the cost of the hooks, compare two woven
+// The benchmarks of the concatenation and conversion gates (the PROFILES
+// table of .github/runtime-bench.py has the gates). To measure the cost of the hooks, compare two woven
 // test binaries, and run them in turns with -test.bench=BenchmarkRuntime:
 //
 //	go tool orchestrion go test -c -o hook.test ./iast/runtime
@@ -34,8 +34,7 @@ import (
 // with the same instructions. Thus build the two binaries with more than one
 // code placement (for example, add a padding function to the injected runtime
 // declarations), and use the runs of all the placements together.
-// .github/runtime-bench.sh does all this, and checks the gates of plan section
-// 9.3 (the CI workflow runtime-bench.yml runs it on linux).
+// .github/runtime-bench.sh does all this, and checks the gates (the CI workflow runtime-bench.yml runs it on linux).
 //
 // Each case is a //go:noinline function, so that the call shape is the same in
 // all the builds. The "heap" cases store the result in a global (buf == nil);
@@ -127,7 +126,7 @@ func benchCases(tb testing.TB) []benchCase {
 // benchMultiByte has 8 runes of 2, 3 and 4 bytes (22 bytes).
 const benchMultiByte = "éàü€日本語😀"
 
-// runeCases are the rune conversions of plan section 9.2 with 8 and 1 000
+// runeCases are the rune conversion benchmarks with 8 and 1 000
 // runes, ASCII ("r2s8") and multi-byte ("r2s8mb"). With 8 runes, the stack
 // buffer of the runtime (32 bytes, 32 runes) holds the result. With 1 000
 // runes, the result is always on the heap, thus only the heap case. Each
@@ -224,7 +223,7 @@ func BenchmarkRuntimeClean(b *testing.B) {
 // one tier S granule, so the two operands are in different granules) that has
 // a range only on [0, 2). Thus the filter check before the wrapper has a hit,
 // and the pre-check confirms that the operands are clean: the result stays on
-// the stack (0 extra allocations). The plan section 9.3 gates "filter hit"
+// the stack (0 extra allocations). The gates "filter hit"
 // (s2b-stack, one operand) and "2-operand stack concat" (concat2-stack, both
 // operands hit) use these cases.
 func BenchmarkRuntimeCleanHit(b *testing.B) {
@@ -314,8 +313,8 @@ func BenchmarkRuntimeS2SOff(b *testing.B) {
 }
 
 // BenchmarkRuntimeTainted: the gate is on, and one operand is tainted. The
-// stack cases get one heap allocation (plan section 9.3: +1 allocation of the
-// exact result size). The time gates of section 9.3 increase with the size of
+// stack cases get one heap allocation (the gate: +1 allocation of the exact
+// result size). The time gates increase with the size of
 // the operation (a base time, plus a time for each operand above 2 or for each
 // rune; see .github/runtime-bench.py). The heap cases get no extra allocation.
 // Before the measurement, runTainted does one operation of each case, and

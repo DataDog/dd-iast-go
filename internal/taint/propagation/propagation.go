@@ -568,9 +568,8 @@ func coarseAccumulate(o *coarseOwner, set *ranges.Set) {
 }
 
 // StringWindow does nothing. The interior index finds every window of a live
-// root, so a window needs no publication. It stays only for the AST slice
-// operator wrappers of iast/propagation/operators.go, which step 5 of the
-// runtime operator hooks plan deletes together with this function.
+// root, so a window needs no publication. Its callers (the AST slice operator
+// wrappers) are deleted, and no code calls it now. It can be deleted.
 func StringWindow(string, string) {}
 
 // ByteWindow does nothing. See StringWindow.

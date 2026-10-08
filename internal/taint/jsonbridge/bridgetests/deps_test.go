@@ -11,10 +11,10 @@ import (
 	"testing"
 )
 
-// TestBridgeDependencies checks plan encoding-json-v2, section 5: encoding/json
-// and encoding/json/v2 import jsonbridge, thus jsonbridge must not import an
-// encoding package. It imports only reflect, sync/atomic, unsafe, and their
-// dependencies.
+// TestBridgeDependencies checks the dependency rule of the bridge:
+// encoding/json and encoding/json/v2 import jsonbridge, thus jsonbridge must
+// not import an encoding package. It imports only reflect, sync/atomic, unsafe,
+// and their dependencies.
 func TestBridgeDependencies(t *testing.T) {
 	gotool, err := exec.LookPath("go")
 	if err != nil {

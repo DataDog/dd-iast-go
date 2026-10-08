@@ -72,8 +72,8 @@ func testPropagation(t *testing.T, automatic bool) {
 			if automatic {
 				require.Equal(t, test.want, data != nil)
 			} else {
-				// The manual helper makes a binding that is not exclusive
-				// (decision Q13): a consumer attributes nothing.
+				// The manual helper makes a binding that is not exclusive (no
+				// Read guard): a consumer attributes nothing.
 				require.Nil(t, data)
 				bound := request.LookupObject(output, store.BindingReader, make([]store.OwnerRef, 4)) == 1
 				require.Equal(t, test.want, bound)
@@ -133,15 +133,15 @@ func TestPropagateNilReaders(t *testing.T) {
 }
 
 // TestKnownLimitBufioValueCopySharesBuffer pins the current behavior of
-// residual R15 of plan encoding-json-v2 (section 6.6, decision Q10): a copy of
+// a known limit of the Read guard (see "Known limits" in the README): a copy of
 // a bufio.Reader value shares its buffer with the original. A Reset and a Read
 // of the copy write bytes of the new reader into the buffer that the original
 // reads next. The Read guard of the original sees no retarget, thus IAST
 // attributes these bytes to the request of the original.
 //
-// Known limit R15. If this test fails because the bytes are not attributed to
-// A, the limit is fixed: update R15, the README, and the iast/bufio package
-// doc.
+// If this test fails because the bytes are not attributed to A, the limit is
+// fixed: update the "Known limits" section of the README and the iast/bufio
+// package doc.
 func TestKnownLimitBufioValueCopySharesBuffer(t *testing.T) {
 	if !built.WithOrchestrion {
 		t.Skip("orchestrion is not enabled, use `go tool orchestrion go test` to run this test suite")

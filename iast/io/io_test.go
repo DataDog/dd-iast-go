@@ -94,8 +94,8 @@ func requireBodyRange(t *testing.T, ctx context.Context, data []byte, sourceValu
 
 // TestReadAllThroughSupportedWrappers checks the wrapper chain LimitReader,
 // TeeReader, MultiReader, and bufio. io.ReadAll attributes the result only to
-// the one exclusive owner of its input (plan encoding-json-v2, section 6.7).
-// Thus a MultiReader with a clean input is a miss.
+// the one exclusive owner of its input. Thus a MultiReader with a clean input
+// is a miss.
 func TestReadAllThroughSupportedWrappers(t *testing.T) {
 	if !built.WithOrchestrion {
 		t.Skip("orchestrion is not enabled, use `go tool orchestrion go test`")
@@ -137,8 +137,7 @@ func TestReadAllThroughSupportedWrappers(t *testing.T) {
 
 // TestMultiReaderInspectionBoundAndCleanup checks a MultiReader of 9 inputs:
 // 7 clean inputs, the body of A, and the body of B. The binding of the result
-// is not exclusive, thus io.ReadAll attributes nothing to A or to B (plan
-// encoding-json-v2, section 6.7).
+// is not exclusive, thus io.ReadAll attributes nothing to A or to B.
 func TestMultiReaderInspectionBoundAndCleanup(t *testing.T) {
 	if !built.WithOrchestrion {
 		t.Skip("orchestrion is not enabled, use `go tool orchestrion go test`")

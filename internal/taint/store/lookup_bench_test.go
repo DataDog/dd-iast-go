@@ -12,8 +12,7 @@ import (
 	"unsafe"
 )
 
-// The benchmarks in this file measure the lookup path under three index loads
-// (plan section 9.2):
+// The benchmarks in this file measure the lookup path under three index loads:
 //   - sparse: 100 roots;
 //   - typical: 2 500 roots;
 //   - full: 63 owners of 512 roots each (32 256 roots; the 64th owner holds
@@ -219,8 +218,8 @@ func BenchmarkMayContain(b *testing.B) {
 			keys []Key
 		}{
 			{"clean-random", loaded.clean},
-			// Filter misses only (plan section 9.3: "filter miss, any
-			// load"). At the full load, most random keys are filter hits.
+			// Filter misses only, at each load. At the full load, most random
+			// keys are filter hits.
 			{"clean-miss", loaded.miss},
 			{"clean-neighbor", []Key{loaded.neighbor}},
 			{"tainted-root", []Key{loaded.tainted}},

@@ -17,9 +17,10 @@ import (
 	"github.com/DataDog/dd-iast-go/internal/taint/store"
 )
 
-// The tests of this file check rule (f) of plan encoding-json-v2, section 6.5,
-// at the consumers of the request package: ReaderOwner + RevalidateReader,
-// ReadAllBytesForToken (io.ReadAll), and CloneReaderBytesForToken.
+// The tests of this file check reader binding rule (f) (see the
+// internal/taint/store package doc) at the consumers of the request package:
+// ReaderOwner + RevalidateReader, ReadAllBytesForToken (io.ReadAll), and
+// CloneReaderBytesForToken.
 
 // consumers are the attribution paths of a reader token. Each returns true
 // when it attributed data to an owner.
@@ -78,8 +79,7 @@ func TestReaderTokenMissesSecondOwnerThatEnded(t *testing.T) {
 
 			require.False(t, consume(token, reader, analysis),
 				"the data was attributed to A after B bound the reader and ended")
-			// A token taken after B ended is not OK either (review 2 of
-			// batch 1, finding 2).
+			// A token taken after B ended is not OK either.
 			require.False(t, ReaderOwner(reader).OK())
 			require.False(t, consume(ReaderOwner(reader), reader, analysis))
 		})
@@ -155,8 +155,8 @@ func TestReaderTokenOfFinishedOwnerIsMiss(t *testing.T) {
 	ReadAllBytesForToken(token, reader, []byte("body"))
 }
 
-// TestWrapperBuiltAfterSecondOwnerEndedIsNotExclusive checks review 2 of batch
-// 1, finding 2, at the propagation functions: A binds the body, B binds it and
+// TestWrapperBuiltAfterSecondOwnerEndedIsNotExclusive checks the sticky loss of
+// rule (f) at the propagation functions: A binds the body, B binds it and
 // ends, and only then A builds a wrapper over the body. The wrapper must not
 // be exclusive, and a token of the body or of the wrapper must not be OK.
 func TestWrapperBuiltAfterSecondOwnerEndedIsNotExclusive(t *testing.T) {
@@ -184,8 +184,8 @@ func TestWrapperBuiltAfterSecondOwnerEndedIsNotExclusive(t *testing.T) {
 	}
 }
 
-// TestRetargetCallbackFailureFailsClosed checks review 2 of batch 1, finding
-// 3: the Retarget callback panics, thus the retargeted bit of the owner is not
+// TestRetargetCallbackFailureFailsClosed checks the fail-closed rule (a2): the
+// Retarget callback panics, thus the retargeted bit of the owner is not
 // set, and CheckRead removes the guard. A guarded wrapper, and each binding
 // over it, must then not be exclusive (iobridge.RetargetLost). A binding with
 // no guard is not changed.
@@ -224,8 +224,8 @@ func TestRetargetCallbackFailureFailsClosed(t *testing.T) {
 	requireOwner(t, scope, body)
 }
 
-// TestContentionDuringRevalidationIsMiss checks review 2 of batch 1, finding
-// 4: a token is valid, but a binding table is locked while the revalidation
+// TestContentionDuringRevalidationIsMiss checks rule (b) at revalidation: a
+// token is valid, but a binding table is locked while the revalidation
 // looks up the reader. The lookup is incomplete, thus each consumer must miss.
 // The same token is valid again after the release.
 func TestContentionDuringRevalidationIsMiss(t *testing.T) {

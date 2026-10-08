@@ -427,7 +427,7 @@ func TestReaderDocument(t *testing.T) {
 
 // TestReaderDocumentNeedsNoIndexedRoot checks that the clone is made when a
 // request is active and the process has no indexed root: the body can be the
-// first source of the request (plan encoding-json-v2, section 6.1).
+// first source of the request.
 func TestReaderDocumentNeedsNoIndexedRoot(t *testing.T) {
 	var owners atomic.Uint64
 	owners.Store(1)
@@ -567,8 +567,7 @@ func TestGateOffDoesNotAllocate(t *testing.T) {
 }
 
 func TestReaderBindingSize(t *testing.T) {
-	// The field that the aspect adds to json.Decoder (plan encoding-json-v2,
-	// section 6.1): the reader, the store of the token, the generation, the
-	// slot, the entry, and the state.
+	// The field that the aspect adds to json.Decoder: the reader, the store of
+	// the token, the generation, the slot, the entry, and the state.
 	require.Equal(t, uintptr(48), unsafe.Sizeof(jsonbridge.ReaderBinding{}))
 }

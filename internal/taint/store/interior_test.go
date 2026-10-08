@@ -1009,7 +1009,8 @@ func TestRandomSequenceKeepsIndexInvariants(t *testing.T) {
 	requireIndexEmpty(t, s)
 }
 
-// TestStoreFootprint measures the fixed store layout (plan section 5.2.1).
+// TestStoreFootprint measures the fixed store layout (see "Footprint" in the
+// package doc).
 func TestStoreFootprint(t *testing.T) {
 	if unsafe.Sizeof(uintptr(0)) != 8 {
 		t.Skip("32-bit platforms are not supported")
@@ -1022,8 +1023,8 @@ func TestStoreFootprint(t *testing.T) {
 	require.Equal(t, uintptr(312), unsafe.Sizeof(rootRecord{}))
 	require.Equal(t, uintptr(expectedOwnerSize), unsafe.Sizeof(owner{}))
 	require.Equal(t, uintptr(expectedStoreSize), unsafe.Sizeof(Store{}))
-	const planned = 14_040_136
-	require.LessOrEqual(t, unsafe.Sizeof(Store{}), uintptr(planned+planned/100), "the plan budget is 14 040 136 B + 1 %")
+	const budget = 14_040_136
+	require.LessOrEqual(t, unsafe.Sizeof(Store{}), uintptr(budget+budget/100), "the store budget is 14 040 136 B + 1 %")
 }
 
 func mustKey(t testing.TB, value string) Key {

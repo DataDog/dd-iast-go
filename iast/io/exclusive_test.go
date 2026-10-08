@@ -19,10 +19,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// The tests of this file check the exclusive reader bindings of plan
-// encoding-json-v2, sections 6.5 and 6.6. They check the binding only, with
-// request.ReaderOwner: ok means "one owner, effectively exclusive". The
-// io.ReadAll consumer tests are in readall_token_test.go and
+// The tests of this file check the exclusive reader bindings (see the reader
+// binding rules in the internal/taint/store package doc). They check the
+// binding only, with request.ReaderOwner: ok means "one owner, effectively
+// exclusive". The io.ReadAll consumer tests are in readall_token_test.go and
 // readall_exclusive_test.go. The json.Decoder consumer tests are in
 // iast/encoding/json.
 
@@ -51,8 +51,8 @@ func requireNotExclusive(t *testing.T, reader any) {
 }
 
 // requireOneOwnerNotExclusive checks that one request is bound to reader, and
-// that the binding is not exclusive: the loss of plan encoding-json-v2,
-// section 6.5, rule (f), is sticky after a second owner ends.
+// that the binding is not exclusive: the loss of rule (f) is sticky after a
+// second owner ends.
 func requireOneOwnerNotExclusive(t *testing.T, reader any) {
 	t.Helper()
 	require.Equal(t, 1, request.LookupObject(reader, store.BindingReader, make([]store.OwnerRef, 4)),
@@ -161,10 +161,9 @@ func TestMultiReaderEightInputsOfAAndNinthOfB(t *testing.T) {
 	require.True(t, strings.HasSuffix(string(data), "bytes-of-B"))
 }
 
-// TestWrapperLosesExclusivityWhenInputGetsSecondOwner checks plan
-// encoding-json-v2, section 6.5, rule (e): a wrapper of an input that is
-// exclusive to A stops being exclusive when the input gets a binding of a
-// second live owner B.
+// TestWrapperLosesExclusivityWhenInputGetsSecondOwner checks rule (e): a
+// wrapper of an input that is exclusive to A stops being exclusive when the
+// input gets a binding of a second live owner B.
 func TestWrapperLosesExclusivityWhenInputGetsSecondOwner(t *testing.T) {
 	requireWoven(t)
 	for name, build := range wrapperBuilders() {
@@ -183,11 +182,10 @@ func TestWrapperLosesExclusivityWhenInputGetsSecondOwner(t *testing.T) {
 	}
 }
 
-// TestWrapperStaysNotExclusiveAfterSecondOwnerEnds checks that the loss of
-// rule (e) is sticky (follow-up review 1 of batch 1, finding 1): the input of
-// a wrapper of A gets a binding of B, the wrapper reads (and bufio buffers)
-// bytes while B is live, then B ends. The wrapper and its input must stay not
-// exclusive to A (rules (e) and (f)).
+// TestWrapperStaysNotExclusiveAfterSecondOwnerEnds checks that the loss of rule
+// (e) is sticky: the input of a wrapper of A gets a binding of B, the wrapper
+// reads (and bufio buffers) bytes while B is live, then B ends. The wrapper and
+// its input must stay not exclusive to A (rules (e) and (f)).
 func TestWrapperStaysNotExclusiveAfterSecondOwnerEnds(t *testing.T) {
 	requireWoven(t)
 	for name, build := range wrapperBuilders() {

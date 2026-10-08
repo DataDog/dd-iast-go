@@ -20,9 +20,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// The tests of this file check the Read guard of plan encoding-json-v2,
-// section 6.6. They check the binding only, with request.ReaderOwner: ok
-// means "one owner, effectively exclusive".
+// The tests of this file check the Read guard (see the reader binding rules in
+// the internal/taint/store package doc). They check the binding only, with
+// request.ReaderOwner: ok means "one owner, effectively exclusive".
 
 func beginRequest(t *testing.T) (context.Context, *request.Scope) {
 	t.Helper()
@@ -88,7 +88,8 @@ func TestBufioRetargetAfterBind(t *testing.T) {
 			requireExclusiveOwner(t, scope, buffered)
 			readOnce(buffered)
 			requireNotExclusive(t, buffered)
-			// The retargeted bit is per owner (decision Q14).
+			// The retargeted bit is per owner (rule (a2)): one retarget removes
+			// the exclusivity of all guarded readers of the owner.
 			requireNotExclusive(t, sibling)
 			requireExclusiveOwner(t, scope, body)
 		})
@@ -165,6 +166,6 @@ func TestManualPropagateIsNotExclusive(t *testing.T) {
 	body := boundBody(t, ctx, "request-body")
 	output := bufio.NewReaderSize(strings.NewReader("unbound"), 16)
 	iastbufio.Propagate(body, output)
-	// An unwoven bufio has no Read guard (decision Q13).
+	// An unwoven bufio has no Read guard.
 	requireNotExclusive(t, output)
 }

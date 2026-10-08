@@ -26,18 +26,18 @@ import (
 )
 
 // The tests of this file check json.Unmarshal of tainted bytes. On the v1
-// variant, the Phase 8 decodeState aspects propagate. On the v2 variant, the
-// wrapper of the default string unmarshaler of encoding/json/v2 propagates
-// (plan encoding-json-v2, section 6.2, step 4). The expected results are the
-// same on all variants, except for map keys and interface{} strings
-// (unmarshalTaintsKeysAndAny, decision Q1).
+// variant, the decodeState aspects propagate. On the v2 variant, the
+// wrapper of the default string unmarshaler of encoding/json/v2 propagates.
+// The expected results are the same on all variants, except for map keys and
+// interface{} strings (unmarshalTaintsKeysAndAny; see "JSON decoding" in the
+// README).
 
 // bodySource is the source of the tainted documents of these tests.
 var bodySource = taint.Source{Origin: taint.OriginHttpRequestBody, Name: "unmarshal"}
 
 // requireCoarseTaint checks that value has exactly one range, on all of its
-// bytes, with the body source and the source value document (decision Q2:
-// one coarse range for each decoded string).
+// bytes, with the body source and the source value document (one coarse range
+// for each decoded string).
 func requireCoarseTaint(t *testing.T, ctx context.Context, value, document string) {
 	t.Helper()
 	var found []taint.Range
@@ -96,8 +96,8 @@ type unmarshalNested struct {
 	Value string `json:"value"`
 }
 
-// TestUnmarshalPropagatesDestinationClasses is the exit test of plan step 4:
-// a string of each destination class gets the taint of its raw token.
+// TestUnmarshalPropagatesDestinationClasses checks that a string of each
+// destination class gets the taint of its raw token.
 func TestUnmarshalPropagatesDestinationClasses(t *testing.T) {
 	requireWoven(t)
 	ctx, _ := beginRequest(t)
@@ -146,9 +146,9 @@ func TestUnmarshalPropagatesDestinationClasses(t *testing.T) {
 	}
 }
 
-// TestUnmarshalUsesTheRawTokenOfEachString checks plan risk R2: each string
-// gets the taint of its own raw token, not of a token next to it. Only one
-// token of the document is tainted.
+// TestUnmarshalUsesTheRawTokenOfEachString checks that each string gets the
+// taint of its own raw token, not of a token next to it (the string wrapper
+// must do no read after ReadValue). Only one token of the document is tainted.
 func TestUnmarshalUsesTheRawTokenOfEachString(t *testing.T) {
 	requireWoven(t)
 	ctx, _ := beginRequest(t)
@@ -249,7 +249,8 @@ func (c *unmarshalCustomText) UnmarshalText([]byte) error {
 
 // TestUnmarshalFailedConversionsDoNotPropagate checks that a string whose own
 // conversion fails gets no taint, and that the other strings of the document
-// keep their own taint (plan section 3, "Failed documents").
+// keep their own taint (propagation is per string, with no whole-document
+// staging).
 func TestUnmarshalFailedConversionsDoNotPropagate(t *testing.T) {
 	requireWoven(t)
 	ctx, _ := beginRequest(t)
@@ -300,7 +301,7 @@ func TestUnmarshalFailedConversionsDoNotPropagate(t *testing.T) {
 	})
 }
 
-// TestUnmarshalKeysAndInterfaceValues checks decision Q1: on the v2 variant,
+// TestUnmarshalKeysAndInterfaceValues checks that, on the v2 variant,
 // map keys and interface{} strings get the taint of their exact token. The
 // JSON aspects of the v1 variant keep them clean.
 func TestUnmarshalKeysAndInterfaceValues(t *testing.T) {
@@ -344,10 +345,11 @@ func TestUnmarshalKeysAndInterfaceValues(t *testing.T) {
 	check(destination.Single.(string))
 }
 
-// TestUnmarshalKeysAndInterfaceValuesUseTheirOwnToken checks decision Q1
-// with one tainted token at a time: on the v2 variant, the escaped map key or
-// interface{} string of that token gets its taint, and the other keys and
-// strings stay clean. On the v1 variant, only the typed map values get taint.
+// TestUnmarshalKeysAndInterfaceValuesUseTheirOwnToken checks the v2 coverage of
+// map keys and interface{} strings with one tainted token at a time: on the v2
+// variant, the escaped map key or interface{} string of that token gets its
+// taint, and the other keys and strings stay clean. On the v1 variant, only the
+// typed map values get taint.
 func TestUnmarshalKeysAndInterfaceValuesUseTheirOwnToken(t *testing.T) {
 	requireWoven(t)
 	ctx, _ := beginRequest(t)
@@ -451,10 +453,10 @@ var legacyTyped = cacheMode{document: objectDocument, decode: func(t *testing.T,
 	return destination.Probe, destination.Value
 }}
 
-// requireCacheKeepsRequestsApart checks plan risk R5 and the string cache
-// guard (plan encoding-json-v2, section 6.2, "String cache"). The decoder of
-// encoding/json/v2 keeps a string cache across Unmarshal calls. While
-// request A is live:
+// requireCacheKeepsRequestsApart checks that the string cache of a pooled
+// decoder gives no taint to a later request, and checks the string cache guard.
+// The decoder of encoding/json/v2 keeps a string cache across Unmarshal calls.
+// While request A is live:
 //
 //  1. a decode of clean bytes puts the string probe in the cache;
 //  2. request A decodes tainted bytes of the string value with the mode

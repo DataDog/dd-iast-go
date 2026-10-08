@@ -23,8 +23,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// These tests need a woven runtime (plan runtime-operator-hooks, section 9.1
-// item 1). Run them with:
+// These tests need a woven runtime. Run them with:
 //
 //	go tool orchestrion go test ./iast/runtime/...
 //

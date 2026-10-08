@@ -5,7 +5,7 @@
 
 // Package bridgetest calls the runtime bridge the same way as the woven
 // runtime: it pulls the bridge linker symbols with body-less //go:linkname
-// and //go:noescape declarations (plan runtime-operator-hooks, section 2.2).
+// and //go:noescape declarations, as iast/runtime/orchestrion.yml does.
 // Only tests import it. It does not set the runtime guard.
 package bridgetest
 
@@ -34,7 +34,7 @@ func S2SGate() uint32 { return atomic.LoadUint32(&s2sGate) }
 func SetS2SGate(value uint32) uint32 { return atomic.SwapUint32(&s2sGate, value) }
 
 // The filter checks return their arguments unchanged, with the result of the
-// check (plan section 13.4). The runtime passes its stack buffer as buf; the
+// check (see hooks.go). The runtime passes its stack buffer as buf; the
 // tests pass any pointer.
 
 // ConcatHit is __dd_iast_rt.concat_hit.

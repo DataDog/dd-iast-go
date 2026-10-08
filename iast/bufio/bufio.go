@@ -30,8 +30,7 @@ import (
 //
 // An unwoven bufio package has no Read guard, thus the binding of output is
 // not exclusive. io.ReadAll and the json.Decoder need an exclusive binding,
-// thus they do not attribute the bytes of output (decision Q13 of plan
-// encoding-json-v2).
+// thus they do not attribute the bytes of output.
 func Propagate(input io.Reader, output *bufio.Reader) {
 	if output != nil && output.Size() <= iobridge.MaxBufferedReaderSize {
 		iobridge.PropagateShared(input, output)

@@ -8,12 +8,12 @@ meta:
   name: github.com/DataDog/dd-iast-go/iast/encoding/json
   description: Request-scoped encoding/json propagation
 
-# Each aspect id starts with a variant tag (plan encoding-json-v2, section
-# 6.4). The tag tells the variants of encoding/json where the join point of the
-# aspect can match: [v1] for the v1 files (!goexperiment.jsonv2), [v2] for the
-# v2 files (goexperiment.jsonv2), and [shared] for all variants.
-# TestInstrumentedPropagationTelemetry uses the tags to count the propagation
-# points of each variant (instrumentedPropagationPoints).
+# Each aspect id starts with a variant tag. The tag tells the variants of
+# encoding/json where the join point of the aspect can match: [v1] for the v1
+# files (!goexperiment.jsonv2), [v2] for the v2 files (goexperiment.jsonv2), and
+# [shared] for all variants. TestInstrumentedPropagationTelemetry uses the tags
+# to count the propagation points of each variant
+# (instrumentedPropagationPoints).
 aspects:
   - id: "[shared] application JSON propagation bootstrap"
     join-point:
@@ -32,7 +32,7 @@ aspects:
             _ = iastjson.Activate
 
   # The Decoder type has different fields in the v1 and in the v2 variant of
-  # encoding/json (plan encoding-json-v2, section 4). This aspect matches on
+  # encoding/json (see "JSON decoding" in the README). This aspect matches on
   # all variants, thus it uses only the symbols that it declares itself and
   # the __dd_iast_binding field (all variants have it). A variant-specific
   # aspect sets the two variables in an init function. If no aspect sets them,
@@ -66,13 +66,14 @@ aspects:
               }
             }
 
-  # The reader owner of a Decoder (plan encoding-json-v2, sections 6.3 and
-  # 6.7). NewDecoder exists on all variants. It captures the owner token of
-  # its reader BEFORE the first byte of the reader flows. Each Decode then
-  # revalidates this token before it attributes the bytes of a value. The
-  # field is added on all variants, thus the advice uses only the field and
-  # its methods. Capture does no lookup until a variant-specific aspect
-  # installs a consumer of the token (jsonbridge.EnableV1, EnableV2).
+  # The reader owner of a Decoder (see the reader binding rules in the
+  # internal/taint/store package doc). NewDecoder exists on all variants. It
+  # captures the owner token of its reader BEFORE the first byte of the reader
+  # flows. Each Decode then revalidates this token before it attributes the
+  # bytes of a value. The field is added on all variants, thus the advice uses
+  # only the field and its methods. Capture does no lookup until a
+  # variant-specific aspect installs a consumer of the token
+  # (jsonbridge.EnableV1, EnableV2).
   - id: "[shared] encoding/json Decoder reader binding field"
     join-point:
       struct-definition: encoding/json.Decoder
@@ -102,8 +103,7 @@ aspects:
   # The anchor type decodeState exists only in the v1 files of encoding/json.
   # This join point has no import-path clause, thus the telemetry test does not
   # count it as a propagation point. The v1 Document callback uses the reader
-  # owner that NewDecoder captured, not the reader at Decode time (plan
-  # encoding-json-v2, section 6.7).
+  # owner that NewDecoder captured, not the reader at Decode time.
   - id: "[v1] encoding/json Decoder reader binding dispatch"
     join-point:
       struct-definition: encoding/json.decodeState
@@ -123,14 +123,14 @@ aspects:
               }
             }
 
-  # The default string arshaler of encoding/json/v2 (plan encoding-json-v2,
-  # section 6.2). makeStringArshaler exists in the v2 package of Go 1.26 and
-  # of Go 1.27. This aspect uses only the symbols that it declares itself and
-  # the arshaler fields that the v2 shape test (plan step 6) pins. It wraps the
-  # unmarshal function of the result once for each string type, before
-  # makeMethodArshaler reads it. Thus a custom method replaces the wrapper,
-  # and a method fallback calls the wrapped default. The wrapper is nil, and
-  # nothing changes, until the Go 1.27 aspect below sets it.
+  # The default string arshaler of encoding/json/v2. makeStringArshaler exists
+  # in the v2 package of Go 1.26 and of Go 1.27. This aspect uses only the
+  # symbols that it declares itself and the arshaler fields that the v2 shape
+  # test (shape_v2_test.go) pins. It wraps the unmarshal function of the
+  # result once for each string type, before makeMethodArshaler reads it. Thus
+  # a custom method replaces the wrapper, and a method fallback calls the
+  # wrapped default. The wrapper is nil, and nothing changes, until the Go 1.27
+  # aspect below sets it.
   - id: "[v2] encoding/json/v2 string arshaler wrap"
     join-point:
       all-of:
@@ -155,17 +155,16 @@ aspects:
               }
             }()
 
-  # The string cache guard of encoding/json/v2 (plan encoding-json-v2, section
-  # 6.2, "String cache"). makeString is the only function that reads or
-  # changes the string cache of a decoder. All its callers use it: the default
-  # string arshaler and the any fast path (unmarshalValueAny). When b can have
-  # taint, the runtime hooks can taint string(b). The cache of a pooled
-  # decoder keeps a string for later decodes, in this request and in other
-  # requests. Thus a string of bytes that can have taint does not go into the
-  # cache, and does not come from it. makeString has the same signature in the
-  # v2 package of Go 1.26 and of Go 1.27, and this aspect uses only its
-  # arguments, thus it applies to each toolchain that has encoding/json/v2.
-  # The gate-off cost is two loads and no call (jsonbridge.HasIndexedRoots).
+  # The string cache guard of encoding/json/v2. makeString is the only function
+  # that reads or changes the string cache of a decoder. All its callers use it:
+  # the default string arshaler and the any fast path (unmarshalValueAny). When
+  # b can have taint, the runtime hooks can taint string(b). The cache of a
+  # pooled decoder keeps a string for later decodes, in this request and in
+  # other requests. Thus a string of bytes that can have taint does not go into
+  # the cache, and does not come from it. makeString has the same signature in
+  # the v2 package of Go 1.26 and of Go 1.27, and this aspect uses only its
+  # arguments, thus it applies to each toolchain that has encoding/json/v2. The
+  # gate-off cost is two loads and no call (jsonbridge.HasIndexedRoots).
   - id: "[v2] encoding/json/v2 string cache guard"
     join-point:
       all-of:
@@ -186,7 +185,7 @@ aspects:
             }
 
   # The anchor errInvalidStringTag exists only in the v2 package of Go 1.27
-  # (plan encoding-json-v2, section 4). The ,string rule of the wrapper is the
+  # (see "JSON decoding" in the README). The ,string rule of the wrapper is the
   # rule of Go 1.27.1, thus Go 1.26 with GOEXPERIMENT=jsonv2 gets no wrapper.
   # The join point has no import-path clause, thus the telemetry test does not
   # count it as a propagation point. The init function runs before any
@@ -256,14 +255,14 @@ aspects:
               return err == nil && string(inner) == "null"
             }
 
-  # The value document of the v2 Decode (plan encoding-json-v2, section 6.3).
-  # In the v2 files of encoding/json, (*Decoder).Decode reads one value with
-  # dec.dec.ReadValue(). The value is an alias of the stream buffer of the
-  # decoder. The wrapper replaces it with an immutable clone that the
-  # exclusive owner of the reader adopted (jsonbridge.ReaderDocument). Then
-  # jsonv2.Unmarshal decodes the clone, and the raw token of each string
-  # aliases tainted memory. ReaderDocument revalidates, at each Decode, the
-  # owner token that NewDecoder captured (section 6.5, rule (f)).
+  # The value document of the v2 Decode. In the v2 files of encoding/json,
+  # (*Decoder).Decode reads one value with dec.dec.ReadValue(). The value is an
+  # alias of the stream buffer of the decoder. The wrapper replaces it with an
+  # immutable clone that the exclusive owner of the reader adopted
+  # (jsonbridge.ReaderDocument). Then jsonv2.Unmarshal decodes the clone, and
+  # the raw token of each string aliases tainted memory. ReaderDocument
+  # revalidates, at each Decode, the owner token that NewDecoder captured
+  # (reader binding rule (f) in the internal/taint/store package doc).
   #
   # The join point also matches the two other ReadValue calls of the package,
   # in checkValid and in (*Number).UnmarshalJSONFrom. No join point can limit a
@@ -304,7 +303,8 @@ aspects:
 
   # The v1 aspects below call the bridge only after an inlined gate (two loads
   # at most, no call). When IAST is inactive, the v1 decode path makes no call
-  # to the bridge (plan encoding-json-v2, step 8 appendix, Table 6):
+  # to the bridge (TestV1BridgeCallsAreGated and TestFastPathGatesAreInlinable
+  # check this):
   # - Bind and Document do nothing when no request is active (RequestActive).
   # - Quoted does nothing when no decoder slot is in use (HasDecoderStates).
   # - Literal does nothing when no decoder slot is in use and Active is

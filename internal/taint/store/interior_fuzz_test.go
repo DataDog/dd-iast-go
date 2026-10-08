@@ -39,10 +39,10 @@ type fuzzOwner struct {
 }
 
 // FuzzInteriorIndex runs a sequence of adoptions, shared adoptions, extensions,
-// mutations and finishes that the input encodes. After each operation it
-// checks the index invariants of plan section 5.2.2, and it compares Lookup of
-// a random window of each allocation with the expected ranges of every live
-// owner.
+// mutations and finishes that the input encodes. After each operation it checks
+// the index invariants (see "Interior index" in the package doc), and it
+// compares Lookup of a random window of each allocation with the expected
+// ranges of every live owner.
 func FuzzInteriorIndex(f *testing.F) {
 	f.Add([]byte{0, 10, 0, 200, 1, 0, 150, 3, 0, 1})
 	f.Add([]byte{0, 250, 0, 40, 1, 0, 255, 2, 0, 3, 0})

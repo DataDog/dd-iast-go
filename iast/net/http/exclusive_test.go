@@ -24,9 +24,9 @@ type closingReader struct{ strings.Reader }
 
 func (*closingReader) Close() error { return nil }
 
-// TestMaxBytesReaderOfExclusiveInputIsExclusive checks plan encoding-json-v2,
-// section 6.5: a MaxBytesReader of an exclusive input is exclusive, because
-// user code cannot retarget it.
+// TestMaxBytesReaderOfExclusiveInputIsExclusive checks reader binding rule (a)
+// (see the internal/taint/store package doc): a MaxBytesReader of an exclusive
+// input is exclusive, because user code cannot retarget it.
 func TestMaxBytesReaderOfExclusiveInputIsExclusive(t *testing.T) {
 	if !built.WithOrchestrion {
 		t.Skip("orchestrion is not enabled, use `go tool orchestrion go test`")
@@ -58,8 +58,7 @@ func TestMaxBytesReaderOfExclusiveInputIsExclusive(t *testing.T) {
 	require.True(t, request.BindReader(otherCtx, body))
 	_, _, ok = request.ReaderOwner(limited).Identity()
 	require.False(t, ok, "a MaxBytesReader of an input with two owners is exclusive")
-	// The loss is sticky: it stays after the second owner ends (follow-up
-	// review 1 of batch 1, finding 1).
+	// The loss is sticky: it stays after the second owner ends.
 	_, _ = limited.Read(make([]byte, 4))
 	other.Finish()
 	require.Equal(t, 1, request.LookupObject(body, store.BindingReader, make([]store.OwnerRef, 4)),
@@ -81,7 +80,7 @@ func TestMaxBytesReaderOfExclusiveInputIsExclusive(t *testing.T) {
 }
 
 // TestRequestBodyIsExclusiveAtEntry checks that the HTTP entry binds the
-// request body exclusively (plan encoding-json-v2, section 6.5, rule (a)).
+// request body exclusively (rule (a)).
 func TestRequestBodyIsExclusiveAtEntry(t *testing.T) {
 	if !built.WithOrchestrion {
 		t.Skip("orchestrion is not enabled, use `go tool orchestrion go test`")

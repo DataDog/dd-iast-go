@@ -242,8 +242,8 @@ func TestRetargetCallbackPanicDoesNotEscape(t *testing.T) {
 	if got := iobridge.GuardCountForTest(); got != 0 {
 		t.Fatalf("guard count = %d after a panic in the callback, want 0", got)
 	}
-	// Fail closed (review 2 of batch 1, finding 3): the bit of the owner can
-	// be missing, thus the lost bit must be set.
+	// Fail closed: the bit of the owner can be missing, thus the lost bit must
+	// be set.
 	if !iobridge.RetargetLost() {
 		t.Fatal("a panic in the callback did not set the lost bit")
 	}
@@ -359,10 +359,10 @@ func TestGuardConcurrentSameWrapper(t *testing.T) {
 }
 
 // TestGuardSameWrapperAfterDuplicateCheck checks the invariant of Guard with a
-// fixed order (follow-up review 1 of batch 1, finding 2): two calls for the
-// same wrapper both pass the first duplicate check before one of them adds
-// its entry. At most one call can return true, and the table must have one
-// entry of the wrapper for each call that returned true.
+// fixed order: two calls for the same wrapper both pass the first duplicate
+// check before one of them adds its entry. At most one call can return true,
+// and the table must have one entry of the wrapper for each call that returned
+// true.
 func TestGuardSameWrapperAfterDuplicateCheck(t *testing.T) {
 	install(t)
 	var arrived sync.WaitGroup
@@ -416,7 +416,7 @@ func TestCheckReadDoesNotAllocate(t *testing.T) {
 	iobridge.Unguard(wrapper)
 }
 
-// TestBridgeDependencies checks plan encoding-json-v2, section 5: io, bufio
+// TestBridgeDependencies checks the dependency rule of the bridge: io, bufio
 // and net/http import iobridge, thus iobridge can import only sync/atomic,
 // unsafe, and the runtime with its dependencies.
 func TestBridgeDependencies(t *testing.T) {
@@ -446,9 +446,9 @@ func TestBridgeDependencies(t *testing.T) {
 	}
 }
 
-// TestReadAllEndWithTokenThatIsNotOK checks plan encoding-json-v2, section
-// 6.7: ReadAllEnd returns at once when the token of ReadAllBegin is not OK,
-// and ReadAllBegin and ReadAllEnd do not allocate.
+// TestReadAllEndWithTokenThatIsNotOK checks that ReadAllEnd returns at once
+// when the token of ReadAllBegin is not OK, and ReadAllBegin and ReadAllEnd do
+// not allocate.
 func TestReadAllEndWithTokenThatIsNotOK(t *testing.T) {
 	r := install(t)
 	input := strings.NewReader("body")

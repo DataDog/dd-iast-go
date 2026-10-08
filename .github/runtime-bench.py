@@ -10,7 +10,7 @@
 # Run: python3 .github/runtime-bench.py <outdir>
 #
 # The report of .github/runtime-bench.sh: it compares the results with the
-# numeric gates of plan runtime-operator-hooks, section 9.3, writes the
+# numeric gates of the runtime hooks (the limits are in PROFILES), writes the
 # Markdown report to stdout, and writes the verdict to <outdir>/verdict:
 #   PASS        every gate is measured and passes;
 #   FAIL        one or more gates fail;
@@ -18,7 +18,7 @@
 #               in RUNTIME_BENCH_OPTIONAL.
 #
 # RUNTIME_BENCH_PROFILE selects the gate limits (see PROFILES): "local"
-# (default, the darwin/arm64 gates of plan section 9.3) or "ci" (the GitHub
+# (default, the darwin/arm64 gates) or "ci" (the GitHub
 # runners, linux/amd64 and linux/arm64). An unknown profile is an error (exit
 # code 2).
 #
@@ -44,8 +44,8 @@ LINE = re.compile(r"^Benchmark(\S+?)(?:-\d+)?\s+\d+\s+(.+)$")
 PAIR = re.compile(r"([-+\d.eE]+)\s+(\S+)")
 
 MIN_PLACEMENTS = 8
-# The minimum number of runs: for each runtime case, side and placement (plan
-# section 9.2: 8 runs); for each store and admission row; for each side of
+# The minimum number of runs: for each runtime case, side and placement (8
+# runs); for each store and admission row; for each side of
 # the HTTP benchmark.
 MIN_RUNS = 8
 # The maximum median drops/op of a hook RuntimeTainted row. A drop is a
@@ -130,7 +130,7 @@ EXPECTED_ADMISSION = (
     + ["SourceAdmission/retention/sparse/TaintString"]
 )
 
-# The gate limits of each profile (plan section 9.3). All ns values are the
+# The gate limits of each profile. All ns values are the
 # maximum pooled hook - nohook, or the maximum median for the store rows.
 #   off, off_rune        gate off; off_rune is for r2s and s2r
 #   clean_base, clean_operand
@@ -151,7 +151,8 @@ EXPECTED_ADMISSION = (
 #                        change the verdict); the 0 extra allocations rule
 #                        stays a gate
 #   maycontain_hit, maycontain_random (sparse, typical, full), maycontain_miss
-#   s2s_off              Q2 switch off
+#   s2s_off              []byte(s) and []rune(s) propagation off
+#                        (DD_IAST_STRING_TO_SLICE_PROPAGATION_ENABLED=false)
 #   http, http_note      HTTP overhead in %, and the reason of the limit
 #   http_runner          optional: {RUNNER_LABEL: (http, http_note)}; it
 #                        replaces http and http_note on that runner (an
@@ -166,7 +167,8 @@ PROFILES = {
         "clean_rune": 6.0,
         "hit": 50.0,
         "full2": 100.0,
-        # User decision after T11.2: the tainted cost scales with the size.
+        # User decision after the darwin/arm64 measure of the corrected
+        # tainted method: the tainted cost scales with the size.
         "tainted_base": 900.0,
         "tainted_operand": 120.0,
         "tainted_rune_base": 1100.0,
@@ -177,7 +179,7 @@ PROFILES = {
         "maycontain_miss": 3.0,
         "s2s_off": 2.0,
         "http": 3.70,
-        "http_note": "Phase 6: +2.70 %, + 1 point",
+        "http_note": "baseline: +2.70 %, + 1 point",
     },
     # User decision after CI run 36992589970: the worst value of the two
     # GitHub runners, plus a margin.
@@ -561,7 +563,7 @@ def main():
     )
     runtime_gate(
         "s2s-off",
-        "Gate on, `[]byte(s)` / `[]rune(s)`, Q2 switch off",
+        "Gate on, `[]byte(s)` / `[]rune(s)`, string-to-slice propagation off",
         f"0 extra allocations; <= +{ns(g['s2s_off'])}",
         select("RuntimeS2SOff"),
     )
@@ -594,7 +596,7 @@ def main():
     else:
         missing("http", title, gate, f"less than {MIN_HTTP_RUNS} `HTTPRoundTrip` runs for each side")
 
-    title, gate = "Source-root admission loss (Q9), old - new", "sparse: 0 points; stressed: <= 1 point"
+    title, gate = "Source-root admission loss, old - new", "sparse: 0 points; stressed: <= 1 point"
     adm_rows = []
     absent = [c for c in EXPECTED_ADMISSION if len(adm_new.get(c, [])) < MIN_RUNS or len(adm_old.get(c, [])) < MIN_RUNS]
     if absent:
@@ -644,7 +646,7 @@ def main():
     verdict = "FAIL" if failed else ("INCOMPLETE" if required else "PASS")
 
     p(
-        f"## Runtime hooks: plan section 9.3 gates, profile `{profile_name}` ({g['title']}) "
+        f"## Runtime hooks: numeric gates, profile `{profile_name}` ({g['title']}) "
         f"({os.environ.get('RUNTIME_BENCH_TAG', '')})"
     )
     p("")
@@ -655,7 +657,7 @@ def main():
         "Gate value: pooled median of hook - nohook."
     )
     p("")
-    p("| Key | Case (9.3) | Gate | Measured | Result |")
+    p("| Key | Case | Gate | Measured | Result |")
     p("|---|---|---|---|---|")
     for key, title, gate, value, ok in gates:
         if ok is None:

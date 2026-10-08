@@ -12,7 +12,8 @@ meta:
     source-expression rewrites, so the evaluation of the application code does
     not change.
 
-# How the hooks work (plan runtime-operator-hooks, section 2.2, variant D):
+# How the hooks work (the internal/taint/runtimebridge package doc has the
+# runtime hook rules):
 #
 #  1. The prepended code of each hooked runtime function reads the gate word
 #     with one atomic load. When the gate is 0 (no tainted root in the process
@@ -45,8 +46,9 @@ meta:
 #     __dd_iast_orig_<fn>, clears the token, and calls the bridge result hook
 #     when the result is not on the stack.
 #
-# Rules (do not change them without the escape comparison and the system-stack
-# test of the plan, sections 3.8 and 9.1 item 15):
+# Rules (do not change them without the escape comparison of
+# .github/runtime-escape-compare.sh and the system-stack test of
+# iast/runtime/internal/g0test):
 #
 #  - The wrapper calls the original function only through its body-less alias.
 #    A direct call changes the escape tags of the runtime function.
@@ -72,8 +74,9 @@ aspects:
           # The bridge defines the __dd_iast_rt.* symbols. The propagation
           # package registers the tainted-path callbacks in its init function.
           # Orchestrion adds a link dependency that the program does not import
-          # to the main package, so both init functions run (plan section 3.2
-          # rule 6).
+          # to the main package, so both init functions run (rule 6 of the
+          # runtime hook rules in the internal/taint/runtimebridge package
+          # doc).
           links:
             - github.com/DataDog/dd-iast-go/internal/taint/runtimebridge
             - github.com/DataDog/dd-iast-go/internal/taint/propagation

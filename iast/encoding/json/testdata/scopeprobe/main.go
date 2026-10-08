@@ -6,8 +6,7 @@
 // Command scopeprobe uses the three ReadValue calls of the v2-backed
 // encoding/json: (*Decoder).Decode, checkValid (json.Valid), and
 // (*Number).UnmarshalJSONFrom (json.Number). TestV2ReadValueHookScope builds
-// it with Orchestrion and without, and compares the results (plan
-// encoding-json-v2, section 6.3).
+// it with Orchestrion and without, and compares the results.
 //
 // Each line with the prefix "result " must be the same in the woven and in
 // the unwoven build. Each line with the prefix "taint " tells if a decoded

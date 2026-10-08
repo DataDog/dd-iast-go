@@ -14,7 +14,8 @@ import (
 )
 
 // The interior index finds the root that contains a value from any data
-// pointer inside the root, not only from the root base (plan section 5.2).
+// pointer inside the root, not only from the root base (see "Interior index"
+// in the package doc).
 //
 // The index has two tiers of granules. A root with a span of at most MaxSpanS
 // bytes is in tier S (64-byte granules). A larger root is in tier L (4 KiB
@@ -52,8 +53,8 @@ const (
 	// maxProbeRefs bounds the refs that one reader copies from both tiers.
 	maxProbeRefs = 2 * MaxSnapshotOwners
 	// writerLockTries bounds the TryLock tries of an index writer on one
-	// shard (plan R14, "a bounded TryLock retry, at most 4 tries, no
-	// blocking"). Readers try only once.
+	// shard. A bounded retry with no blocking lowers the number of roots
+	// that contention refuses. Readers try only once.
 	writerLockTries = 4
 	// writerLockSpin is the number of atomic loads between two tries.
 	writerLockSpin = 64
@@ -190,8 +191,8 @@ const (
 	// indexed == true.
 	hookValidate
 	// hookReaderBind runs in bindValue under the binding table lock, after
-	// the reader bind counter add and before the table change (rule (e) of
-	// plan encoding-json-v2, section 6.5). The result is not used.
+	// the reader bind counter add and before the table change (reader
+	// binding rule (e) in the package doc). The result is not used.
 	hookReaderBind
 	// hookInputCounters runs in a reader lookup after it copied the input
 	// identities of a derived exclusive binding, and before the input
@@ -443,9 +444,10 @@ func (s *Store) widenEntry(key, base uintptr, span uint32) bool {
 	return false
 }
 
-// ownRoot finds the root of this owner for the allocation base (plan section
-// 5.2.2, step 0). It reads tier S first, then tier L. ok is false when a shard
-// lock is contended, or when the refs of this owner name two roots.
+// ownRoot finds the root of this owner for the allocation base (step 0 of a
+// first adoption in the package doc). It reads tier S first, then tier L. ok is
+// false when a shard lock is contended, or when the refs of this owner name two
+// roots.
 func (o *Owner) ownRoot(base uintptr) (rootID uint16, found, ok bool) {
 	gen := uint32(o.gen)
 	for _, large := range [2]bool{false, true} {
@@ -482,8 +484,8 @@ func (o *Owner) ownRoot(base uintptr) (rootID uint16, found, ok bool) {
 	return rootID, found, true
 }
 
-// commitCheckLocked runs the commit checks of a first adoption (plan section
-// 5.2.2, step 5). The caller holds rootsMu. It only tries the shard locks. It
+// commitCheckLocked runs the commit checks of a first adoption (step 5 in the
+// package doc). The caller holds rootsMu. It only tries the shard locks. It
 // reads the base-key entries of the allocation in both tiers and checks that:
 //   - check (b): every ref of this owner names rootID. This stops two
 //     concurrent first adoptions of one owner in different tiers;
@@ -568,9 +570,10 @@ func (s *Store) removeInserted(positions []indexPos, keys []uintptr, base uintpt
 }
 
 // indexRoot publishes the index refs of a new root with all-or-nothing
-// semantics (plan section 5.2.2, steps 1 to 6, without rollbackRoot). On
-// success, the root is visible to lookups. On failure, no ref and no filter
-// count of this root stays, and the caller must roll back the root.
+// semantics (steps 1 to 6 of a first adoption in the package doc, without
+// rollbackRoot). On success, the root is visible to lookups. On failure, no ref
+// and no filter count of this root stays, and the caller must roll back the
+// root.
 func (o *Owner) indexRoot(rootID uint16, generation uint32, base uintptr, span uint32, kind Kind) bool {
 	s := o.store
 	keys, ok := rootKeys(base, span, largeSpan(span))
@@ -678,9 +681,9 @@ func (s *Store) probe(key, p uintptr, n uint32, out *[maxProbeRefs]candidate, co
 	return count, true
 }
 
-// probeBoth reads tier S completely (filter and probe), then tier L (plan
-// section 5.2.4 step 2). It reports false when a shard lock is contended.
-// overflow is true when out had no space for a ref.
+// probeBoth reads tier S completely (filter and probe), then tier L (see
+// "Lookup and validation" in the package doc). It reports false when a shard
+// lock is contended. overflow is true when out had no space for a ref.
 func (s *Store) probeBoth(p uintptr, n uint32, out *[maxProbeRefs]candidate) (count int, acquired, overflow bool) {
 	acquired = true
 	if key := granuleKey(p, false); s.filterHit(key) {

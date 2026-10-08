@@ -21,10 +21,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// The tests of this file check (*json.Decoder).Decode on all variants (plan
-// encoding-json-v2, step 5). On the v2 variant, the ReadValue wrapper of
-// Decode gives each value to the exclusive owner of the reader (section 6.3).
-// On the v1 variant, the Document path does the same (section 6.7).
+// The tests of this file check (*json.Decoder).Decode on all variants. On the
+// v2 variant, the ReadValue wrapper of Decode gives each value to the
+// exclusive owner of the reader. On the v1 variant, the Document path does the
+// same.
 
 // TestDecoderCleanReaderAfterTaintedReader checks that a decoder that gets a
 // clean reader (*decoder = *json.NewDecoder(clean)) does not keep the owner
@@ -159,8 +159,7 @@ func TestDecoderBytesBufferReader(t *testing.T) {
 // TestDecoderSeveralDecodeCalls checks several Decode calls on one decoder.
 // Each value has its own source. The v1 source value starts directly after
 // the previous value, thus it can start with the whitespace between the
-// values. The v2 source value starts at the first byte of the value (plan
-// encoding-json-v2, section 6.3, "Source value and offsets").
+// values. The v2 source value starts at the first byte of the value.
 func TestDecoderSeveralDecodeCalls(t *testing.T) {
 	requireWoven(t)
 	ctx, scope := beginRequest(t)
@@ -232,12 +231,12 @@ func TestDecoderNumber(t *testing.T) {
 	require.Equal(t, map[string]any{"n": json.Number("12")}, values)
 }
 
-// TestDecoderClosedAfterForeignBind checks rule (f) of plan encoding-json-v2,
-// section 6.5, at each Decode: request B binds the reader of request A (the
-// root reader, or the reader under a bufio wrapper) after NewDecoder, and ends
-// before Decode. The value is a miss, and the decoder is closed: a later
-// Decode does not try to clone its value. Control: a rebind of the reader by
-// A between NewDecoder and Decode keeps the values tainted.
+// TestDecoderClosedAfterForeignBind checks reader binding rule (f) (see the
+// internal/taint/store package doc) at each Decode: request B binds the reader
+// of request A (the root reader, or the reader under a bufio wrapper) after
+// NewDecoder, and ends before Decode. The value is a miss, and the decoder is
+// closed: a later Decode does not try to clone its value. Control: a rebind of
+// the reader by A between NewDecoder and Decode keeps the values tainted.
 func TestDecoderClosedAfterForeignBind(t *testing.T) {
 	requireWoven(t)
 	for name, wrap := range map[string]func(io.Reader) io.Reader{

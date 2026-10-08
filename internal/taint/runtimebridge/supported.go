@@ -8,5 +8,5 @@
 package runtimebridge
 
 // supported is true for the Go releases that the runtime hooks support:
-// go1.26.x and go1.27.x (plan section 3.10).
+// go1.26.x and go1.27.x (see "Supported releases" in the package doc).
 const supported = true

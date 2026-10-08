@@ -7,11 +7,11 @@ package runtimebridge
 
 import "unsafe"
 
-// This file has the functions that the woven runtime calls (plan sections
-// 2.2, 3.2.1, 4.2, 4.3 and 4.5). Each one has a push //go:linkname to a
+// This file has the functions that the woven runtime calls (see the runtime
+// hook rules in the package doc, and iast/runtime/orchestrion.yml). Each one has a push //go:linkname to a
 // linker symbol with the prefix "__dd_iast_rt.". The runtime pulls them with
 // body-less //go:noescape declarations, and it sets its per-g guard before
-// each call (plan section 3.4.1).
+// each call (see "Recursion guard" in the package doc).
 //
 // Pre-checks ("pre") run before the runtime function, only when the result
 // can go to a stack buffer. A true result makes the runtime put the result on
@@ -28,7 +28,8 @@ import "unsafe"
 // the wrapper: no pre-check, no bypass token, no inner call and no result
 // function. This is the clean path when the gate is on. A false result is a
 // proof that no indexed root contains the input (the same filter as the
-// pre-checks and the result functions, plan sections 3.2.1 and 5.2.4), so the
+// pre-checks and the result functions, see "Interior index" in the package
+// doc), so the
 // wrapper has nothing to do. A filter check does not lock, does not allocate,
 // has no defer and cannot panic. The runtime does not set the per-g guard for
 // it, because it calls no hooked function. In an optimized build, the

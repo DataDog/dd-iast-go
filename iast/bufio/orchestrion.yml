@@ -13,10 +13,10 @@ aspects:
   # Keep the same size policy as iast/bufio.Propagate. Calling that helper
   # here would create an import cycle: bufio -> iast/bufio -> bufio.
   # Reset can change the input of the result. Thus the binding is exclusive
-  # only with a Read guard (plan encoding-json-v2, section 6.6). The guard is
-  # the bufio.Reader.Read aspect below. When NewReaderSize returns its input
-  # (a bufio.Reader with a large enough buffer), the binding and the guard of
-  # that reader do not change.
+  # only with a Read guard (see the internal/taint/store package doc). The
+  # guard is the bufio.Reader.Read aspect below. When NewReaderSize returns its
+  # input (a bufio.Reader with a large enough buffer), the binding and the
+  # guard of that reader do not change.
   - id: bufio.NewReaderSize
     join-point:
       all-of:

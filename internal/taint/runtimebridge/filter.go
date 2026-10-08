@@ -7,7 +7,8 @@ package runtimebridge
 
 import "sync/atomic"
 
-// The interior filter layout (plan section 5.2). The store imports these
+// The interior filter layout (see "Interior index" in the package doc). The
+// store imports these
 // definitions, so the store and the bridge cannot use different hashes.
 const (
 	// ShiftS is the granule shift of tier S (64-byte granules).
@@ -45,8 +46,8 @@ func bucketS(p uintptr) uint32 { return FilterBucket(IndexHash(GranuleKey(p, fal
 func bucketL(p uintptr) uint32 { return FilterBucket(IndexHash(GranuleKey(p, true))) }
 
 // FilterHit reports whether an indexed root can contain a value with data
-// pointer p. It reads tier S first, then tier L (plan section 5.2.2, "Reader
-// order"). A false result proves that no indexed root contains the value. It
+// pointer p. It reads tier S completely first, then tier L, so that a root
+// that the store moves from tier S to tier L is never a miss. A false result proves that no indexed root contains the value. It
 // does not allocate and it cannot panic: the bucket index is masked.
 //
 // It is the same as bucketS and bucketL, written out so that the compiler can

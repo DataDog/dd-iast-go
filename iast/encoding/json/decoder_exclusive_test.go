@@ -24,12 +24,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// The tests of this file check the Decode consumer of plan encoding-json-v2,
-// sections 6.3, 6.5, and 6.7 (step 3a): NewDecoder takes the owner token of
-// its reader BEFORE the first byte flows, and each Decode revalidates the
+// The tests of this file check the Decode consumer of the reader binding rules
+// (see the internal/taint/store package doc): NewDecoder takes the owner token
+// of its reader BEFORE the first byte flows, and each Decode revalidates the
 // token (rule (f)) before it attributes a value. A miss is never attributed
 // to any request. The tests run on all variants: on the v2 variant, the
-// ReadValue wrapper of Decode (plan step 5) uses the same token.
+// ReadValue wrapper of Decode uses the same token.
 
 func requireWoven(t *testing.T) {
 	t.Helper()
@@ -110,9 +110,9 @@ func requireBodySource(t *testing.T, ctx context.Context, value, wantSource stri
 	require.Equal(t, wantSource, source, "the value %q has not the body source of the request", value)
 }
 
-// TestDecoderMultiReaderOfTwoRequestsIsMiss is an exit test of step 3a: the
-// reader of the decoder is bound to two live requests, thus no request gets
-// the bytes. Before step 3a, the decoder gave the bytes to each bound request.
+// TestDecoderMultiReaderOfTwoRequestsIsMiss checks that when the reader of the
+// decoder is bound to two live requests, no request gets the bytes. (An older
+// version gave the bytes to each bound request.)
 func TestDecoderMultiReaderOfTwoRequestsIsMiss(t *testing.T) {
 	requireWoven(t)
 	ctxA, scopeA := beginRequest(t)
@@ -268,9 +268,8 @@ func TestDecoderBoundAfterNewDecoderIsMiss(t *testing.T) {
 	})
 }
 
-// retargets returns the six retargets of plan encoding-json-v2, step 2b.
-// Each builds a guarded wrapper over body, and returns a function that
-// retargets it to other.
+// retargets returns six retargets of the guarded wrappers. Each builds a
+// guarded wrapper over body, and returns a function that retargets it to other.
 func retargets() map[string]func(body io.Reader) (wrapper io.Reader, retarget func(other io.Reader)) {
 	limited := func(body io.Reader) *io.LimitedReader { return io.LimitReader(body, 1<<20).(*io.LimitedReader) }
 	return map[string]func(body io.Reader) (io.Reader, func(io.Reader)){
@@ -293,7 +292,7 @@ func retargets() map[string]func(body io.Reader) (wrapper io.Reader, retarget fu
 	}
 }
 
-// TestDecoderRetargetAfterBindIsMiss checks the retargets of step 2b through
+// TestDecoderRetargetAfterBindIsMiss checks each retarget of retargets through
 // json.NewDecoder(w).Decode: the new target is clean or the body of a live
 // request B. The value is a miss: no new source in A, no source in B.
 func TestDecoderRetargetAfterBindIsMiss(t *testing.T) {
@@ -443,12 +442,11 @@ func TestNewDecoderGateOffDoesNotAllocate(t *testing.T) {
 }
 
 // TestNewDecoderLooksUpOnlyForAConsumer checks that NewDecoder looks up the
-// owner of its reader only when Decode can use the token. Each variant
-// installs a consumer: the v1 Document path (EnableV1), or the v2 Decode
-// path (EnableV2, plan encoding-json-v2, step 5). Thus NewDecoder does one
-// lookup on each variant. A request is active and the reader is bound, thus
-// with no consumer, only the consumer gate can stop the lookup. With no
-// consumer, NewDecoder adds no allocation.
+// owner of its reader only when Decode can use the token. Each variant installs
+// a consumer: the v1 Document path (EnableV1), or the v2 Decode path
+// (EnableV2). Thus NewDecoder does one lookup on each variant. A request is
+// active and the reader is bound, thus with no consumer, only the consumer gate
+// can stop the lookup. With no consumer, NewDecoder adds no allocation.
 func TestNewDecoderLooksUpOnlyForAConsumer(t *testing.T) {
 	requireWoven(t)
 	ctx, _ := beginRequest(t)

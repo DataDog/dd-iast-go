@@ -30,9 +30,9 @@ const jsonbridgePath = "github.com/DataDog/dd-iast-go/internal/taint/jsonbridge"
 var workDirectory = regexp.MustCompile(`(?m)^WORK=(.+)$`)
 
 // TestV2ReadValueHookScope checks the scope of the "[v2] encoding/json
-// Decoder.Decode value document" aspect (plan encoding-json-v2, section 6.3).
-// Its join point matches the three ReadValue calls of encoding/json. The
-// template must change only the call in (*Decoder).Decode:
+// Decoder.Decode value document" aspect. Its join point matches the three
+// ReadValue calls of encoding/json. The template must change only the call in
+// (*Decoder).Decode:
 //
 //  1. A woven build of testdata/scopeprobe succeeds. Thus checkValid and
 //     (*Number).UnmarshalJSONFrom compile after weaving.

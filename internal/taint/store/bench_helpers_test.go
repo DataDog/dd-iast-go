@@ -6,9 +6,9 @@
 package store
 
 // The functions in this file adapt the benchmarks of admission_bench_test.go
-// and lookup_bench_test.go to one store implementation. The baseline run of
-// plan section 9.2 uses a copy of the benchmarks on the parent revision, with
-// a version of this file for the exact-key value table.
+// and lookup_bench_test.go to one store implementation. To compare with an
+// older revision, run a copy of the benchmarks on that revision, with a
+// version of this file for its store (for example the exact-key value table).
 
 // benchCapacity is the number of index entries of the store.
 const benchCapacity = IndexShards * IndexBucketsPerShard * IndexBucketSize

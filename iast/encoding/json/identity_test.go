@@ -27,10 +27,10 @@ type identityBody struct {
 
 func (b *identityBody) Read(p []byte) (int, error) { b.reads++; return b.Buffer.Read(p) }
 
-// TestDecoderOfEmbeddedBufferIsNotAttributedToBody checks plan
-// encoding-json-v2, section 6.5, rule (d): a reader binding has the identity
-// type plus address. The first field of a bound body has the address of the
-// body, but it is another reader.
+// TestDecoderOfEmbeddedBufferIsNotAttributedToBody checks reader binding rule
+// (d) (see the internal/taint/store package doc): a reader binding has the
+// identity type plus address. The first field of a bound body has the address
+// of the body, but it is another reader.
 func TestDecoderOfEmbeddedBufferIsNotAttributedToBody(t *testing.T) {
 	if !built.WithOrchestrion {
 		t.Skip("orchestrion is not enabled, use `go tool orchestrion go test`")

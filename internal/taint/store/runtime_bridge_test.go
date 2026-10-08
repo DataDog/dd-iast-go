@@ -49,7 +49,9 @@ func windowString(value []byte, low, high int) string {
 	return unsafe.String(&value[low], high-low)
 }
 
-// TestRuntimeBridgeBindsOnlyTheProcessStore checks plan section 9.1 item 6b.
+// TestRuntimeBridgeBindsOnlyTheProcessStore checks that only the process store
+// binds the runtime bridge: taint in another store is never visible to the
+// bridge, and a second bind is refused.
 func TestRuntimeBridgeBindsOnlyTheProcessStore(t *testing.T) {
 	bound := runtimeBoundStore(t)
 	first, second := New(), New()
@@ -139,7 +141,9 @@ func TestBindRuntimeBridgeRefusesAStoreWithRoots(t *testing.T) {
 	require.False(t, none.BindRuntimeBridge(runtimebridge.Options{}))
 }
 
-// TestRuntimeGateFollowsIndexedRoots checks plan section 3.2 rule 3.
+// TestRuntimeGateFollowsIndexedRoots checks that the gate mirrors indexedRoots
+// (see the runtime hook rules in the internal/taint/runtimebridge package doc,
+// rule 3).
 func TestRuntimeGateFollowsIndexedRoots(t *testing.T) {
 	s := runtimeBoundStore(t)
 	require.Zero(t, bridgetest.Gate())
@@ -159,9 +163,9 @@ func TestRuntimeGateFollowsIndexedRoots(t *testing.T) {
 	require.Zero(t, bridgetest.Gate())
 }
 
-// TestRuntimePreConfirm checks the direct-call part of plan section 9.1 item
-// 4b: the pre-checks never report a tainted operand as clean, and a clean
-// operand does not allocate.
+// TestRuntimePreConfirm checks the no-false-negative rule of the pre-check with
+// direct calls (no weaving): the pre-checks never report a tainted operand as
+// clean, and a clean operand does not allocate.
 func TestRuntimePreConfirm(t *testing.T) {
 	s := runtimeBoundStore(t)
 	owner := s.Acquire()
@@ -213,8 +217,8 @@ func TestRuntimePreConfirm(t *testing.T) {
 	require.False(t, bridgetest.BytesPreOf(root[2:6]))
 }
 
-// TestRuntimePreWithFullFanout checks the forced fanout case of plan 9.1 item
-// 4b: the allocation of a root already has MaxSnapshotOwners owners, so the
+// TestRuntimePreWithFullFanout checks the pre-checks with a forced fanout: the
+// allocation of a root already has MaxSnapshotOwners owners, so the
 // admission of one more owner fails. The pre-checks and Confirm see the taint
 // of the admitted owners only, and a lookup never reports the refused owner.
 func TestRuntimePreWithFullFanout(t *testing.T) {
@@ -260,8 +264,8 @@ func TestRuntimePreWithFullFanout(t *testing.T) {
 }
 
 // TestRuntimePreAfterRefusedAdmission checks that a root that the index
-// refused is not tainted for the pre-checks or for a lookup (plan 9.1 item
-// 4b, forced indexFull).
+// refused is not tainted for the pre-checks or for a lookup (forced
+// indexFull).
 func TestRuntimePreAfterRefusedAdmission(t *testing.T) {
 	s := runtimeBoundStore(t)
 	owner := s.Acquire()

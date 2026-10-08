@@ -4,8 +4,9 @@
 # This product includes software developed at Datadog (https://www.datadoghq.com/).
 # Copyright 2026-present Datadog, Inc.
 
-# Escape comparison of the runtime hooks (plan runtime-operator-hooks, sections
-# 3.8 and 9.4 item 1). It compiles the runtime with and without the hooks, and
+# Escape comparison of the runtime hooks: a required check of the
+# woven-runtime CI job, and the guard of the alias rule (see the runtime hook
+# rules in the internal/taint/runtimebridge package doc). It compiles the runtime with and without the hooks, and
 # compares the escape analysis output of the hooked runtime functions and of
 # concatstring2..5 and concatbyte2..5. The lines must be identical. A
 # difference means that the wrapper calls the runtime function directly (not

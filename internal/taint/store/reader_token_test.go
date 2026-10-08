@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// The tests of this file check rule (f) of plan encoding-json-v2, section 6.5:
+// The tests of this file check reader binding rule (f) in the package doc:
 // a reader token takes the reader bind counter of a ROOT reader too, thus a
 // consumer finds a bind of another owner that started and ended after the
 // token was taken.
@@ -78,8 +78,8 @@ func TestReaderTokenOfRootMissesBindOfOtherOwnerThatEnded(t *testing.T) {
 			require.False(t, refs[0].Exclusive, "the loss of A is sticky (rule (f))")
 			require.False(t, revalidate(t, s, token, body),
 				"the token of A is valid after B bound the root reader and ended")
-			// A new token, taken after B ended, is not OK (review 2 of
-			// batch 1, finding 2): the bind of B is in the counter.
+			// A new token, taken after B ended, is not OK: the bind of B is in
+			// the counter.
 			require.False(t, refs[0].ReaderToken().OK)
 		})
 	}
@@ -274,14 +274,14 @@ func readerTargets(t *testing.T, s *Store, a *Owner) map[string]func() any {
 	}
 }
 
-// TestReaderLookupReadsCounterUnderTableLock checks the order of review 2 of
-// batch 1, finding 1. A takes a token of X. B binds X and ends. The lookup of
-// the revalidation then stops before it locks the table of A, and A rebinds X
-// at that point. If the lookup read the counter before the owner scan, the
-// counter would not include the rebind of A, but the baseline would: the two
-// changes would cancel and hide the bind of B. The counter is read under the
-// table lock of A, thus the result must be a miss. Control: with no bind of
-// B, the own rebind at the same point keeps the token valid.
+// TestReaderLookupReadsCounterUnderTableLock checks that a lookup reads the
+// counter under the table lock (rule (f)). A takes a token of X. B binds X and
+// ends. The lookup of the revalidation then stops before it locks the table of
+// A, and A rebinds X at that point. If the lookup read the counter before the
+// owner scan, the counter would not include the rebind of A, but the baseline
+// would: the two changes would cancel and hide the bind of B. The counter is
+// read under the table lock of A, thus the result must be a miss. Control: with
+// no bind of B, the own rebind at the same point keeps the token valid.
 func TestReaderLookupReadsCounterUnderTableLock(t *testing.T) {
 	for _, foreign := range []bool{true, false} {
 		s := New()
@@ -314,11 +314,11 @@ func TestReaderLookupReadsCounterUnderTableLock(t *testing.T) {
 	}
 }
 
-// TestForeignBindBeforeCaptureIsSticky checks review 2 of batch 1, finding 2:
-// A binds X, B binds X and ends, and only then A takes a token. The token must
-// not be OK, and a wrapper of A built after B ended must not be exclusive. A
-// rebind of A cannot restore the exclusivity. Control: the own rebinds of A
-// before B keep the exclusivity.
+// TestForeignBindBeforeCaptureIsSticky checks that the loss of rule (f) is
+// sticky also for a bind that came before the token: A binds X, B binds X and
+// ends, and only then A takes a token. The token must not be OK, and a wrapper
+// of A built after B ended must not be exclusive. A rebind of A cannot restore
+// the exclusivity. Control: the own rebinds of A before B keep the exclusivity.
 func TestForeignBindBeforeCaptureIsSticky(t *testing.T) {
 	s := New()
 	a := s.Acquire()
@@ -349,8 +349,8 @@ func TestForeignBindBeforeCaptureIsSticky(t *testing.T) {
 	}
 }
 
-// TestConcurrentOwnAndForeignRebindIsSticky checks review 2 of batch 1,
-// finding 2, with barriers: A rebinds X and stops after its counter add,
+// TestConcurrentOwnAndForeignRebindIsSticky checks that the loss of rule (f)
+// is sticky, with barriers: A rebinds X and stops after its counter add,
 // under its table lock. B binds X and ends in this window. Then A completes
 // its rebind. A lookup after that must not find X exclusive, for a root and a
 // derived reader.

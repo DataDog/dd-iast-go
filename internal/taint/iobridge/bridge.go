@@ -46,11 +46,11 @@ type Callbacks struct {
 	ReadAll func(input any, data []byte, token ReadToken)
 }
 
-// ReadToken is the owner token that ReadAllBegin takes before the first read
-// of io.ReadAll (plan encoding-json-v2, sections 6.5 rule (f) and 6.7). Only
-// the request package makes it and reads its fields: they are a copy of a
-// store reader token. Store holds a pointer, thus a token needs no
-// allocation. The zero value is not OK.
+// ReadToken is the owner token that ReadAllBegin takes before the first read of
+// io.ReadAll (rule (f) of the reader binding rules in the internal/taint/store
+// package doc). Only the request package makes it and reads its fields: they
+// are a copy of a store reader token. Store holds a pointer, thus a token needs
+// no allocation. The zero value is not OK.
 type ReadToken struct {
 	Store      any
 	Generation uint64
@@ -136,7 +136,7 @@ func ReadAllBegin(input any) ReadToken {
 // without changing its slice identity. The io.ReadAll aspect calls it after
 // the reads. It returns at once when token is not OK. Else the callback
 // adopts data only when the owner of input is still the exclusive owner of
-// token (plan encoding-json-v2, section 6.5, rule (f)).
+// token (reader binding rule (f)).
 func ReadAllEnd(token ReadToken, input any, data []byte) {
 	if !token.OK {
 		return
@@ -168,9 +168,10 @@ func Same(a, b any) bool {
 	return aType == bType && aData == bData
 }
 
-// guardEntry is one Read guard (plan encoding-json-v2, section 6.6). It is
-// immutable after publication. It keeps strong references to self and input,
-// thus no other object can get their addresses while the entry exists.
+// guardEntry is one Read guard (see the Read guard in the internal/taint/store
+// package doc). It is immutable after publication. It keeps strong references
+// to self and input, thus no other object can get their addresses while the
+// entry exists.
 type guardEntry struct {
 	self       any    // the guarded wrapper
 	input      any    // the proven input of the wrapper
@@ -228,11 +229,10 @@ func checkRead(self, target any) {
 
 // retargetLost is true after a Retarget callback did not return normally (it
 // panicked). Then the retargeted bit of its owner can be missing, and the
-// wrapper could look exclusive with bytes of a new target. Fail closed: the
-// bit is sticky for the life of the process, and while it is set, no guarded
-// binding is effectively exclusive (RetargetLost, plan encoding-json-v2,
-// section 6.5, rule (a2)). It is set before CheckRead returns, thus before a
-// byte of the new target flows.
+// wrapper could look exclusive with bytes of a new target. Fail closed: the bit
+// is sticky for the life of the process, and while it is set, no guarded
+// binding is effectively exclusive (RetargetLost, reader binding rule (a2)). It
+// is set before CheckRead returns, thus before a byte of the new target flows.
 var retargetLost atomic.Bool
 
 // RetargetLost reports whether a Retarget callback failed. When it is true,

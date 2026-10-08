@@ -30,8 +30,10 @@ func identityString(value string) string { return value }
 //go:noinline
 func aliasOperand(b []byte) string { return "<" + string(b) + ">" }
 
-// TestConversionForms checks plan section 9.1 item 3: the rows of section
-// 4.1, including the alias rows and the documented misses.
+// TestConversionForms checks each conversion form that the compiler makes:
+// the forms that call a hooked runtime function, the alias forms that call no
+// runtime function (the interior lookup finds them), and the documented
+// misses (string(r) of a rune, and one-byte results).
 func TestConversionForms(t *testing.T) {
 	requireWoven(t)
 	ctx := begin(t)
@@ -120,8 +122,8 @@ func TestSlicesNeedNoHook(t *testing.T) {
 	require.Equal(t, []span{{0, 9, "bytes"}}, bytesSpansOf(data[:9:9]))
 }
 
-// TestRuneConversions checks the rune mapping of plan section 4.5 through
-// the woven runtime.
+// TestRuneConversions checks the rune range mapping
+// (internal/taint/propagation/runes.go) through the woven runtime.
 func TestRuneConversions(t *testing.T) {
 	requireWoven(t)
 	ctx := begin(t)
@@ -196,7 +198,8 @@ func TestRuneConversions(t *testing.T) {
 	})
 }
 
-// TestStringToSliceSwitchOff checks plan section 4.4: with the switch off,
+// TestStringToSliceSwitchOff checks the string-to-slice switch
+// (DD_IAST_STRING_TO_SLICE_PROPAGATION_ENABLED): with the switch off,
 // []byte(s) and []rune(s) do not enter the bridge and stay on the stack, and
 // string(b) and concatenation still propagate.
 func TestStringToSliceSwitchOff(t *testing.T) {

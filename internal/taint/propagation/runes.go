@@ -11,7 +11,8 @@ import (
 	"github.com/DataDog/dd-iast-go/internal/taint/ranges"
 )
 
-// Range mapping between a string and its []rune form (plan section 4.5).
+// Range mapping between a string and its []rune form (the callbacks of
+// string(rs) and []rune(s) in runtime.go use it).
 //
 // A []rune value uses the byte coordinates of its rune array: rune i is bytes
 // [4i, 4i+4). UTF-8 byte offsets are not rune indexes, so the mapping is not a

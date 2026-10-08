@@ -10,8 +10,8 @@ meta:
 
 aspects:
   # User code can change the field R of the result. Thus the binding of the
-  # result is exclusive only with a Read guard (plan encoding-json-v2,
-  # section 6.6). The guard is the io.LimitedReader.Read aspect below.
+  # result is exclusive only with a Read guard (see the internal/taint/store
+  # package doc). The guard is the io.LimitedReader.Read aspect below.
   - id: io.LimitReader
     join-point:
       all-of:
@@ -75,11 +75,12 @@ aspects:
       - prepend-statements:
           imports:
             iastiobridge: github.com/DataDog/dd-iast-go/internal/taint/iobridge
-          # One call checks all the inputs and makes the binding (plan
-          # encoding-json-v2, section 6.5, rule (e)). The binding is exclusive
-          # only when there are at most 8 inputs and all of them have the same
-          # effectively exclusive owner. With more than 8 inputs, the result
-          # gets a binding that is not exclusive to the owners of the first 8.
+          # One call checks all the inputs and makes the binding (reader
+          # binding rule (e) in the internal/taint/store package doc). The
+          # binding is exclusive only when there are at most 8 inputs and all
+          # of them have the same effectively exclusive owner. With more than 8
+          # inputs, the result gets a binding that is not exclusive to the
+          # owners of the first 8.
           template: |-
             {{- $inputs := .Function.Argument 0 -}}
             {{- $result := .Function.Result 0 -}}
@@ -95,9 +96,9 @@ aspects:
             }()
 
   # The owner token is taken BEFORE the first read and checked again AFTER the
-  # reads (plan encoding-json-v2, sections 6.5 rule (f) and 6.7). Thus a
-  # binding made during the reads, or a bind of another owner that started
-  # and ended during the reads, gives a miss.
+  # reads (reader binding rule (f) in the internal/taint/store package doc).
+  # Thus a binding made during the reads, or a bind of another owner that
+  # started and ended during the reads, gives a miss.
   - id: io.ReadAll
     join-point:
       all-of:

@@ -10,9 +10,9 @@ import (
 	"testing"
 )
 
-// BenchmarkConfirm measures the store part of the runtime pre-check (plan
-// section 3.2.1): the filter check, then Confirm on a filter hit. The base
-// store has no Confirm, so these rows have no baseline.
+// BenchmarkConfirm measures the store part of the runtime pre-check: the filter
+// check, then Confirm on a filter hit. The base store has no Confirm, so these
+// rows have no baseline.
 func BenchmarkConfirm(b *testing.B) {
 	for _, load := range lookupLoads {
 		loaded := newLoadedStore(b, load)

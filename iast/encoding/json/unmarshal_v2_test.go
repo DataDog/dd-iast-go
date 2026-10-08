@@ -19,7 +19,8 @@ import (
 // uses the fast path unmarshalValueAny: it calls makeString with no string
 // arshaler, thus with no wrapper. The string cache guard (in makeString)
 // must cover it too. Direct encoding/json/v2 is out of scope for provenance
-// (decision Q3); these tests check only that no request gets a false source.
+// (see "JSON decoding" in the README); these tests check only that no request
+// gets a false source.
 
 // v2Any decodes an object into an any value.
 var v2Any = cacheMode{document: objectDocument, decode: func(t *testing.T, document []byte) (string, string) {

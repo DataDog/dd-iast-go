@@ -8,7 +8,8 @@
 // This module has only the runtime aspect and one source aspect (net/http)
 // of dd-iast-go. The net/http aspect does not import the propagation package,
 // so the link fixture checks that the runtime aspect alone links the
-// propagation callbacks (plan runtime-operator-hooks, section 3.2 rule 6).
+// propagation callbacks (rule 6 of the runtime hook rules in the
+// internal/taint/runtimebridge package doc).
 package testapp
 
 import (

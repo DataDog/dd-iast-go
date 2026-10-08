@@ -13,13 +13,13 @@ import (
 	"github.com/DataDog/dd-iast-go/internal/taint/store"
 )
 
-// BenchmarkSinkCheck measures the sink check path (IsTaintedString) under
-// three store loads (plan section 9.2, R17). The loads are the same as in the
-// store lookup benchmarks: sparse (100 roots of 64 bytes), typical (2 500
-// roots of 64 bytes) and full (62 owners of 512 roots of 128 bytes, which
-// fill the index or the base value table). The benchmark reports the index
-// occupancy and the filter hit rate. IsTaintedString gives the same answer on
-// the base store and on the interior store.
+// BenchmarkSinkCheck measures the sink check path (IsTaintedString) under three
+// store loads. The loads are the same as in the store lookup benchmarks: sparse
+// (100 roots of 64 bytes), typical (2 500 roots of 64 bytes) and full (62
+// owners of 512 roots of 128 bytes, which fill the index or the base value
+// table). The benchmark reports the index occupancy and the filter hit rate.
+// IsTaintedString gives the same answer on the base store and on the interior
+// store.
 func BenchmarkSinkCheck(b *testing.B) {
 	loads := [...]struct {
 		name  string

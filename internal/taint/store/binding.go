@@ -18,7 +18,7 @@ const (
 	bindingIndexSlots = 512
 
 	// MaxReaderInputs is the maximum number of inputs of a derived exclusive
-	// reader binding (plan encoding-json-v2, section 6.5, rule (e)). It is
+	// reader binding (reader binding rule (e) in the package doc). It is
 	// the io.MultiReader limit of 8 inputs.
 	MaxReaderInputs = 8
 	// maxInputChecks is the maximum number of input lookups that one reader
@@ -57,11 +57,11 @@ type binding struct {
 	pointer uintptr
 	kind    BindingKind
 	// exclusive is true only for a reader binding with a proof that every
-	// byte of the reader comes from data of this owner (plan
-	// encoding-json-v2, section 6.5, rule (a)).
+	// byte of the reader comes from data of this owner (reader binding
+	// rule (a) in the package doc).
 	exclusive bool
 	// viaGuard is true when the proof of exclusive depends on a per-Read
-	// guard (plan encoding-json-v2, section 6.6). The owner retargeted bit
+	// guard (see the Read guard in the package doc). The owner retargeted bit
 	// then removes the effective exclusivity (rule (a2)).
 	viaGuard bool
 	// inputs is 0 for a binding with no input (a root binding, or a binding
@@ -76,8 +76,8 @@ type binding struct {
 	demoted bool
 }
 
-// readerInputs is the input set of a derived exclusive reader binding (plan
-// encoding-json-v2, section 6.5, rule (e)). Each item is the index of an input
+// readerInputs is the input set of a derived exclusive reader binding (reader
+// binding rule (e) in the package doc). Each item is the index of an input
 // binding in the entries of the same table. Entries do not move while the
 // owner generation is live, thus an index stays valid until reset. The set
 // has no counter stamp: each input is a reader binding of the same table,
@@ -119,8 +119,8 @@ type OwnerRef struct {
 	generation uint64
 	index      uint8
 	Kind       BindingKind
-	// Exclusive is the effective exclusive flag of a reader binding (plan
-	// encoding-json-v2, section 6.5, rule (a2)). It is true only when the
+	// Exclusive is the effective exclusive flag of a reader binding (reader
+	// binding rule (a2) in the package doc). It is true only when the
 	// binding is exclusive, no other owner did a reader bind with its
 	// counter since the binding was made (rule (f)), if it depends on a Read
 	// guard, the owner is not retargeted, and, if it is a derived binding,
@@ -156,8 +156,8 @@ func (r OwnerRef) Identity() (index uint8, generation, ownerID uint64, ok bool) 
 	return r.index, r.generation, owner.ID(), true
 }
 
-// ReaderToken is the exclusive owner of a reader at one reader lookup (plan
-// encoding-json-v2, section 6.5, rule (f)). A consumer takes a token BEFORE
+// ReaderToken is the exclusive owner of a reader at one reader lookup (reader
+// binding rule (f) in the package doc). A consumer takes a token BEFORE
 // the first byte of the reader flows, and calls Revalidate with the ref of a
 // new complete lookup AFTER the bytes flowed, at attribution time.
 //
@@ -287,8 +287,8 @@ func bindValue(owner *Owner, object any, kind BindingKind, exclusive, viaGuard b
 }
 
 // BindDerivedReaderValue binds the reader object exclusively to owner, with a
-// proof that depends on its input readers (plan encoding-json-v2, section 6.5,
-// rule (e)). For each i, refs[i] must be the only ref that a complete lookup
+// proof that depends on its input readers (reader binding rule (e) in the
+// package doc). For each i, refs[i] must be the only ref that a complete lookup
 // (LookupReaderValue) of inputs[i] found, it must refer to owner, and it must
 // be effectively exclusive. The binding records the input entries. A later
 // lookup of object reports it as exclusive only when each input is still
@@ -378,7 +378,7 @@ func LookupObjectValue(store *Store, object any, kind BindingKind, out []OwnerRe
 // lookup is not complete when it skipped an active owner because of lock
 // contention, or when out cannot hold all the owners that it found. An
 // incomplete result is unknown: it must not prove attribution or exclusivity
-// (plan encoding-json-v2, section 6.5, rule (b)). A non-pointer or typed-nil
+// (reader binding rule (b) in the package doc). A non-pointer or typed-nil
 // value has no binding, thus its lookup is complete with no owner.
 //
 // OwnerRef.Exclusive is the effective exclusivity (rules (a2), (e), and (f)):
@@ -431,8 +431,8 @@ func (o *Owner) addReaderBind(slot int) uint64 {
 
 // MarkRetargeted sets the sticky retargeted bit of the owner in slot index,
 // only if the slot still has generation. The bit removes the effective
-// exclusivity of all the guarded reader bindings of this owner (plan
-// encoding-json-v2, section 6.5, rule (a2)). It takes no lock.
+// exclusivity of all the guarded reader bindings of this owner (reader
+// binding rule (a2) in the package doc). It takes no lock.
 func MarkRetargeted(store *Store, index uint8, generation uint64) {
 	if store == nil || index >= MaxOwners || generation == 0 {
 		return
@@ -586,9 +586,9 @@ func (t *bindingTable) bind(owner *Owner, object any, pointer uintptr, kind Bind
 			return true
 		}
 		entry := &t.entries[encoded-1]
-		// Two objects of different types can have the same address, for
-		// example a struct and its first field. They are different
-		// bindings (plan encoding-json-v2, section 6.5, rule (d)).
+		// Two objects of different types can have the same address, for example
+		// a struct and its first field. They are different bindings (reader
+		// binding rule (d) in the package doc).
 		if entry.pointer == pointer && typeWord(entry.object) == typ {
 			switch {
 			case entry.kind != BindingReader && kind == BindingReader:

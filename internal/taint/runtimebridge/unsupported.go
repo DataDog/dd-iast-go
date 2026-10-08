@@ -7,7 +7,8 @@
 
 package runtimebridge
 
-// supported is false for Go releases after go1.27 (plan section 3.10). Then
+// supported is false for Go releases after go1.27 (see "Supported
+// releases" in the package doc). Then
 // Bind refuses every binding, the gates stay zero, and each runtime hook costs
 // one atomic load. The unsupportedGo counter records the refusal.
 const supported = false

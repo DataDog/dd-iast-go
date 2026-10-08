@@ -10,9 +10,9 @@ import "github.com/DataDog/dd-iast-go/internal/taint/ranges"
 // PublishBytesMutation publishes root-relative provenance after an in-place
 // byte mutation. value must still start at the managed root base and remain
 // within the root span. When cap(value) is smaller than the root span (an
-// extended root, plan section 5.2.3), the new ranges replace the ranges on
-// [0, cap(value)), and the ranges after cap(value) stay only when they were
-// valid just before the claim.
+// extended root, see "Lookup and validation" in the package doc), the new
+// ranges replace the ranges on [0, cap(value)), and the ranges after cap(value)
+// stay only when they were valid just before the claim.
 //
 // After this method claims the current generation, publication failure leaves
 // that generation invalid because the application mutation has already

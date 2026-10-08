@@ -26,8 +26,7 @@ import (
 	"github.com/DataDog/orchestrion/runtime/built"
 )
 
-// This file imports nothing from dd-iast-go (plan runtime-operator-hooks,
-// step 5b): all dd-iast-go code comes from weaving. The test reads the state
+// This file imports nothing from dd-iast-go: all dd-iast-go code comes from weaving. The test reads the state
 // of dd-iast-go through pull linknames of non-standard symbols, which the
 // linker permits. The pulls do not import a package, so they do not change
 // the set of packages in the program.
@@ -51,7 +50,8 @@ var (
 	sinkBytes  []byte
 )
 
-// TestRuntimeOnlyLink checks the link rule of plan section 3.2 rule 6: the
+// TestRuntimeOnlyLink checks the link rule of rule 6 (see the runtime hook
+// rules in the internal/taint/runtimebridge package doc): the
 // program imports nothing from dd-iast-go, and the only dd-iast-go aspects
 // are the runtime aspect and the net/http source aspect. The propagation
 // callbacks are registered, and a concatenation of a tainted request value is
@@ -105,8 +105,8 @@ func child(t *testing.T) {
 	fmt.Println("CHILD-OK", string(body))
 }
 
-// buildAndRun builds pkg with Orchestrion and -ldflags=-checklinkname=1 (plan
-// section 3.9 item 4), runs it, and returns the symbols of the executable.
+// buildAndRun builds pkg with Orchestrion and -ldflags=-checklinkname=1 (the
+// link check of the bridge symbols), runs it, and returns the symbols of the executable.
 func buildAndRun(t *testing.T, pkg string) []string {
 	t.Helper()
 	if !built.WithOrchestrion {

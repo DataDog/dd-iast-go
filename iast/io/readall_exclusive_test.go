@@ -18,11 +18,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// The tests of this file are the io.ReadAll consumer tests of plan
-// encoding-json-v2, step 3a, for the guarded wrappers of section 6.6: a
+// The tests of this file are the io.ReadAll consumer tests for the guarded
+// wrappers (see the Read guard in the internal/taint/store package doc): a
 // retargeted wrapper, a wrapper with no Read guard, and normal use.
 
-// readAllRetargets returns the six retargets of step 2b. Each builds a
+// readAllRetargets returns six retargets of the guarded wrappers. Each builds a
 // guarded wrapper over body, and returns a function that retargets it to
 // other.
 func readAllRetargets() map[string]func(body io.Reader) (io.Reader, func(other io.Reader)) {

@@ -15,10 +15,10 @@ import (
 	"unsafe"
 )
 
-// The benchmarks in this file measure source-root admission (plan section 9.2).
-// Each iteration uses a new store. The foreground workload runs on top of a
-// background load, and the benchmark reports the percentage of foreground roots
-// that the store admits, with the refusals split by drop counter.
+// The benchmarks in this file measure source-root admission. Each iteration
+// uses a new store. The foreground workload runs on top of a background load,
+// and the benchmark reports the percentage of foreground roots that the store
+// admits, with the refusals split by drop counter.
 
 const (
 	admissionPerOwner = 500 // below MaxRootsPerOwner, so the owner quota never refuses
@@ -339,9 +339,9 @@ func BenchmarkSourceAdmission(b *testing.B) {
 }
 
 // collidingValues returns count new 64-byte allocations whose tier S granule
-// key maps to index shard 0 (plan section 9.2, "roots whose granule keys
-// collide in one shard"). Each value is a complete allocation, so the adoption
-// contract holds. A 64-byte allocation uses exactly one 64-byte granule.
+// key maps to index shard 0 (roots whose granule keys collide in one shard).
+// Each value is a complete allocation, so the adoption contract holds. A
+// 64-byte allocation uses exactly one 64-byte granule.
 func collidingValues(count int) [][]byte {
 	values := make([][]byte, 0, count)
 	for len(values) < count {

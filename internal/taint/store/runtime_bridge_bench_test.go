@@ -14,17 +14,17 @@ import (
 
 // BenchmarkRuntimePre measures the pre-check of the runtime bridge with direct
 // calls (no weaving), on the store that the bridge uses, under the three index
-// loads of lookup_bench_test.go (plan section 9.2). It is the complete bridge
-// path of a clean operand: the filter check, and on a filter hit the call to
-// Confirm with its panic guard. The woven hook adds its entry cost (the gate
-// check and the call), which BenchmarkRuntimeClean of iast/runtime measures.
+// loads of lookup_bench_test.go. It is the complete bridge path of a clean
+// operand: the filter check, and on a filter hit the call to Confirm with its
+// panic guard. The woven hook adds its entry cost (the gate check and the
+// call), which BenchmarkRuntimeClean of iast/runtime measures.
 //
 //   - one-clean-hit: one clean operand that is a filter hit (a neighbor
 //     allocation in the granule of a root);
 //   - one-miss: one clean operand that is a filter miss;
 //   - concat2-clean-hit: two clean operands that are both filter hits, in
-//     the granules of two different roots (plan section 9.3: "2-operand
-//     stack concat, full index, both operands can hit");
+//     the granules of two different roots (a 2-operand stack concatenation
+//     at the full load, where both operands can hit);
 //   - concat2-clean-random: two random clean operands.
 //
 // The names are RuntimePre/<load>/<case>.

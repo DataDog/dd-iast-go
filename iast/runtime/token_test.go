@@ -34,7 +34,8 @@ func tokenOps(t *testing.T) map[string]func() probe {
 	}
 }
 
-// TestBypassTokenGateChange checks plan section 3.4.2 rule 3: the gate
+// TestBypassTokenGateChange checks token rule 3 (see "Bypass token" in the
+// internal/taint/runtimebridge package doc): the gate
 // changes to 0 between the outer entry and the inner entry. The inner entry
 // then does not read the token, so the wrapper must clear it after the inner
 // call. The next operation on the same goroutine enters the bridge.
@@ -76,7 +77,7 @@ func faultingConcat(a, b string) (recovered bool) {
 	return false
 }
 
-// TestBypassTokenStaleBound checks plan section 3.4.2 rule 4: the gate
+// TestBypassTokenStaleBound checks token rule 4: the gate
 // changes to 0 before the inner entry, and then the original body panics. The
 // token stays 1 for one more entry: at most 1 of the next 2 operations on the
 // goroutine does not enter the bridge.

@@ -105,9 +105,9 @@ func TestManagedLazyMapIsIdempotentAndAllocationFree(t *testing.T) {
 	analysis.Finish()
 }
 
-// TestReadAllBytesRequiresOneExclusiveOwner checks plan encoding-json-v2,
-// section 6.7: an io.ReadAll result is adopted only by the one exclusive owner
-// of its reader. A reader with two owners is a miss for both.
+// TestReadAllBytesRequiresOneExclusiveOwner checks that an io.ReadAll result is
+// adopted only by the one exclusive owner of its reader. A reader with two
+// owners is a miss for both.
 func TestReadAllBytesRequiresOneExclusiveOwner(t *testing.T) {
 	previousEnabled := config.Enabled
 	previousSampling := config.RequestSamplingPct
@@ -204,8 +204,7 @@ func TestCloneReaderBytesPublishesIndependentDocument(t *testing.T) {
 	require.True(t, firstAnalysis.manager.store.Lookup(key, &snapshot))
 	require.Equal(t, 1, snapshot.Len())
 
-	// Two owners: the reader is not exclusive, thus no owner gets the bytes
-	// (plan encoding-json-v2, section 6.7).
+	// Two owners: the reader is not exclusive, thus no owner gets the bytes.
 	require.True(t, BindReader(secondCtx, reader))
 	require.Nil(t, CloneReaderBytes(reader, []byte("second")))
 	require.Equal(t, 1, firstAnalysis.SourceCount())

@@ -5,9 +5,9 @@
 
 package overhead_test
 
-// The benchmarks of this file are the workloads of plan encoding-json-v2,
-// section 7.2. The runner runs each one in the control build and in the IAST
-// build. The names of the sub-benchmarks give the state:
+// The benchmarks of this file are the JSON and IO overhead workloads. The
+// runner runs each one in the control build and in the IAST build. The names of
+// the sub-benchmarks give the state:
 //
 //   - inactive: no request is active in the process.
 //   - active: one clean request is active for all the iterations. The
@@ -16,9 +16,8 @@ package overhead_test
 //     runs the workload, and finishes the request. The control build does
 //     the same calls, thus the delta is the cost of the aspects only.
 //
-// The Read guard benchmarks use the states of section 6.6: (a) no live
-// guard; (b) one live guard on another reader; (c) the reader itself is
-// guarded.
+// The Read guard benchmarks use three states: (a) no live guard; (b) one live
+// guard on another reader; (c) the reader itself is guarded.
 
 import (
 	"bufio"
@@ -190,8 +189,8 @@ func BenchmarkJSONDecoder20(b *testing.B) {
 			decode(b, body)
 		}
 	}
-	// The macro check of section 7.2: the decoder reads through
-	// bufio.NewReader(body), as many handlers do with r.Body.
+	// The macro check: the decoder reads through bufio.NewReader(body), as many
+	// handlers do with r.Body.
 	buffered := func(b *testing.B) {
 		body := bytes.NewReader(nil)
 		b.ReportAllocs()
@@ -426,7 +425,7 @@ type endlessReader struct{ _ byte }
 func (*endlessReader) Read(p []byte) (int, error) { return len(p), nil }
 
 // BenchmarkReadGuard measures (*bufio.Reader).Read and (*io.LimitedReader).Read
-// in the three states of plan encoding-json-v2, section 6.6.
+// in the three states of the Read guard (see the top of this file).
 func BenchmarkReadGuard(b *testing.B) {
 	wrappers := []struct {
 		name string

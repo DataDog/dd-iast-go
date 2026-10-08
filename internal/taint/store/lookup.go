@@ -136,8 +136,9 @@ func (s *Store) Lookup(key Key, out *Snapshot) bool {
 	return acquired || out.count > 0
 }
 
-// lookupCandidate validates one copied ref (plan section 5.2.3) and appends
-// its window ranges to out. It keeps one contribution for each owner.
+// lookupCandidate validates one copied ref (see "Lookup and validation" in the
+// package doc) and appends its window ranges to out. It keeps one contribution
+// for each owner.
 func (s *Store) lookupCandidate(key Key, c candidate, out *Snapshot) {
 	ref := c.ref
 	if ref.ownerIdx >= MaxOwners || ref.rootID >= MaxRootsPerOwner {
@@ -245,7 +246,7 @@ func (s *Store) sliceRootLocked(root *rootRecord, base, p uintptr, n uint32, dst
 }
 
 // ConfirmResult is the result of Store.Confirm. The runtime bridge owns the
-// type (plan section 3.2.1), because its pre-checks call Confirm.
+// type, because its pre-checks call Confirm.
 type ConfirmResult = runtimebridge.ConfirmResult
 
 const (
@@ -260,11 +261,11 @@ const (
 	ConfirmUnknown = runtimebridge.ConfirmUnknown
 )
 
-// Confirm reports whether the value [p, p+n) is tainted (plan section 3.2.1).
-// It runs the interior probe and the validation of Lookup, then scans the root
-// ranges for an overlap with the value window. It does not allocate, does not
-// copy ranges, and never waits for a lock. It takes the data pointer as a
-// uintptr, so it cannot keep the value live.
+// Confirm reports whether the value [p, p+n) is tainted. It runs the interior
+// probe and the validation of Lookup, then scans the root ranges for an overlap
+// with the value window. It does not allocate, does not copy ranges, and never
+// waits for a lock. It takes the data pointer as a uintptr, so it cannot keep
+// the value live.
 func (s *Store) Confirm(p uintptr, n uint32) ConfirmResult {
 	if s == nil || p == 0 || n == 0 {
 		return ConfirmClean

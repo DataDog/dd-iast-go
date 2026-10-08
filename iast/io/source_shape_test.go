@@ -21,11 +21,11 @@ import (
 )
 
 // TestReaderWrapperShape checks the reader wrappers of the standard library
-// that the exclusive reader bindings use (plan encoding-json-v2, sections 6.4
-// and 6.5). A retargetable wrapper has a Reset method or an exported reader
-// field: it needs a Read guard (section 6.6). The other wrappers keep their
-// input in an unexported field, thus user code cannot change it. A change
-// fails this test, so that a person examines section 6.5 again.
+// that the exclusive reader bindings use (see the reader binding rules in the
+// internal/taint/store package doc). A retargetable wrapper has a Reset method
+// or an exported reader field: it needs a Read guard. The other wrappers keep
+// their input in an unexported field, thus user code cannot change it. A
+// change fails this test, so that a person examines rule (a) again.
 func TestReaderWrapperShape(t *testing.T) {
 	_, ok := reflect.TypeFor[*bufio.Reader]().MethodByName("Reset")
 	require.True(t, ok, "bufio.Reader has no Reset method")
@@ -54,9 +54,8 @@ func TestReaderWrapperShape(t *testing.T) {
 }
 
 // TestReadGuardShape checks the standard library code that the Read guard
-// of io.LimitReader and bufio relies on (plan encoding-json-v2, sections 6.4
-// and 6.6), and that the wrappers and io.ReadAll read their input only with
-// Read.
+// of io.LimitReader and bufio relies on, and that the wrappers and io.ReadAll
+// read their input only with Read.
 func TestReadGuardShape(t *testing.T) {
 	t.Run("bufio", testBufioGuardShape)
 	t.Run("io", testIOGuardShape)

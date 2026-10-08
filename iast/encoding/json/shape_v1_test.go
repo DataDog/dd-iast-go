@@ -15,8 +15,7 @@ import (
 )
 
 // TestSourceShape checks the symbols of the v1 files of encoding/json that
-// the [shared] and [v1] aspects of orchestrion.yml use (plan
-// encoding-json-v2, section 6.4).
+// the [shared] and [v1] aspects of orchestrion.yml use.
 func TestSourceShape(t *testing.T) {
 	pkg, err := sourceshape.Load("encoding/json", variantJSONv2)
 	require.NoError(t, err)
@@ -57,9 +56,9 @@ func TestSourceShape(t *testing.T) {
 		}
 	}
 
-	// The v1 Decoder reads its reader only with Read (plan section 6.4, the
-	// consumers of the Read guard): refill calls dec.r.Read, and no method of
-	// the Decoder calls another method of dec.r.
+	// The v1 Decoder reads its reader only with Read (the Read guard checks
+	// only Read): refill calls dec.r.Read, and no method of the Decoder calls
+	// another method of dec.r.
 	refill := pkg.Func("*Decoder", "refill")
 	require.NotNil(t, refill, "encoding/json has no method (*Decoder).refill")
 	require.Contains(t, sourceshape.MethodsCalledOn(refill.Body, sourceshape.ReceiverName(refill)+".r"), "Read")

@@ -9,14 +9,15 @@ package testapp_test
 
 // The constants of this file give the expected results of the v2-backed
 // variant of encoding/json (Go 1.27 default). The v1 variant has the same
-// constants in json_variant_v1_test.go (plan encoding-json-v2, step 7).
+// constants in json_variant_v1_test.go.
 
 // jsonV2 reports whether encoding/json is the v2-backed variant.
 const jsonV2 = true
 
 // jsonTaintsKeysAndAny reports whether the JSON aspects taint map keys and
 // interface{} strings. The v2 aspects do: they use the default string
-// unmarshaler, with the exact token of each string (decision Q1).
+// unmarshaler, with the exact token of each string (see "JSON decoding" in
+// the README).
 const jsonTaintsKeysAndAny = true
 
 // decoderSourcePrefix is the part of the bytes before a value that the source

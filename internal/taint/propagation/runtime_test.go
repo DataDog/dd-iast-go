@@ -20,8 +20,8 @@ import (
 )
 
 // These tests call the runtime bridge through its linker symbols, as the woven
-// runtime does after the runtime function returned (plan runtime-operator-hooks,
-// step 4). The results are fresh heap allocations that start at their base,
+// runtime does after the runtime function returned. These tests do not need
+// a woven runtime. The results are fresh heap allocations that start at their base,
 // as the runtime results are.
 
 // runtimeScope begins a request scope, which binds the process store to the
@@ -257,9 +257,9 @@ func TestRuntimeConcatExactRangeLimit(t *testing.T) {
 	}
 }
 
-// TestRuntimeResultAfterRefusedSecondBind checks the result part of plan
-// section 9.1 item 6b: after a refused second binding, the result callbacks
-// adopt results in the first store only.
+// TestRuntimeResultAfterRefusedSecondBind checks the independent-store rule
+// for results: after a refused second binding, the result callbacks adopt
+// results in the first store only.
 func TestRuntimeResultAfterRefusedSecondBind(t *testing.T) {
 	s := runtimeScope(t)
 	second := store.New()
@@ -291,7 +291,8 @@ func TestRuntimeResultAfterRefusedSecondBind(t *testing.T) {
 
 func TestRuntimeCallbacksAreRegistered(t *testing.T) {
 	// The propagation package registers the callbacks in its init function.
-	// Step 5 links it with the runtime aspect (plan section 3.2 rule 6).
+	// The runtime aspect links it (rule 6 of the runtime hook rules in the
+	// internal/taint/runtimebridge package doc).
 	registered := runtimebridge.Register(nil)
 	runtimebridge.Register(registered)
 	require.NotNil(t, registered)
@@ -379,7 +380,7 @@ func TestRuntimeStringToBytes(t *testing.T) {
 	bridgetest.ToBytes(result, tainted)
 	require.Equal(t, []ranges.Range{rng(3, 5, 1)}, lookupByteRanges(s, result), "[]byte(s)")
 
-	// The Q2 switch off (plan section 4.4): no pre-check hit and no taint.
+	// The string-to-slice switch off: no pre-check hit and no taint.
 	previous := bridgetest.SetS2SGate(0)
 	t.Cleanup(func() { bridgetest.SetS2SGate(previous) })
 	require.False(t, bridgetest.StrPre(tainted))
@@ -475,7 +476,7 @@ func TestRuntimeRuneLimitsAndCharge(t *testing.T) {
 
 	// string(rs): the charge is sizeClass(4*len(rs)+3), also when the result
 	// is shorter than the encoded runes (the runes changed during the
-	// conversion, plan section 4.5).
+	// conversion).
 	owner := acquireOwner(t, s)
 	runes := make([]rune, 1000)
 	for i := range runes {

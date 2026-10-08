@@ -12,9 +12,9 @@ package store
 // production code.
 
 // ForceIndexFullForTest makes the index refuse each new root of each store:
-// the first adoption fails with an indexFull drop (plan runtime-operator-hooks,
-// section 9.1 item 4b). It returns false when another test hook is installed.
-// Call restore to remove the seam.
+// the first adoption fails with an indexFull drop. Tests outside this package
+// use it to check the behavior of a refused root. It returns false when another
+// test hook is installed. Call restore to remove the seam.
 func ForceIndexFullForTest() (restore func(), ok bool) {
 	hook := func(stage hookStage, _ int) bool { return stage == hookFirstInsert }
 	if !testHook.CompareAndSwap(nil, &hook) {
@@ -25,7 +25,7 @@ func ForceIndexFullForTest() (restore func(), ok bool) {
 
 // HoldBindingTableForTest takes the write lock of the binding table of owner,
 // until release is called. Then each reader lookup that reaches owner is
-// incomplete (plan encoding-json-v2, section 6.5, rule (b)). It returns a
+// incomplete (reader binding rule (b) in the package doc). It returns a
 // release that does nothing when owner is nil or disabled.
 //
 // +checklocksignore: the lock is held until release.

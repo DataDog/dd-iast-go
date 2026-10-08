@@ -282,14 +282,14 @@ func TestRuntimeBenchReportDefaultProfileIsLocal(t *testing.T) {
 		d := newBenchData()
 		d.profile = profile
 		requireVerdict(t, d, "", "PASS",
-			"plan section 9.3 gates, profile `local` (darwin/arm64)",
+			"Runtime hooks: numeric gates, profile `local` (darwin/arm64)",
 			"| 0 extra allocations; <= +2 ns pooled; 1 000 runes: <= +1 % of nohook |",
 			"<= +3 ns + 1.5 ns for each operand",
 			"<= +0.9 us + 120 ns for each operand above 2",
 			"<= +1.1 us + 4 ns for each rune",
 			"| <= +1 % of nohook (+20.00 ns) | PASS |",
 			"<= 4 / 10 / 45 ns, 0 allocations",
-			"<= +3.70 % (Phase 6: +2.70 %, + 1 point)")
+			"<= +3.70 % (baseline: +2.70 %, + 1 point)")
 	}
 }
 
@@ -349,7 +349,7 @@ func ciMeasured() *benchData {
 
 func TestRuntimeBenchReportCIProfile(t *testing.T) {
 	requireVerdict(t, ciMeasured(), "", "PASS",
-		"plan section 9.3 gates, profile `ci` (GitHub runners)",
+		"Runtime hooks: numeric gates, profile `ci` (GitHub runners)",
 		"| 0 extra allocations; <= +8 ns pooled (rune conversion: <= +25 ns); 1 000 runes: time reported, not gated; 0 extra allocations gated |",
 		"<= +4 ns + 2 ns for each operand",
 		"= 91.98 ns", "= 175.67 ns",
@@ -541,7 +541,8 @@ func TestRuntimeBenchReportFailsTaintedAllocation(t *testing.T) {
 }
 
 // localTainted is the worst pooled hook - nohook (ns) of each tainted case on
-// darwin/arm64 (T11.2: Go 1.26.6 and Go 1.27.1, the larger value).
+// darwin/arm64 (the corrected tainted method: Go 1.26.6 and Go 1.27.1, the
+// larger value).
 var localTainted = map[string]float64{
 	"concat2-stack": 830.68, "concat4-stack": 1046.60, "concat6-stack": 1240.91, "concat16-stack": 2160.55,
 	"concat2-heap": 837.73, "b2s-stack": 606.32, "s2b-stack": 584.13,
@@ -603,7 +604,7 @@ func (d *benchData) setNohook(name string, value float64) {
 
 // TestRuntimeBenchReportRelativeRune1000Gates checks the 1 000-rune rows of
 // the gate-off and clean modes: hook - nohook <= 1 % of nohook. The values are
-// of T11.2 (darwin/arm64) rows that pass.
+// of darwin/arm64 rows (the corrected tainted method) that pass.
 func TestRuntimeBenchReportRelativeRune1000Gates(t *testing.T) {
 	cases := []struct {
 		name          string

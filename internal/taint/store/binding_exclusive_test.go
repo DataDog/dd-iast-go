@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// The tests of this file check plan encoding-json-v2, section 6.5.
+// The tests of this file check the reader binding rules in the package doc.
 
 func TestBindingSizes(t *testing.T) {
 	// exclusive, viaGuard, inputs, and demoted use the padding after kind.
@@ -281,8 +281,7 @@ func requireExclusive(t *testing.T, s *Store, object any, want bool) {
 	require.Equal(t, want, len(refs) == 1 && refs[0].Exclusive)
 }
 
-// TestDerivedReaderBindingRevalidatesInputs checks rule (e) of plan
-// encoding-json-v2, section 6.5.
+// TestDerivedReaderBindingRevalidatesInputs checks reader binding rule (e).
 func TestDerivedReaderBindingRevalidatesInputs(t *testing.T) {
 	s := New()
 	a, b := s.Acquire(), s.Acquire()
@@ -450,11 +449,10 @@ func TestDerivedReaderRebindKeepsBothProofs(t *testing.T) {
 	requireExclusive(t, s, changed, false)
 }
 
-// TestDerivedReaderBindingStaysNotExclusiveAfterSecondOwnerEnds checks that
-// the loss of rule (e) is sticky (follow-up review 1 of batch 1, finding 1):
-// a wrapper of A over an input that a second owner B bound stays not
-// exclusive after B ends. The wrapper could have read bytes of B while B was
-// live.
+// TestDerivedReaderBindingStaysNotExclusiveAfterSecondOwnerEnds checks that the
+// loss of rule (e) is sticky: a wrapper of A over an input that a second owner
+// B bound stays not exclusive after B ends. The wrapper could have read bytes
+// of B while B was live.
 func TestDerivedReaderBindingStaysNotExclusiveAfterSecondOwnerEnds(t *testing.T) {
 	for name, bindSecond := range map[string]func(t *testing.T, b *Owner, input any){
 		"bind": func(t *testing.T, b *Owner, input any) {
@@ -517,12 +515,12 @@ func TestDerivedReaderBindingProofUsesTheCounterOfTheLookup(t *testing.T) {
 }
 
 // TestWrapperLookupSeesBindThatStartedBeforeTheCounterRead checks the ordering
-// invariant of rule (e) (follow-up review 2 of batch 1): a reader bind adds 1
-// to the counter BEFORE it changes the table. The test stops the bind of B
-// between these two steps. Then a lookup of the wrapper W of A reads the
-// counter of the input, and stops. B then completes its bind and ends, and the
-// lookup continues: its input lookup finds only A. The lookup read the
-// counter while B was bound to the input, thus W must not be exclusive.
+// invariant of rule (e): a reader bind adds 1 to the counter BEFORE it changes
+// the table. The test stops the bind of B between these two steps. Then a
+// lookup of the wrapper W of A reads the counter of the input, and stops. B
+// then completes its bind and ends, and the lookup continues: its input lookup
+// finds only A. The lookup read the counter while B was bound to the input,
+// thus W must not be exclusive.
 func TestWrapperLookupSeesBindThatStartedBeforeTheCounterRead(t *testing.T) {
 	s := New()
 	a, b := s.Acquire(), s.Acquire()

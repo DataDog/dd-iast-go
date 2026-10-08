@@ -7,14 +7,15 @@
 
 // This test pulls runtime.systemstack with a test-only //go:linkname. The
 // linker refuses that pull by default, so the test has a build tag, and it
-// runs only with -ldflags=-checklinkname=0 (plan section 9.4 item 3b):
+// runs only with -ldflags=-checklinkname=0 (the CI script
+// .github/woven-runtime.sh runs it in its own step):
 //
 //	go tool orchestrion go test -tags iast_g0test -ldflags=-checklinkname=0 ./iast/runtime/internal/g0test
 
 // Package g0test_test checks that the hooks do not run, and do not add a frame
 // with a stack check, when a hooked function runs on the system stack (g0).
 //
-// Critic round 9: the wrapper __dd_iast_<fn> is a normal function with a
+// Why: the wrapper __dd_iast_<fn> is a normal function with a
 // stack check at entry. On g0 (and gsignal) a failed stack check calls
 // morestack, and morestack on g0 or gsignal is fatal. Thus the prepended code
 // must call the //go:nosplit __dd_iast_ok() BEFORE it calls the wrapper, and

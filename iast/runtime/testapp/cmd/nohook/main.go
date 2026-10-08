@@ -5,7 +5,7 @@
 
 // Command nohook does not import dd-iast-go. It runs the 6 hooked runtime
 // operations, so it checks that a woven runtime links and runs with the
-// default linker check (plan section 3.9 item 4).
+// default linker check (-checklinkname=1).
 package main
 
 import (
