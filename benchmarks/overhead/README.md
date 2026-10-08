@@ -33,6 +33,7 @@ Useful controls use the same names as `go test` where the concepts overlap:
 | `-cpu` | `1` | One fixed positive `GOMAXPROCS` and `-test.cpu` value |
 | `-bench` | `.` | Benchmark selection expression |
 | `-outputdir` | temporary | Artifact directory |
+| `-sampling` | `100` | `DD_IAST_REQUEST_SAMPLING` value from 0 to 100 |
 
 Unlike `go test -count`, every runner sample starts a fresh process so global
 IAST state cannot survive between repetitions. The runner's `-cpu` flag accepts
@@ -42,6 +43,9 @@ For a quick smoke run:
 
 ```console
 go -C benchmarks/overhead run ./runner -count=2 -benchtime=100ms
+
+# Measure the sampled-out request path.
+go -C benchmarks/overhead run ./runner -sampling=0 -bench=BenchmarkHTTPRoundTrip
 ```
 
 ## Workloads
@@ -62,6 +66,17 @@ go -C benchmarks/overhead run ./runner -count=2 -benchtime=100ms
 - `RequestProcessingParallel` reports aggregate throughput under controlled
   contention. Its `ns/op` should not be interpreted as individual request
   latency.
+- `JSONUnmarshal20`, `JSONDecoder20`, `JSONDecoderSmall`, and
+  `JSONDecoderMore100` measure `encoding/json` decoding (a document with 20
+  string fields, a small body, and a `More` loop over 100 objects).
+  `IOMultiReader` and `IOReadAll1KiB` measure the reader aspects, and
+  `ReadGuard` measures the `Read` guard of `bufio.Reader` and
+  `io.LimitedReader`. The sub-benchmark name gives the state: `inactive` (no
+  active request), `active` (one clean active request, the readers have no
+  binding), and `request` (each iteration begins a request, binds the readers,
+  and finishes the request). The `ReadGuard` states are `a-none` (no live
+  guard), `b-other` (one live guard on another reader), and `c-self` (the
+  reader itself is guarded).
 
 Each workload reports `ns/op`, `B/op`, and `allocs/op`. The runner uses
 `benchstat` to compare distributions. Prefer its confidence intervals over a

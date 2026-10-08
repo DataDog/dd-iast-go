@@ -6,28 +6,268 @@
 package overhead_test
 
 import (
+	"bytes"
 	"context"
 	"crypto/des"
 	"crypto/md5"
 	"crypto/sha1"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"testing"
 
+	"github.com/DataDog/dd-iast-go/internal/config"
+	"github.com/DataDog/dd-iast-go/internal/taint/request"
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/mocktracer"
 )
 
 var (
-	resultInt  atomic.Int64
-	md5Result  [md5.Size]byte
-	sha1Result [sha1.Size]byte
-	desResult  any
+	resultInt     atomic.Int64
+	resultString  string
+	resultStrings []string
+	resultBytes   []byte
+	md5Result     [md5.Size]byte
+	sha1Result    [sha1.Size]byte
+	desResult     any
 )
+
+func BenchmarkPropagationActiveUntainted(b *testing.B) {
+	previousEnabled := config.Enabled
+	previousSampling := config.RequestSamplingPct
+	previousMax := config.MaxConcurrentRequests
+	config.Enabled = true
+	config.RequestSamplingPct = 100
+	config.MaxConcurrentRequests = 64
+	_, scope, created := request.Begin(context.Background())
+	if !created {
+		b.Fatal("active propagation benchmark did not create a request scope")
+	}
+	b.Cleanup(func() {
+		scope.Finish()
+		config.Enabled = previousEnabled
+		config.RequestSamplingPct = previousSampling
+		config.MaxConcurrentRequests = previousMax
+	})
+
+	b.Run("StringWindow", func(b *testing.B) {
+		value := "  attacker  "
+		b.ReportAllocs()
+		for b.Loop() {
+			resultString = strings.TrimSpace(value)
+		}
+	})
+	b.Run("StringWindows", func(b *testing.B) {
+		value := "a,b,c"
+		b.ReportAllocs()
+		for b.Loop() {
+			resultStrings = strings.Split(value, ",")
+		}
+	})
+	b.Run("StringCopy", func(b *testing.B) {
+		value := "attacker"
+		b.ReportAllocs()
+		for b.Loop() {
+			resultString = strings.Clone(value)
+		}
+	})
+	b.Run("StringCoarse", func(b *testing.B) {
+		value := "Attacker"
+		b.ReportAllocs()
+		for b.Loop() {
+			resultString = strings.ToLower(value)
+		}
+	})
+	b.Run("ByteWindow", func(b *testing.B) {
+		value := []byte("  attacker  ")
+		b.ReportAllocs()
+		for b.Loop() {
+			resultBytes = bytes.TrimSpace(value)
+		}
+	})
+	b.Run("ByteCopy", func(b *testing.B) {
+		value := []byte("attacker")
+		b.ReportAllocs()
+		for b.Loop() {
+			resultBytes = bytes.Clone(value)
+		}
+	})
+}
+
+func BenchmarkStringsBuilder(b *testing.B) {
+	b.ReportAllocs()
+	for b.Loop() {
+		var builder strings.Builder
+		builder.WriteString("alpha")
+		builder.WriteString("beta")
+		resultString = builder.String()
+	}
+}
+
+func BenchmarkBytesBuffer(b *testing.B) {
+	b.ReportAllocs()
+	for b.Loop() {
+		var buffer bytes.Buffer
+		buffer.WriteString("alpha")
+		buffer.WriteString("beta")
+		resultString = buffer.String()
+	}
+}
+
+func BenchmarkBytesClone(b *testing.B) {
+	value := []byte("representative-value")
+	b.ReportAllocs()
+	for b.Loop() {
+		resultInt.Store(int64(len(bytes.Clone(value))))
+	}
+}
+
+func BenchmarkBytesTrimSpace(b *testing.B) {
+	value := []byte("representative-value")
+	b.ReportAllocs()
+	for b.Loop() {
+		resultInt.Store(int64(len(bytes.TrimSpace(value))))
+	}
+}
+
+func BenchmarkBytesSplit(b *testing.B) {
+	value := []byte("alpha,beta,gamma")
+	b.ReportAllocs()
+	for b.Loop() {
+		resultInt.Store(int64(len(bytes.Split(value, []byte(",")))))
+	}
+}
+
+func BenchmarkBytesJoin(b *testing.B) {
+	elements := [][]byte{[]byte("alpha"), []byte("beta"), []byte("gamma")}
+	b.ReportAllocs()
+	for b.Loop() {
+		resultInt.Store(int64(len(bytes.Join(elements, []byte(",")))))
+	}
+}
+
+func BenchmarkBytesRepeat(b *testing.B) {
+	value := []byte("alpha")
+	b.ReportAllocs()
+	for b.Loop() {
+		resultInt.Store(int64(len(bytes.Repeat(value, 3))))
+	}
+}
+
+func BenchmarkBytesReplaceAll(b *testing.B) {
+	value := []byte("alpha-beta-alpha")
+	b.ReportAllocs()
+	for b.Loop() {
+		resultInt.Store(int64(len(bytes.ReplaceAll(value, []byte("alpha"), []byte("gamma")))))
+	}
+}
+
+func BenchmarkBytesToLower(b *testing.B) {
+	value := []byte("Attack Value")
+	b.ReportAllocs()
+	for b.Loop() {
+		resultInt.Store(int64(len(bytes.ToLower(value))))
+	}
+}
+
+func BenchmarkBytesMap(b *testing.B) {
+	value := []byte("Attack Value")
+	b.ReportAllocs()
+	for b.Loop() {
+		resultInt.Store(int64(len(bytes.Map(func(r rune) rune { return r + 1 }, value))))
+	}
+}
+
+func BenchmarkStringsClone(b *testing.B) {
+	const value = "representative-value"
+	b.ReportAllocs()
+	for b.Loop() {
+		resultString = strings.Clone(value)
+	}
+}
+
+func BenchmarkStringsTrimSpace(b *testing.B) {
+	const value = "representative-value"
+	b.ReportAllocs()
+	for b.Loop() {
+		resultString = strings.TrimSpace(value)
+	}
+}
+
+func BenchmarkStringsToLower(b *testing.B) {
+	b.ReportAllocs()
+	for b.Loop() {
+		resultString = strings.ToLower("Attack Value")
+	}
+}
+
+func BenchmarkFmtSprintf(b *testing.B) {
+	b.ReportAllocs()
+	for b.Loop() {
+		resultString = fmt.Sprintf("value=%s", "attack")
+	}
+}
+
+func BenchmarkURLQueryEscape(b *testing.B) {
+	b.ReportAllocs()
+	for b.Loop() {
+		resultString = url.QueryEscape("Attack Value")
+	}
+}
+
+func BenchmarkStrconvQuote(b *testing.B) {
+	b.ReportAllocs()
+	for b.Loop() {
+		resultString = strconv.Quote("Attack Value")
+	}
+}
+
+func BenchmarkStringsJoin(b *testing.B) {
+	elements := []string{"alpha", "beta", "gamma"}
+	b.ReportAllocs()
+	for b.Loop() {
+		resultString = strings.Join(elements, ",")
+	}
+}
+
+func BenchmarkStringsRepeat(b *testing.B) {
+	b.ReportAllocs()
+	for b.Loop() {
+		resultString = strings.Repeat("alpha", 3)
+	}
+}
+
+func BenchmarkStringsReplaceAll(b *testing.B) {
+	b.ReportAllocs()
+	for b.Loop() {
+		resultString = strings.ReplaceAll("alpha-beta-alpha", "alpha", "gamma")
+	}
+}
+
+func BenchmarkStringsSplitSeq(b *testing.B) {
+	const value = "alpha,beta,gamma"
+	b.ReportAllocs()
+	for b.Loop() {
+		length := 0
+		for part := range strings.SplitSeq(value, ",") {
+			length += len(part)
+		}
+		resultInt.Store(int64(length))
+	}
+}
+
+func BenchmarkStringsSplit(b *testing.B) {
+	const value = "alpha,beta,gamma"
+	b.ReportAllocs()
+	for b.Loop() {
+		resultStrings = strings.Split(value, ",")
+	}
+}
 
 func BenchmarkHealth(b *testing.B) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
