@@ -1,0 +1,126 @@
+// Unless explicitly stated otherwise all files in this repository are licensed
+// under the Apache License Version 2.0.
+// This product includes software developed at Datadog (https://www.datadoghq.com/).
+// Copyright 2026-present Datadog, Inc.
+
+package config
+
+import (
+	"os"
+	"testing"
+
+	"github.com/DataDog/dd-iast-go/internal/config/loader"
+	"github.com/stretchr/testify/require"
+)
+
+func TestDefaultRedactionPatternsMatchAcceptedSensitiveForms(t *testing.T) {
+	for _, name := range []string{"password", "API_KEY", "Authorization", "consumer_secret"} {
+		if !defaultRedactionNamePattern.MatchString(name) {
+			t.Errorf("name pattern did not match %q", name)
+		}
+	}
+	for _, value := range []string{"Bearer ABC.def-123", "token:abcdefghijklm", "ghp_123456789012345678901234567890123456"} {
+		if !defaultRedactionValuePattern.MatchString(value) {
+			t.Errorf("value pattern did not match %q", value)
+		}
+	}
+	for _, name := range []string{"username", "limit", "plain"} {
+		if defaultRedactionNamePattern.MatchString(name) {
+			t.Errorf("name pattern unexpectedly matched %q", name)
+		}
+	}
+	for _, value := range []string{"plain text", "token:short", "Bearer"} {
+		if defaultRedactionValuePattern.MatchString(value) {
+			t.Errorf("value pattern unexpectedly matched %q", value)
+		}
+	}
+}
+
+func TestObserveReplaysWarningsAndEnvironment(t *testing.T) {
+	previousObservations, previousWarnings := observations, warnings
+	observations = []observation{
+		{name: "default", value: 1},
+		{name: "environment", value: 2, environment: true},
+	}
+	warnings = []string{"invalid setting"}
+	t.Cleanup(func() {
+		observations, warnings = previousObservations, previousWarnings
+	})
+
+	var warning string
+	defaults := make(map[string]any)
+	environment := make(map[string]any)
+	Observe(loader.Observer{
+		Warn: func(format string, args ...any) {
+			warning = format
+		},
+		RegisterDefault: func(name string, value any) {
+			defaults[name] = value
+		},
+		RegisterEnvironment: func(name string, value any) {
+			environment[name] = value
+		},
+	})
+	require.Equal(t, "%s", warning)
+	require.Equal(t, map[string]any{"default": 1}, defaults)
+	require.Equal(t, map[string]any{"environment": 2}, environment)
+}
+
+func TestObserveReplaysInitialConfiguration(t *testing.T) {
+	count := 0
+	observer := loader.Observer{
+		Warn:                func(string, ...any) { count++ },
+		RegisterDefault:     func(string, any) { count++ },
+		RegisterEnvironment: func(string, any) { count++ },
+	}
+	require.Equal(t, Enabled, Observe(observer))
+	require.NotZero(t, count)
+	firstCount := count
+	count = 0
+	require.Equal(t, Enabled, Observe(observer))
+	require.Equal(t, firstCount, count)
+}
+
+func TestStringToSlicePropagationSwitch(t *testing.T) {
+	// load changes every setting. This cleanup runs after the environment
+	// cleanups of t.Setenv, so it loads the original environment again.
+	t.Cleanup(func() { load(loader.Observer{}) })
+	for _, test := range []struct {
+		value   string
+		set     bool
+		want    bool
+		warning bool
+	}{
+		{set: false, want: true},
+		{value: "false", set: true, want: false},
+		{value: "0", set: true, want: false},
+		{value: "true", set: true, want: true},
+		{value: "not-a-boolean", set: true, want: true, warning: true},
+	} {
+		t.Run(test.value, func(t *testing.T) {
+			// t.Setenv restores the environment after the test.
+			t.Setenv(EnvVarStringToSlicePropagationEnabled, test.value)
+			if !test.set {
+				require.NoError(t, os.Unsetenv(EnvVarStringToSlicePropagationEnabled))
+			}
+			var warnings []string
+			var registered any
+			load(loader.Observer{
+				Warn: func(format string, _ ...any) { warnings = append(warnings, format) },
+				RegisterDefault: func(name string, value any) {
+					if name == EnvVarStringToSlicePropagationEnabled {
+						registered = value
+					}
+				},
+				RegisterEnvironment: func(name string, value any) {
+					if name == EnvVarStringToSlicePropagationEnabled {
+						registered = value
+					}
+				},
+			})
+			require.Equal(t, test.want, StringToSlicePropagationEnabled)
+			require.Equal(t, test.want, registered)
+			require.Equal(t, test.warning, len(warnings) != 0)
+		})
+	}
+}

@@ -1,0 +1,2591 @@
+# Unless explicitly stated otherwise all files in this repository are licensed
+# under the Apache License Version 2.0.
+# This product includes software developed at Datadog (https://www.datadoghq.com/).
+# Copyright 2026-present Datadog, Inc.
+---
+# $schema: https://datadoghq.dev/orchestrion/schema.json
+meta:
+  name: github.com/DataDog/dd-iast-go/iast/propagation/text
+  description: >-
+    Taint propagation hooks in the standard library packages strings, bytes,
+    strconv and net/url. The hooks copy (or set) the heap taint bits of
+    internal/taint/heapbits where the standard library copies bytes with copy
+    or with the appended part of append, which the runtime hooks of
+    iast/runtime cannot see.
+
+# How the hooks work (plan heapbits-sqli-cmdi, section 6.1):
+#
+#  1. Each hooked function starts with "if __dd_iast_live() { ... }". Live is
+#     2 loads and no call (it is inlined). When it is false, no byte of the
+#     heap is tainted, and the original body runs.
+#  2. Else the prepended code calls the twin __dd_iast_<fn>, an injected
+#     function of the same package. The twin checks the taint of the inputs
+#     (Any of the heap bits). When no input is tainted, it returns false and the
+#     original body runs. Else it does the work of the body again with the bit
+#     operations, and returns true with the results. A few twins always do
+#     the work (the bytes.Buffer writes: their gate is "the source or the
+#     destination is tainted", and the destination is known only after the
+#     growth of the buffer; and the bytes.Reader and strings.Reader reads,
+#     with the same gate).
+#  3. Exact copies (Builder and Buffer writes, bytes.Reader and
+#     strings.Reader reads, Clone, Join, Repeat, Replace, bytes.ToValidUTF8)
+#     copy the bits with heapbits.Copy. The positional
+#     transforms (ASCII ToUpper and ToLower) copy the bits and record a
+#     positional derived entry (propbridge.Derived). The coarse transforms
+#     (Map, strings.ToValidUTF8, Replacer.Replace, quote, unquote, URL escape
+#     and unescape) set the bits of the whole output and record a coarse
+#     derived entry (plan section 6.3).
+#  4. Some coarse twins ("clean copy" twins: strings.Map,
+#     strings.ToValidUTF8, strconv.unquote, url.escape, url.unescape) do not
+#     repeat the body: they call the hooked function again on a copy of the
+#     input without taint bits (make and copy do not copy the bits, and the
+#     twin also clears them). The inner call sees no taint, so its twin
+#     returns false and the original body runs (one time, so application
+#     callbacks also run one time). Then the twin changes each result that is
+#     a part of the copy into the same part of the original input (the
+#     original body returns parts of its input; they keep their exact bits),
+#     and applies the coarse rule to a new output.
+#  5. Some hooks ("plain twin" hooks: strings.Join, strings.Replace,
+#     strings.Repeat, strings.ToLower) start with "if !__dd_iast_live() ||
+#     <no input is tainted> { return __dd_iast_<fn>_plain(...) }". The
+#     check does one Any for each input before the body (strings.Join
+#     checks its elements in batches of 256 with one call of the runtime).
+#     The plain twin is a copy of the original body that uses __dd_iast_pb,
+#     a local builder without hooks (its write methods are inlinable), in
+#     place of strings.Builder: the hooks of strings.Builder stop the
+#     inlining of its methods, and do one Any for each write. The output of
+#     a plain twin has no taint bits, as the output of the original body for
+#     inputs without taint. When an input is tainted, the original body runs
+#     (with the hooks of strings.Builder), or the twin of rule 2 for its
+#     special cases. TestPlainTwins compares the plain twins with the
+#     original bodies (results, panics, allocations).
+#     Accepted limit: the check occurs one time, before the copy. When a
+#     different goroutine taints (in place) an input after the check and
+#     before the copy, the output does not get this taint. The original body
+#     has the same window between its check (in the hooked
+#     Builder.WriteString) and its copy, only shorter.
+#
+# Rules:
+#
+#  - The hook code imports only internal/taint/heapbits and
+#    internal/taint/propbridge (and packages that the hooked package already
+#    imports, or that the runtime imports). Never hook a package that the
+#    runtime imports (internal/stringslite, internal/bytealg).
+#  - No defer, no recover, no lock in a twin. A twin panics only where the
+#    original body panics, with the same value.
+#  - A twin passes uintptr values to propbridge only for memory that it keeps
+#    alive with runtime.KeepAlive until the call returns.
+#  - strconv.appendQuotedWith is not hooked: fmt passes its scratch array to
+#    it (plan section 6.3).
+#  - The bodies that the twins repeat or depend on are in the drift golden
+#    files (testdata/stdlib-*.golden, TestStdlibDrift).
+#  - The number of aspects is instrumentedPropagationPoints in doc.go
+#    (TestAspectCount).
+
+aspects:
+  # ---------------------------------------------------------------- strings
+
+  - id: strings.Clone
+    join-point:
+      all-of:
+        - import-path: strings
+        - function-body:
+            function:
+              - name: Clone
+    advice:
+      - inject-declarations:
+          imports:
+            atomic: sync/atomic
+            runtime: runtime
+            unsafe: unsafe
+            stringslite: internal/stringslite
+            bytealg: internal/bytealg
+          template: |-
+            // ---- bit functions (plan section 6.1 rule 1) ----
+            //
+            // The hooks do not import packages heapbits and propbridge: go test
+            // of a package with in-package tests rebuilds the standard library
+            // packages that import it, and Orchestrion cannot rebuild them (a
+            // fingerprint cycle through reflect). Thus the hooks pull the bit
+            // functions of the woven runtime with the linknames of package
+            // heapbits (nil without weaving: then nothing is tainted), and
+            // propbridge.Derived with the pull linkname of a variable that
+            // propbridge pushes (nil when propbridge is not linked: then no
+            // derived entry is needed, no analysis can read it).
+            var (
+              //go:linkname __dd_iast_rt_set __dd_iast_heapbits.set
+              __dd_iast_rt_set func(p, n uintptr) bool
+
+              //go:linkname __dd_iast_rt_clear __dd_iast_heapbits.clear
+              __dd_iast_rt_clear func(p, n uintptr)
+
+              //go:linkname __dd_iast_rt_any __dd_iast_heapbits.any
+              __dd_iast_rt_any func(p, n uintptr) bool
+
+              //go:linkname __dd_iast_rt_copy __dd_iast_heapbits.copy
+              __dd_iast_rt_copy func(dst, src, n uintptr) bool
+
+              //go:linkname __dd_iast_rt_seen __dd_iast_heapbits.seen
+              __dd_iast_rt_seen *uint32
+            )
+
+            // Modes of propbridge.Derived (TestBridgeModes checks the values).
+            const (
+              __dd_iast_mode_coarse     uint8 = 1
+              __dd_iast_mode_positional uint8 = 2
+            )
+
+            // __dd_iast_rt_derived is propbridge.Derived (pushed by package
+            // propbridge; nil when it is not linked).
+            //
+            //go:linkname __dd_iast_rt_derived __dd_iast_propbridge.derived
+            var __dd_iast_rt_derived func(out, outLen, in, inLen uintptr, mode uint8)
+
+            func __dd_iast_derived(out, outLen, in, inLen uintptr, mode uint8) {
+              if f := __dd_iast_rt_derived; f != nil {
+                f(out, outLen, in, inLen, mode)
+              }
+            }
+
+            // __dd_iast_live is heapbits.Live: 2 loads, no call (inlinable).
+            func __dd_iast_live() bool {
+              p := __dd_iast_rt_seen
+              return p != nil && atomic.LoadUint32(p) != 0
+            }
+
+            // The bit functions below are heapbits.Any, Set, Clear and Copy.
+            // They are not inlined (as in package heapbits): their stack check
+            // is a preemption point.
+
+            //go:noinline
+            func __dd_iast_any(p unsafe.Pointer, n int) bool {
+              f := __dd_iast_rt_any
+              if f == nil || n <= 0 {
+                return false
+              }
+              ok := f(uintptr(p), uintptr(n))
+              runtime.KeepAlive(p)
+              return ok
+            }
+
+            //go:noinline
+            func __dd_iast_set(p unsafe.Pointer, n int) bool {
+              f := __dd_iast_rt_set
+              if f == nil || n <= 0 {
+                return false
+              }
+              ok := f(uintptr(p), uintptr(n))
+              runtime.KeepAlive(p)
+              return ok
+            }
+
+            //go:noinline
+            func __dd_iast_clear(p unsafe.Pointer, n int) {
+              f := __dd_iast_rt_clear
+              if f == nil || n <= 0 {
+                return
+              }
+              f(uintptr(p), uintptr(n))
+              runtime.KeepAlive(p)
+            }
+
+            //go:noinline
+            func __dd_iast_copyp(dst, src unsafe.Pointer, n int) bool {
+              f := __dd_iast_rt_copy
+              if f == nil || n <= 0 {
+                return false
+              }
+              ok := f(uintptr(dst), uintptr(src), uintptr(n))
+              runtime.KeepAlive(dst)
+              runtime.KeepAlive(src)
+              return ok
+            }
+
+            func __dd_iast_anys(s string) bool {
+              return __dd_iast_any(unsafe.Pointer(unsafe.StringData(s)), len(s))
+            }
+
+            func __dd_iast_anyb(b []byte) bool {
+              return __dd_iast_any(unsafe.Pointer(unsafe.SliceData(b)), len(b))
+            }
+
+            func __dd_iast_clearb(b []byte) {
+              __dd_iast_clear(unsafe.Pointer(unsafe.SliceData(b)), len(b))
+            }
+
+            // ---- plain builder (rule 5 of the header) ----
+
+            // __dd_iast_pb is strings.Builder without the hooks and without
+            // the copy check. Only the plain twins use it, and only as a
+            // local variable (it is never copied). Its methods do the same
+            // work as the methods of strings.Builder (the same allocation
+            // sizes and the same panics). The methods are inlinable, except
+            // grow (as in strings.Builder; TestPlainBuilderInlining).
+            type __dd_iast_pb struct {
+              buf []byte
+            }
+
+            // grow is strings.Builder.grow.
+            func (b *__dd_iast_pb) grow(n int) {
+              buf := bytealg.MakeNoZero(2*cap(b.buf) + n)[:len(b.buf)]
+              copy(buf, b.buf)
+              b.buf = buf
+            }
+
+            // Grow is strings.Builder.Grow (with the same panic value).
+            func (b *__dd_iast_pb) Grow(n int) {
+              if n < 0 {
+                panic("strings.Builder.Grow: negative count")
+              }
+              if cap(b.buf)-len(b.buf) < n {
+                b.grow(n)
+              }
+            }
+
+            func (b *__dd_iast_pb) WriteString(s string) {
+              b.buf = append(b.buf, s...)
+            }
+
+            func (b *__dd_iast_pb) WriteByte(c byte) {
+              b.buf = append(b.buf, c)
+            }
+
+            func (b *__dd_iast_pb) Len() int {
+              return len(b.buf)
+            }
+
+            func (b *__dd_iast_pb) String() string {
+              return unsafe.String(unsafe.SliceData(b.buf), len(b.buf))
+            }
+
+            // ---- string helpers ----
+
+            // __dd_iast_ptr returns the address of the data of s.
+            func __dd_iast_ptr(s string) unsafe.Pointer {
+              return unsafe.Pointer(unsafe.StringData(s))
+            }
+
+            // __dd_iast_within reports whether the memory of part is inside
+            // the memory of whole.
+            func __dd_iast_within(part, whole string) bool {
+              p, w := uintptr(__dd_iast_ptr(part)), uintptr(__dd_iast_ptr(whole))
+              return len(whole) > 0 && p >= w && p+uintptr(len(part)) <= w+uintptr(len(whole))
+            }
+
+            // __dd_iast_clean returns a copy of s in new memory without taint
+            // bits (make and copy do not copy the bits; the clear is a guard:
+            // the inner call of a clean copy twin must see no taint, else it
+            // calls its twin again).
+            func __dd_iast_clean(s string) string {
+              b := make([]byte, len(s))
+              copy(b, s)
+              __dd_iast_clearb(b)
+              return unsafe.String(unsafe.SliceData(b), len(b))
+            }
+
+            // __dd_iast_remap changes a result r of a call on c (the clean
+            // copy of s) that is a part of c into the same part of s.
+            func __dd_iast_remap(r, c, s string) string {
+              if __dd_iast_within(r, c) {
+                off := int(uintptr(__dd_iast_ptr(r)) - uintptr(__dd_iast_ptr(c)))
+                return s[off : off+len(r)]
+              }
+              return r
+            }
+
+            // __dd_iast_coarse applies the coarse rule: when out is new
+            // memory (not a part of in), it taints all of out and records a
+            // coarse derived entry with the source of in.
+            func __dd_iast_coarse(out, in string) {
+              if len(out) == 0 || __dd_iast_within(out, in) || !__dd_iast_set(__dd_iast_ptr(out), len(out)) {
+                return
+              }
+              __dd_iast_derived(uintptr(__dd_iast_ptr(out)), uintptr(len(out)), uintptr(__dd_iast_ptr(in)), uintptr(len(in)), __dd_iast_mode_coarse)
+              runtime.KeepAlive(__dd_iast_ptr(out))
+              runtime.KeepAlive(__dd_iast_ptr(in))
+            }
+
+            // __dd_iast_positional copies the bits of in to out (new memory,
+            // same length) and records a positional derived entry.
+            func __dd_iast_positional(out, in string) {
+              if len(out) == 0 || len(out) != len(in) || !__dd_iast_copyp(__dd_iast_ptr(out), __dd_iast_ptr(in), len(in)) {
+                return
+              }
+              __dd_iast_derived(uintptr(__dd_iast_ptr(out)), uintptr(len(out)), uintptr(__dd_iast_ptr(in)), uintptr(len(in)), __dd_iast_mode_positional)
+              runtime.KeepAlive(__dd_iast_ptr(out))
+              runtime.KeepAlive(__dd_iast_ptr(in))
+            }
+
+            func __dd_iast_clone(s string) (string, bool) {
+              if !__dd_iast_anys(s) {
+                return "", false
+              }
+              r := stringslite.Clone(s)
+              __dd_iast_copyp(__dd_iast_ptr(r), __dd_iast_ptr(s), len(s))
+              return r, true
+            }
+      - prepend-statements:
+          template: |-
+            {{- $s := .Function.Argument 0 -}}
+            if __dd_iast_live() {
+              if __dd_iast_r, __dd_iast_ok := __dd_iast_clone({{ $s }}); __dd_iast_ok {
+                return __dd_iast_r
+              }
+            }
+
+  - id: strings.Join
+    join-point:
+      all-of:
+        - import-path: strings
+        - function-body:
+            function:
+              - name: Join
+              - receiver: false
+    advice:
+      - inject-declarations:
+          imports:
+            runtime: runtime
+            unsafe: unsafe
+          template: |-
+            // __dd_iast_rt_anystrs is the Any of the data of the n strings at
+            // p (the data of a []string), in one call. The aspects of
+            // iast/runtime push it (nil when they are not woven: then
+            // __dd_iast_join_tainted does one Any for each string). The
+            // arguments are uintptr values: a []string given to a func value
+            // escapes, and elems must not escape. The function is nosplit:
+            // the stack does not move during the call, thus p stays correct
+            // when elems is in stack memory. runtime.KeepAlive keeps elems
+            // alive until the end of the call. The function cannot be
+            // preempted, thus it scans at most __dd_iast_join_batch strings in
+            // one call (it returns true for more strings).
+            //
+            //go:linkname __dd_iast_rt_anystrs __dd_iast_runtime.anystrsptr
+            var __dd_iast_rt_anystrs func(p, n uintptr) bool
+
+            // __dd_iast_join_batch is the number of elements for one call of
+            // __dd_iast_rt_anystrs. It is __dd_iast_anystrsBatch of the
+            // aspects of iast/runtime.
+            const __dd_iast_join_batch = 256
+
+            // __dd_iast_join_tainted reports whether an input of Join that the
+            // body copies is tainted. For 0 or 1 element, the body copies
+            // nothing (it returns "" or elems[0]). It gives the elements to
+            // __dd_iast_rt_anystrs in batches: between two calls, the
+            // goroutine can be preempted (this function is not nosplit).
+            //
+            // The check occurs one time, before the plain twin copies the
+            // inputs. When a different goroutine taints (in place) an input
+            // after the check and before the copy, the result does not get
+            // this taint. This is an accepted limit: the original body, with
+            // the hooked Builder.WriteString, has the same window between
+            // its check and its copy, only shorter.
+            func __dd_iast_join_tainted(elems []string, sep string) bool {
+              if len(elems) < 2 {
+                return false
+              }
+              if __dd_iast_anys(sep) {
+                return true
+              }
+              if f := __dd_iast_rt_anystrs; f != nil {
+                for len(elems) > 0 {
+                  n := min(len(elems), __dd_iast_join_batch)
+                  p := unsafe.SliceData(elems)
+                  ok := f(uintptr(unsafe.Pointer(p)), uintptr(n))
+                  runtime.KeepAlive(p)
+                  if ok {
+                    return true
+                  }
+                  elems = elems[n:]
+                }
+                return false
+              }
+              for _, e := range elems {
+                if __dd_iast_anys(e) {
+                  return true
+                }
+              }
+              return false
+            }
+
+            // __dd_iast_join_plain is the body of Join with __dd_iast_pb
+            // (rule 5 of the header). Keep it the same as the body.
+            func __dd_iast_join_plain(elems []string, sep string) string {
+              switch len(elems) {
+              case 0:
+                return ""
+              case 1:
+                return elems[0]
+              }
+              var n int
+              if len(sep) > 0 {
+                if len(sep) >= maxInt/(len(elems)-1) {
+                  panic("strings: Join output length overflow")
+                }
+                n += len(sep) * (len(elems) - 1)
+              }
+              for _, elem := range elems {
+                if len(elem) > maxInt-n {
+                  panic("strings: Join output length overflow")
+                }
+                n += len(elem)
+              }
+              var b __dd_iast_pb
+              b.Grow(n)
+              b.WriteString(elems[0])
+              for _, s := range elems[1:] {
+                b.WriteString(sep)
+                b.WriteString(s)
+              }
+              return b.String()
+            }
+      - prepend-statements:
+          template: |-
+            {{- $elems := .Function.Argument 0 -}}
+            {{- $sep := .Function.Argument 1 -}}
+            if !__dd_iast_live() || !__dd_iast_join_tainted({{ $elems }}, {{ $sep }}) {
+              return __dd_iast_join_plain({{ $elems }}, {{ $sep }})
+            }
+
+  - id: strings.Replace
+    join-point:
+      all-of:
+        - import-path: strings
+        - function-body:
+            function:
+              - name: Replace
+              - receiver: false # not the Replace methods of the replacers
+    advice:
+      - inject-declarations:
+          imports:
+            utf8: unicode/utf8
+          template: |-
+            // __dd_iast_replace_plain is the body of Replace with
+            // __dd_iast_pb (rule 5 of the header). Keep it the same as the
+            // body. The output has only parts of s and copies of new: the
+            // hook checks only these 2 inputs.
+            // The hook checks the inputs one time, before the copy. A taint
+            // that a different goroutine adds (in place) to an input after the
+            // check is not in the output: an accepted limit (rule 5 of the
+            // header).
+            func __dd_iast_replace_plain(s, old, new string, n int) string {
+              if old == new || n == 0 {
+                return s
+              }
+              if m := Count(s, old); m == 0 {
+                return s
+              } else if n < 0 || m < n {
+                n = m
+              }
+              var b __dd_iast_pb
+              b.Grow(len(s) + n*(len(new)-len(old)))
+              start := 0
+              if len(old) > 0 {
+                for range n {
+                  j := start + Index(s[start:], old)
+                  b.WriteString(s[start:j])
+                  b.WriteString(new)
+                  start = j + len(old)
+                }
+              } else {
+                b.WriteString(new)
+                for range n - 1 {
+                  _, wid := utf8.DecodeRuneInString(s[start:])
+                  j := start + wid
+                  b.WriteString(s[start:j])
+                  b.WriteString(new)
+                  start = j
+                }
+              }
+              b.WriteString(s[start:])
+              return b.String()
+            }
+      - prepend-statements:
+          template: |-
+            {{- $s := .Function.Argument 0 -}}
+            {{- $old := .Function.Argument 1 -}}
+            {{- $new := .Function.Argument 2 -}}
+            {{- $n := .Function.Argument 3 -}}
+            if !__dd_iast_live() || !(__dd_iast_anys({{ $s }}) || __dd_iast_anys({{ $new }})) {
+              return __dd_iast_replace_plain({{ $s }}, {{ $old }}, {{ $new }}, {{ $n }})
+            }
+
+  - id: strings.Builder.Write
+    join-point:
+      all-of:
+        - import-path: strings
+        - function-body:
+            function:
+              - receiver: "*strings.Builder"
+              - name: Write
+    advice:
+      - inject-declarations:
+          imports:
+            unsafe: unsafe
+          template: |-
+            // The Builder never writes into memory that it gave out (Reset sets
+            // the buffer to nil): the destination has no old bits.
+            func __dd_iast_builder_write(b *Builder, p []byte) bool {
+              if !__dd_iast_anyb(p) {
+                return false
+              }
+              b.copyCheck()
+              n := len(b.buf)
+              b.buf = append(b.buf, p...)
+              __dd_iast_copyp(unsafe.Pointer(&b.buf[n]), unsafe.Pointer(unsafe.SliceData(p)), len(p))
+              return true
+            }
+      - prepend-statements:
+          template: |-
+            {{- $b := .Function.Receiver -}}
+            {{- $p := .Function.Argument 0 -}}
+            if __dd_iast_live() {
+              if __dd_iast_builder_write({{ $b }}, {{ $p }}) {
+                return len({{ $p }}), nil
+              }
+            }
+
+  - id: strings.Builder.WriteString
+    join-point:
+      all-of:
+        - import-path: strings
+        - function-body:
+            function:
+              - receiver: "*strings.Builder"
+              - name: WriteString
+    advice:
+      - inject-declarations:
+          imports:
+            unsafe: unsafe
+          template: |-
+            func __dd_iast_builder_writestring(b *Builder, s string) bool {
+              if !__dd_iast_anys(s) {
+                return false
+              }
+              b.copyCheck()
+              n := len(b.buf)
+              b.buf = append(b.buf, s...)
+              __dd_iast_copyp(unsafe.Pointer(&b.buf[n]), unsafe.Pointer(unsafe.StringData(s)), len(s))
+              return true
+            }
+      - prepend-statements:
+          template: |-
+            {{- $b := .Function.Receiver -}}
+            {{- $s := .Function.Argument 0 -}}
+            if __dd_iast_live() {
+              if __dd_iast_builder_writestring({{ $b }}, {{ $s }}) {
+                return len({{ $s }}), nil
+              }
+            }
+
+  - id: strings.Builder.grow
+    join-point:
+      all-of:
+        - import-path: strings
+        - function-body:
+            function:
+              - receiver: "*strings.Builder"
+              - name: grow
+    advice:
+      - inject-declarations:
+          imports:
+            bytealg: internal/bytealg
+            unsafe: unsafe
+          template: |-
+            func __dd_iast_builder_grow(b *Builder, n int) bool {
+              if !__dd_iast_anyb(b.buf) {
+                return false
+              }
+              buf := bytealg.MakeNoZero(2*cap(b.buf) + n)[:len(b.buf)]
+              copy(buf, b.buf)
+              __dd_iast_copyp(unsafe.Pointer(unsafe.SliceData(buf)), unsafe.Pointer(unsafe.SliceData(b.buf)), len(b.buf))
+              b.buf = buf
+              return true
+            }
+      - prepend-statements:
+          template: |-
+            {{- $b := .Function.Receiver -}}
+            {{- $n := .Function.Argument 0 -}}
+            if __dd_iast_live() {
+              if __dd_iast_builder_grow({{ $b }}, {{ $n }}) {
+                return
+              }
+            }
+
+  - id: strings.Repeat
+    join-point:
+      all-of:
+        - import-path: strings
+        - function-body:
+            function:
+              - name: Repeat
+    advice:
+      - inject-declarations:
+          imports:
+            bits: math/bits
+          template: |-
+            // __dd_iast_repeat_plain is the body of Repeat with __dd_iast_pb
+            // (rule 5 of the header). Keep it the same as the body.
+            // The hook checks the inputs one time, before the copy. A taint
+            // that a different goroutine adds (in place) to an input after the
+            // check is not in the output: an accepted limit (rule 5 of the
+            // header).
+            func __dd_iast_repeat_plain(s string, count int) string {
+              switch count {
+              case 0:
+                return ""
+              case 1:
+                return s
+              }
+              if count < 0 {
+                panic("strings: negative Repeat count")
+              }
+              hi, lo := bits.Mul(uint(len(s)), uint(count))
+              if hi > 0 || lo > uint(maxInt) {
+                panic("strings: Repeat output length overflow")
+              }
+              n := int(lo)
+              if len(s) == 0 {
+                return ""
+              }
+              switch s[0] {
+              case ' ', '-', '0', '=', '\t':
+                switch {
+                case n <= len(repeatedSpaces) && HasPrefix(repeatedSpaces, s):
+                  return repeatedSpaces[:n]
+                case n <= len(repeatedDashes) && HasPrefix(repeatedDashes, s):
+                  return repeatedDashes[:n]
+                case n <= len(repeatedZeroes) && HasPrefix(repeatedZeroes, s):
+                  return repeatedZeroes[:n]
+                case n <= len(repeatedEquals) && HasPrefix(repeatedEquals, s):
+                  return repeatedEquals[:n]
+                case n <= len(repeatedTabs) && HasPrefix(repeatedTabs, s):
+                  return repeatedTabs[:n]
+                }
+              }
+              const chunkLimit = 8 * 1024
+              chunkMax := n
+              if n > chunkLimit {
+                chunkMax = chunkLimit / len(s) * len(s)
+                if chunkMax == 0 {
+                  chunkMax = len(s)
+                }
+              }
+              var b __dd_iast_pb
+              b.Grow(n)
+              b.WriteString(s)
+              for b.Len() < n {
+                chunk := min(n-b.Len(), b.Len(), chunkMax)
+                b.WriteString(b.String()[:chunk])
+              }
+              return b.String()
+            }
+
+            // __dd_iast_repeat runs only for a tainted s. It does only the
+            // case of the read-only fast path (a result of at most 128 bytes
+            // from a constant): it builds the result with the Builder, whose
+            // hooks copy the bits. In all other cases, the original body runs
+            // (its Builder also copies the bits).
+            func __dd_iast_repeat(s string, count int) (string, bool) {
+              if count < 2 || len(s) == 0 {
+                return "", false
+              }
+              switch s[0] {
+              case ' ', '-', '0', '=', '\t':
+              default:
+                return "", false
+              }
+              hi, lo := bits.Mul(uint(len(s)), uint(count))
+              if hi > 0 || lo > 128 {
+                return "", false
+              }
+              n := int(lo)
+              var b Builder
+              b.Grow(n)
+              b.WriteString(s)
+              for b.Len() < n {
+                chunk := min(n-b.Len(), b.Len())
+                b.WriteString(b.String()[:chunk])
+              }
+              return b.String(), true
+            }
+      - prepend-statements:
+          template: |-
+            {{- $s := .Function.Argument 0 -}}
+            {{- $count := .Function.Argument 1 -}}
+            if !__dd_iast_live() || !__dd_iast_anys({{ $s }}) {
+              return __dd_iast_repeat_plain({{ $s }}, {{ $count }})
+            }
+            if __dd_iast_r, __dd_iast_ok := __dd_iast_repeat({{ $s }}, {{ $count }}); __dd_iast_ok {
+              return __dd_iast_r
+            }
+
+  - id: strings.ToUpper
+    join-point:
+      all-of:
+        - import-path: strings
+        - function-body:
+            function:
+              - name: ToUpper
+    advice:
+      - inject-declarations:
+          imports:
+            unsafe: unsafe
+            utf8: unicode/utf8
+          template: |-
+            // __dd_iast_toupper does the ASCII path that changes bytes
+            // (positional). The other paths run the original body: no change
+            // returns s; non-ASCII calls Map (hooked: coarse).
+            func __dd_iast_toupper(s string) (string, bool) {
+              if !__dd_iast_anys(s) {
+                return "", false
+              }
+              hasLower := false
+              for i := 0; i < len(s); i++ {
+                c := s[i]
+                if c >= utf8.RuneSelf {
+                  return "", false
+                }
+                hasLower = hasLower || ('a' <= c && c <= 'z')
+              }
+              if !hasLower {
+                return "", false
+              }
+              b := make([]byte, len(s))
+              for i := 0; i < len(s); i++ {
+                c := s[i]
+                if 'a' <= c && c <= 'z' {
+                  c -= 'a' - 'A'
+                }
+                b[i] = c
+              }
+              out := unsafe.String(unsafe.SliceData(b), len(b))
+              __dd_iast_positional(out, s)
+              return out, true
+            }
+      - prepend-statements:
+          template: |-
+            {{- $s := .Function.Argument 0 -}}
+            if __dd_iast_live() {
+              if __dd_iast_r, __dd_iast_ok := __dd_iast_toupper({{ $s }}); __dd_iast_ok {
+                return __dd_iast_r
+              }
+            }
+
+  - id: strings.ToLower
+    join-point:
+      all-of:
+        - import-path: strings
+        - function-body:
+            function:
+              - name: ToLower
+    advice:
+      - inject-declarations:
+          imports:
+            unicode: unicode
+            unsafe: unsafe
+            utf8: unicode/utf8
+          template: |-
+            // __dd_iast_tolower_plain is the body of ToLower with
+            // __dd_iast_pb (rule 5 of the header). Keep it the same as the
+            // body.
+            // The hook checks the inputs one time, before the copy. A taint
+            // that a different goroutine adds (in place) to an input after the
+            // check is not in the output: an accepted limit (rule 5 of the
+            // header).
+            func __dd_iast_tolower_plain(s string) string {
+              isASCII, hasUpper := true, false
+              for i := 0; i < len(s); i++ {
+                c := s[i]
+                if c >= utf8.RuneSelf {
+                  isASCII = false
+                  break
+                }
+                hasUpper = hasUpper || ('A' <= c && c <= 'Z')
+              }
+              if isASCII {
+                if !hasUpper {
+                  return s
+                }
+                var (
+                  b   __dd_iast_pb
+                  pos int
+                )
+                b.Grow(len(s))
+                for i := 0; i < len(s); i++ {
+                  c := s[i]
+                  if 'A' <= c && c <= 'Z' {
+                    c += 'a' - 'A'
+                    if pos < i {
+                      b.WriteString(s[pos:i])
+                    }
+                    b.WriteByte(c)
+                    pos = i + 1
+                  }
+                }
+                if pos < len(s) {
+                  b.WriteString(s[pos:])
+                }
+                return b.String()
+              }
+              return Map(unicode.ToLower, s)
+            }
+
+            // __dd_iast_tolower runs only for a tainted s: see
+            // __dd_iast_toupper.
+            func __dd_iast_tolower(s string) (string, bool) {
+              hasUpper := false
+              for i := 0; i < len(s); i++ {
+                c := s[i]
+                if c >= utf8.RuneSelf {
+                  return "", false
+                }
+                hasUpper = hasUpper || ('A' <= c && c <= 'Z')
+              }
+              if !hasUpper {
+                return "", false
+              }
+              b := make([]byte, len(s))
+              for i := 0; i < len(s); i++ {
+                c := s[i]
+                if 'A' <= c && c <= 'Z' {
+                  c += 'a' - 'A'
+                }
+                b[i] = c
+              }
+              out := unsafe.String(unsafe.SliceData(b), len(b))
+              __dd_iast_positional(out, s)
+              return out, true
+            }
+      - prepend-statements:
+          template: |-
+            {{- $s := .Function.Argument 0 -}}
+            if !__dd_iast_live() || !__dd_iast_anys({{ $s }}) {
+              return __dd_iast_tolower_plain({{ $s }})
+            }
+            if __dd_iast_r, __dd_iast_ok := __dd_iast_tolower({{ $s }}); __dd_iast_ok {
+              return __dd_iast_r
+            }
+
+  - id: strings.Map
+    join-point:
+      all-of:
+        - import-path: strings
+        - function-body:
+            function:
+              - name: Map
+    advice:
+      - inject-declarations:
+          template: |-
+            // __dd_iast_map is a clean copy twin (coarse).
+            // The inner call goes through a body-less //go:noescape alias of
+            // the hooked function: a direct call makes a recursive cycle, and
+            // the escape analysis of a cycle leaks the parameters to the
+            // heap (the escape tags of the hooked function would change). The
+            // declaration is correct for the parameters of the application
+            // (the original does not keep them); a result can be a part of
+            // the clean copy, which is heap memory.
+            //
+            //go:linkname __dd_iast_orig_map strings.Map
+            //go:noescape
+            func __dd_iast_orig_map(mapping func(rune) rune, s string) string
+
+            func __dd_iast_map(mapping func(rune) rune, s string) (string, bool) {
+              if !__dd_iast_anys(s) {
+                return "", false
+              }
+              c := __dd_iast_clean(s)
+              out := __dd_iast_remap(__dd_iast_orig_map(mapping, c), c, s)
+              __dd_iast_coarse(out, s)
+              return out, true
+            }
+      - prepend-statements:
+          template: |-
+            {{- $mapping := .Function.Argument 0 -}}
+            {{- $s := .Function.Argument 1 -}}
+            if __dd_iast_live() {
+              if __dd_iast_r, __dd_iast_ok := __dd_iast_map({{ $mapping }}, {{ $s }}); __dd_iast_ok {
+                return __dd_iast_r
+              }
+            }
+
+  - id: strings.ToValidUTF8
+    join-point:
+      all-of:
+        - import-path: strings
+        - function-body:
+            function:
+              - name: ToValidUTF8
+    advice:
+      - inject-declarations:
+          template: |-
+            // __dd_iast_tovalidutf8 is a clean copy twin (coarse, plan section
+            // 6.3). A tainted replacement alone keeps its exact bits (Builder
+            // hooks).
+            //
+            // See __dd_iast_orig_map.
+            //
+            //go:linkname __dd_iast_orig_tovalidutf8 strings.ToValidUTF8
+            //go:noescape
+            func __dd_iast_orig_tovalidutf8(s, replacement string) string
+
+            func __dd_iast_tovalidutf8(s, replacement string) (string, bool) {
+              if !__dd_iast_anys(s) {
+                return "", false
+              }
+              c := __dd_iast_clean(s)
+              out := __dd_iast_remap(__dd_iast_orig_tovalidutf8(c, replacement), c, s)
+              __dd_iast_coarse(out, s)
+              return out, true
+            }
+      - prepend-statements:
+          template: |-
+            {{- $s := .Function.Argument 0 -}}
+            {{- $replacement := .Function.Argument 1 -}}
+            if __dd_iast_live() {
+              if __dd_iast_r, __dd_iast_ok := __dd_iast_tovalidutf8({{ $s }}, {{ $replacement }}); __dd_iast_ok {
+                return __dd_iast_r
+              }
+            }
+
+  - id: strings.Replacer.Replace
+    join-point:
+      all-of:
+        - import-path: strings
+        - function-body:
+            function:
+              - receiver: "*strings.Replacer"
+              - name: Replace
+    advice:
+      - inject-declarations:
+          template: |-
+            // __dd_iast_replacer_replace repeats the body (the inner replacers
+            // are not hooked) and applies the coarse rule.
+            func __dd_iast_replacer_replace(r *Replacer, s string) (string, bool) {
+              if !__dd_iast_anys(s) {
+                return "", false
+              }
+              r.once.Do(r.buildOnce)
+              out := r.r.Replace(s)
+              __dd_iast_coarse(out, s)
+              return out, true
+            }
+      - prepend-statements:
+          template: |-
+            {{- $r := .Function.Receiver -}}
+            {{- $s := .Function.Argument 0 -}}
+            if __dd_iast_live() {
+              if __dd_iast_out, __dd_iast_ok := __dd_iast_replacer_replace({{ $r }}, {{ $s }}); __dd_iast_ok {
+                return __dd_iast_out
+              }
+            }
+
+  - id: strings.Reader.Read
+    join-point:
+      all-of:
+        - import-path: strings
+        - function-body:
+            function:
+              - receiver: "*strings.Reader"
+              - name: Read
+    advice:
+      - inject-declarations:
+          imports:
+            unsafe: unsafe
+          template: |-
+            // __dd_iast_overwrites makes the bits of dst equal to the bits of
+            // src (same length) when one of them is tainted: dst is reused
+            // memory that can have old bits (a clean source clears them).
+            func __dd_iast_overwrites(dst []byte, src string) {
+              if len(src) != 0 && (__dd_iast_anys(src) || __dd_iast_anyb(dst)) {
+                __dd_iast_copyp(unsafe.Pointer(unsafe.SliceData(dst)), __dd_iast_ptr(src), len(src))
+              }
+            }
+
+            // __dd_iast_sreader_read is the body with the bit copy on the
+            // written bytes. It returns false at the end of the data (then
+            // the original body runs and returns io.EOF).
+            func __dd_iast_sreader_read(r *Reader, b []byte) (int, bool) {
+              if r.i >= int64(len(r.s)) {
+                return 0, false
+              }
+              r.prevRune = -1
+              src := r.s[r.i:]
+              n := copy(b, src)
+              __dd_iast_overwrites(b[:n], src[:n])
+              r.i += int64(n)
+              return n, true
+            }
+      - prepend-statements:
+          template: |-
+            {{- $r := .Function.Receiver -}}
+            {{- $b := .Function.Argument 0 -}}
+            if __dd_iast_live() {
+              if __dd_iast_n, __dd_iast_ok := __dd_iast_sreader_read({{ $r }}, {{ $b }}); __dd_iast_ok {
+                return __dd_iast_n, nil
+              }
+            }
+
+  - id: strings.Reader.ReadAt
+    join-point:
+      all-of:
+        - import-path: strings
+        - function-body:
+            function:
+              - receiver: "*strings.Reader"
+              - name: ReadAt
+    advice:
+      - inject-declarations:
+          imports:
+            io: io
+          template: |-
+            // __dd_iast_sreader_readat is the body with the bit copy on the
+            // written bytes. It returns false for a negative offset and at
+            // the end of the data (then the original body runs and returns
+            // the error).
+            func __dd_iast_sreader_readat(r *Reader, b []byte, off int64) (int, error, bool) {
+              if off < 0 || off >= int64(len(r.s)) {
+                return 0, nil, false
+              }
+              src := r.s[off:]
+              n := copy(b, src)
+              __dd_iast_overwrites(b[:n], src[:n])
+              if n < len(b) {
+                return n, io.EOF, true
+              }
+              return n, nil, true
+            }
+      - prepend-statements:
+          template: |-
+            {{- $r := .Function.Receiver -}}
+            {{- $b := .Function.Argument 0 -}}
+            {{- $off := .Function.Argument 1 -}}
+            if __dd_iast_live() {
+              if __dd_iast_n, __dd_iast_err, __dd_iast_ok := __dd_iast_sreader_readat({{ $r }}, {{ $b }}, {{ $off }}); __dd_iast_ok {
+                return __dd_iast_n, __dd_iast_err
+              }
+            }
+
+  # ------------------------------------------------------------------ bytes
+
+  - id: bytes.Clone
+    join-point:
+      all-of:
+        - import-path: bytes
+        - function-body:
+            function:
+              - name: Clone
+    advice:
+      - inject-declarations:
+          imports:
+            atomic: sync/atomic
+            runtime: runtime
+            unsafe: unsafe
+          template: |-
+            // ---- bit functions (plan section 6.1 rule 1) ----
+            //
+            // The hooks do not import packages heapbits and propbridge: go test
+            // of a package with in-package tests rebuilds the standard library
+            // packages that import it, and Orchestrion cannot rebuild them (a
+            // fingerprint cycle through reflect). Thus the hooks pull the bit
+            // functions of the woven runtime with the linknames of package
+            // heapbits (nil without weaving: then nothing is tainted), and
+            // propbridge.Derived with the pull linkname of a variable that
+            // propbridge pushes (nil when propbridge is not linked: then no
+            // derived entry is needed, no analysis can read it).
+            var (
+              //go:linkname __dd_iast_rt_set __dd_iast_heapbits.set
+              __dd_iast_rt_set func(p, n uintptr) bool
+
+              //go:linkname __dd_iast_rt_clear __dd_iast_heapbits.clear
+              __dd_iast_rt_clear func(p, n uintptr)
+
+              //go:linkname __dd_iast_rt_any __dd_iast_heapbits.any
+              __dd_iast_rt_any func(p, n uintptr) bool
+
+              //go:linkname __dd_iast_rt_copy __dd_iast_heapbits.copy
+              __dd_iast_rt_copy func(dst, src, n uintptr) bool
+
+              //go:linkname __dd_iast_rt_seen __dd_iast_heapbits.seen
+              __dd_iast_rt_seen *uint32
+            )
+
+            // Modes of propbridge.Derived (TestBridgeModes checks the values).
+            const (
+              __dd_iast_mode_coarse     uint8 = 1
+              __dd_iast_mode_positional uint8 = 2
+            )
+
+            // __dd_iast_rt_derived is propbridge.Derived (pushed by package
+            // propbridge; nil when it is not linked).
+            //
+            //go:linkname __dd_iast_rt_derived __dd_iast_propbridge.derived
+            var __dd_iast_rt_derived func(out, outLen, in, inLen uintptr, mode uint8)
+
+            func __dd_iast_derived(out, outLen, in, inLen uintptr, mode uint8) {
+              if f := __dd_iast_rt_derived; f != nil {
+                f(out, outLen, in, inLen, mode)
+              }
+            }
+
+            // __dd_iast_live is heapbits.Live: 2 loads, no call (inlinable).
+            func __dd_iast_live() bool {
+              p := __dd_iast_rt_seen
+              return p != nil && atomic.LoadUint32(p) != 0
+            }
+
+            // The bit functions below are heapbits.Any, Set, Clear and Copy.
+            // They are not inlined (as in package heapbits): their stack check
+            // is a preemption point.
+
+            //go:noinline
+            func __dd_iast_any(p unsafe.Pointer, n int) bool {
+              f := __dd_iast_rt_any
+              if f == nil || n <= 0 {
+                return false
+              }
+              ok := f(uintptr(p), uintptr(n))
+              runtime.KeepAlive(p)
+              return ok
+            }
+
+            //go:noinline
+            func __dd_iast_set(p unsafe.Pointer, n int) bool {
+              f := __dd_iast_rt_set
+              if f == nil || n <= 0 {
+                return false
+              }
+              ok := f(uintptr(p), uintptr(n))
+              runtime.KeepAlive(p)
+              return ok
+            }
+
+            //go:noinline
+            func __dd_iast_clear(p unsafe.Pointer, n int) {
+              f := __dd_iast_rt_clear
+              if f == nil || n <= 0 {
+                return
+              }
+              f(uintptr(p), uintptr(n))
+              runtime.KeepAlive(p)
+            }
+
+            //go:noinline
+            func __dd_iast_copyp(dst, src unsafe.Pointer, n int) bool {
+              f := __dd_iast_rt_copy
+              if f == nil || n <= 0 {
+                return false
+              }
+              ok := f(uintptr(dst), uintptr(src), uintptr(n))
+              runtime.KeepAlive(dst)
+              runtime.KeepAlive(src)
+              return ok
+            }
+
+            func __dd_iast_anys(s string) bool {
+              return __dd_iast_any(unsafe.Pointer(unsafe.StringData(s)), len(s))
+            }
+
+            func __dd_iast_anyb(b []byte) bool {
+              return __dd_iast_any(unsafe.Pointer(unsafe.SliceData(b)), len(b))
+            }
+
+            func __dd_iast_clearb(b []byte) {
+              __dd_iast_clear(unsafe.Pointer(unsafe.SliceData(b)), len(b))
+            }
+
+            // ---- byte slice helpers ----
+
+            // __dd_iast_ptr returns the address of the data of b.
+            func __dd_iast_ptr(b []byte) unsafe.Pointer {
+              return unsafe.Pointer(unsafe.SliceData(b))
+            }
+
+            // __dd_iast_copy copies the bits of src to dst (same length) when
+            // src is tainted. dst is new memory (no old bits).
+            func __dd_iast_copy(dst, src []byte) {
+              if __dd_iast_anyb(src) {
+                __dd_iast_copyp(__dd_iast_ptr(dst), __dd_iast_ptr(src), len(src))
+              }
+            }
+
+            // __dd_iast_overwrite makes the bits of dst equal to the bits of
+            // src (same length) when one of them is tainted: dst is reused
+            // memory that can have old bits.
+            func __dd_iast_overwrite(dst, src []byte) {
+              if len(src) != 0 && (__dd_iast_anyb(src) || __dd_iast_anyb(dst)) {
+                __dd_iast_copyp(__dd_iast_ptr(dst), __dd_iast_ptr(src), len(src))
+              }
+            }
+
+            // __dd_iast_coarse taints all of out (new memory) and records a
+            // coarse derived entry with the source of in.
+            func __dd_iast_coarse(out, in []byte) {
+              if len(out) == 0 || !__dd_iast_set(__dd_iast_ptr(out), len(out)) {
+                return
+              }
+              __dd_iast_derived(uintptr(__dd_iast_ptr(out)), uintptr(len(out)), uintptr(__dd_iast_ptr(in)), uintptr(len(in)), __dd_iast_mode_coarse)
+              runtime.KeepAlive(__dd_iast_ptr(out))
+              runtime.KeepAlive(__dd_iast_ptr(in))
+            }
+
+            // __dd_iast_positional copies the bits of in to out (new memory,
+            // same length) and records a positional derived entry.
+            func __dd_iast_positional(out, in []byte) {
+              if len(out) == 0 || len(out) != len(in) || !__dd_iast_copyp(__dd_iast_ptr(out), __dd_iast_ptr(in), len(in)) {
+                return
+              }
+              __dd_iast_derived(uintptr(__dd_iast_ptr(out)), uintptr(len(out)), uintptr(__dd_iast_ptr(in)), uintptr(len(in)), __dd_iast_mode_positional)
+              runtime.KeepAlive(__dd_iast_ptr(out))
+              runtime.KeepAlive(__dd_iast_ptr(in))
+            }
+
+            func __dd_iast_clone(b []byte) ([]byte, bool) {
+              if !__dd_iast_anyb(b) {
+                return nil, false
+              }
+              r := append([]byte{}, b...)
+              __dd_iast_copy(r, b)
+              return r, true
+            }
+      - prepend-statements:
+          template: |-
+            {{- $b := .Function.Argument 0 -}}
+            if __dd_iast_live() {
+              if __dd_iast_r, __dd_iast_ok := __dd_iast_clone({{ $b }}); __dd_iast_ok {
+                return __dd_iast_r
+              }
+            }
+
+  - id: bytes.Join
+    join-point:
+      all-of:
+        - import-path: bytes
+        - function-body:
+            function:
+              - name: Join
+    advice:
+      - inject-declarations:
+          imports:
+            bytealg: internal/bytealg
+          template: |-
+            // __dd_iast_join repeats the body with the bit copies.
+            func __dd_iast_join(s [][]byte, sep []byte) ([]byte, bool) {
+              if len(s) == 0 {
+                return nil, false
+              }
+              hit := len(s) > 1 && __dd_iast_anyb(sep)
+              for i := 0; !hit && i < len(s); i++ {
+                hit = __dd_iast_anyb(s[i])
+              }
+              if !hit {
+                return nil, false
+              }
+              if len(s) == 1 {
+                r := append([]byte(nil), s[0]...)
+                __dd_iast_copy(r, s[0])
+                return r, true
+              }
+              var n int
+              if len(sep) > 0 {
+                if len(sep) >= maxInt/(len(s)-1) {
+                  panic("bytes: Join output length overflow")
+                }
+                n += len(sep) * (len(s) - 1)
+              }
+              for _, v := range s {
+                if len(v) > maxInt-n {
+                  panic("bytes: Join output length overflow")
+                }
+                n += len(v)
+              }
+              b := bytealg.MakeNoZero(n)[:n:n]
+              bp := copy(b, s[0])
+              __dd_iast_copy(b[:bp], s[0])
+              for _, v := range s[1:] {
+                k := copy(b[bp:], sep)
+                __dd_iast_copy(b[bp:bp+k], sep)
+                bp += k
+                k = copy(b[bp:], v)
+                __dd_iast_copy(b[bp:bp+k], v)
+                bp += k
+              }
+              return b, true
+            }
+      - prepend-statements:
+          template: |-
+            {{- $s := .Function.Argument 0 -}}
+            {{- $sep := .Function.Argument 1 -}}
+            if __dd_iast_live() {
+              if __dd_iast_r, __dd_iast_ok := __dd_iast_join({{ $s }}, {{ $sep }}); __dd_iast_ok {
+                return __dd_iast_r
+              }
+            }
+
+  - id: bytes.Repeat
+    join-point:
+      all-of:
+        - import-path: bytes
+        - function-body:
+            function:
+              - name: Repeat
+    advice:
+      - inject-declarations:
+          imports:
+            bits: math/bits
+            bytealg: internal/bytealg
+            unsafe: unsafe
+          template: |-
+            // __dd_iast_repeat repeats the body with the bit copies. The
+            // original body runs for count <= 0 and on overflow (it returns
+            // an empty slice or panics).
+            func __dd_iast_repeat(b []byte, count int) ([]byte, bool) {
+              if count <= 0 || !__dd_iast_anyb(b) {
+                return nil, false
+              }
+              hi, lo := bits.Mul(uint(len(b)), uint(count))
+              if hi > 0 || lo > uint(maxInt) {
+                return nil, false
+              }
+              n := int(lo)
+              const chunkLimit = 8 * 1024
+              chunkMax := n
+              if chunkMax > chunkLimit {
+                chunkMax = chunkLimit / len(b) * len(b)
+                if chunkMax == 0 {
+                  chunkMax = len(b)
+                }
+              }
+              nb := bytealg.MakeNoZero(n)[:n:n]
+              bp := copy(nb, b)
+              __dd_iast_copy(nb[:bp], b)
+              for bp < n {
+                chunk := min(bp, chunkMax)
+                k := copy(nb[bp:], nb[:chunk])
+                __dd_iast_copyp(unsafe.Pointer(&nb[bp]), unsafe.Pointer(&nb[0]), k)
+                bp += k
+              }
+              return nb, true
+            }
+      - prepend-statements:
+          template: |-
+            {{- $b := .Function.Argument 0 -}}
+            {{- $count := .Function.Argument 1 -}}
+            if __dd_iast_live() {
+              if __dd_iast_r, __dd_iast_ok := __dd_iast_repeat({{ $b }}, {{ $count }}); __dd_iast_ok {
+                return __dd_iast_r
+              }
+            }
+
+  - id: bytes.Replace
+    join-point:
+      all-of:
+        - import-path: bytes
+        - function-body:
+            function:
+              - name: Replace
+    advice:
+      - inject-declarations:
+          imports:
+            utf8: unicode/utf8
+          template: |-
+            // __dd_iast_replace repeats the body with the bit copies (also
+            // for ReplaceAll, which calls Replace).
+            func __dd_iast_replace(s, old, new []byte, n int) ([]byte, bool) {
+              if !__dd_iast_anyb(s) && !__dd_iast_anyb(new) {
+                return nil, false
+              }
+              m := 0
+              if n != 0 {
+                m = Count(s, old)
+              }
+              if m == 0 {
+                r := append([]byte(nil), s...)
+                __dd_iast_copy(r, s)
+                return r, true
+              }
+              if n < 0 || m < n {
+                n = m
+              }
+              t := make([]byte, len(s)+n*(len(new)-len(old)))
+              w := 0
+              start := 0
+              put := func(src []byte) {
+                k := copy(t[w:], src)
+                __dd_iast_copy(t[w:w+k], src)
+                w += k
+              }
+              if len(old) > 0 {
+                for range n {
+                  j := start + Index(s[start:], old)
+                  put(s[start:j])
+                  put(new)
+                  start = j + len(old)
+                }
+              } else {
+                put(new)
+                for range n - 1 {
+                  _, wid := utf8.DecodeRune(s[start:])
+                  j := start + wid
+                  put(s[start:j])
+                  put(new)
+                  start = j
+                }
+              }
+              put(s[start:])
+              return t[0:w], true
+            }
+      - prepend-statements:
+          template: |-
+            {{- $s := .Function.Argument 0 -}}
+            {{- $old := .Function.Argument 1 -}}
+            {{- $new := .Function.Argument 2 -}}
+            {{- $n := .Function.Argument 3 -}}
+            if __dd_iast_live() {
+              if __dd_iast_r, __dd_iast_ok := __dd_iast_replace({{ $s }}, {{ $old }}, {{ $new }}, {{ $n }}); __dd_iast_ok {
+                return __dd_iast_r
+              }
+            }
+
+  - id: bytes.ToValidUTF8
+    join-point:
+      all-of:
+        - import-path: bytes
+        - function-body:
+            function:
+              - name: ToValidUTF8
+    advice:
+      - inject-declarations:
+          imports:
+            utf8: unicode/utf8
+          template: |-
+            // __dd_iast_tovalidutf8 repeats the body with the bit copies
+            // (exact, plan section 6.2). A run of valid bytes is copied with
+            // one bit copy.
+            func __dd_iast_tovalidutf8(s, replacement []byte) ([]byte, bool) {
+              if !__dd_iast_anyb(s) && !__dd_iast_anyb(replacement) {
+                return nil, false
+              }
+              b := make([]byte, 0, len(s)+len(replacement))
+              invalid := false
+              run := 0 // start of the valid run of s that ends at i
+              flush := func(end int) {
+                if end > run {
+                  w := len(b)
+                  b = append(b, s[run:end]...)
+                  __dd_iast_copy(b[w:], s[run:end])
+                }
+              }
+              for i := 0; i < len(s); {
+                c := s[i]
+                if c < utf8.RuneSelf {
+                  i++
+                  invalid = false
+                  continue
+                }
+                _, wid := utf8.DecodeRune(s[i:])
+                if wid == 1 {
+                  flush(i)
+                  i++
+                  run = i
+                  if !invalid {
+                    invalid = true
+                    w := len(b)
+                    b = append(b, replacement...)
+                    __dd_iast_copy(b[w:], replacement)
+                  }
+                  continue
+                }
+                invalid = false
+                i += wid
+              }
+              flush(len(s))
+              return b, true
+            }
+      - prepend-statements:
+          template: |-
+            {{- $s := .Function.Argument 0 -}}
+            {{- $replacement := .Function.Argument 1 -}}
+            if __dd_iast_live() {
+              if __dd_iast_r, __dd_iast_ok := __dd_iast_tovalidutf8({{ $s }}, {{ $replacement }}); __dd_iast_ok {
+                return __dd_iast_r
+              }
+            }
+
+  - id: bytes.ToUpper
+    join-point:
+      all-of:
+        - import-path: bytes
+        - function-body:
+            function:
+              - name: ToUpper
+    advice:
+      - inject-declarations:
+          imports:
+            bytealg: internal/bytealg
+            utf8: unicode/utf8
+          template: |-
+            // __dd_iast_toupper does the ASCII paths: an exact copy when no
+            // byte changes, else positional. Non-ASCII runs the original body
+            // (Map, hooked: coarse).
+            func __dd_iast_toupper(s []byte) ([]byte, bool) {
+              if !__dd_iast_anyb(s) {
+                return nil, false
+              }
+              hasLower := false
+              for i := 0; i < len(s); i++ {
+                c := s[i]
+                if c >= utf8.RuneSelf {
+                  return nil, false
+                }
+                hasLower = hasLower || ('a' <= c && c <= 'z')
+              }
+              if !hasLower {
+                r := append([]byte(""), s...)
+                __dd_iast_copy(r, s)
+                return r, true
+              }
+              b := bytealg.MakeNoZero(len(s))[:len(s):len(s)]
+              for i := 0; i < len(s); i++ {
+                c := s[i]
+                if 'a' <= c && c <= 'z' {
+                  c -= 'a' - 'A'
+                }
+                b[i] = c
+              }
+              __dd_iast_positional(b, s)
+              return b, true
+            }
+      - prepend-statements:
+          template: |-
+            {{- $s := .Function.Argument 0 -}}
+            if __dd_iast_live() {
+              if __dd_iast_r, __dd_iast_ok := __dd_iast_toupper({{ $s }}); __dd_iast_ok {
+                return __dd_iast_r
+              }
+            }
+
+  - id: bytes.ToLower
+    join-point:
+      all-of:
+        - import-path: bytes
+        - function-body:
+            function:
+              - name: ToLower
+    advice:
+      - inject-declarations:
+          imports:
+            bytealg: internal/bytealg
+            utf8: unicode/utf8
+          template: |-
+            // __dd_iast_tolower: see __dd_iast_toupper.
+            func __dd_iast_tolower(s []byte) ([]byte, bool) {
+              if !__dd_iast_anyb(s) {
+                return nil, false
+              }
+              hasUpper := false
+              for i := 0; i < len(s); i++ {
+                c := s[i]
+                if c >= utf8.RuneSelf {
+                  return nil, false
+                }
+                hasUpper = hasUpper || ('A' <= c && c <= 'Z')
+              }
+              if !hasUpper {
+                r := append([]byte(""), s...)
+                __dd_iast_copy(r, s)
+                return r, true
+              }
+              b := bytealg.MakeNoZero(len(s))[:len(s):len(s)]
+              for i := 0; i < len(s); i++ {
+                c := s[i]
+                if 'A' <= c && c <= 'Z' {
+                  c += 'a' - 'A'
+                }
+                b[i] = c
+              }
+              __dd_iast_positional(b, s)
+              return b, true
+            }
+      - prepend-statements:
+          template: |-
+            {{- $s := .Function.Argument 0 -}}
+            if __dd_iast_live() {
+              if __dd_iast_r, __dd_iast_ok := __dd_iast_tolower({{ $s }}); __dd_iast_ok {
+                return __dd_iast_r
+              }
+            }
+
+  - id: bytes.Map
+    join-point:
+      all-of:
+        - import-path: bytes
+        - function-body:
+            function:
+              - name: Map
+    advice:
+      - inject-declarations:
+          imports:
+            utf8: unicode/utf8
+          template: |-
+            // __dd_iast_map repeats the body (the mapping function runs one
+            // time for each rune, as in the original) and applies the coarse
+            // rule.
+            func __dd_iast_map(mapping func(r rune) rune, s []byte) ([]byte, bool) {
+              if !__dd_iast_anyb(s) {
+                return nil, false
+              }
+              b := make([]byte, 0, len(s))
+              for i := 0; i < len(s); {
+                r, wid := utf8.DecodeRune(s[i:])
+                r = mapping(r)
+                if r >= 0 {
+                  b = utf8.AppendRune(b, r)
+                }
+                i += wid
+              }
+              __dd_iast_coarse(b, s)
+              return b, true
+            }
+      - prepend-statements:
+          template: |-
+            {{- $mapping := .Function.Argument 0 -}}
+            {{- $s := .Function.Argument 1 -}}
+            if __dd_iast_live() {
+              if __dd_iast_r, __dd_iast_ok := __dd_iast_map({{ $mapping }}, {{ $s }}); __dd_iast_ok {
+                return __dd_iast_r
+              }
+            }
+
+  - id: bytes.Buffer.grow
+    join-point:
+      all-of:
+        - import-path: bytes
+        - function-body:
+            function:
+              - receiver: "*bytes.Buffer"
+              - name: grow
+    advice:
+      - inject-declarations:
+          template: |-
+            // __dd_iast_buffer_grow repeats the body with the bit copies of the
+            // slide (Copy of the moved bytes; the old tail keeps its bits:
+            // other values can alias it) and of the copy into the new array of
+            // growSlice (not hooked: it has a defer, and grow is its only
+            // caller). It runs only when b.buf[:len] has taint (the source and
+            // the destination of the slide are inside it).
+            func __dd_iast_buffer_grow(b *Buffer, n int) (int, bool) {
+              if !__dd_iast_anyb(b.buf) {
+                return 0, false
+              }
+              m := b.Len()
+              if m == 0 && b.off != 0 {
+                b.Reset()
+              }
+              if i, ok := b.tryGrowByReslice(n); ok {
+                return i, true
+              }
+              if b.buf == nil && n <= smallBufferSize {
+                b.buf = make([]byte, n, smallBufferSize)
+                return 0, true
+              }
+              c := cap(b.buf)
+              if n <= c/2-m {
+                copy(b.buf, b.buf[b.off:])
+                __dd_iast_overwrite(b.buf[:m], b.buf[b.off:b.off+m])
+              } else if c > maxInt-c-n {
+                panic(ErrTooLarge)
+              } else {
+                old := b.buf[b.off:]
+                b.buf = growSlice(old, b.off+n)
+                __dd_iast_copy(b.buf[:m], old[:m])
+              }
+              b.off = 0
+              b.buf = b.buf[:m+n]
+              return m, true
+            }
+      - prepend-statements:
+          template: |-
+            {{- $b := .Function.Receiver -}}
+            {{- $n := .Function.Argument 0 -}}
+            if __dd_iast_live() {
+              if __dd_iast_m, __dd_iast_ok := __dd_iast_buffer_grow({{ $b }}, {{ $n }}); __dd_iast_ok {
+                return __dd_iast_m
+              }
+            }
+
+  - id: bytes.Buffer.Write
+    join-point:
+      all-of:
+        - import-path: bytes
+        - function-body:
+            function:
+              - receiver: "*bytes.Buffer"
+              - name: Write
+    advice:
+      - inject-declarations:
+          template: |-
+            // __dd_iast_buffer_write is the body with the bit copy on the
+            // overwritten bytes (a clean source clears old bits there).
+            func __dd_iast_buffer_write(b *Buffer, p []byte) int {
+              b.lastRead = opInvalid
+              m, ok := b.tryGrowByReslice(len(p))
+              if !ok {
+                m = b.grow(len(p))
+              }
+              n := copy(b.buf[m:], p)
+              __dd_iast_overwrite(b.buf[m:m+n], p[:n])
+              return n
+            }
+      - prepend-statements:
+          template: |-
+            {{- $b := .Function.Receiver -}}
+            {{- $p := .Function.Argument 0 -}}
+            if __dd_iast_live() {
+              return __dd_iast_buffer_write({{ $b }}, {{ $p }}), nil
+            }
+
+  - id: bytes.Buffer.WriteString
+    join-point:
+      all-of:
+        - import-path: bytes
+        - function-body:
+            function:
+              - receiver: "*bytes.Buffer"
+              - name: WriteString
+    advice:
+      - inject-declarations:
+          imports:
+            unsafe: unsafe
+          template: |-
+            // __dd_iast_buffer_writestring: see __dd_iast_buffer_write.
+            func __dd_iast_buffer_writestring(b *Buffer, s string) int {
+              b.lastRead = opInvalid
+              m, ok := b.tryGrowByReslice(len(s))
+              if !ok {
+                m = b.grow(len(s))
+              }
+              n := copy(b.buf[m:], s)
+              __dd_iast_overwrite(b.buf[m:m+n], unsafe.Slice(unsafe.StringData(s), n))
+              return n
+            }
+      - prepend-statements:
+          template: |-
+            {{- $b := .Function.Receiver -}}
+            {{- $s := .Function.Argument 0 -}}
+            if __dd_iast_live() {
+              return __dd_iast_buffer_writestring({{ $b }}, {{ $s }}), nil
+            }
+
+  - id: bytes.Buffer.WriteByte
+    join-point:
+      all-of:
+        - import-path: bytes
+        - function-body:
+            function:
+              - receiver: "*bytes.Buffer"
+              - name: WriteByte
+    advice:
+      - inject-declarations:
+          template: |-
+            // __dd_iast_buffer_writebyte is the body with a clear of the old
+            // bit of the written byte.
+            func __dd_iast_buffer_writebyte(b *Buffer, c byte) {
+              b.lastRead = opInvalid
+              m, ok := b.tryGrowByReslice(1)
+              if !ok {
+                m = b.grow(1)
+              }
+              b.buf[m] = c
+              if dst := b.buf[m : m+1]; __dd_iast_anyb(dst) {
+                __dd_iast_clearb(dst)
+              }
+            }
+      - prepend-statements:
+          template: |-
+            {{- $b := .Function.Receiver -}}
+            {{- $c := .Function.Argument 0 -}}
+            if __dd_iast_live() {
+              __dd_iast_buffer_writebyte({{ $b }}, {{ $c }})
+              return nil
+            }
+
+  - id: bytes.Buffer.WriteRune
+    join-point:
+      all-of:
+        - import-path: bytes
+        - function-body:
+            function:
+              - receiver: "*bytes.Buffer"
+              - name: WriteRune
+    advice:
+      - inject-declarations:
+          imports:
+            utf8: unicode/utf8
+          template: |-
+            // __dd_iast_buffer_writerune is the body with a clear of the old
+            // bits of the written bytes (an ASCII rune goes through the
+            // WriteByte hook).
+            func __dd_iast_buffer_writerune(b *Buffer, r rune) int {
+              if uint32(r) < utf8.RuneSelf {
+                b.WriteByte(byte(r))
+                return 1
+              }
+              b.lastRead = opInvalid
+              m, ok := b.tryGrowByReslice(utf8.UTFMax)
+              if !ok {
+                m = b.grow(utf8.UTFMax)
+              }
+              b.buf = utf8.AppendRune(b.buf[:m], r)
+              if dst := b.buf[m:]; __dd_iast_anyb(dst) {
+                __dd_iast_clearb(dst)
+              }
+              return len(b.buf) - m
+            }
+      - prepend-statements:
+          template: |-
+            {{- $b := .Function.Receiver -}}
+            {{- $r := .Function.Argument 0 -}}
+            if __dd_iast_live() {
+              return __dd_iast_buffer_writerune({{ $b }}, {{ $r }}), nil
+            }
+
+  - id: bytes.Buffer.ReadFrom
+    join-point:
+      all-of:
+        - import-path: bytes
+        - function-body:
+            function:
+              - receiver: "*bytes.Buffer"
+              - name: ReadFrom
+    advice:
+      - inject-declarations:
+          imports:
+            io: io
+            runtime: runtime
+            unsafe: unsafe
+          template: |-
+            // __dd_iast_rr_next is heapbits.Next (want true) and
+            // heapbits.NextClean (want false), pulled from the woven runtime
+            // (nil without weaving).
+            //
+            //go:linkname __dd_iast_rr_next __dd_iast_heapbits.next
+            var __dd_iast_rr_next func(p, n, from uintptr, want bool) uintptr
+
+            // __dd_iast_rr_find returns the first offset in [from, n) of the n
+            // bytes at p with a bit equal to want, or n. A result out of
+            // [from, n] gives n (no panic on a wrong value).
+            //
+            //go:noinline
+            func __dd_iast_rr_find(p unsafe.Pointer, n, from int, want bool) int {
+              f := __dd_iast_rr_next
+              if f == nil || from >= n {
+                return n
+              }
+              r := int(f(uintptr(p), uintptr(n), uintptr(from), want))
+              runtime.KeepAlive(p)
+              if r < from || r > n {
+                return n
+              }
+              return r
+            }
+
+            // __dd_iast_rr_runs is the maximum number of tainted runs in the
+            // snapshot of the read rule.
+            const __dd_iast_rr_runs = 16
+
+            // __dd_iast_read is the read rule of plan section 6.2: a delegated
+            // Read into reused memory dst. When dst has bits (and is 64 KiB or
+            // less), these steps run, with no allocation:
+            //   1. Save at most 16 tainted runs of dst (offset and end) in a
+            //      fixed array on the stack. limit is the start of the 17th
+            //      run, or len(dst) when dst has 16 runs or less.
+            //   2. Clear dst[:limit] only.
+            //   3. Call Read, which returns n.
+            //   4. Set again the bits of the saved runs in dst[n:limit]. If n
+            //      is more than limit, clear dst[limit:n].
+            //
+            // Thus a byte that Read writes never keeps its old bits (no stale
+            // taint): a written byte before limit is cleared before Read, and a
+            // written byte from limit is cleared after Read (it also loses its
+            // new bits: taint loss only). The tail that Read did not write (all
+            // bytes from max(n, limit), and the saved runs in dst[n:limit])
+            // keeps its bits, and the values that alias it keep them too.
+            //
+            // The CPU cost of each read is O(limit/64 + n/64) words of bits for
+            // the scan, the clear and the set (at most 1,024 words for each
+            // step with 64 KiB), with no allocation. A negative Read result n,
+            // or an n that is more than len(dst), counts as a write of all of
+            // dst. When the bits cannot be set again (no storage), the tail
+            // loses them (taint loss only). When Read panics, the panic goes
+            // on, and the saved bits in dst[:limit] are lost (taint loss only).
+            func __dd_iast_read(r io.Reader, dst []byte) (int, error) {
+              l := len(dst)
+              p := unsafe.Pointer(unsafe.SliceData(dst))
+              if l == 0 || l > 64<<10 || !__dd_iast_anyb(dst) {
+                return r.Read(dst)
+              }
+              // The snapshot: at most 16 tainted runs [start, end), on the
+              // stack. limit is the start of the first run that is not in the
+              // snapshot, or l.
+              var starts, ends [__dd_iast_rr_runs]int
+              k, limit := 0, l
+              for off := __dd_iast_rr_find(p, l, 0, true); off < l; {
+                end := __dd_iast_rr_find(p, l, off, false)
+                if k == len(starts) || end <= off {
+                  // Too many runs, or a concurrent change of the bits: the bits
+                  // from off are not in the snapshot, and they are not cleared
+                  // before Read.
+                  limit = off
+                  break
+                }
+                starts[k], ends[k] = off, end
+                k++
+                off = __dd_iast_rr_find(p, l, end, true)
+              }
+              if k == 0 && limit == l {
+                return r.Read(dst)
+              }
+              // Clear dst[:limit]: Read can write any byte, and a written byte
+              // must have only the bits of the new data.
+              __dd_iast_clear(p, limit)
+              n, err := r.Read(dst)
+              w := n
+              if w < 0 || w > l {
+                // A wrong result: all of dst can be written.
+                w = l
+              }
+              for i := 0; i < k; i++ {
+                start, end := max(starts[i], w), min(ends[i], limit)
+                if start < end {
+                  __dd_iast_set(unsafe.Add(p, start), end-start)
+                }
+              }
+              if w > limit {
+                // The written bytes from limit can have old bits: clear them.
+                __dd_iast_clear(unsafe.Add(p, limit), w-limit)
+              }
+              runtime.KeepAlive(p)
+              return n, err
+            }
+
+            // __dd_iast_buffer_readfrom is the body with the read rule.
+            func __dd_iast_buffer_readfrom(b *Buffer, r io.Reader) (n int64, err error) {
+              b.lastRead = opInvalid
+              for {
+                i := b.grow(MinRead)
+                b.buf = b.buf[:i]
+                m, e := __dd_iast_read(r, b.buf[i:cap(b.buf)])
+                if m < 0 {
+                  panic(errNegativeRead)
+                }
+                b.buf = b.buf[:i+m]
+                n += int64(m)
+                if e == io.EOF {
+                  return n, nil
+                }
+                if e != nil {
+                  return n, e
+                }
+              }
+            }
+      - prepend-statements:
+          template: |-
+            {{- $b := .Function.Receiver -}}
+            {{- $r := .Function.Argument 0 -}}
+            if __dd_iast_live() {
+              return __dd_iast_buffer_readfrom({{ $b }}, {{ $r }})
+            }
+
+  - id: bytes.Reader.Read
+    join-point:
+      all-of:
+        - import-path: bytes
+        - function-body:
+            function:
+              - receiver: "*bytes.Reader"
+              - name: Read
+    advice:
+      - inject-declarations:
+          template: |-
+            // __dd_iast_reader_read is the body with the bit copy on the
+            // written bytes (reused memory: a clean source clears old bits
+            // there). It returns false at the end of the data (then the
+            // original body runs and returns io.EOF).
+            func __dd_iast_reader_read(r *Reader, b []byte) (int, bool) {
+              if r.i >= int64(len(r.s)) {
+                return 0, false
+              }
+              r.prevRune = -1
+              src := r.s[r.i:]
+              n := copy(b, src)
+              __dd_iast_overwrite(b[:n], src[:n])
+              r.i += int64(n)
+              return n, true
+            }
+      - prepend-statements:
+          template: |-
+            {{- $r := .Function.Receiver -}}
+            {{- $b := .Function.Argument 0 -}}
+            if __dd_iast_live() {
+              if __dd_iast_n, __dd_iast_ok := __dd_iast_reader_read({{ $r }}, {{ $b }}); __dd_iast_ok {
+                return __dd_iast_n, nil
+              }
+            }
+
+  - id: bytes.Reader.ReadAt
+    join-point:
+      all-of:
+        - import-path: bytes
+        - function-body:
+            function:
+              - receiver: "*bytes.Reader"
+              - name: ReadAt
+    advice:
+      - inject-declarations:
+          imports:
+            io: io
+          template: |-
+            // __dd_iast_reader_readat is the body with the bit copy on the
+            // written bytes. It returns false for a negative offset and at
+            // the end of the data (then the original body runs and returns
+            // the error).
+            func __dd_iast_reader_readat(r *Reader, b []byte, off int64) (int, error, bool) {
+              if off < 0 || off >= int64(len(r.s)) {
+                return 0, nil, false
+              }
+              src := r.s[off:]
+              n := copy(b, src)
+              __dd_iast_overwrite(b[:n], src[:n])
+              if n < len(b) {
+                return n, io.EOF, true
+              }
+              return n, nil, true
+            }
+      - prepend-statements:
+          template: |-
+            {{- $r := .Function.Receiver -}}
+            {{- $b := .Function.Argument 0 -}}
+            {{- $off := .Function.Argument 1 -}}
+            if __dd_iast_live() {
+              if __dd_iast_n, __dd_iast_err, __dd_iast_ok := __dd_iast_reader_readat({{ $r }}, {{ $b }}, {{ $off }}); __dd_iast_ok {
+                return __dd_iast_n, __dd_iast_err
+              }
+            }
+
+  # ---------------------------------------------------------------- strconv
+
+  - id: strconv.quoteWith
+    join-point:
+      all-of:
+        - import-path: strconv
+        - function-body:
+            function:
+              - name: quoteWith
+    advice:
+      - inject-declarations:
+          imports:
+            atomic: sync/atomic
+            runtime: runtime
+            unsafe: unsafe
+          template: |-
+            // ---- bit functions (plan section 6.1 rule 1) ----
+            //
+            // The hooks do not import packages heapbits and propbridge: go test
+            // of a package with in-package tests rebuilds the standard library
+            // packages that import it, and Orchestrion cannot rebuild them (a
+            // fingerprint cycle through reflect). Thus the hooks pull the bit
+            // functions of the woven runtime with the linknames of package
+            // heapbits (nil without weaving: then nothing is tainted), and
+            // propbridge.Derived with the pull linkname of a variable that
+            // propbridge pushes (nil when propbridge is not linked: then no
+            // derived entry is needed, no analysis can read it).
+            var (
+              //go:linkname __dd_iast_rt_set __dd_iast_heapbits.set
+              __dd_iast_rt_set func(p, n uintptr) bool
+
+              //go:linkname __dd_iast_rt_clear __dd_iast_heapbits.clear
+              __dd_iast_rt_clear func(p, n uintptr)
+
+              //go:linkname __dd_iast_rt_any __dd_iast_heapbits.any
+              __dd_iast_rt_any func(p, n uintptr) bool
+
+              //go:linkname __dd_iast_rt_copy __dd_iast_heapbits.copy
+              __dd_iast_rt_copy func(dst, src, n uintptr) bool
+
+              //go:linkname __dd_iast_rt_seen __dd_iast_heapbits.seen
+              __dd_iast_rt_seen *uint32
+            )
+
+            // Modes of propbridge.Derived (TestBridgeModes checks the values).
+            const (
+              __dd_iast_mode_coarse     uint8 = 1
+              __dd_iast_mode_positional uint8 = 2
+            )
+
+            // __dd_iast_rt_derived is propbridge.Derived (pushed by package
+            // propbridge; nil when it is not linked).
+            //
+            //go:linkname __dd_iast_rt_derived __dd_iast_propbridge.derived
+            var __dd_iast_rt_derived func(out, outLen, in, inLen uintptr, mode uint8)
+
+            func __dd_iast_derived(out, outLen, in, inLen uintptr, mode uint8) {
+              if f := __dd_iast_rt_derived; f != nil {
+                f(out, outLen, in, inLen, mode)
+              }
+            }
+
+            // __dd_iast_live is heapbits.Live: 2 loads, no call (inlinable).
+            func __dd_iast_live() bool {
+              p := __dd_iast_rt_seen
+              return p != nil && atomic.LoadUint32(p) != 0
+            }
+
+            // The bit functions below are heapbits.Any, Set, Clear and Copy.
+            // They are not inlined (as in package heapbits): their stack check
+            // is a preemption point.
+
+            //go:noinline
+            func __dd_iast_any(p unsafe.Pointer, n int) bool {
+              f := __dd_iast_rt_any
+              if f == nil || n <= 0 {
+                return false
+              }
+              ok := f(uintptr(p), uintptr(n))
+              runtime.KeepAlive(p)
+              return ok
+            }
+
+            //go:noinline
+            func __dd_iast_set(p unsafe.Pointer, n int) bool {
+              f := __dd_iast_rt_set
+              if f == nil || n <= 0 {
+                return false
+              }
+              ok := f(uintptr(p), uintptr(n))
+              runtime.KeepAlive(p)
+              return ok
+            }
+
+            //go:noinline
+            func __dd_iast_clear(p unsafe.Pointer, n int) {
+              f := __dd_iast_rt_clear
+              if f == nil || n <= 0 {
+                return
+              }
+              f(uintptr(p), uintptr(n))
+              runtime.KeepAlive(p)
+            }
+
+            //go:noinline
+            func __dd_iast_copyp(dst, src unsafe.Pointer, n int) bool {
+              f := __dd_iast_rt_copy
+              if f == nil || n <= 0 {
+                return false
+              }
+              ok := f(uintptr(dst), uintptr(src), uintptr(n))
+              runtime.KeepAlive(dst)
+              runtime.KeepAlive(src)
+              return ok
+            }
+
+            func __dd_iast_anys(s string) bool {
+              return __dd_iast_any(unsafe.Pointer(unsafe.StringData(s)), len(s))
+            }
+
+            func __dd_iast_anyb(b []byte) bool {
+              return __dd_iast_any(unsafe.Pointer(unsafe.SliceData(b)), len(b))
+            }
+
+            func __dd_iast_clearb(b []byte) {
+              __dd_iast_clear(unsafe.Pointer(unsafe.SliceData(b)), len(b))
+            }
+
+            // ---- string helpers ----
+
+            // __dd_iast_ptr returns the address of the data of s.
+            func __dd_iast_ptr(s string) unsafe.Pointer {
+              return unsafe.Pointer(unsafe.StringData(s))
+            }
+
+            // __dd_iast_within reports whether the memory of part is inside
+            // the memory of whole.
+            func __dd_iast_within(part, whole string) bool {
+              p, w := uintptr(__dd_iast_ptr(part)), uintptr(__dd_iast_ptr(whole))
+              return len(whole) > 0 && p >= w && p+uintptr(len(part)) <= w+uintptr(len(whole))
+            }
+
+            // __dd_iast_clean returns a copy of s in new memory without taint
+            // bits (make and copy do not copy the bits; the clear is a guard:
+            // the inner call of a clean copy twin must see no taint, else it
+            // calls its twin again).
+            func __dd_iast_clean(s string) string {
+              b := make([]byte, len(s))
+              copy(b, s)
+              __dd_iast_clearb(b)
+              return unsafe.String(unsafe.SliceData(b), len(b))
+            }
+
+            // __dd_iast_remap changes a result r of a call on c (the clean
+            // copy of s) that is a part of c into the same part of s.
+            func __dd_iast_remap(r, c, s string) string {
+              if __dd_iast_within(r, c) {
+                off := int(uintptr(__dd_iast_ptr(r)) - uintptr(__dd_iast_ptr(c)))
+                return s[off : off+len(r)]
+              }
+              return r
+            }
+
+            // __dd_iast_coarse applies the coarse rule: when out is new
+            // memory (not a part of in), it taints all of out and records a
+            // coarse derived entry with the source of in.
+            func __dd_iast_coarse(out, in string) {
+              if len(out) == 0 || __dd_iast_within(out, in) || !__dd_iast_set(__dd_iast_ptr(out), len(out)) {
+                return
+              }
+              __dd_iast_derived(uintptr(__dd_iast_ptr(out)), uintptr(len(out)), uintptr(__dd_iast_ptr(in)), uintptr(len(in)), __dd_iast_mode_coarse)
+              runtime.KeepAlive(__dd_iast_ptr(out))
+              runtime.KeepAlive(__dd_iast_ptr(in))
+            }
+
+            func __dd_iast_quotewith(s string, quote byte, ASCIIonly, graphicOnly bool) (string, bool) {
+              if !__dd_iast_anys(s) {
+                return "", false
+              }
+              out := string(appendQuotedWith(make([]byte, 0, 3*len(s)/2), s, quote, ASCIIonly, graphicOnly))
+              __dd_iast_coarse(out, s)
+              return out, true
+            }
+      - prepend-statements:
+          template: |-
+            {{- $s := .Function.Argument 0 -}}
+            {{- $quote := .Function.Argument 1 -}}
+            {{- $ascii := .Function.Argument 2 -}}
+            {{- $graphic := .Function.Argument 3 -}}
+            if __dd_iast_live() {
+              if __dd_iast_r, __dd_iast_ok := __dd_iast_quotewith({{ $s }}, {{ $quote }}, {{ $ascii }}, {{ $graphic }}); __dd_iast_ok {
+                return __dd_iast_r
+              }
+            }
+
+  - id: strconv.unquote
+    join-point:
+      all-of:
+        - import-path: strconv
+        - function-body:
+            function:
+              - name: unquote
+    advice:
+      - inject-declarations:
+          template: |-
+            // __dd_iast_unquote is a clean copy twin (coarse). out and rem are
+            // parts of in, or (out only) new memory. The errors are constants.
+            //
+            // The inner call goes through a body-less //go:noescape alias of
+            // the hooked function: a direct call makes a recursive cycle, and
+            // the escape analysis of a cycle leaks the parameters to the
+            // heap (the escape tags of the hooked function would change). The
+            // declaration is correct for the parameters of the application
+            // (the original does not keep them); a result can be a part of
+            // the clean copy, which is heap memory.
+            //
+            //go:linkname __dd_iast_orig_unquote strconv.unquote
+            //go:noescape
+            func __dd_iast_orig_unquote(in string, unescape bool) (out, rem string, err error)
+
+            func __dd_iast_unquote(in string, unescape bool) (out, rem string, err error, ok bool) {
+              if !__dd_iast_anys(in) {
+                return "", "", nil, false
+              }
+              c := __dd_iast_clean(in)
+              out, rem, err = __dd_iast_orig_unquote(c, unescape)
+              out, rem = __dd_iast_remap(out, c, in), __dd_iast_remap(rem, c, in)
+              __dd_iast_coarse(out, in)
+              return out, rem, err, true
+            }
+      - prepend-statements:
+          template: |-
+            {{- $in := .Function.Argument 0 -}}
+            {{- $unescape := .Function.Argument 1 -}}
+            if __dd_iast_live() {
+              if __dd_iast_out, __dd_iast_rem, __dd_iast_err, __dd_iast_ok := __dd_iast_unquote({{ $in }}, {{ $unescape }}); __dd_iast_ok {
+                return __dd_iast_out, __dd_iast_rem, __dd_iast_err
+              }
+            }
+
+  # ---------------------------------------------------------------- net/url
+
+  - id: net/url.escape
+    join-point:
+      all-of:
+        - import-path: net/url
+        - function-body:
+            function:
+              - name: escape
+    advice:
+      - inject-declarations:
+          imports:
+            atomic: sync/atomic
+            runtime: runtime
+            unsafe: unsafe
+          template: |-
+            // ---- bit functions (plan section 6.1 rule 1) ----
+            //
+            // The hooks do not import packages heapbits and propbridge: go test
+            // of a package with in-package tests rebuilds the standard library
+            // packages that import it, and Orchestrion cannot rebuild them (a
+            // fingerprint cycle through reflect). Thus the hooks pull the bit
+            // functions of the woven runtime with the linknames of package
+            // heapbits (nil without weaving: then nothing is tainted), and
+            // propbridge.Derived with the pull linkname of a variable that
+            // propbridge pushes (nil when propbridge is not linked: then no
+            // derived entry is needed, no analysis can read it).
+            var (
+              //go:linkname __dd_iast_rt_set __dd_iast_heapbits.set
+              __dd_iast_rt_set func(p, n uintptr) bool
+
+              //go:linkname __dd_iast_rt_clear __dd_iast_heapbits.clear
+              __dd_iast_rt_clear func(p, n uintptr)
+
+              //go:linkname __dd_iast_rt_any __dd_iast_heapbits.any
+              __dd_iast_rt_any func(p, n uintptr) bool
+
+              //go:linkname __dd_iast_rt_copy __dd_iast_heapbits.copy
+              __dd_iast_rt_copy func(dst, src, n uintptr) bool
+
+              //go:linkname __dd_iast_rt_seen __dd_iast_heapbits.seen
+              __dd_iast_rt_seen *uint32
+            )
+
+            // Modes of propbridge.Derived (TestBridgeModes checks the values).
+            const (
+              __dd_iast_mode_coarse     uint8 = 1
+              __dd_iast_mode_positional uint8 = 2
+            )
+
+            // __dd_iast_rt_derived is propbridge.Derived (pushed by package
+            // propbridge; nil when it is not linked).
+            //
+            //go:linkname __dd_iast_rt_derived __dd_iast_propbridge.derived
+            var __dd_iast_rt_derived func(out, outLen, in, inLen uintptr, mode uint8)
+
+            func __dd_iast_derived(out, outLen, in, inLen uintptr, mode uint8) {
+              if f := __dd_iast_rt_derived; f != nil {
+                f(out, outLen, in, inLen, mode)
+              }
+            }
+
+            // __dd_iast_live is heapbits.Live: 2 loads, no call (inlinable).
+            func __dd_iast_live() bool {
+              p := __dd_iast_rt_seen
+              return p != nil && atomic.LoadUint32(p) != 0
+            }
+
+            // The bit functions below are heapbits.Any, Set, Clear and Copy.
+            // They are not inlined (as in package heapbits): their stack check
+            // is a preemption point.
+
+            //go:noinline
+            func __dd_iast_any(p unsafe.Pointer, n int) bool {
+              f := __dd_iast_rt_any
+              if f == nil || n <= 0 {
+                return false
+              }
+              ok := f(uintptr(p), uintptr(n))
+              runtime.KeepAlive(p)
+              return ok
+            }
+
+            //go:noinline
+            func __dd_iast_set(p unsafe.Pointer, n int) bool {
+              f := __dd_iast_rt_set
+              if f == nil || n <= 0 {
+                return false
+              }
+              ok := f(uintptr(p), uintptr(n))
+              runtime.KeepAlive(p)
+              return ok
+            }
+
+            //go:noinline
+            func __dd_iast_clear(p unsafe.Pointer, n int) {
+              f := __dd_iast_rt_clear
+              if f == nil || n <= 0 {
+                return
+              }
+              f(uintptr(p), uintptr(n))
+              runtime.KeepAlive(p)
+            }
+
+            //go:noinline
+            func __dd_iast_copyp(dst, src unsafe.Pointer, n int) bool {
+              f := __dd_iast_rt_copy
+              if f == nil || n <= 0 {
+                return false
+              }
+              ok := f(uintptr(dst), uintptr(src), uintptr(n))
+              runtime.KeepAlive(dst)
+              runtime.KeepAlive(src)
+              return ok
+            }
+
+            func __dd_iast_anys(s string) bool {
+              return __dd_iast_any(unsafe.Pointer(unsafe.StringData(s)), len(s))
+            }
+
+            func __dd_iast_anyb(b []byte) bool {
+              return __dd_iast_any(unsafe.Pointer(unsafe.SliceData(b)), len(b))
+            }
+
+            func __dd_iast_clearb(b []byte) {
+              __dd_iast_clear(unsafe.Pointer(unsafe.SliceData(b)), len(b))
+            }
+
+            // ---- string helpers ----
+
+            // __dd_iast_ptr returns the address of the data of s.
+            func __dd_iast_ptr(s string) unsafe.Pointer {
+              return unsafe.Pointer(unsafe.StringData(s))
+            }
+
+            // __dd_iast_within reports whether the memory of part is inside
+            // the memory of whole.
+            func __dd_iast_within(part, whole string) bool {
+              p, w := uintptr(__dd_iast_ptr(part)), uintptr(__dd_iast_ptr(whole))
+              return len(whole) > 0 && p >= w && p+uintptr(len(part)) <= w+uintptr(len(whole))
+            }
+
+            // __dd_iast_clean returns a copy of s in new memory without taint
+            // bits (make and copy do not copy the bits; the clear is a guard:
+            // the inner call of a clean copy twin must see no taint, else it
+            // calls its twin again).
+            func __dd_iast_clean(s string) string {
+              b := make([]byte, len(s))
+              copy(b, s)
+              __dd_iast_clearb(b)
+              return unsafe.String(unsafe.SliceData(b), len(b))
+            }
+
+            // __dd_iast_remap changes a result r of a call on c (the clean
+            // copy of s) that is a part of c into the same part of s.
+            func __dd_iast_remap(r, c, s string) string {
+              if __dd_iast_within(r, c) {
+                off := int(uintptr(__dd_iast_ptr(r)) - uintptr(__dd_iast_ptr(c)))
+                return s[off : off+len(r)]
+              }
+              return r
+            }
+
+            // __dd_iast_coarse applies the coarse rule: when out is new
+            // memory (not a part of in), it taints all of out and records a
+            // coarse derived entry with the source of in.
+            func __dd_iast_coarse(out, in string) {
+              if len(out) == 0 || __dd_iast_within(out, in) || !__dd_iast_set(__dd_iast_ptr(out), len(out)) {
+                return
+              }
+              __dd_iast_derived(uintptr(__dd_iast_ptr(out)), uintptr(len(out)), uintptr(__dd_iast_ptr(in)), uintptr(len(in)), __dd_iast_mode_coarse)
+              runtime.KeepAlive(__dd_iast_ptr(out))
+              runtime.KeepAlive(__dd_iast_ptr(in))
+            }
+
+            // __dd_iast_escape is a clean copy twin (coarse).
+            // The inner call goes through a body-less //go:noescape alias of
+            // the hooked function: a direct call makes a recursive cycle, and
+            // the escape analysis of a cycle leaks the parameters to the
+            // heap (the escape tags of the hooked function would change). The
+            // declaration is correct for the parameters of the application
+            // (the original does not keep them); a result can be a part of
+            // the clean copy, which is heap memory.
+            //
+            //go:linkname __dd_iast_orig_escape net/url.escape
+            //go:noescape
+            func __dd_iast_orig_escape(s string, mode encoding) string
+
+            func __dd_iast_escape(s string, mode encoding) (string, bool) {
+              if !__dd_iast_anys(s) {
+                return "", false
+              }
+              c := __dd_iast_clean(s)
+              out := __dd_iast_remap(__dd_iast_orig_escape(c, mode), c, s)
+              __dd_iast_coarse(out, s)
+              return out, true
+            }
+      - prepend-statements:
+          template: |-
+            {{- $s := .Function.Argument 0 -}}
+            {{- $mode := .Function.Argument 1 -}}
+            if __dd_iast_live() {
+              if __dd_iast_r, __dd_iast_ok := __dd_iast_escape({{ $s }}, {{ $mode }}); __dd_iast_ok {
+                return __dd_iast_r
+              }
+            }
+
+  - id: net/url.unescape
+    join-point:
+      all-of:
+        - import-path: net/url
+        - function-body:
+            function:
+              - name: unescape
+    advice:
+      - inject-declarations:
+          template: |-
+            // __dd_iast_unescape is a clean copy twin (coarse). The errors hold
+            // parts of the input: they become the same parts of s.
+            //
+            // See __dd_iast_orig_escape.
+            //
+            //go:linkname __dd_iast_orig_unescape net/url.unescape
+            //go:noescape
+            func __dd_iast_orig_unescape(s string, mode encoding) (string, error)
+
+            func __dd_iast_unescape(s string, mode encoding) (out string, err error, ok bool) {
+              if !__dd_iast_anys(s) {
+                return "", nil, false
+              }
+              c := __dd_iast_clean(s)
+              out, err = __dd_iast_orig_unescape(c, mode)
+              out = __dd_iast_remap(out, c, s)
+              switch e := err.(type) {
+              case EscapeError:
+                err = EscapeError(__dd_iast_remap(string(e), c, s))
+              case InvalidHostError:
+                err = InvalidHostError(__dd_iast_remap(string(e), c, s))
+              }
+              __dd_iast_coarse(out, s)
+              return out, err, true
+            }
+      - prepend-statements:
+          template: |-
+            {{- $s := .Function.Argument 0 -}}
+            {{- $mode := .Function.Argument 1 -}}
+            if __dd_iast_live() {
+              if __dd_iast_out, __dd_iast_err, __dd_iast_ok := __dd_iast_unescape({{ $s }}, {{ $mode }}); __dd_iast_ok {
+                return __dd_iast_out, __dd_iast_err
+              }
+            }
+
+  # ---------------------------------------------------------------- telemetry
+
+  # Not a hook: TestAspectCount does not count the "-decls" aspects. The
+  # application does not link this package (orchestrion.tool.go imports it
+  # only with the "tools" build tag), thus its init function cannot give the
+  # number of hooks to telemetry. Package strings (linked by all programs)
+  # pushes the number; package internal/taint/request pulls it in its init
+  # function (0 without weaving).
+  - id: strings-telemetry-decls
+    join-point:
+      struct-definition: strings.Builder
+    advice:
+      - inject-declarations:
+          imports:
+            unsafe: unsafe
+          template: |-
+            // __dd_iast_text_points is instrumentedPropagationPoints of
+            // iast/propagation/text (TestAspectCount checks the value).
+            // Exported to package internal/taint/request (push linkname).
+            //
+            //go:linkname __dd_iast_text_points __dd_iast_telemetry.text_points
+            var __dd_iast_text_points uint32 = 34
+
+            // The linkname directive needs the import of unsafe.
+            var _ unsafe.Pointer

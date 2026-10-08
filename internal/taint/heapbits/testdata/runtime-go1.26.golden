@@ -641,6 +641,135 @@ mapped:
 	return arenaIdx((p - arenaBaseOffset) / heapArenaBytes)
 }
 
+## concatbyte2 (string.go [])
+{
+	return concatbytes(buf, []string{a0, a1})
+}
+
+## concatbyte3 (string.go [])
+{
+	return concatbytes(buf, []string{a0, a1, a2})
+}
+
+## concatbyte4 (string.go [])
+{
+	return concatbytes(buf, []string{a0, a1, a2, a3})
+}
+
+## concatbyte5 (string.go [])
+{
+	return concatbytes(buf, []string{a0, a1, a2, a3, a4})
+}
+
+## concatbytes (string.go [])
+{
+	l := 0
+	for _, x := range a {
+		n := len(x)
+		if l+n < l {
+			throw("string concatenation too long")
+		}
+		l += n
+	}
+	if l == 0 {
+		return []byte{}
+	}
+	var b []byte
+	if buf != nil && l <= len(buf) {
+		*buf = tmpBuf{}
+		b = buf[:l]
+	} else {
+		b = rawbyteslice(l)
+	}
+	offset := 0
+	for _, x := range a {
+		copy(b[offset:], x)
+		offset += len(x)
+	}
+	return b
+}
+
+## concatstring2 (string.go [])
+{
+	return concatstrings(buf, []string{a0, a1})
+}
+
+## concatstring3 (string.go [])
+{
+	return concatstrings(buf, []string{a0, a1, a2})
+}
+
+## concatstring4 (string.go [])
+{
+	return concatstrings(buf, []string{a0, a1, a2, a3})
+}
+
+## concatstring5 (string.go [])
+{
+	return concatstrings(buf, []string{a0, a1, a2, a3, a4})
+}
+
+## concatstrings (string.go [])
+{
+	idx := 0
+	l := 0
+	count := 0
+	for i, x := range a {
+		n := len(x)
+		if n == 0 {
+			continue
+		}
+		if l+n < l {
+			throw("string concatenation too long")
+		}
+		l += n
+		count++
+		idx = i
+	}
+	if count == 0 {
+		return ""
+	}
+	if count == 1 && (buf != nil || !stringDataOnStack(a[idx])) {
+		return a[idx]
+	}
+	s, b := rawstringtmp(buf, l)
+	for _, x := range a {
+		n := copy(b, x)
+		b = b[n:]
+	}
+	return s
+}
+
+## encoderune (utf8.go [])
+{
+	switch i := uint32(r); {
+	case i <= rune1Max:
+		p[0] = byte(r)
+		return 1
+	case i <= rune2Max:
+		_ = p[1]
+		p[0] = t2 | byte(r>>6)
+		p[1] = tx | byte(r)&maskx
+		return 2
+	case i > maxRune, surrogateMin <= i && i <= surrogateMax:
+		r = runeError
+		fallthrough
+	case i <= rune3Max:
+		_ = p[2]
+		p[0] = t3 | byte(r>>12)
+		p[1] = tx | byte(r>>6)&maskx
+		p[2] = tx | byte(r)&maskx
+		return 3
+	default:
+		_ = p[3]
+		p[0] = t4 | byte(r>>18)
+		p[1] = tx | byte(r>>12)&maskx
+		p[2] = tx | byte(r>>6)&maskx
+		p[3] = tx | byte(r)&maskx
+		return 4
+	}
+}
+
 ## freegc (malloc.go [])
 {
 	if !runtimeFreegcEnabled || !reusableSize(size) {
@@ -719,6 +848,96 @@ mapped:
 ## gcUsesSpanInlineMarkBits (mgcmark_nogreenteagc.go [!goexperiment.greenteagc])
 {
 	return false
+}
+
+## growslice (slice.go [])
+{
+	oldLen := newLen - num
+	if raceenabled {
+		callerpc := sys.GetCallerPC()
+		racereadrangepc(oldPtr, uintptr(oldLen*int(et.Size_)), callerpc, abi.FuncPCABIInternal(growslice))
+	}
+	if msanenabled {
+		msanread(oldPtr, uintptr(oldLen*int(et.Size_)))
+	}
+	if asanenabled {
+		asanread(oldPtr, uintptr(oldLen*int(et.Size_)))
+	}
+	if newLen < 0 {
+		panic(errorString("growslice: len out of range"))
+	}
+	if et.Size_ == 0 {
+		return slice{unsafe.Pointer(&zerobase), newLen, newLen}
+	}
+	newcap := nextslicecap(newLen, oldCap)
+	var overflow bool
+	var lenmem, newlenmem, capmem uintptr
+	noscan := !et.Pointers()
+	switch {
+	case et.Size_ == 1:
+		lenmem = uintptr(oldLen)
+		newlenmem = uintptr(newLen)
+		capmem = roundupsize(uintptr(newcap), noscan)
+		overflow = uintptr(newcap) > maxAlloc
+		newcap = int(capmem)
+	case et.Size_ == goarch.PtrSize:
+		lenmem = uintptr(oldLen) * goarch.PtrSize
+		newlenmem = uintptr(newLen) * goarch.PtrSize
+		capmem = roundupsize(uintptr(newcap)*goarch.PtrSize, noscan)
+		overflow = uintptr(newcap) > maxAlloc/goarch.PtrSize
+		newcap = int(capmem / goarch.PtrSize)
+	case isPowerOfTwo(et.Size_):
+		var shift uintptr
+		if goarch.PtrSize == 8 {
+			shift = uintptr(sys.TrailingZeros64(uint64(et.Size_))) & 63
+		} else {
+			shift = uintptr(sys.TrailingZeros32(uint32(et.Size_))) & 31
+		}
+		lenmem = uintptr(oldLen) << shift
+		newlenmem = uintptr(newLen) << shift
+		capmem = roundupsize(uintptr(newcap)<<shift, noscan)
+		overflow = uintptr(newcap) > (maxAlloc >> shift)
+		newcap = int(capmem >> shift)
+		capmem = uintptr(newcap) << shift
+	default:
+		lenmem = uintptr(oldLen) * et.Size_
+		newlenmem = uintptr(newLen) * et.Size_
+		capmem, overflow = math.MulUintptr(et.Size_, uintptr(newcap))
+		capmem = roundupsize(capmem, noscan)
+		newcap = int(capmem / et.Size_)
+		capmem = uintptr(newcap) * et.Size_
+	}
+	if overflow || capmem > maxAlloc {
+		panic(errorString("growslice: len out of range"))
+	}
+	var p unsafe.Pointer
+	if !et.Pointers() {
+		p = mallocgc(capmem, nil, false)
+		memclrNoHeapPointers(add(p, newlenmem), capmem-newlenmem)
+	} else {
+		p = mallocgc(capmem, et, true)
+		if lenmem > 0 && writeBarrier.enabled {
+			bulkBarrierPreWriteSrcOnly(uintptr(p), uintptr(oldPtr), lenmem-et.Size_+et.PtrBytes, et)
+		}
+	}
+	memmove(p, oldPtr, lenmem)
+	return slice{p, newLen, newcap}
+}
+
+## growsliceBuf (slice.go [])
+{
+	if newLen > bufLen {
+		return growslice(oldPtr, newLen, oldCap, num, et)
+	}
+	oldLen := newLen - num
+	if oldPtr != bufPtr && oldLen != 0 {
+		memmove(bufPtr, oldPtr, uintptr(oldLen)*et.Size_)
+	}
+	newCap := int(roundupsize(uintptr(newLen)*et.Size_, !et.Pointers()) / et.Size_)
+	if newLen < newCap {
+		memclrNoHeapPointers(add(bufPtr, uintptr(newLen)*et.Size_), uintptr(newCap-newLen)*et.Size_)
+	}
+	return slice{bufPtr, newLen, newCap}
 }
 
 ## heapArenaOf (mheap.go [])
@@ -852,6 +1071,70 @@ mapped:
 	return true
 }
 
+## slicebytetostring (string.go [])
+{
+	if n == 0 {
+		return ""
+	}
+	if raceenabled {
+		racereadrangepc(unsafe.Pointer(ptr),
+			uintptr(n),
+			sys.GetCallerPC(),
+			abi.FuncPCABIInternal(slicebytetostring))
+	}
+	if msanenabled {
+		msanread(unsafe.Pointer(ptr), uintptr(n))
+	}
+	if asanenabled {
+		asanread(unsafe.Pointer(ptr), uintptr(n))
+	}
+	if n == 1 {
+		p := unsafe.Pointer(&staticuint64s[*ptr])
+		if goarch.BigEndian {
+			p = add(p, 7)
+		}
+		return unsafe.String((*byte)(p), 1)
+	}
+	var p unsafe.Pointer
+	if buf != nil && n <= len(buf) {
+		p = unsafe.Pointer(buf)
+	} else {
+		p = mallocgc(uintptr(n), nil, false)
+	}
+	memmove(p, unsafe.Pointer(ptr), uintptr(n))
+	return unsafe.String((*byte)(p), n)
+}
+
+## slicerunetostring (string.go [])
+{
+	if raceenabled && len(a) > 0 {
+		racereadrangepc(unsafe.Pointer(&a[0]),
+			uintptr(len(a))*unsafe.Sizeof(a[0]),
+			sys.GetCallerPC(),
+			abi.FuncPCABIInternal(slicerunetostring))
+	}
+	if msanenabled && len(a) > 0 {
+		msanread(unsafe.Pointer(&a[0]), uintptr(len(a))*unsafe.Sizeof(a[0]))
+	}
+	if asanenabled && len(a) > 0 {
+		asanread(unsafe.Pointer(&a[0]), uintptr(len(a))*unsafe.Sizeof(a[0]))
+	}
+	var dum [4]byte
+	size1 := 0
+	for _, r := range a {
+		size1 += encoderune(dum[:], r)
+	}
+	s, b := rawstringtmp(buf, size1+3)
+	size2 := 0
+	for _, r := range a {
+		if size2 >= size1 {
+			break
+		}
+		size2 += encoderune(b[size2:], r)
+	}
+	return s[:size2]
+}
+
 ## spanOf (mheap.go [])
 {
 	ri := arenaIndex(p)
@@ -882,6 +1165,40 @@ mapped:
 		return nil
 	}
 	return s
+}
+
+## stringtoslicebyte (string.go [])
+{
+	var b []byte
+	if buf != nil && len(s) <= len(buf) {
+		*buf = tmpBuf{}
+		b = buf[:len(s)]
+	} else {
+		b = rawbyteslice(len(s))
+	}
+	copy(b, s)
+	return b
+}
+
+## stringtoslicerune (string.go [])
+{
+	n := 0
+	for range s {
+		n++
+	}
+	var a []rune
+	if buf != nil && n <= len(buf) {
+		*buf = [tmpStringBufSize]rune{}
+		a = buf[:n]
+	} else {
+		a = rawruneslice(n)
+	}
+	n = 0
+	for _, r := range s {
+		a[n] = r
+		n++
+	}
+	return a
 }
 
 ## sysAlloc (mem.go [])

@@ -27,8 +27,8 @@ Many of the functionality provided by this module relies on taint tracking:
 
 > [!NOTE]
 > This storage is in the internal package `internal/taint/heapbits`. The
-> `taint` package does not use it yet. Origins (sources), marks and
-> propagation are not in this storage: they come in later phases.
+> `taint` package and the taint tracking instrumentation of `iast` (sources,
+> propagation, SQL and command injection sinks) use it.
 
 The quick check "does this value have taint?" must be cheap, because it runs
 on hot paths of the application. To make it cheap, the module keeps **one
@@ -58,6 +58,15 @@ Aspect | Change in the runtime | Purpose
 The runtime gives its functions to `heapbits` with push `//go:linkname`
 variables (`__dd_iast_heapbits.set`, ...). Without weaving, these variables
 are `nil`: all `heapbits` functions do nothing and report "not tainted".
+
+The runtime also gives a pointer to a **sticky gate** word
+(`__dd_taint_gate.seen`, in its own cache line, pushed as
+`__dd_iast_heapbits.seen`). It is 0 until
+taint can be live: the first successful `Set`, the first `Copy` of tainted
+bits, or the first `heapbits.MarkLive()`. Then it is 1 for all the life of the
+process. `heapbits.Live()` reads it (2 loads, inlinable). While it is 0, no
+byte is tainted, so a propagation hook can skip all its work after one atomic
+load.
 
 #### Relationship to the Go heap
 
@@ -126,7 +135,8 @@ Operation | Same memory? | Taint of the result
 ---|:---:|---
 `s[i:j]`, `b[i:j]` | Yes | Same bits (tainted where the source is tainted)
 `[]byte(s)` that the compiler makes without a copy | Yes | Same bits
-`copy(dst, src)`, `string(b)` that allocates, concatenation | No | Not tainted (only `heapbits.Copy` copies the bits)
+`copy(dst, src)`, the appended part of `append(x, y...)` | No | Not tainted (only `heapbits.Copy` copies the bits)
+`string(b)` that allocates, `[]byte(s)`, `[]rune(s)`, `string(runes)`, concatenation, old elements of a growing `append` | No | With the runtime hooks of `iast/runtime` (`iast/runtime/orchestrion.yml`): the hooks copy the bits (a rune is tainted when one of its bytes is tainted). Without them: not tainted
 Stack values, global variables, read-only data | Not heap | Never tainted (`Set` refuses them)
 
 #### Where the bits are stored: slabs, chunks and the budget
@@ -224,6 +234,145 @@ It is off in ASan and MSan builds. On all other targets, the woven runtime
 compiles, `heapbits.Enabled()` returns `false`, and `Set` always returns
 `false`.
 
+## Taint Tracking on the Heap Bits
+
+The heap bits (see above) say which bytes are tainted. This section tells how
+the bits are set (sources), how they follow the data (propagation), how a sink
+finds the source of each tainted byte (attribution), and what the feature does
+not do (limits).
+
+### Sources
+
+A source hook sets the bits in place, on the value that the standard library
+returns. It also keeps an owner copy of the value (see Attribution). A value
+shorter than 2 bytes or longer than 64 KiB is not tainted.
+
+Package | Sources
+---|---
+`iast/net/http` | Request URL, form values (`ParseForm`, `ParseMultipartForm`, `FormValue`, `PostFormValue`), `PathValue`, cookies, headers, and the request body (`Read` of the HTTP/1 and HTTP/2 request body, and of the `h2c` body of `golang.org/x/net/http2`)
+`iast/net/url` | `URL.Query()`
+
+- **Body reads.** The owner of the request keeps a copy of the first
+  **64 KiB** of body bytes. Body bytes after 64 KiB keep their bits, but a
+  sink reports them as foreign (redacted).
+- When the bits cannot be set (read-only data, stack, budget used), and the
+  hook can replace the value, the hook taints a heap clone. Else the taint is
+  dropped.
+
+### Propagation
+
+Bits follow the data in 2 steps. Each hook first checks the sticky gate
+(`heapbits.Live()`): while no taint exists in the process, a hook costs one
+atomic load.
+
+**Runtime hooks** (`iast/runtime`) copy the bits in these operations:
+
+- string and `[]byte` concatenation (`a+b`, `+=`);
+- conversions: `string(b)`, `[]byte(s)`, `[]rune(s)`, `string(runes)`;
+- the copy of the old elements when `append` grows a slice.
+
+For `[]byte(s)` and `[]rune(s)`, `DD_IAST_STRING_TO_SLICE_PROPAGATION_ENABLED`
+can turn the propagation off.
+
+**Standard library hooks** cover the code that uses `copy` or `append`
+(these cannot be hooked in the runtime):
+
+Package | Operations
+---|---
+`iast/propagation/text` | `strings`: `Builder`, `Clone`, `Join`, `Repeat`, `Replace`, `Map`, `ToUpper`, `ToLower`, `ToValidUTF8`, `Replacer`, `Reader`; `bytes`: `Buffer`, `Clone`, `Join`, `Repeat`, `Replace`, `ToUpper`, `ToLower`, `Map`, `Reader`; `strconv`: quote and unquote; `net/url`: escape and unescape
+`iast/propagation/stream` | `fmt` (print and format functions, padding), `io.ReadAll`, `bufio.Reader`, `encoding/json` v1 (`Decoder`, quoted fields, unquote)
+`iast/propagation/jsonv2` | `encoding/json/v2` (string decoding, and the `jsontext` decoder buffer)
+
+Where the output has the same bytes as the input (an exact copy), the hook
+copies the exact bits. Where the output has other bytes (quote, escape, `Map`,
+generated `fmt` text), the hook taints the whole output, and the owner keeps a
+*derived entry* that tells which source made it.
+
+### Attribution
+
+A sink must tell which source made each tainted byte. The bits do not say it,
+so the module uses these data (all in `internal/taint/request`):
+
+- **Owner copies.** Each sampled request has an *owner*. The owner keeps
+  copies of its source names and values, and of the first 64 KiB of the body.
+  It never keeps a reference to application memory. The copies use at most
+  256 KiB for each owner. When the budget is used, new copies are dropped:
+  their bytes become foreign.
+- **Derived table.** The owner has a fixed table of 64 entries. Each entry
+  describes a value that a "changed bytes" hook made (with at most 16
+  segments, each with its source).
+- **Matching.** A run of tainted bytes is cut into segments. A segment is
+  found by address (and the bytes are compared with the owner copy), or by
+  content (the longest equal prefix of an owner copy).
+- **Strong-match rule.** A vulnerability is reported only if at least one
+  segment is *strong*: an address match of any length, or a content match of
+  at least `min(4, length of the copy)` bytes. A shorter content match is
+  *weak*: equal bytes of another request can cause it by chance. A weak
+  segment can show in a report, but cannot cause it alone.
+- **Foreign bytes.** Tainted bytes that no owner record matches are *foreign*.
+  The evidence redacts them. They are never a source of the request. After a
+  bound (`DD_IAST_MAX_RANGE_COUNT` segments, or 4096 candidate checks), all the
+  remaining tainted bytes are foreign.
+
+### Sinks
+
+Package | Sink | Vulnerability
+---|---|---
+`iast/database/sql` | `database/sql` `Query*`, `Exec*` and `Prepare*` | SQL injection
+`iast/os/exec` | `os/exec` `Cmd.Start` (and so `Run`, `Output`) | Command injection
+
+### Limits
+
+- **Copies in user code.** The compiler emits `copy(dst, src)` and the
+  appended part of `append(x, y...)` as inline `memmove`. They cannot be
+  hooked. In user code, these forms lose the taint. The same applies to
+  `make` + `copy`.
+- **Stack copies.** Stack values are never tainted. The bits only describe
+  heap memory.
+- **Body copy.** The owner keeps only 64 KiB of the request body. Later body
+  bytes are foreign at the sink.
+- **Delegated reads.** When a hook (`bufio`, `bytes.Buffer.ReadFrom`,
+  `json.Decoder`) reads into reused storage, it saves at most **16** tainted
+  runs before the read. The unwritten tail keeps its bits. When the read
+  writes past the start of the 17th run, the written bytes after that point
+  lose their bits (taint loss, never stale taint). A read into storage of
+  more than 64 KiB keeps old bits (the byte check of the attribution limits
+  the effect).
+- **Equal content.** Attribution by content cannot tell apart 2 requests (or 2
+  sources) that hold equal bytes. A copy is attributed to one of them (by a
+  fixed tie rule).
+- **Sticky gate cost.** The gate turns on at the first taint and stays on for
+  the life of the process. After that, each hook does its full check, also for
+  untainted values.
+- **Inlining loss.** The hooks stop the compiler from inlining some small
+  standard library functions: `(*strings.Builder).Write`, `WriteString`,
+  `(*bytes.Buffer).Truncate`, `Grow`, `strconv.quoteWith`, and the `Read` and
+  `ReadAt` methods of `bytes.Reader` and `strings.Reader`. This costs time also
+  when IAST has no taint.
+- **Go version.** The hooks depend on the code of the standard library of
+  Go 1.26 and 1.27. With `GOEXPERIMENT=jsonv2` (the default of Go 1.27), the
+  `encoding/json` v1 hooks do not apply, and `iast/propagation/jsonv2` applies.
+  JSON v2 propagation is supported on Go 1.27 only: on Go 1.26 with
+  `GOEXPERIMENT=jsonv2`, escaped JSON strings lose their taint.
+
+### Integration Packages
+
+All packages are imported by `orchestrion.tool.go`. A user can import only
+some of them.
+
+Package | Purpose
+---|---
+`iast/runtime` | Runtime propagation hooks (concatenation, conversions, `append` growth)
+`iast/net/http` | HTTP sources, request owner
+`iast/net/url` | `URL.Query()` source
+`iast/propagation/text` | `strings`, `bytes`, `strconv`, `net/url` propagation
+`iast/propagation/stream` | `fmt`, `io`, `bufio`, `encoding/json` v1 propagation
+`iast/propagation/jsonv2` | `encoding/json/v2` propagation
+`iast/database/sql` | SQL injection sink
+`iast/os/exec` | Command injection sink
+`iast/crypto/cipher` | Weak cipher
+`iast/crypto/hash` | Weak hash
+
 ## Cost Control
 
 Taint tracking has non-trivial associated cost; both in terms of memory and
@@ -242,17 +391,18 @@ Environment variable | Type | Default | Description
 ---|---|---:|---
 `DD_IAST_ENABLED` | Boolean | `true` | Enables IAST.
 `DD_IAST_REQUEST_SAMPLING` | Integer from `0` to `100` | `30` | Percentage of requests sampled for IAST analysis.
-`DD_IAST_MAX_CONCURRENT_REQUESTS` | Non-negative integer | `2` | Maximum number of requests that IAST processes concurrently.
-`DD_IAST_VULNERABILITIES_PER_REQUEST` | Integer greater than or equal to `1` | `2` | Maximum number of vulnerabilities reported for one request.
+`DD_IAST_MAX_CONCURRENT_REQUESTS` | Integer from `0` to `64` | `2` | Maximum number of requests that IAST processes concurrently.
+`DD_IAST_VULNERABILITIES_PER_REQUEST` | Integer from `1` to `64` | `2` | Maximum number of vulnerabilities reported for one request.
 `DD_IAST_DEDUPLICATION_ENABLED` | Boolean | `true` | Enables vulnerability deduplication.
 `DD_IAST_REDACTION_ENABLED` | Boolean | `true` | Enables sensitive data redaction.
-`DD_IAST_REDACTION_NAME_PATTERN` | `regexp` regular expression | Sensible built-in pattern | Pattern used to identify source names that must be redacted.
-`DD_IAST_REDACTION_VALUE_PATTERN` | `regexp` regular expression | Sensible built-in pattern | Pattern used to identify source values that must be redacted.
+`DD_IAST_REDACTION_NAME_PATTERN` | `regexp` regular expression | Sensible built-in pattern | Pattern used to identify source names that must be redacted. When it is not set, the compatibility alias `DD_IAST_REDACTION_KEYS_REGEXP` is used.
+`DD_IAST_REDACTION_VALUE_PATTERN` | `regexp` regular expression | Sensible built-in pattern | Pattern used to identify source values that must be redacted. When it is not set, the compatibility alias `DD_IAST_REDACTION_VALUES_REGEXP` is used.
 `DD_IAST_TRUNCATION_MAX_VALUE` | Non-negative integer | `250` | Maximum number of Unicode characters retained before truncating source values, vulnerability evidence, redacted patterns, and individual evidence value parts.
-`DD_IAST_MAX_RANGE_COUNT` | Non-negative integer | `10` | Maximum number of taint ranges retained for one value.
+`DD_IAST_MAX_RANGE_COUNT` | Integer from `1` to `64` | `10` | Maximum number of source-attributed taint ranges reported for one value. When a value has more, its remaining tainted bytes are redacted in the evidence.
 `DD_IAST_TELEMETRY_VERBOSITY` | `OFF`, `MANDATORY`, `INFORMATION`, or `DEBUG` | `INFORMATION` | Sets IAST telemetry verbosity.
 `DD_IAST_DB_ROWS_TO_TAINT` | Non-negative integer | `1` | Number of database rows tainted for each request.
 `DD_IAST_STACK_TRACE_ENABLED` | Boolean | `true` | Includes stack traces in vulnerability reports.
+`DD_IAST_STRING_TO_SLICE_PROPAGATION_ENABLED` | Boolean | `true` | Propagates taint from a string to the result of `[]byte(s)` and `[]rune(s)`. Writes into these results are not tracked, so their taint can be stale.
 
 > [!NOTE]
 > Boolean values are parsed using [`strconv.ParseBool`](https://pkg.go.dev/strconv#ParseBool),
@@ -266,7 +416,7 @@ Name | Severity | Implemented
 ---|---|:---:
 Admin console active | Low | :x:
 Code injection | High | :x:
-Command injection | Critical | :x:
+Command injection | Critical | :white_check_mark: `github.com/DataDog/dd-iast-go/iast/os/exec`
 Default application deployed | Low | :x:
 Default HTML escape invalid | High | :x:
 Directory listing leak | High | :x:
@@ -287,7 +437,7 @@ Reflection injection | Medium | :x:
 Server-side request forgery | Critical | :x:
 Session rewriting | Medium | :x:
 Session timeout | Low | :x:
-SQL injection | Critical | :x:
+SQL injection | Critical | :white_check_mark: `github.com/DataDog/dd-iast-go/iast/database/sql`
 Stacktrace leak | Medium | :x:
 Template injection | High | :x:
 Trust boundary violation | High | :x:

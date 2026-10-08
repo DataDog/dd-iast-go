@@ -1,0 +1,658 @@
+# Unless explicitly stated otherwise all files in this repository are licensed
+# under the Apache License Version 2.0.
+# This product includes software developed at Datadog (https://www.datadoghq.com/).
+# Copyright 2026-present Datadog, Inc.
+---
+# $schema: https://datadoghq.dev/orchestrion/schema.json
+meta:
+  name: github.com/DataDog/dd-iast-go/iast/propagation/jsonv2
+  description: >-
+    Taint propagation hooks in the encoding/json/v2 implementation of
+    encoding/json (GOEXPERIMENT=jsonv2, the default from Go 1.27; plan
+    heapbits-sqli-cmdi, section 6). The hooks copy the heap taint bits of
+    internal/taint/heapbits where the decoder moves bytes with copy or
+    append(x, y...), and make the unescaped strings coarse.
+
+# How the hooks work: the same rules as iast/propagation/stream (read the
+# header of its orchestrion.yml). In short:
+#
+#  - The prepended code reads the sticky gate __dd_iast_live() (heapbits.Live:
+#    2 loads, inlined). When it is false, the original body runs.
+#  - Else it calls the twin __dd_iast_<pkg>_<fn>, declared in the same
+#    package.
+#  - The hook code imports only packages of the standard library. It pulls the
+#    bit functions with the linknames of package heapbits, and
+#    propbridge.Derived with the push linkname __dd_iast_propbridge.derived.
+#    No "links".
+#  - No defer, no new panic.
+#
+# Variants: the hooked packages (encoding/json/internal/jsonwire,
+# encoding/json/jsontext, encoding/json/v2) have only files with
+# "//go:build goexperiment.jsonv2". Without this experiment (Go 1.26 by
+# default, Go 1.27 with GOEXPERIMENT=nojsonv2), the build does not compile
+# these packages: no join point of this file matches, and Orchestrion adds
+# nothing (TestVariantBuilds checks it). Then the v1 hooks of
+# iast/propagation/stream apply. Go 1.26 with GOEXPERIMENT=jsonv2 is not
+# supported, but it compiles: fetch and makeString are the same as in Go
+# 1.27.1 (the drift golden files), and the AppendUnquote hook does not apply
+# (see its aspect).
+#
+# What the decoder does with the bytes (Go 1.27.1 source):
+#
+#  - json.Unmarshal(data, v) decodes data in place (jsontext getBufferedDecoder:
+#    no copy). The raw tokens alias data, thus they have its bits.
+#  - (*json.Decoder).Decode reads with (*jsontext.decoderState).fetch into
+#    its buffer (hooked: slide, growth and read rule), then decodes the value
+#    in place, as Unmarshal.
+#  - A string without escapes is a part of the raw token (UnquoteMayCopy). A
+#    string with escapes is new memory from jsonwire.AppendUnquote (hooked:
+#    coarse).
+#  - The Go string comes from makeString: string(b) (the runtime hook copies
+#    the bits), or a string of the decoder cache (hooked: a tainted b does not
+#    use the cache).
+
+aspects:
+  # ---------------------------------------------------------------------------
+  # encoding/json/internal/jsonwire
+  # ---------------------------------------------------------------------------
+
+  # AppendUnquote: Go 1.26 has a generic AppendUnquote[Bytes ~[]byte |
+  # ~string](dst []byte, src Bytes). The not join point excludes it (its
+  # parameter of type Bytes): with Go 1.26 and GOEXPERIMENT=jsonv2, this hook
+  # does not apply (no coarse strings), and the build compiles.
+  - id: encoding/json/internal/jsonwire.AppendUnquote
+    join-point:
+      all-of:
+        - import-path: encoding/json/internal/jsonwire
+        - function-body:
+            all-of:
+              - function:
+                  - receiver: false
+                  - name: AppendUnquote
+              - not:
+                  function:
+                    - signature-contains:
+                        args: [Bytes]
+    advice:
+      - &bits
+        inject-declarations:
+          imports:
+            atomic: sync/atomic
+            runtime: runtime
+            unsafe: unsafe
+          template: |-
+            // ---- bit functions (plan section 6.1 rule 1) ----
+            //
+            // The hooks do not import packages heapbits and propbridge: go test
+            // of a package with in-package tests rebuilds the standard library
+            // packages that import it, and Orchestrion cannot rebuild them (a
+            // fingerprint cycle through reflect). Thus the hooks pull the bit
+            // functions of the woven runtime with the linknames of package
+            // heapbits (nil without weaving: then nothing is tainted), the
+            // string-to-slice switch of propbridge, and propbridge.Derived
+            // through the push linkname of package propbridge (nil when
+            // propbridge is not linked: then no request can be active).
+            var (
+              //go:linkname __dd_iast_rt_set __dd_iast_heapbits.set
+              __dd_iast_rt_set func(p, n uintptr) bool
+
+              //go:linkname __dd_iast_rt_clear __dd_iast_heapbits.clear
+              __dd_iast_rt_clear func(p, n uintptr)
+
+              //go:linkname __dd_iast_rt_any __dd_iast_heapbits.any
+              __dd_iast_rt_any func(p, n uintptr) bool
+
+              //go:linkname __dd_iast_rt_copy __dd_iast_heapbits.copy
+              __dd_iast_rt_copy func(dst, src, n uintptr) bool
+
+              //go:linkname __dd_iast_rt_seen __dd_iast_heapbits.seen
+              __dd_iast_rt_seen *uint32
+
+              //go:linkname __dd_iast_rt_s2soff __dd_iast_propbridge.s2soff
+              __dd_iast_rt_s2soff uint32
+
+              //go:linkname __dd_iast_rt_derived __dd_iast_propbridge.derived
+              __dd_iast_rt_derived func(out, outLen, in, inLen uintptr, mode uint8)
+            )
+
+            // __dd_iast_coarse is the Coarse mode of propbridge.Derived
+            // (TestBridgeModes checks the value).
+            const __dd_iast_coarse uint8 = 1
+
+            // __dd_iast_live is heapbits.Live: 2 loads, no call (inlinable).
+            func __dd_iast_live() bool {
+              p := __dd_iast_rt_seen
+              return p != nil && atomic.LoadUint32(p) != 0
+            }
+
+            // __dd_iast_s2s is propbridge.StringToSlice.
+            func __dd_iast_s2s() bool {
+              return atomic.LoadUint32(&__dd_iast_rt_s2soff) == 0
+            }
+
+            // __dd_iast_derived is propbridge.Derived. The caller keeps the
+            // memory alive until it returns.
+            func __dd_iast_derived(out, outLen, in, inLen uintptr, mode uint8) {
+              if f := __dd_iast_rt_derived; f != nil {
+                f(out, outLen, in, inLen, mode)
+              }
+            }
+
+            // The bit functions below are heapbits.Any, Set, Clear and Copy.
+            // They are not inlined (as in package heapbits): their stack check
+            // is a preemption point.
+
+            //go:noinline
+            func __dd_iast_any(p unsafe.Pointer, n uintptr) bool {
+              f := __dd_iast_rt_any
+              if f == nil || n == 0 {
+                return false
+              }
+              ok := f(uintptr(p), n)
+              runtime.KeepAlive(p)
+              return ok
+            }
+
+            //go:noinline
+            func __dd_iast_set(p unsafe.Pointer, n uintptr) bool {
+              f := __dd_iast_rt_set
+              if f == nil || n == 0 {
+                return false
+              }
+              ok := f(uintptr(p), n)
+              runtime.KeepAlive(p)
+              return ok
+            }
+
+            //go:noinline
+            func __dd_iast_clear(p unsafe.Pointer, n uintptr) {
+              f := __dd_iast_rt_clear
+              if f == nil || n == 0 {
+                return
+              }
+              f(uintptr(p), n)
+              runtime.KeepAlive(p)
+            }
+
+            //go:noinline
+            func __dd_iast_copy(dst, src unsafe.Pointer, n uintptr) bool {
+              f := __dd_iast_rt_copy
+              if f == nil || n == 0 {
+                return false
+              }
+              ok := f(uintptr(dst), uintptr(src), n)
+              runtime.KeepAlive(dst)
+              runtime.KeepAlive(src)
+              return ok
+            }
+
+            func __dd_iast_anyString(s string) bool {
+              return __dd_iast_any(unsafe.Pointer(unsafe.StringData(s)), uintptr(len(s)))
+            }
+
+            func __dd_iast_anyBytes(b []byte) bool {
+              return __dd_iast_any(unsafe.Pointer(unsafe.SliceData(b)), uintptr(len(b)))
+            }
+
+            func __dd_iast_clearBytes(b []byte) {
+              __dd_iast_clear(unsafe.Pointer(unsafe.SliceData(b)), uintptr(len(b)))
+            }
+      - inject-declarations:
+          imports:
+            io: io
+            runtime: runtime
+            slices: slices
+            unsafe: unsafe
+            utf16: unicode/utf16
+            utf8: unicode/utf8
+          template: |-
+            // __dd_iast_jsonwire_AppendUnquote is the twin of AppendUnquote
+            // (plan section 6.3). It runs the body copy, then sets the bits of
+            // the appended bytes dst[len(dst):]: when src is tainted, they are
+            // tainted as a whole (coarse), with a derived entry of the source
+            // of src (an unescaped string is new memory, and its bytes are not
+            // all equal to the bytes of src). When src is clean, the appended
+            // bytes are cleared: a reused dst (for example the object name
+            // buffer of jsontext) can have old bits.
+            func __dd_iast_jsonwire_AppendUnquote(dst, src []byte) ([]byte, error) {
+              n0 := len(dst)
+              v, err := __dd_iast_jsonwire_AppendUnquoteBody(dst, src)
+              if len(v) > n0 {
+                out := unsafe.Pointer(&v[n0])
+                n := uintptr(len(v) - n0)
+                in := unsafe.Pointer(unsafe.SliceData(src))
+                if __dd_iast_any(in, uintptr(len(src))) {
+                  if __dd_iast_set(out, n) {
+                    __dd_iast_derived(uintptr(out), n, uintptr(in), uintptr(len(src)), __dd_iast_coarse)
+                  }
+                } else if __dd_iast_any(out, n) {
+                  __dd_iast_clear(out, n)
+                }
+                runtime.KeepAlive(out)
+                runtime.KeepAlive(in)
+              }
+              return v, err
+            }
+
+            // __dd_iast_jsonwire_AppendUnquoteBody is an exact copy of the body
+            // of AppendUnquote (TestAppendUnquoteCopy checks it).
+            func __dd_iast_jsonwire_AppendUnquoteBody(dst, src []byte) (v []byte, err error) {
+              dst = slices.Grow(dst, len(src))
+
+              // Consume the leading double quote.
+              var i, n int
+              switch {
+              case uint(len(src)) == 0:
+                return dst, io.ErrUnexpectedEOF
+              case src[0] == '"':
+                i, n = 1, 1
+              default:
+                return dst, NewInvalidCharacterError(src, `at start of string (expecting '"')`)
+              }
+
+              // Consume every character in the string.
+              for uint(len(src)) > uint(n) {
+                // Optimize for long sequences of unescaped characters.
+                noEscape := func(c byte) bool {
+                  return c < utf8.RuneSelf && ' ' <= c && c != '\\' && c != '"'
+                }
+                for uint(len(src)) > uint(n) && noEscape(src[n]) {
+                  n++
+                }
+                if uint(len(src)) <= uint(n) {
+                  dst = append(dst, src[i:n]...)
+                  return dst, io.ErrUnexpectedEOF
+                }
+
+                // Check for terminating double quote.
+                if src[n] == '"' {
+                  dst = append(dst, src[i:n]...)
+                  n++
+                  if n < len(src) {
+                    err = NewInvalidCharacterError(src[n:], "after string value")
+                  }
+                  return dst, err
+                }
+
+                switch r, rn := utf8.DecodeRune(src[n:]); {
+                // Handle UTF-8 encoded byte sequence.
+                // Due to specialized handling of ASCII above, we know that
+                // all normal sequences at this point must be 2 bytes or larger.
+                case rn > 1:
+                  n += rn
+                // Handle escape sequence.
+                case r == '\\':
+                  dst = append(dst, src[i:n]...)
+
+                  // Handle escape sequence.
+                  if uint(len(src)) < uint(n+2) {
+                    return dst, io.ErrUnexpectedEOF
+                  }
+                  switch r := src[n+1]; r {
+                  case '"', '\\', '/':
+                    dst = append(dst, r)
+                    n += 2
+                  case 'b':
+                    dst = append(dst, '\b')
+                    n += 2
+                  case 'f':
+                    dst = append(dst, '\f')
+                    n += 2
+                  case 'n':
+                    dst = append(dst, '\n')
+                    n += 2
+                  case 'r':
+                    dst = append(dst, '\r')
+                    n += 2
+                  case 't':
+                    dst = append(dst, '\t')
+                    n += 2
+                  case 'u':
+                    if uint(len(src)) < uint(n+6) {
+                      if hasEscapedUTF16Prefix(src[n:], false) {
+                        return dst, io.ErrUnexpectedEOF
+                      }
+                      return dst, NewInvalidEscapeSequenceError(src[n:])
+                    }
+                    v1, ok := parseHexUint16(src[n+2 : n+6])
+                    if !ok {
+                      return dst, NewInvalidEscapeSequenceError(src[n : n+6])
+                    }
+                    n += 6
+
+                    // Check whether this is a surrogate half.
+                    r := rune(v1)
+                    if utf16.IsSurrogate(r) {
+                      r = utf8.RuneError // assume failure unless the following succeeds
+                      if uint(len(src)) < uint(n+6) {
+                        if hasEscapedUTF16Prefix(src[n:], true) {
+                          return utf8.AppendRune(dst, r), io.ErrUnexpectedEOF
+                        }
+                        err = NewInvalidEscapeSequenceError(src[n-6:])
+                      } else if v2, ok := parseHexUint16(src[n+2 : n+6]); src[n] != '\\' || src[n+1] != 'u' || !ok {
+                        err = NewInvalidEscapeSequenceError(src[n-6 : n+6])
+                      } else if r = utf16.DecodeRune(rune(v1), rune(v2)); r == utf8.RuneError {
+                        err = NewInvalidEscapeSequenceError(src[n-6 : n+6])
+                      } else {
+                        n += 6
+                      }
+                    }
+
+                    dst = utf8.AppendRune(dst, r)
+                  default:
+                    return dst, NewInvalidEscapeSequenceError(src[n : n+2])
+                  }
+                  i = n
+                // Handle invalid UTF-8.
+                case r == utf8.RuneError:
+                  dst = append(dst, src[i:n]...)
+                  if !utf8.FullRune(src[n:]) {
+                    return dst, io.ErrUnexpectedEOF
+                  }
+                  // NOTE: An unescaped string may be longer than the escaped string
+                  // because invalid UTF-8 bytes are being replaced.
+                  dst = append(dst, "\uFFFD"...)
+                  n += rn
+                  i = n
+                  err = ErrInvalidUTF8
+                // Handle invalid control characters.
+                case r < ' ':
+                  dst = append(dst, src[i:n]...)
+                  return dst, NewInvalidCharacterError(src[n:], "in string (expecting non-control character)")
+                default:
+                  panic("BUG: unhandled character " + QuoteRune(src[n:]))
+                }
+              }
+              dst = append(dst, src[i:n]...)
+              return dst, io.ErrUnexpectedEOF
+
+            }
+      - prepend-statements:
+          template: |-
+            if __dd_iast_live() {
+              return __dd_iast_jsonwire_AppendUnquote({{ .Function.Argument 0 }}, {{ .Function.Argument 1 }})
+            }
+
+  # ---------------------------------------------------------------------------
+  # encoding/json/jsontext
+  # ---------------------------------------------------------------------------
+
+  - id: encoding/json/jsontext-decls
+    join-point:
+      struct-definition: encoding/json/jsontext.decodeBuffer
+    advice:
+      - *bits
+      - inject-declarations:
+          imports:
+            bytes: bytes
+            io: io
+            runtime: runtime
+            unsafe: unsafe
+          template: |-
+            // Compile-time checks of the fields that the twin uses (plan
+            // section 6.1 rule 6).
+            var (
+              _ []byte    = decodeBuffer{}.buf
+              _ int       = decodeBuffer{}.prevStart
+              _ int       = decodeBuffer{}.prevEnd
+              _ int64     = decodeBuffer{}.baseOffset
+              _ io.Reader = decodeBuffer{}.rd
+              _ string    = ioError{}.action
+              _ error     = ioError{}.err
+            )
+
+            // __dd_iast_jsontext_next is heapbits.Next (want true) and
+            // heapbits.NextClean (want false), pulled from the woven runtime
+            // (nil without weaving).
+            //
+            //go:linkname __dd_iast_jsontext_next __dd_iast_heapbits.next
+            var __dd_iast_jsontext_next func(p, n, from uintptr, want bool) uintptr
+
+            // __dd_iast_jsontext_find returns the first offset in [from, n) of
+            // the n bytes at p with a bit equal to want, or n. A result out of
+            // [from, n] gives n (no panic on a wrong value).
+            //
+            //go:noinline
+            func __dd_iast_jsontext_find(p unsafe.Pointer, n, from int, want bool) int {
+              f := __dd_iast_jsontext_next
+              if f == nil || from >= n {
+                return n
+              }
+              r := int(f(uintptr(p), uintptr(n), uintptr(from), want))
+              runtime.KeepAlive(p)
+              if r < from || r > n {
+                return n
+              }
+              return r
+            }
+
+            // __dd_iast_jsontext_read is the read rule of plan section 6.2 (the
+            // same code as in bufio and in the v1 encoding/json): a delegated
+            // Read into reused memory dst. When dst has bits (and is 64 KiB or
+            // less), these steps run, with no allocation:
+            //   1. Save at most 16 tainted runs of dst (offset and end) in a
+            //      fixed array on the stack. limit is the start of the 17th
+            //      run, or len(dst) when dst has 16 runs or less.
+            //   2. Clear dst[:limit] only.
+            //   3. Call Read, which returns n.
+            //   4. Set again the bits of the saved runs in dst[n:limit]. If n
+            //      is more than limit, clear dst[limit:n].
+            //
+            // Thus a byte that Read writes never keeps its old bits (no stale
+            // taint): a written byte before limit is cleared before Read, and a
+            // written byte from limit is cleared after Read (it also loses its
+            // new bits: taint loss only). The tail that Read did not write (all
+            // bytes from max(n, limit), and the saved runs in dst[n:limit])
+            // keeps its bits, and the values that alias it keep them too.
+            //
+            // The CPU cost of each read is O(limit/64 + n/64) words of bits for
+            // the scan, the clear and the set (at most 1,024 words for each
+            // step with 64 KiB), with no allocation. A negative Read result n,
+            // or an n that is more than len(dst), counts as a write of all of
+            // dst. When the bits cannot be set again (no storage), the tail
+            // loses them (taint loss only). When Read panics, the panic goes
+            // on, and the saved bits in dst[:limit] are lost (taint loss only).
+            func __dd_iast_jsontext_read(rd io.Reader, dst []byte) (int, error) {
+              l := len(dst)
+              p := unsafe.Pointer(unsafe.SliceData(dst))
+              if l == 0 || l > 64<<10 || !__dd_iast_any(p, uintptr(l)) {
+                return rd.Read(dst)
+              }
+              // The snapshot: at most 16 tainted runs [start, end), on the
+              // stack. limit is the start of the first run that is not in the
+              // snapshot, or l.
+              var starts, ends [16]int
+              k, limit := 0, l
+              for off := __dd_iast_jsontext_find(p, l, 0, true); off < l; {
+                end := __dd_iast_jsontext_find(p, l, off, false)
+                if k == len(starts) || end <= off {
+                  // Too many runs, or a concurrent change of the bits: the bits
+                  // from off are not in the snapshot, and they are not cleared
+                  // before Read.
+                  limit = off
+                  break
+                }
+                starts[k], ends[k] = off, end
+                k++
+                off = __dd_iast_jsontext_find(p, l, end, true)
+              }
+              if k == 0 && limit == l {
+                return rd.Read(dst)
+              }
+              // Clear dst[:limit]: Read can write any byte, and a written byte
+              // must have only the bits of the new data.
+              __dd_iast_clear(p, uintptr(limit))
+              n, err := rd.Read(dst)
+              w := n
+              if w < 0 || w > l {
+                // A wrong result: all of dst can be written.
+                w = l
+              }
+              for i := 0; i < k; i++ {
+                start, end := max(starts[i], w), min(ends[i], limit)
+                if start < end {
+                  __dd_iast_set(unsafe.Add(p, start), uintptr(end-start))
+                }
+              }
+              if w > limit {
+                // The written bytes from limit can have old bits: clear them.
+                __dd_iast_clear(unsafe.Add(p, limit), uintptr(w-limit))
+              }
+              runtime.KeepAlive(p)
+              return n, err
+            }
+
+            // __dd_iast_jsontext_copy copies the bits of the n bytes at src to
+            // the n bytes at dst (the bytes were copied with copy or append).
+            func __dd_iast_jsontext_copy(dst, src []byte, n int) {
+              if n > 0 {
+                __dd_iast_copy(unsafe.Pointer(unsafe.SliceData(dst)), unsafe.Pointer(unsafe.SliceData(src)), uintptr(n))
+              }
+            }
+
+            // __dd_iast_jsontext_fetch is the twin of (*decoderState).fetch: a
+            // copy of its body, with these changes only (TestFetchCopy checks
+            // it):
+            //  - the growth copy (append) and the slide (copy) keep the bits of
+            //    the moved bytes. The tail after the slide keeps its bits (the
+            //    values of ReadValue alias the buffer);
+            //  - the delegated Read uses the read rule.
+            func __dd_iast_jsontext_fetch(d *decoderState) error {
+              if d.rd == nil {
+                return io.ErrUnexpectedEOF
+              }
+
+              // Inform objectNameStack that we are about to fetch new buffer content.
+              d.Names.copyQuotedBuffer(d.buf)
+
+              // Specialize bytes.Buffer for better performance.
+              if bb, ok := d.rd.(*bytes.Buffer); ok {
+                switch {
+                case bb.Len() == 0:
+                  return io.ErrUnexpectedEOF
+                case len(d.buf) == 0:
+                  d.buf = bb.Next(bb.Len()) // "read" all data in the buffer
+                  return nil
+                default:
+                  return &ioError{action: "read", err: errBufferWriteAfterNext}
+                }
+              }
+
+              // Allocate initial buffer if empty.
+              if cap(d.buf) == 0 {
+                d.buf = make([]byte, 0, 64)
+              }
+
+              // Check whether to grow the buffer.
+              const maxBufferSize = 4 << 10
+              const growthSizeFactor = 2 // higher value is faster
+              const growthRateFactor = 2 // higher value is slower
+              // By default, grow if below the maximum buffer size.
+              grow := cap(d.buf) <= maxBufferSize/growthSizeFactor
+              // Growing can be expensive, so only grow
+              // if a sufficient number of bytes have been processed.
+              grow = grow && int64(cap(d.buf)) < d.previousOffsetEnd()/growthRateFactor
+              // If prevStart==0, then fetch was called in order to fetch more data
+              // to finish consuming a large JSON value contiguously.
+              // Grow if less than 25% of the remaining capacity is available.
+              // Note that this may cause the input buffer to exceed maxBufferSize.
+              grow = grow || (d.prevStart == 0 && len(d.buf) >= 3*cap(d.buf)/4)
+
+              if grow {
+                // Allocate a new buffer and copy the contents of the old buffer over.
+                buf := make([]byte, 0, cap(d.buf)*growthSizeFactor)
+                __dd_iast_src := d.buf[d.prevStart:]
+                d.buf = append(buf, d.buf[d.prevStart:]...)
+                __dd_iast_jsontext_copy(d.buf, __dd_iast_src, len(__dd_iast_src))
+              } else {
+                // Move unread portion of the data to the front.
+                n := copy(d.buf[:cap(d.buf)], d.buf[d.prevStart:])
+                __dd_iast_jsontext_copy(d.buf[:cap(d.buf)], d.buf[d.prevStart:], n)
+                d.buf = d.buf[:n]
+              }
+              d.baseOffset += int64(d.prevStart)
+              d.prevEnd -= d.prevStart
+              d.prevStart = 0
+
+              // Read more data into the internal buffer.
+              for {
+                n, err := __dd_iast_jsontext_read(d.rd, d.buf[len(d.buf):cap(d.buf)])
+                switch {
+                case n > 0:
+                  d.buf = d.buf[:len(d.buf)+n]
+                  return nil // ignore errors if any bytes are read
+                case err == io.EOF:
+                  return io.ErrUnexpectedEOF
+                case err != nil:
+                  return &ioError{action: "read", err: err}
+                default:
+                  continue // Read returned (0, nil)
+                }
+              }
+            }
+
+  - id: encoding/json/jsontext.decoderState.fetch
+    join-point:
+      all-of:
+        - import-path: encoding/json/jsontext
+        - function-body:
+            function:
+              - receiver: "*encoding/json/jsontext.decoderState"
+              - name: fetch
+    advice:
+      - prepend-statements:
+          template: |-
+            if __dd_iast_live() {
+              return __dd_iast_jsontext_fetch({{ .Function.Receiver }})
+            }
+
+  # ---------------------------------------------------------------------------
+  # encoding/json/v2
+  # ---------------------------------------------------------------------------
+
+  - id: encoding/json/v2-decls
+    join-point:
+      declaration-of: encoding/json/v2.makeString
+    advice:
+      - *bits
+
+  # makeString: the decoder keeps a cache of strings (256 entries) across
+  # pooled Unmarshal calls. A tainted b must not use it: a hit returns a string
+  # of an earlier call (clean, or with the bits of another request), and an
+  # insert keeps a tainted string that a later clean input can get. Thus a
+  # tainted b gets a new string(b) (the runtime hook copies the bits exactly),
+  # and the cache does not change.
+  - id: encoding/json/v2.makeString
+    join-point:
+      all-of:
+        - import-path: encoding/json/v2
+        - function-body:
+            function:
+              - receiver: false
+              - name: makeString
+    advice:
+      - prepend-statements:
+          template: |-
+            {{- $b := .Function.Argument 1 -}}
+            if __dd_iast_live() && __dd_iast_anyBytes({{ $b }}) {
+              return string({{ $b }})
+            }
+
+  - id: encoding/json/jsontext-telemetry-decls
+    join-point:
+      struct-definition: encoding/json/jsontext.decoderState
+    advice:
+      - inject-declarations:
+          imports:
+            unsafe: unsafe
+          template: |-
+            // __dd_iast_jsonv2_points is instrumentedPropagationPoints of
+            // iast/propagation/jsonv2 (TestAspectCount checks the value).
+            // Exported to package internal/taint/request (push linkname).
+            // This package is in the build only with GOEXPERIMENT=jsonv2.
+            //
+            //go:linkname __dd_iast_jsonv2_points __dd_iast_telemetry.jsonv2_points
+            var __dd_iast_jsonv2_points uint32 = 3
+
+            // The linkname directive needs the import of unsafe.
+            var _ unsafe.Pointer

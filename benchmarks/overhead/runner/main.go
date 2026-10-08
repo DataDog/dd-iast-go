@@ -32,6 +32,7 @@ const (
 	activeResultsFile  = "active.txt"
 	comparisonFile     = "comparison.txt"
 	gateFile           = "gate.txt"
+	gateTableFile      = "gate.tsv"
 	minGateCount       = 4
 	metadataFile       = "metadata.txt"
 
@@ -41,6 +42,28 @@ const (
 	// when the caller exported the variable (the last value wins).
 	activeEnvironment = "DD_IAST_BENCH_HEAPBITS=active"
 	inertEnvironment  = "DD_IAST_BENCH_HEAPBITS="
+
+	// taintLiveEnvironment selects the "taint live elsewhere" variant of the
+	// workloads (see support_test.go). The runner does not set it: a child
+	// process inherits it from the caller, and the metadata records it. The
+	// only valid values are "" and taintLiveOn, and taintLiveOn needs
+	// sampling 100 (else the live request is not sampled, and has no taint).
+	taintLiveEnvironment = "DD_IAST_BENCH_TAINT_LIVE"
+	taintLiveOn          = "1"
+
+	// expectEnvironment tells the workloads which variant runs (control or
+	// iast). With taint live elsewhere, the IAST variant fails when the live
+	// value is not tainted.
+	expectEnvironment = "DD_IAST_BENCH_EXPECT"
+
+	// treeEnvironment tells the sink validation which tree it checks: the
+	// expected evidence ranges differ between the trees (the shared
+	// workload files are the same in both trees).
+	treeEnvironment = "DD_IAST_BENCH_TREE=heapbits"
+
+	// heapBitsPrefix is the prefix of the only workloads that the active
+	// variant changes.
+	heapBitsPrefix = "HeapBits"
 )
 
 type options struct {
@@ -49,7 +72,14 @@ type options struct {
 	benchtime string
 	cpu       int
 	benchmark string
+	sampling  int
+	buildDir  string
+	rotation  int
+	evaluate  bool
 	gate      bool
+	// countSet and samplingSet tell whether the flag is on the command line
+	// (-evaluate compares them with metadata.txt).
+	countSet, samplingSet bool
 }
 
 type flagValues struct {
@@ -58,6 +88,10 @@ type flagValues struct {
 	benchtime string
 	cpu       string
 	benchmark string
+	sampling  string
+	buildDir  string
+	rotation  string
+	evaluate  bool
 	gate      bool
 }
 
@@ -69,7 +103,15 @@ type configuration struct {
 	benchtime  string
 	cpu        int
 	benchmark  string
+	sampling   int
+	buildDir   string
+	rotation   int
+	evaluate   bool
 	gate       bool
+	// taintLive is the value of DD_IAST_BENCH_TAINT_LIVE of the run (from
+	// metadata.txt with -evaluate).
+	taintLive             string
+	countSet, samplingSet bool
 }
 
 func main() {
@@ -95,18 +137,158 @@ func run(arguments []string) (err error) {
 	defer func() {
 		err = errors.Join(err, cfg.output.Close())
 	}()
-	if err := initializeArtifacts(cfg.output, controlResultsFile, iastResultsFile, activeResultsFile, comparisonFile, gateFile, metadataFile); err != nil {
+	if cfg.evaluate {
+		return evaluate(cfg)
+	}
+	if err := validateTaintLive(cfg.taintLive, cfg.sampling); err != nil {
+		return err
+	}
+	if err := initializeArtifacts(cfg.output, controlResultsFile, iastResultsFile, activeResultsFile, comparisonFile, gateFile, gateTableFile, metadataFile); err != nil {
 		return err
 	}
 
-	buildRoot, err := os.MkdirTemp("", "dd-iast-overhead-build-*")
+	buildRoot, reuse, cleanup, err := prepareBuildRoot(cfg.buildDir)
 	if err != nil {
-		return fmt.Errorf("create build directory: %w", err)
+		return err
 	}
-	defer os.RemoveAll(buildRoot)
+	defer cleanup()
 
 	controlSource := filepath.Join(buildRoot, "control-source")
 	iastSource := filepath.Join(buildRoot, "iast-source")
+	controlBinary := filepath.Join(buildRoot, "control.test")
+	iastBinary := filepath.Join(buildRoot, "iast.test")
+	if !reuse {
+		if err := buildAndValidate(cfg, buildRoot, controlSource, iastSource, controlBinary, iastBinary); err != nil {
+			return err
+		}
+		if cfg.buildDir != "" {
+			if err := os.WriteFile(filepath.Join(buildRoot, builtMarker), nil, 0o644); err != nil {
+				return err
+			}
+		}
+	}
+
+	if err := writeMetadata(cfg, metadataFile); err != nil {
+		return err
+	}
+
+	// The active variant changes only the HeapBits workloads: without them,
+	// it is a copy of the IAST variant, and the runner does not run it.
+	active, err := selectsHeapBits(iastSource, iastBinary, cfg.benchmark)
+	if err != nil {
+		return err
+	}
+	if !active {
+		fmt.Println("The -bench expression selects no HeapBits workload: the active variant is not run.")
+	}
+	for sample := 1; sample <= cfg.count; sample++ {
+		fmt.Printf("Running sample %d/%d...\n", sample, cfg.count)
+		variants := []variant{
+			{controlSource, controlBinary, controlResultsFile, []string{expectEnvironment + "=control"}},
+			{iastSource, iastBinary, iastResultsFile, []string{expectEnvironment + "=iast"}},
+		}
+		if active {
+			variants = append(variants, variant{iastSource, iastBinary, activeResultsFile, []string{expectEnvironment + "=iast", activeEnvironment}})
+		}
+		// Rotate the order of the variants between samples.
+		for range (sample + cfg.rotation) % len(variants) {
+			variants = append(variants[1:], variants[0])
+		}
+		for _, v := range variants {
+			if err := runSample(cfg, v); err != nil {
+				return err
+			}
+		}
+	}
+
+	if err := compareResultSets(cfg.output.FS(), controlResultsFile, iastResultsFile); err != nil {
+		return err
+	}
+	files := []string{controlResultsFile, iastResultsFile}
+	if active {
+		if err := compareResultSets(cfg.output.FS(), controlResultsFile, activeResultsFile); err != nil {
+			return err
+		}
+		files = append(files, activeResultsFile)
+	}
+	if err := compareAndGate(cfg, files); err != nil {
+		return err
+	}
+	fmt.Println("Benchmark artifacts:", cfg.output.Name())
+	return nil
+}
+
+// validateTaintLive checks the value of DD_IAST_BENCH_TAINT_LIVE.
+func validateTaintLive(value string, sampling int) error {
+	switch {
+	case value != "" && value != taintLiveOn:
+		return fmt.Errorf("%s must be empty or %s, got %q", taintLiveEnvironment, taintLiveOn, value)
+	case value == taintLiveOn && sampling != 100:
+		return fmt.Errorf("%s=%s needs -sampling=100 (the live request must be sampled to hold a tainted value), got %d", taintLiveEnvironment, taintLiveOn, sampling)
+	}
+	return nil
+}
+
+// selectsHeapBits reports whether the -bench expression selects a HeapBits
+// workload of the binary.
+func selectsHeapBits(directory, binary, bench string) (bool, error) {
+	var out strings.Builder
+	if err := executeWithWriters(directory, []string{inertEnvironment}, &out, os.Stderr, binary, "-test.list=^Benchmark"+heapBitsPrefix); err != nil {
+		return false, fmt.Errorf("list the HeapBits workloads: %w", err)
+	}
+	for _, name := range strings.Fields(out.String()) {
+		if strings.HasPrefix(name, "Benchmark"+heapBitsPrefix) && selectsTopLevel(bench, strings.TrimPrefix(name, "Benchmark")) {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+// selectsTopLevel reports whether the -bench expression of go test selects the
+// top-level benchmark name (without "Benchmark"): go test separates the
+// top-level alternatives ("|"), and matches the first slash-separated element
+// of each alternative with the name.
+func selectsTopLevel(bench, name string) bool {
+	for _, alternative := range splitTopLevel(bench, '|') {
+		first := splitTopLevel(alternative, '/')[0]
+		if matched, err := regexp.MatchString(first, "Benchmark"+name); err == nil && matched {
+			return true
+		}
+	}
+	return false
+}
+
+// builtMarker is the file that marks a -builddir directory as built.
+const builtMarker = "built"
+
+// prepareBuildRoot returns the build directory. Without -builddir, it is a
+// temporary directory that cleanup removes. With -builddir, the directory is
+// kept, and reuse is true when an earlier run built it.
+func prepareBuildRoot(buildDir string) (root string, reuse bool, cleanup func(), err error) {
+	if buildDir == "" {
+		root, err = os.MkdirTemp("", "dd-iast-overhead-build-*")
+		if err != nil {
+			return "", false, nil, fmt.Errorf("create build directory: %w", err)
+		}
+		return root, false, func() { os.RemoveAll(root) }, nil
+	}
+	root, err = filepath.Abs(buildDir)
+	if err != nil {
+		return "", false, nil, err
+	}
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		return "", false, nil, fmt.Errorf("create build directory: %w", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, builtMarker)); err == nil {
+		fmt.Println("Reusing the binaries of", root)
+		return root, true, func() {}, nil
+	}
+	return root, false, func() {}, nil
+}
+
+// buildAndValidate copies the module twice, builds the 2 binaries and checks
+// the variants.
+func buildAndValidate(cfg configuration, buildRoot, controlSource, iastSource, controlBinary, iastBinary string) error {
 	if err := copyModule(cfg.module, controlSource, cfg.output); err != nil {
 		return fmt.Errorf("prepare control source: %w", err)
 	}
@@ -126,8 +308,6 @@ func run(arguments []string) (err error) {
 		}
 	}
 
-	controlBinary := filepath.Join(buildRoot, "control.test")
-	iastBinary := filepath.Join(buildRoot, "iast.test")
 	if err := buildVariant("control", controlSource, controlBinary); err != nil {
 		return err
 	}
@@ -151,56 +331,137 @@ func run(arguments []string) (err error) {
 	if err := execute(iastSource, append(validationEnvironment, "DD_IAST_BENCH_EXPECT=iast", activeEnvironment), iastBinary, "-test.run=^TestWovenVariant$"); err != nil {
 		return fmt.Errorf("validate active variant: %w", err)
 	}
+	// The sink workloads: exactly 1 vulnerability for each tainted call, with
+	// the expected evidence ranges and source of this tree. Redaction is off,
+	// so that the test can compare the values of the ranges.
+	if err := execute(iastSource, append(validationEnvironment, "DD_IAST_BENCH_EXPECT=iast", "DD_IAST_REDACTION_ENABLED=false", treeEnvironment), iastBinary, "-test.run=^(TestRequestActive|TestSinkWorkloads)$"); err != nil {
+		return fmt.Errorf("validate sink workloads: %w", err)
+	}
+	return nil
+}
 
-	if err := writeMetadata(cfg, metadataFile); err != nil {
-		return err
-	}
-
-	for sample := 1; sample <= cfg.count; sample++ {
-		fmt.Printf("Running sample %d/%d...\n", sample, cfg.count)
-		variants := []variant{
-			{controlSource, controlBinary, controlResultsFile, nil},
-			{iastSource, iastBinary, iastResultsFile, nil},
-			{iastSource, iastBinary, activeResultsFile, []string{activeEnvironment}},
-		}
-		// Rotate the order of the variants between samples.
-		for range sample % len(variants) {
-			variants = append(variants[1:], variants[0])
-		}
-		for _, v := range variants {
-			if err := runSample(cfg, v); err != nil {
-				return err
-			}
-		}
-	}
-
-	if err := compareResultSets(cfg.output.FS(), controlResultsFile, iastResultsFile); err != nil {
-		return err
-	}
-	if err := compareResultSets(cfg.output.FS(), controlResultsFile, activeResultsFile); err != nil {
-		return err
-	}
+// compareAndGate writes comparison.txt (benchstat over files) and the gate
+// reports.
+func compareAndGate(cfg configuration, files []string) error {
 	if err := execute(cfg.module, nil, "go", "mod", "download", "golang.org/x/perf"); err != nil {
 		return fmt.Errorf("download benchstat: %w", err)
 	}
+	paths := make([]string, len(files))
+	for i, file := range files {
+		paths[i] = filepath.Join(cfg.output.Name(), file)
+	}
+	arguments := append([]string{"tool", "benchstat"}, paths...)
 	comparison, err := cfg.output.OpenFile(comparisonFile, os.O_WRONLY|os.O_TRUNC, 0o644)
 	if err != nil {
 		return fmt.Errorf("open comparison: %w", err)
 	}
 	comparisonErr := executeWithWriters(cfg.module, nil, io.MultiWriter(os.Stdout, comparison), os.Stderr,
-		"go", "tool", "benchstat",
-		filepath.Join(cfg.output.Name(), controlResultsFile),
-		filepath.Join(cfg.output.Name(), iastResultsFile),
-		filepath.Join(cfg.output.Name(), activeResultsFile))
+		"go", arguments...)
 	closeErr := comparison.Close()
 	if err := errors.Join(comparisonErr, closeErr); err != nil {
 		return fmt.Errorf("compare results: %w", err)
 	}
-	if err := checkGates(cfg); err != nil {
+	return checkGates(cfg)
+}
+
+// evaluate compares the results that an earlier run (or a driver that merged
+// the samples of several runs) left in the output directory.
+func evaluate(cfg configuration) error {
+	cfg, err := applyMetadata(cfg)
+	if err != nil {
+		return err
+	}
+	var files []string
+	for _, name := range []string{controlResultsFile, iastResultsFile, activeResultsFile} {
+		info, err := cfg.output.Stat(name)
+		if err != nil || info.Size() == 0 {
+			if name == activeResultsFile {
+				// For example the results of the tree of PR #39, or a
+				// run with no HeapBits workload (checkGates rejects a
+				// HeapBits workload with no active variant).
+				continue
+			}
+			return fmt.Errorf("-evaluate needs %s in %s", name, cfg.output.Name())
+		}
+		files = append(files, name)
+	}
+	for _, name := range files[1:] {
+		if err := compareResultSets(cfg.output.FS(), controlResultsFile, name); err != nil {
+			return err
+		}
+	}
+	if err := initializeArtifacts(cfg.output, comparisonFile, gateFile, gateTableFile); err != nil {
+		return err
+	}
+	if err := compareAndGate(cfg, files); err != nil {
 		return err
 	}
 	fmt.Println("Benchmark artifacts:", cfg.output.Name())
 	return nil
+}
+
+// applyMetadata reads the sampling, the count and the taint-live value of the
+// run from metadata.txt. A flag on the command line (or a non-empty
+// DD_IAST_BENCH_TAINT_LIVE) must agree with it.
+func applyMetadata(cfg configuration) (configuration, error) {
+	contents, err := cfg.output.ReadFile(metadataFile)
+	if err != nil {
+		return cfg, fmt.Errorf("-evaluate needs %s: %w", metadataFile, err)
+	}
+	metadata, err := parseMetadata(string(contents))
+	if err != nil {
+		return cfg, err
+	}
+	sampling, err := percentage("sampling of "+metadataFile, metadata["sampling"])
+	if err != nil {
+		return cfg, err
+	}
+	if cfg.samplingSet && cfg.sampling != sampling {
+		return cfg, fmt.Errorf("-sampling=%d does not agree with sampling=%d of %s", cfg.sampling, sampling, metadataFile)
+	}
+	count, err := positiveInteger("count of "+metadataFile, metadata["count"])
+	if err != nil {
+		return cfg, err
+	}
+	if cfg.countSet && cfg.count != count {
+		return cfg, fmt.Errorf("-count=%d does not agree with count=%d of %s", cfg.count, count, metadataFile)
+	}
+	quoted, ok := metadata["taint_live"]
+	if !ok {
+		return cfg, fmt.Errorf("%s has no taint_live", metadataFile)
+	}
+	taintLive, err := strconv.Unquote(quoted)
+	if err != nil {
+		return cfg, fmt.Errorf("taint_live of %s: %q: %w", metadataFile, quoted, err)
+	}
+	if cfg.taintLive != "" && cfg.taintLive != taintLive {
+		return cfg, fmt.Errorf("%s=%q does not agree with taint_live=%q of %s", taintLiveEnvironment, cfg.taintLive, taintLive, metadataFile)
+	}
+	if err := validateTaintLive(taintLive, sampling); err != nil {
+		return cfg, fmt.Errorf("%s: %w", metadataFile, err)
+	}
+	cfg.sampling, cfg.count, cfg.taintLive = sampling, count, taintLive
+	return cfg, nil
+}
+
+// parseMetadata parses the "key=value" lines of metadata.txt.
+func parseMetadata(contents string) (map[string]string, error) {
+	metadata := map[string]string{}
+	for line := range strings.Lines(contents) {
+		line = strings.TrimRight(line, "\r\n")
+		if line == "" {
+			continue
+		}
+		key, value, ok := strings.Cut(line, "=")
+		if !ok {
+			return nil, fmt.Errorf("invalid line of %s: %q", metadataFile, line)
+		}
+		if _, seen := metadata[key]; seen {
+			return nil, fmt.Errorf("%s has 2 values for %s", metadataFile, key)
+		}
+		metadata[key] = value
+	}
+	return metadata, nil
 }
 
 func parseFlags(arguments []string) (options, error) {
@@ -219,12 +480,23 @@ func parseFlags(arguments []string) (options, error) {
 	}
 	// With 3 samples or fewer, benchstat never finds a significant
 	// difference (p >= 0.1): an enforced gate would always pass.
-	if values.gate && count < minGateCount {
+	if values.gate && !values.evaluate && count < minGateCount {
 		return options{}, fmt.Errorf("-gate needs -count=%d or more, got %d", minGateCount, count)
 	}
 	cpu, err := positiveInteger("-cpu", values.cpu)
 	if err != nil {
 		return options{}, err
+	}
+	sampling, err := percentage("-sampling", values.sampling)
+	if err != nil {
+		return options{}, err
+	}
+	rotation, err := nonNegativeInteger("-rotation", values.rotation)
+	if err != nil {
+		return options{}, err
+	}
+	if values.evaluate && values.outputDir == "" {
+		return options{}, errors.New("-evaluate needs -outputdir")
 	}
 	if values.benchmark == "" {
 		return options{}, errors.New("-bench must not be empty")
@@ -238,13 +510,21 @@ func parseFlags(arguments []string) (options, error) {
 		return options{}, err
 	}
 
+	set := map[string]bool{}
+	flags.Visit(func(f *flag.Flag) { set[f.Name] = true })
 	return options{
-		outputDir: values.outputDir,
-		count:     count,
-		benchtime: values.benchtime,
-		cpu:       cpu,
-		benchmark: values.benchmark,
-		gate:      values.gate,
+		countSet:    set["count"],
+		samplingSet: set["sampling"],
+		outputDir:   values.outputDir,
+		count:       count,
+		benchtime:   values.benchtime,
+		cpu:         cpu,
+		benchmark:   values.benchmark,
+		sampling:    sampling,
+		buildDir:    values.buildDir,
+		rotation:    rotation,
+		evaluate:    values.evaluate,
+		gate:        values.gate,
 	}, nil
 }
 
@@ -254,6 +534,8 @@ func defaultFlagValues() flagValues {
 		benchtime: "500ms",
 		cpu:       "1",
 		benchmark: ".",
+		sampling:  "100",
+		rotation:  "0",
 	}
 }
 
@@ -265,6 +547,10 @@ func newFlagSet(values *flagValues) *flag.FlagSet {
 	flags.StringVar(&values.count, "count", values.count, "run `n` independent process samples per variant")
 	flags.StringVar(&values.cpu, "cpu", values.cpu, "use one positive GOMAXPROCS `value`")
 	flags.StringVar(&values.outputDir, "outputdir", values.outputDir, "write artifacts to `directory` (default: temporary directory)")
+	flags.StringVar(&values.sampling, "sampling", values.sampling, "set DD_IAST_REQUEST_SAMPLING from 0 to 100")
+	flags.StringVar(&values.buildDir, "builddir", values.buildDir, "build in `directory` and keep it; a later run with the same directory reuses the binaries (same source only)")
+	flags.StringVar(&values.rotation, "rotation", values.rotation, "start the rotation of the variants `n` samples later (for drivers that run one sample at a time)")
+	flags.BoolVar(&values.evaluate, "evaluate", values.evaluate, "do not build or run: compare the results of -outputdir (control.txt, iast.txt, active.txt if it exists) and write comparison.txt, gate.txt and gate.tsv")
 	flags.BoolVar(&values.gate, "gate", values.gate, "fail when a regression gate of the HeapBits workloads is exceeded (use on a stable machine)")
 	return flags
 }
@@ -277,9 +563,34 @@ func printUsage(output io.Writer) {
 	flags.PrintDefaults()
 }
 
+func percentage(name, value string) (int, error) {
+	parsed, err := strconv.Atoi(value)
+	if err != nil {
+		return 0, fmt.Errorf("%s must be an integer from 0 to 100: %q: %w", name, value, err)
+	}
+	if parsed < 0 || parsed > 100 {
+		return 0, fmt.Errorf("%s must be an integer from 0 to 100: %q", name, value)
+	}
+	return parsed, nil
+}
+
+func nonNegativeInteger(name, value string) (int, error) {
+	parsed, err := strconv.Atoi(value)
+	if err != nil {
+		return 0, fmt.Errorf("%s must be a single non-negative integer: %q: %w", name, value, err)
+	}
+	if parsed < 0 {
+		return 0, fmt.Errorf("%s must be a single non-negative integer: %q", name, value)
+	}
+	return parsed, nil
+}
+
 func positiveInteger(name, value string) (int, error) {
 	parsed, err := strconv.Atoi(value)
-	if err != nil || parsed < 1 {
+	if err != nil {
+		return 0, fmt.Errorf("%s must be a single positive integer: %q: %w", name, value, err)
+	}
+	if parsed < 1 {
 		return 0, fmt.Errorf("%s must be a single positive integer: %q", name, value)
 	}
 	return parsed, nil
@@ -289,6 +600,16 @@ func positiveInteger(name, value string) (int, error) {
 // alternatives interpreted independently by go test. Delimiters in character
 // classes and parentheses do not separate benchmark name components.
 func splitRegexp(expression string) []string {
+	return splitAt(expression, "/|")
+}
+
+// splitTopLevel separates expression at the separator, outside character
+// classes and parentheses.
+func splitTopLevel(expression string, separator byte) []string {
+	return splitAt(expression, string(separator))
+}
+
+func splitAt(expression, separators string) []string {
 	var parts []string
 	start := 0
 	characterClassDepth := 0
@@ -312,7 +633,7 @@ func splitRegexp(expression string) []string {
 		case '\\':
 			i++
 		case '/', '|':
-			if characterClassDepth == 0 && parenthesisDepth == 0 {
+			if characterClassDepth == 0 && parenthesisDepth == 0 && strings.IndexByte(separators, expression[i]) >= 0 {
 				parts = append(parts, expression[start:i])
 				start = i + 1
 			}
@@ -324,11 +645,20 @@ func splitRegexp(expression string) []string {
 func validateBenchtime(value string) error {
 	if strings.HasSuffix(value, "x") {
 		iterations, err := strconv.ParseInt(strings.TrimSuffix(value, "x"), 10, 0)
-		if err == nil && iterations > 0 {
+		if err != nil {
+			return fmt.Errorf("-benchtime must be a positive duration or iteration count such as 100x: %q: %w", value, err)
+		}
+		if iterations > 0 {
 			return nil
 		}
-	} else if duration, err := time.ParseDuration(value); err == nil && duration > 0 {
-		return nil
+	} else {
+		duration, err := time.ParseDuration(value)
+		if err != nil {
+			return fmt.Errorf("-benchtime must be a positive duration or iteration count such as 100x: %q: %w", value, err)
+		}
+		if duration > 0 {
+			return nil
+		}
 	}
 	return fmt.Errorf("-benchtime must be a positive duration or iteration count such as 100x: %q", value)
 }
@@ -363,14 +693,21 @@ func newConfiguration(opts options) (configuration, error) {
 	}
 
 	return configuration{
-		repository: repository,
-		module:     module,
-		output:     output,
-		count:      opts.count,
-		benchtime:  opts.benchtime,
-		cpu:        opts.cpu,
-		benchmark:  opts.benchmark,
-		gate:       opts.gate,
+		repository:  repository,
+		module:      module,
+		output:      output,
+		count:       opts.count,
+		benchtime:   opts.benchtime,
+		cpu:         opts.cpu,
+		benchmark:   opts.benchmark,
+		sampling:    opts.sampling,
+		buildDir:    opts.buildDir,
+		rotation:    opts.rotation,
+		evaluate:    opts.evaluate,
+		gate:        opts.gate,
+		taintLive:   os.Getenv(taintLiveEnvironment),
+		countSet:    opts.countSet,
+		samplingSet: opts.samplingSet,
 	}, nil
 }
 
@@ -526,7 +863,7 @@ func runSample(cfg configuration, v variant) error {
 	environment := append([]string{
 		"GOMAXPROCS=" + strconv.Itoa(cfg.cpu),
 		"DD_IAST_ENABLED=true",
-		"DD_IAST_REQUEST_SAMPLING=100",
+		"DD_IAST_REQUEST_SAMPLING=" + strconv.Itoa(cfg.sampling),
 		"DD_IAST_DEDUPLICATION_ENABLED=false",
 		inertEnvironment,
 	}, v.environment...)
@@ -550,8 +887,8 @@ func writeMetadata(cfg configuration, name string) error {
 	if err != nil {
 		return err
 	}
-	metadata := fmt.Sprintf("revision=%s\ngo_version=%s\ngoos=%s\ngoarch=%s\ncpu_count=%d\ncount=%d\nbenchtime=%s\ncpu=%d\nbench=%s\n",
-		revision, goVersion, runtime.GOOS, runtime.GOARCH, runtime.NumCPU(), cfg.count, cfg.benchtime, cfg.cpu, cfg.benchmark)
+	metadata := fmt.Sprintf("revision=%s\ngo_version=%s\ngoos=%s\ngoarch=%s\ncpu_count=%d\ncount=%d\nbenchtime=%s\ncpu=%d\nbench=%s\nsampling=%d\ntaint_live=%q\ntree=%s\n",
+		revision, goVersion, runtime.GOOS, runtime.GOARCH, runtime.NumCPU(), cfg.count, cfg.benchtime, cfg.cpu, cfg.benchmark, cfg.sampling, cfg.taintLive, strings.TrimPrefix(treeEnvironment, "DD_IAST_BENCH_TREE="))
 	if err := cfg.output.WriteFile(name, []byte(metadata), 0o644); err != nil {
 		return fmt.Errorf("write metadata: %w", err)
 	}
