@@ -83,7 +83,13 @@ jobs:
         # The tests pull runtime.systemstack and runtime.acquirem with
         # test-only linknames: they need a build tag and -checklinkname=0.
         # A tag that selects no file gives "[no test files]" and exit 0, so
-        # the step requires the pass line of each test.
+        # the step requires the pass line of each test. The step uses its own
+        # build cache: the coverage run above leaves woven standard library
+        # packages compiled against coverage-instrumented dd-iast-go packages
+        # in the default cache, and a later woven link fails with a
+        # "fingerprint mismatch".
+        env:
+          GOCACHE: ${{ runner.temp }}/gocache-g0test
         run: |
           go tool orchestrion go test -count=1 -v \
             -tags iast_g0test -ldflags=-checklinkname=0 \
