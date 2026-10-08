@@ -145,7 +145,11 @@ EXPECTED_ADMISSION = (
 #   tainted_rune_base, tainted_rune_per
 #                        gate on, tainted rune conversion: base + per x runes
 #   rune1000_rel         gate off and gate on clean, 1 000 runes: the maximum
-#                        hook - nohook as a fraction of the nohook median
+#                        hook - nohook as a fraction of the nohook median;
+#                        None: the time of the rows is record-only (in the
+#                        table, with the result REPORTED, but it does not
+#                        change the verdict); the 0 extra allocations rule
+#                        stays a gate
 #   maycontain_hit, maycontain_random (sparse, typical, full), maycontain_miss
 #   s2s_off              Q2 switch off
 #   http, http_note      HTTP overhead in %, and the reason of the limit
@@ -183,12 +187,17 @@ PROFILES = {
         "clean_rune": 25.0,
         "hit": 100.0,
         "full2": 200.0,
-        # 1.5 x the local tainted gates.
-        "tainted_base": 1350.0,
-        "tainted_operand": 180.0,
-        "tainted_rune_base": 1650.0,
-        "tainted_rune_per": 6.0,
-        "rune1000_rel": 0.01,
+        # User decision after CI run 37750452315: 2 x the local tainted
+        # gates.
+        "tainted_base": 1800.0,
+        "tainted_operand": 240.0,
+        "tainted_rune_base": 2200.0,
+        "tainted_rune_per": 8.0,
+        # User decision after CI run 37750452315: on the GitHub runners, the
+        # noise of a 1 000-rune conversion (gate off and clean) is larger
+        # than 1 % (up to +322 ns). The time is record-only; the 0 extra
+        # allocations rule stays a gate.
+        "rune1000_rel": None,
         "maycontain_hit": 45.0,
         "maycontain_random": (5.0, 10.0, 45.0),
         "maycontain_miss": 5.0,
@@ -285,6 +294,8 @@ def runtime_limit(case, g, nohook):
     if group in ("RuntimeOff", "RuntimeClean") and is_rune1000(name):
         # 1 000 runes: the conversion costs microseconds, and the noise is
         # larger than a fixed ns gate.
+        if g["rune1000_rel"] is None:
+            return None, 0, "time reported, not gated; 0 extra allocations gated"
         limit = g["rune1000_rel"] * nohook
         return limit, 0, f"<= +{100 * g['rune1000_rel']:g} % of nohook (+{limit:.2f} ns)"
     if group == "RuntimeOff":
@@ -343,7 +354,8 @@ def runtime_rows(out, g):
         extra_bytes = med(runs_h, "B/op") - med(runs_n, "B/op")
         woven = st.median(b) - med(plain[case]) if case in plain else None
         limit, allocs, text = runtime_limit(case, g, st.median(a))
-        ok = delta <= limit and extra_allocs == allocs
+        # limit None: the time is record-only, but the allocations are gated.
+        ok = extra_allocs == allocs and (limit is None or delta <= limit)
         name = case.split("/", 1)[1]
         dropped = None
         if case.startswith("RuntimeTainted/"):
@@ -396,7 +408,18 @@ def main():
         if absent:
             missing(key, title, gate, f"`{absent[0]}`: {problems.get(absent[0], 'no data')}")
             return
-        worst = max(selected, key=lambda c: rows[c]["delta"] - rows[c]["limit"])
+        # The time of a record-only row (limit None) does not change the
+        # gate, but its allocations do.
+        gated = [c for c in selected if rows[c]["limit"] is not None]
+        bad = [c for c in selected if rows[c]["limit"] is None and not rows[c]["ok"]]
+        if not gated:
+            if bad:
+                value = f"`{bad[0]}`: allocs {fmt(rows[bad[0]]['allocs'], 0)} (gate 0)"
+                gates.append((key, title, gate, value, False))
+            else:
+                gates.append((key, title, gate, "time of all rows is record-only; 0 extra allocations", True))
+            return
+        worst = max(gated, key=lambda c: rows[c]["delta"] - rows[c]["limit"])
         r = rows[worst]
         value = f"worst margin: `{worst}` {fmt(r['delta'])} ns (gate {r['text']}), allocs {fmt(r['allocs'], 0)}"
         if worst.startswith("RuntimeTainted/"):
@@ -404,7 +427,9 @@ def main():
         dropped = [c for c in selected if rows[c]["dropped"]]
         if dropped:
             value += f"; drop path: `{dropped[0]}` ({rows[dropped[0]]['dropped']})"
-        gates.append((key, title, gate, value, all(rows[c]["ok"] for c in selected)))
+        if bad:
+            value += f"; record-only row with extra allocations: `{bad[0]}` (allocs {fmt(rows[bad[0]]['allocs'], 0)})"
+        gates.append((key, title, gate, value, not bad and all(rows[c]["ok"] for c in gated)))
 
     def store_values(names):
         """Returns [(median ns, name)], or None when a name has less than
@@ -422,7 +447,10 @@ def main():
     off = f"0 extra allocations; <= +{ns(g['off'])} pooled"
     if g["off_rune"] != g["off"]:
         off += f" (rune conversion: <= +{ns(g['off_rune'])})"
-    rune1000 = f"; 1 000 runes: <= +{100 * g['rune1000_rel']:g} % of nohook"
+    if g["rune1000_rel"] is None:
+        rune1000 = "; 1 000 runes: time reported, not gated; 0 extra allocations gated"
+    else:
+        rune1000 = f"; 1 000 runes: <= +{100 * g['rune1000_rel']:g} % of nohook"
     off += rune1000
     runtime_gate("off", "Gate off, any concat or conversion", off, select("RuntimeOff"))
     clean = f"0 extra allocations; <= +{ns(g['clean_base'])} + {ns(g['clean_operand'])} for each operand"
@@ -637,7 +665,7 @@ def main():
             f"| {case} | **{fmt(r['delta'])}** [{fmt(r['ci'][0])}, {fmt(r['ci'][1])}] "
             f"| {fmt(r['worst'][0])} ({int(r['worst'][1])}) "
             f"| {fmt(r['range'][0])}..{fmt(r['range'][1])} | {fmt(r['allocs'], 0)} | {fmt(r['bytes'], 0)} "
-            f"| {fmt(r['woven'])} | {r['text']} | {'PASS' if r['ok'] else 'FAIL'} |"
+            f"| {fmt(r['woven'])} | {r['text']} | {row_result(r)} |"
         )
     if store:
         p("")
@@ -683,6 +711,12 @@ def main():
     print("\n".join(lines))
     with open(os.path.join(out, "verdict"), "w", encoding="utf-8") as f:
         f.write(verdict)
+
+
+def row_result(r):
+    if r["limit"] is None:
+        return "REPORTED" if r["ok"] else "FAIL"
+    return "PASS" if r["ok"] else "FAIL"
 
 
 def g_optional(key, optional):

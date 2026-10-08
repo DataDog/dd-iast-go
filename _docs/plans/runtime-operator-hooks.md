@@ -1171,31 +1171,33 @@ A failed gate stops the plan for user review (section 11).
 
 **User decision after T11.2 (size-scaled gates).** With the corrected tainted method (section 13.5), a tainted operation costs more for each concat operand (approx. +90 to +110 ns for each operand above 2) and for each rune (approx. 1.5 to 4 ns). Romain decided that the tainted gates scale with the size, and that the 1 000-rune gate-off and clean rows have a relative gate, because their noise (approx. ±100 to ±300 ns) is much larger than a fixed +2 or +6 ns gate:
 
-- tainted concat, `b2s`, `s2b`: local <= 0.9 us + 0.12 us for each operand above 2 (the operand count of the case: `concat2` is 2, a conversion is 1); ci = 1.5 x local (1.35 us + 180 ns);
-- tainted rune conversion: local <= 1.1 us + 4 ns for each rune of the case; ci = 1.5 x local (1.65 us + 6 ns);
-- gate off and clean, 1 000 runes (`r2s1000*`, `s2r1000*`): hook - nohook <= +1 % of the pooled nohook median, local and ci; the short rune rows keep their fixed gates;
+- tainted concat, `b2s`, `s2b`: local <= 0.9 us + 0.12 us for each operand above 2 (the operand count of the case: `concat2` is 2, a conversion is 1); ci = 2 x local (1.8 us + 240 ns; user decision after CI run 37750452315, was 1.5 x local);
+- tainted rune conversion: local <= 1.1 us + 4 ns for each rune of the case; ci = 2 x local (2.2 us + 8 ns; user decision after CI run 37750452315, was 1.5 x local);
+- gate off and clean, 1 000 runes (`r2s1000*`, `s2r1000*`): local: hook - nohook <= +1 % of the pooled nohook median; ci: the time is record-only, and the 0 extra allocations rule stays a gate (user decision after CI run 37750452315, see below); the short rune rows keep their fixed gates;
 - the allocation, bytes and `drops/op` rules do not change (tainted: exactly +1 allocation in a stack case, +0 in a heap case, the exact bytes, median `drops/op` <= 0.01).
 
 **Step 5 measurement and user decision.** On darwin/arm64 (20 interleaved rounds, GOGC=off), the gate-on clean path cost +5 to +19 ns for a concat (about +1.2 ns for each operand: one filter check for each operand) and +4 to +5 ns for a conversion; the tainted stack path cost +450 to +930 ns (store adoption is about 170 ns; GOGC=off adds `madvise` time). The gate is on whenever any request of the process has taint, so under load this cost applies to every concat and conversion of the process, also in the standard library and the tracer. Romain accepted these measured costs and the three new gates above.
 
 **Gates for each platform (user decision after CI run 36992589970).** The gates in the table above are the **local** profile (darwin/arm64, Apple M5 Pro). The GitHub runners (`ubuntu-latest`, linux/amd64, AMD EPYC 7763; `ubuntu-24.04-arm`, linux/arm64) are slower and have more noise. Romain accepted the native CI numbers. `.github/runtime-bench.py` has one table of gates (`PROFILES`) with the two profiles; `RUNTIME_BENCH_PROFILE` selects one (default `local`; the workflow sets `ci`). The report title gives the profile, and the gate column gives the limits of that profile. The CI limits are the worst value of the two runners in run 36992589970, plus a margin. The allocation rules are the same in the two profiles (0 extra allocations for clean and gate off; +1 allocation of the exact size for tainted). The admission gate stays optional on CI (no old store). The CI measure jobs are **report-only**: the job summary and the artifact have the full table and the verdict, and a FAIL or INCOMPLETE verdict gives a warning, not a failed job (`RUNTIME_BENCH_REPORT_ONLY=1`). An error of the scripts still fails the job.
 
-| Key | Local (darwin/arm64) | CI (GitHub runners) | CI worst, run 36992589970 |
-|---|---|---|---|
-| off | <= +2 ns; 1 000-rune rows: <= +1 % of nohook | <= +8 ns; rune rows (`r2s`, `s2r`): <= +25 ns (noisy); 1 000-rune rows: <= +1 % of nohook | +6.87 ns (`concat16-stack`, arm64); rune +21.85 ns (`r2s-heap`, amd64) |
-| clean-heap, clean-stack | <= +3 ns + 1.5 ns for each operand | <= +4 ns + 2 ns for each operand (concat 2 / 4 / 6 / 16: 8 / 12 / 16 / 36 ns; conversions 6 ns) | `concat16-stack` +29.59 ns (amd64); `s2b-stack` +4.06 ns (amd64) |
-| rune-clean | <= +6 ns; 1 000-rune rows: <= +1 % of nohook | <= +25 ns; 1 000-rune rows: <= +1 % of nohook | +20.85 ns (`r2s-heap`, amd64) |
-| hit | <= +50 ns for each operand that hits | <= +100 ns for each operand that hits | 89.21 ns (arm64) |
-| full2 | <= +100 ns | <= +200 ns | 175.89 ns (arm64) |
-| tainted | <= +0.9 us + 120 ns for each operand above 2 | <= +1.35 us + 180 ns for each operand above 2 | +1167.55 ns (`concat2-stack`, amd64; drop path, section 13.5) |
-| tainted-rune | <= +1.1 us + 4 ns for each rune | <= +1.65 us + 6 ns for each rune | +1438.09 ns (`s2r-stack`, arm64; drop path, section 13.5) |
-| maycontain-hit | <= 45 ns | <= 45 ns | 4.37 ns (amd64) |
-| maycontain-random | <= 4 / 10 / 45 ns | <= 5 / 10 / 45 ns | 4.13 / 4.12 / 4.17 ns (amd64) |
-| maycontain-miss | <= 3 ns | <= 5 ns | 4.15 ns (amd64) |
-| s2s-off | <= +2 ns | <= +5 ns | +4.08 ns (`s2r-heap`, arm64) |
-| http | <= +3.70 % | <= +6.00 % | +5.17 % (arm64) |
-| admission | sparse 0, stressed <= 1 point | the same, optional (no old store) | not measured |
-| allocs | 0 | 0 | 8 PASS on each runner |
+**User decision after CI run 37750452315** (the first CI run with the corrected tainted method, section 13.5): (1) the ci tainted gates are 2 x the local gates (tainted concat, `b2s`, `s2b`: <= +1.8 us + 240 ns for each operand above 2; tainted rune conversion: <= +2.2 us + 8 ns for each rune); the local profile does not change. (2) On the ci profile, the 1 000-rune rows of the gate-off and clean modes have a **record-only time**: the report table has them (result `REPORTED`), and their time does not change the verdict (noise on linux/amd64 up to +322.50 ns, more than 1 % of nohook); the 0 extra allocations rule does not change and stays a gate (an extra allocation fails the verdict); the local profile keeps the +1 % relative gate. (3) The CI HTTP job runs 30 samples of each side (`RUNTIME_BENCH_HTTP_COUNT=30` in the workflow; the local default stays 10), because the runner noise is large (linux/arm64 +6.75 % with 10 samples).
+
+| Key | Local (darwin/arm64) | CI (GitHub runners) | CI worst, run 36992589970 | CI worst, run 37750452315 |
+|---|---|---|---|---|
+| off | <= +2 ns; 1 000-rune rows: <= +1 % of nohook | <= +8 ns; rune rows (`r2s`, `s2r`): <= +25 ns (noisy); 1 000-rune rows: time record-only, 0 extra allocations gated | +6.87 ns (`concat16-stack`, arm64); rune +21.85 ns (`r2s-heap`, amd64) | +5.69 ns (`concat16-stack`, arm64); rune +8.10 ns (`r2s-heap`, amd64); 1 000 runes (reported) +322.50 ns (`r2s1000-heap`, amd64) |
+| clean-heap, clean-stack | <= +3 ns + 1.5 ns for each operand | <= +4 ns + 2 ns for each operand (concat 2 / 4 / 6 / 16: 8 / 12 / 16 / 36 ns; conversions 6 ns) | `concat16-stack` +29.59 ns (amd64); `s2b-stack` +4.06 ns (amd64) | `concat16-stack` +30.06 ns (amd64); `s2b-stack` +4.07 ns (amd64) |
+| rune-clean | <= +6 ns; 1 000-rune rows: <= +1 % of nohook | <= +25 ns; 1 000-rune rows: time record-only, 0 extra allocations gated | +20.85 ns (`r2s-heap`, amd64) | +19.00 ns (`r2s-heap`, amd64); 1 000 runes (reported) +190.50 ns (`r2s1000-heap`, amd64) |
+| hit | <= +50 ns for each operand that hits | <= +100 ns for each operand that hits | 89.21 ns (arm64) | 91.98 ns (arm64) |
+| full2 | <= +100 ns | <= +200 ns | 175.89 ns (arm64) | 175.67 ns (arm64) |
+| tainted | <= +0.9 us + 120 ns for each operand above 2 | <= +1.8 us + 240 ns for each operand above 2 (2 x local) | +1167.55 ns (`concat2-stack`, amd64; drop path, section 13.5) | +1590.19 ns (`concat2-heap`, arm64; gate 1.8 us) |
+| tainted-rune | <= +1.1 us + 4 ns for each rune | <= +2.2 us + 8 ns for each rune (2 x local) | +1438.09 ns (`s2r-stack`, arm64; drop path, section 13.5) | +1954.11 ns (`s2r-stack`, arm64; gate 2.288 us) |
+| maycontain-hit | <= 45 ns | <= 45 ns | 4.37 ns (amd64) | 4.37 ns (amd64) |
+| maycontain-random | <= 4 / 10 / 45 ns | <= 5 / 10 / 45 ns | 4.13 / 4.12 / 4.17 ns (amd64) | 4.17 / 4.12 / 4.18 ns (amd64) |
+| maycontain-miss | <= 3 ns | <= 5 ns | 4.15 ns (amd64) | 4.13 ns (amd64) |
+| s2s-off | <= +2 ns | <= +5 ns | +4.08 ns (`s2r-heap`, arm64) | +4.03 ns (`s2r-heap`, arm64) |
+| http | <= +3.70 % (n=10) | <= +6.00 % (n=30) | +5.17 % (arm64) | +6.75 % (arm64, n=10) |
+| admission | sparse 0, stressed <= 1 point | the same, optional (no old store) | not measured | not measured |
+| allocs | 0 | 0 | 8 PASS on each runner | 8 PASS on each runner |
 
 CI evidence (workflow `runtime-bench.yml`, local gates, verdict FAIL in the three runs):
 
@@ -1521,7 +1523,7 @@ Validation: `go vet` (also `./.github`), `gofmt`, `go tool checklocks ./...`, `g
 
 ### 13.5 go1.27.1, the remaining section 9.2 cases, and the tainted method correction
 
-Status: **measured; re-evaluated with the size-scaled gates of the user decision after T11.2 (section 9.3)**. With the new gates, the tainted gates PASS; one 1 000-rune row FAILS on each Go version (noise, see "Re-evaluation" below). The code of the hooks and of the store did not change. The verdict tables and the "Gate" columns below the re-evaluation give the **old** gates (before the user decision).
+Status: **measured; re-evaluated with the size-scaled gates of the user decision after T11.2 (section 9.3)**. With the new gates, the tainted gates PASS; one 1 000-rune row FAILS on each Go version (noise, see "Re-evaluation" below). The code of the hooks and of the store did not change. The verdict tables and the "Gate" columns below the re-evaluation give the **old** gates (before the user decision). The "ci" columns of the re-evaluation use the ci gates of T11.2 (1.5 x local, 1 000-rune rows gated); for the ci gates after CI run 37750452315 and the CI results, see section 13.5.1.
 
 **Changes to the benchmarks** (`iast/runtime/bench_test.go`, `.github/runtime-bench.py`, `.github/runtime_bench_test.go`, `.github/runtime-bench.sh`):
 
@@ -1545,7 +1547,66 @@ Status: **measured; re-evaluated with the size-scaled gates of the user decision
 
 The two failed rows are noise: their 95 % intervals include 0 and are wider than ±100 ns, and the same row passes on the other Go version in the same rounds (go1.26.6 `RuntimeOff/r2s1000mb-heap` -155.00 ns; go1.27.1 `RuntimeClean/r2s1000-heap` -16.50 ns). The other 14 of the 16 1 000-rune rows pass. A new local run (more runs for each side) can give a PASS; that is a measurement, not a gate change.
 
-**CI must run again.** The CI tainted rows of section 13.2.1 (run 36992589970) measured the drop path (one request scope, refused adoptions). The corrected benchmark and the new gates are not measured on the GitHub runners yet.
+**CI must run again.** The CI tainted rows of section 13.2.1 (run 36992589970) measured the drop path (one request scope, refused adoptions). CI run 37750452315 (below) measures the corrected benchmark.
+
+#### 13.5.1 CI results, run 37750452315
+
+Run 37750452315 (workflow `runtime-bench.yml`, revision `99a6db78`, go1.26.6, 8 placements, 10 rounds of 100ms: 80 runs for each side and case; HTTP n=10; admission not measured: no old store). Runners: `ubuntu-latest` (linux/amd64) and `ubuntu-24.04-arm` (linux/arm64). In all tainted rows, the allocations and bytes are as expected and `drops/op` is <= 0.01.
+
+Verdicts, ci profile (old: the gates of the run; new: the user decision after this run, section 9.3; `.github/runtime-bench.py` on the artifacts of the run):
+
+| Key | amd64, old gates | amd64, new gates | arm64, old gates | arm64, new gates |
+|---|---|---|---|---|
+| off | FAIL (only 1 000-rune rows: `r2s1000-heap` +322.50 ns, gate +52.58 ns) | PASS (`s2b-stack` +0.53 ns; 1 000-rune rows reported) | PASS (`concat16-stack` +5.69 ns) | PASS |
+| rune-clean | FAIL (only 1 000-rune rows: `r2s1000-heap` +190.50 ns, gate +52.87 ns) | PASS (`r2s-heap` +19.00 ns; 1 000-rune rows reported) | FAIL (`r2s1000mb-heap` +166.00 ns, gate +66.91 ns) | PASS (`r2s8mb-stack` +8.94 ns) |
+| tainted | FAIL (`concat2-stack` +1521.38 ns, gate 1.35 us) | PASS (closest: `concat2-stack`, gate 1.8 us) | FAIL (`concat2-heap` +1590.19 ns) | PASS (closest: `concat2-heap`, gate 1.8 us) |
+| tainted-rune | FAIL (`s2r1000mb-heap` +8098.00 ns, gate 7.65 us) | PASS (closest: `s2r-stack` +1758.14 ns, gate 2.288 us) | FAIL (`s2r1000mb-heap` +8102.50 ns) | PASS (closest: `s2r-stack` +1954.11 ns, gate 2.288 us) |
+| http | PASS (+3.87 %) | PASS | FAIL (+6.75 %, n=10, gate 6.00 %) | FAIL (the gate does not change; CI now uses n=30) |
+| clean-heap, clean-stack, hit, full2, maycontain-*, s2s-off, allocs | PASS | PASS | PASS | PASS |
+| Verdict | FAIL (off, tainted, rune-clean, tainted-rune) | **PASS** | FAIL (tainted, rune-clean, tainted-rune, http) | **FAIL (http)** |
+
+`hit` / `full2`: amd64 74.40 / 160.35 ns, arm64 91.98 / 175.67 ns. HTTP: amd64 control 57.68 us, IAST 59.91 us; arm64 control 89.72 us, IAST 95.77 us.
+
+Tainted cases (hook - nohook, ns; "Allocs, B": median extra allocations and bytes; the result uses the worse runner):
+
+| Case | amd64 pooled [95 % CI] | arm64 pooled [95 % CI] | Allocs, B | Gate ci old / new | Result old / new |
+|---|---:|---:|---|---|---|
+| RuntimeTainted/concat2-stack | +1521.38 [+1510.88, +1532.89] | +1519.64 [+1517.64, +1522.64] | +1, +16 | <= +1.35 us / <= +1.8 us | FAIL / PASS |
+| RuntimeTainted/concat4-stack | +1756.84 [+1748.58, +1766.09] | +1862.38 [+1857.87, +1864.91] | +1, +32 | <= +1.71 us / <= +2.28 us | FAIL / PASS |
+| RuntimeTainted/concat6-stack | +1973.99 [+1958.44, +1995.96] | +2110.51 [+2108.99, +2115.99] | +1, +32 | <= +2.07 us / <= +2.76 us | FAIL / PASS |
+| RuntimeTainted/concat16-stack | +2923.28 [+2914.24, +2932.76] | +3329.72 [+3324.23, +3334.22] | +1, +32 | <= +3.87 us / <= +5.16 us | PASS / PASS |
+| RuntimeTainted/concat2-heap | +1476.55 [+1466.23, +1491.02] | +1590.19 [+1588.08, +1600.60] | +0, +0 | <= +1.35 us / <= +1.8 us | FAIL / PASS |
+| RuntimeTainted/b2s-stack | +1212.52 [+1207.89, +1227.70] | +1202.89 [+1200.90, +1205.40] | +1, +16 | <= +1.35 us / <= +1.8 us | PASS / PASS |
+| RuntimeTainted/s2b-stack | +1206.49 [+1201.49, +1214.00] | +1208.46 [+1206.46, +1210.98] | +1, +16 | <= +1.35 us / <= +1.8 us | PASS / PASS |
+| RuntimeTainted/r2s-stack | +1660.39 [+1655.57, +1678.13] | +1774.85 [+1773.25, +1777.02] | +1, +16 | <= +1.716 us / <= +2.288 us | FAIL / PASS |
+| RuntimeTainted/s2r-stack | +1758.14 [+1744.66, +1772.64] | +1954.11 [+1950.61, +1959.12] | +1, +48 | <= +1.716 us / <= +2.288 us | FAIL / PASS |
+| RuntimeTainted/r2s8-stack | +1661.83 [+1650.96, +1674.26] | +1774.17 [+1771.35, +1776.73] | +1, +16 | <= +1.698 us / <= +2.264 us | FAIL / PASS |
+| RuntimeTainted/r2s8mb-stack | +1695.37 [+1684.66, +1705.49] | +1826.36 [+1822.89, +1829.30] | +1, +32 | <= +1.698 us / <= +2.264 us | FAIL / PASS |
+| RuntimeTainted/r2s1000-heap | +3084.00 [+2864.00, +3306.00] | +2710.00 [+2693.50, +2729.00] | +0, +0 | <= +7.65 us / <= +10.2 us | PASS / PASS |
+| RuntimeTainted/r2s1000mb-heap | +4320.00 [+4215.00, +4468.00] | +4402.50 [+4351.50, +4435.00] | +0, +0 | <= +7.65 us / <= +10.2 us | PASS / PASS |
+| RuntimeTainted/s2r8-stack | +1705.28 [+1694.18, +1712.39] | +1827.79 [+1824.30, +1832.30] | +1, +32 | <= +1.698 us / <= +2.264 us | FAIL / PASS |
+| RuntimeTainted/s2r8mb-stack | +1712.95 [+1700.75, +1730.91] | +1861.33 [+1857.43, +1864.87] | +1, +32 | <= +1.698 us / <= +2.264 us | FAIL / PASS |
+| RuntimeTainted/s2r1000-heap | +4848.00 [+4679.00, +4980.00] | +4353.00 [+4322.50, +4378.00] | +0, +0 | <= +7.65 us / <= +10.2 us | PASS / PASS |
+| RuntimeTainted/s2r1000mb-heap | +8098.00 [+7915.00, +8226.00] | +8102.50 [+8076.50, +8143.50] | +0, +0 | <= +7.65 us / <= +10.2 us | FAIL / PASS |
+
+The CI tainted cost is approx. 1.8 to 2.0 x the darwin/arm64 cost (for example `concat2-heap` +1590.19 ns on arm64 vs +837.73 ns locally; `s2r1000mb-heap` +8102.50 ns vs +4027.50 ns). The closest row to the new gate is `RuntimeTainted/concat2-heap` on arm64 (88 % of 1.8 us).
+
+1 000-rune rows, gate off and clean (hook - nohook, ns; time record-only on the ci profile, 0 extra allocations gated):
+
+| Case | amd64 pooled [95 % CI] | arm64 pooled [95 % CI] |
+|---|---:|---:|
+| RuntimeOff/r2s1000-heap | +322.50 [+21.00, +370.50] | -201.00 [-229.00, -135.50] |
+| RuntimeOff/r2s1000mb-heap | +203.00 [-26.50, +336.50] | -27.00 [-38.50, -17.00] |
+| RuntimeOff/s2r1000-heap | +114.00 [-24.50, +245.00] | -125.50 [-144.00, -101.50] |
+| RuntimeOff/s2r1000mb-heap | -6.00 [-39.00, +20.50] | +24.00 [+6.00, +45.00] |
+| RuntimeClean/r2s1000-heap | +190.50 [+56.00, +278.00] | -121.00 [-149.00, -87.00] |
+| RuntimeClean/r2s1000mb-heap | +174.50 [-32.50, +377.00] | +166.00 [+148.00, +176.00] |
+| RuntimeClean/s2r1000-heap | +70.00 [+27.50, +198.00] | -148.00 [-179.00, -129.00] |
+| RuntimeClean/s2r1000mb-heap | +5.50 [-34.00, +34.00] | +46.50 [+20.00, +66.00] |
+
+The values go in the two directions (amd64 up to +322.50 ns, arm64 down to -201.00 ns), and the gate-off path does not depend on the length: this is noise of the runners, not a hook cost.
+
+**Open item.** With the new gates, the arm64 verdict is FAIL only for `http` (+6.75 %, n=10). The next CI run uses n=30; the HTTP gate does not change.
 
 **Verdicts with the old gates** (`RUNTIME_BENCH_OPTIONAL=admission`: no old store; the admission gate is not measured again):
 

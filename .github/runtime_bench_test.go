@@ -292,42 +292,76 @@ func TestRuntimeBenchReportDefaultProfileIsLocal(t *testing.T) {
 	}
 }
 
-// ciMeasured returns data with the worst values of CI run 36992589970
-// (linux/amd64 and linux/arm64) for each gate of the ci profile.
+// ciTainted is the worst pooled hook - nohook (ns) of each tainted case on
+// the GitHub runners (CI run 37750452315, linux/amd64 and linux/arm64, the
+// larger value).
+var ciTainted = map[string]float64{
+	"concat2-stack": 1521.38, "concat4-stack": 1862.38, "concat6-stack": 2110.51, "concat16-stack": 3329.72,
+	"concat2-heap": 1590.19, "b2s-stack": 1212.52, "s2b-stack": 1208.46,
+	"r2s-stack": 1774.85, "s2r-stack": 1954.11, "r2s8-stack": 1774.17, "r2s8mb-stack": 1826.36,
+	"s2r8-stack": 1827.79, "s2r8mb-stack": 1861.33,
+	"r2s1000-heap": 3084, "r2s1000mb-heap": 4402.5, "s2r1000-heap": 4848, "s2r1000mb-heap": 8102.5,
+}
+
+// ciRune1000 is the worst pooled hook - nohook (ns) of the 1 000-rune rows of
+// the gate-off and clean modes (CI run 37750452315). On the ci profile, these
+// rows are record-only.
+var ciRune1000 = map[string]float64{
+	"RuntimeOff/r2s1000-heap": 322.5, "RuntimeOff/r2s1000mb-heap": 203, "RuntimeOff/s2r1000-heap": 114,
+	"RuntimeOff/s2r1000mb-heap": 24,
+	"RuntimeClean/r2s1000-heap": 190.5, "RuntimeClean/r2s1000mb-heap": 174.5, "RuntimeClean/s2r1000-heap": 70,
+	"RuntimeClean/s2r1000mb-heap": 46.5,
+}
+
+// ciMeasured returns data with the worst values of CI run 37750452315
+// (linux/amd64 and linux/arm64) for each gate of the ci profile. The HTTP
+// value is the linux/amd64 value (+3.87 %): the linux/arm64 value (+6.75 %,
+// 10 samples) is above the gate (see the "http arm64" case).
 func ciMeasured() *benchData {
 	d := newBenchData()
 	d.profile = "ci"
-	d.setDelta("RuntimeOff/concat16-stack", 6.87)
-	d.setDelta("RuntimeOff/r2s-heap", 21.85)
-	d.setDelta("RuntimeClean/concat16-stack", 29.59)
-	d.setDelta("RuntimeClean/s2b-stack", 4.06)
-	d.setDelta("RuntimeClean/r2s-heap", 20.85)
-	d.setDelta("RuntimeS2SOff/s2r-heap", 4.08)
-	d.setDelta("RuntimeTainted/concat2-stack", 1167.55)
-	d.setDelta("RuntimeTainted/s2r-stack", 1438.09)
+	d.setDelta("RuntimeOff/concat16-stack", 5.69)
+	d.setDelta("RuntimeOff/r2s-heap", 8.1)
+	d.setDelta("RuntimeClean/concat16-stack", 30.06)
+	d.setDelta("RuntimeClean/concat16-heap", 25.4)
+	d.setDelta("RuntimeClean/s2b-stack", 4.07)
+	d.setDelta("RuntimeClean/r2s-heap", 19)
+	d.setDelta("RuntimeS2SOff/s2r-heap", 4.03)
+	for name, delta := range ciTainted {
+		d.setDelta("RuntimeTainted/"+name, delta)
+	}
+	for name, delta := range ciRune1000 {
+		d.setDelta(name, delta)
+	}
 	// hit and full2: the woven value plus the load cost (worst load - sparse).
-	d.setDelta("RuntimeCleanHit/s2b-stack", 73.23)
-	d.store["RuntimePre/full/one-clean-hit"] = benchResult{30 + 15.98, 0, 0}
-	d.setDelta("RuntimeCleanHit/concat2-stack", 144.45)
-	d.store["RuntimePre/full/concat2-clean-hit"] = benchResult{50 + 31.44, 0, 0}
-	d.store["MayContain/clean-random/sparse"] = benchResult{4.13, 0, 0}
-	d.store["MayContain/clean-miss/sparse"] = benchResult{4.15, 0, 0}
+	d.setDelta("RuntimeCleanHit/s2b-stack", 75.32)
+	d.store["RuntimePre/full/one-clean-hit"] = benchResult{30 + 16.66, 0, 0}
+	d.setDelta("RuntimeCleanHit/concat2-stack", 143.84)
+	d.store["RuntimePre/full/concat2-clean-hit"] = benchResult{50 + 31.83, 0, 0}
+	d.store["MayContain/clean-random/sparse"] = benchResult{4.17, 0, 0}
+	d.store["MayContain/clean-random/full"] = benchResult{4.18, 0, 0}
+	d.store["MayContain/clean-miss/sparse"] = benchResult{4.13, 0, 0}
 	d.store["MayContain/clean-neighbor/full"] = benchResult{4.37, 0, 0}
-	d.httpIAST = 50000 * 1.0517
+	d.httpIAST = 50000 * 1.0387
 	return d
 }
 
 func TestRuntimeBenchReportCIProfile(t *testing.T) {
 	requireVerdict(t, ciMeasured(), "", "PASS",
 		"plan section 9.3 gates, profile `ci` (GitHub runners)",
-		"| 0 extra allocations; <= +8 ns pooled (rune conversion: <= +25 ns); 1 000 runes: <= +1 % of nohook |",
+		"| 0 extra allocations; <= +8 ns pooled (rune conversion: <= +25 ns); 1 000 runes: time reported, not gated; 0 extra allocations gated |",
 		"<= +4 ns + 2 ns for each operand",
-		"= 89.21 ns", "= 175.89 ns",
-		"| RuntimeClean/concat16-stack | **+29.59**", "| <= +36 ns | PASS |",
-		"<= +1.35 us + 180 ns for each operand above 2", "<= +1.65 us + 6 ns for each rune",
-		"| <= +1.35 us, +1 alloc | PASS |", "| <= +1.716 us, +1 alloc | PASS |",
+		"= 91.98 ns", "= 175.67 ns",
+		"| RuntimeClean/concat16-stack | **+30.06**", "| <= +36 ns | PASS |",
+		"<= +1.8 us + 240 ns for each operand above 2", "<= +2.2 us + 8 ns for each rune",
+		"| RuntimeTainted/concat2-stack | **+1521.38**", "| <= +1.8 us, +1 alloc | PASS |",
+		"| RuntimeTainted/s2r-stack | **+1954.11**", "| <= +2.288 us, +1 alloc | PASS |",
+		"| RuntimeTainted/s2r1000mb-heap | **+8102.50**", "| <= +10.2 us, +0 alloc | PASS |",
+		// The record-only rows are in the table.
+		"| RuntimeOff/r2s1000-heap | **+322.50**", "| time reported, not gated; 0 extra allocations gated | REPORTED |",
+		"| RuntimeClean/r2s1000mb-heap | **+174.50**",
 		"<= 5 / 10 / 45 ns, 0 allocations",
-		"+5.17 %", "<= +6.00 %",
+		"+3.87 %", "<= +6.00 %",
 		"**Verdict: PASS**")
 	// The same data fails the local gates.
 	d := ciMeasured()
@@ -346,11 +380,11 @@ func TestRuntimeBenchReportCIProfile(t *testing.T) {
 		"clean conversion": {func(d *benchData) { d.setDelta("RuntimeClean/s2b-stack", 6.01) }, "clean-stack"},
 		"clean rune":       {func(d *benchData) { d.setDelta("RuntimeClean/r2s-heap", 25.01) }, "rune-clean"},
 		"s2s off":          {func(d *benchData) { d.setDelta("RuntimeS2SOff/s2r-heap", 5.01) }, "s2s-off"},
-		"tainted":          {func(d *benchData) { d.setDelta("RuntimeTainted/concat2-stack", 1350.01) }, "tainted"},
-		"tainted concat16": {func(d *benchData) { d.setDelta("RuntimeTainted/concat16-stack", 3870.01) }, "tainted"},
-		"tainted rune":     {func(d *benchData) { d.setDelta("RuntimeTainted/s2r-stack", 1716.01) }, "tainted-rune"},
-		"tainted rune1000": {func(d *benchData) { d.setDelta("RuntimeTainted/s2r1000mb-heap", 7650.01) }, "tainted-rune"},
-		"off rune1000":     {func(d *benchData) { d.setDelta("RuntimeOff/s2r1000-heap", 20.01) }, "off"},
+		"tainted":          {func(d *benchData) { d.setDelta("RuntimeTainted/concat2-stack", 1800.01) }, "tainted"},
+		"tainted heap":     {func(d *benchData) { d.setDelta("RuntimeTainted/concat2-heap", 1800.01) }, "tainted"},
+		"tainted concat16": {func(d *benchData) { d.setDelta("RuntimeTainted/concat16-stack", 5160.01) }, "tainted"},
+		"tainted rune":     {func(d *benchData) { d.setDelta("RuntimeTainted/s2r-stack", 2288.01) }, "tainted-rune"},
+		"tainted rune1000": {func(d *benchData) { d.setDelta("RuntimeTainted/s2r1000mb-heap", 10200.01) }, "tainted-rune"},
 		"hit":              {func(d *benchData) { d.setDelta("RuntimeCleanHit/s2b-stack", 100.01-15.98) }, "hit"},
 		"full2":            {func(d *benchData) { d.setDelta("RuntimeCleanHit/concat2-stack", 200.01-31.44) }, "full2"},
 		"maycontain hit": {func(d *benchData) {
@@ -363,6 +397,8 @@ func TestRuntimeBenchReportCIProfile(t *testing.T) {
 			d.store["MayContain/clean-miss/full"] = benchResult{5.01, 0, 0}
 		}, "maycontain-miss"},
 		"http": {func(d *benchData) { d.httpIAST = 50000 * 1.0601 }, "http"},
+		// CI run 37750452315, linux/arm64, 10 samples.
+		"http arm64": {func(d *benchData) { d.httpIAST = 50000 * 1.0675 }, "http"},
 		// The allocation rules do not change.
 		"off allocation": {func(d *benchData) {
 			for k, r := range d.hook["RuntimeOff/s2b-stack"] {
@@ -573,15 +609,35 @@ func TestRuntimeBenchReportRelativeRune1000Gates(t *testing.T) {
 	requireVerdict(t, measured(), "", "PASS",
 		"| RuntimeOff/s2r1000mb-heap | **+34.50**", "| <= +1 % of nohook (+36.02 ns) | PASS |",
 		"| RuntimeClean/s2r1000-heap | **+7.75**", "| <= +1 % of nohook (+8.83 ns) | PASS |")
-	for _, profile := range []string{"local", "ci"} {
-		for _, c := range cases {
-			t.Run(profile+" "+c.name, func(t *testing.T) {
-				d := measured()
-				d.profile = profile
-				d.setDelta(c.name, c.nohook/100+0.01)
-				requireVerdict(t, d, "", "FAIL", "**Verdict: FAIL** ("+c.key+")")
-			})
-		}
+	for _, c := range cases {
+		t.Run("local "+c.name, func(t *testing.T) {
+			d := measured()
+			d.setDelta(c.name, c.nohook/100+0.01)
+			requireVerdict(t, d, "", "FAIL", "**Verdict: FAIL** ("+c.key+")")
+		})
+	}
+	// On the ci profile, the time of the 1 000-rune rows is record-only: a
+	// large time does not change the verdict. The 0 extra allocations rule
+	// stays a gate: 1 extra allocation fails.
+	for _, c := range cases {
+		t.Run("ci time "+c.name, func(t *testing.T) {
+			d := measured()
+			d.profile = "ci"
+			d.setDelta(c.name, 100000)
+			requireVerdict(t, d, "", "PASS", "| "+c.name+" | **+100000.00**",
+				"| time reported, not gated; 0 extra allocations gated | REPORTED |",
+				"1 000 runes: time reported, not gated; 0 extra allocations gated")
+		})
+		t.Run("ci allocs "+c.name, func(t *testing.T) {
+			d := measured()
+			d.profile = "ci"
+			for k, r := range d.hook[c.name] {
+				r.allocs++
+				d.hook[c.name][k] = r
+			}
+			requireVerdict(t, d, "", "FAIL", "**Verdict: FAIL** ("+c.key+")",
+				"| time reported, not gated; 0 extra allocations gated | FAIL |")
+		})
 	}
 	// A short rune row keeps its fixed gate (local: +2 ns gate off, +6 ns
 	// clean), also with a large nohook time.

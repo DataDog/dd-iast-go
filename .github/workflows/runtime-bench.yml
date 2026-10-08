@@ -14,10 +14,10 @@ name: Runtime benchmarks
 # that the pooled median compares runs of the same machine.
 #
 # The measure jobs use the "ci" gate profile of .github/runtime-bench.py
-# (plan section 9.3, user decision after run 36992589970), and they are
-# report-only: a FAIL or INCOMPLETE verdict is in the job summary, in the
-# artifact and in a warning, but it does not fail the job. An error of the
-# scripts still fails the job.
+# (plan section 9.3, user decisions after runs 36992589970 and 37750452315),
+# and they are report-only: a FAIL or INCOMPLETE verdict is in the job
+# summary, in the artifact and in a warning, but it does not fail the job. An
+# error of the scripts still fails the job.
 on:
   push:
     branches:
@@ -76,12 +76,18 @@ jobs:
   http:
     name: HTTP overhead (${{ matrix.runner }})
     runs-on: ${{ matrix.runner }}
-    # Two woven builds of benchmarks/overhead, then 10 samples of each.
+    # Two woven builds of benchmarks/overhead, then 30 samples of each (run
+    # 37750452315: approx. 2.5 min with 10 samples).
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
         runner: [ubuntu-latest, ubuntu-24.04-arm]
+    env:
+      # User decision after CI run 37750452315: 30 samples in place of the
+      # local default (10), because the runner noise is large (linux/arm64:
+      # +6.75 % with 10 samples).
+      RUNTIME_BENCH_HTTP_COUNT: '30'
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
