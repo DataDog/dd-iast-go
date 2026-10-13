@@ -20,13 +20,27 @@ import (
 // Build-time metrics. These are modified only by `init` functions inserted at
 // build time by the instrumentation; which is why they don't need to be atomic
 // or synchronized.
+//
+// Those `init` functions can run before the init functions of this package
+// (and before any package-level variable of it is initialized): the
+// instrumented package does not always import this package, so Go does not
+// order them. Because of this, every build-time metric MUST be usable in its
+// zero state, with no run-time initialization. Do not turn them into maps or
+// slices that need [make] or a literal.
 var (
 	// InstrumentedSource is the number of sources instrumented during build.
 	InstrumentedSource = make(map[constants.Origin]uint, constants.OriginCount)
 	// InstrumentedPropagation is the number of propagation points instrumented during the build.
 	InstrumentedPropagation = uint(0)
-	// InstrumentedSink is the number of sinks instrumented during the build.
-	InstrumentedSink = make(map[constants.VulnerabilityType]uint, constants.VulnerabilityTypeCount)
+	// InstrumentedSink is the number of sinks instrumented during the build,
+	// indexed by [constants.VulnerabilityType]. It is a fixed-size array (zero
+	// at load time) and not a map, so it is safe to write from an injected
+	// `init` function at any point of the program initialization. Its length is
+	// a literal (not derived from [constants.VulnerabilityTypeCount]) because a
+	// length that depends on another package makes the Orchestrion + coverage
+	// build fail at link time ("fingerprint mismatch"). A test checks that it is
+	// long enough.
+	InstrumentedSink [64]uint
 )
 
 // Run-time metrics. These are modified by the running application and have to

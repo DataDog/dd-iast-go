@@ -13,7 +13,10 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/DataDog/dd-iast-go/iast/crypto/hash"
+	"github.com/DataDog/dd-iast-go/internal/build"
 	"github.com/DataDog/dd-iast-go/internal/config"
+	"github.com/DataDog/dd-iast-go/internal/instrumentation/telemetry"
 	"github.com/DataDog/dd-iast-go/internal/model"
 	"github.com/DataDog/dd-iast-go/internal/model/constants"
 	"github.com/DataDog/dd-iast-go/internal/spans"
@@ -35,8 +38,8 @@ func init() {
 }
 
 func TestMD5(t *testing.T) {
-	if !built.WithOrchestrion {
-		t.Skip("orchestrion is not enabled, use `go tool orchestrion go test` to run this test suite")
+	if !build.Instrumented() {
+		t.Skip("the build is not instrumented, use `go tool orchestrion go test` to run this test suite")
 	}
 
 	mockTracer := mocktracer.Start()
@@ -71,6 +74,23 @@ func TestMD5(t *testing.T) {
 			},
 		},
 		&event)
+}
+
+func TestRegisterInstrumentedSinks(t *testing.T) {
+	before := telemetry.InstrumentedSink
+	t.Cleanup(func() { telemetry.InstrumentedSink = before })
+
+	hash.RegisterInstrumentedSinks(2)
+	hash.RegisterInstrumentedSinks(3)
+
+	assert.Equal(t,
+		before[constants.VulnerabilityTypeWeakHash]+5,
+		telemetry.InstrumentedSink[constants.VulnerabilityTypeWeakHash])
+	for i, count := range telemetry.InstrumentedSink {
+		if constants.VulnerabilityType(i) != constants.VulnerabilityTypeWeakHash {
+			assert.Equal(t, before[i], count, "unexpected change for %s", constants.VulnerabilityType(i))
+		}
+	}
 }
 
 func TestSHA1(t *testing.T) {

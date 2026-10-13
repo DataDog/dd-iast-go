@@ -1,0 +1,32 @@
+# Unless explicitly stated otherwise all files in this repository are licensed
+# under the Apache License Version 2.0.
+# This product includes software developed at Datadog (https://www.datadoghq.com/).
+# Copyright 2026-present Datadog, Inc.
+
+# otelc (go.opentelemetry.io/otelc) rules for the repository root package.
+#
+# An application imports the root package from its tool file. otelc then loads
+# EVERY rule file (otelc.yml) in the directory tree of that package, so the
+# root package has no tool file (otel.instrumentation.go) of its own: a tool file
+# that imports the sub-packages would load their rules twice, and the build would
+# fail ("redeclared in this block").
+#
+# Applications MUST import the root package, and not a sub-package only. Every
+# detection needs the rules in this file (build flag) and in
+# instrumentation/spans/otelc.yml (which attaches the vulnerabilities to the
+# span when it finishes). otelc does not load the rule files of parent
+# directories, so an import of a sub-package only would build, but report
+# nothing. Do not import the root package and a sub-package together: the rules
+# of the sub-package would load twice.
+version: v1.2.0
+
+# Marks the build as instrumented (see internal/build). The Orchestrion
+# counterpart is the //orchestrion:enabled directive in that package.
+build_flag_otelc:
+  target: github.com/DataDog/dd-iast-go/internal/build
+  where:
+    kind: var
+    identifier: otelcEnabled
+  do:
+    - assign_value:
+        replace: "true"

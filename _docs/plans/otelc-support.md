@@ -1,6 +1,8 @@
 # Plan: support otelc as an alternative to orchestrion
 
-Status: draft, revised after critic review (research done, no prototype yet).
+Status: phase 1 (md5 prototype) done. The design works with otelc v1.2.0.
+Sections 3.1, 3.3, 3.4 and 3.5 show the results ([P1] = confirmed by the
+phase 1 prototype).
 
 ## 1. Goal
 
@@ -129,9 +131,10 @@ and a write to a nil map panics. Design rules:
    `[VulnerabilityTypeCount]uint32` array, zero at load time), reached by
    `//go:linkname`. The telemetry package reads it when it sends metrics.
 3. The count must match the functions that were really instrumented.
-   `add_file` applies even when a target function is missing (2.2). So the
-   count must come from the `inject_code` side or be guarded with `version:`
-   ranges, and a test must cover a missing-function case.
+   `add_file` applies even when a target function is missing (2.2). [P1] The
+   count is fixed in the copied file, so the integration quality gate must
+   check the exact list of matched rules (`TestMatchedRules`). Add `version:`
+   ranges on the target where a function can be absent.
 
 The prototype (phase 1) must show: no panic at startup, and exact counts, with
 both tools.
@@ -164,11 +167,19 @@ md5_sum:
   imports: { crypto: crypto }
 ```
 
-Open design choice (decide in the prototype): where the sink count comes from.
-Option 1: one declaration file per target package (8 files) with an `init()`
-that adds the count to the static counter (rule 2), plus `version:` guards.
-Option 2: no count in the target package; the IAST package computes the count
-from a list of expected sinks. Option 1 is closer to today, option 2 is safer.
+**Decision [P1]: option 1.** One declaration file per target package, with an
+`init()` that calls `hash.RegisterInstrumentedSinks(n)` through `//go:linkname`.
+`telemetry.InstrumentedSink` is now a fixed-size `[64]uint` array (zero at
+load time). The orchestrion advice `InstrumentedSink[x] += n` stays valid.
+- [P1] With the old map, the copied `init()` panics:
+  `assignment to entry in nil map` in `crypto/md5.init`.
+- [P1] The length is a literal: a length from another package broke the
+  orchestrion + coverage build (`link: fingerprint mismatch`). A test checks
+  that the array is long enough.
+- [P1] Drift guard: `_integration/otelc` test `TestMatchedRules` reads
+  `.otelc-build/matched.json` and checks that the matched rules are the ones
+  that the fixed count expects. A rule for a missing function is a silent
+  no-op in otelc; the reviewer checked that the test then fails.
 
 ### 3.2 Porting map (14 aspects)
 
@@ -182,7 +193,7 @@ from a list of expected sinks. Option 1 is closer to today, option 2 is safer.
 | cipher: blowfish.NewCipher, NewSaltedCipher | `add_file` + 2x `inject_code` | Replace the literal `salt` with `{{ .FuncArgument 1 }}`. |
 | cipher: pkcs12/internal/rc2.New | `add_file` + `inject_code` | Target is an `internal` package of x/crypto: allowed as a `target` [V]. |
 | cipher: pkcs12 `create` x2 | `add_file` + 2x `inject_code` with `recv: shaWithTripleDESCBC` / `shaWith40BitRC2CBC` | Unexported value receivers. Receiver match is exact type text [V]; the names exist in x/crypto v0.58.0 (`pkcs12/crypto.go:35,49`). |
-| `taint`: `aspects: []` | none | Do not import `taint` in the otelc tool file (error: no rule file). |
+| `taint`: `aspects: []` | none | No `otelc.yml` needed. |
 
 ### 3.3 Package layout and wiring
 
@@ -191,16 +202,25 @@ from a list of expected sinks. Option 1 is closer to today, option 2 is safer.
   (2.2). So they must be **public**, and their imports must not reach back into
   the packages that are built.
 - The `add_file` source for `Span.Finish` cannot be in `internal/spans`.
-  Move the linkname target to a small public package, for example
-  `github.com/DataDog/dd-iast-go/instrumentation/spans`, that forwards to
-  `internal/spans.Finished`.
-- Root tool file `otel.instrumentation.go` (`//go:build tools`, package
-  `ddiast`), next to `orchestrion.tool.go`. It blank-imports
-  `iast/crypto/hash`, `iast/crypto/cipher`, the spans package, and
-  `github.com/DataDog/dd-trace-go/v2/ddtrace/tracer` (tracer start + GLS rules).
-  Do not import `taint` (no rule file: error).
+  [P1] The public package `instrumentation/spans` holds the rule file and the
+  declaration file, and blank-imports `internal/spans` (link anchor only, no
+  API). The `//go:linkname` target stays `internal/spans.Finished`.
+- **No root tool file [P1].** otelc loads every `otelc.yml` in the directory
+  tree of an imported package (`tool/internal/setup/config.go:129-145`). It
+  does not load parent directories, and it does not remove duplicates. A root
+  `otel.instrumentation.go` that imports `iast/crypto/hash` loads the md5
+  rules twice (`redeclared in this block`). So:
+  - the root package holds `otelc.yml` (build flag rule) and no tool file;
+  - applications **must** import the root package. An import of a
+    sub-package only builds, but reports nothing: it does not load the
+    `Span.Finish` rule or the build flag (found in review);
+  - an import of the root package plus a sub-package loads rules twice;
+  - every `otelc.yml` under the tree (also `internal/`, `testdata/`) reaches
+    customer builds. Keep test-only rules in separate modules.
 - [V] A tools-only root package works with otelc discovery
   (`tool/internal/setup/config.go:84-131`).
+- The dd-trace-go tracer rules come from the application tool file
+  (`dd-trace-go/otelc/all/v2`), not from dd-iast-go.
 - User setup (README):
 
   ```go
@@ -230,10 +250,14 @@ from a list of expected sinks. Option 1 is closer to today, option 2 is safer.
    (`apply_func.go:220`). Today IAST skips `<generated>` frames and uses
    `skipFrames=2` (`internal/vulnerability/stacktrace/stacktrace.go:81-88`,
    `internal/vulnerability/report.go:64-75,152-154`). Under otelc, a crypto
-   library frame can become the reported location. The prototype must compare
-   path, line, and method of the location (md5.Sum, salted blowfish) and both
-   stack-trace modes, with both tools. Possible fix: our injected code adds its
-   own `//line <generated>:1` marker, if otelc keeps comments in `raw` [I].
+   library frame can become the reported location.
+   - [P1] Confirmed: the location was `crypto/md5.Sum` (`md5.go:207`).
+   - [P1] A `//line <generated>:1` comment in `raw` does not work: otelc
+     indents it, and Go reads `//line` only at column 1.
+   - [P1] Fix: `vulnerability.Report` takes a variadic list of `SkipFrame`.
+     Each reporter skips its own sink functions (for hash: `New` and `Sum` of
+     md4, md5, sha1). Path, line and method are now the same with both tools,
+     with stack traces on and off. Phase 2 must do the same for cipher.
 
 ### 3.5 Tests and CI
 
@@ -242,8 +266,10 @@ from a list of expected sinks. Option 1 is closer to today, option 2 is safer.
    consumers (both tools then sit in the `require` graph).
 2. **Do not run `otelc go test ./...` on the root module.** It makes import
    cycles (2.2), and it writes `otelc.runtime.go` files into the source tree.
-   Instead, add a **separate test module**, for example `_integration/otelc/`
-   with its own `go.mod` and a `replace` to `../..`. It holds a customer-style
+   Instead, use the **separate test module** `_integration/otelc/` [P1]
+   with its own `go.mod` and a `replace` to `../..`. It needs one Go file with
+   no build tag (`doc.go`), or otelc skips the module. `otelc go run` is not
+   supported: use `otelc go build -o`. It holds a customer-style
    app and end-to-end tests: each sink reports once, at the correct location,
    with the correct sink counts. Run the same tests with orchestrion, so the
    two tools are compared on the same code.
@@ -252,7 +278,12 @@ from a list of expected sinks. Option 1 is closer to today, option 2 is safer.
 4. `ci.yml`: add a job (or matrix `tool: [orchestrion, otelc]`) for the
    integration module. The quality gate is this functional test, **not**
    `otelc pin --validate` (it prunes and passes on invalid rules, 2.2). Also
-   assert that `.otelc-build/matched.json` lists every expected rule.
+   assert that `.otelc-build/matched.json` lists every expected rule. Also
+   build and run `_integration/otelc/cmd/app` with each tool (it calls a sink
+   from a package initializer: checks that startup does not panic).
+   Use Go 1.26.x: orchestrion v1.13.1 fails with Go 1.27 (`export data
+   version 5 is greater than maximum supported version 4`), also without
+   this change.
 5. Benchmarks: `benchmarks/overhead` is a separate module
    (`benchmarks/overhead/go.mod`). It needs its own `otel.instrumentation.go`,
    an otelc tool dependency, and a pinned `dd-trace-go/otelc/all` /
@@ -270,15 +301,14 @@ Estimates are for one engineer, with an agent, after this plan is approved.
 
 | # | Phase | Output | Estimate |
 |---|---|---|---|
-| 1 | Prototype: md5 only, in the new `_integration/otelc` module. Cover linkname, sink counts, startup with no panic, location accuracy | One passing end-to-end test with each tool; answers every [I] item | 1 day |
-| 2 | Port all hash + cipher rules; tool-neutral test flag | Integration tests pass with both tools | 1 day |
-| 3 | Port `Span.Finish` (public spans package); bump dd-trace-go to a `main` pseudo-version | Span tests pass with both tools | 0.5 to 1 day |
+| 1 | **Done.** md5 prototype, `Span.Finish` rule (needed for end-to-end reports), build flag, `_integration/otelc` module | End-to-end tests pass with both tools | done |
+| 2 | Port sha1, md4 and all cipher rules; move remaining tests to `build.Instrumented()` | Integration tests pass with both tools | 1 day |
+| 3 | Bump dd-trace-go to a `main` pseudo-version; test `Span.Finish` with dd-trace-go `span_gls_finish` | Span tests pass with both tools | 0.5 day |
 | 4 | CI job, matched-rule assertion, docs, licenses | Green CI for both tools | 0.5 day |
 | 5 | Benchmarks for otelc | Overhead numbers side by side, under the limit | 1 day |
 | 6 | System tests (blocked by 5.2) | `system-tests.yml` with otelc | 1 day after the weblog exists |
 
-Phases 1 to 4: about 3 to 3.5 days. Phase 1 can change the design: if the
-linkname pattern fails, stop and re-plan before phase 2.
+Remaining phases 2 to 4: about 2 days. Phases 5 and 6: about 2 days more.
 
 ## 5. Gaps outside dd-iast-go (for Romain)
 
@@ -330,7 +360,13 @@ linkname pattern fails, stop and re-plan before phase 2.
    makes import cycles. Ask upstream for a way to skip `otelc.runtime.go` for
    packages in the rule module (or to link without an import).
 4. `otelc pin --validate` passes on invalid rules. Ask for a strict mode.
-5. #469 (no `//orchestrion:ignore`), #671 (`-toolexec` drop-in through
+5. Rule discovery is recursive and does not remove duplicates: one rule file
+   loaded through two imports fails the build (`redeclared in this block`).
+   Ask for de-duplication.
+6. `inject_code` gets no `//line` marker, and a `//line` comment in `raw` is
+   indented, so Go ignores it. Ask for an option to mark injected code as
+   `<generated>` (same as `inject_hooks`).
+7. #469 (no `//orchestrion:ignore`), #671 (`-toolexec` drop-in through
    `GOFLAGS` reported broken; use `otelc go ...`), and #164 (feature parity:
    future taint propagation needs call-site rewriting of expressions;
    `wrap_call` handles only function calls).
