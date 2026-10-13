@@ -6,7 +6,11 @@
 // Package loader applies IAST configuration parsing, bounds, and reporting.
 package loader
 
-import "github.com/DataDog/dd-iast-go/internal/config/parser"
+import (
+	"os"
+
+	"github.com/DataDog/dd-iast-go/internal/config/parser"
+)
 
 // Observer receives warnings and resolved configuration values.
 type Observer struct {
@@ -78,5 +82,29 @@ func FromEnv[T any](observer Observer, envVar string, defaultValue T, parse func
 		observer.warn("invalid value for %s: %s", envVar, raw)
 	}
 	observer.register(envVar, value, origin)
+	return value
+}
+
+// FromEnvWithFallback parses canonical when it is set, otherwise fallback.
+// Canonical takes precedence even when it is invalid. The effective value is
+// always registered under canonical.
+func FromEnvWithFallback[T any](observer Observer, canonical, fallback string, defaultValue T, parse func(string) (T, error)) T {
+	name := canonical
+	raw, ok := os.LookupEnv(canonical)
+	if !ok {
+		name = fallback
+		raw, ok = os.LookupEnv(fallback)
+	}
+	if !ok {
+		observer.register(canonical, defaultValue, parser.OriginDefault)
+		return defaultValue
+	}
+	value, err := parse(raw)
+	if err != nil {
+		observer.warn("invalid value for %s: %s", name, raw)
+		observer.register(canonical, defaultValue, parser.OriginDefault)
+		return defaultValue
+	}
+	observer.register(canonical, value, parser.OriginEnvVar)
 	return value
 }

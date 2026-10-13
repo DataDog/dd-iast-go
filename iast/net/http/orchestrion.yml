@@ -1,0 +1,536 @@
+# Unless explicitly stated otherwise all files in this repository are licensed
+# under the Apache License Version 2.0.
+# This product includes software developed at Datadog (https://www.datadoghq.com/).
+# Copyright 2026-present Datadog, Inc.
+---
+# $schema: https://datadoghq.dev/orchestrion/schema.json
+meta:
+  name: github.com/DataDog/dd-iast-go/iast/net/http
+  description: Request-scoped IAST ownership, span binding and request sources
+
+aspects:
+  # Go 1.26.6 routes HTTP/1, TLS HTTP/2, and h2c through this value-receiver
+  # method once per request. The request bridge has no net/http dependency, so
+  # importing it into net/http does not create a package cycle.
+  - id: net/http.serverHandler.ServeHTTP
+    join-point:
+      all-of:
+        - import-path: net/http
+        - function-body:
+            function:
+              - receiver: net/http.serverHandler
+              - name: ServeHTTP
+    advice:
+      - prepend-statements:
+          imports:
+            iasthttpbridge: github.com/DataDog/dd-iast-go/internal/taint/httpbridge
+          template: |-
+            {{- $req := .Function.Argument 1 -}}
+            __dd_iast_ctx, __dd_iast_created := iasthttpbridge.Begin(
+              {{ $req }}.Context(), {{ $req }}.Method, {{ $req }}.RequestURI,
+              map[string][]string({{ $req }}.Header),
+            )
+            defer iasthttpbridge.Finish(__dd_iast_ctx, __dd_iast_created)
+            if __dd_iast_created {
+              {{ $req }} = {{ $req }}.WithContext(__dd_iast_ctx)
+              var __dd_iast_path, __dd_iast_raw_query *string
+              if {{ $req }}.URL != nil {
+                __dd_iast_path = &{{ $req }}.URL.Path
+                __dd_iast_raw_query = &{{ $req }}.URL.RawQuery
+              }
+              // The Read hook sees the receiver of the hooked Read method:
+              // register the body inside the Expect: 100-continue wrapper.
+              var __dd_iast_body any = {{ $req }}.Body
+              if __dd_iast_ecr, __dd_iast_ok := {{ $req }}.Body.(*expectContinueReader); __dd_iast_ok && __dd_iast_ecr != nil {
+                __dd_iast_body = __dd_iast_ecr.readCloser
+              }
+              {{ $req }}.Header = iasthttpbridge.Eager(
+                __dd_iast_ctx, &{{ $req }}.RequestURI, __dd_iast_path, __dd_iast_raw_query,
+                map[string][]string({{ $req }}.Header), {{ $req }}.URL, __dd_iast_body,
+              )
+            }
+
+  # Bind as soon as tracing creates a span from a request context. Wrapping the
+  # complete multi-result expression preserves every argument, including a
+  # variadic option slice, and evaluates the original call exactly once.
+  - id: tracer.StartSpanFromContext
+    tracer-internal: true
+    join-point:
+      all-of:
+        - function-call: github.com/DataDog/dd-trace-go/v2/ddtrace/tracer.StartSpanFromContext
+        - not:
+            package-filter:
+              root: false
+              pattern: "github.com/DataDog/dd-iast-go/internal/**"
+        - not:
+            one-of:
+              - import-path: github.com/DataDog/dd-iast-go/iast/net/http
+              - import-path: github.com/DataDog/dd-trace-go/v2/ddtrace/tracer
+    advice:
+      - wrap-expression:
+          imports:
+            context: context
+            iasthttp: github.com/DataDog/dd-iast-go/iast/net/http
+            tracer: github.com/DataDog/dd-trace-go/v2/ddtrace/tracer
+          template: |-
+            func(
+              __dd_iast_span *tracer.Span,
+              __dd_iast_ctx context.Context,
+            ) (*tracer.Span, context.Context) {
+              return iasthttp.BindStartSpan(__dd_iast_ctx, __dd_iast_span)
+            }({{ . }})
+
+  # Direct/custom dispatch can bypass serverHandler. Restrict fallback matching
+  # to the exact http.HandlerFunc shape to avoid treating unrelated helpers as
+  # request boundaries. The first handler creates the scope; nested handlers
+  # reuse it.
+  - id: application.http.Handler
+    join-point:
+      all-of:
+        - package-filter:
+            root: true
+            pattern: "**"
+        - not:
+            package-filter:
+              root: false
+              pattern: "github.com/DataDog/dd-iast-go/internal/**"
+        - function-body:
+            function:
+              - signature:
+                  args:
+                    - net/http.ResponseWriter
+                    - "*net/http.Request"
+                  returns: []
+    advice:
+      - prepend-statements:
+          imports:
+            iastrequest: github.com/DataDog/dd-iast-go/internal/taint/request
+            iastspans: github.com/DataDog/dd-iast-go/internal/spans
+          template: |-
+            {{- $req := .Function.ArgumentOfType "*net/http.Request" -}}
+            if {{ $req }} != nil {
+              __dd_iast_ctx, __dd_iast_created := iastrequest.BeginContext({{ $req }}.Context())
+              defer iastrequest.FinishContext(__dd_iast_ctx, __dd_iast_created)
+              if __dd_iast_created {
+                {{ $req }} = {{ $req }}.WithContext(__dd_iast_ctx)
+                var __dd_iast_path, __dd_iast_raw_query *string
+                if {{ $req }}.URL != nil {
+                  __dd_iast_path = &{{ $req }}.URL.Path
+                  __dd_iast_raw_query = &{{ $req }}.URL.RawQuery
+                }
+                {{ $req }}.Header = iastrequest.EagerHTTP(
+                  __dd_iast_ctx, &{{ $req }}.RequestURI, __dd_iast_path, __dd_iast_raw_query,
+                  map[string][]string({{ $req }}.Header), {{ $req }}.URL, {{ $req }}.Body,
+                )
+              }
+              iastspans.BindScopeContext(__dd_iast_ctx)
+            }
+
+  - id: net/http.Request.ParseForm
+    join-point:
+      all-of:
+        - import-path: net/http
+        - function-body:
+            function:
+              - receiver: "*net/http.Request"
+              - name: ParseForm
+    advice:
+      - prepend-statements:
+          imports:
+            iasthttpbridge: github.com/DataDog/dd-iast-go/internal/taint/httpbridge
+          template: |-
+            {{- $req := .Function.Receiver -}}
+            defer func() {
+              if {{ $req }} != nil {
+                {{ $req }}.Form, {{ $req }}.PostForm = iasthttpbridge.Form(
+                  {{ $req }}.Context(),
+                  map[string][]string({{ $req }}.Form),
+                  map[string][]string({{ $req }}.PostForm),
+                )
+              }
+            }()
+
+  - id: net/http.Request.ParseMultipartForm
+    join-point:
+      all-of:
+        - import-path: net/http
+        - function-body:
+            function:
+              - receiver: "*net/http.Request"
+              - name: ParseMultipartForm
+    advice:
+      - prepend-statements:
+          imports:
+            iasthttpbridge: github.com/DataDog/dd-iast-go/internal/taint/httpbridge
+          template: |-
+            {{- $req := .Function.Receiver -}}
+            defer func() {
+              if {{ $req }} != nil && {{ $req }}.MultipartForm != nil {
+                {{ $req }}.MultipartForm.Value = iasthttpbridge.Multipart(
+                  {{ $req }}.Context(),
+                  map[string][]string({{ $req }}.MultipartForm.Value),
+                  map[string][]string({{ $req }}.Form),
+                  map[string][]string({{ $req }}.PostForm),
+                )
+              }
+            }()
+
+  - id: net/http.Request.FormValue
+    join-point:
+      all-of:
+        - import-path: net/http
+        - function-body:
+            function:
+              - receiver: "*net/http.Request"
+              - name: FormValue
+    advice:
+      - prepend-statements:
+          imports:
+            iasthttpbridge: github.com/DataDog/dd-iast-go/internal/taint/httpbridge
+          template: |-
+            {{- $req := .Function.Receiver -}}
+            {{- $name := .Function.Argument 0 -}}
+            {{- $result := .Function.Result 0 -}}
+            defer func() {
+              if {{ $req }} != nil {
+                if {{ $req }}.MultipartForm != nil {
+                  __dd_iast_multipart := {{ $req }}.MultipartForm.Value[{{ $name }}]
+                  __dd_iast_form := {{ $req }}.Form[{{ $name }}]
+                  if len(__dd_iast_form) > 0 && len(__dd_iast_form) == len(__dd_iast_multipart) {
+                    {{ $result }} = iasthttpbridge.MultipartParameter(
+                      {{ $req }}.Context(), {{ $name }}, {{ $result }},
+                    )
+                    return
+                  }
+                }
+                {{ $result }} = iasthttpbridge.Parameter(
+                  {{ $req }}.Context(), {{ $name }}, {{ $result }},
+                )
+              }
+            }()
+
+  - id: net/http.Request.PostFormValue
+    join-point:
+      all-of:
+        - import-path: net/http
+        - function-body:
+            function:
+              - receiver: "*net/http.Request"
+              - name: PostFormValue
+    advice:
+      - prepend-statements:
+          imports:
+            iasthttpbridge: github.com/DataDog/dd-iast-go/internal/taint/httpbridge
+          template: |-
+            {{- $req := .Function.Receiver -}}
+            {{- $name := .Function.Argument 0 -}}
+            {{- $result := .Function.Result 0 -}}
+            defer func() {
+              if {{ $req }} != nil {
+                if {{ $req }}.MultipartForm != nil {
+                  __dd_iast_multipart := {{ $req }}.MultipartForm.Value[{{ $name }}]
+                  __dd_iast_post_form := {{ $req }}.PostForm[{{ $name }}]
+                  if len(__dd_iast_post_form) > 0 && len(__dd_iast_post_form) == len(__dd_iast_multipart) {
+                    {{ $result }} = iasthttpbridge.MultipartParameter(
+                      {{ $req }}.Context(), {{ $name }}, {{ $result }},
+                    )
+                    return
+                  }
+                }
+                {{ $result }} = iasthttpbridge.Parameter(
+                  {{ $req }}.Context(), {{ $name }}, {{ $result }},
+                )
+              }
+            }()
+
+  - id: net/http.Request.PathValue
+    join-point:
+      all-of:
+        - import-path: net/http
+        - function-body:
+            function:
+              - receiver: "*net/http.Request"
+              - name: PathValue
+    advice:
+      - prepend-statements:
+          imports:
+            iasthttpbridge: github.com/DataDog/dd-iast-go/internal/taint/httpbridge
+          template: |-
+            {{- $req := .Function.Receiver -}}
+            {{- $name := .Function.Argument 0 -}}
+            {{- $result := .Function.Result 0 -}}
+            defer func() {
+              if {{ $req }} != nil {
+                {{ $result }} = iasthttpbridge.PathParameter(
+                  {{ $req }}.Context(), {{ $name }}, {{ $result }},
+                )
+              }
+            }()
+
+  - id: net/http.Request.Cookie
+    join-point:
+      all-of:
+        - import-path: net/http
+        - function-body:
+            function:
+              - receiver: "*net/http.Request"
+              - name: Cookie
+    advice:
+      - prepend-statements:
+          imports:
+            iasthttpbridge: github.com/DataDog/dd-iast-go/internal/taint/httpbridge
+          template: |-
+            {{- $req := .Function.Receiver -}}
+            {{- $result := .Function.Result 0 -}}
+            defer func() {
+              if {{ $req }} != nil && {{ $result }} != nil {
+                iasthttpbridge.Cookie(
+                  {{ $req }}.Context(), &{{ $result }}.Name, &{{ $result }}.Value,
+                )
+              }
+            }()
+
+  - id: net/http.Request.Cookies
+    join-point:
+      all-of:
+        - import-path: net/http
+        - function-body:
+            function:
+              - receiver: "*net/http.Request"
+              - name: Cookies
+    advice:
+      - prepend-statements:
+          imports:
+            iasthttpbridge: github.com/DataDog/dd-iast-go/internal/taint/httpbridge
+          template: |-
+            {{- $req := .Function.Receiver -}}
+            {{- $result := .Function.Result 0 -}}
+            defer func() {
+              if {{ $req }} != nil {
+                for _, __dd_iast_cookie := range {{ $result }} {
+                  if __dd_iast_cookie != nil {
+                    iasthttpbridge.Cookie(
+                      {{ $req }}.Context(), &__dd_iast_cookie.Name, &__dd_iast_cookie.Value,
+                    )
+                  }
+                }
+              }
+            }()
+
+  - id: net/http.Request.CookiesNamed
+    join-point:
+      all-of:
+        - import-path: net/http
+        - function-body:
+            function:
+              - receiver: "*net/http.Request"
+              - name: CookiesNamed
+    advice:
+      - prepend-statements:
+          imports:
+            iasthttpbridge: github.com/DataDog/dd-iast-go/internal/taint/httpbridge
+          template: |-
+            {{- $req := .Function.Receiver -}}
+            {{- $result := .Function.Result 0 -}}
+            defer func() {
+              if {{ $req }} != nil {
+                for _, __dd_iast_cookie := range {{ $result }} {
+                  if __dd_iast_cookie != nil {
+                    iasthttpbridge.Cookie(
+                      {{ $req }}.Context(), &__dd_iast_cookie.Name, &__dd_iast_cookie.Value,
+                    )
+                  }
+                }
+              }
+            }()
+
+  # Body sources (plan section 4.4). Go 1.26.6: (*body).Read
+  # (net/http/transfer.go) is the HTTP/1 body. The client response bodies use
+  # the same type: thus the hook does the work only for the registered body
+  # of a request.
+  - id: net/http.body.Read
+    join-point:
+      all-of:
+        - import-path: net/http
+        - function-body:
+            function:
+              - receiver: "*net/http.body"
+              - name: Read
+    advice:
+      # Only the objects of a registered body type are registered as the
+      # body of a request (httpbridge.BodyObject). The server allocates them
+      # on the heap, so they are safe for weak.Make.
+      - inject-declarations:
+          imports:
+            iasthttpbridge: github.com/DataDog/dd-iast-go/internal/taint/httpbridge
+          template: |-
+            var _ = iasthttpbridge.RegisterBodyType((*body)(nil))
+      # After the read, taint the bytes that the read wrote when the receiver
+      # is the registered body of a request (plan section 4.4). The deferred
+      # call runs only when taint can be live (heapbits.Live), and it does
+      # not change the results.
+      - prepend-statements:
+          imports:
+            iastheapbits: github.com/DataDog/dd-iast-go/internal/taint/heapbits
+            iastpropbridge: github.com/DataDog/dd-iast-go/internal/taint/propbridge
+            runtime: runtime
+            unsafe: unsafe
+          template: |-
+            {{- $body := .Function.Receiver -}}
+            {{- $p := .Function.Argument 0 -}}
+            {{- $n := .Function.Result 0 -}}
+            if iastheapbits.Live() {
+              defer func() {
+                if {{ $n }} > 0 && {{ $n }} <= len({{ $p }}) {
+                  iastpropbridge.BodyRead(
+                    uintptr(unsafe.Pointer({{ $body }})),
+                    uintptr(unsafe.Pointer(unsafe.SliceData({{ $p }}))),
+                    uintptr({{ $n }}),
+                  )
+                  runtime.KeepAlive({{ $body }})
+                  runtime.KeepAlive({{ $p }})
+                }
+              }()
+            }
+
+  # (*http2requestBody).Read (net/http/h2_bundle.go) is the HTTP/2 server
+  # body (TLS HTTP/2) of Go 1.26.
+  - id: net/http.http2requestBody.Read
+    join-point:
+      all-of:
+        - import-path: net/http
+        - function-body:
+            function:
+              - receiver: "*net/http.http2requestBody"
+              - name: Read
+    advice:
+      # Only the objects of a registered body type are registered as the
+      # body of a request (httpbridge.BodyObject). The server allocates them
+      # on the heap, so they are safe for weak.Make.
+      - inject-declarations:
+          imports:
+            iasthttpbridge: github.com/DataDog/dd-iast-go/internal/taint/httpbridge
+          template: |-
+            var _ = iasthttpbridge.RegisterBodyType((*http2requestBody)(nil))
+      # After the read, taint the bytes that the read wrote when the receiver
+      # is the registered body of a request (plan section 4.4). The deferred
+      # call runs only when taint can be live (heapbits.Live), and it does
+      # not change the results.
+      - prepend-statements:
+          imports:
+            iastheapbits: github.com/DataDog/dd-iast-go/internal/taint/heapbits
+            iastpropbridge: github.com/DataDog/dd-iast-go/internal/taint/propbridge
+            runtime: runtime
+            unsafe: unsafe
+          template: |-
+            {{- $body := .Function.Receiver -}}
+            {{- $p := .Function.Argument 0 -}}
+            {{- $n := .Function.Result 0 -}}
+            if iastheapbits.Live() {
+              defer func() {
+                if {{ $n }} > 0 && {{ $n }} <= len({{ $p }}) {
+                  iastpropbridge.BodyRead(
+                    uintptr(unsafe.Pointer({{ $body }})),
+                    uintptr(unsafe.Pointer(unsafe.SliceData({{ $p }}))),
+                    uintptr({{ $n }}),
+                  )
+                  runtime.KeepAlive({{ $body }})
+                  runtime.KeepAlive({{ $p }})
+                }
+              }()
+            }
+
+  # Go 1.27 moved the HTTP/2 server of net/http to net/http/internal/http2:
+  # (*requestBody).Read there is the HTTP/2 server body (TLS HTTP/2). This
+  # aspect does not match with Go 1.26.
+  - id: net/http/internal/http2.requestBody.Read
+    join-point:
+      all-of:
+        - import-path: net/http/internal/http2
+        - function-body:
+            function:
+              - receiver: "*net/http/internal/http2.requestBody"
+              - name: Read
+    advice:
+      # Only the objects of a registered body type are registered as the
+      # body of a request (httpbridge.BodyObject). The server allocates them
+      # on the heap, so they are safe for weak.Make.
+      - inject-declarations:
+          imports:
+            iasthttpbridge: github.com/DataDog/dd-iast-go/internal/taint/httpbridge
+          template: |-
+            var _ = iasthttpbridge.RegisterBodyType((*requestBody)(nil))
+      # After the read, taint the bytes that the read wrote when the receiver
+      # is the registered body of a request (plan section 4.4). The deferred
+      # call runs only when taint can be live (heapbits.Live), and it does
+      # not change the results.
+      - prepend-statements:
+          imports:
+            iastheapbits: github.com/DataDog/dd-iast-go/internal/taint/heapbits
+            iastpropbridge: github.com/DataDog/dd-iast-go/internal/taint/propbridge
+            runtime: runtime
+            unsafe: unsafe
+          template: |-
+            {{- $body := .Function.Receiver -}}
+            {{- $p := .Function.Argument 0 -}}
+            {{- $n := .Function.Result 0 -}}
+            if iastheapbits.Live() {
+              defer func() {
+                if {{ $n }} > 0 && {{ $n }} <= len({{ $p }}) {
+                  iastpropbridge.BodyRead(
+                    uintptr(unsafe.Pointer({{ $body }})),
+                    uintptr(unsafe.Pointer(unsafe.SliceData({{ $p }}))),
+                    uintptr({{ $n }}),
+                  )
+                  runtime.KeepAlive({{ $body }})
+                  runtime.KeepAlive({{ $p }})
+                }
+              }()
+            }
+
+  # (*requestBody).Read of golang.org/x/net/http2 is the server body of the
+  # h2c handler (golang.org/x/net/http2/h2c).
+  - id: golang.org/x/net/http2.requestBody.Read
+    join-point:
+      all-of:
+        - import-path: golang.org/x/net/http2
+        - function-body:
+            function:
+              - receiver: "*golang.org/x/net/http2.requestBody"
+              - name: Read
+    advice:
+      # Only the objects of a registered body type are registered as the
+      # body of a request (httpbridge.BodyObject). The server allocates them
+      # on the heap, so they are safe for weak.Make.
+      - inject-declarations:
+          imports:
+            iasthttpbridge: github.com/DataDog/dd-iast-go/internal/taint/httpbridge
+          template: |-
+            var _ = iasthttpbridge.RegisterBodyType((*requestBody)(nil))
+      # After the read, taint the bytes that the read wrote when the receiver
+      # is the registered body of a request (plan section 4.4). The deferred
+      # call runs only when taint can be live (heapbits.Live), and it does
+      # not change the results.
+      - prepend-statements:
+          imports:
+            iastheapbits: github.com/DataDog/dd-iast-go/internal/taint/heapbits
+            iastpropbridge: github.com/DataDog/dd-iast-go/internal/taint/propbridge
+            runtime: runtime
+            unsafe: unsafe
+          template: |-
+            {{- $body := .Function.Receiver -}}
+            {{- $p := .Function.Argument 0 -}}
+            {{- $n := .Function.Result 0 -}}
+            if iastheapbits.Live() {
+              defer func() {
+                if {{ $n }} > 0 && {{ $n }} <= len({{ $p }}) {
+                  iastpropbridge.BodyRead(
+                    uintptr(unsafe.Pointer({{ $body }})),
+                    uintptr(unsafe.Pointer(unsafe.SliceData({{ $p }}))),
+                    uintptr({{ $n }}),
+                  )
+                  runtime.KeepAlive({{ $body }})
+                  runtime.KeepAlive({{ $p }})
+                }
+              }()
+            }

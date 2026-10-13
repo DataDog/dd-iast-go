@@ -23,6 +23,7 @@ package heapbits
 
 import (
 	"runtime"
+	"sync/atomic"
 	"unsafe"
 )
 
@@ -58,7 +59,38 @@ var (
 
 	//go:linkname rtSetBudget __dd_iast_heapbits.setbudget
 	rtSetBudget func(bytes uintptr) bool
+
+	// rtSeen points to the sticky gate word of the runtime (see Live). It is
+	// a pointer, not a function: Live is then inlinable.
+	//
+	//go:linkname rtSeen __dd_iast_heapbits.seen
+	rtSeen *uint32
 )
+
+// Live reports whether taint can be live in the heap. It is false until the
+// first successful [Set] or [Copy] of tainted bits, or the first [MarkLive];
+// after that, it is true for all the life of the process (it never goes back
+// to false, also when no tainted byte stays). When Live is false, no byte is
+// tainted: a propagation hook can skip all its work. Without weaving, it is
+// always false.
+//
+// Live is inlinable: 2 loads and no call.
+func Live() bool {
+	p := rtSeen
+	return p != nil && atomic.LoadUint32(p) != 0
+}
+
+// MarkLive makes [Live] return true, before any taint is set. A request owner
+// calls it at its first activation, so that the hooks of reads are on before
+// the first read of the request body. It does nothing without weaving, or when
+// the feature is not enabled (see [Enabled]): then no byte can be tainted.
+func MarkLive() {
+	p := rtSeen
+	if p == nil || atomic.LoadUint32(p) != 0 || !Enabled() {
+		return
+	}
+	atomic.StoreUint32(p, 1)
+}
 
 // DefaultBudget is the default memory budget of the taint bits: 64 MiB of
 // storage, enough for taint in up to 512 MiB of heap.

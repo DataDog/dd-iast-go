@@ -28,7 +28,8 @@ var updateDrift = flag.Bool("update-drift", false, "write the golden file of the
 // TestRuntimeDrift is the drift detector of plan section 6.2. It reads the
 // source of package runtime of the Go toolchain in use (no weaving needed),
 // makes an inventory of the internals that the aspects of orchestrion.yml
-// depend on, and compares it with a golden file for the Go minor version.
+// (and of iast/runtime/orchestrion.yml) depend on, and compares it with a
+// golden file for the Go minor version.
 //
 // A difference (or a new minor version without a golden file) fails the
 // test. It does not mean that the aspects are wrong: a human must read the
@@ -103,13 +104,22 @@ var freePaths = []string{"freeSpan", "freeSpanLocked", "freeManual", "freegc", "
 //     the specials loop after it), the order of the specials list (addspecial,
 //     removespecial, specialFindSplicePoint) and ensureSwept (no special
 //     changes during a sweep);
-//   - mmap (the non-fatal allocator depends on its error convention).
+//   - mmap (the non-fatal allocator depends on its error convention);
+//   - the 8 functions that the propagation hooks of iast/runtime/orchestrion.yml
+//     change (concatstrings, concatbytes, slicebytetostring, stringtoslicebyte,
+//     stringtoslicerune, slicerunetostring, growslice, growsliceBuf), the
+//     callers of the concatenations for 2 to 5 operands (their escape tags
+//     come from the hooked functions), and encoderune (the rune hook of
+//     string(runes) repeats its length rule).
 var bodyFuncs = []string{
 	"markBitsForIndex", "gcUsesSpanInlineMarkBits", "spanOf", "spanOfHeap", "objIndex", "heapArenaOf", "arenaIndex", "l1", "l2",
 	"sysAlloc",
 	"freegc", "reusableSize", "nextReusableNoScan", "addReusableNoscan", "mallocgcSmallNoscanReuse",
 	"sweep", "addspecial", "removespecial", "specialFindSplicePoint", "ensureSwept",
 	"mmap",
+	"concatstrings", "concatbytes", "slicebytetostring", "stringtoslicebyte", "stringtoslicerune", "slicerunetostring", "growslice", "growsliceBuf",
+	"concatstring2", "concatstring3", "concatstring4", "concatstring5", "concatbyte2", "concatbyte3", "concatbyte4", "concatbyte5",
+	"encoderune",
 }
 
 // runtimeInventory returns the inventory of the runtime source in dir.

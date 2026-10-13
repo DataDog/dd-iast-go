@@ -1,0 +1,2 @@
+github.com/DataDog/dd-iast-go/iast/os/exec.init.0
+github.com/DataDog/dd-iast-go/internal/spans.Finished

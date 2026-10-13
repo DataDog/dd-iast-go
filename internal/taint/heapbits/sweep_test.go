@@ -287,12 +287,23 @@ func TestBoundedFlagReset(t *testing.T) {
 		for i := range objs {
 			objs[i] = newPtrObj()
 		}
-		o := objs[2048]
-		base, nelems := heapbitstest.SpanInfo(unsafe.Pointer(o))
-		live := 0
+		// A span that the allocator reuses (from an earlier test) can have
+		// only some free slots. Thus, use the span that has the most of
+		// these objects: a fresh span gets all its slots from this loop.
+		counts := make(map[uintptr]int)
+		first := make(map[uintptr]*ptrObj)
 		for _, x := range objs {
-			if a := uintptr(unsafe.Pointer(x)); a >= base && a < base+nelems*8 {
-				live++
+			base, _ := heapbitstest.SpanInfo(unsafe.Pointer(x))
+			if counts[base] == 0 {
+				first[base] = x
+			}
+			counts[base]++
+		}
+		var o *ptrObj
+		live := 0
+		for base, n := range counts {
+			if n > live {
+				live, o = n, first[base]
 			}
 		}
 		if live < 600 {
