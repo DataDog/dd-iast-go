@@ -6,8 +6,8 @@ tool github.com/DataDog/orchestrion
 
 require (
 	github.com/DataDog/dd-iast-go v0.0.0
-	github.com/DataDog/dd-trace-go/v2 v2.11.0-rc.1
-	github.com/DataDog/orchestrion v1.13.0
+	github.com/DataDog/dd-trace-go/v2 v2.11.2
+	github.com/DataDog/orchestrion v1.14.0
 	github.com/stretchr/testify v1.12.1
 )
 
@@ -114,7 +114,7 @@ require (
 	golang.org/x/sys v0.48.0 // indirect
 	golang.org/x/term v0.46.0 // indirect
 	golang.org/x/time v0.15.0 // indirect
-	golang.org/x/tools v0.49.0 // indirect
+	golang.org/x/tools v0.51.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260831171406-18b4a7587f8a // indirect
 	google.golang.org/protobuf v1.36.12 // indirect
