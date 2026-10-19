@@ -22,7 +22,7 @@ const (
 var orchestrionEnabled = false
 
 // otelcEnabled is changed to true at build time by the "assign_value"-style
-// rule in the otelc.yml file at the root of this module.
+// rule in the otelc.yml file of this package.
 var otelcEnabled = false
 
 // Instrumented returns true if the current binary was built with Orchestrion or

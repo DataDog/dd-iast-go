@@ -1,6 +1,8 @@
 # Plan: support otelc as an alternative to orchestrion
 
-Status: phase 1 (md5 prototype) done. The design works with otelc v1.2.0.
+Status: phase 1 (md5 prototype) done. Sub-package imports work. This needs
+otelc `main` (`v1.2.1-0.20261017145842-4ffef19ce088`) or the first release
+with PR #1483; otelc v1.2.0 stops with "requires otelc >= v1.2.1-0".
 Sections 3.1, 3.3, 3.4 and 3.5 show the results ([P1] = confirmed by the
 phase 1 prototype).
 
@@ -205,18 +207,40 @@ load time). The orchestrion advice `InstrumentedSink[x] += n` stays valid.
   [P1] The public package `instrumentation/spans` holds the rule file and the
   declaration file, and blank-imports `internal/spans` (link anchor only, no
   API). The `//go:linkname` target stays `internal/spans.Finished`.
-- **No root tool file [P1].** otelc loads every `otelc.yml` in the directory
-  tree of an imported package (`tool/internal/setup/config.go:129-145`). It
-  does not load parent directories, and it does not remove duplicates. A root
-  `otel.instrumentation.go` that imports `iast/crypto/hash` loads the md5
-  rules twice (`redeclared in this block`). So:
-  - the root package holds `otelc.yml` (build flag rule) and no tool file;
-  - applications **must** import the root package. An import of a
-    sub-package only builds, but reports nothing: it does not load the
-    `Span.Finish` rule or the build flag (found in review);
-  - an import of the root package plus a sub-package loads rules twice;
+- **Root tool file for the core rules [P1].** otelc loads every `otelc.yml` in
+  the directory tree of an imported package (`tool/internal/setup/config.go`,
+  `rulesFromDir`). For every package of our module it also reads the tool file
+  at the module root (`config.go`, "Always look for tool file in the module
+  directory"), and follows its imports. otelc main
+  (`v1.2.1-0.20261017145842-4ffef19ce088`) loads each rule file one time: the
+  key is the absolute path with symbolic links resolved (PR #1483,
+  `tool/internal/setup/match.go`, `loadRulesFromToolFiles` and `ruleFileKey`).
+  So:
+  - the root `otel.instrumentation.go` (`//go:build tools`) imports only the
+    "core" rule packages that every detection needs: `instrumentation/spans`
+    (`Span.Finish` rule) and `internal/build` (build flag rule). It MUST NOT
+    import a detection (`iast/...`): an application that imports one
+    sub-package must not get the others. `taint` has no rules and is not
+    imported;
+  - an application can import the root package (all rule files of the tree
+    load), one sub-package (for example `iast/crypto/hash`: its rules plus the
+    core rules), or both. Rule files that two imports reach load one time;
+  - the rule files of the core packages set `version: v1.2.1-0`. otelc refuses a
+    rule file whose minimum version is a pseudo-version, so this is the lowest
+    release version above v1.2.0 (`rule/file.go`, `ParseFile`). An otelc
+    v1.2.0 then stops with "requires otelc >= v1.2.1-0"; an otelc that is built
+    from main (pseudo-version) skips the check (`CheckVersion`). Raise it to
+    the real release version when otelc publishes it;
+  - `internal/build` can hold a rule file: the tool file is in our module, so
+    the `internal` rule allows its import. Only `add_file` source packages must
+    be public;
   - every `otelc.yml` under the tree (also `internal/`, `testdata/`) reaches
-    customer builds. Keep test-only rules in separate modules.
+    customer builds. Keep test-only rules in separate modules. A nested module
+    (a directory with a `go.mod`) is skipped by the walk;
+  - tests: `_integration/otelc` runs the same checks for three tool files
+    (root; `iast/crypto/hash` only, `setups/hashonly`; root + `iast/crypto/hash`,
+    `setups/rootandhash`). Orchestrion has no equivalent of the root tool file
+    for sub-packages, so only the root setup runs with Orchestrion.
 - [V] A tools-only root package works with otelc discovery
   (`tool/internal/setup/config.go:84-131`).
 - The dd-trace-go tracer rules come from the application tool file
@@ -233,7 +257,10 @@ load time). The orchestrion advice `InstrumentedSink[x] += n` stays valid.
   )
   ```
 
-  Then `go tool otelc go build ./...`.
+  Then `go tool otelc go build ./...`. An application can import a single
+  detection instead of the root package (for example
+  `github.com/DataDog/dd-iast-go/iast/crypto/hash`). It needs otelc main (or
+  the first release with PR #1483).
 - Update docs that say "orchestrion only": `README.md:11`, `AGENTS.md`,
   `iast/AGENTS.md`, `CONTRIBUTING.md:60-137`.
 
@@ -261,8 +288,8 @@ load time). The orchestrion advice `InstrumentedSink[x] += n` stays valid.
 
 ### 3.5 Tests and CI
 
-1. `go.mod`: add `go.opentelemetry.io/otelc` to the `tool` block (pin v1.2.0
-   or later). Check that its dependencies do not force bad upgrades on
+1. `go.mod`: add `go.opentelemetry.io/otelc` to the `tool` block (pin the
+   first release with PR #1483; until then, the `main` pseudo-version). Check that its dependencies do not force bad upgrades on
    consumers (both tools then sit in the `require` graph).
 2. **Do not run `otelc go test ./...` on the root module.** It makes import
    cycles (2.2), and it writes `otelc.runtime.go` files into the source tree.
@@ -360,16 +387,28 @@ Remaining phases 2 to 4: about 2 days. Phases 5 and 6: about 2 days more.
    makes import cycles. Ask upstream for a way to skip `otelc.runtime.go` for
    packages in the rule module (or to link without an import).
 4. `otelc pin --validate` passes on invalid rules. Ask for a strict mode.
-5. Rule discovery is recursive and does not remove duplicates: one rule file
-   loaded through two imports fails the build (`redeclared in this block`).
-   Ask for de-duplication.
+5. ~~Rule discovery is recursive and does not remove duplicates.~~ **Done
+   upstream:** PR #1483 (in otelc main, `v1.2.1-0.20261017145842-4ffef19ce088`)
+   loads each rule file one time. Wait for a release and set `version:` in the
+   core rule files to it.
 6. `inject_code` gets no `//line` marker, and a `//line` comment in `raw` is
-   indented, so Go ignores it. Ask for an option to mark injected code as
-   `<generated>` (same as `inject_hooks`).
+   indented, so Go ignores it. PR #1499 (still open) marks injected code with
+   `<generated>` line directives. Until it is merged and released, keep the
+   `SkipFrame` workaround.
 7. #469 (no `//orchestrion:ignore`), #671 (`-toolexec` drop-in through
    `GOFLAGS` reported broken; use `otelc go ...`), and #164 (feature parity:
    future taint propagation needs call-site rewriting of expressions;
    `wrap_call` handles only function calls).
+8. **Vendor-only builds are not supported** (found in review). When a project
+   (not in workspace mode) has `vendor/modules.txt`, `otelc go build` switches to `-mod=mod` and reads
+   the module cache, not `vendor/` (`tool/internal/setup/setup.go:360-383`).
+   So the build works when the modules can be downloaded or are in the cache,
+   and our module-root tool file is found there. An offline build that has
+   only `vendor/` fails. (If otelc used `vendor/` in the future, note that
+   `go mod vendor` does not copy our module-root tool file for a sub-package
+   import.) Workspace mode (`go.work`) with vendoring was not tested
+   (`tool/internal/setup/vendor.go:15-36` does not switch it). Document this
+   in the README (phase 4).
 
 ## 6. Risks
 

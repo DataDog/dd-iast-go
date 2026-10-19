@@ -5,7 +5,16 @@
 
 # otelc rules that call IAST when a span finishes. This is the counterpart of
 # internal/spans/orchestrion.yml.
-version: v1.2.0
+#
+# This is a "core" rule: the tool file otel.instrumentation.go at the root of
+# the module imports this package, so the rule loads when an application
+# imports any package of this module (also a sub-package only).
+#
+# The minimum version is the first one that loads a rule file only one time
+# (otelc #1483). The root package and the tool file both reach this file, so an
+# older otelc loads it twice and the build fails. A version of otelc that is
+# built from the main branch always passes this check.
+version: v1.2.1-0
 
 span_finish_declarations:
   target: github.com/DataDog/dd-trace-go/v2/ddtrace/tracer
