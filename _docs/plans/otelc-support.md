@@ -1,10 +1,13 @@
 # Plan: support otelc as an alternative to orchestrion
 
-Status: phase 1 (md5 prototype) done. Sub-package imports work. This needs
-otelc `main` (`v1.2.1-0.20261017145842-4ffef19ce088`) or the first release
-with PR #1483; otelc v1.2.0 stops with "requires otelc >= v1.2.1-0".
+Status: phases 1 to 3 done (md5 prototype, all crypto rules, dd-trace-go bump).
+One known gap remains: the location of PKCS#12 reports with otelc (5.3 item 6).
+Sub-package imports work. This needs otelc `main`
+(`v1.2.1-0.20261017145842-4ffef19ce088`) or the first release with PR #1483;
+otelc v1.2.0 stops with "requires otelc >= v1.2.1-0".
+dd-iast-go uses dd-trace-go `v2.12.0-rc.2`, which has the otelc rules.
 Sections 3.1, 3.3, 3.4 and 3.5 show the results ([P1] = confirmed by the
-phase 1 prototype).
+phase 1 prototype, [P3] = confirmed by the dd-trace-go bump).
 
 ## 1. Goal
 
@@ -97,10 +100,20 @@ confirm.
 - [V] dd-trace-go `main` has otelc support (PR #5117 core, GLS, tracer start;
   #5425 net/http; #5434 database/sql; #5145 chi; #5123 redigo). It ships
   `otelc/all` (module `github.com/DataDog/dd-trace-go/otelc/all/v2`).
-- [V] **No release contains it.** v2.11.1 (2026-10-08) does not. dd-iast-go
-  pins v2.11.0-rc.1.
+- [V] **No stable release contains it.** v2.11.1 (2026-10-08) does not.
+  **[P3]** The release candidate `v2.12.0-rc.2` (2026-10-14) does. dd-iast-go
+  pins it (root, `benchmarks/overhead`, `_integration/otelc` and its two
+  setups; `contrib/net/http` in the benchmarks is aligned to the same version).
+  Orchestrion v1.13.1 still works with it: no bump was needed.
 - [V] dd-trace-go also puts an `inject_code` on `(*Span).Finish`
-  (`span_gls_finish`). dd-iast-go will add a second one on the same function.
+  (`span_gls_finish`). dd-iast-go adds a second one on the same function.
+  **[P3]** The two rules work together in both orders (see 3.3).
+- **[P3]** The core rules of dd-trace-go are in the public packages
+  `ddtrace/tracer` (build flag, GLS, tracer start `create_tracer`) and
+  `instrumentation/appsec/dyngo` (GLS for AppSec operations). The module
+  `otelc/all/v2` only imports these and the `contrib/*/otelc` packages. **The
+  published `otelc/all/v2` cannot be used** (see 5.1 item 7): an application
+  imports the packages directly.
 
 ## 3. Design
 
@@ -237,14 +250,28 @@ load time). The orchestrion advice `InstrumentedSink[x] += n` stays valid.
   - every `otelc.yml` under the tree (also `internal/`, `testdata/`) reaches
     customer builds. Keep test-only rules in separate modules. A nested module
     (a directory with a `go.mod`) is skipped by the walk;
+  - **[P3] `(*Span).Finish` has two injected statements:** dd-trace-go
+    `span_gls_finish` (removes the span from the GLS) and our `span_finish`
+    (attaches the IAST event). They touch different state (the GLS slot, and
+    the tags of the span), so the order does not matter. The test `SpanFinish`
+    shows it: it checks that a sink with no context reports on the active span
+    (GLS), that the event is attached at `Finish`, and that the GLS is empty
+    after `Finish`. The setup `hashonly` imports the dd-trace-go rules first,
+    and the other two import ours first: the generated `Finish` has the
+    opposite order, and the test passes with both. It also passes with
+    Orchestrion;
   - tests: `_integration/otelc` runs the same checks for three tool files
     (root; `iast/crypto/hash` only, `setups/hashonly`; root + `iast/crypto/hash`,
     `setups/rootandhash`). Orchestrion has no equivalent of the root tool file
     for sub-packages, so only the root setup runs with Orchestrion.
 - [V] A tools-only root package works with otelc discovery
   (`tool/internal/setup/config.go:84-131`).
-- The dd-trace-go tracer rules come from the application tool file
-  (`dd-trace-go/otelc/all/v2`), not from dd-iast-go.
+- The dd-trace-go tracer rules come from the application tool file, not from
+  dd-iast-go.
+- **[P3]** `github.com/DataDog/dd-trace-go/otelc/all/v2` is the intended
+  import, but the published module does not work (see 5.1 item 7). Until it is
+  fixed, the tool file imports the public rule packages of dd-trace-go
+  directly. No stop-gap rule package is needed in dd-iast-go (see 5.1 item 8).
 - User setup (README):
 
   ```go
@@ -252,8 +279,14 @@ load time). The orchestrion advice `InstrumentedSink[x] += n` stays valid.
   package tools
 
   import (
-      _ "github.com/DataDog/dd-iast-go"               // IAST rules
-      _ "github.com/DataDog/dd-trace-go/otelc/all/v2" // tracer + integrations
+      _ "github.com/DataDog/dd-iast-go" // IAST rules
+
+      // dd-trace-go rules. Replace by
+      // _ "github.com/DataDog/dd-trace-go/otelc/all/v2" when it works (5.1).
+      _ "github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"               // tracer, GLS
+      _ "github.com/DataDog/dd-trace-go/v2/instrumentation/appsec/dyngo" // AppSec GLS
+      // Add the integrations of your application, for example
+      // _ "github.com/DataDog/dd-trace-go/contrib/net/http/otelc/v2"
   )
   ```
 
@@ -307,14 +340,29 @@ load time). The orchestrion advice `InstrumentedSink[x] += n` stays valid.
    `otelc pin --validate` (it prunes and passes on invalid rules, 2.2). Also
    assert that `.otelc-build/matched.json` lists every expected rule. Also
    build and run `_integration/otelc/cmd/app` with each tool (it calls a sink
-   from a package initializer: checks that startup does not panic).
+   from a package initializer: checks that startup does not panic. **[P3]**
+   With otelc, the app does not start the tracer: dd-trace-go `create_tracer`
+   does it, and the app stops if the tracer or the GLS does not work).
+   **[P3]** Run `otelc go test . ./internal/...` in `_integration/otelc`, not
+   `./...`: with the tracer rules, the package `cmd/app` makes the build of the
+   test binary fail (5.1 item 9).
+   `TestMatchedRules` asserts the dd-iast-go rules exactly (each one matches
+   one time, nothing else of ours), and only that the dd-trace-go core rules
+   are present (the list changes with the tracer version).
+   Use a separate `GOCACHE` for each tool in CI (for example, one cache key
+   for each tool). The caches are not shared between tools by default, and an
+   earlier run that shared one cache once failed with a fingerprint
+   mismatch (not reproduced in review).
    Use Go 1.26.x: orchestrion v1.13.1 fails with Go 1.27 (`export data
    version 5 is greater than maximum supported version 4`), also without
    this change.
 5. Benchmarks: `benchmarks/overhead` is a separate module
    (`benchmarks/overhead/go.mod`). It needs its own `otel.instrumentation.go`,
-   an otelc tool dependency, and a pinned `dd-trace-go/otelc/all` /
-   `contrib/net/http` version. `runner/main.go:471` must build with either
+   an otelc tool dependency, and a pinned `contrib/net/http` version. **[P3]**
+   `otelc/all` cannot be used (5.1 item 7): the tool file imports the
+   dd-trace-go rule packages directly: `ddtrace/tracer`,
+   `instrumentation/appsec/dyngo`, and the `otelc` rule package of each contrib
+   that the benchmark uses. `runner/main.go:471` must build with either
    tool. Set an explicit overhead limit for otelc versus orchestrion
    (for example: not more than orchestrion + 5%).
 6. System tests: need a `net-http-otelc` weblog in `DataDog/system-tests`
@@ -329,21 +377,21 @@ Estimates are for one engineer, with an agent, after this plan is approved.
 | # | Phase | Output | Estimate |
 |---|---|---|---|
 | 1 | **Done.** md5 prototype, `Span.Finish` rule (needed for end-to-end reports), build flag, `_integration/otelc` module | End-to-end tests pass with both tools | done |
-| 2 | Port sha1, md4 and all cipher rules; move remaining tests to `build.Instrumented()` | Integration tests pass with both tools | 1 day |
-| 3 | Bump dd-trace-go to a `main` pseudo-version; test `Span.Finish` with dd-trace-go `span_gls_finish` | Span tests pass with both tools | 0.5 day |
+| 2 | **Done.** Port sha1, md4 and all cipher rules; move remaining tests to `build.Instrumented()` | Integration tests pass with both tools | done |
+| 3 | **Done.** Bump dd-trace-go to `v2.12.0-rc.2`; test `Span.Finish` with dd-trace-go `span_gls_finish` | Span tests pass with both tools | done |
 | 4 | CI job, matched-rule assertion, docs, licenses | Green CI for both tools | 0.5 day |
 | 5 | Benchmarks for otelc | Overhead numbers side by side, under the limit | 1 day |
 | 6 | System tests (blocked by 5.2) | `system-tests.yml` with otelc | 1 day after the weblog exists |
 
-Remaining phases 2 to 4: about 2 days. Phases 5 and 6: about 2 days more.
+Remaining phase 4: about 0.5 day. Phases 5 and 6: about 2 days more.
 
 ## 5. Gaps outside dd-iast-go (for Romain)
 
 ### 5.1 dd-trace-go
 
-1. **Release with otelc support.** #5117 and the integrations are on `main`
-   only. dd-iast-go must depend on a release that contains `otelc/all` and
-   `ddtrace/tracer/otelc.yaml`. Until then, pin a `main` pseudo-version.
+1. **Release with otelc support.** [P3] `v2.12.0-rc.2` has it (`otelc/all`
+   and `ddtrace/tracer/otelc.yaml`). dd-iast-go pins it. Change to the stable
+   v2.12.0 when it is out.
 2. **Tracer starts at the top of `main`, not in `init()`.** The otelc rule
    `create_tracer` (`ddtrace/tracer/otelc.yaml:169-193` on `main`) says spans
    from package `init()` are lost. Orchestrion starts the tracer in `init()`.
@@ -353,10 +401,12 @@ Remaining phases 2 to 4: about 2 days. Phases 5 and 6: about 2 days more.
    `init()`. No action.
 3. **Rule ordering on `(*Span).Finish`.** dd-trace-go `span_gls_finish` and the
    dd-iast-go rule both inject at the start of `Finish`. The order is not
-   defined (otelc #583). Ask dd-trace-go to confirm that the order is not
-   important, or to give a stable extension point (for example, a public
-   "on span finish" callback that dd-iast-go can use without compile-time
-   rules). The callback also removes the need for our `Span.Finish` rule.
+   defined (otelc #583). [P3] Tested in both orders: no problem today. Ask
+   dd-trace-go to keep it that way (the `Finish` rules must not depend on the
+   tags of the span), or to give a stable extension point (for example, a
+   public "on span finish" callback that dd-iast-go can use without
+   compile-time rules). The callback also removes the need for our
+   `Span.Finish` rule.
 4. **Tool detection is internal.** `internal/orchestrion.Enabled()` stays false
    under otelc. The otelc flag (`internal/otelc.Enabled()`) is internal.
    - Telemetry (`ddtrace/tracer/telemetry.go:59,97,122`) reports only
@@ -370,6 +420,33 @@ Remaining phases 2 to 4: about 2 days. Phases 5 and 6: about 2 days more.
    echo, gorilla/mux, fiber, fasthttp, gqlgen (#5142), grpc (#5144), and
    `contrib/os` (LFI/CMDi). Also issue #5514 (racy `Server.Handler` write in the
    net/http `Serve` rule, both tools).
+
+7. **[P3] `otelc/all/v2` cannot be used.** The published go.mod of
+   `github.com/DataDog/dd-trace-go/otelc/all/v2` (rc.1, rc.2 and dev) has
+   `replace ... => ../../...` directives. otelc loads the imported package
+   from the module cache directory of `otelc/all/v2`, where it is the main
+   module and the replace paths do not exist. The build stops with `package
+   github.com/DataDog/dd-trace-go/v2/ddtrace/tracer is not part of a module`
+   (`go list` there: `reading ../../contrib/database/sql/otelc/go.mod: no such
+   file`). Workaround in this repo: import `ddtrace/tracer` and
+   `instrumentation/appsec/dyngo` (the core rules) directly; contrib packages
+   can be imported the same way. dd-trace-go must publish the module with no
+   `replace` (or otelc must load the package from the application module).
+8. **[P3] No stop-gap rule package.** Under otelc with dd-trace-go
+   `v2.12.0-rc.2`, no dd-trace-go gap blocks dd-iast-go. Evidence: the full
+   suite passes in the three setups with the core rules of dd-trace-go
+   (`TestMatchedRules` lists `span_gls_*`, `enable_otelc_flag`, `gls_*`
+   rules and ours with no duplicate), the tracer starts from `create_tracer`
+   in `cmd/app` (`tracer_started=true gls=true gls_after_finish=false`), and
+   a sink with no context finds the active span through the GLS. So
+   `instrumentation/ddtrace-go/` or similar is not created.
+9. **[P3] `create_tracer` breaks `otelc go test ./...` when the module has a
+   `main` package.** The rule has `target: main`. With a main package in the
+   module (`_integration/otelc/cmd/app`), the build of the test binary of
+   another package stops with `cannot replace .../cmd/app/main.go with
+   $WORK/b001/main.go` (compile of `_testmain.go`). The test binary alone is
+   fine. Workaround: list the packages without `cmd/` (`. ./internal/...`).
+   This looks like the same family as otelc #1347 / #1348 (5.3 item 1).
 
 ### 5.2 system-tests
 
@@ -393,8 +470,30 @@ Remaining phases 2 to 4: about 2 days. Phases 5 and 6: about 2 days more.
    core rule files to it.
 6. `inject_code` gets no `//line` marker, and a `//line` comment in `raw` is
    indented, so Go ignores it. PR #1499 (still open) marks injected code with
-   `<generated>` line directives. Until it is merged and released, keep the
-   `SkipFrame` workaround.
+   `<generated>` line directives and keeps the original path and lines of the
+   rewritten file. Until it is merged and released, keep the `SkipFrame`
+   workaround.
+   **Known gap, found in review:** without #1499, the location of a report
+   inside a rewritten package is wrong with otelc. The path has no directory
+   (`crypto.go`, and not the module cache path of Orchestrion), and the line is
+   moved down by the injected lines. In `x/crypto/pkcs12` (v0.58.0):
+   the PBE report is at `crypto.go:92` (Orchestrion: `.../crypto.go:90`), the
+   RC2 report at `:52` (`:50`), and the TripleDES report at `:37` (`:36`).
+   The first frame of the stack differs in the same way. Locations in the
+   application code are not affected (hash and direct cipher tests have the
+   same locations for both tools). The location is part of the hash of the
+   vulnerability, so this changes the grouping of the PBE reports.
+   **[P4] Probe of #1499** (head `ce8ecb3a`, as a `replace` in a /tmp copy):
+   path, line and first stack frame of the PBE, RC2 and TripleDES reports are
+   identical to Orchestrion (only the frame index differs: 0, and 1 for
+   Orchestrion), all other integration tests pass, and the `SkipFrame` lists of
+   hash and cipher can be removed (`/<generated>` frames are skipped by
+   `IsGeneratedFile`; without the lists, the suite passes with #1499 and fails
+   without it). So when a release has #1499: bump the pin, delete
+   `knownOtelcPKCS12Gap` and the "gap" code in
+   `_integration/otelc/internal/suite/cipher.go` (the test fails with "known
+   gap closed" until then, on purpose), and remove `sinkFrames` and
+   `sinkFrame` in `iast/crypto`.
 7. #469 (no `//orchestrion:ignore`), #671 (`-toolexec` drop-in through
    `GOFLAGS` reported broken; use `otelc go ...`), and #164 (feature parity:
    future taint propagation needs call-site rewriting of expressions;

@@ -6,7 +6,10 @@
 # otelc (go.opentelemetry.io/otelc) rules for weak hash detection. This is the
 # counterpart of orchestrion.yml in the same directory.
 #
-# Phase 1 prototype: only crypto/md5 is ported.
+# Every standard library or x/crypto package that has a sink gets one "add_file"
+# rule (the declarations and the sink count) and one "inject_code" rule per sink
+# function. Keep the count in each otelc_decl_<package>.go file equal to the
+# number of "inject_code" rules of its package.
 version: v1.2.0
 
 # Declares the go:linkname functions in crypto/md5 and registers the sink count.
@@ -37,5 +40,51 @@ md5_sum:
   do:
     - inject_code:
         raw: __dd__iast_ReportWeakHash__(nil, crypto.MD5)
+  imports:
+    crypto: crypto
+
+# golang.org/x/crypto/md4.New. md4 has no Sum function.
+md4_declarations:
+  target: golang.org/x/crypto/md4
+  do:
+    - add_file:
+        file: otelc_decl_md4.go
+        path: github.com/DataDog/dd-iast-go/iast/crypto/hash
+
+md4_new:
+  target: golang.org/x/crypto/md4
+  where:
+    func: New
+  do:
+    - inject_code:
+        raw: __dd__iast_ReportWeakHash__(nil, crypto.MD4)
+  imports:
+    crypto: crypto
+
+sha1_declarations:
+  target: crypto/sha1
+  do:
+    - add_file:
+        file: otelc_decl_sha1.go
+        path: github.com/DataDog/dd-iast-go/iast/crypto/hash
+
+sha1_new:
+  target: crypto/sha1
+  where:
+    func: New
+  do:
+    - inject_code:
+        raw: __dd__iast_ReportWeakHash__(nil, crypto.SHA1)
+  imports:
+    crypto: crypto
+
+# sha1.Sum (not the (*digest).Sum method).
+sha1_sum:
+  target: crypto/sha1
+  where:
+    func: Sum
+  do:
+    - inject_code:
+        raw: __dd__iast_ReportWeakHash__(nil, crypto.SHA1)
   imports:
     crypto: crypto

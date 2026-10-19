@@ -14,5 +14,5 @@ import (
 // TestSuite runs the checks with the tool file of this module, which imports the
 // root package of dd-iast-go ("root" setup).
 func TestSuite(t *testing.T) {
-	suite.Run(t)
+	suite.Run(t, suite.Config{Cipher: true})
 }

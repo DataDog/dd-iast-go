@@ -24,7 +24,6 @@ import (
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/mocktracer"
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
 	"github.com/DataDog/dd-trace-go/v2/instrumentation"
-	"github.com/DataDog/orchestrion/runtime/built"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -93,9 +92,30 @@ func TestRegisterInstrumentedSinks(t *testing.T) {
 	}
 }
 
+func TestReportWeakHashDisabled(t *testing.T) {
+	original := config.Enabled
+	config.Enabled = false
+	t.Cleanup(func() { config.Enabled = original })
+
+	mockTracer := mocktracer.Start()
+	t.Cleanup(mockTracer.Stop)
+	before := telemetry.ExecutedSink.WeakHash.Load()
+
+	// The disabled sink makes no report and no allocation, for every hash.
+	allocations := testing.AllocsPerRun(10, func() {
+		for _, algorithm := range []crypto.Hash{crypto.MD4, crypto.MD5, crypto.SHA1} {
+			hash.ReportWeakHash(context.Background(), algorithm)
+		}
+	})
+
+	assert.Zero(t, allocations)
+	assert.Empty(t, mockTracer.FinishedSpans())
+	assert.Equal(t, before, telemetry.ExecutedSink.WeakHash.Load())
+}
+
 func TestSHA1(t *testing.T) {
-	if !built.WithOrchestrion {
-		t.Skip("orchestrion is not enabled, use `go tool orchestrion go test` to run this test suite")
+	if !build.Instrumented() {
+		t.Skip("the build is not instrumented, use `go tool orchestrion go test` to run this test suite")
 	}
 	mockTracer := mocktracer.Start()
 	t.Cleanup(mockTracer.Stop)
@@ -134,8 +154,8 @@ func TestSHA1(t *testing.T) {
 }
 
 func TestHash(t *testing.T) {
-	if !built.WithOrchestrion {
-		t.Skip("orchestrion is not enabled, use `go tool orchestrion go test` to run this test suite")
+	if !build.Instrumented() {
+		t.Skip("the build is not instrumented, use `go tool orchestrion go test` to run this test suite")
 	}
 
 	// For this test we specifically don't want deduplication to happen.

@@ -11,6 +11,8 @@
 package setup
 
 import (
-	_ "github.com/DataDog/dd-iast-go"                  // All detections
-	_ "github.com/DataDog/dd-iast-go/iast/crypto/hash" // Also a sub-package
+	_ "github.com/DataDog/dd-iast-go"                                  // All detections
+	_ "github.com/DataDog/dd-iast-go/iast/crypto/hash"                 // Also a sub-package
+	_ "github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"               // tracer rules
+	_ "github.com/DataDog/dd-trace-go/v2/instrumentation/appsec/dyngo" // AppSec GLS rules
 )

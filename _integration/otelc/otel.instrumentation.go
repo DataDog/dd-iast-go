@@ -11,5 +11,7 @@
 package otelc
 
 import (
-	_ "github.com/DataDog/dd-iast-go" // IAST rules
+	_ "github.com/DataDog/dd-iast-go"                                  // IAST rules
+	_ "github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"               // tracer rules
+	_ "github.com/DataDog/dd-trace-go/v2/instrumentation/appsec/dyngo" // AppSec GLS rules
 )

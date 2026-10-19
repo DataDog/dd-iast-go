@@ -9,6 +9,7 @@ import (
 	"context"
 	"crypto"
 
+	"github.com/DataDog/dd-iast-go/internal/config"
 	"github.com/DataDog/dd-iast-go/internal/instrumentation/telemetry"
 	"github.com/DataDog/dd-iast-go/internal/model/constants"
 	"github.com/DataDog/dd-iast-go/internal/vulnerability"
@@ -16,6 +17,12 @@ import (
 
 // ReportWeakHash reports use of a cryptographically weak hash algorithm.
 func ReportWeakHash(ctx context.Context, hash crypto.Hash) {
+	// This check is also in vulnerability.Report. It comes first here so that a
+	// disabled IAST does not pay for the list of skipped frames.
+	if !config.Enabled {
+		return
+	}
+
 	vulnerability.Report(
 		ctx,
 		constants.VulnerabilityTypeWeakHash,

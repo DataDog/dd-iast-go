@@ -12,5 +12,5 @@ import (
 )
 
 func TestSuite(t *testing.T) {
-	suite.Run(t)
+	suite.Run(t, suite.Config{Cipher: false})
 }
