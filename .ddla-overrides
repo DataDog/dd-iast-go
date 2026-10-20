@@ -121,6 +121,23 @@
   {
     "override_type": "replace",
     "target": {
+      "component": "go.opentelemetry.io/otelc",
+      "origin": "https://go.opentelemetry.io/otelc"
+    },
+    "replacement": {
+      "name": "go.opentelemetry.io/otelc",
+      "origin": "https://go.opentelemetry.io/otelc",
+      "license": [
+        "Apache-2.0"
+      ],
+      "copyright": [
+        "The OpenTelemetry Authors"
+      ]
+    }
+  },
+  {
+    "override_type": "replace",
+    "target": {
       "component": "go.opentelemetry.io/proto/otlp",
       "origin": "https://go.opentelemetry.io/proto/otlp"
     },
