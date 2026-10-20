@@ -24,9 +24,12 @@ jobs:
           persist-credentials: false
       - name: Validate third-party licenses
         id: dd-license-attribution
-        uses: DataDog/dd-license-attribution@707ae617850dc985f996e3cda4d682e433dec471 # main
+        uses: DataDog/dd-license-attribution@b6152ca0093f3026b550ac264844956efc878075 # v0.8.0
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
+          # The v0.8.0 action still defaults to package 0.7.2, which lacks the
+          # pluggy<1.7 pin. Remove this when the action default is 0.8.0+.
+          package-version: '0.8.0'
           override-spec: .ddla-overrides
           go-version: 'stable'
           github-sbom-strategy: false
