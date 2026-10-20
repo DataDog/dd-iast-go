@@ -52,8 +52,14 @@ new and changed instrumentation:
   `hash.ReportWeakHash`), and call it from both tools. Keep the code that is
   specific to one tool (the YAML rules and the injected snippets) as small as
   possible. Do not copy logic between the two.
-- ALWAYS test both tools: the Orchestrion tests (`go tool orchestrion go test`)
-  and the otelc integration tests (`_integration/otelc`).
+- ALWAYS test both tools. Run the unit tests with Orchestrion
+  (`go tool orchestrion go test ./...`) and with otelc
+  (`scripts/otelc-test.sh`), and run the end-to-end tests in
+  `_integration/otelc` with both tools. CI runs all of them.
+- In a test that requires instrumentation, skip with `build.Instrumented()`
+  (from `internal/build`), never with `built.WithOrchestrion`. Do not use a
+  feature of one tool only (for example the `//dd:span` directive). Read the
+  "Testing" section of `CONTRIBUTING.md`.
 
 Reviewers MUST check feature parity between the two tools. A change that
 makes the `orchestrion.yml` and `otelc.yml` aspects differ (different targets,

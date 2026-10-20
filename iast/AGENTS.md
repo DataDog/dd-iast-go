@@ -1,8 +1,9 @@
 # Agent Instructions
 
-Each package under `iast` MUST have its instrumentation for both tools: an
-`orchestrion.yml` file for [orchestrion] and an `otelc.yml` file for [otelc].
-The two files MUST give the same detections (feature parity). Read the
+Each instrumentation aspect in a package under `iast` MUST have a definition
+for both tools: in the `orchestrion.yml` file for [orchestrion] and in the
+`otelc.yml` file for [otelc]. The two files MUST give the same detections
+(feature parity). Read the
 "Instrumentation Back-Ends" section of the repository-root `AGENTS.md` for the
 complete rules.
 
@@ -15,6 +16,9 @@ When you add, change, or remove an aspect in a package under `iast`:
 - Put the detection logic in the Go code of the package (for example
   `ReportWeakHash` in `iast/crypto/hash`). The two YAML files must only call
   this shared code. Do not copy logic into the injected snippets.
+- Add or update the unit tests of the package. They must pass with both
+  `go tool orchestrion go test` and `scripts/otelc-test.sh`. Skip them with
+  `build.Instrumented()` when the build is not instrumented.
 - Add or update the end-to-end checks in `_integration/otelc/internal/suite`.
   These checks run with both tools, so they show differences between the two.
 

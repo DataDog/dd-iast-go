@@ -38,7 +38,7 @@ func init() {
 
 func TestMD5(t *testing.T) {
 	if !build.Instrumented() {
-		t.Skip("the build is not instrumented, use `go tool orchestrion go test` to run this test suite")
+		t.Skip("the build is not instrumented, use `go tool orchestrion go test` or `scripts/otelc-test.sh` to run this test suite")
 	}
 
 	mockTracer := mocktracer.Start()
@@ -115,7 +115,7 @@ func TestReportWeakHashDisabled(t *testing.T) {
 
 func TestSHA1(t *testing.T) {
 	if !build.Instrumented() {
-		t.Skip("the build is not instrumented, use `go tool orchestrion go test` to run this test suite")
+		t.Skip("the build is not instrumented, use `go tool orchestrion go test` or `scripts/otelc-test.sh` to run this test suite")
 	}
 	mockTracer := mocktracer.Start()
 	t.Cleanup(mockTracer.Stop)
@@ -155,7 +155,7 @@ func TestSHA1(t *testing.T) {
 
 func TestHash(t *testing.T) {
 	if !build.Instrumented() {
-		t.Skip("the build is not instrumented, use `go tool orchestrion go test` to run this test suite")
+		t.Skip("the build is not instrumented, use `go tool orchestrion go test` or `scripts/otelc-test.sh` to run this test suite")
 	}
 
 	// For this test we specifically don't want deduplication to happen.
@@ -191,8 +191,12 @@ func TestHash(t *testing.T) {
 
 	expectedVulns := make([]model.Vulnerability, 0, len(cases))
 
-	//dd:span span.name:test
-	func(ctx context.Context) {
+	// Create the span explicitly (not with a "//dd:span" directive): the
+	// directive is an Orchestrion feature, and this test must also run with otelc.
+	func() {
+		span, _ := tracer.StartSpanFromContext(context.Background(), "test")
+		defer span.Finish()
+
 		for alg, exp := range cases {
 			h := indirectCall0(alg.New)
 			n, err := h.Write([]byte("hello"))
@@ -201,7 +205,6 @@ func TestHash(t *testing.T) {
 			act := h.Sum(nil)
 			assert.Equal(t, exp.Digest, act, "hash algorithm %s", alg)
 
-			span, _ := tracer.SpanFromContext(ctx)
 			expectedVulns = append(expectedVulns, model.NewVulnerability(
 				constants.VulnerabilityTypeWeakHash,
 				model.NewEvidenceString(alg.String()),
@@ -213,7 +216,7 @@ func TestHash(t *testing.T) {
 				},
 			))
 		}
-	}(context.Background())
+	}()
 
 	spanList := mockTracer.FinishedSpans()
 

@@ -10,13 +10,13 @@ import (
 	"os"
 	"testing"
 
+	"github.com/DataDog/dd-iast-go/internal/build"
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/mocktracer"
-	"github.com/DataDog/orchestrion/runtime/built"
 )
 
 func TestControlVariant(t *testing.T) {
-	if !built.WithOrchestrion {
-		t.Skip("orchestrion is not enabled, use `go tool orchestrion go test` to run this test suite")
+	if !build.Instrumented() {
+		t.Skip("the build is not instrumented, use the overhead benchmark runner (go run ./runner) to run this test suite")
 	}
 	if os.Getenv("DD_IAST_BENCH_EXPECT") != "control" {
 		t.Skip("variant validation is run by the overhead benchmark runner")
@@ -30,8 +30,8 @@ func TestControlVariant(t *testing.T) {
 }
 
 func TestWovenVariant(t *testing.T) {
-	if !built.WithOrchestrion {
-		t.Skip("orchestrion is not enabled, use `go tool orchestrion go test` to run this test suite")
+	if !build.Instrumented() {
+		t.Skip("the build is not instrumented, use the overhead benchmark runner (go run ./runner) to run this test suite")
 	}
 	if os.Getenv("DD_IAST_BENCH_EXPECT") != "iast" {
 		t.Skip("variant validation is run by the overhead benchmark runner")

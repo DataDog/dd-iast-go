@@ -66,7 +66,11 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
-    name: Unit Tests
+    name: Unit Tests (${{ matrix.tool }})
+    strategy:
+      fail-fast: false
+      matrix:
+        tool: [orchestrion, otelc]
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -74,7 +78,11 @@ jobs:
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: oldstable
-      - name: Unit Tests
+      - name: Unit Tests (orchestrion)
+        if: matrix.tool == 'orchestrion'
+        env:
+          # The tests of internal/build fail if the build tool is not this one.
+          DD_IAST_EXPECTED_BUILD_TOOL: orchestrion
         run: |
           go tool orchestrion go test \
             -shuffle=on \
@@ -82,16 +90,66 @@ jobs:
             -coverpkg=./... \
             -coverprofile=coverage.txt \
             ./...
+      # otelc cannot build all the packages of this module in one "go test"
+      # command. The script runs the tests that need instrumentation, one
+      # package at a time. See scripts/otelc-test.sh.
+      - name: Unit Tests (otelc)
+        if: matrix.tool == 'otelc'
+        run: scripts/otelc-test.sh -shuffle=on
       - name: Overhead benchmark unit tests
+        if: matrix.tool == 'orchestrion'
         run: go -C benchmarks/overhead test -shuffle=on ./...
+      # Only the Orchestrion run makes a coverage profile: it builds all the
+      # packages of the module in one command.
       - name: Upload coverage artifact
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && matrix.tool == 'orchestrion' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: coverage-profile
           path: coverage.txt
           retention-days: 1
           if-no-files-found: ignore
+
+  integration:
+    runs-on: ubuntu-latest
+    name: Integration Tests (${{ matrix.module }}, ${{ matrix.tool }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # The main module of the end-to-end tests runs with both tools, so
+          # that the two tools are compared on the same code.
+          - module: _integration/otelc
+            tool: orchestrion
+            packages: . ./internal/...
+          - module: _integration/otelc
+            tool: otelc
+            packages: . ./internal/...
+          # The setups import only a part of dd-iast-go. Only otelc supports
+          # this (see _integration/otelc/doc.go).
+          - module: _integration/otelc/setups/hashonly
+            tool: otelc
+            packages: ./...
+          - module: _integration/otelc/setups/rootandhash
+            tool: otelc
+            packages: ./...
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Setup Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: oldstable
+          cache-dependency-path: ${{ matrix.module }}/go.sum
+      - name: Integration Tests
+        working-directory: ${{ matrix.module }}
+        env:
+          TOOL: ${{ matrix.tool }}
+          PACKAGES: ${{ matrix.packages }}
+        # PACKAGES can contain more than one package pattern, separated by spaces.
+        run: |
+          read -r -a packages <<< "${PACKAGES}"
+          go tool "${TOOL}" go test -shuffle=on "${packages[@]}"
 
   upload-coverage:
     needs: test
@@ -180,7 +238,7 @@ jobs:
   green-ci:
     runs-on: ubuntu-latest
     name: Green CI
-    needs: [validate-licenses, lint, test, upload-coverage, benchmark]
+    needs: [validate-licenses, lint, test, integration, upload-coverage, benchmark]
     if: always()
     steps:
       - name: Success
@@ -188,6 +246,7 @@ jobs:
           needs.validate-licenses.result  == 'success'
           && needs.lint.result            == 'success'
           && needs.test.result            == 'success'
+          && needs.integration.result     == 'success'
           && needs.upload-coverage.result == 'success'
           && needs.benchmark.result       == 'success'
         run: echo "Success!"
@@ -196,6 +255,7 @@ jobs:
           needs.validate-licenses.result  != 'success'
           || needs.lint.result            != 'success'
           || needs.test.result            != 'success'
+          || needs.integration.result     != 'success'
           || needs.upload-coverage.result != 'success'
           || needs.benchmark.result       != 'success'
         run: echo "Failure!" && exit 1
