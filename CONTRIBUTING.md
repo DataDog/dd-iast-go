@@ -93,9 +93,7 @@ go -C _integration/otelc/setups/hashonly tool otelc go test -shuffle=on ./...
 go -C _integration/otelc/setups/rootandhash tool otelc go test -shuffle=on ./...
 ```
 
-Run the tests for the separate overhead benchmark module as well. This module
-and its runner use only Orchestrion today: the otelc rules above do not apply
-to it yet.
+Run the tests for the separate overhead benchmark module as well:
 
 ```console
 go -C benchmarks/overhead test -shuffle=on ./...
@@ -214,6 +212,10 @@ For a quick smoke run:
 ```console
 go -C benchmarks/overhead run ./runner -count=2 -benchtime=100ms
 ```
+
+The runner builds with Orchestrion by default. Use `-tool=otelc` to build with
+otelc. CI runs the benchmarks with both tools. Check that a change has a
+similar overhead with both tools.
 
 See [`benchmarks/overhead/README.md`](benchmarks/overhead/README.md) for the
 available workloads, output files, and guidance for interpreting results.

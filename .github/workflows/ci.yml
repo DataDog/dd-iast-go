@@ -195,8 +195,12 @@ jobs:
 
   benchmark:
     runs-on: ubuntu-latest
-    name: Benchmarks
+    name: Benchmarks (${{ matrix.tool }})
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        tool: [orchestrion, otelc]
     env:
       BENCHMARK_OUTPUT_DIR: ${{ github.workspace }}/benchmark-results
     steps:
@@ -209,8 +213,11 @@ jobs:
       - name: Prepare artifact directory
         run: mkdir -p "$BENCHMARK_OUTPUT_DIR"
       - name: Run benchmarks
+        env:
+          TOOL: ${{ matrix.tool }}
         run: |
           go -C benchmarks/overhead run ./runner \
+            -tool="${TOOL}" \
             -outputdir="$BENCHMARK_OUTPUT_DIR" \
             -count=2 \
             -benchtime=100ms \
@@ -218,10 +225,12 @@ jobs:
       - name: Add comparison to job summary
         if: ${{ !cancelled() }}
         shell: bash
+        env:
+          TOOL: ${{ matrix.tool }}
         run: |
           if [[ -s "$BENCHMARK_OUTPUT_DIR/comparison.txt" ]]; then
             {
-              echo '## IAST overhead benchmark comparison'
+              echo "## IAST overhead benchmark comparison (${TOOL})"
               echo '```text'
               cat "$BENCHMARK_OUTPUT_DIR/comparison.txt"
               echo '```'
@@ -231,7 +240,7 @@ jobs:
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: overhead-benchmark-results
+          name: overhead-benchmark-results-${{ matrix.tool }}
           path: ${{ env.BENCHMARK_OUTPUT_DIR }}
           retention-days: 7
 
