@@ -39,6 +39,30 @@ As a consequence of these principles:
   that instrumentation will use to track untrusted values through the program
   flow.
 
+## Instrumentation Back-Ends (Orchestrion and otelc)
+
+This module supports two compile-time instrumentation tools: [orchestrion] and
+[otelc]. Both tools MUST give the same detections. These rules apply to all
+new and changed instrumentation:
+
+- ALWAYS write each aspect for both tools: an `orchestrion.yml` rule and the
+  equivalent `otelc.yml` rule (with its `otelc_decl_<package>.go` file when
+  necessary). Do not add, change, or remove an aspect for one tool only.
+- ALWAYS put the detection logic in shared Go code (for example
+  `hash.ReportWeakHash`), and call it from both tools. Keep the code that is
+  specific to one tool (the YAML rules and the injected snippets) as small as
+  possible. Do not copy logic between the two.
+- ALWAYS test both tools: the Orchestrion tests (`go tool orchestrion go test`)
+  and the otelc integration tests (`_integration/otelc`).
+
+Reviewers MUST check feature parity between the two tools. A change that
+makes the `orchestrion.yml` and `otelc.yml` aspects differ (different targets,
+sinks, sink counts, or reported data) is a defect, unless the change gives an
+explicit reason why the tool cannot support it.
+
+[orchestrion]: https://github.com/DataDog/orchestrion
+[otelc]: https://github.com/open-telemetry/opentelemetry-go-compile-instrumentation
+
 ## Plans
 
 Before implementing any significant feature:
