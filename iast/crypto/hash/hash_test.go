@@ -13,7 +13,10 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/DataDog/dd-iast-go/iast/crypto/hash"
+	"github.com/DataDog/dd-iast-go/internal/build"
 	"github.com/DataDog/dd-iast-go/internal/config"
+	"github.com/DataDog/dd-iast-go/internal/instrumentation/telemetry"
 	"github.com/DataDog/dd-iast-go/internal/model"
 	"github.com/DataDog/dd-iast-go/internal/model/constants"
 	"github.com/DataDog/dd-iast-go/internal/spans"
@@ -21,7 +24,6 @@ import (
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/mocktracer"
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
 	"github.com/DataDog/dd-trace-go/v2/instrumentation"
-	"github.com/DataDog/orchestrion/runtime/built"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -35,8 +37,8 @@ func init() {
 }
 
 func TestMD5(t *testing.T) {
-	if !built.WithOrchestrion {
-		t.Skip("orchestrion is not enabled, use `go tool orchestrion go test` to run this test suite")
+	if !build.Instrumented() {
+		t.Skip("the build is not instrumented, use `go tool orchestrion go test` or `scripts/otelc-test.sh` to run this test suite")
 	}
 
 	mockTracer := mocktracer.Start()
@@ -73,9 +75,47 @@ func TestMD5(t *testing.T) {
 		&event)
 }
 
+func TestRegisterInstrumentedSinks(t *testing.T) {
+	before := telemetry.InstrumentedSink
+	t.Cleanup(func() { telemetry.InstrumentedSink = before })
+
+	hash.RegisterInstrumentedSinks(2)
+	hash.RegisterInstrumentedSinks(3)
+
+	assert.Equal(t,
+		before[constants.VulnerabilityTypeWeakHash]+5,
+		telemetry.InstrumentedSink[constants.VulnerabilityTypeWeakHash])
+	for i, count := range telemetry.InstrumentedSink {
+		if constants.VulnerabilityType(i) != constants.VulnerabilityTypeWeakHash {
+			assert.Equal(t, before[i], count, "unexpected change for %s", constants.VulnerabilityType(i))
+		}
+	}
+}
+
+func TestReportWeakHashDisabled(t *testing.T) {
+	original := config.Enabled
+	config.Enabled = false
+	t.Cleanup(func() { config.Enabled = original })
+
+	mockTracer := mocktracer.Start()
+	t.Cleanup(mockTracer.Stop)
+	before := telemetry.ExecutedSink.WeakHash.Load()
+
+	// The disabled sink makes no report and no allocation, for every hash.
+	allocations := testing.AllocsPerRun(10, func() {
+		for _, algorithm := range []crypto.Hash{crypto.MD4, crypto.MD5, crypto.SHA1} {
+			hash.ReportWeakHash(context.Background(), algorithm)
+		}
+	})
+
+	assert.Zero(t, allocations)
+	assert.Empty(t, mockTracer.FinishedSpans())
+	assert.Equal(t, before, telemetry.ExecutedSink.WeakHash.Load())
+}
+
 func TestSHA1(t *testing.T) {
-	if !built.WithOrchestrion {
-		t.Skip("orchestrion is not enabled, use `go tool orchestrion go test` to run this test suite")
+	if !build.Instrumented() {
+		t.Skip("the build is not instrumented, use `go tool orchestrion go test` or `scripts/otelc-test.sh` to run this test suite")
 	}
 	mockTracer := mocktracer.Start()
 	t.Cleanup(mockTracer.Stop)
@@ -114,8 +154,8 @@ func TestSHA1(t *testing.T) {
 }
 
 func TestHash(t *testing.T) {
-	if !built.WithOrchestrion {
-		t.Skip("orchestrion is not enabled, use `go tool orchestrion go test` to run this test suite")
+	if !build.Instrumented() {
+		t.Skip("the build is not instrumented, use `go tool orchestrion go test` or `scripts/otelc-test.sh` to run this test suite")
 	}
 
 	// For this test we specifically don't want deduplication to happen.
@@ -151,8 +191,12 @@ func TestHash(t *testing.T) {
 
 	expectedVulns := make([]model.Vulnerability, 0, len(cases))
 
-	//dd:span span.name:test
-	func(ctx context.Context) {
+	// Create the span explicitly (not with a "//dd:span" directive): the
+	// directive is an Orchestrion feature, and this test must also run with otelc.
+	func() {
+		span, _ := tracer.StartSpanFromContext(context.Background(), "test")
+		defer span.Finish()
+
 		for alg, exp := range cases {
 			h := indirectCall0(alg.New)
 			n, err := h.Write([]byte("hello"))
@@ -161,7 +205,6 @@ func TestHash(t *testing.T) {
 			act := h.Sum(nil)
 			assert.Equal(t, exp.Digest, act, "hash algorithm %s", alg)
 
-			span, _ := tracer.SpanFromContext(ctx)
 			expectedVulns = append(expectedVulns, model.NewVulnerability(
 				constants.VulnerabilityTypeWeakHash,
 				model.NewEvidenceString(alg.String()),
@@ -173,7 +216,7 @@ func TestHash(t *testing.T) {
 				},
 			))
 		}
-	}(context.Background())
+	}()
 
 	spanList := mockTracer.FinishedSpans()
 

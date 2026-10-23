@@ -10,16 +10,24 @@ import (
 	"os"
 	"testing"
 
+	"github.com/DataDog/dd-iast-go/internal/build"
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/mocktracer"
-	"github.com/DataDog/orchestrion/runtime/built"
 )
 
+// The runner sets DD_IAST_BENCH_EXPECT ("control" or "iast") and
+// DD_IAST_BENCH_TOOL (the tool that built the variants) to validate each
+// variant before it measures it.
+
 func TestControlVariant(t *testing.T) {
-	if !built.WithOrchestrion {
-		t.Skip("orchestrion is not enabled, use `go tool orchestrion go test` to run this test suite")
-	}
 	if os.Getenv("DD_IAST_BENCH_EXPECT") != "control" {
 		t.Skip("variant validation is run by the overhead benchmark runner")
+	}
+	// The control variant does not import dd-iast-go in its tool file. With
+	// otelc, the rule that marks the build as instrumented is a dd-iast-go rule,
+	// so build.Tool() is empty. With Orchestrion, the marker is a directive that
+	// Orchestrion always applies.
+	if tool := os.Getenv("DD_IAST_BENCH_TOOL"); tool == build.ToolOrchestrion && build.Tool() != tool {
+		t.Fatalf("control variant was built with %q, want %q", build.Tool(), tool)
 	}
 	mt := mocktracer.Start()
 	t.Cleanup(mt.Stop)
@@ -30,11 +38,11 @@ func TestControlVariant(t *testing.T) {
 }
 
 func TestWovenVariant(t *testing.T) {
-	if !built.WithOrchestrion {
-		t.Skip("orchestrion is not enabled, use `go tool orchestrion go test` to run this test suite")
-	}
 	if os.Getenv("DD_IAST_BENCH_EXPECT") != "iast" {
 		t.Skip("variant validation is run by the overhead benchmark runner")
+	}
+	if tool := os.Getenv("DD_IAST_BENCH_TOOL"); build.Tool() != tool {
+		t.Fatalf("IAST variant was built with %q, want %q", build.Tool(), tool)
 	}
 
 	mt := mocktracer.Start()

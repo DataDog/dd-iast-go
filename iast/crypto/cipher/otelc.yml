@@ -1,0 +1,126 @@
+# Unless explicitly stated otherwise all files in this repository are licensed
+# under the Apache License Version 2.0.
+# This product includes software developed at Datadog (https://www.datadoghq.com/).
+# Copyright 2026-present Datadog, Inc.
+
+# otelc (go.opentelemetry.io/otelc) rules for weak cipher detection. This is the
+# counterpart of orchestrion.yml in the same directory.
+#
+# Every package that has a sink gets one "add_file" rule (the declarations and
+# the sink count) and one "inject_code" rule per sink function. Keep the count in
+# each otelc_decl_<package>.go file equal to the number of "inject_code" rules of
+# its package.
+#
+# None of the target functions is known to be absent from a release of
+# golang.org/x/crypto, so the rules have no "version" range for their targets.
+version: v1.2.0
+
+des_declarations:
+  target: crypto/des
+  do:
+    - add_file:
+        file: otelc_decl_des.go
+        path: github.com/DataDog/dd-iast-go/iast/crypto/cipher
+
+des_new_cipher:
+  target: crypto/des
+  where:
+    func: NewCipher
+  do:
+    - inject_code:
+        raw: __dd__iast_ReportWeakCipher__(nil, "DES", "", "", "")
+
+des_new_triple_des_cipher:
+  target: crypto/des
+  where:
+    func: NewTripleDESCipher
+  do:
+    - inject_code:
+        raw: __dd__iast_ReportWeakCipher__(nil, "TripleDES", "", "", "")
+
+rc4_declarations:
+  target: crypto/rc4
+  do:
+    - add_file:
+        file: otelc_decl_rc4.go
+        path: github.com/DataDog/dd-iast-go/iast/crypto/cipher
+
+rc4_new_cipher:
+  target: crypto/rc4
+  where:
+    func: NewCipher
+  do:
+    - inject_code:
+        raw: __dd__iast_ReportWeakCipher__(nil, "RC4", "", "", "")
+
+blowfish_declarations:
+  target: golang.org/x/crypto/blowfish
+  do:
+    - add_file:
+        file: otelc_decl_blowfish.go
+        path: github.com/DataDog/dd-iast-go/iast/crypto/cipher
+
+# NewSaltedCipher delegates to NewCipher for an empty salt. In that case only
+# NewCipher reports, and it skips the delegation frame when it selects the
+# application location. This behavior is tied to x/crypto v0.54.0.
+blowfish_new_cipher:
+  target: golang.org/x/crypto/blowfish
+  where:
+    func: NewCipher
+  do:
+    - inject_code:
+        raw: __dd__iast_ReportWeakCipher__(nil, "Blowfish", "golang.org/x/crypto/blowfish", "", "NewSaltedCipher")
+
+# The second argument of NewSaltedCipher(key, salt []byte) is the salt.
+blowfish_new_salted_cipher:
+  target: golang.org/x/crypto/blowfish
+  where:
+    func: NewSaltedCipher
+  do:
+    - inject_code:
+        raw: |-
+          if len({{ .FuncArgument 1 }}) != 0 {
+            __dd__iast_ReportWeakCipher__(nil, "Blowfish", "", "", "")
+          }
+
+rc2_declarations:
+  target: golang.org/x/crypto/pkcs12/internal/rc2
+  do:
+    - add_file:
+        file: otelc_decl_rc2.go
+        path: github.com/DataDog/dd-iast-go/iast/crypto/cipher
+
+# The target is an internal package of x/crypto. otelc accepts it as a target.
+rc2_new:
+  target: golang.org/x/crypto/pkcs12/internal/rc2
+  where:
+    func: New
+  do:
+    - inject_code:
+        raw: __dd__iast_ReportWeakCipher__(nil, "RC2", "", "", "")
+
+pkcs12_declarations:
+  target: golang.org/x/crypto/pkcs12
+  do:
+    - add_file:
+        file: otelc_decl_pkcs12.go
+        path: github.com/DataDog/dd-iast-go/iast/crypto/cipher
+
+# The two PBE implementations have a value receiver that is not exported.
+pkcs12_triple_des_create:
+  target: golang.org/x/crypto/pkcs12
+  where:
+    func: create
+    recv: shaWithTripleDESCBC
+  do:
+    - inject_code:
+        raw: __dd__iast_ReportWeakCipher__(nil, "PBEWithSHAAnd3KeyTripleDESCBC", "", "", "")
+
+pkcs12_rc2_create:
+  target: golang.org/x/crypto/pkcs12
+  where:
+    func: create
+    recv: shaWith40BitRC2CBC
+  do:
+    - inject_code:
+        raw: __dd__iast_ReportWeakCipher__(nil, "PBEWithSHAAnd40BitRC2CBC", "", "", "")

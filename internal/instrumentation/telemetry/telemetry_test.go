@@ -17,6 +17,12 @@ func TestMaxCardinalities(t *testing.T) {
 	require.LessOrEqual(t, len(constants.AllVulnerabilityTypes()), 64, "there should always be less than 64 vulnerability types")
 }
 
+func TestInstrumentedSinkCapacity(t *testing.T) {
+	// Vulnerability types start at 1, so the last one is at index Count.
+	require.Greater(t, len(telemetry.InstrumentedSink), int(constants.VulnerabilityTypeCount),
+		"telemetry.InstrumentedSink is too short for all vulnerability types")
+}
+
 func TestExecutedSource(t *testing.T) {
 	origins := constants.AllOrigins()
 

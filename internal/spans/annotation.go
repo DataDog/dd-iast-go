@@ -16,6 +16,7 @@ import (
 	"github.com/DataDog/dd-iast-go/internal/instrumentation"
 	"github.com/DataDog/dd-iast-go/internal/instrumentation/telemetry"
 	"github.com/DataDog/dd-iast-go/internal/model"
+	"github.com/DataDog/dd-iast-go/internal/model/constants"
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
 	"github.com/puzpuzpuz/xsync/v4"
 )
@@ -134,7 +135,11 @@ func init() {
 			c.Count(instrumentation.TelemetryNamespaceIAST, "instrumented.source", []string{instrumentation.TelemetryTagSourceType + ":" + origin.String()}).Submit(float64(count))
 		}
 		c.Count(instrumentation.TelemetryNamespaceIAST, "instrumented.propagation", nil).Submit(float64(telemetry.InstrumentedPropagation))
-		for vulnType, count := range telemetry.InstrumentedSink {
+		for i, count := range telemetry.InstrumentedSink {
+			if count == 0 {
+				continue
+			}
+			vulnType := constants.VulnerabilityType(i)
 			c.Count(instrumentation.TelemetryNamespaceIAST, "instrumented.sink", []string{instrumentation.TelemetryTagVulnerabilityType + ":" + vulnType.String()}).Submit(float64(count))
 		}
 

@@ -1,0 +1,90 @@
+# Unless explicitly stated otherwise all files in this repository are licensed
+# under the Apache License Version 2.0.
+# This product includes software developed at Datadog (https://www.datadoghq.com/).
+# Copyright 2026-present Datadog, Inc.
+
+# otelc (go.opentelemetry.io/otelc) rules for weak hash detection. This is the
+# counterpart of orchestrion.yml in the same directory.
+#
+# Every standard library or x/crypto package that has a sink gets one "add_file"
+# rule (the declarations and the sink count) and one "inject_code" rule per sink
+# function. Keep the count in each otelc_decl_<package>.go file equal to the
+# number of "inject_code" rules of its package.
+version: v1.2.0
+
+# Declares the go:linkname functions in crypto/md5 and registers the sink count.
+# This rule ignores "where" and always applies when crypto/md5 is built.
+md5_declarations:
+  target: crypto/md5
+  do:
+    - add_file:
+        file: otelc_decl_md5.go
+        path: github.com/DataDog/dd-iast-go/iast/crypto/hash
+
+# md5.New. A rule without "recv" matches free-standing functions only.
+md5_new:
+  target: crypto/md5
+  where:
+    func: New
+  do:
+    - inject_code:
+        raw: __dd__iast_ReportWeakHash__(nil, crypto.MD5)
+  imports:
+    crypto: crypto
+
+# md5.Sum (not the (*digest).Sum method).
+md5_sum:
+  target: crypto/md5
+  where:
+    func: Sum
+  do:
+    - inject_code:
+        raw: __dd__iast_ReportWeakHash__(nil, crypto.MD5)
+  imports:
+    crypto: crypto
+
+# golang.org/x/crypto/md4.New. md4 has no Sum function.
+md4_declarations:
+  target: golang.org/x/crypto/md4
+  do:
+    - add_file:
+        file: otelc_decl_md4.go
+        path: github.com/DataDog/dd-iast-go/iast/crypto/hash
+
+md4_new:
+  target: golang.org/x/crypto/md4
+  where:
+    func: New
+  do:
+    - inject_code:
+        raw: __dd__iast_ReportWeakHash__(nil, crypto.MD4)
+  imports:
+    crypto: crypto
+
+sha1_declarations:
+  target: crypto/sha1
+  do:
+    - add_file:
+        file: otelc_decl_sha1.go
+        path: github.com/DataDog/dd-iast-go/iast/crypto/hash
+
+sha1_new:
+  target: crypto/sha1
+  where:
+    func: New
+  do:
+    - inject_code:
+        raw: __dd__iast_ReportWeakHash__(nil, crypto.SHA1)
+  imports:
+    crypto: crypto
+
+# sha1.Sum (not the (*digest).Sum method).
+sha1_sum:
+  target: crypto/sha1
+  where:
+    func: Sum
+  do:
+    - inject_code:
+        raw: __dd__iast_ReportWeakHash__(nil, crypto.SHA1)
+  imports:
+    crypto: crypto
