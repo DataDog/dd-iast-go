@@ -24,7 +24,7 @@ jobs:
           persist-credentials: false
       - name: Validate third-party licenses
         id: dd-license-attribution
-        uses: DataDog/dd-license-attribution@b6152ca0093f3026b550ac264844956efc878075 # v0.8.0
+        uses: DataDog/dd-license-attribution@773a1420778dea09a0472310243b424fe4a0d084 # v0.9.0
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           # The v0.8.0 action still defaults to package 0.7.2, which lacks the
