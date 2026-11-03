@@ -58,8 +58,8 @@ func sinkFrame(hash crypto.Hash, function string) vulnerability.SkipFrame {
 //
 // Those init functions can run before the init functions of this package and of
 // every package it imports. This function therefore MUST NOT touch any value
-// that needs run-time initialization: it only adds to a fixed-size array that
-// is zero at load time.
+// that needs run-time initialization: it only adds (atomically) to a fixed-size
+// array that is zero at load time.
 func RegisterInstrumentedSinks(count uint) {
-	telemetry.InstrumentedSink[constants.VulnerabilityTypeWeakHash] += count
+	telemetry.InstrumentedSink[constants.VulnerabilityTypeWeakHash].Add(uint64(count))
 }

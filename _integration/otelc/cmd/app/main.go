@@ -50,7 +50,7 @@ func main() {
 	}
 	fmt.Printf("tool=%q tracer_started=%t gls=%t gls_after_finish=%t weak_hash_sinks=%d weak_cipher_sinks=%d initial=%x sha1=%x main=%x\n",
 		build.Tool(), tracerStarted, glsActive, glsActiveAfterFinish,
-		telemetry.InstrumentedSink[constants.VulnerabilityTypeWeakHash],
-		telemetry.InstrumentedSink[constants.VulnerabilityTypeWeakCipher],
+		telemetry.InstrumentedSink[constants.VulnerabilityTypeWeakHash].Load(),
+		telemetry.InstrumentedSink[constants.VulnerabilityTypeWeakCipher].Load(),
 		initialDigest[:4], initialSHA1[:4], digest[:4])
 }

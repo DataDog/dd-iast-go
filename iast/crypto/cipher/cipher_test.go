@@ -204,22 +204,29 @@ func TestInstrumentedSink(t *testing.T) {
 	if !build.Instrumented() {
 		t.Skip("the build is not instrumented, use `go tool orchestrion go test` or `scripts/otelc-test.sh` to run this test suite")
 	}
-	assert.Equal(t, uint(8), telemetry.InstrumentedSink[constants.VulnerabilityTypeWeakCipher])
+	assert.Equal(t, uint64(8), telemetry.InstrumentedSink[constants.VulnerabilityTypeWeakCipher].Load())
 }
 
 func TestRegisterInstrumentedSinks(t *testing.T) {
-	before := telemetry.InstrumentedSink
-	t.Cleanup(func() { telemetry.InstrumentedSink = before })
+	var before [len(telemetry.InstrumentedSink)]uint64
+	for i := range telemetry.InstrumentedSink {
+		before[i] = telemetry.InstrumentedSink[i].Load()
+	}
+	t.Cleanup(func() {
+		for i, count := range before {
+			telemetry.InstrumentedSink[i].Store(count)
+		}
+	})
 
 	cipher.RegisterInstrumentedSinks(2)
 	cipher.RegisterInstrumentedSinks(3)
 
 	assert.Equal(t,
 		before[constants.VulnerabilityTypeWeakCipher]+5,
-		telemetry.InstrumentedSink[constants.VulnerabilityTypeWeakCipher])
-	for i, count := range telemetry.InstrumentedSink {
+		telemetry.InstrumentedSink[constants.VulnerabilityTypeWeakCipher].Load())
+	for i := range telemetry.InstrumentedSink {
 		if constants.VulnerabilityType(i) != constants.VulnerabilityTypeWeakCipher {
-			assert.Equal(t, before[i], count, "unexpected change for %s", constants.VulnerabilityType(i))
+			assert.Equal(t, before[i], telemetry.InstrumentedSink[i].Load(), "unexpected change for %s", constants.VulnerabilityType(i))
 		}
 	}
 }

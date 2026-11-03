@@ -131,11 +131,17 @@ func init() {
 			return
 		}
 
-		for origin, count := range telemetry.InstrumentedSource {
+		for i := range telemetry.InstrumentedSource {
+			count := telemetry.InstrumentedSource[i].Load()
+			if count == 0 {
+				continue
+			}
+			origin := constants.Origin(i)
 			c.Count(instrumentation.TelemetryNamespaceIAST, "instrumented.source", []string{instrumentation.TelemetryTagSourceType + ":" + origin.String()}).Submit(float64(count))
 		}
-		c.Count(instrumentation.TelemetryNamespaceIAST, "instrumented.propagation", nil).Submit(float64(telemetry.InstrumentedPropagation))
-		for i, count := range telemetry.InstrumentedSink {
+		c.Count(instrumentation.TelemetryNamespaceIAST, "instrumented.propagation", nil).Submit(float64(telemetry.InstrumentedPropagation.Load()))
+		for i := range telemetry.InstrumentedSink {
+			count := telemetry.InstrumentedSink[i].Load()
 			if count == 0 {
 				continue
 			}

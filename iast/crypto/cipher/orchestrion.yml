@@ -31,7 +31,7 @@ aspects:
             func __dd__iast_ReportWeakCipher__(context.Context, string, string, string, string)
 
             func init() {
-              telemetry.InstrumentedSink[model.VulnerabilityTypeWeakCipher] += 2
+              telemetry.InstrumentedSink[model.VulnerabilityTypeWeakCipher].Add(2)
             }
       - prepend-statements:
           imports:
@@ -71,7 +71,7 @@ aspects:
             func __dd__iast_ReportWeakCipher__(context.Context, string, string, string, string)
 
             func init() {
-              telemetry.InstrumentedSink[model.VulnerabilityTypeWeakCipher] += 1
+              telemetry.InstrumentedSink[model.VulnerabilityTypeWeakCipher].Add(1)
             }
       - prepend-statements:
           imports:
@@ -101,7 +101,7 @@ aspects:
             func __dd__iast_ReportWeakCipher__(context.Context, string, string, string, string)
 
             func init() {
-              telemetry.InstrumentedSink[model.VulnerabilityTypeWeakCipher] += 2
+              telemetry.InstrumentedSink[model.VulnerabilityTypeWeakCipher].Add(2)
             }
       - prepend-statements:
           imports:
@@ -145,7 +145,7 @@ aspects:
             func __dd__iast_ReportWeakCipher__(context.Context, string, string, string, string)
 
             func init() {
-              telemetry.InstrumentedSink[model.VulnerabilityTypeWeakCipher] += 1
+              telemetry.InstrumentedSink[model.VulnerabilityTypeWeakCipher].Add(1)
             }
       - prepend-statements:
           imports:
@@ -175,7 +175,7 @@ aspects:
             func __dd__iast_ReportWeakCipher__(context.Context, string, string, string, string)
 
             func init() {
-              telemetry.InstrumentedSink[model.VulnerabilityTypeWeakCipher] += 2
+              telemetry.InstrumentedSink[model.VulnerabilityTypeWeakCipher].Add(2)
             }
       - prepend-statements:
           imports:

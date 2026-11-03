@@ -95,8 +95,8 @@ func sinkFrames(frames []vulnerability.SkipFrame, name string) []vulnerability.S
 //
 // Those init functions can run before the init functions of this package and of
 // every package it imports. This function therefore MUST NOT touch any value
-// that needs run-time initialization: it only adds to a fixed-size array that
-// is zero at load time.
+// that needs run-time initialization: it only adds (atomically) to a fixed-size
+// array that is zero at load time.
 func RegisterInstrumentedSinks(count uint) {
-	telemetry.InstrumentedSink[constants.VulnerabilityTypeWeakCipher] += count
+	telemetry.InstrumentedSink[constants.VulnerabilityTypeWeakCipher].Add(uint64(count))
 }

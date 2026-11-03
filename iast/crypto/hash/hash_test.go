@@ -76,18 +76,25 @@ func TestMD5(t *testing.T) {
 }
 
 func TestRegisterInstrumentedSinks(t *testing.T) {
-	before := telemetry.InstrumentedSink
-	t.Cleanup(func() { telemetry.InstrumentedSink = before })
+	var before [len(telemetry.InstrumentedSink)]uint64
+	for i := range telemetry.InstrumentedSink {
+		before[i] = telemetry.InstrumentedSink[i].Load()
+	}
+	t.Cleanup(func() {
+		for i, count := range before {
+			telemetry.InstrumentedSink[i].Store(count)
+		}
+	})
 
 	hash.RegisterInstrumentedSinks(2)
 	hash.RegisterInstrumentedSinks(3)
 
 	assert.Equal(t,
 		before[constants.VulnerabilityTypeWeakHash]+5,
-		telemetry.InstrumentedSink[constants.VulnerabilityTypeWeakHash])
-	for i, count := range telemetry.InstrumentedSink {
+		telemetry.InstrumentedSink[constants.VulnerabilityTypeWeakHash].Load())
+	for i := range telemetry.InstrumentedSink {
 		if constants.VulnerabilityType(i) != constants.VulnerabilityTypeWeakHash {
-			assert.Equal(t, before[i], count, "unexpected change for %s", constants.VulnerabilityType(i))
+			assert.Equal(t, before[i], telemetry.InstrumentedSink[i].Load(), "unexpected change for %s", constants.VulnerabilityType(i))
 		}
 	}
 }

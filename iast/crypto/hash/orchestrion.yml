@@ -30,7 +30,7 @@ aspects:
             func __dd__iast_ReportWeakHash__(context.Context, crypto.Hash)
 
             func init() {
-              telemetry.InstrumentedSink[model.VulnerabilityTypeWeakHash] += 1
+              telemetry.InstrumentedSink[model.VulnerabilityTypeWeakHash].Add(1)
             }
       - prepend-statements:
           imports:
@@ -68,7 +68,7 @@ aspects:
             func __dd__iast_ReportWeakHash__(context.Context, crypto.Hash)
 
             func init() {
-              telemetry.InstrumentedSink[model.VulnerabilityTypeWeakHash] += 2 // Method + free-standing function
+              telemetry.InstrumentedSink[model.VulnerabilityTypeWeakHash].Add(2) // Method + free-standing function
             }
       - prepend-statements:
           imports:
@@ -113,7 +113,7 @@ aspects:
             func __dd__iast_ReportWeakHash__(context.Context, crypto.Hash)
 
             func init() {
-              telemetry.InstrumentedSink[model.VulnerabilityTypeWeakHash] += 2 // Method + free-standing function
+              telemetry.InstrumentedSink[model.VulnerabilityTypeWeakHash].Add(2) // Method + free-standing function
             }
       - prepend-statements:
           imports:

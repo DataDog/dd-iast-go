@@ -87,10 +87,10 @@ func (c Config) packages() (hash, cipher []sinkPackage) {
 	return hashPackages, nil
 }
 
-func sinkCount(packages []sinkPackage) uint {
-	var count uint
+func sinkCount(packages []sinkPackage) uint64 {
+	var count uint64
 	for _, pkg := range packages {
-		count += uint(len(pkg.rules))
+		count += uint64(len(pkg.rules))
 	}
 	return count
 }
@@ -140,15 +140,15 @@ func checkInstrumentedSinks(t *testing.T, cfg Config) {
 	requireInstrumented(t)
 
 	hash, cipher := cfg.packages()
-	expected := map[constants.VulnerabilityType]uint{
+	expected := map[constants.VulnerabilityType]uint64{
 		constants.VulnerabilityTypeWeakHash:   sinkCount(hash),   // md4: 1, md5: 2, sha1: 2
 		constants.VulnerabilityTypeWeakCipher: sinkCount(cipher), // des: 2, rc4: 1, blowfish: 2, rc2: 1, pkcs12: 2
 	}
 	require.EqualValues(t, 5, expected[constants.VulnerabilityTypeWeakHash])
 
-	for i, count := range telemetry.InstrumentedSink {
+	for i := range telemetry.InstrumentedSink {
 		vulnerabilityType := constants.VulnerabilityType(i)
-		assert.Equal(t, expected[vulnerabilityType], count, "sink count for %s", vulnerabilityType)
+		assert.Equal(t, expected[vulnerabilityType], telemetry.InstrumentedSink[i].Load(), "sink count for %s", vulnerabilityType)
 	}
 }
 
