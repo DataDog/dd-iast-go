@@ -252,6 +252,29 @@ func TestReportWeakCipherDisabled(t *testing.T) {
 	assert.Equal(t, before, telemetry.ExecutedSink.WeakCipher.Load())
 }
 
+// TestReportWeakCipherUnknownName checks that a cipher name with no known sink
+// frames is reported, with no sink frame to skip: the location is the caller.
+func TestReportWeakCipherUnknownName(t *testing.T) {
+	if !build.Instrumented() {
+		t.Skip("the build is not instrumented, use `go tool orchestrion go test` or `scripts/otelc-test.sh` to run this test suite")
+	}
+	before := telemetry.ExecutedSink.WeakCipher.Load()
+	mockTracer := mocktracer.Start()
+	t.Cleanup(mockTracer.Stop)
+
+	cipher.ReportWeakCipher(context.Background(), "Unknown", "", "", "")
+
+	spanList := mockTracer.FinishedSpans()
+	require.Len(t, spanList, 1)
+	var event model.Event
+	require.NoError(t, json.Unmarshal([]byte(spanList[0].Tag(spans.SpanTagJson).(string)), &event))
+	require.Len(t, event.Vulnerabilities, 1)
+	assert.Equal(t, model.NewEvidenceString("Unknown"), event.Vulnerabilities[0].Evidence)
+	require.NotNil(t, event.Vulnerabilities[0].Location)
+	assert.Contains(t, event.Vulnerabilities[0].Location.Method, "TestReportWeakCipherUnknownName")
+	assert.Equal(t, before+1, telemetry.ExecutedSink.WeakCipher.Load())
+}
+
 func TestAESIsNotReported(t *testing.T) {
 	if !build.Instrumented() {
 		t.Skip("the build is not instrumented, use `go tool orchestrion go test` or `scripts/otelc-test.sh` to run this test suite")
