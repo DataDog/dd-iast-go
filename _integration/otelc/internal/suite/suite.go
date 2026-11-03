@@ -171,38 +171,60 @@ func checkMatchedRules(t *testing.T, cfg Config) {
 	data, err := os.ReadFile(filepath.Join(".otelc-build", "matched.json"))
 	require.NoError(t, err, "otelc writes the matched rules in this file during the build")
 
-	// All kinds of rules have the same shape: a map from source file to rules,
-	// except the "file" rules, which are a list.
+	// matched.json is a list of rule sets: one for each package that has a
+	// matched rule. Each rule set has one "<kind>_rules" field for each kind of
+	// rule (8 kinds in otelc v1.2.1-0: raw, func, struct, call, lit, directive,
+	// decl and file). All the fields are a map from source file to rules,
+	// except "file_rules", which is a list. All the "*_rules" fields are read,
+	// also the fields of kinds that this module does not use and of kinds that
+	// a later otelc adds: a rule of any kind in a package that our rules target
+	// must be found by the checks below.
 	type namedRule struct {
 		Name string `json:"name"`
 		File string `json:"file"`
 	}
-	var sets []struct {
-		ModulePath string                 `json:"module_path"`
-		RawRules   map[string][]namedRule `json:"raw_rules"`
-		DeclRules  map[string][]namedRule `json:"decl_rules"`
-		FuncRules  map[string][]namedRule `json:"func_rules"`
-		FileRules  []namedRule            `json:"file_rules"`
-	}
+	var sets []map[string]json.RawMessage
 	require.NoError(t, json.Unmarshal(data, &sets))
 
 	// Each entry is "<kind>:<module>:<rule>". A rule that was loaded or matched
 	// twice appears twice in this list.
 	var matched []string
+	kinds := map[string]bool{}
 	for _, set := range sets {
-		add := func(kind string, rules map[string][]namedRule) {
+		var modulePath string
+		require.NoError(t, json.Unmarshal(set["module_path"], &modulePath))
+		require.NotEmpty(t, modulePath, "a rule set of matched.json has no module_path")
+		for field, raw := range set {
+			kind, ok := strings.CutSuffix(field, "_rules")
+			if !ok || string(raw) == "null" {
+				continue
+			}
+			kinds[kind] = true
+			if kind == "file" {
+				var rules []namedRule
+				require.NoError(t, json.Unmarshal(raw, &rules), "field %q of %s", field, modulePath)
+				for _, rule := range rules {
+					matched = append(matched, "add_file:"+modulePath+":"+rule.Name+"="+rule.File)
+				}
+				continue
+			}
+			var rules map[string][]namedRule
+			require.NoError(t, json.Unmarshal(raw, &rules), "field %q of %s", field, modulePath)
+			// The "raw" rules are the "inject_code" rules of the rule files.
+			if kind == "raw" {
+				kind = "inject_code"
+			}
 			for _, list := range rules {
 				for _, rule := range list {
-					matched = append(matched, kind+":"+set.ModulePath+":"+rule.Name)
+					matched = append(matched, kind+":"+modulePath+":"+rule.Name)
 				}
 			}
 		}
-		add("inject_code", set.RawRules)
-		add("decl", set.DeclRules)
-		add("func", set.FuncRules)
-		for _, rule := range set.FileRules {
-			matched = append(matched, "add_file:"+set.ModulePath+":"+rule.Name+"="+rule.File)
-		}
+	}
+	// If otelc renames a field, the checks above do not see its rules. Make
+	// sure that all the known kinds are still there.
+	for _, kind := range []string{"raw", "func", "struct", "call", "lit", "directive", "decl", "file"} {
+		assert.True(t, kinds[kind], "matched.json has no %q field", kind+"_rules")
 	}
 
 	expected := []string{
@@ -270,9 +292,11 @@ func checkMatchedRules(t *testing.T, cfg Config) {
 // ddTraceGoRules are the rules of dd-trace-go that the tool file of the
 // application selects (the core tracer rules), and that dd-iast-go needs. In
 // particular, "span_gls_finish" and our "span_finish" both inject code at the
-// start of (*Span).Finish.
+// start of (*Span).Finish, and "span_gls_fields" adds the fields that
+// "span_gls_finish" uses to the Span struct.
 var ddTraceGoRules = []string{
 	"decl:github.com/DataDog/dd-trace-go/v2/internal/otelc:enable_otelc_flag",
+	"struct:github.com/DataDog/dd-trace-go/v2/ddtrace/tracer:span_gls_fields",
 	"inject_code:github.com/DataDog/dd-trace-go/v2/ddtrace/tracer:span_gls_context_with_span",
 	"inject_code:github.com/DataDog/dd-trace-go/v2/ddtrace/tracer:span_gls_span_from_context",
 	"inject_code:github.com/DataDog/dd-trace-go/v2/ddtrace/tracer:span_gls_finish",
