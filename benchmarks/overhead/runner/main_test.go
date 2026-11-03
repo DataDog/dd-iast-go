@@ -25,23 +25,24 @@ func TestParseFlags(t *testing.T) {
 	}{
 		{
 			name: "defaults",
-			want: options{count: 10, benchtime: "500ms", cpu: 1, benchmark: "."},
+			want: options{tool: "orchestrion", count: 10, benchtime: "500ms", cpu: 1, benchmark: "."},
 		},
 		{
 			name: "overrides",
 			arguments: []string{
+				"-tool=otelc",
 				"-outputdir=results",
 				"-count=3",
 				"-benchtime=2s",
 				"-cpu=4",
 				"-bench=Hash/.+",
 			},
-			want: options{outputDir: "results", count: 3, benchtime: "2s", cpu: 4, benchmark: "Hash/.+"},
+			want: options{tool: "otelc", outputDir: "results", count: 3, benchtime: "2s", cpu: 4, benchmark: "Hash/.+"},
 		},
 		{
 			name:      "iteration benchtime",
 			arguments: []string{"-benchtime=100x"},
-			want:      options{count: 10, benchtime: "100x", cpu: 1, benchmark: "."},
+			want:      options{tool: "orchestrion", count: 10, benchtime: "100x", cpu: 1, benchmark: "."},
 		},
 		{name: "positional argument", arguments: []string{"extra"}, wantError: "unexpected positional arguments"},
 		{name: "zero count", arguments: []string{"-count=0"}, wantError: "-count must be a single positive integer"},
@@ -56,10 +57,12 @@ func TestParseFlags(t *testing.T) {
 		{name: "invalid benchmark", arguments: []string{"-bench=["}, wantError: "invalid -bench expression"},
 		{name: "invalid benchmark element", arguments: []string{"-bench=A/*"}, wantError: "invalid -bench expression"},
 		{name: "invalid benchmark alternative", arguments: []string{"-bench=[]|[a]"}, wantError: `invalid -bench expression "[]"`},
-		{name: "benchmark character class slash", arguments: []string{"-bench=[/]"}, want: options{count: 10, benchtime: "500ms", cpu: 1, benchmark: "[/]"}},
-		{name: "benchmark parenthesized slash", arguments: []string{"-bench=(A/B)"}, want: options{count: 10, benchtime: "500ms", cpu: 1, benchmark: "(A/B)"}},
-		{name: "benchmark character class pipe", arguments: []string{"-bench=[|]"}, want: options{count: 10, benchtime: "500ms", cpu: 1, benchmark: "[|]"}},
-		{name: "benchmark parenthesized pipe", arguments: []string{"-bench=(A|B)"}, want: options{count: 10, benchtime: "500ms", cpu: 1, benchmark: "(A|B)"}},
+		{name: "benchmark character class slash", arguments: []string{"-bench=[/]"}, want: options{tool: "orchestrion", count: 10, benchtime: "500ms", cpu: 1, benchmark: "[/]"}},
+		{name: "benchmark parenthesized slash", arguments: []string{"-bench=(A/B)"}, want: options{tool: "orchestrion", count: 10, benchtime: "500ms", cpu: 1, benchmark: "(A/B)"}},
+		{name: "benchmark character class pipe", arguments: []string{"-bench=[|]"}, want: options{tool: "orchestrion", count: 10, benchtime: "500ms", cpu: 1, benchmark: "[|]"}},
+		{name: "benchmark parenthesized pipe", arguments: []string{"-bench=(A|B)"}, want: options{tool: "orchestrion", count: 10, benchtime: "500ms", cpu: 1, benchmark: "(A|B)"}},
+		{name: "invalid tool", arguments: []string{"-tool=gcc"}, wantError: `-tool must be "orchestrion" or "otelc"`},
+		{name: "empty tool", arguments: []string{"-tool="}, wantError: `-tool must be "orchestrion" or "otelc"`},
 		{name: "unknown flag", arguments: []string{"-unknown"}, wantError: "flag provided but not defined"},
 	}
 
@@ -160,6 +163,126 @@ import (
 	}
 	if !strings.Contains(output, "github.com/DataDog/dd-trace-go/contrib/net/http/v2") {
 		t.Fatalf("control integration file removed net/http tracing:\n%s", output)
+	}
+}
+
+// TestRetainTracerIntegrationOtelc checks the control variant of otelc: the
+// real otelc tool file of this module loses its dd-iast-go import, and keeps
+// the dd-trace-go rules.
+func TestRetainTracerIntegrationOtelc(t *testing.T) {
+	input, err := os.ReadFile(filepath.Join("..", toolFiles[toolOtelc]))
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(t.TempDir(), toolFiles[toolOtelc])
+	if err := os.WriteFile(path, input, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := retainTracerIntegration(path); err != nil {
+		t.Fatal(err)
+	}
+	contents, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	output := string(contents)
+	if strings.Contains(output, `"github.com/DataDog/dd-iast-go"`) ||
+		strings.Contains(output, `"github.com/DataDog/dd-iast-go/`) {
+		t.Fatalf("control integration file still imports dd-iast-go:\n%s", output)
+	}
+	for _, kept := range []string{
+		"github.com/DataDog/dd-trace-go/v2/ddtrace/tracer",
+		"github.com/DataDog/dd-trace-go/v2/instrumentation/appsec/dyngo",
+	} {
+		if !strings.Contains(output, kept) {
+			t.Fatalf("control integration file removed %s:\n%s", kept, output)
+		}
+	}
+}
+
+func TestToolEnvironment(t *testing.T) {
+	t.Setenv("OTELC_TEST_GOCACHE", "")
+	if env, err := toolEnvironment(toolOrchestrion); err != nil || env != nil {
+		t.Fatalf("toolEnvironment(orchestrion) = %v, %v; want nil, nil", env, err)
+	}
+
+	env, err := toolEnvironment(toolOtelc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(env) != 1 || !strings.HasPrefix(env[0], "GOCACHE=") || !strings.HasSuffix(env[0], "-otelc") {
+		t.Fatalf("toolEnvironment(otelc) = %v, want one GOCACHE=<cache>-otelc", env)
+	}
+
+	t.Setenv("GOCACHE", "off")
+	env, err = toolEnvironment(toolOtelc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if env[0] == "GOCACHE=off-otelc" {
+		t.Fatalf("toolEnvironment(otelc) with GOCACHE=off = %v, want the default cache", env)
+	}
+
+	cache := filepath.Join(t.TempDir(), "cache")
+	t.Setenv("OTELC_TEST_GOCACHE", cache)
+	env, err = toolEnvironment(toolOtelc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if env[0] != "GOCACHE="+cache {
+		t.Fatalf("toolEnvironment(otelc) = %v, want GOCACHE=%s", env, cache)
+	}
+
+	t.Setenv("OTELC_TEST_GOCACHE", "relative")
+	if _, err := toolEnvironment(toolOtelc); err == nil {
+		t.Fatal("toolEnvironment(otelc) accepted a relative cache path")
+	}
+}
+
+func TestBuildEnvironment(t *testing.T) {
+	got := buildEnvironment(toolOrchestrion, []string{"A=1"}, "/src")
+	if want := []string{"GOFLAGS=", "A=1"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("buildEnvironment(orchestrion) = %v, want %v", got, want)
+	}
+	got = buildEnvironment(toolOtelc, []string{"GOCACHE=/cache"}, "/src")
+	if want := []string{"GOFLAGS=", "GOCACHE=/cache", "OTELC_WORK_DIR=/src"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("buildEnvironment(otelc) = %v, want %v", got, want)
+	}
+}
+
+func TestCheckOtelcMatched(t *testing.T) {
+	const (
+		tracer = `{"module_path": "github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"}`
+		iast   = `{"module_path": "github.com/DataDog/dd-iast-go/internal/build"}`
+		other  = `{"module_path": "crypto/md5"}`
+	)
+	tests := []struct {
+		name      string
+		report    string
+		iast      bool
+		wantError string
+	}{
+		{name: "control", report: "[" + tracer + "," + other + "]"},
+		{name: "IAST", report: "[" + tracer + "," + iast + "," + other + "]", iast: true},
+		{name: "control with dd-iast-go", report: "[" + tracer + "," + iast + "]", wantError: "applied the rules of github.com/DataDog/dd-iast-go to the control variant"},
+		{name: "IAST without dd-iast-go", report: "[" + tracer + "," + other + "]", iast: true, wantError: "did not apply the rules of github.com/DataDog/dd-iast-go"},
+		{name: "no tracer", report: "[" + iast + "]", iast: true, wantError: "did not apply the rules of github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"},
+		{name: "nothing matched", report: "null", wantError: "did not apply the rules of github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"},
+		{name: "invalid", report: "{", wantError: "parse otelc build report"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			err := checkOtelcMatched([]byte(test.report), test.iast)
+			if test.wantError == "" {
+				if err != nil {
+					t.Fatal(err)
+				}
+				return
+			}
+			if err == nil || !strings.Contains(err.Error(), test.wantError) {
+				t.Fatalf("checkOtelcMatched() error = %v, want an error containing %q", err, test.wantError)
+			}
+		})
 	}
 }
 

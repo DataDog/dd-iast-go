@@ -8,6 +8,7 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -31,9 +32,20 @@ const (
 	iastResultsFile    = "iast.txt"
 	comparisonFile     = "comparison.txt"
 	metadataFile       = "metadata.txt"
+
+	toolOrchestrion = "orchestrion"
+	toolOtelc       = "otelc"
 )
 
+// toolFiles are the files that select the integrations of each tool. The
+// control variant removes the dd-iast-go imports from the file of its tool.
+var toolFiles = map[string]string{
+	toolOrchestrion: "orchestrion.tool.go",
+	toolOtelc:       "otel.instrumentation.go",
+}
+
 type options struct {
+	tool      string
 	outputDir string
 	count     int
 	benchtime string
@@ -42,6 +54,7 @@ type options struct {
 }
 
 type flagValues struct {
+	tool      string
 	outputDir string
 	count     string
 	benchtime string
@@ -50,6 +63,7 @@ type flagValues struct {
 }
 
 type configuration struct {
+	tool       string
 	repository string
 	module     string
 	output     *os.Root
@@ -100,7 +114,7 @@ func run(arguments []string) (err error) {
 	if err := copyModule(cfg.module, iastSource, cfg.output); err != nil {
 		return fmt.Errorf("prepare IAST source: %w", err)
 	}
-	if err := retainTracerIntegration(filepath.Join(controlSource, "orchestrion.tool.go")); err != nil {
+	if err := retainTracerIntegration(filepath.Join(controlSource, toolFiles[cfg.tool])); err != nil {
 		return err
 	}
 	for _, source := range []string{controlSource, iastSource} {
@@ -115,11 +129,23 @@ func run(arguments []string) (err error) {
 
 	controlBinary := filepath.Join(buildRoot, "control.test")
 	iastBinary := filepath.Join(buildRoot, "iast.test")
-	if err := buildVariant("control", controlSource, controlBinary); err != nil {
+	buildEnvironment, err := toolEnvironment(cfg.tool)
+	if err != nil {
 		return err
 	}
-	if err := buildVariant("IAST", iastSource, iastBinary); err != nil {
+	if err := buildVariant(cfg.tool, buildEnvironment, "control", controlSource, controlBinary); err != nil {
 		return err
+	}
+	if err := buildVariant(cfg.tool, buildEnvironment, "IAST", iastSource, iastBinary); err != nil {
+		return err
+	}
+	if cfg.tool == toolOtelc {
+		if err := checkOtelcBuild(controlSource, false); err != nil {
+			return fmt.Errorf("check control variant: %w", err)
+		}
+		if err := checkOtelcBuild(iastSource, true); err != nil {
+			return fmt.Errorf("check IAST variant: %w", err)
+		}
 	}
 
 	fmt.Println("Validating benchmark variants...")
@@ -127,6 +153,7 @@ func run(arguments []string) (err error) {
 		"DD_IAST_ENABLED=true",
 		"DD_IAST_REQUEST_SAMPLING=100",
 		"DD_IAST_DEDUPLICATION_ENABLED=false",
+		"DD_IAST_BENCH_TOOL=" + cfg.tool,
 	}
 	if err := execute(controlSource, append(validationEnvironment, "DD_IAST_BENCH_EXPECT=control"), controlBinary, "-test.run=^TestControlVariant$"); err != nil {
 		return fmt.Errorf("validate control variant: %w", err)
@@ -184,6 +211,9 @@ func parseFlags(arguments []string) (options, error) {
 		return options{}, fmt.Errorf("unexpected positional arguments: %s", strings.Join(flags.Args(), " "))
 	}
 
+	if _, ok := toolFiles[values.tool]; !ok {
+		return options{}, fmt.Errorf("-tool must be %q or %q: %q", toolOrchestrion, toolOtelc, values.tool)
+	}
 	count, err := positiveInteger("-count", values.count)
 	if err != nil {
 		return options{}, err
@@ -205,6 +235,7 @@ func parseFlags(arguments []string) (options, error) {
 	}
 
 	return options{
+		tool:      values.tool,
 		outputDir: values.outputDir,
 		count:     count,
 		benchtime: values.benchtime,
@@ -215,6 +246,7 @@ func parseFlags(arguments []string) (options, error) {
 
 func defaultFlagValues() flagValues {
 	return flagValues{
+		tool:      toolOrchestrion,
 		count:     "10",
 		benchtime: "500ms",
 		cpu:       "1",
@@ -229,6 +261,7 @@ func newFlagSet(values *flagValues) *flag.FlagSet {
 	flags.StringVar(&values.benchtime, "benchtime", values.benchtime, "run each benchmark for duration `d` or N iterations with Nx")
 	flags.StringVar(&values.count, "count", values.count, "run `n` independent process samples per variant")
 	flags.StringVar(&values.cpu, "cpu", values.cpu, "use one positive GOMAXPROCS `value`")
+	flags.StringVar(&values.tool, "tool", values.tool, "build the variants with `tool` (orchestrion or otelc)")
 	flags.StringVar(&values.outputDir, "outputdir", values.outputDir, "write artifacts to `directory` (default: temporary directory)")
 	return flags
 }
@@ -327,6 +360,7 @@ func newConfiguration(opts options) (configuration, error) {
 	}
 
 	return configuration{
+		tool:       opts.tool,
 		repository: repository,
 		module:     module,
 		output:     output,
@@ -465,11 +499,115 @@ func retainTracerIntegration(path string) error {
 	return nil
 }
 
-func buildVariant(name, source, binary string) error {
-	fmt.Printf("Building %s benchmark binary with Orchestrion...\n", name)
-	environment := []string{"GOFLAGS="}
-	if err := execute(source, environment, "go", "tool", "orchestrion", "go", "test", "-c", "-o", binary, benchmarkPackage); err != nil {
+func buildVariant(tool string, environment []string, name, source, binary string) error {
+	fmt.Printf("Building %s benchmark binary with %s...\n", name, tool)
+	if err := execute(source, buildEnvironment(tool, environment, source), "go", "tool", tool, "go", "test", "-c", "-o", binary, benchmarkPackage); err != nil {
 		return fmt.Errorf("build %s variant: %w", name, err)
+	}
+	return nil
+}
+
+// buildEnvironment returns the extra environment of the build of the variant
+// in source. execute adds it after the inherited environment, so it has
+// priority.
+func buildEnvironment(tool string, environment []string, source string) []string {
+	result := append([]string{"GOFLAGS="}, environment...)
+	if tool == toolOtelc {
+		// otelc writes its build report in $OTELC_WORK_DIR/.otelc-build, and
+		// checkOtelcBuild reads it from the source tree. Do not use an inherited
+		// OTELC_WORK_DIR: the two variants must not share a work directory.
+		result = append(result, "OTELC_WORK_DIR="+source)
+	}
+	return result
+}
+
+// toolEnvironment returns the extra environment to build with tool. otelc and
+// Orchestrion must not share a build cache: when they do, a later Orchestrion
+// build can fail at link time ("fingerprint mismatch"). otelc uses the
+// directory in OTELC_TEST_GOCACHE (an absolute path) or, by default, the Go
+// build cache directory with a "-otelc" suffix (the same rule as
+// scripts/otelc-test.sh).
+func toolEnvironment(tool string) ([]string, error) {
+	if tool != toolOtelc {
+		return nil, nil
+	}
+	cache := os.Getenv("OTELC_TEST_GOCACHE")
+	if cache == "" {
+		base, err := goCache()
+		if err != nil {
+			return nil, err
+		}
+		cache = base + "-otelc"
+	}
+	if !filepath.IsAbs(cache) {
+		return nil, fmt.Errorf("otelc build cache must be an absolute path: %q", cache)
+	}
+	return []string{"GOCACHE=" + cache}, nil
+}
+
+// goCache returns the Go build cache directory. When GOCACHE is "off", it
+// returns the default directory: otelc needs a build cache.
+func goCache() (string, error) {
+	cmd := exec.Command("go", "env", "GOCACHE")
+	output, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("run go env GOCACHE: %w", err)
+	}
+	cache := strings.TrimSpace(string(output))
+	if cache != "off" {
+		return cache, nil
+	}
+	cmd = exec.Command("go", "env", "GOCACHE")
+	cmd.Env = append(os.Environ(), "GOCACHE=")
+	if output, err = cmd.Output(); err != nil {
+		return "", fmt.Errorf("run go env GOCACHE: %w", err)
+	}
+	return strings.TrimSpace(string(output)), nil
+}
+
+const (
+	otelcMatchedFile = ".otelc-build/matched.json"
+	ddIastModule     = "github.com/DataDog/dd-iast-go"
+	tracerPackage    = "github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
+)
+
+// checkOtelcBuild reads the list of packages that otelc changed in the build in
+// source, and checks it. Both variants must have the dd-trace-go tracer rules:
+// this proves that otelc built the control variant too (the validation tests
+// cannot prove it, because the control variant has no dd-iast-go rules). Only
+// the IAST variant can have dd-iast-go rules.
+func checkOtelcBuild(source string, iast bool) error {
+	contents, err := os.ReadFile(filepath.Join(source, otelcMatchedFile))
+	if err != nil {
+		return fmt.Errorf("read otelc build report: %w", err)
+	}
+	return checkOtelcMatched(contents, iast)
+}
+
+func checkOtelcMatched(contents []byte, iast bool) error {
+	var matched []struct {
+		ModulePath string `json:"module_path"`
+	}
+	if err := json.Unmarshal(contents, &matched); err != nil {
+		return fmt.Errorf("parse otelc build report: %w", err)
+	}
+	tracer, ddIast := false, false
+	for _, entry := range matched {
+		switch {
+		case entry.ModulePath == tracerPackage:
+			tracer = true
+		case entry.ModulePath == ddIastModule || strings.HasPrefix(entry.ModulePath, ddIastModule+"/"):
+			ddIast = true
+		}
+	}
+	if !tracer {
+		return fmt.Errorf("otelc did not apply the rules of %s", tracerPackage)
+	}
+	if iast && !ddIast {
+		return fmt.Errorf("otelc did not apply the rules of %s", ddIastModule)
+	}
+	if !iast && ddIast {
+		return fmt.Errorf("otelc applied the rules of %s to the control variant", ddIastModule)
 	}
 	return nil
 }
@@ -504,8 +642,8 @@ func writeMetadata(cfg configuration, name string) error {
 	if err != nil {
 		return err
 	}
-	metadata := fmt.Sprintf("revision=%s\ngo_version=%s\ngoos=%s\ngoarch=%s\ncpu_count=%d\ncount=%d\nbenchtime=%s\ncpu=%d\nbench=%s\n",
-		revision, goVersion, runtime.GOOS, runtime.GOARCH, runtime.NumCPU(), cfg.count, cfg.benchtime, cfg.cpu, cfg.benchmark)
+	metadata := fmt.Sprintf("tool=%s\nrevision=%s\ngo_version=%s\ngoos=%s\ngoarch=%s\ncpu_count=%d\ncount=%d\nbenchtime=%s\ncpu=%d\nbench=%s\n",
+		cfg.tool, revision, goVersion, runtime.GOOS, runtime.GOARCH, runtime.NumCPU(), cfg.count, cfg.benchtime, cfg.cpu, cfg.benchmark)
 	if err := cfg.output.WriteFile(name, []byte(metadata), 0o644); err != nil {
 		return fmt.Errorf("write metadata: %w", err)
 	}

@@ -30,7 +30,7 @@ aspects:
             func __dd__iast_ReportWeakHash__(context.Context, crypto.Hash)
 
             func init() {
-              telemetry.InstrumentedSink[model.VulnerabilityTypeWeakHash] += 1
+              telemetry.InstrumentedSink[model.VulnerabilityTypeWeakHash].Add(1)
             }
       - prepend-statements:
           imports:
@@ -38,15 +38,13 @@ aspects:
             iast: github.com/DataDog/dd-iast-go/iast/crypto/hash
           template: __dd__iast_ReportWeakHash__(nil, crypto.MD4)
 
-  # crypto/md5 declares Sum twice within the same file: the free-standing
-  # `func Sum(data []byte) [Size]byte` and the `hash.Hash` interface method
-  # `func (d *digest) Sum(in []byte) []byte`. `inject-declarations` appends its
-  # declaration once per matched node, so declaring the go:linkname alias from a
-  # join-point matching both would emit it twice ("redeclared in this block").
-  # We therefore inject the declaration from a join-point that matches the method
-  # only (via its receiver, which occurs exactly once), while the report call is
-  # prepended to both Sum functions. The declaration is package-scoped, so it is
-  # visible to the free-standing Sum even though it is anchored on the method.
+  # crypto/md5 has two sinks: New and the free-standing Sum function. The
+  # (*digest).Sum method is not a sink. `inject-declarations` appends its
+  # declarations one time per matched node, so the go:linkname alias and the
+  # sink count are injected from the crypto/md5.New aspect only (New occurs
+  # one time). The crypto/md5.Sum aspect only prepends the report call, and
+  # uses `receiver: false` so that it does not match the method. The
+  # declarations are package-scoped, so Sum can use them.
   - id: crypto/md5.New
     join-point:
       all-of:
@@ -68,7 +66,7 @@ aspects:
             func __dd__iast_ReportWeakHash__(context.Context, crypto.Hash)
 
             func init() {
-              telemetry.InstrumentedSink[model.VulnerabilityTypeWeakHash] += 2 // Method + free-standing function
+              telemetry.InstrumentedSink[model.VulnerabilityTypeWeakHash].Add(2) // New + free-standing Sum
             }
       - prepend-statements:
           imports:
@@ -113,7 +111,7 @@ aspects:
             func __dd__iast_ReportWeakHash__(context.Context, crypto.Hash)
 
             func init() {
-              telemetry.InstrumentedSink[model.VulnerabilityTypeWeakHash] += 2 // Method + free-standing function
+              telemetry.InstrumentedSink[model.VulnerabilityTypeWeakHash].Add(2) // New + free-standing Sum
             }
       - prepend-statements:
           imports:

@@ -7,8 +7,18 @@
 
 This package provides Datadog-backed instrumentation for Interactive Application
 Security Testing of Go applications. It uses `github.com/DataDog/dd-trace-go/v2`
-and requires consumer applications to be compiled using
-`github.com/DataDog/orchestrion`.
+and requires consumer applications to be compiled with a compile-time
+instrumentation tool: [Orchestrion] (`github.com/DataDog/orchestrion`) or
+[otelc] (`go.opentelemetry.io/otelc`). Both tools give the same detections.
+
+> [!IMPORTANT]
+> otelc support requires otelc `v1.2.1-0` or later. No tagged otelc release
+> satisfies this requirement yet (the latest tag is `v1.2.0`). Use a
+> pseudo-version of otelc built from its `main` branch, as in this module's
+> [`go.mod`](go.mod).
+
+[Orchestrion]: https://github.com/DataDog/orchestrion
+[otelc]: https://github.com/open-telemetry/opentelemetry-go-compile-instrumentation
 
 ## Taint Tracking
 

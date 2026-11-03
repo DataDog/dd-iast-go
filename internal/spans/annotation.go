@@ -14,7 +14,7 @@ import (
 
 	"github.com/DataDog/dd-iast-go/internal/config"
 	"github.com/DataDog/dd-iast-go/internal/instrumentation"
-	"github.com/DataDog/dd-iast-go/internal/instrumentation/telemetry"
+	"github.com/DataDog/dd-iast-go/internal/instrumentation/heartbeat"
 	"github.com/DataDog/dd-iast-go/internal/model"
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
 	"github.com/puzpuzpuz/xsync/v4"
@@ -124,45 +124,9 @@ func samplingDecision() bool {
 func init() {
 	// Note: this is here and not in the [github.com/DataDog/dd-iast-go/internal/instrumentation/telemetry] package in
 	// order to avoid creating a dependency from it to some of the tracer's internal, as it would make it much harder to
-	// avoid creating circular dependencies when instrumenting packages the tracer itself uses.
+	// avoid creating circular dependencies when instrumenting packages the tracer itself uses. The metrics are
+	// submitted by [heartbeat.Report].
 	instrumentation.Instance.TelemetryMetrics().OnHeartbeat(func(c instrumentation.TelemetryMetrics) {
-		if config.TelemetryVerbosity == config.LogLevelOff {
-			return
-		}
-
-		for origin, count := range telemetry.InstrumentedSource {
-			c.Count(instrumentation.TelemetryNamespaceIAST, "instrumented.source", []string{instrumentation.TelemetryTagSourceType + ":" + origin.String()}).Submit(float64(count))
-		}
-		c.Count(instrumentation.TelemetryNamespaceIAST, "instrumented.propagation", nil).Submit(float64(telemetry.InstrumentedPropagation))
-		for vulnType, count := range telemetry.InstrumentedSink {
-			c.Count(instrumentation.TelemetryNamespaceIAST, "instrumented.sink", []string{instrumentation.TelemetryTagVulnerabilityType + ":" + vulnType.String()}).Submit(float64(count))
-		}
-
-		cnt := telemetry.ExecutedTainted.Swap(0)
-		if cnt != 0 {
-			c.Count(instrumentation.TelemetryNamespaceIAST, "executed.tainted", nil).Submit(float64(cnt))
-		}
-		for origin, count := range telemetry.ExecutedSource.Each {
-			cnt := count.Swap(0)
-			if cnt == 0 {
-				continue
-			}
-			c.Count(instrumentation.TelemetryNamespaceIAST, "executed.source", []string{instrumentation.TelemetryTagSourceType + ":" + origin.String()}).Submit(float64(cnt))
-		}
-		for vulnType, count := range telemetry.ExecutedSink.Each {
-			cnt := count.Swap(0)
-			if cnt == 0 {
-				continue
-			}
-			c.Count(instrumentation.TelemetryNamespaceIAST, "executed.sink", []string{instrumentation.TelemetryTagVulnerabilityType + ":" + vulnType.String()}).Submit(float64(cnt))
-		}
-
-		if config.TelemetryVerbosity != config.LogLevelDebug {
-			return
-		}
-		cnt = telemetry.ExecutedPropagation.Swap(0)
-		if cnt != 0 {
-			c.Count(instrumentation.TelemetryNamespaceIAST, "executed.propagation", nil).Submit(float64(cnt))
-		}
+		heartbeat.Report(heartbeat.Count(c))
 	})
 }

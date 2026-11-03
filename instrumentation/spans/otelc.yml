@@ -1,0 +1,36 @@
+# Unless explicitly stated otherwise all files in this repository are licensed
+# under the Apache License Version 2.0.
+# This product includes software developed at Datadog (https://www.datadoghq.com/).
+# Copyright 2026-present Datadog, Inc.
+
+# otelc rules that call IAST when a span finishes. This is the counterpart of
+# internal/spans/orchestrion.yml.
+#
+# This is a "core" rule: the tool file otel.instrumentation.go at the root of
+# the module imports this package, so the rule loads when an application
+# imports any package of this module (also a sub-package only).
+#
+# The minimum version is the first one that loads a rule file only one time
+# (otelc #1483). The root package and the tool file both reach this file, so an
+# older otelc loads it twice and the build fails. A version of otelc that is
+# built from the main branch always passes this check.
+version: v1.2.1-0
+
+span_finish_declarations:
+  target: github.com/DataDog/dd-trace-go/v2/ddtrace/tracer
+  do:
+    - add_file:
+        file: otelc_decl_finish.go
+        path: github.com/DataDog/dd-iast-go/instrumentation/spans
+
+span_finish:
+  target: github.com/DataDog/dd-trace-go/v2/ddtrace/tracer
+  where:
+    func: Finish
+    recv: "*Span"
+  do:
+    - inject_code:
+        raw: |-
+          if {{ .Receiver }} != nil {
+            __dd__iast_spans_Finished({{ .Receiver }})
+          }

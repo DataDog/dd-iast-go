@@ -12,9 +12,31 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestMaxCardinalities checks that every [constants.Origin] and every
+// [constants.VulnerabilityType] is a valid index of the build-time metric
+// arrays. The values start at 1, so the last one is at index Count: an array of
+// length N holds at most N-1 values.
 func TestMaxCardinalities(t *testing.T) {
-	require.LessOrEqual(t, len(constants.AllOrigins()), 32, "there should always be less than 32 origins")
-	require.LessOrEqual(t, len(constants.AllVulnerabilityTypes()), 64, "there should always be less than 64 vulnerability types")
+	require.Less(t, len(constants.AllOrigins()), 32, "there should always be less than 32 origins")
+	require.Less(t, len(constants.AllVulnerabilityTypes()), 64, "there should always be less than 64 vulnerability types")
+}
+
+func TestInstrumentedSourceCapacity(t *testing.T) {
+	require.Less(t, constants.OriginCount, uint(len(telemetry.InstrumentedSource)),
+		"telemetry.InstrumentedSource is too short for all origins")
+	for name, origin := range constants.AllOrigins() {
+		require.Less(t, int(origin), len(telemetry.InstrumentedSource),
+			"origin %s (%s) is not a valid index of telemetry.InstrumentedSource", name, origin)
+	}
+}
+
+func TestInstrumentedSinkCapacity(t *testing.T) {
+	require.Less(t, constants.VulnerabilityTypeCount, uint(len(telemetry.InstrumentedSink)),
+		"telemetry.InstrumentedSink is too short for all vulnerability types")
+	for name, vulnType := range constants.AllVulnerabilityTypes() {
+		require.Less(t, int(vulnType), len(telemetry.InstrumentedSink),
+			"vulnerability type %s (%s) is not a valid index of telemetry.InstrumentedSink", name, vulnType)
+	}
 }
 
 func TestExecutedSource(t *testing.T) {

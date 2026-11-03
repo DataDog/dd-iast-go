@@ -17,6 +17,8 @@ import (
 	"os"
 	"testing"
 
+	"github.com/DataDog/dd-iast-go/iast/crypto/cipher"
+	"github.com/DataDog/dd-iast-go/internal/build"
 	"github.com/DataDog/dd-iast-go/internal/config"
 	"github.com/DataDog/dd-iast-go/internal/instrumentation/telemetry"
 	"github.com/DataDog/dd-iast-go/internal/model"
@@ -24,7 +26,7 @@ import (
 	"github.com/DataDog/dd-iast-go/internal/spans"
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/ext"
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/mocktracer"
-	"github.com/DataDog/orchestrion/runtime/built"
+	"github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/blowfish" //nolint:staticcheck // Deliberately exercise weak cipher detection.
@@ -37,8 +39,8 @@ func init() {
 }
 
 func TestDES(t *testing.T) {
-	if !built.WithOrchestrion {
-		t.Skip("orchestrion is not enabled, use `go tool orchestrion go test` to run this test suite")
+	if !build.Instrumented() {
+		t.Skip("the build is not instrumented, use `go tool orchestrion go test` or `scripts/otelc-test.sh` to run this test suite")
 	}
 	before := telemetry.ExecutedSink.WeakCipher.Load()
 	mockTracer := mocktracer.Start()
@@ -53,8 +55,8 @@ func TestDES(t *testing.T) {
 }
 
 func TestTripleDES(t *testing.T) {
-	if !built.WithOrchestrion {
-		t.Skip("orchestrion is not enabled, use `go tool orchestrion go test` to run this test suite")
+	if !build.Instrumented() {
+		t.Skip("the build is not instrumented, use `go tool orchestrion go test` or `scripts/otelc-test.sh` to run this test suite")
 	}
 	before := telemetry.ExecutedSink.WeakCipher.Load()
 	mockTracer := mocktracer.Start()
@@ -69,8 +71,8 @@ func TestTripleDES(t *testing.T) {
 }
 
 func TestRC4(t *testing.T) {
-	if !built.WithOrchestrion {
-		t.Skip("orchestrion is not enabled, use `go tool orchestrion go test` to run this test suite")
+	if !build.Instrumented() {
+		t.Skip("the build is not instrumented, use `go tool orchestrion go test` or `scripts/otelc-test.sh` to run this test suite")
 	}
 	before := telemetry.ExecutedSink.WeakCipher.Load()
 	mockTracer := mocktracer.Start()
@@ -86,8 +88,8 @@ func TestRC4(t *testing.T) {
 }
 
 func TestBlowfish(t *testing.T) {
-	if !built.WithOrchestrion {
-		t.Skip("orchestrion is not enabled, use `go tool orchestrion go test` to run this test suite")
+	if !build.Instrumented() {
+		t.Skip("the build is not instrumented, use `go tool orchestrion go test` or `scripts/otelc-test.sh` to run this test suite")
 	}
 	before := telemetry.ExecutedSink.WeakCipher.Load()
 	mockTracer := mocktracer.Start()
@@ -101,8 +103,8 @@ func TestBlowfish(t *testing.T) {
 }
 
 func TestSaltedBlowfish(t *testing.T) {
-	if !built.WithOrchestrion {
-		t.Skip("orchestrion is not enabled, use `go tool orchestrion go test` to run this test suite")
+	if !build.Instrumented() {
+		t.Skip("the build is not instrumented, use `go tool orchestrion go test` or `scripts/otelc-test.sh` to run this test suite")
 	}
 
 	for _, tc := range []struct {
@@ -127,8 +129,8 @@ func TestSaltedBlowfish(t *testing.T) {
 }
 
 func TestPKCS12PBE(t *testing.T) {
-	if !built.WithOrchestrion {
-		t.Skip("orchestrion is not enabled, use `go tool orchestrion go test` to run this test suite")
+	if !build.Instrumented() {
+		t.Skip("the build is not instrumented, use `go tool orchestrion go test` or `scripts/otelc-test.sh` to run this test suite")
 	}
 
 	for _, tc := range []struct {
@@ -165,10 +167,14 @@ func TestPKCS12PBE(t *testing.T) {
 			t.Cleanup(mockTracer.Stop)
 
 			var cert *x509.Certificate
-			//dd:span span.name:test
-			func(context.Context) {
+			// Create the span explicitly (not with a "//dd:span" directive): the
+			// directive is an Orchestrion feature, and this test must also run
+			// with otelc.
+			func() {
+				span, _ := tracer.StartSpanFromContext(context.Background(), "test")
+				defer span.Finish()
 				_, cert, err = indirectPKCS12Decode(data, "testpass")
-			}(context.Background())
+			}()
 			require.NoError(t, err)
 			require.NotNil(t, cert)
 			assert.Equal(t, "testcert", cert.Subject.CommonName)
@@ -195,15 +201,83 @@ func TestPKCS12PBE(t *testing.T) {
 }
 
 func TestInstrumentedSink(t *testing.T) {
-	if !built.WithOrchestrion {
-		t.Skip("orchestrion is not enabled, use `go tool orchestrion go test` to run this test suite")
+	if !build.Instrumented() {
+		t.Skip("the build is not instrumented, use `go tool orchestrion go test` or `scripts/otelc-test.sh` to run this test suite")
 	}
-	assert.Equal(t, uint(8), telemetry.InstrumentedSink[constants.VulnerabilityTypeWeakCipher])
+	assert.Equal(t, uint64(8), telemetry.InstrumentedSink[constants.VulnerabilityTypeWeakCipher].Load())
+}
+
+func TestRegisterInstrumentedSinks(t *testing.T) {
+	var before [len(telemetry.InstrumentedSink)]uint64
+	for i := range telemetry.InstrumentedSink {
+		before[i] = telemetry.InstrumentedSink[i].Load()
+	}
+	t.Cleanup(func() {
+		for i, count := range before {
+			telemetry.InstrumentedSink[i].Store(count)
+		}
+	})
+
+	cipher.RegisterInstrumentedSinks(2)
+	cipher.RegisterInstrumentedSinks(3)
+
+	assert.Equal(t,
+		before[constants.VulnerabilityTypeWeakCipher]+5,
+		telemetry.InstrumentedSink[constants.VulnerabilityTypeWeakCipher].Load())
+	for i := range telemetry.InstrumentedSink {
+		if constants.VulnerabilityType(i) != constants.VulnerabilityTypeWeakCipher {
+			assert.Equal(t, before[i], telemetry.InstrumentedSink[i].Load(), "unexpected change for %s", constants.VulnerabilityType(i))
+		}
+	}
+}
+
+func TestReportWeakCipherDisabled(t *testing.T) {
+	original := config.Enabled
+	config.Enabled = false
+	t.Cleanup(func() { config.Enabled = original })
+
+	mockTracer := mocktracer.Start()
+	t.Cleanup(mockTracer.Stop)
+	before := telemetry.ExecutedSink.WeakCipher.Load()
+
+	// The disabled sink makes no report and no allocation, for every cipher.
+	allocations := testing.AllocsPerRun(10, func() {
+		for _, name := range []string{"DES", "TripleDES", "RC4", "Blowfish", "RC2", "PBEWithSHAAnd3KeyTripleDESCBC", "PBEWithSHAAnd40BitRC2CBC"} {
+			cipher.ReportWeakCipher(context.Background(), name, "", "", "")
+		}
+	})
+
+	assert.Zero(t, allocations)
+	assert.Empty(t, mockTracer.FinishedSpans())
+	assert.Equal(t, before, telemetry.ExecutedSink.WeakCipher.Load())
+}
+
+// TestReportWeakCipherUnknownName checks that a cipher name with no known sink
+// frames is reported, with no sink frame to skip: the location is the caller.
+func TestReportWeakCipherUnknownName(t *testing.T) {
+	if !build.Instrumented() {
+		t.Skip("the build is not instrumented, use `go tool orchestrion go test` or `scripts/otelc-test.sh` to run this test suite")
+	}
+	before := telemetry.ExecutedSink.WeakCipher.Load()
+	mockTracer := mocktracer.Start()
+	t.Cleanup(mockTracer.Stop)
+
+	cipher.ReportWeakCipher(context.Background(), "Unknown", "", "", "")
+
+	spanList := mockTracer.FinishedSpans()
+	require.Len(t, spanList, 1)
+	var event model.Event
+	require.NoError(t, json.Unmarshal([]byte(spanList[0].Tag(spans.SpanTagJson).(string)), &event))
+	require.Len(t, event.Vulnerabilities, 1)
+	assert.Equal(t, model.NewEvidenceString("Unknown"), event.Vulnerabilities[0].Evidence)
+	require.NotNil(t, event.Vulnerabilities[0].Location)
+	assert.Contains(t, event.Vulnerabilities[0].Location.Method, "TestReportWeakCipherUnknownName")
+	assert.Equal(t, before+1, telemetry.ExecutedSink.WeakCipher.Load())
 }
 
 func TestAESIsNotReported(t *testing.T) {
-	if !built.WithOrchestrion {
-		t.Skip("orchestrion is not enabled, use `go tool orchestrion go test` to run this test suite")
+	if !build.Instrumented() {
+		t.Skip("the build is not instrumented, use `go tool orchestrion go test` or `scripts/otelc-test.sh` to run this test suite")
 	}
 	before := telemetry.ExecutedSink.WeakCipher.Load()
 	mockTracer := mocktracer.Start()

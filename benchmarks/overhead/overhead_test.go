@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/mocktracer"
+	"github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
 )
 
 var (
@@ -123,10 +124,13 @@ func BenchmarkWeakHashActiveSpan(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for b.Loop() {
-		//dd:span span.name:benchmark.request
-		func(context.Context) {
+		// Start the span explicitly (not with a "//dd:span" directive, which is
+		// an Orchestrion feature), so that both tools measure the same code.
+		func() {
+			span, _ := tracer.StartSpanFromContext(context.Background(), "benchmark.request")
+			defer span.Finish()
 			sha1Result = sha1.Sum(payload) //nolint:gosec // Intentionally weak: this benchmarks the IAST sink.
-		}(context.Background())
+		}()
 		// The mock tracer retains finished spans. Reset on every operation to keep
 		// retained memory bounded independently of b.N.
 		mt.Reset()
@@ -154,14 +158,15 @@ func BenchmarkWeakCipherActiveSpan(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for b.Loop() {
-		//dd:span span.name:benchmark.request
-		func(context.Context) {
+		func() {
+			span, _ := tracer.StartSpanFromContext(context.Background(), "benchmark.request")
+			defer span.Finish()
 			block, err := des.NewCipher(key) //nolint:gosec // Intentionally weak: this benchmarks the IAST sink.
 			if err != nil {
 				b.Fatal(err)
 			}
 			desResult = block
-		}(context.Background())
+		}()
 		mt.Reset()
 	}
 }

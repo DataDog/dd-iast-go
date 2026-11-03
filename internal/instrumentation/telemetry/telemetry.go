@@ -17,16 +17,37 @@ import (
 	"github.com/DataDog/dd-iast-go/internal/model/constants"
 )
 
-// Build-time metrics. These are modified only by `init` functions inserted at
-// build time by the instrumentation; which is why they don't need to be atomic
-// or synchronized.
+// Build-time metrics. These are modified by `init` functions inserted at build
+// time by the instrumentation, and they are read by the telemetry heartbeat.
+// The two can run at the same time: a package that starts the tracer in its
+// own `init` function starts the heartbeat goroutine before all the other
+// `init` functions are done. Because of this, all build-time metrics are
+// atomic.
+//
+// Those `init` functions can run before the init functions of this package
+// (and before any package-level variable of it is initialized): the
+// instrumented package does not always import this package, so Go does not
+// order them. Because of this, every build-time metric MUST be usable in its
+// zero state, with no run-time initialization. Do not turn them into maps or
+// slices that need [make] or a literal.
+//
+// The array lengths are literals (not derived from [constants.OriginCount] or
+// [constants.VulnerabilityTypeCount]) because a length that depends on another
+// package makes the Orchestrion + coverage build fail at link time
+// ("fingerprint mismatch"). Tests check that the arrays are long enough.
 var (
-	// InstrumentedSource is the number of sources instrumented during build.
-	InstrumentedSource = make(map[constants.Origin]uint, constants.OriginCount)
+	// InstrumentedSource is the number of sources instrumented during the
+	// build, indexed by [constants.Origin]. It is a fixed-size array (zero at
+	// load time) and not a map, so it is safe to write from an injected `init`
+	// function at any point of the program initialization.
+	InstrumentedSource [32]atomic.Uint64
 	// InstrumentedPropagation is the number of propagation points instrumented during the build.
-	InstrumentedPropagation = uint(0)
-	// InstrumentedSink is the number of sinks instrumented during the build.
-	InstrumentedSink = make(map[constants.VulnerabilityType]uint, constants.VulnerabilityTypeCount)
+	InstrumentedPropagation atomic.Uint64
+	// InstrumentedSink is the number of sinks instrumented during the build,
+	// indexed by [constants.VulnerabilityType]. It is a fixed-size array (zero
+	// at load time) and not a map, so it is safe to write from an injected
+	// `init` function at any point of the program initialization.
+	InstrumentedSink [64]atomic.Uint64
 )
 
 // Run-time metrics. These are modified by the running application and have to

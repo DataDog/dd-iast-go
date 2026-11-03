@@ -1,1 +1,4 @@
 /coverage.txt
+# otelc build artefacts
+.otelc-build/
+otelc.runtime.go
