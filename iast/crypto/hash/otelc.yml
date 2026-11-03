@@ -10,7 +10,14 @@
 # rule (the declarations and the sink count) and one "inject_code" rule per sink
 # function. Keep the count in each otelc_decl_<package>.go file equal to the
 # number of "inject_code" rules of its package.
-version: v1.2.0
+#
+# The minimum version is the first one that loads a rule file only one time
+# (otelc #1483), as for the core rule files. An application that imports the
+# root package and this package reaches this file two times, so an older otelc
+# loads it twice and the build fails. No tagged otelc release satisfies this
+# minimum yet (the latest tag is v1.2.0): use a pseudo-version of otelc that is
+# built from the main branch (see go.mod).
+version: v1.2.1-0
 
 # Declares the go:linkname functions in crypto/md5 and registers the sink count.
 # This rule ignores "where" and always applies when crypto/md5 is built.

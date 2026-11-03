@@ -13,7 +13,14 @@
 #
 # None of the target functions is known to be absent from a release of
 # golang.org/x/crypto, so the rules have no "version" range for their targets.
-version: v1.2.0
+#
+# The minimum version is the first one that loads a rule file only one time
+# (otelc #1483), as for the core rule files. An application that imports the
+# root package and this package reaches this file two times, so an older otelc
+# loads it twice and the build fails. No tagged otelc release satisfies this
+# minimum yet (the latest tag is v1.2.0): use a pseudo-version of otelc that is
+# built from the main branch (see go.mod).
+version: v1.2.1-0
 
 des_declarations:
   target: crypto/des
