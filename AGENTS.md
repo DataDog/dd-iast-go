@@ -7,8 +7,8 @@ code.
 ## Operating Constraints
 
 This package is designed to be hooked into customer code-bases at compilation
-time using [orchestrion]. This implies this code might run in hot loops or
-within the critical path of the customer's application. In light of this, all
+time using [orchestrion] or [otelc]. This implies this code might run in hot
+loops or within the critical path of the customer's application. In light of this, all
 code in this module MUST abide by the following rules:
 
 - NEVER break the host application (e.g, by causing a `panic`)
@@ -27,10 +27,11 @@ As a consequence of these principles:
 
 - `/iast/` contains sub-directories for each kind of IAST vulnerability
   supported by this package. These directories contain the `orchestrion.yml`
-  files, and all packages containing one such `orchestrion.yml` file is imported
-  from `orchestrion.tool.go` at the package root. This gives users an easy way
-  to bring in all supported instrumentation while keeping the flexibility to
-  only enable the things they want.
+  and `otelc.yml` files, and all packages containing one such `orchestrion.yml`
+  file is imported from `orchestrion.tool.go` at the package root (otelc loads
+  the `otelc.yml` files without an import, see below). This gives users an easy
+  way to bring in all supported instrumentation while keeping the flexibility
+  to only enable the things they want.
 - `/internal/` contains all implementation details not intended for external
   consumption. Those details are those that are not necessary to implement new
   IAST detections externally to this package (but building on public features
