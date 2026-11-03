@@ -9,6 +9,12 @@
 # "go tool orchestrion go test ./...". All arguments go to "go test" (for
 # example: scripts/otelc-test.sh -shuffle=on -count=1).
 #
+# The arguments must be flags: the script selects the packages, and a package
+# argument brings back the import cycles that the script prevents (see 2.
+# below). Give each flag value with "=" (for example -run=TestName, not
+# -run TestName). All the arguments after "-args" go to the test binary, and
+# the script does not check them.
+#
 # A plain "go tool otelc go test ./..." does not work in this module:
 #
 #  1. otelc loads the rules of the packages that the tool file imports. The
@@ -28,6 +34,27 @@
 # change with otelc, and "go test ./..." already runs them.
 
 set -euo pipefail
+
+# Reject the arguments that are not flags (before "-args"). A package argument
+# would be added to the command line of each "go test" run.
+after_args=false
+for arg in "$@"; do
+  if [[ "${after_args}" == true ]]; then
+    continue
+  fi
+  case "${arg}" in
+    -args | --args)
+      after_args=true
+      ;;
+    -?*)
+      ;;
+    *)
+      echo "otelc-test: argument is not a flag: '${arg}'" >&2
+      echo "otelc-test: the script selects the packages; give flag values with '=' (for example -run=TestName)" >&2
+      exit 2
+      ;;
+  esac
+done
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
