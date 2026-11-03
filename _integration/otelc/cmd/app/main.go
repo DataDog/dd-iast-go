@@ -48,9 +48,13 @@ func main() {
 	if err != nil || initialBlock.BlockSize() != des.BlockSize {
 		panic("DES cipher was not created")
 	}
+	weakHashSinks := telemetry.InstrumentedSink[constants.VulnerabilityTypeWeakHash].Load()
+	weakCipherSinks := telemetry.InstrumentedSink[constants.VulnerabilityTypeWeakCipher].Load()
+	if !build.Instrumented() || weakHashSinks == 0 || weakCipherSinks == 0 {
+		panic("the application was not built with otelc or Orchestrion, or no sink was instrumented")
+	}
 	fmt.Printf("tool=%q tracer_started=%t gls=%t gls_after_finish=%t weak_hash_sinks=%d weak_cipher_sinks=%d initial=%x sha1=%x main=%x\n",
 		build.Tool(), tracerStarted, glsActive, glsActiveAfterFinish,
-		telemetry.InstrumentedSink[constants.VulnerabilityTypeWeakHash].Load(),
-		telemetry.InstrumentedSink[constants.VulnerabilityTypeWeakCipher].Load(),
+		weakHashSinks, weakCipherSinks,
 		initialDigest[:4], initialSHA1[:4], digest[:4])
 }

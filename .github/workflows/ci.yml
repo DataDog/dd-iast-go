@@ -96,6 +96,17 @@ jobs:
       - name: Unit Tests (otelc)
         if: matrix.tool == 'otelc'
         run: scripts/otelc-test.sh -shuffle=on
+      # A package argument brings back the import cycles that the script
+      # prevents. The script must reject it (exit code 2) before it runs otelc.
+      - name: otelc-test.sh rejects package arguments
+        if: matrix.tool == 'otelc'
+        run: |
+          status=0
+          scripts/otelc-test.sh ./... || status=$?
+          if [[ "${status}" -ne 2 ]]; then
+            echo "scripts/otelc-test.sh ./... exited with ${status}, want 2" >&2
+            exit 1
+          fi
       - name: Overhead benchmark unit tests
         if: matrix.tool == 'orchestrion'
         run: go -C benchmarks/overhead test -shuffle=on ./...
@@ -137,10 +148,27 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Setup Go
+        id: setup-go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: oldstable
-          cache-dependency-path: ${{ matrix.module }}/go.sum
+          # The cache key of setup-go does not depend on the tool, so the
+          # orchestrion and otelc legs would share one build cache. The two tools
+          # must not share a build cache (see scripts/otelc-test.sh). The next
+          # steps set up a cache with a key for each tool.
+          cache: false
+      - name: Find Go cache directories
+        id: go-env
+        run: |
+          echo "gocache=$(go env GOCACHE)" >> "${GITHUB_OUTPUT}"
+          echo "gomodcache=$(go env GOMODCACHE)" >> "${GITHUB_OUTPUT}"
+      - name: Go cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ${{ steps.go-env.outputs.gocache }}
+            ${{ steps.go-env.outputs.gomodcache }}
+          key: go-${{ runner.os }}-${{ runner.arch }}-${{ steps.setup-go.outputs.go-version }}-${{ matrix.tool }}-${{ hashFiles(format('{0}/go.sum', matrix.module)) }}
       - name: Integration Tests
         working-directory: ${{ matrix.module }}
         env:
@@ -150,6 +178,17 @@ jobs:
         run: |
           read -r -a packages <<< "${PACKAGES}"
           go tool "${TOOL}" go test -shuffle=on "${packages[@]}"
+      # cmd/app runs instrumented sinks during the package initialization (before
+      # the init functions of dd-iast-go). It exits with an error if the
+      # application panics, or if the tracer does not work with otelc.
+      - name: Build and run cmd/app
+        if: matrix.module == '_integration/otelc'
+        working-directory: ${{ matrix.module }}
+        env:
+          TOOL: ${{ matrix.tool }}
+        run: |
+          go tool "${TOOL}" go build -o "${RUNNER_TEMP}/app" ./cmd/app
+          "${RUNNER_TEMP}/app"
 
   upload-coverage:
     needs: test
