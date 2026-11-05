@@ -5,7 +5,7 @@ go 1.26.6
 require (
 	github.com/DataDog/dd-iast-go v0.0.0
 	github.com/DataDog/dd-iast-go/_integration/otelc v0.0.0
-	github.com/DataDog/dd-trace-go/v2 v2.12.0-rc.2
+	github.com/DataDog/dd-trace-go/v2 v2.12.0
 )
 
 require (

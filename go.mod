@@ -10,7 +10,7 @@ tool (
 )
 
 require (
-	github.com/DataDog/dd-trace-go/v2 v2.13.0-dev.1
+	github.com/DataDog/dd-trace-go/v2 v2.12.0
 	github.com/DataDog/orchestrion v1.14.0
 	github.com/google/uuid v1.6.0
 	github.com/puzpuzpuz/xsync/v4 v4.5.0

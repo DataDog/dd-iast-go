@@ -18,10 +18,10 @@ github.com/DataDog/datadog-agent/pkg/trace/traceutil v0.82.3 h1:XainI6q0lePbihA+
 github.com/DataDog/datadog-agent/pkg/trace/traceutil v0.82.3/go.mod h1:6WZPaQSf8yG+XOf4ppzcEUr+yWLSH07+iuRlNazyQWM=
 github.com/DataDog/datadog-go/v5 v5.9.1 h1:jOxw/TaxGWok8RIxbpqn2p3RzSnQr/m3Q6TgaHqqOU0=
 github.com/DataDog/datadog-go/v5 v5.9.1/go.mod h1:2SBt8zJu6r7sRQHZFMQ8oCukWTKj0ymwulmNgQzJ1JM=
-github.com/DataDog/dd-trace-go/contrib/net/http/v2 v2.13.0-dev.1 h1:o0/pmBqklbtUoRtIzanJXBrDgMIWHU0vocqcRO/IPNU=
-github.com/DataDog/dd-trace-go/contrib/net/http/v2 v2.13.0-dev.1/go.mod h1:sJoHbyrohbISlpLdY+ohBOFoQ4Qxud4cZMupgw9VoGA=
-github.com/DataDog/dd-trace-go/v2 v2.13.0-dev.1 h1:/9ZNVjXBXNjFirYhFiJX3i2TkVEUXpvY9e7C+Y7MlFA=
-github.com/DataDog/dd-trace-go/v2 v2.13.0-dev.1/go.mod h1:rOLOFJ8rlhVsJv7f53jlotY/56xvb0OBLahN+dAOdjA=
+github.com/DataDog/dd-trace-go/contrib/net/http/v2 v2.12.0 h1:U4JEw46EiUdIwShHsei/SIwvREySGx8OylWPwPE5G3I=
+github.com/DataDog/dd-trace-go/contrib/net/http/v2 v2.12.0/go.mod h1:g1e8E6EHXW99t2a3A+RjlV5HOhubKvpIeGaj1LBZXPw=
+github.com/DataDog/dd-trace-go/v2 v2.12.0 h1:YOxX+szin45JumOECU6kUNdCPHJFtNvl9CYUgAJf53k=
+github.com/DataDog/dd-trace-go/v2 v2.12.0/go.mod h1:rOLOFJ8rlhVsJv7f53jlotY/56xvb0OBLahN+dAOdjA=
 github.com/DataDog/go-libddwaf/v5 v5.0.1 h1:z63Ipq9BRVFjrd9ddF0OI1vL3iRLRKomAxq1oA4v7Z4=
 github.com/DataDog/go-libddwaf/v5 v5.0.1/go.mod h1:lEBmHWNq/KHsd1RLOj8COojJ1WsZJ3rqpG4ZiFn48kI=
 github.com/DataDog/go-runtime-metrics-internal v0.0.4-0.20260317103029-7c129975f019 h1:3P6gc+c48LgiOCZW6R7v4/Rvarx/MBnIEzGGZwOUaPY=
