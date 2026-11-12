@@ -11,7 +11,7 @@ tool (
 
 require (
 	github.com/DataDog/dd-trace-go/v2 v2.12.0
-	github.com/DataDog/orchestrion v1.14.0
+	github.com/DataDog/orchestrion v1.15.0
 	github.com/google/uuid v1.6.0
 	github.com/puzpuzpuz/xsync/v4 v4.5.0
 	github.com/stretchr/testify v1.12.1
