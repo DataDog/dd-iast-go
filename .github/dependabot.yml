@@ -5,12 +5,20 @@ updates:
     schedule:
       interval: weekly
 
+  # All Go modules of this repository are in this entry. The nested modules
+  # replace github.com/DataDog/dd-iast-go with the local tree ("=> ../.."), so
+  # a dependency must have the same version in all of them. "group-by:
+  # dependency-name" makes dependabot update one dependency in all directories
+  # in one pull request.
   - package-ecosystem: gomod
-    directory: /
+    directories:
+      - /
+      - /_integration/otelc
+      - /_integration/otelc/setups/hashonly
+      - /_integration/otelc/setups/rootandhash
+      - /benchmarks/overhead
     schedule:
       interval: weekly
-
-  - package-ecosystem: gomod
-    directory: /benchmarks/overhead
-    schedule:
-      interval: weekly
+    groups:
+      go-modules:
+        group-by: dependency-name
