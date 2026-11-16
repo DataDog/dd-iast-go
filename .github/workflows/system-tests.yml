@@ -197,7 +197,7 @@ jobs:
 
       - name: Upload test results to Test Optimization
         if: always()
-        uses: DataDog/system-tests/.github/actions/datadog_ci@ecf9306aed47faae97ba27e401e9ef1b333d06bf
+        uses: DataDog/system-tests/.github/actions/datadog_ci@43145a9454085892244bd237269df9bc2c66169c
         with:
           push_to_test_optimization: "true"
 
