@@ -675,27 +675,105 @@ stateDiagram-v2
   `iast/crypto/hash`, as `_integration/otelc/setups/hashonly` does); with
   Orchestrion, remove the taint imports from `orchestrion.tool.go`.
 
-### 1.10 Orchestrion and otelc: one source of truth
+### 1.10 Orchestrion and otelc: equal behavior
 
 Decision 4: both tools have equal support. The repository rules
 (`AGENTS.md`, "Instrumentation Back-Ends") already require one aspect for each
-tool and shared Go logic.
+tool and shared Go logic. Parity means **the same behavior**, proven by the
+same tests. A shared or generated rule file is not a proof.
 
-| Part | Orchestrion | otelc | How we keep them equal |
+#### 1.10.1 Only 3 primitives
+
+v0 uses only these primitives. Both tools have them, for functions with a
+receiver and without one.
+
+| Primitive | Orchestrion | otelc (pinned version) | Used for |
 |---|---|---|---|
-| Fields in `runtime.heapArena`, `runtime.mspan`, `runtime.g` | `struct-definition` | `add_struct_fields` | One field list; a test compares the two rule files |
-| Runtime-side code (bitmap, classifier, worker, sweep hook) | `inject-declarations` | `add_file` of a `//go:build ignore` file | **One Go source file.** `go generate` writes the Orchestrion template from it; a CI check fails when the generated file is not up to date |
-| Prologues (`concatstrings`, `sweep`, …) | `prepend-statements` | `inject_code` (`raw`) | Small templates only; they call the shared runtime-side code. Unnamed results differ (`__result__N` against `_unnamedRetValN`), so the templates differ only in names |
-| Standard library twins, sources, sinks | `function-body` / `method-call` | `func` rules / `call` rules | The twin is shared Go code; the rules only call it |
-| Tests | `go tool orchestrion go test` | `scripts/otelc-test.sh` | The same tests; the `_integration/otelc` suite compares the findings of the two tools |
+| Add fields to a struct of another package | `struct-definition` + `add-struct-field` | `add_struct_fields` | `runtime.heapArena`, `runtime.mspan`, `runtime.g` |
+| Add declarations to a package | `inject-declarations` | `add_file` (a `//go:build ignore` file) | The runtime-side code, the twins |
+| A prologue at the start of a function body, with an early `return` | `function-body` + `prepend-statements` | `func` rule + `inject_code` (`raw`, default placement) | Every hook of sections 1.2 to 1.7 |
 
-If otelc lacks a primitive that a hook needs, decision 4 allows a new feature
-in otelc only when Orchestrion lacks it, not the reverse. So for each hook that
-otelc cannot express, the PR must either find an otelc form, or add the
-primitive to otelc upstream, or drop the hook for both tools and document the
-gap. `S3` starts with a one-hour otelc feasibility check of the 4 runtime
-primitives (struct field, `add_file`, prologue with a `return`, method with a
-pointer receiver such as `(*sweepLocked).sweep`).
+v0 does **not** use statement-pattern placement inside a function body. The
+pinned otelc has it (`tool/internal/instrument/apply_raw.go:76–126`), but
+Orchestrion `prepend-statements` is not the same primitive. When a hook needs
+to act in the middle of a function (for example after the slide `copy` in
+`json.(*Decoder).refill`), it is a **twin** instead: the prologue runs a
+complete copy of the function with the bit operations, and returns (section
+1.5). This is one design for both tools.
+
+Unnamed results have different names (Orchestrion `__result__N`, otelc
+`_unnamedRetValN`). Only the small prologue templates differ for this reason.
+
+#### 1.10.2 One source file for the runtime-side code
+
+The runtime-side code (bitmap, classifier, worker, sweep and `freegc` hooks,
+gate word) is more than 1 000 lines. It has one Go source file. otelc copies
+it with `add_file`. `go generate` writes the Orchestrion `inject-declarations`
+template from the same file. A CI check fails when the generated file is not up
+to date (AC-P8). This keeps the code equal; the behavior tests (1.10.3) prove
+that the result is equal.
+
+#### 1.10.3 Parity is proven by behavior
+
+- Every woven test runs with both tools (unit tests through
+  `go tool orchestrion go test` and `scripts/otelc-test.sh`, end-to-end tests
+  in `_integration/otelc`).
+- **Parity witnesses**, required in the stack PR that adds the hook, with both
+  tools: one real allocator reuse (a sweep that clears dead bits, then a new
+  object at the same address, `S3`); one runtime copy (`S4`); one standard
+  library twin with an interior copy (`json.(*Decoder).refill` slide and grow,
+  `S12`; before it, `io.ReadAll` multi-chunk, `S8`).
+- The `_integration/otelc` suite compares the findings of the two tools, after
+  it checked that each tool gave at least one finding (AC-F11).
+
+#### 1.10.4 Platform-specific code is selected at compile time
+
+Some runtime symbols exist only on some platforms. For example the runtime has
+a Go `mmap` function only in `mmap.go`, `cgo_mmap.go`, `sys_darwin.go`,
+`sys_openbsd.go`, `os2_aix.go` and `os3_solaris.go`; Windows and wasm have
+none. Injected code that names `mmap` would not compile there. A check in a
+runtime `init` is too late.
+
+Rule:
+
+- The platform-specific code (the slab allocator that calls `mmap`, the CPU
+  feature check) is injected **next to the Go definition of `mmap`**, so that
+  it has the build constraints of that file. It sets a function variable in an
+  injected `init` of the same file.
+- The generic code calls the platform code only through this variable. When
+  the variable is nil (no `mmap` definition: Windows, wasm), `Set` returns
+  false and the gate goes to Off.
+- The generic code names only symbols that exist on every platform.
+- The list of supported platforms is also checked in the generic code
+  (`GOOS`, `GOARCH`, `asanenabled`, `msanenabled`, `cpu.ARM64.HasATOMICS`).
+  Platforms that have `mmap` but are not supported (for example freebsd,
+  linux/386) compile and stay Off.
+- AC-P5 builds **and runs** the feature-off tests where a runner exists, and
+  only cross-builds the others. The two kinds of evidence are labeled.
+
+#### 1.10.5 Expected-hook manifest and behavioral sentinel
+
+A tool can skip a rule with no error. Orchestrion v1.15.0 does this on gotip
+today (section 7.2). Thus a passing build is no proof that the hooks are there.
+
+- **Expected-hook manifest.** Each injected hook registers itself at package
+  init, in a fixed bit set of the runtime (no allocation). A checked-in
+  manifest lists the hooks that **must** be there, for each Go minor and each
+  supported platform (for example the HTTP/2 body receiver changes between
+  go1.26 and go1.27, section 1.6).
+- **Behavioral sentinel.** `_integration/otelc/cmd/sentinel` is a woven
+  program that exits with an error when a capability does not work. It grows
+  with the stack: `S3` adds set → any → clear and a reuse check; `S4` adds a
+  concatenation copy; `S7` adds sink → report; `S8` adds HTTP request →
+  SQL finding; `S9`, `S12` add `fmt.Sprintf` and JSON. It also compares the
+  registered hooks with the manifest. It never skips: in a job that expects a
+  woven build, `build.Instrumented() == false` is a failure.
+- **Stable jobs** (go1.26.x, go1.27.x, both tools) must pass the sentinel. They
+  are required.
+- **gotip jobs** (both tools) are not required (decision 3). They run 2
+  independent steps: the drift test (no weaving; it fails for a minor with no
+  golden file, see 3.1) and the woven sentinel. One step does not stop the
+  other. A failure writes a warning for each tool in the job summary.
 
 ## 2. Tradeoffs and rejected options
 
@@ -716,11 +794,14 @@ column gives the source of the reason.
 | T10 | Report only in the `_dd.iast.json` tag | Rejected (decision 7) | With trace protocol v1.0 the backend ignores `_dd.iast.json` and reads only `meta_struct.iast`. `main` keeps the tag only as a fallback. | Notebook F3; PR #9 |
 | T11 | Lazy sources only (taint the value that an accessor returns) | Rejected as the only mechanism | Misses direct reads of fields, maps and slices (`r.Header["X"]`, `chi.Context.URLParams.Values`). We set bits eagerly in place at owner start, and add records lazily at the accessors for a better origin and name. | Section 1.6 |
 | T12 | Replace request state with tainted clones (PR #39) | Rejected | Changes host behavior and races: the `Request.Header` map seen by the caller is replaced (#51 C12); `ParseForm` state is written again on each call (#51 C13). Bits in place do not write to application state. | #51 C12, C13 |
-| T13 | Hand-written runtime code for each tool (the dd-trace-go GLS pattern) | Rejected | Two copies of more than 1 000 lines of runtime code drift apart. We generate the Orchestrion template from the same file that otelc copies (section 1.10). | Section 1.10 |
-| T14 | Owner created at `net/http.serverHandler.ServeHTTP` | Rejected | At that point the dd-trace-go span does not exist yet. The owner and the annotation would make two sampling decisions (the class of #51 H18), and the binding of a report to a span is not clear. We bind the owner to the server span start. | `httptrace.BeforeHandle` in dd-trace-go v2.12.0 |
-| T15 | "Exclusive owner" rule for JSON readers (PR #39 `jsonbridge`) | Not needed | It exists because the PR #39 store keys values by identity. With bits, the bytes that `body.Read` writes carry their taint through `bufio`, `io.TeeReader`, `io.MultiReader`, `http.MaxBytesReader` and the decoders (with the P0/P1 hooks of section 1.5). The registry attributes them by content. The JSON coverage matrix (`S9`) measures the real limits. | Section 8; criterion AC-J1 |
+| T13 | Hand-written runtime code for each tool (the dd-trace-go GLS pattern) | Rejected | Two copies of more than 1 000 lines of runtime code drift apart. We generate the Orchestrion template from the same file that otelc copies (section 1.10.2). Equal code is not a proof of equal behavior: the parity witnesses prove it (section 1.10.3). | Section 1.10 |
+| T14 | Owner created at `net/http.serverHandler.ServeHTTP`, or at `httptrace.BeforeHandle` (v1 of this document) | Rejected | At `ServeHTTP` the dd-trace-go span does not exist yet: two sampling decisions (the class of #51 H18), and no binding of a report to a span. `BeforeHandle` misses the chi integration, which calls `StartRequestSpan` (`contrib/go-chi/chi.v5/chi.go:60`). We bind at the private `startRequestSpan`, which both call (section 1.3.1). | dd-trace-go v2.12.0 `instrumentation/httptrace` |
+| T15 | "Exclusive owner" rule for JSON readers (PR #39 `jsonbridge`) | Replaced by an equivalent provenance check | The rule exists because the PR #39 store keys values by identity and must not attribute a document to the wrong request. With bits, the bytes that `body.Read` writes carry their taint through the readers and the decoders. The provenance check is: an attributed body segment must be in the body copy of the **reporting** owner, which holds only the bytes that this request's own registered body object produced (section 1.3.4). Bytes of another request are foreign and make no finding. The JSON matrix (`S10`, `S12`) tests mixed readers, read-ahead, pooled buffers, and distinct and equal content of 2 concurrent requests, and checks both spans. A cross-request disclosure fails the test; it is never accepted as a golden result. | Section 1.3.4; AC-J1 |
 | T16 | Report every tainted run, also with no strong source match | Rejected | Bits that stay on reused memory, and chance matches of 1 to 3 bytes, would make false positives. A finding needs one strong segment of an active owner. | PR #58 plan section 4.5.2 |
 | T17 | A pass/fail performance gate in CI | Rejected for v0 (decision 9) | v0 reports numbers only. Exception: allocation counts are deterministic, so "0 added allocations when off" is a correctness test (AC-R-H27), not a performance gate. | Decision 9 |
+| T18 | At a sink, search all active owners for a matching source (v1 of this document) | Rejected | When request B uses bytes of a still-active request A, the search can find A even when B has no matching source: a finding in B's span with A's source. That is not the accepted ambiguity of equal source values. We use only the owner of the current request (section 1.3.2). | Adversarial review round 1, objection 2 |
+| T19 | Statement-pattern injection inside a function body (otelc `apply_raw.go` placement) | Not used in v0 | Orchestrion has no equal primitive. A twin (a complete copy of the function, called from the prologue) gives the same result with the 3 primitives that both tools have (section 1.10.1). | otelc `tool/internal/instrument/apply_raw.go:76–126` |
+| T20 | Recycle bitmap chunks when a large object dies (PR #52 design) | Deferred | A chunk covers several spans; a paused worker can hold a chunk pointer across a recycle and write into memory that now describes other addresses. v0 keeps every published chunk; the budget bounds the memory (section 1.2.2). | Adversarial review round 1, objection 1 |
 
 ## 3. Constraints
 
@@ -730,7 +811,7 @@ column gives the source of the reason.
 |---|---|---|
 | go1.26.x (`oldstable`, `go.mod` says `go 1.26.6`) | Required | Unit and integration tests, Orchestrion and otelc, linux/amd64 |
 | go1.27.x (`stable`) | Required | Same as go1.26.x |
-| gotip | Signal only (decision 3) | One job for each tool, `continue-on-error: true`, with a warning in the job summary |
+| gotip | Signal only (decision 3) | One job for each tool, not required by "Green CI": drift test and woven sentinel as 2 independent steps (section 1.10.5), with a warning for each tool in the job summary |
 | go1.25 and older | Not supported | None |
 
 Today the CI of `main` runs only `oldstable` (`.github/workflows/ci.yml`).
@@ -756,12 +837,13 @@ detect a change in a new Go version:
    A new minor version with no golden file fails the test. A human then reads
    the new runtime code and adds the golden file. The test forces this review;
    it is not a proof.
-3. **gotip job.** It runs the drift test and the woven tests on gotip. It
-   **must check that weaving happened**, not only that the build passed:
-   Orchestrion v1.15.0 skips the injection on a type-check error and the build
-   still passes (section 7, fact 2). The job runs `_integration/otelc/cmd/app`
-   (it panics when no sink was instrumented) and the heap bits test that fails
-   when a woven build on a supported platform reports `Enabled() == false`.
+3. **Expected-hook manifest and behavioral sentinel** (section 1.10.5). The
+   stable jobs must pass the sentinel. The gotip jobs run the drift test and
+   the sentinel as 2 independent steps: Orchestrion v1.15.0 skips the
+   injection on a type-check error and the build still passes (section 7.2),
+   so a build result alone proves nothing. The existing
+   `_integration/otelc/cmd/app` witnesses only the weak crypto hooks; the
+   sentinel witnesses each taint capability as the stack adds it.
 
 ### 3.2 Platforms
 
@@ -770,20 +852,25 @@ detect a change in a new Go version:
 | linux/amd64 | On | All jobs (required) |
 | linux/arm64 | On (only with LSE atomics, see section 1.2) | Woven heap bits and runtime hook tests (`ubuntu-24.04-arm`) |
 | darwin/arm64 | On | Woven heap bits and runtime hook tests (`macos-latest`) |
-| darwin/amd64 | On | In CI if a hosted Intel macOS runner is available; else one manual run in `S3`, recorded in its PR |
-| windows/amd64, js/wasm, linux/386, other `GOOS`/`GOARCH` | Off: builds, `Enabled()` is false, sources and sinks do nothing | Cross builds, and the feature-off tests where a runner exists |
-| any, with `-asan` or `-msan` | Off | One `-asan` job (feature off) |
+| darwin/amd64 | On | In CI if a hosted Intel macOS runner is available. Else **manual evidence**: one recorded run in `S3` (not CI) |
+| windows/amd64 | Off | Feature-off tests **executed** on `windows-latest` |
+| js/wasm, linux/386, freebsd/amd64, other `GOOS`/`GOARCH` | Off | **Cross-build only** (no execution); labeled as such |
+| linux/amd64 with `-asan` | Off | Feature-off tests executed (gcc with libasan) |
+| linux/amd64 with `-msan` | Off | Feature-off tests executed (`CC=clang`, `-msan`) |
 | any, with `-race` | On | Woven `-race` job. Note: the race detector does not instrument package `runtime`, so this job does not prove that the runtime-side code has no race. The atomics rules (section 1.2) and the stress tests cover it. |
 
-The check is explicit: an injected `init` tests `GOOS`, `GOARCH`,
-`asanenabled`, `msanenabled` and `cpu.ARM64.HasATOMICS`. It does not depend
-on which `mmap` definitions have a Go body.
+Platform code is selected at compile time (section 1.10.4). The generic code
+also checks `GOOS`, `GOARCH`, `asanenabled`, `msanenabled` and
+`cpu.ARM64.HasATOMICS`. The generated-code check disassembles the woven
+prologues for each supported ABI (linux/amd64, linux/arm64, darwin/arm64).
 
 ### 3.3 Orchestrion and otelc: equal support
 
-- Every hook has an Orchestrion rule and an otelc rule (section 1.10). A
-  difference is a defect, unless the PR gives the reason why one tool cannot
-  do it (repository `AGENTS.md`).
+- Every hook has an Orchestrion rule and an otelc rule, built from the 3
+  primitives of section 1.10.1. A difference is a defect, unless the PR gives
+  the reason why one tool cannot do it (repository `AGENTS.md`).
+- Parity is proven by behavior: the same tests with both tools, and the parity
+  witnesses of section 1.10.3. A generated or shared rule file is not a proof.
 - Decision 4: a new feature can be otelc only when Orchestrion lacks it. The
   reverse is not allowed.
 - Each PR runs its tests with both tools, on go1.26.x and go1.27.x.
@@ -825,21 +912,30 @@ section 1.2 and for "off by default".
 5. `nosplit` classifiers: a `uintptr` to a stack value is refused before the
    stack can move. CI checks the generated code (`-S`) and runs a test with
    `-gcflags=all=-d=maymorestack=runtime.mayMoreStackMove`.
-6. Memory reuse: the sweep hook and the `freegc` hook clear the bits of dead
-   objects; user arena chunks are refused; finalizer specials are kept.
-7. Origin registry: pin + `TryLock`, generation check on every access, no
-   wait; `Finish` never blocks; the last accessor cleans the slot.
-8. `checklocks` annotations on all registry state (the CI lint job already
-   runs `go tool checklocks ./...`).
-9. No hook calls application code while it holds a registry pin.
+6. Memory reuse: the clear-before-reuse points of section 1.2.1. Chunks and
+   directories are never recycled in v0 (section 1.2.2), so a paused worker
+   always holds a valid chunk.
+7. `Set` and `Copy` write in 2 phases (section 1.2.3): a failure writes no bit
+   and undoes no bit.
+8. The gate word can become Live only with `CAS(0 → 1)` (section 1.2.5), so a
+   trip is never undone by a concurrent `Set`.
+9. Origin registry: pin + `TryLock`, generation check on every access
+   (`Finish` included), no wait; `Finish` never blocks; the last accessor
+   cleans the slot. No access to another owner (section 1.3.2).
+10. `checklocks` annotations on all registry state (the CI lint job already
+    runs `go tool checklocks ./...`).
+11. No hook calls application code while it holds a registry pin.
+12. `-race` is an oracle for the Go registry code. It is **not** an oracle for
+    the runtime-side bitmap code (the race detector does not instrument
+    package `runtime`); the stress tests and forced interleavings are.
 
 ### 3.6 Memory budget
 
 | Item | Size | Limit | When the limit is reached |
 |---|---|---|---|
-| Heap bits | 1 bit per heap byte, only in 128 KiB chunks that hold a tainted byte (12.5 % of these chunks) | `DD_IAST_TAINT_MEMORY_LIMIT`, default 64 MiB, max 1 GiB (1 024 slab descriptors in the runtime BSS, 16 KiB) | `Set` returns false; the source or propagation is dropped; telemetry counter |
+| Heap bits | 1 bit per heap byte, only in 128 KiB chunks that held a tainted byte (12.5 % of these chunks), plus the directories (one chunk each). Chunks are never recycled in v0 (section 1.2.2). | `DD_IAST_TAINT_MEMORY_LIMIT`, default 64 MiB, max 1 GiB (1 024 slab descriptors in the runtime BSS, 16 KiB). Slabs and directories are both in this budget. | `Set` returns false; the source or propagation is dropped; telemetry counter |
 | Added runtime fields | 8 bytes per arena, 1 byte per span | Fixed | – |
-| Owner copies | Source names and values, derived entries, body copy | 256 KiB per owner; owners ≤ `DD_IAST_MAX_CONCURRENT_REQUESTS` (default 2, clamped to 64): 512 KiB by default, 16 MiB max | Record dropped; its bytes become foreign |
+| Owner copies | Source names and values, derived entries, body copy; the work of one sink call is also bounded (section 1.3.3: 64 KiB inspected, 1 MiB compared) | 256 KiB per owner; owners ≤ `DD_IAST_MAX_CONCURRENT_REQUESTS` (default 2, clamped to 64): 512 KiB by default, 16 MiB max | Record dropped; its bytes become foreign |
 | Owner table | Fixed records per slot | Allocated on the first sampled request | – |
 | Annotation | Existing `internal/spans` store | `DD_IAST_MAX_CONCURRENT_REQUESTS` | Existing behavior, with the `S2` fixes |
 
