@@ -28,6 +28,7 @@ closes.
 | [9](#9-risks) | Risks | You approve the design |
 | [10](#10-decisions-to-confirm-and-open-questions) | Decisions to confirm and open questions for Romain | You approve the design |
 | [11](#11-references) | References | You want the sources |
+| [12](#12-changes-in-v2) | Each objection of review round 1, and what changed | You review v2 |
 
 ### Clean-room rule
 
@@ -74,16 +75,21 @@ PoC code. The stack can change and extend it.
    `_dd.iast.json` fallback that `main` has.
 6. Taint tracking is **off by default**. The env var
    `DD_IAST_TAINT_TRACKING_ENABLED=true` turns it on. Off means: no bit is
-   set, no memory is mapped, and each hook costs one load and one branch.
-7. Orchestrion and otelc get the same hooks. The runtime-side code has one
-   source file; the rules of both tools are generated from it or copy it.
+   set, no memory is mapped, and each hook costs one load and one compare.
+7. Orchestrion and otelc get the same hooks, built from 3 primitives that both
+   tools have. Parity is proven by the same behavior tests with both tools. A
+   sentinel program fails when a tool silently skips a hook.
 8. Supported: go1.26.x and go1.27.x; linux and darwin on amd64 and arm64.
    Off on other platforms, and with `-asan` or `-msan`. gotip runs in CI as a
    signal only.
-9. The stack has 13 PRs (section 6). Each PR leaves `main` green, with the
-   feature off by default.
-10. The milestone (2026-12-03) is at risk: the critical path is about 123 hours
-    of agent work. Section 10 asks Romain which PRs the milestone needs.
+9. The stack has 15 PRs in this repository, one PR in `DataDog/system-tests`,
+   and one preview-notes PR for option A (section 6). Each PR leaves `main`
+   green, with the feature off by default. Each acceptance criterion has
+   exactly one closing PR.
+10. The full Definition of done does not fit before 2026-12-03 (critical path
+    122 hours of agent work). Romain chooses: **A**, a dated preview on
+    2026-12-03 with explicit omissions, or **B**, the full Definition of done
+    on 2026-12-18 at the earliest (section 6.3).
 
 ## 1. Approach
 
@@ -1263,7 +1269,7 @@ PR is the closing PR (each criterion has exactly one).
 | S12 | `feat(iast): propagate taint through bufio, readers and encoding/json` | P0 JSON v1 and v2 hooks, P1 `bufio` and reader hooks, multipart forms; drift goldens; matrix update to the approved patterns; parity witness `refill`; sentinel: JSON | S9, S10 | Matrix and end-to-end tests | AC-F3, AC-F8, AC-F11, AC-J3, AC-J4, AC-R-H4, AC-P10 | 24 h |
 | S13 | `docs: report the taint tracking benchmarks` | Benchmark workloads and the report, with raw outputs | S12 | The report | AC-B1, AC-B2, AC-B3 | 6 h |
 | S14 | `docs: document taint tracking limits and coverage` | README; known limits, gaps and false positives; set the status of this document to "Implemented" | S11, S12 | Review | AC-D1, AC-D2, AC-D3 | 4 h |
-| X1 | (in `DataDog/system-tests`) `golang: run IAST SQLi and CMDi tests on the dd-iast-go weblog` | Weblog endpoints and manifest for SQL injection and command injection on the `net-http-orchestrion` weblog; scenario env `DD_IAST_TAINT_TRACKING_ENABLED=true` | S8 merged on dd-iast-go `main` | The system-tests CI | – (prerequisite of AC-ST1) | 4 h |
+| X1 | (in `DataDog/system-tests`) `golang: run IAST SQLi and CMDi tests on the dd-iast-go weblog` | Weblog endpoints and manifest for SQL injection and command injection on the `net-http-orchestrion` weblog; scenario env `DD_IAST_TAINT_TRACKING_ENABLED=true` | S8 merged on dd-iast-go `main` | The system-tests CI | – (a prerequisite, not a closing PR) | 4 h |
 | S15 | `ci(system-tests): require the SQLi and CMDi system-tests` | Add the SQLi and CMDi tests to the "expected IAST tests executed" check of `.github/workflows/system-tests.yml`, with a nonzero count of executed Go cases | X1 merged | The system-tests workflow on the PR | AC-ST1 | 2 h |
 
 **Owner and order of X1.** The Delivery Lead assigns X1 to the squad's
@@ -1361,9 +1367,10 @@ Effect on v0:
 
 1. The gotip jobs of S1 are red for both tools until the tools are fixed.
    They are a signal only (decision 3), so they do not block a merge.
-2. A gotip job must check that weaving happened, not only that the build
-   passed (AC-P2). Without this check, the Orchestrion job would be green with
-   no hook at all.
+2. A build result proves nothing: the Orchestrion job would be green with no
+   hook at all. The gotip jobs run the woven sentinel and the expected-hook
+   manifest (section 1.10.5), as a step that is independent of the drift
+   test (AC-P2, AC-P9).
 3. Risk R7 (section 9).
 
 Commands to measure it again (from `_integration/otelc`, with gotip first in
@@ -1394,8 +1401,8 @@ production cannot be checked in code; it does not block v0 (Romain).**
 
 ## 8. Known limits and coverage gaps (v0)
 
-These limits are accepted for v0. `S13` copies them into the user
-documentation (AC-D2). The JSON matrix (`S9`, `S12`) gives the real JSON
+These limits are accepted for v0. `S14` copies them into the user
+documentation (AC-D2). The JSON matrix (`S10`, `S12`) gives the real JSON
 limits.
 
 ### 8.1 Propagation gaps (taint is lost: a missed finding)
@@ -1412,11 +1419,16 @@ limits.
    strings from `(*json.Decoder).Token`.
 5. Decompressed bodies (`compress/gzip` and others): the output bytes are new
    bytes.
+6. Byte and rune values: `WriteByte`, `WriteRune`, `string(r)` and the
+   1-byte results of `string(b)` (they point into a static array) carry no
+   taint.
 
 ### 8.2 Attribution limits
 
-1. Equal content from two requests can be attributed to the wrong request
-   (decision 6).
+1. Equal content: bytes from elsewhere that are equal to a source of the
+   current request (at least 4 bytes) are attributed to that source
+   (decision 6). Bytes of another request that are not equal to a source of
+   the current request are foreign and make no finding.
 2. Body bytes after the first 64 KiB keep their bits but are foreign: alone,
    they make no finding.
 3. Coarse transforms (escapes, Unicode case, `%q`, URL encoding) taint the
@@ -1434,12 +1446,18 @@ limits.
    that outlives the request) makes no finding.
 2. The owner needs the dd-trace-go HTTP server integration (a server span).
    With Orchestrion or otelc and the dd-trace-go rules, it is automatic.
-3. Sampled-out requests (`DD_IAST_REQUEST_SAMPLING`, default 30 %) and
+3. A sink must find the owner of the current request (section 1.3.2): from
+   its context argument, or from the active span of the goroutine. A sink
+   with no context in a goroutine that the handler started (no active span)
+   is a safe miss.
+4. With much taint in many arenas, the heap bit budget can be used up, because
+   chunks are never recycled in v0 (section 1.2.2): new taint is dropped.
+5. Sampled-out requests (`DD_IAST_REQUEST_SAMPLING`, default 30 %) and
    requests above `DD_IAST_MAX_CONCURRENT_REQUESTS` (default 2) are not
    analyzed.
-4. Values whose memory `Set` refuses (read-only or interned strings) are not
+6. Values whose memory `Set` refuses (read-only or interned strings) are not
    tainted.
-5. After the first taint in a process, all hooks pay the clean-path cost
+7. After the first taint in a process, all hooks pay the clean-path cost
    (sticky gate word).
 
 ### 8.4 Out of scope for v0
@@ -1458,7 +1476,7 @@ limits.
 ### 8.5 Platforms and toolchains
 
 1. Off on windows, wasm, 386 and the other unsupported targets, with `-asan`
-   or `-msan`, and on arm64 CPUs without LSE atomics.
+   or `-msan`, and on arm64 CPUs without LSE atomics (decision D6).
 2. go1.25 and older are not supported. gotip is not supported: today neither
    tool can weave it (section 7.2).
 3. The woven runtime code stays in the binary when taint tracking is off, and
@@ -1471,16 +1489,19 @@ limits.
 
 | ID | Risk | Effect | Mitigation | PR |
 |---|---|---|---|---|
-| R1 | The milestone of 2026-12-03 is not met | Design partners wait | Milestone cut S1 to S11 (Q1); parallel lanes (section 6.3) | all |
-| R2 | otelc cannot express one hook (runtime struct field, prologue with `return`, JSON v2 hook points) | No parity, or a gap for both tools | Feasibility check at the start of S3; upstream otelc change; else drop the hook for both tools and document it (decision 4 allows otelc-only, not Orchestrion-only) | S3, S12 |
+| R1 | The milestone of 2026-12-03 is not met | Design partners wait | Option A or B (section 6.3); parallel lanes; reviews within half a working day | all |
+| R1b | Option A: the preview without S9 misses `fmt.Sprintf`, the most common way to build a query in Go | Few real findings in the preview | State it in the preview notes (SP); S9 runs in a parallel lane and merges as soon as it is approved | S9, SP |
+| R2 | One tool cannot express one hook with the 3 primitives (for example a JSON v2 hook point), or a tool skips a rule with no error | No parity, or a gap for both tools | The 3 primitives (section 1.10.1); parity witnesses; manifest and sentinel; upstream change in the tool; else drop the hook for both tools and document it (decision 4 allows otelc-only, not Orchestrion-only) | S3, S12 |
 | R3 | A Go release (minor or patch) changes an allocator internal | Woven build fails, or a missed memory reuse path gives false taint | Compile-time checks, drift goldens, CI on the latest patch of each minor, gotip job, strong-match rule | S3, S4 |
 | R4 | A fault in the runtime-side code | Fatal error of the host (cannot recover) | Rules of section 1.2; stress, negative-control and generated-code tests; off by default; design partners only | S3, S4 |
 | R5 | The woven build is too slow or uses too much memory (#51 C1: 17 to 24 GB; notebook V10: 40 GB) | Customer builds fail | Build time and peak memory in the benchmark report (AC-B2); small injected code; one woven go1.27 build in S12 | S3, S12, S13 |
 | R6 | False-positive rate is unknown | Bad first impression for design partners | Strong-match rule, negative controls, JSON matrix, known false positives documented, feedback loop | S8 to S13 |
 | R7 | gotip jobs stay red (both tools cannot weave gotip today) | No early signal for go1.28 | Non-blocking jobs; follow the tool releases; drift test still runs on gotip without weaving | S1 |
-| R8 | The dd-trace-go hook point for the owner (`httptrace.BeforeHandle`) changes | No owner: no taint | Pin by the dd-trace-go version in `go.mod`; compile-time check in the rule; integration test with the dd-trace-go version of `go.mod` | S5 |
+| R8 | The dd-trace-go hook point for the owner (the private `httptrace.startRequestSpan`) changes | No owner: no taint | The hook is in the manifest (a missing match fails the stable jobs); compile-time signature check in the rule; integration tests with the `net/http` and the chi integrations at the dd-trace-go version of `go.mod` | S5, S11 |
 | R9 | Applications that import the root package get the woven runtime also when taint tracking is off | A Go version that is not supported breaks their build; inlining cost | Clear build error message; README; build-level removal (section 1.9); Q2 | S3 |
-| R10 | Attribution cost with heavy taint (long values, many sources) | Sink latency | Fixed check budget (4096), bounded copies, work only on the tainted path; benchmark "tainted SQL sink in a loop" | S5, S13 |
+| R10 | Attribution cost with heavy taint (long values, many sources) | Sink latency | Work bounds of section 1.3.3 (64 KiB inspected, 1 MiB compared, 4 096 checks), bounded copies, work only on the tainted path; benchmark "tainted SQL sink in a loop" | S5, S13 |
+| R11 | Chunks are never recycled in v0 | With much taint in many arenas, the budget is reached and new taint is dropped | Telemetry counter; budget up to 1 GiB; recycling with an epoch rule in a later version | S3 |
+| R12 | Sinks with no context, on a goroutine with no active span, find no owner | Missed findings (safe misses) | Telemetry counter "no owner"; documented (section 8.3); the JSON matrix and the end-to-end tests measure it | S7, S8 |
 
 ## 10. Decisions to confirm and open questions
 
@@ -1489,18 +1510,20 @@ limits.
 | ID | Decision | Section |
 |---|---|---|
 | D1 | Env var names: `DD_IAST_TAINT_TRACKING_ENABLED` (default `false`) and `DD_IAST_TAINT_MEMORY_LIMIT` (default 64 MiB). | 1.9 |
-| D2 | The owner is bound to the dd-trace-go server span (`httptrace.BeforeHandle`). Taint tracking thus needs the dd-trace-go HTTP server integration. | 1.3, T14 |
-| D3 | The "exclusive owner" rule of the issue's known limits is a PR #39 concept. With bits, it is not needed; the JSON matrix gives the real JSON limits. | T15, 8.1 |
+| D2 | The owner is bound to the root dd-trace-go server span (at the private `httptrace.startRequestSpan`), and sinks use only the owner of the current request. Taint tracking thus needs the dd-trace-go HTTP server integration, and a sink with no context on a goroutine with no active span is a safe miss. | 1.3, T14, T18 |
+| D3 | The "exclusive owner" rule of the issue's known limits is replaced by an equivalent provenance check: an attributed body segment must be in the body copy of the reporting owner. The JSON matrix (S10) checks it with 2 concurrent requests, and gives the real JSON limits. | 1.3.4, T15, 8.1 |
 | D4 | No sanitizer or mark in v0: escaped input still reports (known false positive class). | 1.3, 8.4 |
 | D5 | The criteria marked "added by the Planner" in section 4.2 (H18, H20, H26, H27, H15, C4/C5) are part of v0. | 4.2 |
+| D6 | arm64 CPUs **without LSE atomics** (ARMv8.0, for example Cortex-A72 and AWS Graviton1) are off: the sweep hook needs a bounded `Or64`, and their `Or64` is an unbounded retry loop. All arm64 CPUs with LSE (Graviton2 and later, Apple M) are on. The issue says "arm64": this narrows it. | 1.2, 3.2 |
+| D7 | Chunks of the heap bits are never recycled in v0 (memory bounded by the budget). | 1.2.2 |
 
 ### 10.2 Open questions for Romain
 
 | ID | Question | Options | Recommendation |
 |---|---|---|---|
-| Q1 | Which PRs must be on `main` for the milestone of 2026-12-03? | A: S1 to S11 (91 h critical path). B: all 13 (123 h, at risk). C: another cut. | A |
+| Q1 | Milestone (asked by the Delivery Lead on the issue): option A, a dated preview on 2026-12-03 with explicit omissions, or option B, the full Definition of done later? | A: preview S1 to S8 + SP (84 h critical path, at risk). B: full DoD on 2026-12-18 at the earliest. | No preference from the Planner: A gives design partners something on 2026-12-03 but without `fmt.Sprintf`; B gives a complete first version 2 weeks later. Both use the same stack. |
 | Q2 | Applications that import the root package get the woven runtime also when taint tracking is off (R9). Accept for v0? | A: accept for v0, revisit before GA. B: move the taint rules behind an opt-in import before S3 merges (for otelc this needs a separate rule package that the root does not load). | A |
-| Q3 | Who makes the `DataDog/system-tests` PR (Go weblog endpoints and manifest for SQLi and CMDi, AC-ST1)? Is it in the milestone? | A: the squad, after S8, not in the milestone. B: the squad, in the milestone. C: someone else. | A |
+| Q3 | The `DataDog/system-tests` PR (X1) goes to your branch `romain.marcadier/dd-iast-go`, and you approve it (section 6.2). Is this correct? | A: yes, the squad's Implementer makes it, after S8. B: it goes to `main` of system-tests. C: someone else makes it. | A |
 | Q4 | What happens to this document after v0? | A: keep it in `_docs/design/` as the reference, with status "Implemented". B: delete it, like the plans. | A |
 
 ## 11. References
@@ -1508,8 +1531,28 @@ limits.
 - Epic: Multica DD-69; Jira [APPSEC-70732](https://datadoghq.atlassian.net/browse/APPSEC-70732), [APPSEC-68815](https://datadoghq.atlassian.net/browse/APPSEC-68815), [APPSEC-70739](https://datadoghq.atlassian.net/browse/APPSEC-70739).
 - PoC PRs (read only): [#39](https://github.com/DataDog/dd-iast-go/pull/39), [#52](https://github.com/DataDog/dd-iast-go/pull/52), [#58](https://github.com/DataDog/dd-iast-go/pull/58). Review: [#51](https://github.com/DataDog/dd-iast-go/pull/51) (`.omo/review/FINAL-REPORT.md` on branch `eliottness/taint-tracking-review`).
 - Reporting: [#9](https://github.com/DataDog/dd-iast-go/pull/9) (`meta_struct`). otelc support: [#66](https://github.com/DataDog/dd-iast-go/pull/66).
+- Adversarial review round 1 of this document, and its AC audit (`ac-audit.md`): comments on Multica DD-69 (2026-11-19).
 - Plans in history: [`allocator-taint-bits.md`](https://github.com/DataDog/dd-iast-go/blob/5572e9a94212b19e00be9486344a7f4aa63a5d73/_docs/plans/allocator-taint-bits.md), [`heapbits-sqli-cmdi.md`](https://github.com/DataDog/dd-iast-go/blob/eb75b5197be4d94799df3fcfe1c09d154c1b8fe0/_docs/plans/heapbits-sqli-cmdi.md), [`runtime-operator-hooks.md`](https://github.com/DataDog/dd-iast-go/blob/2ef001df361369ce54e1b6e9fe92cb75f50d3693/_docs/plans/runtime-operator-hooks.md), [`encoding-json-v2.md`](https://github.com/DataDog/dd-iast-go/blob/2ef001df361369ce54e1b6e9fe92cb75f50d3693/_docs/plans/encoding-json-v2.md); on `main`: [`taint-tracking-basic-api.md`](https://github.com/DataDog/dd-iast-go/blob/main/_docs/plans/taint-tracking-basic-api.md).
 - Research notebook: [`carnet-de-recherches.md`](https://drive.google.com/file/d/1fUgw85ZVSHF7zJtjp0IL5RPF6d7HnFxg/view) (entries F1 to F17, V1 to V15).
 - Related finished work: Multica DD-11 (call-site `+`, performance verdict FAIL) and DD-52 (survey of `+` use).
 - Sources and sinks catalog: `_docs/sources-and-sinks/net-http.md`, `_docs/sources-and-sinks/chi.md`.
 - Datadog IAST: [documentation](https://docs.datadoghq.com/security/code_security/iast/), [dd-trace-java `ARCHITECTURE.md`](https://github.com/DataDog/dd-trace-java/blob/master/ARCHITECTURE.md).
+
+## 12. Changes in v2
+
+Adversarial review, round 1 (2026-11-19): 5 blocking and 2 major objections,
+3 minor remarks, and an AC audit. Each objection was checked against the Go
+1.26.10 and 1.27.4 sources and dd-trace-go v2.12.0. All of them were correct.
+
+| Objection | Verified evidence | What changed | Sections |
+|---|---|---|---|
+| **1 (blocking).** Bitmap lifetime: chunk reuse under a paused worker, clear-before-reuse points, `freegc`, finalizers, all-or-nothing multi-chunk `Set`, tiny allocator, `growsliceBuf` | `growsliceBuf` uses the stack buffer when `newLen <= bufLen` (`runtime/slice.go:510–520`); `runtimefreegc` is off by default in both minors; tiny blocks record 16 bytes, not each object | Table of clear-before-reuse points; chunks and directories never recycled in v0; 2-phase writes with no undo; tiny guarantee narrowed to exact caller ranges; a heap path for each lowering (`growsliceBuf` calls `growslice`); 4-state gate word | 1.2.1 to 1.2.5, 1.4, 3.5, T20, AC-S7, AC-S10, D7 |
+| **2 (blocking).** Attribution cannot choose the reporting request; JSON provenance | v1 searched all active owners: a finding in B's span could show A's source | The owner of the current request comes from the span (context or goroutine), its annotation and its generation; no search across owners; no owner means no report. The JSON provenance check: an attributed body segment must be in the body copy of the reporting owner. The matrix has 2-request owner checks, and a false positive fails it | 1.3.2, 1.3.4, T15, T18, AC-J1, D2, D3 |
+| **3 (blocking).** chi and HTTP/2 entry points | chi calls `httptrace.StartRequestSpan` (`contrib/go-chi/chi.v5/chi.go:60`); both it and `BeforeHandle` call the private `startRequestSpan`; go1.27 has `net/http/internal/http2.(*requestBody).Read` (`server.go:2465`) and no bundle | Owner bound at `startRequestSpan`, root server spans only; one HTTP/2 rule for each Go minor, listed in the manifest; chi-only and TLS HTTP/2 fixtures | 1.3.1, 1.6, T14, AC-F1, AC-F2, R8 |
+| **4 (major).** Propagation table does not cover the promised copies | `io.ReadAll` uses `append(final, chunk...)` (`io/io.go:730–739`, both minors); `%q` uses `strconv.AppendQuote` in `fmtQ` (`fmt/format.go:447–457`); `url.unescape` and `escape` return their input with no escape (`url.go:155–157`, `:208–210`) | Hooks specified by result: `io.ReadAll` twin (S8), `fmtQ`/`fmtSbx` coarse, `Formatter` through `State.Write`, `url` alias not widened, `strconv` P0, ASCII case positional, JSON v1 slide and grow, v2 fetch and cache rule. Twins run application code once, never catch application panics, and keep a correct result after a failed analysis. Tripped is terminal (`CAS(0 → 1)` is the only way to Live) | 1.4, 1.5, 1.2.5, 1.9, AC-F6 to AC-F8, AC-S3 |
+| **5 (major).** A row for each #51 finding, but not a valid test; AC audit | C11 as written is impossible for a fixed mask; concurrent first parses race in plain Go (`net/http/request.go:1350–1377`); `io.ReadAll` takes no destination; `encoding/json.Decoder` has no `Reset` | All #51 rows rewritten with the audit oracles (C11 privacy invariant; C12 changes against unwoven; C13 re-parse after one parse; H3/H4 asserted reuse, both spans; H5 stale `Finish`); positive-control and parity rules; closing rules per check type; H27 against unwoven baselines; H18 with a controllable sampler | 4.0 to 4.8 |
+| **6 (blocking).** A generated rule or one woven package is not parity; platform stubs; gotip witness | otelc has statement-pattern placement (`apply_raw.go:76–126`), Orchestrion does not; the runtime has no Go `mmap` on Windows and wasm; `cmd/app` witnesses only weak crypto | Only 3 primitives that both tools have (twins instead of interior injection); parity witnesses with both tools; platform code injected next to `mmap`, selected at compile time; expected-hook manifest and a growing sentinel, required on stable; gotip drift and sentinel as independent signal-only steps | 1.10, 3.1, 3.2, 3.3, T13, T19, AC-P2, AC-P9, AC-P10 |
+| **7 (blocking).** S1–S11 is neither the DoD nor a 10-day plan | 91 h > 80 h; S12 and S13 owned DoD items | One stack for both options (A: dated preview S1–S8 + SP with explicit omissions; B: full DoD on 2026-12-18 at the earliest); each of the 64 criteria has exactly one closing PR; X1 has an owner, a target branch and a merge order (S8 → X1 → S15) | 0, 4, 6.2, 6.3, Q1, Q3 |
+| Remark: `*sql.Conn` methods | `*sql.Conn` has only the context forms (`sql.go:2027–2064`) | Listed exactly; only the 9 context hook points, so each public call is checked once | 1.7, AC-F4 |
+| Remark: Intel macOS, cross-builds | – | Manual evidence labeled; executed feature-off tests separated from cross-builds; `-msan` job added | 3.2, AC-P4, AC-P5 |
+| Remark: benchmarks report-only | – | Kept: no pass/fail threshold | 4.0, 4.6 |
