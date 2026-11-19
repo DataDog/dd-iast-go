@@ -525,4 +525,181 @@ gap. `S3` starts with a one-hour otelc feasibility check of the 4 runtime
 primitives (struct field, `add_file`, prologue with a `return`, method with a
 pointer receiver such as `(*sweepLocked).sweep`).
 
-<!-- Sections 2 to 10 follow in the next commits of this draft PR. -->
+## 2. Tradeoffs and rejected options
+
+Each row is an option that a reviewer can propose again. The "Evidence"
+column gives the source of the reason.
+
+| # | Option | Status | Reason | Evidence |
+|---|---|---|---|---|
+| T1 | Taint store keyed by `weak.Make(unsafe.StringData(s))` | Rejected | `weak.Make` throws (not a recoverable panic) on a pointer that is not heap memory: string literals, static data, stack. Go has no "is this a heap pointer?" test, so the store cannot filter these values before the call. | Notebook F4 (2026-08-24), V1 |
+| T2 | One process-wide map keyed by `uintptr` address | Rejected | Heap addresses are used again after GC; stack addresses are used again; equal one-byte literals share memory. A key can thus match an unrelated value. Our origin registry is different: it is per request, it holds copies, an address only locates a candidate, and the bytes are always checked against the copy (section 1.3). | Notebook F5, V1 |
+| T3 | Call-site instrumentation of `+` (DD-11, Orchestrion PR #881) | Rejected (decision 1) | Rewritten code was slower than the runtime hook in 22 of 33 rows of DD-11. AST rewriting changes Go semantics (#51 C4: operands that Go does not evaluate; C5: `s[:1e3]` no longer compiles) and allocates when IAST is off (#51 H27). It needs tool features that are not released. | DD-11 report; #51; notebook F10 |
+| T4 | External store with exact `(pointer, length)` keys and call-site wrappers for each operation (PR #39 design) | Rejected | No taint for a sub-string unless each slicing form has a wrapper; about 15 000 lines of wrappers and bridges; the review found 15 Critical and 30 High findings. | #51 final report; PR #58 plan section 2 |
+| T5 | Origins in runtime "specials" for each tainted object (option O1 of the PR #52 plan) | Deferred | Needs a span lock for each add and lookup, and more runtime code to maintain for each Go release. The per-request registry is sufficient for v0. A later version can revisit it. | PR #52 plan section 8 |
+| T6 | A per-span side array of record indexes (option O2) | Rejected for v0 | More runtime surface, 4 bytes for each object of a tainted span. | PR #52 plan section 8 |
+| T7 | Taint bits for stack memory (options S2 and S3) | Rejected for v0 | A new frame uses the memory of a dead frame and sees its bits (false taint); there is no cheap point to clear them. We use heap promotion instead (`buf = nil` in the hooks). | PR #52 plan section 8, decision S1 |
+| T8 | A patched compiler or a custom SSA pass | Rejected | One patch for each Go release; prebuilt compilers are hard to ship; compiling the compiler at customer build time is too expensive. | Notebook F1, F2 |
+| T9 | A live counter of tainted spans as the gate, so that the gate can go back to 0 | Rejected for v0 | No `Cas8` in `internal/runtime/atomic`; the sweep flag protocol makes a count of tainted spans wrong. The sticky gate costs one `Any` per input after the first taint; the benchmark report measures it. | PR #58 plan section 5.3 |
+| T10 | Report only in the `_dd.iast.json` tag | Rejected (decision 7) | With trace protocol v1.0 the backend ignores `_dd.iast.json` and reads only `meta_struct.iast`. `main` keeps the tag only as a fallback. | Notebook F3; PR #9 |
+| T11 | Lazy sources only (taint the value that an accessor returns) | Rejected as the only mechanism | Misses direct reads of fields, maps and slices (`r.Header["X"]`, `chi.Context.URLParams.Values`). We set bits eagerly in place at owner start, and add records lazily at the accessors for a better origin and name. | Section 1.6 |
+| T12 | Replace request state with tainted clones (PR #39) | Rejected | Changes host behavior and races: the `Request.Header` map seen by the caller is replaced (#51 C12); `ParseForm` state is written again on each call (#51 C13). Bits in place do not write to application state. | #51 C12, C13 |
+| T13 | Hand-written runtime code for each tool (the dd-trace-go GLS pattern) | Rejected | Two copies of more than 1 000 lines of runtime code drift apart. We generate the Orchestrion template from the same file that otelc copies (section 1.10). | Section 1.10 |
+| T14 | Owner created at `net/http.serverHandler.ServeHTTP` | Rejected | At that point the dd-trace-go span does not exist yet. The owner and the annotation would make two sampling decisions (the class of #51 H18), and the binding of a report to a span is not clear. We bind the owner to the server span start. | `httptrace.BeforeHandle` in dd-trace-go v2.12.0 |
+| T15 | "Exclusive owner" rule for JSON readers (PR #39 `jsonbridge`) | Not needed | It exists because the PR #39 store keys values by identity. With bits, the bytes that `body.Read` writes carry their taint through `bufio`, `io.TeeReader`, `io.MultiReader`, `http.MaxBytesReader` and the decoders (with the P0/P1 hooks of section 1.5). The registry attributes them by content. The JSON coverage matrix (`S9`) measures the real limits. | Section 8; criterion AC-J1 |
+| T16 | Report every tainted run, also with no strong source match | Rejected | Bits that stay on reused memory, and chance matches of 1 to 3 bytes, would make false positives. A finding needs one strong segment of an active owner. | PR #58 plan section 4.5.2 |
+| T17 | A pass/fail performance gate in CI | Rejected for v0 (decision 9) | v0 reports numbers only. Exception: allocation counts are deterministic, so "0 added allocations when off" is a correctness test (AC-R-H27), not a performance gate. | Decision 9 |
+
+## 3. Constraints
+
+### 3.1 Go versions and drift tests
+
+| Toolchain | Status | CI (after `S1`) |
+|---|---|---|
+| go1.26.x (`oldstable`, `go.mod` says `go 1.26.6`) | Required | Unit and integration tests, Orchestrion and otelc, linux/amd64 |
+| go1.27.x (`stable`) | Required | Same as go1.26.x |
+| gotip | Signal only (decision 3) | One job for each tool, `continue-on-error: true`, with a warning in the job summary |
+| go1.25 and older | Not supported | None |
+
+Today the CI of `main` runs only `oldstable` (`.github/workflows/ci.yml`).
+`S1` adds `stable` and gotip.
+
+The hooks use unexported runtime and standard library code. Three layers
+detect a change in a new Go version:
+
+1. **Compile-time checks in the injected code.** The runtime-side code assigns
+   each runtime function and field that it uses to a variable of the expected
+   type, for example `var _ func(uintptr) *mspan = spanOfHeap`. A rename or a
+   type change makes the woven build fail with a clear message. A silent wrong
+   hook is worse than a build failure.
+2. **Drift test, one golden file for each supported Go minor.** A normal
+   `go test` (no weaving) parses `$(go env GOROOT)/src`, and compares with
+   `testdata/runtime-go1.26.golden` and `...go1.27.golden`:
+   - a hash of the body of each hooked runtime and standard library function;
+   - all call sites of the runtime functions that free or reuse memory
+     (`freeSpan`, `freeManual`, `freegc`, `freeUserArenaChunk`, writers of
+     `freeindex` and `allocBits`);
+   - the `_KindSpecial*` constants, the mark bit layout, the `sysAlloc`
+     accounting, the `mmap` definitions with a Go body.
+   A new minor version with no golden file fails the test. A human then reads
+   the new runtime code and adds the golden file. The test forces this review;
+   it is not a proof.
+3. **gotip job.** It runs the drift test and the woven tests on gotip. It
+   **must check that weaving happened**, not only that the build passed:
+   Orchestrion v1.15.0 skips the injection on a type-check error and the build
+   still passes (section 7, fact 2). The job runs `_integration/otelc/cmd/app`
+   (it panics when no sink was instrumented) and the heap bits test that fails
+   when a woven build on a supported platform reports `Enabled() == false`.
+
+### 3.2 Platforms
+
+| Platform | Heap bits | Tests in CI |
+|---|---|---|
+| linux/amd64 | On | All jobs (required) |
+| linux/arm64 | On (only with LSE atomics, see section 1.2) | Woven heap bits and runtime hook tests (`ubuntu-24.04-arm`) |
+| darwin/arm64 | On | Woven heap bits and runtime hook tests (`macos-latest`) |
+| darwin/amd64 | On | In CI if a hosted Intel macOS runner is available; else one manual run in `S3`, recorded in its PR |
+| windows/amd64, js/wasm, linux/386, other `GOOS`/`GOARCH` | Off: builds, `Enabled()` is false, sources and sinks do nothing | Cross builds, and the feature-off tests where a runner exists |
+| any, with `-asan` or `-msan` | Off | One `-asan` job (feature off) |
+| any, with `-race` | On | Woven `-race` job. Note: the race detector does not instrument package `runtime`, so this job does not prove that the runtime-side code has no race. The atomics rules (section 1.2) and the stress tests cover it. |
+
+The check is explicit: an injected `init` tests `GOOS`, `GOARCH`,
+`asanenabled`, `msanenabled` and `cpu.ARM64.HasATOMICS`. It does not depend
+on which `mmap` definitions have a Go body.
+
+### 3.3 Orchestrion and otelc: equal support
+
+- Every hook has an Orchestrion rule and an otelc rule (section 1.10). A
+  difference is a defect, unless the PR gives the reason why one tool cannot
+  do it (repository `AGENTS.md`).
+- Decision 4: a new feature can be otelc only when Orchestrion lacks it. The
+  reverse is not allowed.
+- Each PR runs its tests with both tools, on go1.26.x and go1.27.x.
+- The `_integration/otelc` suite compares the findings of the two tools
+  (type, location, evidence, sources).
+- Known differences today: otelc gives a different location for reports
+  inside packages that otelc changes (`_integration/otelc/doc.go`, otelc PR
+  #1499). The sinks of v0 are in `database/sql` and `os/exec`, which otelc
+  changes, so `S7` must check the reported location with both tools.
+- Orchestrion v1 reaches end of life at the end of Q4 2026 (notebook V15).
+  This does not change v0: both tools stay supported.
+
+### 3.4 Runtime-internal risk
+
+Decision 5 accepts hooks on unexported runtime functions. The risk is not the
+same for all of them:
+
+| Kind | Symbols | Why it can change | Risk |
+|---|---|---|---|
+| Compiler lowerings | `concatstrings`, `concatbytes`, `slicebytetostring`, `stringtoslicebyte`, `stringtoslicerune`, `slicerunetostring`, `growslice`, `growsliceBuf` | Only together with the compiler that calls them | Low. Signature checks catch a change (example: the `stringtoslicerune` buffer type in gotip). |
+| Allocator internals | `heapArena`, `mspan` (fields `nelems`, `elemsize`, `specials`, `isUserArenaChunk`, `limit`), `heapArenaOf`, `spanOfHeap`, `(*sweepLocked).sweep`, `freegc`, `mmap`, `memstats.other_sys`, `gcController.mappedReady`, `_KindSpecialFinalizer`, `markBitsForIndex` | Any Go release can change them: the allocator changed a lot in recent releases (for example the Green Tea GC and the size-specialized `mallocgc`) | **Medium to high.** The drift test (3.1) lists every memory reuse path. A missed reuse path gives a false taint, not a crash; the strong-match rule (1.3) limits the effect. |
+| Standard library internals | Unexported fields and functions used by the twins (`bytes.Buffer.buf`, `bytes.Buffer.off`, `fmt.pp.buf`, `bufio.Reader.r` and `w`, `json.Decoder.buf` and `scanp`, the JSON v2 decoder buffer) | Any release | Medium. Golden hashes of each hooked body; compile-time field checks. JSON v2 already broke every woven build once (#51 C1). |
+
+A fault in the runtime-side code (for example in the sweep hook) is fatal for
+the host: it cannot be recovered. This is the main reason for the rules of
+section 1.2 and for "off by default".
+
+### 3.5 Concurrency and GC
+
+1. Bitmap words: 64-bit atomics only. `Set`, `Copy` and the sweep can run at
+   the same time on neighbour objects in one word.
+2. Span flag protocol (section 1.2): a concurrent `Set` on a live object is
+   never lost.
+3. The sweep hook runs with no allocation, no lock, no yield, and bounded
+   work. Its target cost is at most 20 µs for one span in the worst-case
+   benchmark; the benchmark report gives the number (no gate).
+4. Workers in user goroutines yield every 512 work units, because a loop in
+   package `runtime` is not an asynchronous preemption point.
+5. `nosplit` classifiers: a `uintptr` to a stack value is refused before the
+   stack can move. CI checks the generated code (`-S`) and runs a test with
+   `-gcflags=all=-d=maymorestack=runtime.mayMoreStackMove`.
+6. Memory reuse: the sweep hook and the `freegc` hook clear the bits of dead
+   objects; user arena chunks are refused; finalizer specials are kept.
+7. Origin registry: pin + `TryLock`, generation check on every access, no
+   wait; `Finish` never blocks; the last accessor cleans the slot.
+8. `checklocks` annotations on all registry state (the CI lint job already
+   runs `go tool checklocks ./...`).
+9. No hook calls application code while it holds a registry pin.
+
+### 3.6 Memory budget
+
+| Item | Size | Limit | When the limit is reached |
+|---|---|---|---|
+| Heap bits | 1 bit per heap byte, only in 128 KiB chunks that hold a tainted byte (12.5 % of these chunks) | `DD_IAST_TAINT_MEMORY_LIMIT`, default 64 MiB, max 1 GiB (1 024 slab descriptors in the runtime BSS, 16 KiB) | `Set` returns false; the source or propagation is dropped; telemetry counter |
+| Added runtime fields | 8 bytes per arena, 1 byte per span | Fixed | – |
+| Owner copies | Source names and values, derived entries, body copy | 256 KiB per owner; owners ≤ `DD_IAST_MAX_CONCURRENT_REQUESTS` (default 2, clamped to 64): 512 KiB by default, 16 MiB max | Record dropped; its bytes become foreign |
+| Owner table | Fixed records per slot | Allocated on the first sampled request | – |
+| Annotation | Existing `internal/spans` store | `DD_IAST_MAX_CONCURRENT_REQUESTS` | Existing behavior, with the `S2` fixes |
+
+All heap bit memory is charged to `OtherSys` and to `GOMEMLIMIT`. Nothing
+blocks when a budget is used: data is dropped (repository `AGENTS.md`).
+
+### 3.7 Rollout and recovery
+
+| Step | What | Who |
+|---|---|---|
+| 1 | Each PR of the stack merges with taint tracking off by default. `main` never has the feature on by default during v0. | Delivery squad |
+| 2 | Design partners build with Orchestrion or otelc, and set `DD_IAST_TAINT_TRACKING_ENABLED=true`. | Design partner |
+| 3 | They give feedback on findings, false positives and cost. | Design partner, Romain |
+| Recovery A | Kill switch: restart with `DD_IAST_TAINT_TRACKING_ENABLED=false`. Same binary. | Design partner |
+| Recovery B | Automatic: the circuit breaker trips on a recovered panic (section 1.9) and taint tracking stops for the process. Telemetry tells us. | Automatic |
+| Recovery C | Rebuild without the taint packages (section 1.9), for a build failure or a runtime fault. | Design partner |
+
+No release tag is needed for v0. If a tag is made during the stack, its notes
+say that taint tracking is experimental and off by default.
+
+### 3.8 Host safety rules (from the repository `AGENTS.md`)
+
+1. Never panic the host. All analysis code runs under a scoped `recover` and
+   the circuit breaker (section 1.9). The runtime-side code has no panic path
+   (explicit bounds checks; a bad index gives a missed taint).
+2. Never block. `TryLock` only; drop under contention.
+3. Bounded memory (section 3.6).
+4. A cheap check before expensive work: the gate word, then `Any`, then the
+   registry.
+5. No allocation added when taint tracking is off, and no allocation added on
+   the clean path of the runtime hooks (AC-R-H27).
+6. Hooks that run before `main` (package init) do nothing until the config is
+   loaded (gate word is 0) (AC-R-C8).
+
+<!-- Sections 4 to 10 follow in the next commits of this draft PR. -->
