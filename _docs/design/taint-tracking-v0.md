@@ -27,6 +27,7 @@ closes.
 | [8](#8-known-limits-and-coverage-gaps-v0) | Known limits of v0 | You write user documentation |
 | [9](#9-risks) | Risks | You approve the design |
 | [10](#10-decisions-to-confirm-and-open-questions) | Decisions to confirm and open questions for Romain | You approve the design |
+| [11](#11-references) | References | You want the sources |
 
 ### Clean-room rule
 
@@ -322,7 +323,7 @@ bit operations, and returns. Else the original body runs.
 
 | Priority | Package | Functions | Rule | Why (Definition of done) |
 |---|---|---|---|---|
-| P0 | `fmt` | `(*buffer).write`, `(*buffer).writeString`, `(*fmt).writePadding`, `(*pp).printArg`, `(*pp).fmtString`, `(*pp).fmtBytes`, `(*pp).doPrintf`; clear in `(*pp).free` | Exact copy for `%s` and `%v` of strings; coarse for generated text and for `String()`/`Error()`/`Format()` output (lesson from #51 H8) | `fmt.Sprintf` |
+| P0 | `fmt` | `(*buffer).write`, `(*buffer).writeString`, `(*fmt).writePadding`, `(*pp).fmtString`, `(*pp).fmtBytes`, `(*pp).doPrintf`; clear in `(*pp).free` | Exact copy of the bytes that `fmt` writes. Thus the output of a `String()`, `Error()` or `Format()` method keeps exactly the bits of the string that the method returns, and `%T`, `%p`, `%.0s` give clean text. Coarse only for verbs that transform the bytes of a tainted string or `[]byte` (`%q`, `%x`, `%X`, `%v` and `%d` of a `[]byte`), and for a tainted format string (lesson from #51 H8: no taint by argument identity) | `fmt.Sprintf` |
 | P0 | `strings` | `(*Builder).Write`, `WriteString`, `grow`; `Repeat`; `ToUpper`, `ToLower` (ASCII exact, else coarse); `Map`; `(*Replacer).Replace` | Exact or coarse | `strings.Join` (uses `Builder`), case conversion |
 | P0 | `bytes` | `(*Buffer).Write`, `WriteString`, `WriteByte`, `WriteRune`, `ReadFrom`, `grow`; `Join`, `Repeat`, `Replace`, `ToUpper`, `ToLower`, `Map` | Exact, with the "clear on overwrite" rule | Common builder |
 | P0 | `net/url` | `unescape`, `escape` | Coarse | URL decoding, query values with `%` or `+` |
@@ -729,7 +730,7 @@ criterion only when its test runs in CI and passes.
 | AC-F6 | Propagation tests (Definition of done): `strings.Builder` and `bytes.Buffer`; `fmt.Sprintf` with `%s`, `%v`, `%q`, `%d` of a `[]byte`, and a value with a `String()` method; `strings.Join`; `strings.ToUpper` and `ToLower` (ASCII exact, Unicode coarse); URL decoding (`url.QueryUnescape`, `PathUnescape`, query values with `%` and `+`). | `integration` | S10 |
 | AC-F7 | Propagation tests (Definition of done): JSON v1 (go1.26, and go1.27 with `GOEXPERIMENT=nojsonv2`) and JSON v2 (go1.27 default), with `json.Unmarshal` and `(*json.Decoder).Decode`, into struct fields, maps, slices and `any`; escaped and verbatim strings. | `integration` | S12 |
 | AC-F8 | Named string types (`type ID string`) and generic functions with `~string` and `~[]byte` constraints propagate taint (issue scope). | `integration` | S4, S10 |
-| AC-F9 | Negative controls: constants, clean values, a number round trip (`strconv.Atoi` then `Itoa`), and prepared statements with bound arguments do not report. | `integration` | S8, S10 |
+| AC-F9 | Negative controls: constants, clean values, a number round trip (`strconv.Atoi` then `Itoa`), and prepared statements with bound arguments do not report. In `fmt`: a `String()` method that returns a constant, `%T`, `%p` and `%.0s` of a tainted value do not report (#51 H8). | `integration` | S8, S10 |
 | AC-F10 | The finding is in `meta_struct["iast"]` of the root span, with `_dd.iast.enabled=1` and manual keep. When the agent has no `meta_struct` support, `_dd.iast.json` has the same event. | `integration` | S6, S8 |
 | AC-F11 | The `_integration/otelc` suite gives the same findings with Orchestrion and with otelc: type, location (file and line), evidence and sources. | `integration` | S8 to S12 |
 | AC-F12 | Limits are respected: `DD_IAST_VULNERABILITIES_PER_REQUEST`, deduplication, `DD_IAST_MAX_RANGE_COUNT`, `DD_IAST_TRUNCATION_MAX_VALUE`. | `unit` | S6 |
@@ -1065,4 +1066,124 @@ production cannot be checked in code; it does not block v0 (Romain).**
 - v0 uses this path with no change, except the S2 fixes (C14: no
   `SetMetaStruct` on a finished span).
 
-<!-- Sections 8 to 10 follow in the next commit of this draft PR. -->
+## 8. Known limits and coverage gaps (v0)
+
+These limits are accepted for v0. `S13` copies them into the user
+documentation (AC-D2). The JSON matrix (`S9`, `S12`) gives the real JSON
+limits.
+
+### 8.1 Propagation gaps (taint is lost: a missed finding)
+
+1. `copy`, the appended part of `append(x, y...)`, and `make` + `copy` in user
+   code (inline `memmove`, no hook).
+2. Stack copies of tainted values (`var a [64]byte; copy(a[:], s)`), and
+   byte-by-byte writes into a slice (`b[i] = s[i]`).
+3. Standard library functions with inline copies that v0 does not hook (for
+   example `encoding/base64`, `encoding/hex`, `unicode/utf8.AppendRune`).
+4. JSON: third-party decoders (`jsoniter`, `sonic`, `goccy/go-json`,
+   `easyjson`); custom `UnmarshalJSON` and `UnmarshalText`; the JSON v2
+   streaming APIs (`jsontext.Decoder`, `UnmarshalRead`, `UnmarshalDecode`);
+   strings from `(*json.Decoder).Token`.
+5. Decompressed bodies (`compress/gzip` and others): the output bytes are new
+   bytes.
+
+### 8.2 Attribution limits
+
+1. Equal content from two requests can be attributed to the wrong request
+   (decision 6).
+2. Body bytes after the first 64 KiB keep their bits but are foreign: alone,
+   they make no finding.
+3. Coarse transforms (escapes, Unicode case, `%q`, URL encoding) taint the
+   whole output with the first source: the evidence range is wider than the
+   real one.
+4. A content match of 1 to 3 bytes of a longer source is weak: a short
+   fragment alone makes no finding.
+5. Bounds: more than `DD_IAST_MAX_RANGE_COUNT` segments, more than 256 source
+   records, or more than 256 KiB of copies for one request: the rest is
+   foreign or dropped.
+
+### 8.3 Scope and lifetime
+
+1. A tainted value used after its request ended (for example in a goroutine
+   that outlives the request) makes no finding.
+2. The owner needs the dd-trace-go HTTP server integration (a server span).
+   With Orchestrion or otelc and the dd-trace-go rules, it is automatic.
+3. Sampled-out requests (`DD_IAST_REQUEST_SAMPLING`, default 30 %) and
+   requests above `DD_IAST_MAX_CONCURRENT_REQUESTS` (default 2) are not
+   analyzed.
+4. Values whose memory `Set` refuses (read-only or interned strings) are not
+   tainted.
+5. After the first taint in a process, all hooks pay the clean-path cost
+   (sticky gate word).
+
+### 8.4 Out of scope for v0
+
+1. `database/sql` rows as a source (`DD_IAST_DB_ROWS_TO_TAINT` is not
+   implemented).
+2. Other frameworks (gin, echo, fiber, gorilla/mux, httprouter): only the
+   values that come from `net/http` APIs, or that are sub-strings of the path,
+   are detected. fasthttp (not `net/http`): not detected.
+3. h2c servers from `golang.org/x/net/http2`.
+4. Sanitizers and marks. **Known false positive class:** input that the
+   application escapes or validates (for example
+   `strings.ReplaceAll(v, "'", "''")`) still reports.
+5. Vulnerability types other than `SQL_INJECTION` and `COMMAND_INJECTION`.
+
+### 8.5 Platforms and toolchains
+
+1. Off on windows, wasm, 386 and the other unsupported targets, with `-asan`
+   or `-msan`, and on arm64 CPUs without LSE atomics.
+2. go1.25 and older are not supported. gotip is not supported: today neither
+   tool can weave it (section 7.2).
+3. The woven runtime code stays in the binary when taint tracking is off, and
+   some hooked standard library functions are no longer inlined.
+4. Orchestrion skips the injection with a warning (and the build passes) when
+   it cannot type-check a package for a new toolchain.
+5. Memory of user arenas (`GOEXPERIMENT=arenas`) is never tainted.
+
+## 9. Risks
+
+| ID | Risk | Effect | Mitigation | PR |
+|---|---|---|---|---|
+| R1 | The milestone of 2026-12-03 is not met | Design partners wait | Milestone cut S1 to S11 (Q1); parallel lanes (section 6.3) | all |
+| R2 | otelc cannot express one hook (runtime struct field, prologue with `return`, JSON v2 hook points) | No parity, or a gap for both tools | Feasibility check at the start of S3; upstream otelc change; else drop the hook for both tools and document it (decision 4 allows otelc-only, not Orchestrion-only) | S3, S12 |
+| R3 | A Go release (minor or patch) changes an allocator internal | Woven build fails, or a missed memory reuse path gives false taint | Compile-time checks, drift goldens, CI on the latest patch of each minor, gotip job, strong-match rule | S3, S4 |
+| R4 | A fault in the runtime-side code | Fatal error of the host (cannot recover) | Rules of section 1.2; stress, negative-control and generated-code tests; off by default; design partners only | S3, S4 |
+| R5 | The woven build is too slow or uses too much memory (#51 C1: 17 to 24 GB; notebook V10: 40 GB) | Customer builds fail | Build time and peak memory in the benchmark report (AC-B2); small injected code; one woven go1.27 build in S12 | S3, S12, S13 |
+| R6 | False-positive rate is unknown | Bad first impression for design partners | Strong-match rule, negative controls, JSON matrix, known false positives documented, feedback loop | S8 to S13 |
+| R7 | gotip jobs stay red (both tools cannot weave gotip today) | No early signal for go1.28 | Non-blocking jobs; follow the tool releases; drift test still runs on gotip without weaving | S1 |
+| R8 | The dd-trace-go hook point for the owner (`httptrace.BeforeHandle`) changes | No owner: no taint | Pin by the dd-trace-go version in `go.mod`; compile-time check in the rule; integration test with the dd-trace-go version of `go.mod` | S5 |
+| R9 | Applications that import the root package get the woven runtime also when taint tracking is off | A Go version that is not supported breaks their build; inlining cost | Clear build error message; README; build-level removal (section 1.9); Q2 | S3 |
+| R10 | Attribution cost with heavy taint (long values, many sources) | Sink latency | Fixed check budget (4096), bounded copies, work only on the tainted path; benchmark "tainted SQL sink in a loop" | S5, S13 |
+
+## 10. Decisions to confirm and open questions
+
+### 10.1 Decisions that the Planner made (Romain: correct them if wrong)
+
+| ID | Decision | Section |
+|---|---|---|
+| D1 | Env var names: `DD_IAST_TAINT_TRACKING_ENABLED` (default `false`) and `DD_IAST_TAINT_MEMORY_LIMIT` (default 64 MiB). | 1.9 |
+| D2 | The owner is bound to the dd-trace-go server span (`httptrace.BeforeHandle`). Taint tracking thus needs the dd-trace-go HTTP server integration. | 1.3, T14 |
+| D3 | The "exclusive owner" rule of the issue's known limits is a PR #39 concept. With bits, it is not needed; the JSON matrix gives the real JSON limits. | T15, 8.1 |
+| D4 | No sanitizer or mark in v0: escaped input still reports (known false positive class). | 1.3, 8.4 |
+| D5 | The criteria marked "added by the Planner" in section 4.2 (H18, H20, H26, H27, H15, C4/C5) are part of v0. | 4.2 |
+
+### 10.2 Open questions for Romain
+
+| ID | Question | Options | Recommendation |
+|---|---|---|---|
+| Q1 | Which PRs must be on `main` for the milestone of 2026-12-03? | A: S1 to S11 (91 h critical path). B: all 13 (123 h, at risk). C: another cut. | A |
+| Q2 | Applications that import the root package get the woven runtime also when taint tracking is off (R9). Accept for v0? | A: accept for v0, revisit before GA. B: move the taint rules behind an opt-in import before S3 merges (for otelc this needs a separate rule package that the root does not load). | A |
+| Q3 | Who makes the `DataDog/system-tests` PR (Go weblog endpoints and manifest for SQLi and CMDi, AC-ST1)? Is it in the milestone? | A: the squad, after S8, not in the milestone. B: the squad, in the milestone. C: someone else. | A |
+| Q4 | What happens to this document after v0? | A: keep it in `_docs/design/` as the reference, with status "Implemented". B: delete it, like the plans. | A |
+
+## 11. References
+
+- Epic: Multica DD-69; Jira [APPSEC-70732](https://datadoghq.atlassian.net/browse/APPSEC-70732), [APPSEC-68815](https://datadoghq.atlassian.net/browse/APPSEC-68815), [APPSEC-70739](https://datadoghq.atlassian.net/browse/APPSEC-70739).
+- PoC PRs (read only): [#39](https://github.com/DataDog/dd-iast-go/pull/39), [#52](https://github.com/DataDog/dd-iast-go/pull/52), [#58](https://github.com/DataDog/dd-iast-go/pull/58). Review: [#51](https://github.com/DataDog/dd-iast-go/pull/51) (`.omo/review/FINAL-REPORT.md` on branch `eliottness/taint-tracking-review`).
+- Reporting: [#9](https://github.com/DataDog/dd-iast-go/pull/9) (`meta_struct`). otelc support: [#66](https://github.com/DataDog/dd-iast-go/pull/66).
+- Plans in history: [`allocator-taint-bits.md`](https://github.com/DataDog/dd-iast-go/blob/5572e9a94212b19e00be9486344a7f4aa63a5d73/_docs/plans/allocator-taint-bits.md), [`heapbits-sqli-cmdi.md`](https://github.com/DataDog/dd-iast-go/blob/eb75b5197be4d94799df3fcfe1c09d154c1b8fe0/_docs/plans/heapbits-sqli-cmdi.md), [`runtime-operator-hooks.md`](https://github.com/DataDog/dd-iast-go/blob/2ef001df361369ce54e1b6e9fe92cb75f50d3693/_docs/plans/runtime-operator-hooks.md), [`encoding-json-v2.md`](https://github.com/DataDog/dd-iast-go/blob/2ef001df361369ce54e1b6e9fe92cb75f50d3693/_docs/plans/encoding-json-v2.md); on `main`: [`taint-tracking-basic-api.md`](https://github.com/DataDog/dd-iast-go/blob/main/_docs/plans/taint-tracking-basic-api.md).
+- Research notebook: [`carnet-de-recherches.md`](https://drive.google.com/file/d/1fUgw85ZVSHF7zJtjp0IL5RPF6d7HnFxg/view) (entries F1 to F17, V1 to V15).
+- Related finished work: Multica DD-11 (call-site `+`, performance verdict FAIL) and DD-52 (survey of `+` use).
+- Sources and sinks catalog: `_docs/sources-and-sinks/net-http.md`, `_docs/sources-and-sinks/chi.md`.
+- Datadog IAST: [documentation](https://docs.datadoghq.com/security/code_security/iast/), [dd-trace-java `ARCHITECTURE.md`](https://github.com/DataDog/dd-trace-java/blob/master/ARCHITECTURE.md).
