@@ -972,134 +972,152 @@ say that taint tracking is experimental and off by default.
 
 ## 4. Acceptance criteria
 
-**Check types** (the tag in each row):
+### 4.0 Check types and closing rules
 
-| Tag | Meaning |
-|---|---|
-| `unit` | A Go test in the package. Woven when it needs the hooks (it then skips with `build.Instrumented()` only when not woven). Runs with both tools. |
-| `integration` | An end-to-end test in `_integration/...` (a woven application with an HTTP server, a fake SQL driver and real `os/exec`). Runs with both tools, on go1.26.x and go1.27.x. Also used for CI jobs ("integration (CI)"). |
-| `system-test` | `DataDog/system-tests`, run by `.github/workflows/system-tests.yml`. |
-| `benchmark` | A number in the benchmark report. Report only: no pass/fail gate (decision 9). |
-| `doc` | A documented statement in `README.md` or `_docs/`. |
+| Tag | Meaning | When it is closed |
+|---|---|---|
+| `unit` | A Go test in the package. Woven when it needs the hooks. Runs with both tools. | Its CI job runs it and it passes. |
+| `integration` | An end-to-end test in `_integration/...`: a woven application with a real traced HTTP server (dd-trace-go integration), a fake SQL driver and real `os/exec`. Runs with both tools, on go1.26.x and go1.27.x. Also used for CI jobs ("integration (CI)"). | Its CI job runs it and it passes. |
+| `system-test` | `DataDog/system-tests`, run by `.github/workflows/system-tests.yml`. | The workflow runs on `main` with a **nonzero** number of executed Go cases for each criterion. |
+| `benchmark` | A measured artifact in the benchmark report. Report only: no pass/fail threshold (decision 9). | The report, with its raw outputs and commands, is merged. |
+| `doc` | A reviewed statement in `README.md` or `_docs/`. | The reviewed document is merged. |
 
-Each row gives the PR of the stack that closes it (section 6). A PR closes a
-criterion only when its test runs in CI and passes.
+Rules:
+
+1. **Each criterion has exactly one closing PR.** Earlier PRs can have
+   prerequisite checks (column "Prerequisites"); they do not close the
+   criterion.
+2. **A negative test is valid only with a positive control.** A test that
+   expects no finding first shows, in the same binary and with the same
+   source, sink, owner and report path, that a finding is made.
+3. **Both tools give a finding before they are compared.** Two equal empty
+   reports are not parity.
+4. The PR description lists the criteria that it closes, with the test names
+   and the CI job.
 
 ### 4.1 Functional criteria
 
-| ID | Criterion | Check | PR |
-|---|---|---|---|
-| AC-F1 | A tainted value from each source kind reaches `(*sql.DB).QueryContext` through `+`, and gives exactly one `SQL_INJECTION`. Its `valueParts` mark the tainted part with the right `source` index, and its `sources` entry has the right `origin` and `name`. Source kinds: query parameter (`URL.Query().Get`, `FormValue`), header, cookie, URL path, `PathValue`, urlencoded form, raw body (`io.ReadAll`). | `integration` | S8 |
-| AC-F2 | Same as AC-F1 for chi `URLParam` (origin `http.request.path.parameter`) and for a multipart form field (origin `http.request.multipart.parameter`). | `integration` | S11, S12 |
-| AC-F3 | Each SQL sink of section 1.7 reports a tainted query. A tainted value passed as a bound argument (`?`, `$1`) does not report. | `integration` | S7 |
-| AC-F4 | `exec.Command` and `exec.CommandContext` with a tainted name or argument report one `COMMAND_INJECTION` at `Start` (also through `Run`, `Output`, `CombinedOutput`). | `integration` | S7 |
-| AC-F5 | Propagation tests (Definition of done), each with the exact tainted range and source in the report: sub-strings and sub-slices; `+` and `+=`; `string(b)`, `[]byte(s)`, `[]rune(s)`; `append` growth; `io.ReadAll`. | `integration` | S4, S8 |
-| AC-F6 | Propagation tests (Definition of done): `strings.Builder` and `bytes.Buffer`; `fmt.Sprintf` with `%s`, `%v`, `%q`, `%d` of a `[]byte`, and a value with a `String()` method; `strings.Join`; `strings.ToUpper` and `ToLower` (ASCII exact, Unicode coarse); URL decoding (`url.QueryUnescape`, `PathUnescape`, query values with `%` and `+`). | `integration` | S10 |
-| AC-F7 | Propagation tests (Definition of done): JSON v1 (go1.26, and go1.27 with `GOEXPERIMENT=nojsonv2`) and JSON v2 (go1.27 default), with `json.Unmarshal` and `(*json.Decoder).Decode`, into struct fields, maps, slices and `any`; escaped and verbatim strings. | `integration` | S12 |
-| AC-F8 | Named string types (`type ID string`) and generic functions with `~string` and `~[]byte` constraints propagate taint (issue scope). | `integration` | S4, S10 |
-| AC-F9 | Negative controls: constants, clean values, a number round trip (`strconv.Atoi` then `Itoa`), and prepared statements with bound arguments do not report. In `fmt`: a `String()` method that returns a constant, `%T`, `%p` and `%.0s` of a tainted value do not report (#51 H8). | `integration` | S8, S10 |
-| AC-F10 | The finding is in `meta_struct["iast"]` of the root span, with `_dd.iast.enabled=1` and manual keep. When the agent has no `meta_struct` support, `_dd.iast.json` has the same event. | `integration` | S6, S8 |
-| AC-F11 | The `_integration/otelc` suite gives the same findings with Orchestrion and with otelc: type, location (file and line), evidence and sources. | `integration` | S8 to S12 |
-| AC-F12 | Limits are respected: `DD_IAST_VULNERABILITIES_PER_REQUEST`, deduplication, `DD_IAST_MAX_RANGE_COUNT`, `DD_IAST_TRUNCATION_MAX_VALUE`. | `unit` | S6 |
-| AC-F13 | Redaction of sensitive sources and evidence follows `DD_IAST_REDACTION_*`, and a sensitive source has its name masked too (#51 M36). | `unit` | S6 |
+| ID | Criterion and oracle | Check | Closes | Prerequisites |
+|---|---|---|---|---|
+| AC-F1 | **SQLi end to end from `net/http`.** A real traced HTTP/1 server, and a real TLS HTTP/2 server (negotiated `h2`), with the dd-trace-go `net/http` integration. A tainted value of each source kind reaches `(*sql.DB).QueryContext` through `+`, and gives exactly one `SQL_INJECTION` for each public call. Its `valueParts` mark the tainted part with the right `source` index; its `sources` entry has the right `origin`, `name` and value. Source kinds: query parameter (`URL.Query().Get`, `FormValue`), header, cookie, URL path, `PathValue`, urlencoded form, raw body through `io.ReadAll` (one chunk, and more than 8 KiB for several chunks). A bound argument does not report. | `integration` | S8 | S5, S6, S7 unit tests |
+| AC-F2 | **chi.** A chi router with **only** the dd-trace-go chi middleware (no outer `net/http` tracer). `chi.URLParam`, `URLParamFromCtx` and `(*Context).URLParam` give origin `http.request.path.parameter` and the key as name. A direct read of `URLParams.Values` gives origin `http.request.path`. | `integration` | S11 | S8 |
+| AC-F3 | **Multipart.** A multipart form field gives origin `http.request.multipart.parameter`. | `integration` | S12 | S8 |
+| AC-F4 | **SQL sinks.** Each public method of section 1.7 (`*DB`, `*Tx`: 8 methods each; `*sql.Conn`: the 4 context methods) reports a tainted query **exactly once**, also when it forwards to another method. Bound arguments (`?`, `$1`) do not report. | `integration` | S7 | – |
+| AC-F5 | **Command sinks.** `exec.Command` and `exec.CommandContext` with a tainted name or argument report one `COMMAND_INJECTION` through `Start`, `Run`, `Output` and `CombinedOutput`. | `integration` | S7 | – |
+| AC-F6 | **Runtime propagation in a report.** Sub-strings and sub-slices; `+` and `+=`; `string(b)`, `[]byte(s)`, `[]rune(s)`, `string(runes)`; `append` growth (heap and `growsliceBuf` stack cases); `io.ReadAll` multi-chunk; named types and generic functions with `~string` and `~[]byte`; values that mix clean and tainted ranges. The report has the exact tainted ranges and source. | `integration` | S8 | S4 woven unit tests of the bits of each lowering (mixed ranges, heap and stack controls) |
+| AC-F7 | **Standard library text propagation in a report.** `strings.Builder` and `bytes.Buffer` (also a clean overwrite of tainted bytes); `fmt.Sprintf` with `%s`, `%v`, width and precision clipping, `%q`, `%x`, a `Stringer` that returns tainted bytes, a `Formatter` that writes tainted bytes to `fmt.State`, a tainted format string; `strings.Join` with tainted elements **and** a tainted separator; `ToUpper` and `ToLower` with changed and unchanged ASCII bytes, and Unicode input (coarse); `url.QueryUnescape` and `PathUnescape` with escapes, with no escape (the alias keeps its exact bits, no widening) and with an invalid escape; `strconv.Quote` and `Unquote`. Values are tainted with the test source API under a real span. | `integration` | S9 | S4, S5, S7 |
+| AC-F8 | **JSON in a report.** JSON v1 (go1.26, and go1.27 with `GOEXPERIMENT=nojsonv2`) and JSON v2 (go1.27 default). `json.Unmarshal` and `(*json.Decoder).Decode` into struct fields, maps, slices and `any`. v1: `refill` slide **and** grow (documents larger than 512 bytes, read-ahead). v2: `fetch` slide, grow and the `bytes.Buffer` alias. Escaped and verbatim strings. v2 string cache: tainted→clean, clean→tainted, and different partial masks on equal strings never reuse the wrong bits. | `integration` | S12 | S10 baseline |
+| AC-F9 | **Negative controls** (each with a positive control, rule 2): constants; clean values; `strconv.Atoi` then `Itoa`; prepared statements with bound arguments; a `String()` that returns a constant; `%T`, `%p`, `%.0s` of a tainted value (#51 H8). | `integration` | S9 | S8 |
+| AC-F10 | **Transport.** The finding is in `meta_struct["iast"]` of the root span (serialized with msgpack), with `_dd.iast.enabled=1` and manual keep. With a test agent that does not report `span_meta_structs`, `_dd.iast.json` has the same event. | `integration` | S8 | S6 unit tests |
+| AC-F11 | **Parity.** For every scenario of the `_integration/otelc` suite, each tool gives at least one finding (rule 3), and the two tools give the same findings: type, location (file and line), evidence and sources. | `integration` | S12 | Runs in every PR from S7 |
+| AC-F12 | **Limits.** `DD_IAST_VULNERABILITIES_PER_REQUEST`, deduplication, `DD_IAST_MAX_RANGE_COUNT` and `DD_IAST_TRUNCATION_MAX_VALUE` are respected, each tested alone. | `unit` | S6 | – |
+| AC-F13 | **Sensitive sources.** A source whose name or value matches `DD_IAST_REDACTION_*` is serialized with no raw value, and its name is masked too (#51 M36). | `unit` | S6 | – |
 
 ### 4.2 Criteria from the PR #51 findings (C8 to C15, H1 to H5)
 
-Each finding of the review of PR #39 is one criterion with its own test. The
-test must fail on a design that has the defect (where possible, it is written
-from the reproducer of the finding).
+Each finding of the review of PR #39 is one criterion with its own test. Where
+possible, the test is written from the reproducer of the finding. The oracles
+include the corrections of the round-1 AC audit.
 
-| ID | Finding (short) | Criterion for the clean-room code | Check | PR |
-|---|---|---|---|---|
-| AC-R-C8 | Hooks panic in package init, before `main` | A woven application calls each sink (`db.Query`, `exec.Command(...).Start`), a concatenation and a `string(b)` conversion in package-level variable initializers and in `init()`. It starts with no panic, with taint tracking on and off. Extends `_integration/otelc/cmd/app`. | `integration` | S4, S7 |
-| AC-R-C9 | SQL comment bodies are not redacted | Comment bodies (`--`, `#`, `/* */`, nested `/* /* */ */`) are redacted in every dialect. A comment that cannot be classified makes the evidence fully redacted. The test of `admin' --` followed by a literal shows no literal. | `unit` (table + fuzz) | S6 |
-| AC-R-C10 | The Oracle q-quote pre-scan desynchronizes the other dialects | The scan of each dialect is independent. Oracle `q'[...]'` syntax changes only the Oracle scan. A fuzz test with an independent oracle finds no literal byte left visible. When dialects disagree on a boundary inside a tainted part, the evidence is fully redacted. | `unit` (fuzz) | S6 |
-| AC-R-C11 | The redaction pattern can equal the secret | For every redacted value `v` and its pattern `p`: `len(p)` equals the length of `v`, and `p[i] != v[i]` at every position. Property test and fuzz. The password `abc` does not give the pattern `abc`. | `unit` (property + fuzz) | S6 |
-| AC-R-C12 | Eager header tainting replaces the caller-visible `Request.Header` map | Sources never write to application-visible request state. Test: the identity of `Request.Header`, `Form`, `PostForm`, `MultipartForm`, `URL`, and the entries of these maps, are the same before and after the hooks; a handler change to the header map is visible to the caller. | `integration` | S8 |
-| AC-R-C13 | `ParseForm` advice writes the form state again on each parse (data race) | Repeated and concurrent `ParseForm` and `ParseMultipartForm` calls, with taint tracking on, sampled out, and off, give no data race under `-race`, and the same form state as an unwoven build. | `integration` (`-race`) | S8 |
-| AC-R-C14 | A late report brings back the annotation of a finished root, and races `SetMetaStruct` | A report after the root span finished does not make a new annotation, does not call `SetMetaStruct` on the finished span, and uses no capacity. It increments a "dropped" telemetry counter. Two `Finish` calls do not race. Tested with a real tracer. | `unit` (`-race`) + `integration` | S2 |
-| AC-R-C15 | Data race on a slot index of the request manager | Owner start, finish, source registration and sink lookups from other goroutines run under `-race` with no race report (stress test, 64 owners, 10 000 requests). | `unit` (`-race`) | S5 |
-| AC-R-H1 | A `strings.Builder` view brings back stale or cross-request taint after GC address reuse | A tainted value dies; a clean value later uses the same address (forced reuse in the test). It is never reported. The negative control (sweep hook off, test knob) finds false taint. Same test through a `strings.Builder` reused across 2 requests. | `unit` (woven) + `integration` | S3, S10 |
-| AC-R-H2 | A `bytes.Buffer` over a recycled slice inherits the source of another receiver | Request B writes clean data into a `bytes.Buffer` whose backing array held request A's tainted bytes. B's sink gives no finding, and no evidence of B shows a source of A. | `integration` | S10 |
-| AC-R-H3 | A pooled `io.ReadAll` body slice attributes A's body to concurrent request B | Concurrent requests A and B read their bodies into buffers from one `sync.Pool`. Each report has only the sources of its own request; bytes of A in a sink of B are foreign and make no finding for B. | `integration` (`-race`) | S8 |
-| AC-R-H4 | Reset or pooled reader wrappers keep the old owner | A `bufio.Reader` and a `json.Decoder` move from A's body to B's reader (`Reset`, pool). B's values are attributed only to B, or are clean when B's input is clean. | `integration` | S12 |
-| AC-R-H5 | A stale owner handle writes into the next owner of the slot | A deterministic test holds a handle across `Finish` and the reuse of the slot: its writes are refused (generation check). A stress test with a small slot count finds no cross-owner record. | `unit` (`-race`) | S5 |
+| ID | Finding (short) | Criterion and oracle | Check | Closes | Prerequisites |
+|---|---|---|---|---|---|
+| AC-R-C8 | Hooks panic in package init, before `main` | `_integration/otelc/cmd/app` keeps its **original** init-time crypto initializers. A separate package, initialized independently and with no import that forces the reporter or the tracer to initialize first, calls each sink (`db.QueryContext`, `exec.Command(...).Start`), a concatenation and a `string(b)` in package-level initializers and in `init()`. The program exits with 0, with taint tracking on and off, for both tools. Then a later call in `main` gives a normal finding. | `integration` | S7 | S4 |
+| AC-R-C9 | SQL comment bodies are not redacted | Synthetic sensitive markers in comment bodies (`--`, `#`, `/* */`, nested `/* /* */ */`), next to tainted content and next to untainted literals. No marker is in the serialized `valueParts` or `sources`, with both transports (`meta_struct` and `_dd.iast.json`). An unclassifiable comment makes the evidence fully redacted. Table test plus a fuzz campaign with an independent oracle; the PR records the fuzz command and its duration (plain `go test` runs only the seed corpus). | `unit` | S6 | – |
+| AC-R-C10 | The Oracle q-quote pre-scan desynchronizes the other dialects | Same oracle as C9, with Oracle `q'[...]'` forms, mixed with the syntax of the other dialects. The scan of each dialect is independent. When dialects disagree on a boundary inside a tainted part, the evidence is fully redacted. | `unit` | S6 | – |
+| AC-R-C11 | The redaction pattern can equal the secret | **Privacy invariant:** a redacted source or part never has a raw value field, and its redacted representation is content-independent: it depends only on the length (one fixed character, repeated, then truncated). Test: for many random secrets of the same length, the serialized redacted items are byte-for-byte equal; no `value` field is present. (v1 asked for "a different character at every position", which no fixed mask can give for every input.) | `unit` | S6 | – |
+| AC-R-C12 | Eager header tainting replaces the caller-visible `Request.Header` map | The same handler sequence runs in an unwoven build and in woven builds with taint tracking on, off and sampled out. The **changes** that the caller sees are the same: identity of `Header`, `Form`, `PostForm`, `MultipartForm`, `URL`; their entries; aliases that the caller holds; a handler change to the header map is visible to the caller. (Go itself makes the form maps, so the oracle compares changes with unwoven behavior, not "before" with "after".) | `integration` | S8 | – |
+| AC-R-C13 | `ParseForm` advice writes the form state again on each parse (data race) | Parse once. Then concurrent **re**-parses and reads (`ParseForm`, `ParseMultipartForm`, `FormValue`) under `-race`, with taint tracking on, off and sampled out: no race report, and the same state as unwoven. (Concurrent **first** parses race in plain Go, `net/http/request.go:1350–1377`, `:1393–1423`; they are not tested.) | `integration` (`-race`) | S8 | – |
+| AC-R-C14 | A late report brings back the annotation of a finished root, and races `SetMetaStruct` | Real tracer. Deterministic barriers around close and publish. A report after the root span finished makes no annotation, no `SetMetaStruct` call on the finished span, and uses no capacity; a "dropped" counter grows. Two `Finish` calls do not race. The serialized payload of the first `Finish` is checked. | `unit` (`-race`) + `integration` | S2 | – |
+| AC-R-C15 | Data race on a slot index of the request manager | Real tracer, deterministic barriers, 2 owner slots, 10 000 requests. A lookup from a detached goroutine runs while its slot is reused. No race report; the lookup gets the old owner or none, never the new one. | `unit` (`-race`) | S5 | – |
+| AC-R-H1 | A `strings.Builder` view brings back stale or cross-request taint after GC address reuse | **GC address reuse:** a tainted value dies; a clean value gets the same address (the test asserts that the address is equal). Its raw bits are 0 and it makes no finding. **Builder reuse:** a `strings.Builder` reused across 2 requests gives no finding with the old source. | `integration` | S9 | S3 raw-bit reuse test (AC-S7) |
+| AC-R-H2 | A `bytes.Buffer` over a recycled slice inherits the source of another receiver | A **still-live** backing array (the sweep cannot clear it) of request A is reused by request B: once through a hooked `bytes.Buffer.Write` (the bits are cleared), and once through an unhooked `copy` (the bits stay). The test asserts that the backing array is the same. Overlapping copies and clean rewrites of equal length. Raw bits are checked; B's span has no finding and no source of A. | `integration` | S9 | – |
+| AC-R-H3 | A pooled `io.ReadAll` body slice attributes A's body to concurrent request B | A deterministic buffer handoff (a single-slot pool; the test asserts that the backing array is reused): a pooled `bytes.Buffer` with `ReadFrom(r.Body)`, and a pooled slice that gets the `io.ReadAll` result. Requests A and B are concurrent, with distinct values, partly equal values, and a clean control. **Both spans** are checked: each has only the sources (names and values) of its own request. | `integration` (`-race`) | S8 | – |
+| AC-R-H4 | Reset or pooled reader wrappers keep the old owner | A `bufio.Reader` from a single-slot pool is `Reset` from A's body to B's body (same object asserted). A `json.Decoder` is kept across documents on one switchable reader (A's documents, then B's), with read-ahead (`encoding/json.Decoder` has no `Reset`). Distinct and partly equal values, and a clean control. Both spans checked. | `integration` | S12 | – |
+| AC-R-H5 | A stale owner handle writes into the next owner of the slot | A barrier pauses a pinned accessor across `Finish`. The slot is not given to a new request until the accessor unpins. Then a stale **write** and a stale **`Finish`** against the next owner are both refused. | `unit` (`-race`) | S5 | – |
 
 **Criteria added by the Planner** (other lessons of #51; Romain can remove
-them at approval):
+them at approval, decision D5):
 
-| ID | Lesson | Criterion | Check | PR |
-|---|---|---|---|---|
-| AC-R-H18 | Sampled-out requests fill the annotation store | Sampled-out requests use no owner slot and no annotation slot. With sampling 30 %, capacity 2 and 50 concurrent requests, sampled requests still report. | `unit` + `integration` | S2, S5 |
-| AC-R-H20 | The capacity check is not atomic with the insertion | Under 64 concurrent first reports, the annotation store never holds more entries than its capacity. | `unit` (`-race`) | S2 |
-| AC-R-H26 | The report path does its expensive work before its gates | Sampling, quota and deduplication run before the evidence and redaction work. A test counts the evidence builds: 2 reports allowed means at most 2 builds. | `unit` | S6 |
-| AC-R-H27 | Woven wrappers allocate when IAST is off | With taint tracking off, and on with clean inputs, the hooked runtime functions add 0 allocations (`testing.AllocsPerRun`). | `unit` (woven) | S4, S10 |
-| AC-R-H15 | A tainted `Cmd.Path` that differs from `Args[0]` is not inspected | It reports. | `integration` | S7 |
-| AC-R-C4C5 | AST rewriting changes semantics | Regression test: `len([1]string{a+b})` does not evaluate its operand, and `s[:1e3]` compiles and behaves as in an unwoven build. (No AST rewriting exists in this design; the test keeps it so.) | `integration` | S4 |
+| ID | Lesson | Criterion and oracle | Check | Closes | Prerequisites |
+|---|---|---|---|---|---|
+| AC-R-H18 | Sampled-out requests fill the annotation store | A controllable sampler and capacity (2 slots): sampled requests really compete with sampled-out requests. Sampled-out requests use no owner slot and no annotation slot; sampled requests still report. | `unit` + `integration` | S5 | S2 |
+| AC-R-H20 | The capacity check is not atomic with the insertion | Under 64 concurrent first reports, the annotation store never holds more entries than its capacity. | `unit` (`-race`) | S2 | – |
+| AC-R-H26 | The report path does its expensive work before its gates | A counter of evidence builds: with a quota of 2, 40 tainted sink calls give at most 2 builds. | `unit` | S6 | – |
+| AC-R-H27 | Woven wrappers allocate when IAST is off | For each hooked runtime and standard library function: allocations of the woven build (Off, Armed, Live with clean inputs) are equal to a matched **unwoven** baseline (`testing.AllocsPerRun`; some operations allocate by nature). | `unit` (woven) | S9 | S4 (runtime lowerings) |
+| AC-R-H15 | A tainted `Cmd.Path` that differs from `Args[0]` is not inspected | It reports. | `integration` | S7 | – |
+| AC-R-C4C5 | AST rewriting changes semantics | `len([1]string{a+b})` does not evaluate its operand, and `s[:1e3]` compiles and behaves as in an unwoven build. | `integration` | S4 | – |
 
 ### 4.3 JSON coverage matrix
 
-| ID | Criterion | Check | PR |
-|---|---|---|---|
-| AC-J1 | A matrix test exists. Rows: `json.NewDecoder(r.Body).Decode`; `io.ReadAll` + `json.Unmarshal`; `http.MaxBytesReader`; `bufio.NewReader`; `io.TeeReader`; `io.MultiReader`; `gzip.NewReader`; one decoder reused for several documents. Columns: `net/http` `ServeMux`; chi router; one framework helper (`github.com/go-chi/render` `DecodeJSON`). Each cell runs with JSON v1 and JSON v2. Each cell result is "detected", "safe miss" or "false positive", and is kept in a golden file. The test fails when a result changes and the golden file does not. | `integration` | S9 |
-| AC-J2 | The matrix is published as a table in `_docs/` and in the description of `S9`, **before `S12` (JSON hooks) is final**. Each later PR that changes a cell updates the table. Romain uses it to accept or reject the JSON limits. | `doc` | S9, S12 |
-| AC-J3 | At the end of `S12`, no cell is "false positive", or each one is a documented known false positive with its reason. | `integration` + `doc` | S12 |
+| ID | Criterion and oracle | Check | Closes | Prerequisites |
+|---|---|---|---|---|
+| AC-J1 | **The matrix test.** Rows: `json.NewDecoder(r.Body).Decode`; `io.ReadAll` + `json.Unmarshal`; `http.MaxBytesReader`; `bufio.NewReader`; `io.TeeReader`; `io.MultiReader`; `gzip.NewReader`; one decoder reused for several documents. Columns: `net/http` `ServeMux` with the dd-trace-go `net/http` integration; a chi router with only the chi middleware; `github.com/go-chi/render` `DecodeJSON`. JSON modes: v1 on go1.26, v2 on go1.27, v1 on go1.27 with `nojsonv2`. **Each scenario has 3 required checks:** a positive control in the same binary (a query parameter gives a finding), a clean negative, and an owner check with 2 concurrent requests A and B (distinct content, partly equal content, an `io.MultiReader` that mixes A's and B's bodies, read-ahead, a pooled buffer with a clean overwrite). Both spans are checked. Each cell result is "detected" or "safe miss", and is kept in a golden file. **A false positive or a cross-request disclosure fails the test; it is never a golden update.** | `integration` | S10 | S8 |
+| AC-J2 | **Baseline published.** The S10 results (with only the runtime hooks, the body source and `io.ReadAll`) are a table in `_docs/` and in the S10 description, before the JSON hooks are final. With it, the Planner proposes the list of **supported patterns** (the cells that must be "detected" at the end of S12). | `doc` | S10 | – |
+| AC-J3 | **Supported patterns approved.** Romain approves (or changes) the list of supported patterns. The approval is recorded in the S12 plan. | `doc` | S12 | AC-J2 |
+| AC-J4 | **Final matrix.** Every approved pattern is "detected" in every column and JSON mode; all other cells are "safe miss"; no false positive and no cross-request disclosure. The S12 delta against the S10 baseline is published. | `integration` | S12 | AC-J3 |
 
 ### 4.4 Platform and toolchain criteria
 
-| ID | Criterion | Check | PR |
-|---|---|---|---|
-| AC-P1 | CI runs the unit and integration tests on go1.26.x and go1.27.x, with Orchestrion and otelc, on linux/amd64. These jobs are required by "Green CI". | `integration` (CI) | S1 |
-| AC-P2 | CI has one gotip job for each tool. It is not required by "Green CI". It fails when the build fails **or** when the binary is not woven. It writes a warning in the job summary. | `integration` (CI) | S1 |
-| AC-P3 | CI has a woven `-race` job. | `integration` (CI) | S1 |
-| AC-P4 | The woven heap bits and runtime hook tests pass on linux/arm64 and darwin/arm64 in CI, and on darwin/amd64 (CI or one recorded manual run). | `integration` (CI) | S3, S4 |
-| AC-P5 | The feature is off, and the build and the feature-off tests pass, for windows/amd64, js/wasm, linux/386 (cross builds), `-asan` and `-msan`, and arm64 with no LSE atomics (test knob). | `integration` (CI) + `unit` | S3 |
-| AC-P6 | The drift test has golden files for go1.26 and go1.27 for every hooked runtime and standard library body, and fails for a minor version with no golden file. | `unit` | S3, S4, S10, S12 |
-| AC-P7 | The injected runtime code has compile-time checks for every runtime symbol that it uses. The generated-code check (`-S`) proves that each entry point is `nosplit` and that its only call before the decision is to `nosplit` code. | `unit` | S3 |
-| AC-P8 | The generated Orchestrion runtime template is equal to the output of `go generate` from the shared source file (CI check). | `integration` (CI) | S3 |
+| ID | Criterion and oracle | Check | Closes | Prerequisites |
+|---|---|---|---|---|
+| AC-P1 | **Required matrix.** CI runs the unit and integration tests on go1.26.x and go1.27.x, with Orchestrion and otelc, on linux/amd64, including both JSON modes on go1.27 where a test needs them. These jobs are required by "Green CI". | `integration` (CI) | S1 | – |
+| AC-P2 | **gotip.** One job for each tool, not required by "Green CI". The drift test and the woven sentinel are 2 independent steps: a drift failure does not stop the sentinel. A failure writes a warning for each tool in the job summary. | `integration` (CI) | S1 | – |
+| AC-P3 | **Woven `-race` job.** | `integration` (CI) | S1 | – |
+| AC-P4 | **Supported platforms run.** The woven heap bits and runtime hook tests pass on linux/arm64 and darwin/arm64 in CI. darwin/amd64: CI if a hosted Intel macOS runner exists, else a recorded **manual** run. | `integration` (CI) | S3 | – |
+| AC-P5 | **Unsupported platforms stay off.** Feature-off tests are **executed** on windows/amd64, linux/amd64 `-asan` and linux/amd64 `-msan`. js/wasm, linux/386 and freebsd/amd64 are **cross-built only** (labeled). arm64 with no LSE atomics is off (test knob). | `integration` (CI) + `unit` | S3 | – |
+| AC-P6 | **Drift test.** Golden files for go1.26 and go1.27; a minor with no golden file fails. S3 adds the mechanism and the runtime goldens; every later hooking PR adds its bodies (review rule, section 5.1). | `unit` | S3 | – |
+| AC-P7 | **Compile-time and generated-code checks.** Every runtime symbol that the injected code uses has a compile-time check. The disassembly of the **woven** prologues, for each supported ABI, proves that each entry point is `nosplit` and calls only `nosplit` code before the decision. | `unit` | S3 | – |
+| AC-P8 | **Generated template is up to date.** The Orchestrion runtime template is equal to the output of `go generate` (a code check, not a behavior test). | `integration` (CI) | S3 | – |
+| AC-P9 | **Manifest and sentinel.** The expected-hook manifest and the woven sentinel exist; the stable jobs require them; in a job that expects a woven build, `build.Instrumented() == false` is a failure, not a skip. Every later PR extends them (review rule, section 5.1). | `integration` (CI) | S1 | – |
+| AC-P10 | **Parity witnesses** (section 1.10.3) pass with both tools: allocator reuse (S3), runtime copy (S4), `io.ReadAll` multi-chunk (S8), `json.(*Decoder).refill` slide and grow (S12). | `integration` | S12 | S3, S4, S8 |
 
 ### 4.5 Safety criteria
 
-| ID | Criterion | Check | PR |
-|---|---|---|---|
-| AC-S1 | Off by default: with `DD_IAST_TAINT_TRACKING_ENABLED` unset, no bit is set, 0 bytes are mapped, sources and sinks do nothing, and WEAK_HASH and WEAK_CIPHER work as before. | `unit` + `integration` | S3, S8 |
-| AC-S2 | Kill switch: the same binary with `DD_IAST_TAINT_TRACKING_ENABLED=false` behaves as AC-S1. `DD_IAST_ENABLED=false` turns it off too. | `integration` | S8 |
-| AC-S3 | Circuit breaker: a panic injected in the analysis code (test knob) is recovered; taint tracking goes to Tripped for the process; one telemetry log is sent; the request completes with the original result. | `unit` | S3, S5 |
-| AC-S4 | Memory: the peak of mapped heap bit memory is at most `DD_IAST_TAINT_MEMORY_LIMIT`, and it is charged to `OtherSys` (`runtime.ReadMemStats`). Owner copies are at most 256 KiB for each owner. When a budget is used, data is dropped, a counter grows, and nothing blocks. | `unit` | S3, S5 |
-| AC-S5 | Hostile input gives no panic and bounded work: 10 000 query parameters, 1 000 headers, invalid UTF-8, a 1 GiB streamed body, a 64 KiB SQL query full of quotes and comments. | `unit` (fuzz) + `integration` | S6, S8 |
-| AC-S6 | Runtime hooks in an unsafe context (g0, signal stack, lock held, `mallocing`) take the original path. | `unit` (woven) | S4 |
-| AC-S7 | GC and memory reuse: no new object gets old taint (10 sizes from 8 B to 1 MiB, 2 000 objects each, with sweep and `freegc` reuse); an object revived by a finalizer keeps its taint; tiny allocator neighbours keep separate bits; a stack buffer is refused even when the stack moves. Each hook has a negative control that proves the test can fail. | `unit` (woven) | S3 |
-| AC-S8 | Telemetry counters exist for: dropped taint (budget, `Set` refused, owner full), executed sources and sinks, tainted requests, circuit breaker trips. | `unit` | S3, S5, S8 |
+| ID | Criterion and oracle | Check | Closes | Prerequisites |
+|---|---|---|---|---|
+| AC-S1 | **Off by default.** A subprocess with no env var: no bit is set, the mapped heap bit memory is 0 (`OtherSys` does not grow), sources and sinks have no effect, WEAK_HASH and WEAK_CIPHER report as before. | `integration` | S8 | S3 |
+| AC-S2 | **Kill switch.** Subprocesses with `DD_IAST_TAINT_TRACKING_ENABLED=false`, and with `DD_IAST_ENABLED=false`, behave as AC-S1. | `integration` | S8 | – |
+| AC-S3 | **Circuit breaker.** One subprocess for each state (Armed, Live, Tripped). A failure is injected **only in analysis code** (test knob), before and after an application callback. The return values and side effects are the same as unwoven; an application panic still reaches the caller; the gate goes to Tripped and never goes back to Live, also when the trip races an in-flight first `Set`. | `unit` | S9 | S3, S5, S8 |
+| AC-S4 | **Heap bit memory.** The peak of mapped memory (slabs and directories) is at most `DD_IAST_TAINT_MEMORY_LIMIT` and is charged to `OtherSys`. A multi-chunk `Set` that fails on its second chunk, under contention, writes no bit and undoes no bit of another writer. Nothing blocks. | `unit` (woven) | S3 | – |
+| AC-S5 | **Hostile input.** No panic, bounded work: 10 000 query parameters, 1 000 headers, invalid UTF-8, a 1 GiB streamed body, a 64 KiB SQL query full of quotes and comments. | `unit` (fuzz) + `integration` | S8 | S6 fuzz |
+| AC-S6 | **Unsafe contexts.** Runtime hooks on g0, on the signal stack, with a lock held, or in `mallocgc` take the original path. | `unit` (woven) | S4 | – |
+| AC-S7 | **GC and memory reuse.** The test proves that reuse happened (equal addresses). Default build: sweep reuse for 10 sizes from 8 B to 1 MiB, 2 000 objects each. A woven job with `GOEXPERIMENT=runtimefreegc` that observes a `freegc` reuse. A finalizer revival keeps its bits. Two neighbours in one packed tiny block (same 16-byte block asserted), in a **non-race** build. A stack buffer is refused with `maymorestack=mayMoreStackMove`. A random model test: no missed live bit, no inherited dead bit. Each hook has a negative control that proves the test can fail. | `unit` (woven) | S3 | – |
+| AC-S8 | **Telemetry counters** for: dropped taint (budget, `Set` refused, owner full, no owner found), executed sources and sinks, tainted requests, circuit breaker trips. | `unit` | S8 | S3, S5 |
+| AC-S9 | **Registry bounds.** Owner copies are at most 256 KiB for each owner. One sink call inspects at most 64 KiB, compares at most 1 MiB and does at most 4 096 candidate checks (deterministic counters). Drop, never block. | `unit` | S5 | – |
+| AC-S10 | **Chunk lifetime.** Forced interleavings (test knobs that pause a worker after it loaded a chunk pointer) with `Set`, `Clear`, `Copy` and sweeps: no write lands in memory of another range; no chunk is recycled. | `unit` (woven) | S3 | – |
 
 ### 4.6 Benchmark report
 
-| ID | Criterion | Check | PR |
-|---|---|---|---|
-| AC-B1 | The report gives, for both tools, on linux/amd64 (CI runner) and on one named developer machine: taint tracking off against an unwoven control; armed with no taint; active with clean inputs ("taint live elsewhere"); tainted concatenation and conversion; a tainted SQL sink in a loop; `HTTPRoundTrip` sampled and sampled out; allocation churn and full GC with 25 % tainted objects; the sweep hook worst case for one span. | `benchmark` | S13 (workloads start in S3, S4) |
-| AC-B2 | The report also gives the binary size and the build time and peak memory of a woven build for each tool (lessons of #51 C1 and notebook V10). | `benchmark` | S13 |
-| AC-B3 | The commands and the raw outputs are in the PR, so that the numbers can be measured again. | `doc` | S13 |
+| ID | Criterion | Check | Closes | Prerequisites |
+|---|---|---|---|---|
+| AC-B1 | The report gives, for both tools, on linux/amd64 (CI runner) and on one named developer machine: Off against an unwoven control; Armed with no taint; Live with clean inputs ("taint live elsewhere"); tainted concatenation and conversion; a tainted SQL sink in a loop; `HTTPRoundTrip` sampled and sampled out; allocation churn and full GC with 25 % tainted objects; the sweep hook worst case for one span. | `benchmark` | S13 | Workloads start in S3, S4 |
+| AC-B2 | It also gives the binary size, and the build time and peak memory of a woven build for each tool (lessons of #51 C1 and notebook V10). | `benchmark` | S13 | – |
+| AC-B3 | The commands, the configurations and the raw outputs are attached, so that the numbers can be measured again. | `doc` | S13 | – |
 
 ### 4.7 Documentation criteria
 
-| ID | Criterion | Check | PR |
-|---|---|---|---|
-| AC-D1 | `README.md`: the new env vars (type, default, range, effect); how to turn on, how to turn off (kill switch and build-level removal); supported Go versions and platforms; SQL injection and command injection marked as implemented, with their packages. | `doc` | S3, S8, S13 |
-| AC-D2 | A known limits and coverage gaps document (all items of section 8), with the known false positives. | `doc` | S13 |
-| AC-D3 | `DD_IAST_DB_ROWS_TO_TAINT` is documented as not implemented (#51 M8). | `doc` | S13 |
-| AC-D4 | The JSON matrix table (AC-J2). | `doc` | S9, S12 |
+| ID | Criterion | Check | Closes | Prerequisites |
+|---|---|---|---|---|
+| AC-D0 | **Preview notes** (option A only, section 6.3): what works, the explicit omissions, the env vars, how to turn it on and off, the known limits so far. Published with the preview. | `doc` | SP | – |
+| AC-D1 | `README.md`: the env vars (type, default, range, effect); how to turn on and off (kill switch, build-level removal); supported Go versions and platforms; SQL injection and command injection marked as implemented, with their packages. | `doc` | S14 | S3 and S8 update the env var rows (repository rule) |
+| AC-D2 | Known limits, coverage gaps and known false positives (all items of section 8, updated with the results of S10 and S12). | `doc` | S14 | – |
+| AC-D3 | `DD_IAST_DB_ROWS_TO_TAINT` is documented as not implemented (#51 M8). | `doc` | S14 | – |
 
 ### 4.8 System-test criteria
 
-| ID | Criterion | Check | PR |
-|---|---|---|---|
-| AC-ST1 | The SQL injection and command injection system-tests pass for the Go weblog with `DD_IAST_TAINT_TRACKING_ENABLED=true`, and the dd-iast-go workflow checks that they ran. This needs a PR in `DataDog/system-tests` (weblog endpoints and manifest). | `system-test` | S13 |
-| AC-ST2 | The existing WEAK_HASH, WEAK_CIPHER and deduplication system-tests still pass. | `system-test` | every PR |
+| ID | Criterion | Check | Closes | Prerequisites |
+|---|---|---|---|---|
+| AC-ST1 | The SQL injection and command injection system-tests run for the Go weblog with `DD_IAST_TAINT_TRACKING_ENABLED=true`, with a nonzero number of executed Go cases, and pass. The dd-iast-go workflow checks that they ran. | `system-test` | S15 | X1 (the `DataDog/system-tests` PR, section 6.2) |
+
+The existing WEAK_HASH, WEAK_CIPHER and deduplication system-tests must keep
+passing in every PR. This is a review rule (section 5.1), not a criterion with
+one closing PR.
 
 ## 5. Review requirements
 
 ### 5.1 For every PR of the stack
 
-1. **Plan.** A PR with a significant feature (S3, S4, S5, S6, S8, S10, S12)
+1. **Plan.** A PR with a significant feature (S3, S4, S5, S6, S8, S9, S12)
    starts with a plan in `_docs/plans/<slug>.md`, reviewed by a critic and by
    Romain, committed as `wip(plan): …`, and deleted when the PR is done
    (repository `AGENTS.md`, "Plans"). The plan refers to this document and
@@ -1108,7 +1126,7 @@ them at approval):
    read-only reviewers in parallel, chosen from the table in 5.2. One general
    review is not sufficient. The PR fixes or answers every finding before it
    leaves draft.
-3. **Adversarial review** for the high-risk PRs: S3, S4, S5, S6, S8, S12.
+3. **Adversarial review** for the high-risk PRs: S3, S4, S5, S6, S8, S9, S12.
 4. **Approval by Romain** before merge (every PR).
 5. **Parity check** (repository `AGENTS.md`): the reviewer compares the
    Orchestrion and otelc rules (targets, sink counts, reported data). A
@@ -1126,6 +1144,12 @@ them at approval):
    default (AC-S1 stays true).
 10. **Validation before commit** (repository `AGENTS.md`): `gofmt`,
     `go tool checklocks ./...`, `go vet`, and the linters are clean.
+11. **Drift goldens.** A PR that hooks a runtime or standard library function
+    adds its body to the golden files of go1.26 and go1.27 (AC-P6).
+12. **Manifest and sentinel.** A PR that adds a hook adds it to the
+    expected-hook manifest, and adds its capability to the sentinel (AC-P9).
+13. **Existing system-tests.** The WEAK_HASH, WEAK_CIPHER and deduplication
+    system-tests keep passing.
 
 ### 5.2 Reviewer specialties
 
@@ -1134,50 +1158,61 @@ them at approval):
 | Runtime internals | Reads the go1.26 and go1.27 source of each hooked symbol; `nosplit` chain; preemption; GC and sweep invariants; `mmap` accounting; compile-time checks; drift goldens | S3, S4, S12 (JSON internals) |
 | Concurrency | Atomics, pin and generation protocol, `TryLock` paths, `checklocks` annotations, `-race` stress results | S2, S3, S5, S8 |
 | Security and privacy | Redaction (C9, C10, C11), fail-closed paths, no secret in logs or telemetry, sensitive source names | S6, S7, S8 |
-| Host safety | Panic paths, `recover` scope, circuit breaker, init-time behavior (C8), no write to application state (C12, C13) | S3, S4, S5, S7, S8, S10, S12 |
-| Performance | Gate-off cost, allocations, inlining loss (`-gcflags=-m`), escape tags, benchmark protocol | S3, S4, S10, S12, S13 |
+| Host safety | Panic paths, `recover` scope (only analysis code), application code runs once, circuit breaker, init-time behavior (C8), no write to application state (C12, C13) | S3, S4, S5, S7, S8, S9, S12 |
+| Performance | Gate-off cost, allocations against unwoven baselines, inlining loss (`-gcflags=-m`), escape tags, benchmark protocol | S3, S4, S9, S12, S13 |
 | Tool parity | Orchestrion and otelc rules, generated runtime template, location differences | every PR with hooks |
-| Test oracle | The tests can fail (negative controls); the JSON matrix expectations are justified | S3, S9, S12 |
+| Test oracle | The tests can fail (negative controls, positive controls before a negative, proof that reuse happened); the JSON matrix expectations are justified | S3, S8, S9, S10, S12 |
 | Report format | The event matches the Datadog IAST schema (`valueParts`, `sources`) and the system-tests | S6, S13 |
 
 ### 5.3 Specific checks for each PR
 
 | PR | Specific checks |
 |---|---|
-| S1 | The gotip jobs are not required by "Green CI"; they fail when the binary is not woven. |
-| S2 | C14, H18, H20 tests fail on `main` before the fix (shown in the PR). |
-| S3 | Generated-code check output; negative controls of the sweep and `freegc` hooks fail when the hooks are off; the otelc feasibility result (section 1.10) is in the PR; darwin/amd64 manual run recorded. |
-| S4 | Escape-tag and frame comparison for each hooked body; 0-allocation evidence (AC-R-H27); g0 and signal-stack tests. |
-| S5 | H5 seam test, C15 stress test under `-race`, budget tests. |
-| S6 | Fuzz corpus and run time for C9, C10, C11 in the PR; the fuzz oracle does not reuse the code under test. |
-| S7 | Location of the report with both tools (otelc location difference, section 3.3); C8 init-time test. |
-| S8 | C12, C13, H3 tests; HTTP/2 body path; no new requirement in the root `go.mod`. |
-| S9 | Each expected cell has a one-line reason in the golden file. |
-| S10 | Inlining report of the hooked functions; H8 (methods and generated `fmt` text are coarse). |
-| S11 | No chi import in the root module; tie rule (`path.parameter` wins over `path`). |
-| S12 | JSON v1 and v2 variant selection on go1.26 and go1.27; peak memory of a woven go1.27 build (lesson of #51 C1); updated matrix. |
-| S13 | Raw benchmark outputs attached; system-tests PR linked. |
+| S1 | The gotip jobs are not required by "Green CI"; the drift and sentinel steps are independent; an empty sentinel fails when the build is not woven. |
+| S2 | The C14 and H20 tests fail on `main` before the fix (shown in the PR). |
+| S3 | Generated-code check output for each ABI; negative controls of the sweep and `freegc` hooks fail when the hooks are off; the `runtimefreegc` job observes a real `freegc` reuse; the tiny-block test asserts the same block; forced interleavings of AC-S10; the Windows build compiles with no `mmap`; the darwin/amd64 evidence is labeled (CI or manual). |
+| S4 | Escape-tag and frame comparison for each hooked body; the `growsliceBuf` heap path; allocations against an unwoven baseline; g0 and signal-stack tests. |
+| S5 | H5 barrier test (stale write and stale `Finish`), C15 detached lookup during slot reuse, no access to another owner, work bounds. |
+| S6 | The fuzz command and its duration for C9 and C10 in the PR; the fuzz oracle does not reuse the code under test; both transports inspected; C11 content-independence test. |
+| S7 | Location of the report with both tools (otelc location difference, section 3.3); one report for each public SQL call; C8 init-time test with the original crypto initializers. |
+| S8 | C12 (changes against unwoven), C13 (re-parse after one parse), H3 (asserted buffer reuse, both spans); HTTP/1 and TLS HTTP/2 fixtures; the HTTP/2 receiver for each Go minor in the manifest; `io.ReadAll` multi-chunk; no new requirement in the root `go.mod`. |
+| SP | Every omission of section 6.3 is listed. |
+| S9 | Inlining report of the hooked functions; H8 (`%T`, `%p`, constant `String()` are clean; only `fmtQ` and `fmtSbx` output is coarse); the `url` alias is not widened; application callbacks run once; application panics reach the caller. |
+| S10 | Each expected cell has a one-line reason in the golden file; each scenario has its positive control, clean negative and owner check; no false positive is accepted as a result. |
+| S11 | No chi import in the root module; chi-only middleware fixture; tie rule (`path.parameter` wins over `path`). |
+| S12 | JSON v1 and v2 variant selection on go1.26 and go1.27; peak memory of a woven go1.27 build (lesson of #51 C1); the matrix delta against S10; the approved list of supported patterns. |
+| S13 | Raw benchmark outputs and configurations attached. |
+| S14 | Every item of section 8 is in the user documentation. |
+| X1 | It merges only after S8; it enables only tests that pass on dd-iast-go `main`. |
+| S15 | The executed Go case count is nonzero for SQLi and for CMDi. |
 
 ## 6. PR stack
 
 ### 6.1 Order and dependencies
 
+The stack is **the same for both options** of section 6.3. The options only
+change which PRs must be on `main` on 2026-12-03.
+
 ```mermaid
 flowchart TD
   S0["S0 this design"]
-  S1["S1 CI: stable, gotip, race"]
-  S2["S2 spans fixes: C14, H18, H20"]
+  S1["S1 CI: stable, gotip, race,<br/>manifest + sentinel"]
+  S2["S2 spans fixes: C14, H20"]
   S3["S3 heap taint bits + switch + breaker"]
   S4["S4 runtime hooks"]
   S5["S5 owner + origin registry"]
   S6["S6 evidence + redaction"]
   S7["S7 sinks: database/sql, os/exec"]
-  S8["S8 net/http sources, first end-to-end"]
-  S9["S9 JSON coverage matrix"]
-  S10["S10 strings, bytes, fmt, strconv, net/url"]
+  S8["S8 net/http sources, io.ReadAll,<br/>first end-to-end"]
+  SP["SP preview notes<br/>(option A only)"]
+  S9["S9 fmt, strings, bytes,<br/>strconv, net/url"]
+  S10["S10 JSON coverage matrix (baseline)"]
   S11["S11 chi source"]
-  S12["S12 bufio, readers, encoding/json"]
-  S13["S13 benchmarks, docs, system-tests"]
+  S12["S12 bufio, readers, encoding/json,<br/>multipart"]
+  S13["S13 benchmark report"]
+  S14["S14 docs: README, limits, gaps"]
+  X1["X1 DataDog/system-tests PR<br/>(external)"]
+  S15["S15 enable SQLi and CMDi<br/>system-tests"]
   S0 --> S1
   S0 --> S2
   S1 --> S3
@@ -1189,13 +1224,17 @@ flowchart TD
   S5 --> S7
   S6 --> S7
   S7 --> S8
-  S8 --> S9
+  S7 --> S9
+  S8 --> SP
   S8 --> S10
   S8 --> S11
+  S8 --> X1
+  X1 --> S15
   S9 --> S12
   S10 --> S12
-  S11 --> S13
+  S11 --> S14
   S12 --> S13
+  S12 --> S14
 ```
 
 Every PR merges with taint tracking off by default, and with `main` green.
@@ -1204,46 +1243,66 @@ Until S8, no production source exists: the new code runs only in tests.
 ### 6.2 Scope of each PR
 
 Estimates are agent work hours, with tests, before review. They do not include
-the wait for reviews.
+the wait for reviews. "Closes" lists the criteria of section 4 for which this
+PR is the closing PR (each criterion has exactly one).
 
 | PR | Title (conventional commit) | Scope | Depends on | Verified alone by | Closes | Estimate |
 |---|---|---|---|---|---|---|
-| S1 | `ci: test on Go stable and gotip with both tools` | Go matrix `[oldstable, stable]` for the unit and integration jobs; one gotip job for each tool (not required, checks weaving with `cmd/app`); a woven `-race` job | S0 | The CI run of the PR | AC-P1, AC-P2, AC-P3 | 3 h |
-| S2 | `fix(spans): keep findings and capacity correct around root span finish` | Closed tombstone for finished roots (C14); no slot for sampled-out decisions (H18); atomic capacity reservation (H20); one sampling decision API that S5 uses | S0 | Unit tests with a real tracer, `-race` | AC-R-C14, AC-R-H18 (part), AC-R-H20 | 6 h |
-| S3 | `feat(taint): add allocator-backed heap taint bits` | `internal/taint/heapbits`: runtime fields, bitmap, slabs, budget, sweep and `freegc` hooks, platform gate, `Set`/`Clear`/`Any`/`Next`/`NextClean`/`Copy`; one source file for both tools + generator; drift test and goldens; stack probe; negative controls; generated-code check; platform jobs (linux/arm64, darwin/arm64, cross builds, `-asan`); config `DD_IAST_TAINT_TRACKING_ENABLED` and `DD_IAST_TAINT_MEMORY_LIMIT`; circuit breaker; README; micro benchmarks | S1 | Woven unit tests, both tools, all platform jobs | AC-P4 (part), AC-P5, AC-P6 (part), AC-P7, AC-P8, AC-S1 (part), AC-S3 (part), AC-S4 (part), AC-S7, AC-R-H1 (part), AC-D1 (part) | 30 h |
-| S4 | `feat(taint): propagate heap taint bits through runtime string and slice operations` | The 8 runtime hooks (section 1.4): gate word, context check, heap promotion, bypass token, rune derived callback (no-op until S5); escape, frame and g0 tests; goldens; 0-allocation tests; runtime micro benchmarks | S3 | Woven tests that taint with a test-only helper and check the bits of each result | AC-F5 (part), AC-F8 (part), AC-P6 (part), AC-R-C4C5, AC-R-C8 (part), AC-R-H27 (part), AC-S6 | 14 h |
-| S5 | `feat(taint): add the request owner and the origin registry` | Owner bound to the dd-trace-go server span (`httptrace.BeforeHandle`), one sampling decision (S2), slots and generations, pin + `TryLock`, source records, derived table, body copy, budget, attribution (section 1.3), public `taint` API (`TaintString`, `TaintBytes`, `IsTaintedString`, `IsTaintedBytes`); telemetry | S2, S3 | Unit tests with a fake bit oracle, woven unit tests, `-race` stress | AC-R-C15, AC-R-H5, AC-R-H18 (part), AC-S3 (part), AC-S4 (part), AC-S8 (part) | 18 h |
-| S6 | `feat(iast): build tainted evidence with SQL and command redaction` | Evidence builder (input: value, segments, source records; defined in this PR, so that it does not wait for S5); SQL redaction on `go-sqllexer` dialects with fail closed; command redaction; sensitive sources; report path with cheap gates first; `valueParts` and `sources` in the event | S2 | Unit, property and fuzz tests | AC-F10 (part), AC-F12, AC-F13, AC-R-C9, AC-R-C10, AC-R-C11, AC-R-H26, AC-S5 (part) | 14 h |
-| S7 | `feat(iast): detect SQL and command injection at database/sql and os/exec` | Sinks of section 1.7, both tools; `Cmd.Path` and `Args`; location with both tools; init-time safety | S4, S5, S6 | Integration tests with values tainted by the test API (`taint.TaintString` in a test owner) | AC-F3, AC-F4, AC-R-C8 (part), AC-R-H15 | 8 h |
-| S8 | `feat(iast): taint net/http request data` | Sources of section 1.6 except multipart and chi; body `Read` hooks (HTTP/1, bundled HTTP/2); first end-to-end SQLi and CMDi in `_integration/otelc`, both tools; README rows | S7 | End-to-end integration tests | AC-F1, AC-F5 (part), AC-F9 (part), AC-F10, AC-F11 (part), AC-R-C12, AC-R-C13, AC-R-H3, AC-S1, AC-S2, AC-S5 (part), AC-S8 (part), AC-D1 (part) | 14 h |
-| S9 | `test(iast): add the JSON coverage matrix` | The matrix of AC-J1 (8 patterns × 3 columns × JSON v1/v2) with its golden file and its generated table in `_docs/`. It measures what works with the runtime hooks and the body source only, **before** the JSON hooks of S12. | S8 | The matrix test itself | AC-J1, AC-J2 (part), AC-D4 (part) | 6 h |
-| S10 | `feat(iast): propagate taint through strings, bytes, fmt, strconv and net/url` | P0 standard library hooks of section 1.5 except JSON; derived entries; drift goldens | S8 | End-to-end propagation tests | AC-F6, AC-F8 (part), AC-F9 (part), AC-P6 (part), AC-R-H1 (part), AC-R-H2, AC-R-H27 (part) | 18 h |
-| S11 | `feat(iast): taint chi route parameters` | chi `URLParam`, `URLParamFromCtx`, `(*Context).URLParam` records (origin `http.request.path.parameter`); no chi import in the root module | S8 | End-to-end test with a chi router | AC-F2 (part) | 4 h |
-| S12 | `feat(iast): propagate taint through bufio, readers and encoding/json` | P0 JSON v1 and v2 hooks, P1 `bufio` and reader hooks, multipart forms; drift goldens; matrix update | S9, S10 | Matrix delta and end-to-end tests | AC-F2 (part), AC-F7, AC-J2, AC-J3, AC-P6 (part), AC-R-H4, AC-D4 | 22 h |
-| S13 | `docs: report taint tracking benchmarks, limits and coverage` | Benchmark workloads and report; README; known limits, gaps and false positives; enable the SQLi and CMDi system-tests (with a `DataDog/system-tests` PR); set the status of this document to "Implemented" | S11, S12 | Report, docs, system-tests run | AC-B1, AC-B2, AC-B3, AC-D1, AC-D2, AC-D3, AC-ST1 | 10 h |
+| S1 | `ci: test on Go stable and gotip with both tools` | Go matrix `[oldstable, stable]` for the unit and integration jobs; gotip jobs for each tool (not required; drift and sentinel as independent steps); woven `-race` job; the expected-hook manifest format and the empty sentinel program (section 1.10.5) | S0 | The CI run of the PR | AC-P1, AC-P2, AC-P3, AC-P9 | 6 h |
+| S2 | `fix(spans): keep findings and capacity correct around root span finish` | Closed tombstone for finished roots (C14); no slot for sampled-out decisions (H18 for annotations); atomic capacity reservation (H20); one sampling decision API for S5 | S0 | Unit tests with a real tracer, `-race` | AC-R-C14, AC-R-H20 | 6 h |
+| S3 | `feat(taint): add allocator-backed heap taint bits` | `internal/taint/heapbits`: runtime fields, bitmap, slabs, budget, clear-before-reuse hooks (sweep, `freegc`), no chunk recycling, 2-phase writes, gate word, platform code selected at compile time, API of section 1.2; one source file for both tools + generator; drift test and runtime goldens; stack probe; negative controls; generated-code check for each ABI; platform jobs (linux/arm64, darwin/arm64, windows, `-asan`, `-msan`, cross-builds, `runtimefreegc`); config `DD_IAST_TAINT_TRACKING_ENABLED`, `DD_IAST_TAINT_MEMORY_LIMIT`; circuit breaker; sentinel: set, any, clear, reuse; micro benchmarks | S1 | Woven unit tests, both tools, all platform jobs | AC-P4, AC-P5, AC-P6, AC-P7, AC-P8, AC-S4, AC-S7, AC-S10 | 34 h |
+| S4 | `feat(taint): propagate heap taint bits through runtime string and slice operations` | The 8 runtime hooks with the heap path of each lowering (section 1.4); bypass token; rune derived callback (no-op until S5); escape, frame, g0 and signal-stack tests; goldens; allocation tests against an unwoven baseline; sentinel: concatenation copy; runtime micro benchmarks | S3 | Woven tests that taint with a test-only helper and check the bits of each result | AC-R-C4C5, AC-S6 | 16 h |
+| S5 | `feat(taint): add the request owner and the origin registry` | Owner bound at `httptrace.startRequestSpan` (root server spans only), owner handle in the annotation, one sampling decision (S2), slots and generations, pin + `TryLock`, no cross-owner access, source records, derived table, body copy, budgets and work bounds, attribution (section 1.3.4), public `taint` API (`TaintString`, `TaintBytes`, `IsTaintedString`, `IsTaintedBytes`) used as the test source API; telemetry | S2, S3 | Unit tests with a fake bit oracle, woven unit tests, `-race` stress | AC-R-C15, AC-R-H5, AC-R-H18, AC-S9 | 18 h |
+| S6 | `feat(iast): build tainted evidence with SQL and command redaction` | Evidence builder (its input type is defined here, so it does not wait for S5); SQL redaction on `go-sqllexer` dialects with fail closed; content-independent redacted representation; command redaction; sensitive sources; report path with cheap gates first | S2 | Unit, property and fuzz tests | AC-F12, AC-F13, AC-R-C9, AC-R-C10, AC-R-C11, AC-R-H26 | 14 h |
+| S7 | `feat(iast): detect SQL and command injection at database/sql and os/exec` | The 9 SQL hook points and `(*Cmd).Start` (section 1.7), both tools; `Cmd.Path` and `Args`; owner lookup from the span; report location with both tools; init-time safety; sentinel: sink → report | S4, S5, S6 | Integration tests with the test source API | AC-F4, AC-F5, AC-R-C8, AC-R-H15 | 8 h |
+| S8 | `feat(iast): taint net/http request data` | Sources of section 1.6 except multipart and chi; body `Read` hooks for HTTP/1 and for the HTTP/2 receiver of each Go minor; the `io.ReadAll` twin; first end-to-end SQLi and CMDi with HTTP/1 and TLS HTTP/2 fixtures, both tools; README env var rows; sentinel: HTTP request → SQL finding | S7 | End-to-end integration tests | AC-F1, AC-F6, AC-F10, AC-R-C12, AC-R-C13, AC-R-H3, AC-S1, AC-S2, AC-S5, AC-S8 | 18 h |
+| SP | `docs: add the taint tracking preview notes` | **Option A only.** `_docs/taint-tracking-preview.md` and a README link: what works, explicit omissions, env vars, known limits so far | S8 | Review | AC-D0 | 2 h |
+| S9 | `feat(iast): propagate taint through strings, bytes, fmt, strconv and net/url` | P0 text hooks of section 1.5 (`fmt`, `strings`, `bytes`, `strconv`, `net/url`); derived entries; drift goldens; sentinel: `fmt.Sprintf` | S7 | Integration tests with the test source API and real sinks | AC-F7, AC-F9, AC-R-H1, AC-R-H2, AC-R-H27, AC-S3 | 20 h |
+| S10 | `test(iast): add the JSON coverage matrix` | The matrix of AC-J1, with its golden file and its generated table in `_docs/`; the proposed list of supported patterns. It measures what works with the runtime hooks, the body source and `io.ReadAll` only, **before** the JSON hooks of S12. | S8 | The matrix test itself | AC-J1, AC-J2 | 8 h |
+| S11 | `feat(iast): taint chi route parameters` | chi records (origin `http.request.path.parameter`); a chi-only middleware fixture; no chi import in the root module | S8 | End-to-end test with a chi router | AC-F2 | 5 h |
+| S12 | `feat(iast): propagate taint through bufio, readers and encoding/json` | P0 JSON v1 and v2 hooks, P1 `bufio` and reader hooks, multipart forms; drift goldens; matrix update to the approved patterns; parity witness `refill`; sentinel: JSON | S9, S10 | Matrix and end-to-end tests | AC-F3, AC-F8, AC-F11, AC-J3, AC-J4, AC-R-H4, AC-P10 | 24 h |
+| S13 | `docs: report the taint tracking benchmarks` | Benchmark workloads and the report, with raw outputs | S12 | The report | AC-B1, AC-B2, AC-B3 | 6 h |
+| S14 | `docs: document taint tracking limits and coverage` | README; known limits, gaps and false positives; set the status of this document to "Implemented" | S11, S12 | Review | AC-D1, AC-D2, AC-D3 | 4 h |
+| X1 | (in `DataDog/system-tests`) `golang: run IAST SQLi and CMDi tests on the dd-iast-go weblog` | Weblog endpoints and manifest for SQL injection and command injection on the `net-http-orchestrion` weblog; scenario env `DD_IAST_TAINT_TRACKING_ENABLED=true` | S8 merged on dd-iast-go `main` | The system-tests CI | – (prerequisite of AC-ST1) | 4 h |
+| S15 | `ci(system-tests): require the SQLi and CMDi system-tests` | Add the SQLi and CMDi tests to the "expected IAST tests executed" check of `.github/workflows/system-tests.yml`, with a nonzero count of executed Go cases | X1 merged | The system-tests workflow on the PR | AC-ST1 | 2 h |
 
-**Total:** about 167 hours of agent work, plus review rounds.
+**Owner and order of X1.** The Delivery Lead assigns X1 to the squad's
+Implementer, as its own sub-issue. Its target is the branch
+`romain.marcadier/dd-iast-go` of `DataDog/system-tests`, which the dd-iast-go
+workflow uses as its default `system_tests_ref`. Romain owns that branch and
+approves X1. Merge order: **S8 → X1 → S15.** X1 must not merge before S8,
+because the workflow follows the branch (it is not pinned): enabling the tests
+earlier would break the dd-iast-go CI.
 
-### 6.3 Critical path and the milestone
+**Total:** about 193 hours of agent work (195 with SP), plus review rounds.
 
-- **Critical path:** S1 → S3 → S5 → S7 → S8 → S10 → S12 → S13 =
-  3 + 30 + 18 + 8 + 14 + 18 + 22 + 10 = **123 hours** of agent work.
-- **Parallel lanes:** S2 and S6 can start now; S4 runs next to S5; S9 and
-  S11 run next to S10.
-- **Milestone (2026-12-03):** 10 working days from 2026-11-19. With 8 hours
-  of agent work each day and no wait for reviews, the critical path needs
-  about 15 working days. The milestone is at risk.
-- **Proposed milestone cut** (question Q1 in section 10): S1 to S11. The
-  critical path to S11 is S1 → S3 → S5 → S7 → S8 → S10 = **91 hours**. That
-  gives end-to-end SQLi and CMDi from `net/http` and chi, with concatenation,
-  conversions, `append`, `fmt.Sprintf`, `strings.Join`, case conversion, URL
-  decoding, and the JSON matrix data. S12 (JSON hooks, `bufio`, multipart)
-  and S13 (benchmark report, full docs, system-tests) follow in the next week.
+### 6.3 The milestone: 2 options (decision for Romain)
+
+- **Critical path to the full Definition of done:** S1 → S3 → S5 → S7 → S8 →
+  S10 → S12 → S13 = 6 + 34 + 18 + 8 + 18 + 8 + 24 + 6 = **122 hours**.
+- **Parallel lanes:** S2 and S6 can start at once; S4 runs next to S5; S9
+  runs next to S8; S11 and X1 run next to S10.
+- **Time available:** 10 working days from 2026-11-20 to 2026-12-03, about
+  80 hours of agent work if the reviews do not stop the critical path.
+
+| | Option A: dated preview on 2026-12-03 | Option B: full Definition of done later |
+|---|---|---|
+| On `main` on 2026-12-03 | S1 to S8, and SP | What is merged; no announcement |
+| Critical path of that set | S1 → S3 → S5 → S7 → S8 = **84 h** | – |
+| Works in the preview | SQLi and CMDi from `net/http` sources (query, header, cookie, path, `PathValue`, urlencoded form, body), HTTP/1 and HTTP/2; propagation through sub-strings, `+`, conversions, `append` growth, `io.ReadAll`; `meta_struct.iast` reporting; off by default, kill switch, circuit breaker; linux and darwin, amd64 and arm64 | – |
+| Explicit omissions of the preview (in SP) | No `fmt.Sprintf`, `strings.Join`, `strings.Builder`, `bytes.Buffer`, case conversion or URL-decoded values (S9); no chi `path.parameter` origin (chi values are still detected as `http.request.path`) (S11); no JSON detection and no JSON matrix (S10, S12); no `bufio` and no multipart (S12); no benchmark numbers (S13); no full limits document (S14); no system-tests (X1, S15) | – |
+| Full Definition of done | The same stack continues after the preview: **2026-12-21** at the earliest | **2026-12-18** at the earliest |
+| Risk | The preview critical path (84 h) is longer than the 80 h available: it fits only with parallel lanes, reviews within half a working day, and no rework round. If S8 is not merged on 2026-12-02, the preview has no production source, and it is not useful for design partners. **fmt.Sprintf is the most common way to build a query in Go**: without S9, the preview misses many real cases. | Year-end holidays: if a critical-path review waits more than half a working day, the date moves to January 2027. |
+| Epic | Stays open until the full Definition of done | Stays open until the full Definition of done |
+
+The full-DoD dates assume 8 hours of agent work each working day and a review
+wait of at most half a working day for each PR on the critical path (9 PRs).
 
 ### 6.4 Sub-issues
 
-The Delivery Lead makes one sub-issue for each PR (S1 to S13). Each
-sub-issue links to this document and copies the "Closes" column of its row.
+The Delivery Lead makes one sub-issue for each PR (S1 to S15, X1, and SP for
+option A). Each sub-issue links to this document and copies the "Closes"
+column of its row.
 
 ## 7. Answers to the 3 facts to check in code
 
