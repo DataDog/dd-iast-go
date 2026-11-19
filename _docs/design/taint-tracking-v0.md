@@ -80,7 +80,7 @@ PoC code. The stack can change and extend it.
    signal only.
 9. The stack has 13 PRs (section 6). Each PR leaves `main` green, with the
    feature off by default.
-10. The milestone (2026-12-03) is at risk: the critical path is about 125 hours
+10. The milestone (2026-12-03) is at risk: the critical path is about 123 hours
     of agent work. Section 10 asks Romain which PRs the milestone needs.
 
 ## 1. Approach
@@ -827,4 +827,242 @@ them at approval):
 | AC-ST1 | The SQL injection and command injection system-tests pass for the Go weblog with `DD_IAST_TAINT_TRACKING_ENABLED=true`, and the dd-iast-go workflow checks that they ran. This needs a PR in `DataDog/system-tests` (weblog endpoints and manifest). | `system-test` | S13 |
 | AC-ST2 | The existing WEAK_HASH, WEAK_CIPHER and deduplication system-tests still pass. | `system-test` | every PR |
 
-<!-- Sections 5 to 10 follow in the next commits of this draft PR. -->
+## 5. Review requirements
+
+### 5.1 For every PR of the stack
+
+1. **Plan.** A PR with a significant feature (S3, S4, S5, S6, S8, S10, S12)
+   starts with a plan in `_docs/plans/<slug>.md`, reviewed by a critic and by
+   Romain, committed as `wip(plan): …`, and deleted when the PR is done
+   (repository `AGENTS.md`, "Plans"). The plan refers to this document and
+   lists the criteria that the PR closes.
+2. **Multi-agent code review** (`code-review` skill): at least 3 specialized,
+   read-only reviewers in parallel, chosen from the table in 5.2. One general
+   review is not sufficient. The PR fixes or answers every finding before it
+   leaves draft.
+3. **Adversarial review** for the high-risk PRs: S3, S4, S5, S6, S8, S12.
+4. **Approval by Romain** before merge (every PR).
+5. **Parity check** (repository `AGENTS.md`): the reviewer compares the
+   Orchestrion and otelc rules (targets, sink counts, reported data). A
+   difference with no stated reason is a defect.
+6. **Clean-room check.** The PR description has the sentence "No code in this
+   PR is copied from PR #39, #52 or #58." A reviewer runs a similarity scan of
+   the diff against the 3 PoC branches (`romain.marcadier/taint-tracking`,
+   `romain.marcadier/allocator-taint-bits`, `romain.marcadier/heapbits-sqli-cmdi`)
+   and reports any run of 8 or more equal non-trivial lines.
+7. **Criteria evidence.** The PR description lists the criteria (section 4)
+   that it closes, with the test names and the CI job that runs them.
+8. **Both tools, both Go versions.** The tests of the PR run with Orchestrion
+   and otelc, on go1.26.x and go1.27.x (after S1).
+9. **Off by default.** The PR shows that `main` keeps taint tracking off by
+   default (AC-S1 stays true).
+10. **Validation before commit** (repository `AGENTS.md`): `gofmt`,
+    `go tool checklocks ./...`, `go vet`, and the linters are clean.
+
+### 5.2 Reviewer specialties
+
+| Specialty | Looks for | Required for |
+|---|---|---|
+| Runtime internals | Reads the go1.26 and go1.27 source of each hooked symbol; `nosplit` chain; preemption; GC and sweep invariants; `mmap` accounting; compile-time checks; drift goldens | S3, S4, S12 (JSON internals) |
+| Concurrency | Atomics, pin and generation protocol, `TryLock` paths, `checklocks` annotations, `-race` stress results | S2, S3, S5, S8 |
+| Security and privacy | Redaction (C9, C10, C11), fail-closed paths, no secret in logs or telemetry, sensitive source names | S6, S7, S8 |
+| Host safety | Panic paths, `recover` scope, circuit breaker, init-time behavior (C8), no write to application state (C12, C13) | S3, S4, S5, S7, S8, S10, S12 |
+| Performance | Gate-off cost, allocations, inlining loss (`-gcflags=-m`), escape tags, benchmark protocol | S3, S4, S10, S12, S13 |
+| Tool parity | Orchestrion and otelc rules, generated runtime template, location differences | every PR with hooks |
+| Test oracle | The tests can fail (negative controls); the JSON matrix expectations are justified | S3, S9, S12 |
+| Report format | The event matches the Datadog IAST schema (`valueParts`, `sources`) and the system-tests | S6, S13 |
+
+### 5.3 Specific checks for each PR
+
+| PR | Specific checks |
+|---|---|
+| S1 | The gotip jobs are not required by "Green CI"; they fail when the binary is not woven. |
+| S2 | C14, H18, H20 tests fail on `main` before the fix (shown in the PR). |
+| S3 | Generated-code check output; negative controls of the sweep and `freegc` hooks fail when the hooks are off; the otelc feasibility result (section 1.10) is in the PR; darwin/amd64 manual run recorded. |
+| S4 | Escape-tag and frame comparison for each hooked body; 0-allocation evidence (AC-R-H27); g0 and signal-stack tests. |
+| S5 | H5 seam test, C15 stress test under `-race`, budget tests. |
+| S6 | Fuzz corpus and run time for C9, C10, C11 in the PR; the fuzz oracle does not reuse the code under test. |
+| S7 | Location of the report with both tools (otelc location difference, section 3.3); C8 init-time test. |
+| S8 | C12, C13, H3 tests; HTTP/2 body path; no new requirement in the root `go.mod`. |
+| S9 | Each expected cell has a one-line reason in the golden file. |
+| S10 | Inlining report of the hooked functions; H8 (methods and generated `fmt` text are coarse). |
+| S11 | No chi import in the root module; tie rule (`path.parameter` wins over `path`). |
+| S12 | JSON v1 and v2 variant selection on go1.26 and go1.27; peak memory of a woven go1.27 build (lesson of #51 C1); updated matrix. |
+| S13 | Raw benchmark outputs attached; system-tests PR linked. |
+
+## 6. PR stack
+
+### 6.1 Order and dependencies
+
+```mermaid
+flowchart TD
+  S0["S0 this design"]
+  S1["S1 CI: stable, gotip, race"]
+  S2["S2 spans fixes: C14, H18, H20"]
+  S3["S3 heap taint bits + switch + breaker"]
+  S4["S4 runtime hooks"]
+  S5["S5 owner + origin registry"]
+  S6["S6 evidence + redaction"]
+  S7["S7 sinks: database/sql, os/exec"]
+  S8["S8 net/http sources, first end-to-end"]
+  S9["S9 JSON coverage matrix"]
+  S10["S10 strings, bytes, fmt, strconv, net/url"]
+  S11["S11 chi source"]
+  S12["S12 bufio, readers, encoding/json"]
+  S13["S13 benchmarks, docs, system-tests"]
+  S0 --> S1
+  S0 --> S2
+  S1 --> S3
+  S3 --> S4
+  S3 --> S5
+  S2 --> S5
+  S2 --> S6
+  S4 --> S7
+  S5 --> S7
+  S6 --> S7
+  S7 --> S8
+  S8 --> S9
+  S8 --> S10
+  S8 --> S11
+  S9 --> S12
+  S10 --> S12
+  S11 --> S13
+  S12 --> S13
+```
+
+Every PR merges with taint tracking off by default, and with `main` green.
+Until S8, no production source exists: the new code runs only in tests.
+
+### 6.2 Scope of each PR
+
+Estimates are agent work hours, with tests, before review. They do not include
+the wait for reviews.
+
+| PR | Title (conventional commit) | Scope | Depends on | Verified alone by | Closes | Estimate |
+|---|---|---|---|---|---|---|
+| S1 | `ci: test on Go stable and gotip with both tools` | Go matrix `[oldstable, stable]` for the unit and integration jobs; one gotip job for each tool (not required, checks weaving with `cmd/app`); a woven `-race` job | S0 | The CI run of the PR | AC-P1, AC-P2, AC-P3 | 3 h |
+| S2 | `fix(spans): keep findings and capacity correct around root span finish` | Closed tombstone for finished roots (C14); no slot for sampled-out decisions (H18); atomic capacity reservation (H20); one sampling decision API that S5 uses | S0 | Unit tests with a real tracer, `-race` | AC-R-C14, AC-R-H18 (part), AC-R-H20 | 6 h |
+| S3 | `feat(taint): add allocator-backed heap taint bits` | `internal/taint/heapbits`: runtime fields, bitmap, slabs, budget, sweep and `freegc` hooks, platform gate, `Set`/`Clear`/`Any`/`Next`/`NextClean`/`Copy`; one source file for both tools + generator; drift test and goldens; stack probe; negative controls; generated-code check; platform jobs (linux/arm64, darwin/arm64, cross builds, `-asan`); config `DD_IAST_TAINT_TRACKING_ENABLED` and `DD_IAST_TAINT_MEMORY_LIMIT`; circuit breaker; README; micro benchmarks | S1 | Woven unit tests, both tools, all platform jobs | AC-P4 (part), AC-P5, AC-P6 (part), AC-P7, AC-P8, AC-S1 (part), AC-S3 (part), AC-S4 (part), AC-S7, AC-R-H1 (part), AC-D1 (part) | 30 h |
+| S4 | `feat(taint): propagate heap taint bits through runtime string and slice operations` | The 8 runtime hooks (section 1.4): gate word, context check, heap promotion, bypass token, rune derived callback (no-op until S5); escape, frame and g0 tests; goldens; 0-allocation tests; runtime micro benchmarks | S3 | Woven tests that taint with a test-only helper and check the bits of each result | AC-F5 (part), AC-F8 (part), AC-P6 (part), AC-R-C4C5, AC-R-C8 (part), AC-R-H27 (part), AC-S6 | 14 h |
+| S5 | `feat(taint): add the request owner and the origin registry` | Owner bound to the dd-trace-go server span (`httptrace.BeforeHandle`), one sampling decision (S2), slots and generations, pin + `TryLock`, source records, derived table, body copy, budget, attribution (section 1.3), public `taint` API (`TaintString`, `TaintBytes`, `IsTaintedString`, `IsTaintedBytes`); telemetry | S2, S3 | Unit tests with a fake bit oracle, woven unit tests, `-race` stress | AC-R-C15, AC-R-H5, AC-R-H18 (part), AC-S3 (part), AC-S4 (part), AC-S8 (part) | 18 h |
+| S6 | `feat(iast): build tainted evidence with SQL and command redaction` | Evidence builder (input: value, segments, source records; defined in this PR, so that it does not wait for S5); SQL redaction on `go-sqllexer` dialects with fail closed; command redaction; sensitive sources; report path with cheap gates first; `valueParts` and `sources` in the event | S2 | Unit, property and fuzz tests | AC-F10 (part), AC-F12, AC-F13, AC-R-C9, AC-R-C10, AC-R-C11, AC-R-H26, AC-S5 (part) | 14 h |
+| S7 | `feat(iast): detect SQL and command injection at database/sql and os/exec` | Sinks of section 1.7, both tools; `Cmd.Path` and `Args`; location with both tools; init-time safety | S4, S5, S6 | Integration tests with values tainted by the test API (`taint.TaintString` in a test owner) | AC-F3, AC-F4, AC-R-C8 (part), AC-R-H15 | 8 h |
+| S8 | `feat(iast): taint net/http request data` | Sources of section 1.6 except multipart and chi; body `Read` hooks (HTTP/1, bundled HTTP/2); first end-to-end SQLi and CMDi in `_integration/otelc`, both tools; README rows | S7 | End-to-end integration tests | AC-F1, AC-F5 (part), AC-F9 (part), AC-F10, AC-F11 (part), AC-R-C12, AC-R-C13, AC-R-H3, AC-S1, AC-S2, AC-S5 (part), AC-S8 (part), AC-D1 (part) | 14 h |
+| S9 | `test(iast): add the JSON coverage matrix` | The matrix of AC-J1 (8 patterns × 3 columns × JSON v1/v2) with its golden file and its generated table in `_docs/`. It measures what works with the runtime hooks and the body source only, **before** the JSON hooks of S12. | S8 | The matrix test itself | AC-J1, AC-J2 (part), AC-D4 (part) | 6 h |
+| S10 | `feat(iast): propagate taint through strings, bytes, fmt, strconv and net/url` | P0 standard library hooks of section 1.5 except JSON; derived entries; drift goldens | S8 | End-to-end propagation tests | AC-F6, AC-F8 (part), AC-F9 (part), AC-P6 (part), AC-R-H1 (part), AC-R-H2, AC-R-H27 (part) | 18 h |
+| S11 | `feat(iast): taint chi route parameters` | chi `URLParam`, `URLParamFromCtx`, `(*Context).URLParam` records (origin `http.request.path.parameter`); no chi import in the root module | S8 | End-to-end test with a chi router | AC-F2 (part) | 4 h |
+| S12 | `feat(iast): propagate taint through bufio, readers and encoding/json` | P0 JSON v1 and v2 hooks, P1 `bufio` and reader hooks, multipart forms; drift goldens; matrix update | S9, S10 | Matrix delta and end-to-end tests | AC-F2 (part), AC-F7, AC-J2, AC-J3, AC-P6 (part), AC-R-H4, AC-D4 | 22 h |
+| S13 | `docs: report taint tracking benchmarks, limits and coverage` | Benchmark workloads and report; README; known limits, gaps and false positives; enable the SQLi and CMDi system-tests (with a `DataDog/system-tests` PR); set the status of this document to "Implemented" | S11, S12 | Report, docs, system-tests run | AC-B1, AC-B2, AC-B3, AC-D1, AC-D2, AC-D3, AC-ST1 | 10 h |
+
+**Total:** about 167 hours of agent work, plus review rounds.
+
+### 6.3 Critical path and the milestone
+
+- **Critical path:** S1 → S3 → S5 → S7 → S8 → S10 → S12 → S13 =
+  3 + 30 + 18 + 8 + 14 + 18 + 22 + 10 = **123 hours** of agent work.
+- **Parallel lanes:** S2 and S6 can start now; S4 runs next to S5; S9 and
+  S11 run next to S10.
+- **Milestone (2026-12-03):** 10 working days from 2026-11-19. With 8 hours
+  of agent work each day and no wait for reviews, the critical path needs
+  about 15 working days. The milestone is at risk.
+- **Proposed milestone cut** (question Q1 in section 10): S1 to S11. The
+  critical path to S11 is S1 → S3 → S5 → S7 → S8 → S10 = **91 hours**. That
+  gives end-to-end SQLi and CMDi from `net/http` and chi, with concatenation,
+  conversions, `append`, `fmt.Sprintf`, `strings.Join`, case conversion, URL
+  decoding, and the JSON matrix data. S12 (JSON hooks, `bufio`, multipart)
+  and S13 (benchmark report, full docs, system-tests) follow in the next week.
+
+### 6.4 Sub-issues
+
+The Delivery Lead makes one sub-issue for each PR (S1 to S13). Each
+sub-issue links to this document and copies the "Closes" column of its row.
+
+## 7. Answers to the 3 facts to check in code
+
+### 7.1 Fact 1: are the PR #51 findings C9 to C11 fixed?
+
+**No. They are not fixed on any branch. `main` has no SQL redaction code.**
+
+| Branch | `internal/taint/redaction/sql.go` | C9 (comments) | C10 (q-quote pre-scan) | C11 (pattern) |
+|---|---|---|---|---|
+| Reviewed commit `2e23b46` (PR #39, the #51 review base) | hash `9465bb1b789d` | Leak | Leak | Leak |
+| PR #39 head `059007b0` | **same file** (no commit changed it after `2e23b46`) | Leak | Leak | Leak |
+| PR #58 head `a2896e22` | **same file** | Leak | Leak | Leak |
+| `main` `f79d6f93` | no redaction package | – | – | – |
+
+Evidence (PR #58 head):
+
+- C9: `sqlSensitiveToken` returns sensitive intervals only for string,
+  dollar-quoted, number, boolean and null tokens. There is no case for comment
+  tokens. `internal/taint/redaction/analyzer_test.go` still expects the
+  comment to stay visible: `SELECT column -- secret` gives
+  `SELECT column -- secret`.
+- C10: `AnalyzeSQL` still calls `scanOracleQuotes(query)` (a context-free
+  scan for `q'`) before the 6 dialect lexers, and cuts the input of every
+  dialect at the spans that it found.
+- C11: `alphanumericPattern(length)` is unchanged in the 3 commits (same
+  hash): the pattern is `abc…` by position, so the password `abc` gives the
+  pattern `abc`.
+
+Effect on v0: none on the plan, because all code is clean-room (decision 2).
+C9, C10 and C11 are criteria AC-R-C9, AC-R-C10 and AC-R-C11 of `S6`.
+
+### 7.2 Fact 2: can otelc build against gotip?
+
+**No, not today. Orchestrion cannot weave gotip either, and it fails
+silently.** Verified on 2026-11-19 on darwin/arm64:
+
+- gotip: `golang/go` master at `32e2dcc` (2026-11-19), built with
+  `make.bash` (`go version go1.28-devel_c02a13cbc3`).
+- otelc: the version in `go.mod`, `v1.2.1-0.20261017145842-4ffef19ce088`.
+- Orchestrion: `v1.15.0`.
+- Test: build `_integration/otelc/cmd/app` with each tool, then run it. The
+  app panics when it was not woven.
+
+| Toolchain | Tool | Build | Run |
+|---|---|---|---|
+| go1.27.4 | otelc | Pass | Pass (`tool="otelc" weak_hash_sinks=4 weak_cipher_sinks=3`) |
+| go1.27.4 | Orchestrion | Pass | Pass (`tool="orchestrion" weak_hash_sinks=4 weak_cipher_sinks=3`) |
+| gotip | otelc | **Fail**: `could not import context (not the start of an archive file …)` in each woven package | – |
+| gotip | Orchestrion | Pass, **with warnings only**: `Skipping injectrion due to type checking error … binary export format "p" is unsupported (compiler private)`, also for package `runtime` | **Fail**: `panic: the application was not built with otelc or Orchestrion, or no sink was instrumented` |
+
+Cause: the Go development compiler writes a new export data format. Neither
+tool can read it yet. This needs a fix in each tool (upstream), not in
+dd-iast-go.
+
+Effect on v0:
+
+1. The gotip jobs of S1 are red for both tools until the tools are fixed.
+   They are a signal only (decision 3), so they do not block a merge.
+2. A gotip job must check that weaving happened, not only that the build
+   passed (AC-P2). Without this check, the Orchestrion job would be green with
+   no hook at all.
+3. Risk R7 (section 9).
+
+Commands to measure it again (from `_integration/otelc`, with gotip first in
+`PATH`, and a separate `GOCACHE` for each tool):
+
+```console
+GOTOOLCHAIN=local go tool otelc go build -o /tmp/app-otelc ./cmd/app
+GOTOOLCHAIN=local go tool orchestrion go build -o /tmp/app-orch ./cmd/app && /tmp/app-orch
+```
+
+### 7.3 Fact 3: the `_dd.iast.json` fallback
+
+**`main` has the fallback. Whether the backend fix for `_dd.iast.json` is in
+production cannot be checked in code; it does not block v0 (Romain).**
+
+- `internal/spans/orchestrion.go`, function `Finished`: when the annotation
+  has vulnerabilities, it sets manual keep, then calls
+  `span.SetMetaStruct("iast", &ann.Event)`. When that returns false, it
+  marshals the event to JSON and sets the tag `_dd.iast.json`.
+- In dd-trace-go v2.12.0, `(*Span).SetMetaStruct` returns false when there is
+  no tracer, or when the agent `/info` endpoint does not report
+  `span_meta_structs: true` (`ddtrace/tracer/span.go`, `option.go`). So the
+  fallback is used only with agents that do not support `meta_struct`.
+- The constants are in `internal/spans/constants.go`: `SpanTagMetaStruct =
+  "iast"` and `SpanTagJson = "_dd.iast.json"`.
+- v0 uses this path with no change, except the S2 fixes (C14: no
+  `SetMetaStruct` on a finished span).
+
+<!-- Sections 8 to 10 follow in the next commit of this draft PR. -->
