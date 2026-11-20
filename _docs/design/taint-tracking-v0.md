@@ -2,9 +2,10 @@
 
 | Field | Value |
 |---|---|
-| Status | **Draft v2 for review.** v1 got 5 blocking and 2 major objections in the adversarial review (Mission A, round 1). Section 12 maps each objection to its change. Next: round 2, then approval by Romain. |
+| Status | **Draft v3 for review.** Section 12 maps each objection of the 2 adversarial review rounds, and each decision of Romain, to its change. Next: one short check round, then approval by Romain. |
+| Lifetime | This document is the contract during the implementation. It is **deleted** when the code is approved and CI is green (decision 15): the last PR of the stack (`S14`) deletes it. |
 | Epic | Multica DD-69, Jira [APPSEC-70732](https://datadoghq.atlassian.net/browse/APPSEC-70732) |
-| Milestone | "Go IAST PoC on the main branch, available to design partners and early adopters", **2026-12-03** |
+| Target | The full Definition of done of the epic (decision 10: no scope cut on the basis of time estimates) |
 | Base of this document | `main` at `f79d6f93` (2026-11-18) |
 | Proof of concept (PoC) inputs | PR #39, PR #52, PR #58 (read only, see "Clean-room rule"), review PR #51, research notebook `carnet-de-recherches.md` |
 
@@ -22,13 +23,13 @@ closes.
 | [3](#3-constraints) | Go versions, platforms, tools, runtime risk, GC, memory, rollout | You review safety |
 | [4](#4-acceptance-criteria) | Acceptance criteria, each with its check | You review a PR of the stack |
 | [5](#5-review-requirements) | What each PR needs before merge | You review a PR of the stack |
-| [6](#6-pr-stack) | The PR stack: order, scope, dependencies, estimates | You plan the work |
+| [6](#6-pr-stack) | The PR stack: order, scope, dependencies | You plan the work |
 | [7](#7-answers-to-the-3-facts-to-check-in-code) | The 3 facts that the Delivery Lead asked to check | You approve the design |
 | [8](#8-known-limits-and-coverage-gaps-v0) | Known limits of v0 | You write user documentation |
 | [9](#9-risks) | Risks | You approve the design |
-| [10](#10-decisions-to-confirm-and-open-questions) | Decisions to confirm and open questions for Romain | You approve the design |
+| [10](#10-decisions) | Decisions: the ones that are made, and the ones that are open for Romain | You approve the design |
 | [11](#11-references) | References | You want the sources |
-| [12](#12-changes-in-v2) | Each objection of review round 1, and what changed | You review v2 |
+| [12](#12-review-history) | Each objection of the review rounds and each decision, and what changed | You review v3 |
 
 ### Clean-room rule
 
@@ -67,10 +68,13 @@ PoC code. The stack can change and extend it.
    `strings.Builder`, `bytes.Buffer`, `bufio`, `encoding/json`, `net/url`).
 4. The bits do not say which source or which request a byte comes from. The
    **origin registry** of each request keeps bounded copies of the source
-   values. At the sink, we find the owner of the current request from its span,
-   and match the tainted runs to the copies **of that owner only**.
+   values. At the sink, we find the owner of the current request from a
+   request-scoped handle, and match the tainted runs to the copies **of that
+   owner only**. Body bytes need a recorded provenance (which request filled
+   them), so that 2 requests that share a decoder never mix.
 5. Sinks (`database/sql`, `os/exec`) check the bits first (a few nanoseconds),
-   then attribute, redact, and report a standard Datadog IAST vulnerability
+   then attribute, skip values that a SQL sanitizer of a driver marked as safe
+   (`lib/pq`, `pgx`), redact, and report a standard Datadog IAST vulnerability
    (`valueParts` and `sources`) in `meta_struct.iast` on the root span, with the
    `_dd.iast.json` fallback that `main` has.
 6. Taint tracking is **off by default**. The env var
@@ -79,17 +83,16 @@ PoC code. The stack can change and extend it.
 7. Orchestrion and otelc get the same hooks, built from 3 primitives that both
    tools have. Parity is proven by the same behavior tests with both tools. A
    sentinel program fails when a tool silently skips a hook.
-8. Supported: go1.26.x and go1.27.x; linux and darwin on amd64 and arm64.
-   Off on other platforms, and with `-asan` or `-msan`. gotip runs in CI as a
-   signal only.
-9. The stack has 15 PRs in this repository, one PR in `DataDog/system-tests`,
-   and one preview-notes PR for option A (section 6). Each PR leaves `main`
-   green, with the feature off by default. Each acceptance criterion has
-   exactly one closing PR.
-10. The full Definition of done does not fit before 2026-12-03 (critical path
-    122 hours of agent work). Romain chooses: **A**, a dated preview on
-    2026-12-03 with explicit omissions, or **B**, the full Definition of done
-    on 2026-12-18 at the earliest (section 6.3).
+8. Supported: go1.26.x and go1.27.x; linux and darwin on amd64 and arm64
+   (all arm64 CPUs, with and without LSE atomics). Off on other platforms, and
+   with `-asan` or `-msan`. gotip runs in CI as a signal only.
+9. The stack has 15 PRs in this repository and one PR in `DataDog/system-tests`
+   (section 6), ordered by their dependencies. Each PR leaves `main` green,
+   with the feature off by default. Each acceptance criterion has exactly one
+   closing PR, and that PR comes after every PR that its test needs.
+10. Section 10 lists the decisions in plain words: the ones that Romain made,
+    and the 3 that are still open (JSON provenance, extra tests from the
+    PR #51 review, taint memory that is never given back).
 
 ## 1. Approach
 
@@ -148,7 +151,7 @@ flowchart TB
   CH --> W["64-bit word k = bytes 64k to 64k+63"]
   P --> SP["spanOfHeap(p)<br/>mspan + added 1-byte flag"]
   SP -- "flag = 1" --> SW["sweep hook:<br/>clear the bits of dead objects"]
-  SLAB["slabs of 1 MiB = 64 chunks<br/>(directories use chunks too)<br/>direct mmap, never exit on error<br/>budget: default 64 MiB, max 1 GiB"] --> CH
+  SLAB["slabs of 1 MiB = 64 chunks<br/>(directories use chunks too)<br/>mapped by dd-iast-go (syscall.Mmap),<br/>never exit on error<br/>budget: default 64 MiB, max 1 GiB"] --> CH
 ```
 
 **API** (package `internal/taint/heapbits`, internal):
@@ -178,12 +181,16 @@ flowchart TB
 - The sweep hook does not allocate, does not lock, cannot yield, and has a
   bounded cost (at most 80 KiB of small objects for each span; large objects
   at most 64 MiB, which is the largest span that `Set` accepts).
-- Slabs come from a direct `mmap` call that returns nil on error (`sysAlloc`
-  can exit the process). The mapped bytes are added to `memstats.other_sys`
-  and `gcController.mappedReady`, so `GOMEMLIMIT` sees them. Directories are
+- Slabs come from a slab allocator in an ordinary dd-iast-go package, not in
+  the runtime (section 1.10.4). It calls `syscall.Mmap`, which returns an
+  error instead of exiting (`sysAlloc` can exit the process). The runtime-side
+  code calls it through a function variable, only from a worker on a user
+  goroutine, never from the sweep hook. After a successful mapping, the
+  runtime-side code adds the bytes to `memstats.other_sys` and
+  `gcController.mappedReady`, so `GOMEMLIMIT` sees them. Directories are
   chunks from the same slabs, so they are in the same budget.
-- The feature is off on arm64 CPUs without LSE atomics (no bounded `Or64`;
-  decision D6 in section 10), and in `-asan` and `-msan` builds.
+- The feature is off in `-asan` and `-msan` builds.
+- **arm64 CPUs without LSE atomics are supported** (section 1.2.6).
 
 #### 1.2.1 Clear-before-reuse points
 
@@ -271,6 +278,42 @@ load. It has 4 values:
   are terminal for the process.
 - `Set` reads the gate before it writes: with 2 or 3, it returns false.
 
+#### 1.2.6 arm64 CPUs without LSE atomics
+
+**Question (from Romain's decision request):** the sweep hook uses atomic
+`Or64` and `And64` on bitmap words. On arm64 CPUs without the LSE extension
+(ARMv8.0: AWS Graviton1, Raspberry Pi 4 and other Cortex-A72 and A53 boards),
+Go implements these operations as a retry loop (load-exclusive,
+store-exclusive, retry when the store fails). Does the sweep hook add a risk
+that Go's own sweep does not have?
+
+**Check, in the Go 1.27.4 source:**
+
+1. On arm64, **every** atomic read-modify-write of `internal/runtime/atomic`
+   (`Cas64`, `Xadd64`, `Or8`, `And8`, `Or64`, `And64`, …) tests
+   `ARM64.HasATOMICS` and, without LSE, runs the same retry loop
+   (`internal/runtime/atomic/atomic_arm64.s`: `Cas64` at line 238, `Xadd64`
+   at line 294, `Or64` at line 444; each loop is `LDAXR` / `STLXR` /
+   `CBNZ`).
+2. Go's own `(*sweepLocked).sweep` runs with preemption disabled
+   (`runtime/mgcsweep.go:506–511`: it throws when `m.locks == 0`), and it calls
+   these atomics: `mheap_.pagesSwept.Add` on **one global counter that all
+   sweepers share** (line 532), `atomic.Xadd64` on the free-count statistics
+   (lines 774, 809–810), `gcController.totalFree.Add` (lines 778, 814). The
+   caller `tryAcquire` uses `atomic.Cas` on `s.sweepgen` (line 351).
+3. Go's mark phase also uses `atomic.Or8` on mark bits that many mark workers
+   write at the same time.
+
+**Result: the same loops, in the same place.** Go's sweep already runs the
+same retry loops, with preemption disabled, on a word that is more contended
+than any bitmap word (a bitmap word is shared only by the objects of one 64-byte
+range). The sweep hook adds no new kind of risk. **These CPUs are supported**,
+like all other arm64 CPUs.
+
+**Test:** the woven heap bits tests also run on the arm64 CI runner with
+`GODEBUG=cpu.atomics=off` (a Go option, `internal/cpu/cpu_arm64.go:21`), which
+forces the retry loops on a CPU that has LSE (criterion AC-P11).
+
 ### 1.3 The origin registry (external map)
 
 The bits say **that** a byte is tainted, not **from which source**, and not
@@ -279,36 +322,62 @@ The origin registry keeps this information, for each sampled request.
 
 ```mermaid
 flowchart LR
-  RS["Root server span<br/>(dd-trace-go startRequestSpan)"] --- ANN["Annotation of the root span<br/>(internal/spans)<br/>holds the owner handle:<br/>slot index + generation"]
-  ANN --- OW["Owner slot i of N<br/>N = DD_IAST_MAX_CONCURRENT_REQUESTS, max 64<br/>state word: generation, closing bit, pin count"]
-  OW --> SR["Source records, max 256<br/>origin, name copy (max 256 B),<br/>value copy (max 64 KiB),<br/>address range (locator only)"]
-  OW --> DT["Derived table, max 64 entries<br/>output copy + segments<br/>(bytes that a hook changed)"]
-  OW --> BC["Body copy, first 64 KiB<br/>+ max 8 chunk locators<br/>+ weak pointer to the request body object"]
+  SS["Server span of the request<br/>(dd-trace-go BeforeHandle or StartRequestSpan)"] --- H["Request-scoped owner handle<br/>slot index + generation + server span ID<br/>in the request context<br/>and in the goroutine field"]
+  H --- OW["Owner slot i of N<br/>N = DD_IAST_MAX_CONCURRENT_REQUESTS, max 64<br/>state word: generation, closing bit, pin count"]
+  OW --> SR["Source records, max 256<br/>origin, name copy (max 256 B),<br/>value copy (max 64 KiB),<br/>address range (locator only), marks"]
+  OW --> DT["Derived table, max 64 entries<br/>output copy + segments + marks<br/>(bytes that a hook changed)"]
+  OW --> BC["Body: copy of the first 64 KiB<br/>+ weak pointer to the request body object<br/>+ fill list (address ranges that this body filled)"]
   OW --> BUD["Byte budget: 256 KiB for all copies"]
 ```
 
-#### 1.3.1 Owner lifetime
+#### 1.3.1 Owner lifetime and the request-scoped handle
 
-1. **One owner for each sampled request, bound to its root server span.** The
-   owner starts at the exit of `instrumentation/httptrace.startRequestSpan` in
-   dd-trace-go. This private function is the common point of all dd-trace-go
-   HTTP server integrations: `BeforeHandle` calls it (`before_handle.go:99`,
-   used by the `net/http` integration), and `StartRequestSpan` calls it
-   (`httptrace.go:53–64`, used by the chi integration
-   `contrib/go-chi/chi.v5/chi.go:60`). At this point the span exists and the
-   request is parsed.
-2. **Only for a root server span.** When the new span has a parent server span
-   of the same request (for example a chi middleware inside a traced
-   `net/http` server), no new owner is made: the root span already has one.
-3. **One sampling decision** for the owner and the annotation (stack PR `S2`).
-   A sampled-out request gets no owner and no annotation slot (lesson from #51
-   H18).
-4. **The owner handle is in the annotation** of the root span: slot index and
-   generation. This is the only way to find the owner.
-5. The owner ends when the root span finishes (the `(*Span).Finish` hook that
-   `main` already has). `Finish` sets the closing bit and returns at once; the
-   last accessor cleans the slot. A slot is given to a new request only after
-   cleanup, with a new generation.
+1. **Start.** The owner starts in a wrapper of the two **exported** functions
+   of `github.com/DataDog/dd-trace-go/v2/instrumentation/httptrace` that start
+   a server request span:
+   - `BeforeHandle(cfg, w, r)` (used by the `net/http` integration,
+     `contrib/net/http/internal/wrap/trace.go:41`);
+   - `StartRequestSpan(r, opts...)` (used by the chi integration,
+     `contrib/go-chi/chi.v5/chi.go:60`).
+
+   Both are public API of dd-trace-go v2 (semantic versioning), so their
+   signatures do not change in a v2 minor release. The private
+   `startRequestSpan` that both call is not hooked: a private function can
+   change in any release, and `go.mod` gives only a minimum version, not the
+   version of a customer build.
+2. **One owner for each server request.** The wrapper calls the original
+   function, then looks for an owner handle in the context of the request.
+   - When there is one, the request is already analyzed (for example a chi
+     middleware inside a traced `net/http` server): the wrapper reuses it.
+   - Else, when the request is sampled, the wrapper makes a new owner, and puts
+     its **handle** (slot index, generation, ID of the server span) into the
+     returned context (`context.WithValue`; `BeforeHandle` returns the new
+     request, `StartRequestSpan` returns the new context; both integrations
+     use the returned value for the handler).
+   - The handle is also stored in a field of the current goroutine (an added
+     field of `runtime.g`, cleared when the goroutine exits and when the owner
+     closes), because the handler runs on the same goroutine.
+
+   The handle identifies **the request**, not the trace: two requests under
+   one parent span (a local parent, a remote parent, or an inferred proxy
+   span) get two owners. (`Span.Root()` returns the root of the **trace**,
+   `ddtrace/tracer/span.go:623–636`, so v2 could not use it for this.)
+3. **One sampling decision** for the owner and its findings (stack PR `S2`).
+   A sampled-out request gets no owner and uses no slot.
+4. **Where findings go.** A finding is added to the annotation of the trace
+   root of the server span (the existing WEAK_HASH path of `main`, so that
+   the backend finds `meta_struct.iast` on the root span). When two requests
+   share a trace root, both findings go to that root, each with the sources of
+   its own owner.
+5. **End.** The owner closes when **its server span** finishes (the
+   `(*Span).Finish` hook that `main` has; the owner keeps the ID of its server
+   span). `Finish` sets the closing bit and returns at once; the last accessor
+   cleans the slot. A slot is given to a new request only after cleanup, with
+   a new generation.
+6. **Version guard.** If a customer builds with a dd-trace-go version where
+   one of the 2 wrappers does not apply, the expected-hook manifest (section
+   1.10.5) shows it at init: taint tracking goes Off, with one log line and a
+   telemetry counter. The application is not affected.
 
 #### 1.3.2 Which owner: always the owner of the current request
 
@@ -317,15 +386,16 @@ registry uses one owner, found like this:
 
 | Caller | How it finds its owner |
 |---|---|
-| A sink | The span of the context argument (`QueryContext(ctx, …)`, `CommandContext(ctx, …)`); else the active span of the goroutine (the dd-trace-go goroutine-local storage, woven by both tools). Then its root span, its annotation, the owner handle, and a pin with the expected generation. |
-| A source hook | The request: the owner bound to the request when the span started. |
+| A sink with a context (`QueryContext(ctx, …)`, `CommandContext(ctx, …)`) | The handle in the context. |
+| A sink with no context, or a context with no handle | The handle in the goroutine field. |
+| A source hook | The handle of its request (context of `r`). |
 | The body `Read` hook | The owner whose registered body object (weak pointer) is the receiver. |
-| A standard library hook that writes a derived entry | The active span of the goroutine, as for a sink. |
+| A standard library hook that writes a derived entry or moves fills | The handle in the goroutine field. |
 
-When a step fails (no span, no annotation, no owner, wrong generation, closing
-bit), the operation is **dropped**: no report, no record, and a telemetry
-counter grows. This is a safe miss. Examples: a sink in a goroutine that the
-handler started with no context; a sink that runs after the request ended.
+Then: pin with the expected generation. When a step fails (no handle, wrong
+generation, closing bit), the operation is **dropped**: no report, no record,
+and a telemetry counter grows. This is a safe miss. Example: a sink with no
+context, in a goroutine that the handler started.
 
 #### 1.3.3 Rules of the registry
 
@@ -335,21 +405,19 @@ handler started with no context; a sink that runs after the request ended.
    (256 KiB for each owner). When the budget is used, new records are dropped
    (telemetry counter); their bits stay, and their bytes become foreign at the
    sink.
-2. **Addresses only locate.** A source record keeps the `(address, length)` of
-   the original value, as a `uintptr`. An address match is accepted only when
-   the sink bytes are equal to the owner copy at the same offset. A reused
-   address with other bytes fails the check. This is why this design is not
-   the rejected process-wide `uintptr` map (section 2).
-3. **No blocking.** Every access pins the slot (CAS on the state word, with
-   the expected generation), then calls `TryLock` on the slot mutex. A busy
-   lock drops the operation. A stale handle (old generation) is refused for
-   every operation, `Finish` included (lessons from #51 C15 and H5).
+2. **Addresses only locate.** A record keeps the `(address, length)` of the
+   original value, as a `uintptr`. An address match is accepted only when the
+   sink bytes are equal to the owner copy at the same offset. A reused address
+   with other bytes fails the check. This is why this design is not the
+   rejected process-wide `uintptr` map (section 2).
+3. **No blocking.** Every access pins the slot (CAS on the state word, with the
+   expected generation), then calls `TryLock` on the slot mutex. A busy lock
+   drops the operation. A stale handle (old generation) is refused for every
+   operation, `Finish` included.
 4. **Bounded work.** One sink call inspects at most 64 KiB of the sink value,
-   does at most 4096 candidate checks, and compares at most 1 MiB of bytes in
+   does at most 4 096 candidate checks, and compares at most 1 MiB of bytes in
    total. When a bound stops the loop, the rest of the tainted bytes are
    foreign (redacted), never shown as clean.
-5. **Marks.** Each record has a `marks` bitmask, so that a later version can
-   add sanitizers. v0 sets no mark (no sanitizer is in scope).
 
 #### 1.3.4 Attribution at a sink
 
@@ -362,36 +430,123 @@ owner of the current request.
    1. **Address locate.** Find a record whose address range contains the start
       of the rest of the run. Check the bytes against the owner copy. The
       segment is the longest equal part.
-   2. **Content match.** Else, find the copy (derived entries, then sources,
-      then the body copy) that contains the longest prefix of the rest of the
-      run.
-   3. **Tie rule.** Address match first; then the longest segment; then the
+   2. **Content match.** Else, find the copy (derived entries, then sources)
+      that contains the longest prefix of the rest of the run.
+   3. **Body bytes need provenance.** A segment can have the origin
+      `http.request.body` only by an address match in the fill list of the
+      owner, or through a derived entry that a JSON or reader hook made for
+      this owner (section 1.3.5). A content match against the body copy
+      **alone** is not accepted for body bytes.
+   4. **Tie rule.** Address match first; then the longest segment; then the
       shortest record (so `http.request.path.parameter` wins over
       `http.request.path` for the same bytes); then the last record.
-   4. Else the byte is **foreign**. Adjacent foreign bytes merge.
-3. **Strong-match rule.** A finding needs at least one strong segment: an
-   address match (any length), or a content match of at least
-   `min(4, length of the record copy)` bytes. Short content matches are weak:
-   equal bytes from elsewhere (for example a `-`) can match by chance.
+   5. Else the byte is **foreign**. Adjacent foreign bytes merge.
+3. **Strong-match rule.** A finding needs at least one strong segment **with
+   no mark for the sink's vulnerability type** (section 1.3.6): an address
+   match (any length), or a content match of at least
+   `min(4, length of the record copy)` bytes.
 4. **At most `DD_IAST_MAX_RANGE_COUNT` segments.** Past this bound, the rest is
    foreign.
 
-**What this gives:**
+Bytes of request A in a sink of request B are foreign for B: alone, they make
+no finding for B, and B's report never shows a source of A.
 
-- Bytes of request A in a sink of request B are foreign for B: they are not in
-  B's records. Alone, they make no finding for B, and the report of B never
-  shows a source of A. (Before v2, the design searched all owners; the
-  reviewer showed that this could report A's source in B's sink.)
-- A JSON document that a decoder in request B reads from a reader that mixes
-  A's and B's bodies (`io.MultiReader`): only the bytes that are in B's body
-  copy are attributed to B. This is the provenance check that replaces the
-  PR #39 "exclusive owner" rule for JSON: an attributed body segment is always
-  checked against the bytes that **this** request's own registered body object
-  produced (section 2, T15).
+**Accepted limit (decision 6).** Content match cannot separate equal bytes:
+bytes from elsewhere that are equal to a non-body source of B (at least
+4 bytes) are attributed to that source.
 
-**Accepted limit (decision 6).** Content match cannot separate equal bytes.
-When request B's sink holds bytes from elsewhere that are equal to a source of
-B (at least 4 bytes), they are attributed to B's source.
+#### 1.3.5 JSON: which request supplied a decoded value
+
+The problem: one decoder can read the bodies of 2 requests (for example an
+`io.MultiReader`, or a pooled buffer). Request A can supply half of an escaped
+JSON string and request B the other half. A content match against B's body
+then puts A's bytes in B's evidence. The bits cannot prevent this: they do not
+record the request.
+
+**Design (option c of Romain's decision request): record the request on each
+read.**
+
+1. **Fills.** The body `Read` hook knows its owner. After each read, it adds a
+   fill `(address, length, body offset)` of `p[:n]` to the fill list of that
+   owner (bounded: 64 fills; when full, the oldest fill is dropped and its
+   bytes lose provenance).
+2. **Fills move with the bytes.** Every wrapper that moves body bytes also
+   moves their fills: `io.ReadAll` assembly, `bufio.Reader` fill and copies,
+   `bytes.Buffer.ReadFrom` and growth, the JSON v1 `Decoder.refill` slide and
+   grow, and the JSON v2 `jsontext` buffer fetch, slide and grow. Each wrapper
+   knows the source and destination ranges of its copy, and the owner comes
+   from the fill that it moves.
+3. **String producers check the owners of their input.** The JSON string
+   producers are wrapped: v1 `literalStore` (string values) and `unquoteBytes`;
+   v2 `makeString` and `jsonwire.AppendUnquote`. Each one looks up the fills
+   of its input range (the raw token, in the decoder buffer or in the
+   `Unmarshal` input):
+   - **exactly one owner, and every tainted byte of the input is in its
+     fills:** the wrapper writes a derived entry for that owner (exact for a
+     verbatim string, coarse for an unquoted one);
+   - **more than one owner, or tainted bytes with no fill:** the wrapper
+     **clears the bits of the output** and counts a "mixed provenance" event.
+     The value is not tainted: a safe miss, never a wrong report.
+4. **At the sink**, rule 2.3 of section 1.3.4 accepts body bytes only through
+   the fills or these derived entries.
+
+**Fallback (option a of the decision request) for each pattern where a carrier
+of the bytes is not hooked** (for example a decompressing reader, a custom
+reader that copies bytes, or a third-party decoder): no fill reaches the
+string producer, so rule 3 gives a safe miss. This is the "exclusive owner"
+behavior for these patterns.
+
+**If Romain picks option a for all patterns:** rule 3 changes to "every fill
+of the decoder or reader, since its creation, has one owner"; the rest stays.
+
+**If Romain picks option b:** rule 2.3 of section 1.3.4 is removed; fills and
+the producer checks are not needed. Then A's bytes can appear in B's evidence
+(Romain's decision request explains it).
+
+The JSON matrix (criteria AC-J1 to AC-J4) tests the split escaped string: one
+escaped value in 2 bodies, read through an `io.MultiReader`. Neither span may
+export the marker of the other request.
+
+#### 1.3.6 Marks and SQL sanitizers
+
+Decision 13: a value that passed through a SQL sanitizer that `database/sql`
+or a common driver exposes does not report SQL injection.
+
+**Sanitizers that exist** (checked in the source):
+
+| Package | Function | Output | Context | Evidence |
+|---|---|---|---|---|
+| `database/sql` | none | – | – | `database/sql` has no escape or quote function. Bound arguments are the safe API (never a finding, section 1.7). |
+| `github.com/lib/pq` | `QuoteIdentifier(name string) string` | `"name"`, with `"` doubled | Identifier | `quote.go:19` (v1.12.3) |
+| `github.com/lib/pq` | `BufferQuoteIdentifier(name string, buffer *bytes.Buffer)` | The same, written into `buffer` | Identifier | `quote.go:29` |
+| `github.com/lib/pq` | `QuoteLiteral(literal string) string` | `'literal'` with `'` doubled; with a backslash, ` E'…'` with `\` doubled | Literal | `quote.go:50` |
+| `github.com/jackc/pgx/v5` | `Identifier.Sanitize() string` (`type Identifier []string`) | `"part"."part"`, with `"` doubled and zero bytes removed | Identifier | `conn.go:94–104` (v5.11.0) |
+| `github.com/jackc/pgx/v5/pgconn` | `(*PgConn).EscapeString(s string) (string, error)` | `s` with `'` doubled, **without** the quotes | Inside a literal | `pgconn/pgconn.go:2125` |
+| `github.com/go-sql-driver/mysql` | none exported | – | – | `escapeStringBackslash`, `escapeStringQuotes` and the byte forms are unexported (`utils.go:642–718`, v1.10.2); they serve only the driver's own argument interpolation |
+
+**Marks in the external map.** Each source record and each derived entry has a
+`marks` bit set, with one bit for each vulnerability type
+(`constants.VulnerabilityType`). The sanitizers set the `SQL_INJECTION` bit.
+
+**Hooks.** A wrapper of each sanitizer of the table (third-party packages:
+the hook calls into dd-iast-go through a linknamed function; dd-iast-go does
+not import the drivers). After the original returns, when an input byte is
+tainted, the wrapper writes a derived entry for the output (for
+`BufferQuoteIdentifier`: the bytes that it appended to the buffer) with the
+same segments as the input and the `SQL_INJECTION` mark. The output already
+has its bits (the sanitizers build it with `strings.Replace`, `+` and
+`strings.Join`, which propagate them).
+
+**At a SQL sink**, a segment whose record has the `SQL_INJECTION` mark does not
+count for the strong-match rule. A query that has only marked tainted
+segments does not report. The marks reach the report as `secure_marks` of a
+value part (the field exists in `internal/model/evidence.go`) when another,
+unmarked segment makes a finding.
+
+**Known limit:** v0 does not check the SQL context. A value that
+`QuoteIdentifier` sanitized, and that the query uses inside a string literal
+(or the output of `EscapeString` that the query uses with no quotes), is
+treated as safe: a possible missed finding (section 8).
 
 ### 1.4 Runtime hooks (propagation without call-site instrumentation)
 
@@ -460,25 +615,71 @@ Rules:
 ### 1.5 Standard library hooks
 
 Some standard library functions copy bytes with `copy` or `append(x, y...)`,
-or change the bytes. They need a hook. The hook is a **twin**: an entry
-prologue checks the gate and `Any` on the inputs (or the destination). When
-they are clean, the original body runs. Else the twin does the same work as the
-original body, with the bit operations added, and returns its result.
+or change the bytes. They need a hook.
 
-The table gives the **result** that each hook must produce, not only the
-function name.
+#### 1.5.1 Wrappers, not copies of function bodies
+
+v2 proposed "twins": complete copies of the function bodies, with the bit
+operations added. A twin can be wrong for a customer who builds with another
+Go patch release: the copy then runs instead of the real function, and the
+application behavior changes. Neither tool can check the body of a function at
+weave time.
+
+v3 uses **wrappers** only:
+
+1. The prologue checks the gate word (rule 3).
+2. It records the state that it needs before the call (for example the length
+   and the address of a buffer).
+3. It calls the **original** function, with a bypass token (the same pattern as
+   the runtime hooks of section 1.4). The original body always runs, unchanged.
+4. After the return, it updates the bits (and the fills, section 1.3.5) from
+   the state before and after the call.
+
+Consequences:
+
+- **The application behavior is always the behavior of the original
+  function.** Application callbacks and reads run exactly once, inside the
+  original. A panic of the original goes up unchanged: the wrapper has no
+  `recover` around it.
+- A wrapper can be wrong only about the bits. After a change of the function
+  in a Go release, the bits can be wrong (a missed or an extra taint), never
+  the result. The strong-match rule and the owner check limit the effect of
+  extra taint.
+- When the bit update fails or panics (it runs under the scoped `recover` of
+  the circuit breaker, section 1.9), the result of the original is returned
+  unchanged.
+
+**Layout check.** A wrapper that reads unexported fields (for example the
+buffer of a `json.Decoder`) does not name them in the injected code. The
+injected code passes `unsafe.Pointer` of the receiver to dd-iast-go. At init,
+dd-iast-go finds the offset of each field with `reflect` (unexported fields are
+visible to `reflect`), and checks the name and the type. On any difference,
+**that wrapper is disabled** (one log line and a telemetry counter); the
+original function still runs. Thus a change of a field in a Go release never
+breaks the build, and never makes a wrapper write to the wrong memory.
+
+**Supported Go minors.** dd-iast-go has the list of the Go minors that the
+drift test checked (go1.26, go1.27). On another minor (`runtime.Version()` at
+init), the wrappers that depend on the internal behavior of a function (the
+JSON, `bufio` and `fmt` internals) are disabled. The wrappers of exported
+functions with a documented contract (for example `io.ReadAll`) stay on.
+
+#### 1.5.2 Hook table
+
+The table gives the **result** that each hook must produce.
 
 | Priority | Package | Hook points | Result |
 |---|---|---|---|
-| P0 | `io` | `ReadAll` | Exact bits in the final slice. `ReadAll` builds a multi-chunk result with `append(final, chunk...)` (`io/io.go:730–739`, the same in go1.26 and go1.27), which `growslice` does not cover. A short body (one chunk) needs no hook. |
-| P0 | `fmt` | `(*buffer).write`, `writeString`; `(*fmt).writePadding`; `(*fmt).fmtQ`; `(*fmt).fmtSbx`; clear in `(*pp).free` | Exact copy of every byte that `fmt` copies into its buffer. Thus: `%s` and `%v` of a string or `[]byte` keep exact bits, also with width and precision (precision gives a sub-string); the output of `String()` and `Error()` keeps exactly the bits of the string that they return; a `Formatter` that writes tainted bytes to `fmt.State` keeps them (`State.Write` goes to `(*buffer).write`); a tainted format string keeps exact bits for its literal parts. **Coarse** only for the bytes that `fmtQ` (`%q`, through `strconv.AppendQuote`, `fmt/format.go:447–457`) and `fmtSbx` (`%x`, `%X`) generate from a tainted argument. `%T`, `%p`, `%d` and `%v` of numbers, and a `String()` that returns a constant, give clean text (lesson from #51 H8: no taint by argument identity). |
-| P0 | `strings` | `(*Builder).Write`, `WriteString`, `grow`; `Repeat`; `ToUpper`, `ToLower`; `Map`; `(*Replacer).Replace` | Exact for the Builder (so `Join` is exact, for the elements **and** the separator). `WriteByte` and `WriteRune` take a value, not memory: they cannot carry taint (section 8). `ToUpper`/`ToLower` on ASCII input: positional, byte `i` of the output has the bit of byte `i` of the input (changed and unchanged bytes). Non-ASCII, `Map`, `Replacer`: coarse on the new output. |
-| P0 | `bytes` | `(*Buffer).Write`, `WriteString`, `ReadFrom`, `grow`; `Join`, `Repeat`, `Replace`, `ToUpper`, `ToLower`, `Map` | As `strings`. A write with clean bytes clears the bits of the bytes that it overwrites. |
+| P0 | `io` | `ReadAll` | The wrapper passes the reader through a small observer (from a pool, so with no allocation per call) that records the buffers that each `Read` returned, with their fills. After the original returns, it copies the bits and moves the fills of each recorded buffer to its place in the result. `ReadAll` builds a result of several chunks with `append(final, chunk...)` (`io/io.go:730–739`, the same in go1.26 and go1.27). It depends only on the documented contract of `ReadAll` (the result is the bytes read, in order). |
+| P0 | `fmt` | `(*buffer).write`, `writeString`; `(*fmt).writePadding`; `(*fmt).fmtQ`; `(*fmt).fmtSbx`; clear in `(*pp).free` | Exact copy of every byte that `fmt` copies into its buffer. Thus: `%s` and `%v` of a **string**, and `%s` of a `[]byte`, keep exact bits, also with width and precision (precision gives a sub-string); the output of `String()` and `Error()` keeps exactly the bits of the string that they return; a `Formatter` that writes tainted bytes to `fmt.State` keeps them (`State.Write` goes to `(*buffer).write`); a tainted format string keeps exact bits for its literal parts. **Coarse** only for the bytes that `fmtQ` (`%q`, through `strconv.AppendQuote`, `fmt/format.go:447–457`) and `fmtSbx` (`%x`, `%X`) generate from a tainted argument. **`%v` and `%d` of a `[]byte` are an explicit miss:** `fmt` prints the decimal value of each byte (`[104 105]`, `fmt/print.go:502–527`), with one `fmtInteger` call for each byte; the digits are not tainted. `%T`, `%p`, numbers, and a `String()` that returns a constant give clean text (lesson from #51 H8: no taint by argument identity). |
+| P0 | `strings` | `(*Builder).Write`, `WriteString`, `grow`; `Repeat`; `ToUpper`, `ToLower`; `Map`; `(*Replacer).Replace` | Exact for the Builder (so `Join` is exact, for the elements **and** the separator). `WriteByte` and `WriteRune` take a value, not memory: they cannot carry taint (section 8). `ToUpper` and `ToLower` on ASCII input: positional, byte `i` of the output has the bit of byte `i` of the input (changed and unchanged bytes). Non-ASCII input, `Map`, `Replacer`: coarse on the new output. |
+| P0 | `bytes` | `(*Buffer).Write`, `WriteString`, `ReadFrom`, `grow`; `Join`, `Repeat`, `Replace`, `ToUpper`, `ToLower`, `Map` | As `strings`. A write of clean bytes clears the bits of the bytes that it overwrites. `ReadFrom` and `grow` move fills (section 1.3.5). |
 | P0 | `net/url` | `unescape`, `escape` | Coarse on the new output. **When the function returns its input** (no escape: `net/url/url.go:155–157`, `:208–210`), the hook does nothing: the bits are already exact, and a whole-output `Set` would widen them. |
 | P0 | `strconv` | `quoteWith`, `unquote`, `AppendQuote*` | Coarse on the new bytes |
-| P0 | `encoding/json` v1 | `(*Decoder).refill` (slide **and** grow, `encoding/json/stream.go:160–181`), `unquoteBytes`, `valueQuoted` | Exact for the slide and the grow copies; coarse for unquoted strings with escapes |
-| P0 | `encoding/json` v2 (go1.27 default) | `jsontext.(*decoderState).fetch` (slide, grow, and the `bytes.Buffer` alias, `encoding/json/jsontext/decode.go:175–241`); `jsonwire.AppendUnquote`; `v2.makeString` | Exact for slide and grow; coarse for unquote; **string cache:** a cache hit is used only when the bits of the cached string are equal to the bits of the input bytes (tainted→clean, clean→tainted and different partial masks on equal bytes all miss the cache) |
-| P1 | `bufio` | `(*Reader).fill`, `Read`, `ReadBytes`, `ReadSlice` copies; delegated reads use the "read rule" (a written byte never keeps old bits; the unwritten tail keeps its bits) | Exact |
+| P0 | `encoding/json` v1 | `(*Decoder).refill` (slide **and** grow, `encoding/json/stream.go:160–181`); `literalStore` (string values), `unquoteBytes`, `valueQuoted` | Exact for the slide and the grow copies, with their fills; the string producers check the owners of their input (section 1.3.5) |
+| P0 | `encoding/json` v2 (go1.27 default) | `jsontext.(*decoderState).fetch` (slide, grow, and the `bytes.Buffer` alias, `encoding/json/jsontext/decode.go:175–241`); `jsonwire.AppendUnquote`; `v2.makeString` | Exact for slide and grow, with their fills; the string producers check the owners of their input. **String cache:** a cache hit is used only when the bits of the cached string are equal to the bits of the input bytes (tainted→clean, clean→tainted and different partial masks on equal bytes all miss the cache). |
+| P0 | SQL drivers | The sanitizers of section 1.3.6 (`lib/pq`, `pgx`) | Derived entry with the `SQL_INJECTION` mark |
+| P1 | `bufio` | `(*Reader).fill`, `Read`, `ReadBytes`, `ReadSlice` copies; delegated reads use the "read rule" (a written byte never keeps old bits; the unwritten tail keeps its bits) | Exact, with fills |
 | P1 | `bytes`, `strings` | `(*Reader).Read`, `ReadAt` | Exact |
 
 "Coarse" means: `Set` the whole **new** output (never memory that aliases an
@@ -486,26 +687,30 @@ input), and add a derived entry with the first contributing source of the
 owner of the current request (section 1.3.2). The output bytes are not equal
 to the input bytes, so the derived entry is the only way to find their origin.
 
-Rules for all standard library hooks:
+#### 1.5.3 Rules for all standard library hooks
 
-1. **Application code runs exactly once.** A twin calls each application
-   callback (for example the mapping function of `strings.Map`) and each
-   reader (`Read` of an `io.Reader`) exactly once, as the original body does.
-   A twin never runs the original body after it called application code.
+1. **The original function always runs** (section 1.5.1). Application code
+   (callbacks, `Read` of an `io.Reader`) runs exactly once, inside it.
 2. **Application panics are never caught.** The `recover` of the circuit
-   breaker (section 1.9) wraps only analysis code that calls no application
-   code. A panic from application code goes up unchanged.
-3. **After a failed analysis, the result is still correct.** When the bit work
-   or the registry work fails or panics, the twin finishes the data work with
-   no bits (taint is lost, the result is the same as the original).
+   breaker wraps only the bit and registry work, which calls no application
+   code.
+3. **When the hook works.**
+   - Hooks whose inputs are in memory (for example `strings.Builder.Write`)
+     work only when the gate word is Live.
+   - Hooks where taint can **appear during the call**, because the call reads
+     from an `io.Reader` (`io.ReadAll`, `bufio.Reader.fill`,
+     `bytes.Buffer.ReadFrom`, the JSON decoder buffers), work when the gate
+     word is Armed **or** Live, and the goroutine has an owner. At entry the
+     gate can still be Armed: the first body `Read` inside the call makes it
+     Live. These hooks check the buffers that the call returned, not only the
+     inputs at entry.
 4. A hook imports only `heapbits` and one leaf bridge package (imports
    `sync/atomic` and `unsafe` only). The owner work goes through function
    pointers in the bridge. A test checks the import graph.
 5. The analysis code never calls a hooked function, and it has a
    per-goroutine re-entry guard.
 6. Each hooked function body has a golden hash for each supported Go minor
-   (drift test, section 3.1), and compile-time checks of the unexported fields
-   that the twin uses.
+   (drift test, section 3.1).
 7. Never hook a package that `runtime` imports (`internal/bytealg`,
    `internal/stringslite`).
 8. **Known cost:** with one more call, some small functions stop being inlined
@@ -564,7 +769,8 @@ Rules:
 
 Each sink first calls `heapbits.Any` on its arguments. With no tainted byte it
 returns at once. Then it finds the owner of the current request (section
-1.3.2). The report location skips the sink frames for both tools (otelc does
+1.3.2). For SQL, segments with the `SQL_INJECTION` mark do not count (section
+1.3.6). The report location skips the sink frames for both tools (otelc does
 not mark its injected code, see `internal/vulnerability/report.go`).
 
 ### 1.8 Evidence, redaction and reporting
@@ -621,8 +827,10 @@ sequenceDiagram
   - When a dialect lexer fails, or when the dialects disagree on a token
     boundary inside a tainted part, the evidence is redacted completely (fail
     closed).
-  - A redaction `pattern` is made from the length and position only. It never
-    has the same character as the secret at the same position.
+  - A redacted value is never serialized. Its redacted representation is
+    content-independent: it depends only on the length (one fixed character,
+    repeated, then truncated). Two secrets of the same length give the same
+    bytes (criterion AC-R-C11).
 - **Command redaction.** The arguments that match `DD_IAST_REDACTION_*` are
   redacted, and the values after known secret flags.
 - **Sensitive sources.** A source whose name or value matches
@@ -669,17 +877,16 @@ stateDiagram-v2
 - **Kill switch.** Restart the process with
   `DD_IAST_TAINT_TRACKING_ENABLED=false`. No rebuild is needed.
 - **Circuit breaker.** Analysis code (sources, attribution, evidence, the bit
-  and registry work of the standard library twins) runs under a scoped
-  `recover` that wraps **only** analysis code (section 1.5, rules 1 to 3). A
+  and registry work of the standard library wrappers) runs under a scoped
+  `recover` that wraps **only** analysis code (section 1.5.3, rules 1 to 3). A
   recovered panic stores 3 in the gate word, sends one telemetry log, and the
   caller continues with the original result. Application panics are never
   caught. The runtime-side code cannot recover (a fault there is fatal): this
   is why its rules (section 1.2) forbid allocation, locks and unbounded loops.
-- **Build-level removal.** Code woven into the runtime stays in the binary when
-  taint tracking is off. To remove it, build without the taint packages: with
-  otelc, import only the detection packages that you need (for example
-  `iast/crypto/hash`, as `_integration/otelc/setups/hashonly` does); with
-  Orchestrion, remove the taint imports from `orchestrion.tool.go`.
+- **Woven runtime when off.** An application that imports the package always
+  gets the woven runtime, also when taint tracking is off (decision 14: this is
+  expected and permanent). Off costs 1 atomic load and 1 compare in each hook,
+  and the inlining cost of section 1.5.3.
 
 ### 1.10 Orchestrion and otelc: equal behavior
 
@@ -696,16 +903,15 @@ receiver and without one.
 | Primitive | Orchestrion | otelc (pinned version) | Used for |
 |---|---|---|---|
 | Add fields to a struct of another package | `struct-definition` + `add-struct-field` | `add_struct_fields` | `runtime.heapArena`, `runtime.mspan`, `runtime.g` |
-| Add declarations to a package | `inject-declarations` | `add_file` (a `//go:build ignore` file) | The runtime-side code, the twins |
-| A prologue at the start of a function body, with an early `return` | `function-body` + `prepend-statements` | `func` rule + `inject_code` (`raw`, default placement) | Every hook of sections 1.2 to 1.7 |
+| Add declarations to a package | `inject-declarations` | `add_file` (a `//go:build ignore` file) | The runtime-side code |
+| A prologue at the start of a function body, with an early `return` | `function-body` + `prepend-statements` | `func` rule + `inject_code` (`raw`, default placement) | Every hook and wrapper of sections 1.2 to 1.7 |
 
 v0 does **not** use statement-pattern placement inside a function body. The
 pinned otelc has it (`tool/internal/instrument/apply_raw.go:76–126`), but
 Orchestrion `prepend-statements` is not the same primitive. When a hook needs
-to act in the middle of a function (for example after the slide `copy` in
-`json.(*Decoder).refill`), it is a **twin** instead: the prologue runs a
-complete copy of the function with the bit operations, and returns (section
-1.5). This is one design for both tools.
+the effect of an interior copy (for example the slide `copy` in
+`json.(*Decoder).refill`), it is a **wrapper** (section 1.5.1): the prologue
+calls the original with a bypass token, and updates the bits after the return.
 
 Unnamed results have different names (Orchestrion `__result__N`, otelc
 `_unnamedRetValN`). Only the small prologue templates differ for this reason.
@@ -713,11 +919,23 @@ Unnamed results have different names (Orchestrion `__result__N`, otelc
 #### 1.10.2 One source file for the runtime-side code
 
 The runtime-side code (bitmap, classifier, worker, sweep and `freegc` hooks,
-gate word) is more than 1 000 lines. It has one Go source file. otelc copies
-it with `add_file`. `go generate` writes the Orchestrion `inject-declarations`
-template from the same file. A CI check fails when the generated file is not up
-to date (AC-P8). This keeps the code equal; the behavior tests (1.10.3) prove
-that the result is equal.
+gate word, accounting) is more than 1 000 lines. It has one Go source file.
+otelc copies it with `add_file`. `go generate` writes the Orchestrion
+`inject-declarations` template from the same file. A CI check fails when the
+generated file is not up to date (AC-P8). This keeps the code equal; the
+behavior tests (section 1.10.3) prove that the result is equal.
+
+**This file must compile on every platform**, because otelc `add_file` drops
+its build constraints. In the pinned otelc, `add_file` rules are matched
+before the source files (`tool/internal/setup/match.go:165–172`), every
+`//go:build` line of the file is removed (`stripBuildIgnoreTag`,
+`tool/internal/instrument/apply_file.go:25–30`), and the file is given to the
+compiler as it is (`apply_file.go:72–74`). Thus the file names only runtime
+symbols that exist on every platform: `heapArena`, `mspan`, `spanOfHeap`,
+`heapArenaOf`, `(*sweepLocked).sweep`, `freegc`, `memstats.other_sys`,
+`gcController.mappedReady`, `asanenabled`, `msanenabled` (all in
+platform-independent files of the runtime). It never names `mmap`, which
+Windows and wasm do not have.
 
 #### 1.10.3 Parity is proven by behavior
 
@@ -726,52 +944,62 @@ that the result is equal.
   in `_integration/otelc`).
 - **Parity witnesses**, required in the stack PR that adds the hook, with both
   tools: one real allocator reuse (a sweep that clears dead bits, then a new
-  object at the same address, `S3`); one runtime copy (`S4`); one standard
-  library twin with an interior copy (`json.(*Decoder).refill` slide and grow,
-  `S12`; before it, `io.ReadAll` multi-chunk, `S8`).
-- The `_integration/otelc` suite compares the findings of the two tools, after
-  it checked that each tool gave at least one finding (AC-F11).
+  object at the same address, `S3`); one runtime copy (`S4`); `io.ReadAll`
+  with several chunks (`S8`); the `json.(*Decoder).refill` wrapper, slide and
+  grow (`S12`).
+- **Woven against unwoven.** For each wrapper, a test compares the woven
+  build with an unwoven build: the same results, the same sequence of reads
+  and callbacks, and the same panics. Comparing the two woven builds is not
+  enough: both tools would run the same wrong wrapper.
+- The `_integration/otelc` suite compares the findings of the two tools,
+  after it checked that each tool gave at least one finding (AC-F11).
 
-#### 1.10.4 Platform-specific code is selected at compile time
+#### 1.10.4 Platform-specific code is in an ordinary dd-iast-go package
 
-Some runtime symbols exist only on some platforms. For example the runtime has
-a Go `mmap` function only in `mmap.go`, `cgo_mmap.go`, `sys_darwin.go`,
-`sys_openbsd.go`, `os2_aix.go` and `os3_solaris.go`; Windows and wasm have
-none. Injected code that names `mmap` would not compile there. A check in a
-runtime `init` is too late.
+The code that depends on the platform is **not** injected into the runtime.
 
-Rule:
-
-- The platform-specific code (the slab allocator that calls `mmap`, the CPU
-  feature check) is injected **next to the Go definition of `mmap`**, so that
-  it has the build constraints of that file. It sets a function variable in an
-  injected `init` of the same file.
-- The generic code calls the platform code only through this variable. When
-  the variable is nil (no `mmap` definition: Windows, wasm), `Set` returns
-  false and the gate goes to Off.
-- The generic code names only symbols that exist on every platform.
-- The list of supported platforms is also checked in the generic code
-  (`GOOS`, `GOARCH`, `asanenabled`, `msanenabled`, `cpu.ARM64.HasATOMICS`).
-  Platforms that have `mmap` but are not supported (for example freebsd,
-  linux/386) compile and stay Off.
+- The slab allocator is in `internal/taint/heapbits`, in ordinary Go files with
+  ordinary build constraints: `slab_unix.go` (`//go:build linux || darwin`)
+  calls `syscall.Mmap` (anonymous, private, read and write); `slab_other.go`
+  (all other platforms) has no allocator. The Go toolchain selects the file at
+  compile time, for both tools, with no tool feature.
+- At init, `heapbits` gives its allocator to the runtime-side code through a
+  linknamed function variable. When the variable is nil (Windows, wasm, and
+  the other unsupported platforms), `Set` returns false and the gate goes to
+  Off.
+- The runtime-side code calls the allocator only from a worker, on a user
+  goroutine (never from the sweep hook, never with a runtime lock held).
+  Slabs are never unmapped in v0 (section 1.2.2); `heapbits` keeps the mapped
+  slices.
+- The generic code also checks `GOOS`, `GOARCH`, `asanenabled` and
+  `msanenabled`. Platforms that have `syscall.Mmap` but are not supported (for
+  example freebsd, linux/386) compile and stay Off.
 - AC-P5 builds **and runs** the feature-off tests where a runner exists, and
   only cross-builds the others. The two kinds of evidence are labeled.
 
-#### 1.10.5 Expected-hook manifest and behavioral sentinel
+#### 1.10.5 Version guards, expected-hook manifest and behavioral sentinel
 
 A tool can skip a rule with no error. Orchestrion v1.15.0 does this on gotip
-today (section 7.2). Thus a passing build is no proof that the hooks are there.
+today (section 7.2). A customer can also build with a dd-trace-go or a Go
+version that the stack did not test. Thus a passing build is no proof that the
+hooks are there.
 
 - **Expected-hook manifest.** Each injected hook registers itself at package
   init, in a fixed bit set of the runtime (no allocation). A checked-in
   manifest lists the hooks that **must** be there, for each Go minor and each
   supported platform (for example the HTTP/2 body receiver changes between
   go1.26 and go1.27, section 1.6).
+- **Self-check at init.** When a required hook of the taint engine is missing
+  (for example a dd-trace-go wrapper of section 1.3.1 did not apply), taint
+  tracking goes Off, with one log line that names the hook, and a telemetry
+  counter. The application is not affected.
+- **Layout check and supported minors** for the standard library wrappers
+  (section 1.5.1).
 - **Behavioral sentinel.** `_integration/otelc/cmd/sentinel` is a woven
   program that exits with an error when a capability does not work. It grows
   with the stack: `S3` adds set → any → clear and a reuse check; `S4` adds a
-  concatenation copy; `S7` adds sink → report; `S8` adds HTTP request →
-  SQL finding; `S9`, `S12` add `fmt.Sprintf` and JSON. It also compares the
+  concatenation copy; `S7` adds sink → report; `S8` adds HTTP request → SQL
+  finding; `S9`, `S12` add `fmt.Sprintf` and JSON. It also compares the
   registered hooks with the manifest. It never skips: in a job that expects a
   woven build, `build.Instrumented() == false` is a failure.
 - **Stable jobs** (go1.26.x, go1.27.x, both tools) must pass the sentinel. They
