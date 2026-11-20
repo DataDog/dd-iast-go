@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | **Draft v7 for review.** v5 applied Romain's change request (the origin is tracked on heap address ranges, not by value); v6 and v7 fix the objections of the checks of that change, and v7 applies Romain's answers to 3 decisions. Section 12 maps each objection of the review rounds, and each decision and request of Romain, to its change. Next: approval by Romain. |
+| Status | **Draft v8 for review.** v5 applied Romain's change request (the origin is tracked on heap address ranges, not by value); v6, v7 and v8 fix the objections of the checks of that change, and v7 applies Romain's answers to 4 decisions. Section 12 maps each objection of the review rounds, and each decision and request of Romain, to its change. Next: approval by Romain. |
 | Lifetime | This document is the contract during the implementation. It is **deleted** when the code is approved and CI is green (decision 15): the last PR of the stack (`S14`) deletes it. |
 | Epic | Multica DD-69, Jira [APPSEC-70732](https://datadoghq.atlassian.net/browse/APPSEC-70732) |
 | Target | The full Definition of done of the epic (decision 10: no scope cut on the basis of time estimates) |
@@ -183,7 +183,7 @@ runtime-side code is woven into the runtime):
 | Entry table | An added field of `runtime.mspan` points to it. Allocated on the first taint in the span. A span with one object (a large object) uses an added inline entry instead. | 4 KiB of entries (1 024 entries of 32 bits) **plus** a 64-byte header (the base address of the span that it belongs to, and its state); both are counted in the budget | Stays attached to its `mspan` struct, which the runtime reuses for later spans (fact 5). Only the sweeper resets it, while it owns the span alone (section 1.2.2). |
 | Entry | In the table | 32 bits: 0 = not tainted; `POISON` (all bits 1) = the taint of this object is unknown (section 1.2.3); else the index of the first record of the chain | – |
 | Range record | A slot in a pool of fixed records, carved from slabs | 128 bytes: a header (range count, flags: "immutable", "private" or "exposed" memory, section 1.2.7; index of the next record) and up to 4 ranges | One record chain for each tainted object. A chain that a write replaced, or whose object died, is **retired**, and it goes back to the pool only after every reader and writer that could use it has left (section 1.2.2). |
-| Range | In a record | 24 bytes: offset in the object (32 bits), length (32 bits), origin (40 bits of owner generation, 6 bits of owner slot, 8 bits of source index, 1 "sensitive" bit), marks (8 bits), flags ("conflict"), and the offset of its **snapshot** in the owner's snapshot area (32 bits, for exposed memory, section 1.2.7) | – |
+| Range | In a record | 24 bytes: offset in the object (32 bits), length (32 bits), origin (40 bits of owner generation, 6 bits of owner slot, 8 bits of source index, 1 "sensitive" bit), marks (8 bits), flags ("conflict", "exposed path", section 1.2.7), and the offset of its **snapshot** in the owner's snapshot area (32 bits, for exposed memory, section 1.2.7) | – |
 | Snapshot area | One for each owner (request), from the slabs | Up to 64 KiB of copies of labelled bytes of exposed memory (section 3.6) | Retired when its owner ends, and reused after reclamation (section 1.2.2) |
 
 Bounds: at most 64 ranges for each object (a chain of up to 16 records).
@@ -223,10 +223,14 @@ clean object, a clean slice of a tainted object, and a tainted slice.
 **Rules of the runtime side:**
 
 - **The "not on the heap" checks apply to every operation, reads included.**
-  The entry points take `uintptr` values, so that the checked values do not
-  escape to the heap; the Go wrappers call `runtime.KeepAlive` after the call.
-  A `nosplit` classifier decides "inside one heap allocation slot of an in-use
-  span" before the stack can move. Stack, static, manual-span (`mSpanManual`)
+  The entry points take **typed pointers** (`unsafe.Pointer`), not `uintptr`
+  values: `runtime.KeepAlive` keeps an object alive, but it does not keep a
+  stack address correct when the stack moves, and only a typed pointer is
+  updated when Go copies a stack. The pointer stays typed until a `nosplit`
+  classifier decides "inside one heap allocation slot of an in-use span"
+  (where objects do not move); only then is it used as an address. The
+  declarations that the hooks call have `//go:noescape` (rule 9 of section
+  1.5.3), so the pointer does not make the value escape. Stack, static, manual-span (`mSpanManual`)
   and user-arena memory, and an address in no span, are "not tainted" for
   `MayHaveTaint`, `Any` and `Ranges`, and are refused by the writes. The classifier never reads
   an entry table for them.
@@ -263,7 +267,7 @@ uses **Go's own decision** about which slots are dead.
 
 | Path | When the slot can be allocated again | Clear point | Notes |
 |---|---|---|---|
-| Sweep of a span (small objects and large objects) | After `(*sweepLocked).sweep` of that span computes the new free slots and stores `s.allocBits = s.gcmarkBits` | A prologue of **`(*mspan).countAlloc`**. The sweep calls it once (`runtime/mgcsweep.go:679`, the same in go1.26 and go1.27; its only other caller is `export_test.go`), **after** it has processed the specials (a finalizer that revives an object sets its mark bit, `mgcsweep.go:554–573`) and moved the inline mark bits (`moveInlineMarks`), and **before** the slots become allocatable. At this point the mark bits are Go's final liveness decision. The prologue clears every slot that has an entry and no mark bit. | Bounded work: at most `nelems` (1 024) mark bits and entries; no walk of the specials, so many finalizers or cleanups on one object cost nothing more (Go permits many cleanups on one allocation, `runtime/mcleanup.go:25–27`). A span cached in an `mcache` is not swept until it is uncached (`mcache.refill` sets `sweepgen = mheap_.sweepgen + 3`, `runtime/mcache.go:214–216`). A live typed reference keeps its object marked, so the sweep never clears an object that a wrapper holds. |
+| Sweep of a span (small objects and large objects) | After `(*sweepLocked).sweep` of that span computes the new free slots and stores `s.allocBits = s.gcmarkBits` | A prologue of **`(*mspan).countAlloc`**. The sweep calls it once (`runtime/mgcsweep.go:679`, the same in go1.26 and go1.27; its only other caller is `export_test.go`), **after** it has processed the specials (a finalizer that revives an object sets its mark bit, `mgcsweep.go:554–573`) and moved the inline mark bits (`moveInlineMarks`), and **before** the slots become allocatable. At this point the mark bits are Go's final liveness decision. The prologue clears every slot that has an entry and no mark bit. It reads the bits in **`s.gcmarkBits`**, as `countAlloc` does, and never through `markBitsForIndex`: with the Green Tea GC (the default in go1.26 and go1.27), `markBitsForIndex` reads the inline mark bits of small-object spans (`runtime/mgcmark_greenteagc.go:228–236`), which `moveInlineMarks` has already copied into `gcmarkBits` and reset (`:196–216`). | Bounded work: at most `nelems` (1 024) mark bits and entries; no walk of the specials, so many finalizers or cleanups on one object cost nothing more (Go permits many cleanups on one allocation, `runtime/mcleanup.go:25–27`). A span cached in an `mcache` is not swept until it is uncached (`mcache.refill` sets `sweepgen = mheap_.sweepgen + 3`, `runtime/mcache.go:214–216`). A live typed reference keeps its object marked, so the sweep never clears an object that a wrapper holds. |
 | `freegc` (`GOEXPERIMENT=runtimefreegc`) | When `freegc` really gives the slot back: it calls `(*mcache).addReusableNoscan` (`runtime/malloc.go:2011`, its only call site; `runtime/mcache.go:373`) | A prologue at the start of **`(*mcache).addReusableNoscan`**, not of `freegc`. `freegc` can refuse to free and return false (for example `!reusableSize(size)` for small sizes, `runtime/malloc.go:1913–1920`); then nothing is cleared. | **Off by default** in go1.26 and go1.27 (`internal/goexperiment/exp_runtimefreegc_off.go`). A CI job turns the experiment on (criterion AC-S7). |
 | Finalizers | A finalizer special at **any offset** inside a slot (a tiny block can have several) makes the sweep mark the whole slot live (`runtime/mgcsweep.go:554–573`) | No separate rule: the mark bit that the sweep sets is seen by the `countAlloc` prologue | When the revived objects die again with no finalizer, a later sweep clears the slot. Cleanups (`runtime.AddCleanup`) and weak handles do not revive objects. |
 | User arena chunks (`GOEXPERIMENT=arenas`) | Freed without a sweep | None: `Set` refuses user arena memory, and reads treat it as clean | Never tainted. |
@@ -481,71 +485,125 @@ forces the retry loops on a CPU that has LSE (criterion AC-P11).
 
 A range label says "these bytes came from this source". It stays true only
 while the bytes do not change, and while no other request uses the same
-memory. Three cases need a rule. Case 1 follows the recommended option of an
-open decision (section 10.2, item 1); the other options are there.
+memory. Three cases need a rule. Case 1 follows the recommended answers of an
+open decision (section 10.2, item 1); the other answer is written as a small
+switch.
 
 **1. Unhooked writes into memory that the application can write.** An
 unhooked `copy` (or a byte-by-byte write, or a pooled buffer that is used
 again) can overwrite bytes that already have a label, for example of request
-B, and the label stays. A checksum cannot fix this: a match does not prove who
-wrote the bytes (2 requests can write the same text, and different text can
-have the same 32-bit checksum).
+B, and the label stays. Equal bytes prove the content, not who wrote it: 2
+requests can write the same text.
 
-- Memory is **immutable** when a hook made it as the backing of a `string`
+**Memory kinds.** Each object with ranges has one kind, in the header of its
+record chain:
+
+- **Immutable:** a hook made it as the backing of a `string`
   (`concatstrings`, `slicebytetostring`, the rune conversions, the source
-  strings of `net/http`): Go code cannot write it without `unsafe`. The record
-  of such an object has an "immutable" flag. Its labels need no check.
-- Memory is **private** when only hooked standard library code can write it,
-  and the application never gets a writable slice of it. Every write is then
-  observed, so its labels need no check. v0 has 3 kinds, and the wrapper that
-  owns the buffer sets the "private" flag at each write:
+  strings of `net/http`). Go code cannot write it without `unsafe`. Its labels
+  need no check.
+- **Private:** only hooked standard library code writes it, and the
+  application never had a writable slice of it. Every write is observed, so
+  its labels need no check. Only the wrapper that **allocated** the buffer can
+  set this kind, at each write:
   - the buffer of a `strings.Builder` (unexported; `String` returns an
     immutable alias, `strings/builder.go:46–48`, and the `Builder` only
     appends);
   - the buffer of `fmt` (unexported; it is cleared when `fmt` puts its printer
     back in its pool, section 1.5.2);
-  - the read buffers of the JSON decoders: v1 `Decoder.buf` (unexported;
-    `Buffered` returns a reader, `encoding/json/stream.go:97–98`), and the
-    v2 `jsontext.Decoder` buffer (the slices that it returns "may not be
-    mutated", `encoding/json/jsontext/decode.go:672–673, 1153`).
-- All other memory is **exposed** (`[]byte` values that the application holds:
-  the result of `[]byte(s)` and of `io.ReadAll`, `bytes.Buffer`, the buffer of
-  `bufio.Reader`, whose `Peek` returns a writable slice). A label on exposed
-  memory is trusted only against a **snapshot taken at a trusted write**:
-  - A trusted write is a write by a hook: a source label in place (for
-    example the body `Read` hook labels the bytes that the `Read` wrote), a
-    hooked copy, or a mapped transform (section 1.5.2).
-  - The hook copies the labelled bytes into the **snapshot area** of the
-    request that it runs for (its owner), and the range keeps the offset of
-    that copy. A hooked copy whose source range already has a snapshot of the
-    same bytes keeps that snapshot, so it copies no bytes. Only ranges of the
-    hook's own request get a snapshot; a range of another request, written
-    into exposed memory, gets the unknown origin (it is foreign for this
-    request in any case).
-  - **Before a label on exposed memory is trusted** (when a hook copies the
-    bytes into another object, when a JSON producer checks its token, section
-    1.3.5, and when a sink reads a `[]byte` argument), the hook compares the
-    bytes of the **requested slice only** with the same part of the snapshot.
-    It never reads bytes outside the requested slice: another goroutine can
-    legally write the other part of the buffer at that moment.
-  - Equal bytes: the label is trusted. Different bytes, no snapshot (the area
-    was full), or an owner that ended: the range has the unknown origin
-    (foreign, no finding, no mark).
-- **Effect on findings:** a value that the application did not change after
-  the trusted write is detected. Past the snapshot area of a request (64 KiB,
-  section 3.6), labels on exposed memory have the unknown origin (fewer
-  findings for very large bodies). Immutable and private memory need no
-  snapshot, so the common paths (strings, `strings.Builder`, `fmt`, the JSON
-  decoders) do not use the area.
-- **Effect on wrong reports:** a report can name the labelled source for bytes
-  that another place wrote **only** when those bytes are exactly the bytes
-  that this source sent (the comparison is exact, so there is no collision).
-  Data of another request that is different never appears with this source.
+  - the read buffer of a JSON decoder **that the decoder allocated**: v1
+    `Decoder.buf` (`Buffered` returns a reader, `encoding/json/stream.go:97–98`),
+    and the v2 `jsontext` buffer after a grow in `fetch`. When the v2 decoder
+    reads from a `bytes.Buffer`, it takes the memory of that buffer with
+    `bb.Next(bb.Len())` (`encoding/json/jsontext/decode.go:183–190`): that
+    memory keeps the kind of the `bytes.Buffer` memory, which is exposed.
+- **Exposed:** all other memory, and the default kind. Examples: the result of
+  `[]byte(s)`, of `io.ReadAll` and of `bytes.Replace`, a `[]byte` that the
+  application made, the memory of a `bytes.Buffer` (`Bytes`, `Next` and
+  `AvailableBuffer` return writable slices, `bytes/buffer.go:60, 66, 358`),
+  and the buffer of a `bufio.Reader` (`Peek` and `ReadSlice` return writable
+  slices).
+
+**Exposure follows aliases and copies.**
+
+- Exposed is absorbing: an object never goes back to private or immutable
+  while it lives. Only the sweep resets its kind, when the object dies.
+- A hooked API that gives the application a writable slice of a private
+  buffer makes the whole object exposed (for example the slices that
+  `jsontext.Decoder.ReadValue` and `UnreadBuffer` return; their contract says
+  "may not be mutated", `decode.go:672–673, 1153`, but v0 does not depend on
+  that contract). When this write fails (no record), the object is poisoned
+  with an exchange (section 1.2.3).
+- Each range has an **"exposed path"** bit. A range gets it when its bytes are
+  trusted through a snapshot (rule A below). Every later hooked copy keeps the
+  bit, also into immutable or private memory (for example `string(body)`).
+  So the JSON rule can still see that the bytes went through memory that the
+  application could write.
+
+**When a label on exposed memory is trusted.** The rule is a switch with 2
+values, set separately for 2 uses (section 10.2): **A** (snapshot,
+recommended for both) and **C** (observed writes only).
+
+| Use | Where the check runs | With A | With C |
+|---|---|---|---|
+| **Ordinary use** | A hooked copy out of exposed memory (for example `string(body)`), and a sink that reads a `[]byte` argument | Trusted when the requested bytes are equal to the snapshot; the range gets the "exposed path" bit | The unknown origin |
+| **JSON** (section 1.3.5) | A JSON producer that checks its token | Trusted when the token is in exposed memory and its bytes are equal to the snapshot, or when its ranges have the "exposed path" bit | Not trusted when the token is in exposed memory, or when one of its ranges has the "exposed path" bit: the string is not tainted (no finding) |
+
+**Rule A, the snapshot:**
+
+- At a trusted write into exposed memory (a source label in place, for
+  example the body `Read` hook on the bytes that the `Read` wrote; a hooked
+  copy; a mapped transform, section 1.5.2), the hook copies the labelled bytes
+  into the **snapshot area** of the request that it runs for (its owner), and
+  the range keeps the offset of that copy.
+- A hooked copy whose source range already has a snapshot of the same bytes
+  keeps a reference into that snapshot, and copies no bytes.
+- **Ranges are merged only when their snapshots are contiguous too.** 2
+  adjacent output ranges with the same origin and marks become one range only
+  when the snapshot offset of the second one is the end of the snapshot of the
+  first one. Else they stay separate. Example: `bytes.ReplaceAll(xx, x, ab)`
+  with a labelled `ab` gives `abab`, with 2 ranges that both point to the
+  snapshot of `ab`; one 4-byte range would compare `abab` with the wrong
+  bytes.
+- Only ranges of the hook's own request get a snapshot. A range of another
+  request, written into exposed memory, gets the unknown origin (it is
+  foreign for this request in any case).
+- **No snapshot means "unknown".** When the snapshot area of the request is
+  full, or the write cannot get a record, the new range has the unknown
+  origin when it is used. There is no fallback to trusting it.
+- **The check reads only the requested slice.** The hook compares the bytes
+  of the requested slice with the same part of the snapshot, and never reads
+  the other bytes of the range: another goroutine can legally write them at
+  that moment, and reading them would be a Go data race.
+- Equal bytes: trusted. Different bytes, or an owner that ended: the unknown
+  origin (foreign, no finding, no mark).
+- The comparison is bounded by the scan budget (below). Past it, the rest is
+  not verified, so it has the unknown origin.
 - The snapshot area of an owner is memory of the budget (from the slabs, not
-  the Go heap). When the owner ends, its area is retired like a record chain
-  (section 1.2.2), so no comparison can read reused memory.
-- The comparison is bounded by the scan budget (below). Past the budget, the
-  rest is not verified, so it has the unknown origin.
+  the Go heap: 64 KiB for each request, inside `DD_IAST_TAINT_MEMORY_LIMIT`).
+  When the owner ends, its area is retired like a record chain (section
+  1.2.2), so no comparison can read reused memory.
+
+**The switch to C is small.** With C for one use, the check of that use
+returns the unknown origin (or "not tainted" for JSON) without a comparison.
+With C for both uses, no snapshot is taken at all, and the snapshot areas are
+not allocated. The tests of criterion AC-S11 run with each value of the
+switch.
+
+**Effects of A** (the wording that Romain decides on is in section 10.2):
+
+- Findings: a value that the application did not change after the trusted
+  write is detected, for example `db.Query("… " + string(body))` after
+  `io.ReadAll`, and `io.ReadAll` + `json.Unmarshal`. Past the snapshot area of
+  a request, labels on exposed memory are unknown (fewer findings for very
+  large bodies). Immutable and private memory need no snapshot, so the
+  common paths (strings, `strings.Builder`, `fmt`, `json.NewDecoder(r.Body)`)
+  do not use the area.
+- Wrong reports: only when the application writes, with no hook, exactly the
+  bytes that the labelled source gave, taken from another place (for example
+  another request). The report then names the labelled source for these
+  bytes, and shows only these bytes: they are byte for byte what this source
+  sent. Different data never appears with this source.
 
 **2. Buffers that the wrappers manage.** For the buffers that a hooked wrapper
 fills by a delegated `Read` (`bufio.Reader`, the JSON decoder buffers,
@@ -555,10 +613,10 @@ before the delegated `Read`, the wrapper saves the ranges of the destination
 the labels (and snapshots) that a hooked source set during the call (for
 example the body `Read` hook), and the saved ranges come back only on the bytes
 that the `Read` did not write. So every write into these buffers by a hooked
-path is accounted for. The JSON decoder buffers are private (case 1); the
-others are exposed, so the snapshot rule of case 1 also applies to them (the
-application can write them, for example through the slice that
-`bufio.Reader.Peek` returns).
+path is accounted for. A JSON decoder buffer is private only when the
+decoder allocated it (case 1); the others are exposed, so the rules of case 1
+for exposed memory also apply to them (the application can write them, for
+example through the slice that `bufio.Reader.Peek` returns).
 
 **3. One memory range in 2 live requests.** HTTP/2 keeps the header values of
 a connection in a dynamic table, and gives the **same string** to later
@@ -766,11 +824,15 @@ With origins on ranges:
      another request, of a sampled-out request, of no request, in the
      conflict state, or in a poisoned object fails);
    - the token is in memory whose writes are all accounted for: an immutable
-     object, or a buffer that the wrappers manage (section 1.2.7, case 2: the
-     decoder buffers, `bufio`, `bytes.Buffer`, the `io.ReadAll` result); and
-   - for exposed memory, the bytes of the token are equal to the snapshots
-     of their ranges (section 1.2.7, case 1; only the bytes of the token are
-     compared), within the scan budget.
+     object, a private buffer (a decoder buffer that the decoder allocated),
+     or exposed memory that a wrapper manages (section 1.2.7, case 2:
+     `bufio`, `bytes.Buffer`, the `io.ReadAll` result); and
+   - the JSON switch of section 1.2.7 accepts it. With **A** (recommended):
+     in exposed memory, the bytes of the token are equal to the snapshots of
+     their ranges (only the bytes of the token are compared, within the scan
+     budget). With **C**: the token is not in exposed memory, and none of its
+     ranges has the "exposed path" bit (so `string(body)` and then a decoder
+     on that string is not accepted either).
 
    Else the producer **clears the ranges of the output**: the value is not
    tainted, and its text never appears as a tainted part. A safe miss, never a
@@ -792,15 +854,15 @@ of the bytes is not hooked** (for example a decompressing reader, or a custom
 reader that copies bytes): the bytes reach the decoder with no ranges, so rule
 4 gives a safe miss. This is the "exclusive owner" behavior for these patterns.
 
-**If Romain picks option a for all patterns:** rule 4 also requires that the
-decoder or reader, since its creation, read only from one request. The rest
-stays.
+**Romain's decision** (section 10.1, item 8): a JSON string with bytes of 2
+requests is not tainted. The open decision of section 10.2 (item 1, use 4b)
+decides how exposed memory is trusted for JSON. With A, one case is not
+detected: the application overwrites part of B's `io.ReadAll` buffer, with no
+hook, with **exactly the same bytes** taken from request A. Then the string is
+tainted with B's source, and it is byte for byte what B sent. With C, this
+case gives no finding, and neither does `io.ReadAll` + `json.Unmarshal`.
 
-**If Romain picks option b:** rule 4 is removed: a JSON value keeps the
-origins of its own bytes, and the bytes of another request are foreign
-(redacted) in its evidence.
-
-**Tests (criterion AC-J1):** one escaped JSON string split across 2 bodies
+**Tests (criteria AC-J1 and AC-J4):** one escaped JSON string split across 2 bodies
 read through an `io.MultiReader`; the same, where the other request is sampled
 out; a token in a buffer that already had labels of request B, where an
 unhooked `copy` wrote one byte of request A; and a token in an application
@@ -1004,7 +1066,7 @@ The table gives the **result** that each hook must produce.
 |---|---|---|---|
 | P0 | `io` | `ReadAll` | The wrapper passes the reader through a small observer (from a pool, so with no allocation per call). The observer **does not keep the buffers** (an `io.Reader` must not retain `p`, `io/io.go:85`): during each `Read`, it records, by **offset in the output** (the running count of bytes read), the tainted ranges of `p[:n]` with their origins and marks (from `Ranges`). The record is bounded (64 ranges); past the bound, the rest of the result has the unknown origin. After the original returns, the wrapper sets these ranges, with their origins, in the result. `ReadAll` builds a result of several chunks with `append(final, chunk...)` (`io/io.go:730–739`, the same in go1.26 and go1.27). The wrapper depends only on the documented contract of `ReadAll` (the result is the bytes read, in order). |
 | P0 | `fmt` | `(*buffer).write`, `writeString`; `(*fmt).writePadding`; `(*fmt).fmtQ`; `(*fmt).fmtSbx`; clear in `(*pp).free` | Exact copy of every byte that `fmt` copies into its buffer. Thus: `%s` and `%v` of a **string**, and `%s` of a `[]byte`, keep their exact ranges and origins, also with width and precision (precision gives a sub-string); the output of `String()` and `Error()` keeps exactly the ranges of the string that they return; a `Formatter` that writes tainted bytes to `fmt.State` keeps them (`State.Write` goes to `(*buffer).write`); a tainted format string keeps exact ranges for its literal parts. **Mapped** for the bytes that `fmtQ` (`%q`, through `strconv.AppendQuote`, `fmt/format.go:447–457`) and `fmtSbx` (`%x`, `%X`: 2 hex digits for each input byte) generate from a tainted argument. **`%v` and `%d` of a `[]byte` are an explicit miss:** `fmt` prints the decimal value of each byte (`[104 105]`, `fmt/print.go:502–527`), with one `fmtInteger` call for each byte; the digits are not tainted. `%T`, `%p`, numbers, and a `String()` that returns a constant give clean text (lesson from #51 H8: no taint by argument identity). |
-| P0 | `strings` | `(*Builder).Write`, `WriteString`, `grow`; `Repeat`; `ToUpper`, `ToLower`; `Map`; `(*Replacer).Replace` | Exact for the Builder (so `Join` is exact, for the elements **and** the separator). `WriteByte` and `WriteRune` take a value, not memory: they cannot carry taint (section 8). `ToUpper` and `ToLower`: mapped (ASCII: byte `i` of the output has the origin of byte `i` of the input, for changed and unchanged bytes; other input: each output rune has the origin of its input rune, from a scan of the input with the `unicode` tables). `Map`: only proven copies keep an origin, through an observer of the mapping function; the identity map keeps the input as it is (below). `Replace` and `ReplaceAll`: no wrapper, covered exactly by the `Builder` hooks (below). `Replacer`: the new output gets the unknown origin (a documented gap). |
+| P0 | `strings` | `(*Builder).Write`, `WriteString`, `grow`; `Repeat`; `ToUpper`, `ToLower`; `Map`; `(*Replacer).Replace` | Exact for the Builder (so `Join` is exact, for the elements **and** the separator). `WriteByte` and `WriteRune` take a value, not memory: they cannot carry taint (section 8). `ToUpper` and `ToLower`: mapped (ASCII: byte `i` of the output has the origin of byte `i` of the input, for changed and unchanged bytes; other input: each output rune has the origin of its input rune, from a scan of the input with the `unicode` tables). `Map`: only bytes that Go copied keep an origin (the identity alias and the prefix before the first change); the runes that the callback returned are unknown, except for the known transforms `unicode.ToUpper`, `ToLower`, `ToTitle` (below). `Replace` and `ReplaceAll`: no wrapper, covered exactly by the `Builder` hooks (below). `Replacer`: the new output gets the unknown origin (a documented gap). |
 | P0 | `bytes` | `(*Buffer).Write`, `WriteString`, `ReadFrom`, `grow`; `Join`, `Repeat`, `Replace`, `ToUpper`, `ToLower`, `Map` | As `strings`. `Replace` (and so `ReplaceAll`): mapped, with exact parts of `s` and copies of `new` (below). A write of clean bytes clears the ranges of the bytes that it overwrites. |
 | P0 | `net/url` | `unescape`, `escape` | Mapped on the new output (`%XX` is 3 input bytes for 1 output byte, `+` is 1 for 1, the other bytes are 1 for 1; `escape` is the reverse). **When the function returns its input** (no escape: `net/url/url.go:155–157`, `:208–210`), the hook does nothing: the ranges are already exact. |
 | P0 | `strconv` | `quoteWith`, `unquote`, `AppendQuote*` | Mapped (each input rune gives its quoted or unquoted output bytes) |
@@ -1024,31 +1086,51 @@ The table gives the **result** that each hook must produce.
   never covers memory that aliases an input. When the mapping does not give
   the length of the real output, or the scan budget (section 1.2.7) is used,
   the rest of the output has the unknown origin.
-- **`strings.Map` and `bytes.Map`: only proven copies keep an origin.** The
-  mapping function is application code. The wrapper passes an **observer** of
-  the mapping function to the original: the original calls it once for each
-  input rune, in order; the observer calls the application function exactly
-  once, and records the rune that it got (`c`) and the rune that it returned
-  (`r`). The wrapper decodes the input in the same order, so it knows the
-  input bytes of each rune. The observer knows which rune was kept and which
-  was dropped, but **not where a new rune came from**: the callback can ignore
-  `c` and return a rune of another value, for example a sensitive value that
-  it captured. So, when the input has taint:
-  - **a proven copy** (`r == c`, and the input bytes of the rune are the UTF-8
-    encoding of `c`; an invalid input byte that becomes U+FFFD is not a copy):
-    the output bytes of the rune get the origin of its input bytes;
-  - a dropped rune (`r < 0`): no output, so it is never a contributor;
-  - **every other output rune** (`r != c`, or an invalid input byte): the
-    **unknown** origin (tainted, foreign, redacted). It never names the source
-    of the input rune, so a rune that the callback took from another value is
-    never shown as a part of that source;
-  - when the input has no taint, the wrapper does nothing (rune values carry no
-    taint, section 8.1);
-  - **identity map:** when no rune changes, `strings.Map` returns its input
-    string itself (`strings/strings.go:548–550` in go1.27, `:567–569` in
-    go1.26). The wrapper sees that the output aliases the input (the same data
-    pointer and length), and writes nothing: the ranges, origins and marks of
-    the input do not change. (`bytes.Map` always returns a new slice.)
+- **`strings.Map` and `bytes.Map`: only bytes that Go really copied keep an
+  origin.** The mapping function is application code, and it can return a
+  rune of any value, for example a sensitive value that it captured. A rune
+  that it returns can be **equal** to the input rune and still come from that
+  other value. So the wrapper never credits a rune that the callback returned
+  to the input, except for a known transform (below). What Go does
+  (`strings/strings.go:513–570` in go1.27, `:532–589` in go1.26;
+  `bytes/bytes.go:597–611` in go1.27, `:607–621` in go1.26):
+  - `strings.Map` calls the function for each rune, in order. While the
+    returned rune is equal to the input rune, Go writes nothing. At the first
+    change (at byte `i`), Go copies the input prefix `s[:i]` with
+    `b.WriteString(s[:i])`, writes the returned rune, and from then on writes
+    **the returned rune of every call** (`b.WriteByte` or `b.WriteRune`),
+    also when it is equal to the input rune. When nothing changes, Go returns
+    the input string itself (`:548–550` in go1.27, `:567–569` in go1.26).
+  - `bytes.Map` writes the returned rune of every call into a new slice
+    (`utf8.AppendRune`); it never copies input bytes.
+
+  The wrapper passes an **observer** of the mapping function to the original.
+  The observer calls the application function exactly once for each call of
+  the original, and records the input rune `c` and the returned rune `r`, so
+  the wrapper finds the first change with the same test as Go (`r != c`, or an
+  invalid UTF-8 byte). When the input has taint:
+  - **identity:** the output aliases the input (the same data pointer and
+    length). The wrapper writes nothing: the ranges, origins and marks of the
+    input do not change;
+  - **the copied prefix** `s[:i]` of `strings.Map` keeps the ranges and
+    origins of the input (a real copy; the `Builder` hook already made it);
+  - **every rune that the callback returned** (all output bytes after the
+    prefix, and all output bytes of `bytes.Map`): the **unknown** origin
+    (tainted, foreign, redacted), unless the mapping function is a known
+    transform;
+  - **known transforms:** `unicode.ToUpper`, `unicode.ToLower` and
+    `unicode.ToTitle`. Their output rune depends only on their input rune, so
+    each output rune gets the origin of its input rune. The wrapper recognizes
+    them by the code pointer of the function value (the first word of the
+    `funcval`), compared with the code pointers of these 3 functions that
+    dd-iast-go reads at init. A closure, or a method value, has another code
+    pointer, so it is never taken for a known transform. (`strings.ToUpper`
+    and `ToLower` call `Map(unicode.ToUpper, s)` for non-ASCII input; they
+    have their own mapped wrapper anyway.)
+  - when the input has no taint, the wrapper does nothing (rune values carry
+    no taint, section 8.1);
+  - marks: kept only by the identity alias and by the copied prefix, which
+    are exact copies.
 - **`strings.Replacer`** (`Replace` and `WriteString`): the wrapper cannot map
   the output to the input from outside (the `Replacer` picks one of several
   algorithms). The whole new output gets the **unknown** origin (tainted,
@@ -1063,12 +1145,12 @@ The table gives the **result** that each hook must produce.
   |---|---|---|
   | `strings.Replace`, `strings.ReplaceAll` | `ReplaceAll` calls `Replace(s, old, new, -1)`. `Replace` returns `s` itself when nothing changes; else it writes the parts of `s` and the copies of `new` with `(*strings.Builder).WriteString`, and returns `b.String()`, an alias of the `Builder` buffer (`strings/strings.go:1136–1171` in go1.27, `:1138–1173` in go1.26) | **Covered, exact**, by the `Builder` hooks: each part of `s` keeps its origin, each copy of `new` keeps the origin of `new`. No wrapper. |
   | `bytes.Replace`, `bytes.ReplaceAll` | `ReplaceAll` calls `Replace(s, old, new, -1)`. `Replace` copies with the built-in `copy` into a new slice, and returns `append([]byte(nil), s...)` when nothing changes (`bytes/bytes.go:1162–1199` in go1.27, `:1155–1192` in go1.26): inline copies, with no hook | **A mapped wrapper of `bytes.Replace`** (it also covers `ReplaceAll`). The output positions are a pure function of `s`, `old`, `new` and `n`: the wrapper finds the same matches again, from left to right, and sets on each output part the ranges of the part of `s` or of `new` that it copies. The result is exposed memory, so the ranges get snapshots (section 1.2.7). |
-  | `strings.Title`, `bytes.Title` (deprecated) | They call `Map` with a closure of the package (`strings/strings.go:849–864` in go1.27, `:868` in go1.26; `bytes/bytes.go:818` and `:828`) | **Covered by the `Map` rule**: the letters that `Title` does not change are proven copies and keep their origin; the letters that it changes get the unknown origin. No wrapper. |
+  | `strings.Title`, `bytes.Title` (deprecated since go1.18) | They call `Map` with a closure of the package (`strings/strings.go:849–864` in go1.27, `:868` in go1.26; `bytes/bytes.go:818` and `:828`) | **A documented gap, through the `Map` rule:** the closure is not a known transform, so only the prefix that Go copies before the first change keeps its origin; the other runes are unknown (no finding from them). No wrapper. |
   | `text/template` | A text node is written with `s.wr.Write(node.Text)` (clean constants); a value is printed with `fmt.Fprint(s.wr, iface)` (`text/template/exec.go:286–287, 1101–1107`); the writer is the one that the application gives to `Execute` | **Covered, exact**, when the writer is a hooked type (`strings.Builder`, `bytes.Buffer`): `fmt` copies the value into its buffer, and `Write` copies it into the writer. Through a writer of the application, it is the copy gap of section 8.1. The escape functions of `text/template` return their input when nothing changes; else `html` and `js` write the parts of the input into a `strings.Builder` (`text/template/funcs.go:639–643`), and `urlquery` calls `net/url` (hooked). |
   | `html/template` | The escapers build their output with `(*strings.Builder).WriteString` and return their input when nothing changes (`html/template/html.go:144–176`), then print it through `text/template` | **Covered, exact**, like `text/template`. Its output is HTML, which is not a sink of v0. |
 - **The contributors of an output byte** are only the input bytes that the
   mapping names for it (for `%41`: the 3 input bytes; for an output rune of
-  `strings.Map`: the bytes of its input rune, for a proven copy). A source that the transform
+  a known transform of `strings.Map`: the bytes of its input rune). A source that the transform
   removed (for example a rune that `strings.Map` dropped) is never a
   contributor.
 - **One output byte with several origins among its contributors:**
@@ -1135,29 +1217,39 @@ The table gives the **result** that each hook must produce.
         escape in its callers (for example a `bytes.NewReader` result that
         stays on the stack of its caller only when `NewReader` is inlined).
    - **How the hooks avoid it.**
-     - A hook passes memory to dd-iast-go as an address and a length of type
-       `uintptr`, never as a pointer, a `string` or a slice, and keeps the
-       object alive with `runtime.KeepAlive` until the call returns. A
-       `uintptr` does not make a value escape. `heapranges` keeps only
-       addresses, never Go pointers.
-     - A function with no Go body that must take a pointer has
-       `//go:noescape`, and its implementation never keeps the pointer.
+     - A hook passes memory to dd-iast-go as a typed pointer
+       (`unsafe.Pointer`) and a length, never as a `uintptr`: only a typed
+       pointer stays correct when Go moves a stack, and `runtime.KeepAlive`
+       does not fix a stale stack address. The pointer stays typed until the
+       non-splitting classifier of section 1.2 has decided that it points into
+       the heap.
+     - The functions with no Go body that the hooks call have
+       `//go:noescape`, so the pointer does not make the value escape. This
+       is correct only when the function never keeps the pointer. Each such
+       function is in an **audited list**: a review rule and a test check
+       that it keeps only heap addresses in memory that the GC does not scan
+       (the range records), and never the pointer in a Go variable. No other
+       function gets `//go:noescape`.
      - The prologue is small: one gate load, and a call to an out-of-line slow
        path (`//go:noinline`), so that a small hooked function can stay under
        the inlining budget.
      - A prologue has no conversion to an interface, no closure that escapes,
        and no `defer`.
    - **How a remaining escape is measured and documented.**
-     - The escape decisions of the compiler (`go build -gcflags=-m=2`) for
-       each hooked package and for the benchmark programs are compared between
-       a woven and an unwoven build. A new "escapes to heap" or "moved to heap"
-       line in the woven build fails the check, until a human adds it to the
-       list of accepted escapes, with its reason.
-     - For each accepted escape, a test measures the allocations and the bytes
+     - The pass rule is **"the unwoven baseline plus the approved, measured
+       deltas"**.
+     - The escape decisions of the compiler, built with `-gcflags=all=-m=2`
+       (without `all=`, the flag applies only to the named packages, not to
+       the hooked dependencies), for each hooked package and for the benchmark
+       programs, are compared between a woven and an unwoven build. A new
+       "escapes to heap" or "moved to heap" line in the woven build fails the
+       check, until a human adds it to the list of approved deltas, with its
+       reason.
+     - For each approved delta, a test measures the allocations and the bytes
        for each operation (`testing.AllocsPerRun` and the benchmark) against
-       the unwoven build. The list, with the reason and the measured cost of
-       each escape, is in the repository, and the user documentation copies
-       it.
+       the unwoven build, and checks the numbers of the list. The list, with
+       the reason and the measured cost of each delta, is in the repository,
+       and the user documentation copies it.
 
 ### 1.6 Sources
 
@@ -1658,8 +1750,9 @@ section 1.2 and for "off by default".
 8. The free-list pushes and their retries, and the slab mapping, run only in
    the background goroutine of `heapranges`. The writers signal it with an
    atomic flag (no channel send).
-9. `nosplit` classifiers: a `uintptr` to a stack value is refused, for reads
-   and writes, before the stack can move. CI checks the generated code (`-S`)
+9. `nosplit` classifiers: the entry points get typed pointers, and a pointer
+   to a stack value is refused, for reads and writes, before the stack can
+   move. CI checks the generated code (`-S`)
    and runs a test with
    `-gcflags=all=-d=maymorestack=runtime.mayMoreStackMove`.
 10. The gate word can become Live only with `CAS(0 → 1)` (section 1.2.5), so a
@@ -1686,7 +1779,7 @@ section 1.2 and for "off by default".
 | Slabs | 1 MiB each, mapped ahead of time (up to 2 ready); never unmapped in v0 | The same budget (1 024 slab descriptors in the runtime BSS, 16 KiB) | No ready slab: the write fails (section 1.2.3), the refill flag is set |
 | Added runtime fields | 8 bytes per `mspan` struct (entry table pointer, inline entry), the gate word, the epoch, 1 field of `runtime.g` (the owner handle) | Fixed | – |
 | Owner copies | Source names (max 256 bytes) and values truncated to `DD_IAST_TRUNCATION_MAX_VALUE` characters, for the report | 64 KiB per owner; owners ≤ `DD_IAST_MAX_CONCURRENT_REQUESTS` (default 2, clamped to 64): 128 KiB by default, 4 MiB max | New sources get no record: their bytes get the unknown origin (foreign) |
-| Snapshot areas | Copies of the labelled bytes of exposed memory (section 1.2.7) | 64 KiB per owner, from the slabs, in the same budget: 128 KiB by default, 4 MiB max | New labels on exposed memory get no snapshot: they have the unknown origin when they are used |
+| Snapshot areas | Copies of the labelled bytes of exposed memory (section 1.2.7, answer A) | 64 KiB per owner, from the slabs, in the same budget: 128 KiB by default, 4 MiB max; not allocated when both switches are on C | New labels on exposed memory get no snapshot: they have the unknown origin when they are used (never trusted without a snapshot) |
 | Owner table | Fixed records per slot | Allocated on the first sampled request | – |
 | Annotation | Existing `internal/spans` store | `DD_IAST_MAX_CONCURRENT_REQUESTS` | Existing behavior, with the `S2` fixes |
 
@@ -1756,7 +1849,7 @@ Rules:
 | AC-F4 | **SQL sinks.** Each public method of section 1.7 (`*DB`, `*Tx`: 8 methods each; `*sql.Conn`: the 4 context methods) reports a tainted query **exactly once**, also when it forwards to another method. Bound arguments (`?`, `$1`) do not report. | `integration` | S7 | – |
 | AC-F5 | **Command sinks.** `exec.Command` and `exec.CommandContext` with a tainted name or argument report one `COMMAND_INJECTION` through `Start`, `Run`, `Output` and `CombinedOutput`. | `integration` | S7 | – |
 | AC-F6 | **Runtime propagation in a report.** Sub-strings and sub-slices; `+` and `+=`; `string(b)`, `[]byte(s)`, `[]rune(s)`, `string(runes)`; `append` growth (heap and `growsliceBuf` stack cases); `io.ReadAll` with one chunk and with several chunks (the observer keeps no buffer: a test reader fails the test when a buffer that it returned is read or written after its `Read` returned), and with more tainted ranges than the bound (the rest has the unknown origin); named types and generic functions with `~string` and `~[]byte`; values that mix clean and tainted ranges. The report has the exact tainted ranges, and the source of each range. | `integration` | S8 | S4 woven unit tests of the bits of each lowering (mixed ranges, heap and stack controls) |
-| AC-F7 | **Standard library text propagation in a report.** `strings.Builder` and `bytes.Buffer` (also a clean overwrite of tainted bytes); `fmt.Sprintf` with `%s`, `%v`, width and precision clipping, `%q`, `%x`, a `Stringer` that returns tainted bytes, a `Formatter` that writes tainted bytes to `fmt.State`, a tainted format string; `strings.Join` with tainted elements **and** a tainted separator; `ToUpper` and `ToLower` with changed and unchanged ASCII bytes, and Unicode input (mapped by rune); `strings.Map` that drops all the runes of source A and keeps source B (the output names only B); a `strings.Map` callback that ignores its argument and returns a rune of **another, sensitive value** (a password header): that output rune has the unknown origin, it is redacted, and it is never shown as a part of the input's source; a `Map` with `unicode.ToUpper`: the changed runes are unknown, the kept runes keep their source; an invalid UTF-8 byte that becomes U+FFFD: unknown; the **identity map**: `strings.Map` returns its input itself, and its ranges, origins and marks do not change (a sanitized value keeps its mark); `bytes.Map` identity: a new slice with exact ranges; `strings.Replacer` (the output has the unknown origin: no finding); a mapped byte with a sensitive contributor (redacted); `strings.ToUpper` of a sanitized value (the mark is dropped: a finding); `url.QueryUnescape` and `PathUnescape` with escapes, with no escape (the alias keeps its exact ranges, no widening) and with an invalid escape; `strconv.Quote` and `Unquote`. **Separately from `%s`:** `%v` and `%d` of a tainted `[]byte` give no taint (explicit miss, section 1.5.2), with a positive control. Values are tainted with the test source API under a real span. | `integration` | S9 | S4, S5, S7 |
+| AC-F7 | **Standard library text propagation in a report.** `strings.Builder` and `bytes.Buffer` (also a clean overwrite of tainted bytes); `fmt.Sprintf` with `%s`, `%v`, width and precision clipping, `%q`, `%x`, a `Stringer` that returns tainted bytes, a `Formatter` that writes tainted bytes to `fmt.State`, a tainted format string; `strings.Join` with tainted elements **and** a tainted separator; `ToUpper` and `ToLower` with changed and unchanged ASCII bytes, and Unicode input (mapped by rune); `strings.Map` that drops all the runes of source A and keeps source B (the output names only B); **`strings.Map` with a callback that returns runes of another, sensitive value** (a password header), on the input `ax` from a query parameter: the callback changes `a` to `A`, then ignores `x` and returns an `x` taken from the sensitive value. Both output runes have the unknown origin, they are redacted, and the `x` is not credited to the query parameter although it is equal to the input rune (**the equal-rune case**); the input `xa` with the same callback: the `x` that Go copied before the first change keeps its source; `strings.Map(unicode.ToUpper, s)` and `unicode.ToLower` (known transforms): each output rune has the origin of its input rune; a closure that calls `unicode.ToUpper` is not recognized: the runes after the first change are unknown; the **identity map**: `strings.Map` returns its input itself, and its ranges, origins and marks do not change (a sanitized value keeps its mark); `bytes.Map` with any callback that is not a known transform: every output rune is unknown; `strings.Replacer` (the output has the unknown origin: no finding); a mapped byte with a sensitive contributor (redacted); `strings.ToUpper` of a sanitized value (the mark is dropped: a finding); `url.QueryUnescape` and `PathUnescape` with escapes, with no escape (the alias keeps its exact ranges, no widening) and with an invalid escape; `strconv.Quote` and `Unquote`. **Separately from `%s`:** `%v` and `%d` of a tainted `[]byte` give no taint (explicit miss, section 1.5.2), with a positive control. Values are tainted with the test source API under a real span. | `integration` | S9 | S4, S5, S7 |
 | AC-F8 | **JSON in a report.** JSON v1 (go1.26, and go1.27 with `GOEXPERIMENT=nojsonv2`) and JSON v2 (go1.27 default). `json.Unmarshal` and `(*json.Decoder).Decode` into struct fields, maps, slices and `any`. v1: `refill` slide **and** grow (documents larger than 512 bytes, read-ahead). v2: `fetch` slide, grow and the `bytes.Buffer` alias. Escaped strings (mapped: each escape sequence gives the origin of its input bytes) and verbatim strings (exact). v2 string cache: tainted→clean, clean→tainted, and different partial masks on equal text; **both live strings** are checked: the new value has the ranges and origins of its input, and the earlier value that shares the cached string keeps its own. | `integration` | S12 | S10 baseline |
 | AC-F9 | **Negative controls** (each with a positive control, rule 2): constants; clean values; `strconv.Atoi` then `Itoa`; prepared statements with bound arguments; a `String()` that returns a constant; `%T`, `%p`, `%.0s` of a tainted value (#51 H8). | `integration` | S9 | S8 |
 | AC-F10 | **Transport.** The finding is in `meta_struct["iast"]` of the root span (serialized with msgpack), with `_dd.iast.enabled=1` and manual keep. With a test agent that does not report `span_meta_structs`, `_dd.iast.json` has the same event. | `integration` | S8 | S6 unit tests |
@@ -1766,7 +1859,7 @@ Rules:
 | AC-F14 | **SQL sanitizers** (decision 13, section 1.3.6). (1) Correct uses: a tainted value through `pq.QuoteLiteral`, `pq.QuoteIdentifier`, `pq.BufferQuoteIdentifier`, `pgx.Identifier.Sanitize`, or `(*pgconn.PgConn).EscapeString` inside quotes, then copied into a query (`+`, `fmt.Sprintf`, `strings.Builder`): **no** finding. (2) **Ignored result:** the code calls `EscapeString(v)`, ignores the result, and puts the raw `v` in the query: a finding, for a `v` with a quote and for a `v` with none (then `EscapeString` returns `v` itself). (3) Equal text: the raw value is equal to an earlier sanitized output of the same request: a finding. (4) A query with the raw value and its sanitized copy: one finding, on the raw part only; the sanitized part has `secure_marks: [SQL_INJECTION]`. (5) Positive control: the same value with no sanitizer gives a finding. The sanitizer wrappers add no allocation when taint tracking is off. | `integration` | S16 | S9 |
 | AC-F15 | **One owner for each incoming request** (section 1.3.1). Each case checks the sources and the findings of every span: a server span with an inferred proxy parent; a server span with a remote parent (trace headers); 2 requests under one local parent span (a client and a server in the same process); a request that is sampled out next to a sampled one; **a new request that inherits the context of an analyzed request** (built with `http.NewRequestWithContext(r.Context(), …)` and served by another traced handler in the same process): it gets its own owner (or none when sampled out), never the inherited one; and **the same request through a nested traced handler** (`r.WithContext`, `r.Clone`): it keeps its owner. No span gets a source of another request. | `integration` | S8 | S5 |
 | AC-F16 | **The same value from 2 sources of one request** (Romain's change request). `GET /users/42?id=42` on a `net/http` `ServeMux` with the pattern `/users/{id}`. Sink 1 uses `r.PathValue("id")`: its finding names the source `http.request.path.parameter` `id`. Sink 2 uses `r.URL.Query().Get("id")`: its finding names `http.request.parameter` `id`. Sink 3 concatenates both: its `valueParts` have 2 tainted parts with 2 different sources. The same with values that pass through `fmt.Sprintf` and `strings.ToUpper` (the origins stay). | `integration` | S9 | S8 |
-| AC-F17 | **Replace functions and templates** (section 1.5.2). A query built with `strings.ReplaceAll("SELECT * FROM t WHERE a = '{A}' AND b = '{B}'", "{A}", a)` and then `"{B}"` with `b`, where `a` is a query parameter and `b` a header: the finding has 2 tainted parts, each with its correct source, and the constant parts are clean. The same with `strings.Replace` (`n = 1`), with `bytes.ReplaceAll` and `bytes.Replace` (the mapped wrapper), with a tainted template and a constant `new`, and with an empty `old`. `strings.Replace` with no match returns its input, and its ranges do not change. `strings.ReplaceAll(v, "'", "''")` still reports (a custom escaper, section 8.3). `strings.Title` of a tainted value: the unchanged letters keep their source, the changed letters are unknown. `text/template` and `html/template` that execute into a `strings.Builder` and a `bytes.Buffer` with a tainted value: exact ranges; into a writer of the application: no taint (the copy gap). | `integration` | S9 | S8 |
+| AC-F17 | **Replace functions and templates** (section 1.5.2). A query built with `strings.ReplaceAll("SELECT * FROM t WHERE a = '{A}' AND b = '{B}'", "{A}", a)` and then `"{B}"` with `b`, where `a` is a query parameter and `b` a header: the finding has 2 tainted parts, each with its correct source, and the constant parts are clean. The same with `strings.Replace` (`n = 1`), with `bytes.ReplaceAll` and `bytes.Replace` (the mapped wrapper), with a tainted template and a constant `new`, and with an empty `old`. `strings.Replace` with no match returns its input, and its ranges do not change. `strings.ReplaceAll(v, "'", "''")` still reports (a custom escaper, section 8.3). `strings.Title` of a tainted value: the prefix that Go copied before the first change keeps its source, and the other runes are unknown (a documented gap). `bytes.Replace` edge cases: no match and `n = 0` (a fresh copy with exact ranges), an empty `old` at UTF-8 boundaries, a rescan that reaches the scan budget (the rest is unknown), and `bytes.ReplaceAll(xx, x, ab)` with a labelled `ab`: `abab` has 2 separate ranges that point to the same snapshot, and a sink trusts both. `text/template` and `html/template` that execute into a `strings.Builder` and a `bytes.Buffer` with a tainted value: exact ranges; into a writer of the application: no taint (the copy gap). | `integration` | S9 | S8 |
 
 ### 4.2 Criteria from the PR #51 findings (C8 to C15, H1 to H5)
 
@@ -1798,7 +1891,7 @@ them, section 10.1, item 9):
 | AC-R-H18 | Sampled-out requests fill the annotation store | A controllable sampler and capacity (2 slots): sampled requests really compete with sampled-out requests. Sampled-out requests use no owner slot and no annotation slot; sampled requests still report. | `unit` + `integration` | S5 | S2 |
 | AC-R-H20 | The capacity check is not atomic with the insertion | Under 64 concurrent first reports, the annotation store never holds more entries than its capacity. | `unit` (`-race`) | S2 | – |
 | AC-R-H26 | The report path does its expensive work before its gates | A counter of evidence builds: with a quota of 2, 40 tainted sink calls give at most 2 builds. | `unit` | S6 | – |
-| AC-R-H27 | Woven wrappers allocate when IAST is off | For each hooked runtime function and each standard library wrapper: allocations and bytes of the woven build (Off, Armed, Live with clean inputs) are equal to a matched **unwoven** baseline (`testing.AllocsPerRun` and the benchmark; some operations allocate by nature). **Escape analysis** (Romain's decision, rule 9 of section 1.5.3): the escape decisions of the compiler (`-gcflags=-m=2`) for the hooked packages and the benchmark programs show no new "escapes to heap" or "moved to heap" line in the woven build, except the lines of the list of accepted escapes; for each accepted escape, the list gives its reason and its measured extra allocations and bytes against the unwoven build, and the test checks these numbers. A negative control: a test hook that passes a pointer to a function with no body makes the check fail. | `unit` (woven) | S12 | S4 (runtime lowerings), S9 (text wrappers) |
+| AC-R-H27 | Woven wrappers allocate when IAST is off | For each hooked runtime function and each standard library wrapper, with the woven build (Off, Armed, Live with clean inputs) and a matched **unwoven** baseline: **the woven build passes when it equals the baseline plus the approved, measured deltas.** (1) Allocations and bytes for each operation (`testing.AllocsPerRun` and the benchmark; some operations allocate by nature). (2) Escape analysis (Romain's decision, rule 9 of section 1.5.3): the escape decisions of the compiler, built with `-gcflags=all=-m=2` (so that the hooked dependencies are compiled with the flag too), for the hooked packages and the benchmark programs; a new "escapes to heap" or "moved to heap" line fails, unless it is in the approved list. Each approved delta has its reason and its measured extra allocations and bytes, and the test checks these numbers. A negative control: a test hook that passes a pointer to a function with no body and no `//go:noescape` makes the check fail. | `unit` (woven) | S12 | S4 (runtime lowerings), S9 (text wrappers) |
 | AC-R-H15 | A tainted `Cmd.Path` that differs from `Args[0]` is not inspected | It reports. | `integration` | S7 | – |
 | AC-R-C4C5 | AST rewriting changes semantics | `len([1]string{a+b})` does not evaluate its operand, and `s[:1e3]` compiles and behaves as in an unwoven build. | `integration` | S4 | – |
 
@@ -1809,6 +1902,7 @@ them, section 10.1, item 9):
 | AC-J1 | **The matrix test.** Rows: `json.NewDecoder(r.Body).Decode`; `io.ReadAll` + `json.Unmarshal`; `http.MaxBytesReader`; `bufio.NewReader`; `io.TeeReader`; `io.MultiReader`; `gzip.NewReader`; one decoder reused for several documents. Columns: `net/http` `ServeMux` with the dd-trace-go `net/http` integration; a chi router with only the chi middleware; `github.com/go-chi/render` `DecodeJSON`. JSON modes: v1 on go1.26, v2 on go1.27, v1 on go1.27 with `nojsonv2`. **Each scenario has 3 required checks:** a positive control in the same binary (a query parameter gives a finding), a clean negative, and an owner check with 2 concurrent requests A and B (distinct content, partly equal content, an `io.MultiReader` that mixes A's and B's bodies, read-ahead, a pooled buffer with a clean overwrite, **one escaped JSON string split across A's and B's bodies**, the same split where A is **sampled out** (A's bytes have no taint and no owner), and a token of B with one byte that an unhooked copy wrote (no origin); in these 3 cases the value must have no taint). The payloads of both spans are checked: neither span may contain the marker string of the other request. Each cell result is "detected" or "safe miss", and is kept in a golden file. **A false positive or a cross-request disclosure fails the test; it is never a golden update.** | `integration` | S10 | S8 |
 | AC-J2 | **Baseline published.** The S10 results (with the runtime hooks, the text wrappers, the body source and `io.ReadAll`, before the JSON and `bufio` wrappers) are a table in `_docs/` and in the S10 description, before the JSON hooks are final. With it, the Planner proposes the list of **supported patterns** (the cells that must be "detected" at the end of S12). | `doc` | S10 | – |
 | AC-J3 | **Supported patterns approved.** Romain approves (or changes) the list of supported patterns. The approval is recorded in the S12 plan. | `doc` | S12 | AC-J2 |
+| AC-J4 | **JSON on memory that the application can write** (sections 1.2.7 and 1.3.5). Each case runs with the JSON switch on A and on C. (1) **Identical-byte overwrite:** request B reads its body with `io.ReadAll`; an unhooked `copy` writes into half of a JSON string of that buffer exactly the same bytes, taken from a value of request A; `json.Unmarshal`: with A, the string is tainted with B's source, and it is byte for byte what B sent; with C, it is not tainted. (2) **A `bytes.Buffer` changed through `Bytes()` before a JSON v2 decode:** the body is written into a `bytes.Buffer` (hooked); the application changes some bytes of a JSON string through `bb.Bytes()`; then `json.NewDecoder(bb).Decode` on go1.27 (JSON v2, which takes the memory with `bb.Next`): with **different** bytes, the string is not tainted (A and C); with the **same** bytes, tainted with A, not tainted with C. (3) `json.NewDecoder(r.Body).Decode`: tainted with A and with C (a private decoder buffer). (4) `string(body)` after `io.ReadAll`, then a decoder on `strings.NewReader` of that string: tainted with A; not tainted with C (the "exposed path" bit). (5) A slice that `jsontext.Decoder.ReadValue` returns makes the decoder buffer exposed. | `integration` | S12 | S10 |
 | AC-J4 | **Final matrix.** Every approved pattern is "detected" in every column and JSON mode; all other cells are "safe miss"; no false positive and no cross-request disclosure. The S12 delta against the S10 baseline is published. | `integration` | S12 | AC-J3 |
 
 ### 4.4 Platform and toolchain criteria
@@ -1839,11 +1933,11 @@ them, section 10.1, item 9):
 | AC-S4 | **Taint memory and no waiting.** The peak of mapped memory (entry tables and records) is at most `DD_IAST_TAINT_MEMORY_LIMIT` and is charged to `OtherSys`. Records of dead objects are reused (a test taints, frees and taints again many objects, and the mapped memory does not grow). With the refiller paused (test knob) and the ready list and the free list empty, `Set` returns false at once (it does not wait and does not call `mmap`), the drop counter grows, and the refiller maps a slab after it is resumed. **Lost capacity:** with a full retirement queue (test knob) and with an operation on a P index above the maximum (test knob), entries are still cleared (no old label stays), and telemetry reports the lost capacity as a separate number from the live memory (tables, records in use, snapshot areas). | `unit` (woven) | S3 | – |
 | AC-S5 | **Hostile input.** No panic, bounded work: 10 000 query parameters, 1 000 headers, invalid UTF-8, a 1 GiB streamed body, a 64 KiB SQL query full of quotes and comments. | `unit` (fuzz) + `integration` | S8 | S6 fuzz |
 | AC-S6 | **Unsafe contexts.** Runtime hooks on g0, on the signal stack, with a lock held, or in `mallocgc` take the original path. | `unit` (woven) | S4 | – |
-| AC-S7 | **GC and memory reuse.** The test proves that reuse happened (equal addresses). Default build: sweep reuse for 10 sizes from 8 B to 1 MiB, 2 000 objects each. A woven job with `GOEXPERIMENT=runtimefreegc`: a `freegc` that really frees clears the slot; a `freegc` that **refuses** (a small size) clears nothing, and a tainted neighbour in the same span keeps its ranges. Finalizers: a tiny block with a finalizer at an **interior** offset that revives it keeps the ranges of every object in the block (the clear hook in `countAlloc` sees the mark bit that the sweep set). Many cleanups on one live object: the object keeps its ranges, and a dead neighbour is cleared (see AC-S12 for the cost). A span whose objects all die and whose `mspan` struct is reused: the sweeper detaches its table, and the next span starts clean; a forced stale table (test knob) is treated as clean by readers and writers, then reset by the next sweep. An object larger than 4 GiB − 1 is refused by `Set` and `Copy`. Reads (`Any`, `Ranges`) on stack, static, manual-span and user-arena memory return clean and touch no table. A stack buffer is refused with `maymorestack=mayMoreStackMove`. A random model test: no missed live range, no inherited dead range, every range keeps its origin. Each hook has a negative control that proves the test can fail. | `unit` (woven) | S3 | – |
+| AC-S7 | **GC and memory reuse.** The test proves that reuse happened (equal addresses). Default build: sweep reuse for 10 sizes from 8 B to 1 MiB, 2 000 objects each. A woven job with `GOEXPERIMENT=runtimefreegc`: a `freegc` that really frees clears the slot; a `freegc` that **refuses** (a small size) clears nothing, and a tainted neighbour in the same span keeps its ranges. Finalizers: a tiny block with a finalizer at an **interior** offset that revives it keeps the ranges of every object in the block (the clear hook in `countAlloc` sees the mark bit that the sweep set). Many cleanups on one live object: the object keeps its ranges, and a dead neighbour is cleared (see AC-S12 for the cost). A span whose objects all die and whose `mspan` struct is reused: the sweeper detaches its table, and the next span starts clean; a forced stale table (test knob) is treated as clean by readers and writers, then reset by the next sweep. An object larger than 4 GiB − 1 is refused by `Set` and `Copy`. Reads (`Any`, `Ranges`) on stack, static, manual-span and user-arena memory return clean and touch no table. A stack buffer is refused with `maymorestack=mayMoreStackMove`. **Inline mark bits (Green Tea GC, the default in go1.26 and go1.27):** small objects in spans that use inline mark bits, with live and dead tainted objects in one span: the live objects keep their ranges and the dead ones are cleared (the clear hook reads `s.gcmarkBits`, which `moveInlineMarks` filled, not `markBitsForIndex`, which reads the inline bits that were already reset); the same test in a job with `GOEXPERIMENT=nogreenteagc`. A random model test: no missed live range, no inherited dead range, every range keeps its origin. Each hook has a negative control that proves the test can fail. | `unit` (woven) | S3 | – |
 | AC-S8 | **Telemetry counters** for: dropped taint (budget, `Set` refused, owner full, no owner found), executed sources and sinks, tainted requests, circuit breaker trips. | `unit` | S8 | S3, S5 |
 | AC-S9 | **Registry bounds.** Owner copies are at most 64 KiB for each owner; source values are truncated to `DD_IAST_TRUNCATION_MAX_VALUE` characters; at most 256 source records. Past a bound, new sources get the unknown origin (deterministic counters). Drop, never block. | `unit` | S5 | – |
 | AC-S10 | **Record lifetime under concurrency** (section 1.2.2). Forced interleavings with test knobs: (1) a reader paused in the **middle of a chain** while the chain is replaced, retired and the pool is cycled: no record of the chain is reused before the reader leaves, and it reads the old chain whole; (2) a writer paused before its CAS while its old chain is retired and its record indexes would be reused **more than 256 times** (more than any 8-bit version): no reuse happens before the writer leaves, and its CAS fails cleanly; (3) **two writers on one entry:** writer 1 replaces chain R by S with its CAS and retires R; writer 2, which read R before, fails 4 times and poisons the entry with an exchange: it retires S (what its exchange removed), never R again; the test counts that each chain is retired exactly once, and that no record is in 2 chains after the pool is cycled; (4) **the batch is taken before the scan:** a chain retired after the reclaimer took its batch, and before it scanned the announcements, is not freed in that round, also when the scan finds no active operation; (5) a full retirement queue: the chain is lost for reuse and counted, never reused early, and the entry is cleared; (6) concurrent `Set`, `Copy`, `Clear` and sweeps under load: the free list stays consistent, and every chain is retired once. | `unit` (woven) | S3 | – |
-| AC-S11 | **Labels on storage that is shared or changed** (section 1.2.7). (1) **A destination that already has a label:** a `[]byte` buffer with ranges of request B; an unhooked `copy` writes **other** bytes of request A into it; a sink in B that uses these bytes gives no finding with B's source (the bytes differ from the snapshot: unknown origin), and the report has no source of A. (2) **The same bytes written again:** an unhooked `copy` writes, into a labelled buffer of B, exactly the bytes that B's source gave: the label stays, and the evidence shows only these bytes (the documented effect). (3) **Only the requested slice is compared:** a goroutine writes the second half of a labelled buffer while a sink reads the first half; the first half keeps its source, and the test counts that no byte of the second half was read (race detector clean). (4) **Immutable and private memory:** a `string`, a `strings.Builder` buffer and a `fmt` buffer get no snapshot; an `io.ReadAll` result and `[]byte(s)` get one. With the snapshot area full (test knob), a new label on exposed memory has the unknown origin when it is used. (5) **A failed update:** with the pool empty (test knob), a hooked copy into a labelled destination fails: the entry is poisoned with an exchange; a later sink has no finding from it, and no old source and no old "safe for SQL" mark remains. (6) **One string in 2 live requests:** 2 HTTP/2 requests on one connection send the same indexed header (the same string memory): the range is in the conflict state; neither span names the other's source; the result does not depend on which request labels first (not "last writer wins"). A **third** request on the connection labels it again: it stays in the conflict state. With the pool empty (test knob) when the second request labels it: the object is poisoned, and the first request's label is not trusted (no finding with its source). (7) A label of an ended request is replaced by a new request. | `integration` | S8 | S3, S5 |
+| AC-S11 | **Labels on storage that is shared or changed** (section 1.2.7). (1) **A destination that already has a label:** a `[]byte` buffer with ranges of request B; an unhooked `copy` writes **other** bytes of request A into it; a sink in B that uses these bytes gives no finding with B's source (the bytes differ from the snapshot: unknown origin), and the report has no source of A. (2) **An identical-byte overwrite from another request:** request B reads its body with `io.ReadAll`; an unhooked `copy` writes into half of that buffer exactly the same bytes, taken from a value of request A; then B runs `db.Query("… " + string(body))`. With the ordinary-use switch on A: the finding names B's source, and the evidence shows only these bytes (the documented effect). With C: no finding. (3) **Only the requested slice is compared:** a goroutine writes the second half of a labelled buffer while a sink reads the first half; the first half keeps its source, and the test counts that no byte of the second half was read (race detector clean). (4) **Memory kinds:** a `string`, a `strings.Builder` buffer and a `fmt` buffer get no snapshot; an `io.ReadAll` result, `[]byte(s)` and a `bytes.Buffer` get one. A private buffer whose slice a hooked API gives to the application becomes exposed, and stays exposed. With the snapshot area full (test knob), a new label on exposed memory has the unknown origin when it is used. The tests run with each value of the 2 switches. (5) **A failed update:** with the pool empty (test knob), a hooked copy into a labelled destination fails: the entry is poisoned with an exchange; a later sink has no finding from it, and no old source and no old "safe for SQL" mark remains. (6) **One string in 2 live requests:** 2 HTTP/2 requests on one connection send the same indexed header (the same string memory): the range is in the conflict state; neither span names the other's source; the result does not depend on which request labels first (not "last writer wins"). A **third** request on the connection labels it again: it stays in the conflict state. With the pool empty (test knob) when the second request labels it: the object is poisoned, and the first request's label is not trusted (no finding with its source). (7) A label of an ended request is replaced by a new request. | `integration` | S8 | S3, S5 |
 | AC-S12 | **Bounded runtime work** (sections 1.2.1, 1.2.2, 1.2.3, 1.2.7). The clear hook in the sweep does no free-list push and no retry loop (a test counts the operations for a span with 1 024 dead tainted objects). **One slot with many cleanups:** an object with 10 000 `runtime.AddCleanup` records and a tainted neighbour in the same span: the work of the clear hook for that span is the same as with no cleanup (counted operations), the dead neighbour is cleared, and the live object keeps its ranges. The writers never send on a channel: the refill signal is an atomic flag. The rescans of the mapped transforms and the snapshot comparisons stop at the scan budget (an input of 1 MiB with variable-width escapes): the rest of the output has the unknown origin. | `unit` (woven) | S9 | S3 |
 
 ### 4.6 Benchmark report
@@ -1936,7 +2030,7 @@ one closing PR.
 | S6 | The fuzz command and its duration for C9 and C10 in the PR; the fuzz oracle does not reuse the code under test; both transports inspected; C11 content-independence test. |
 | S7 | Location of the report with both tools (otelc location difference, section 3.3); one report for each public SQL call; C8 init-time test with the original crypto initializers. |
 | S8 | C12 (changes against unwoven), C13 (re-parse after one parse), H3 (asserted buffer reuse, both spans); HTTP/1 and TLS HTTP/2 fixtures; the HTTP/2 receiver for each Go minor in the manifest; `io.ReadAll` multi-chunk; no new requirement in the root `go.mod`. |
-| S9 | Inlining report of the hooked functions; the escape-analysis golden of the text wrappers; `%T`, `%p`, a constant `String()` and `%v` of a `[]byte` are clean; `fmtQ` and `fmtSbx` output is mapped; the `url` alias is not widened; only proven contributors name a source; `strings.Map` keeps only proven copies, and its identity map changes nothing; `strings.ReplaceAll` and `bytes.ReplaceAll` give exact parts; `Replacer` output is unknown; application callbacks run once; application panics reach the caller; the layout check disables a wrapper. |
+| S9 | Inlining report of the hooked functions; the escape-analysis golden of the text wrappers; `%T`, `%p`, a constant `String()` and `%v` of a `[]byte` are clean; `fmtQ` and `fmtSbx` output is mapped; the `url` alias is not widened; only proven contributors name a source; `strings.Map` keeps only the identity alias and the copied prefix, and the runes that the callback returned are unknown (the equal-rune case included), except for the known transforms; `strings.ReplaceAll` and `bytes.ReplaceAll` give exact parts; `Replacer` output is unknown; application callbacks run once; application panics reach the caller; the layout check disables a wrapper. |
 | S10 | Each expected cell has a one-line reason in the golden file; each scenario has its positive control, clean negative and owner check; no false positive is accepted as a result. |
 | S11 | No chi import in the root module; chi-only middleware fixture; tie rule (`path.parameter` wins over `path`). |
 | S12 | JSON v1 and v2 variant selection on go1.26 and go1.27; peak memory of a woven go1.27 build (lesson of #51 C1); the matrix delta against S10; the approved list of supported patterns; the JSON token rule (one request for the whole token); the split escaped string gives a safe miss; woven-against-unwoven comparison of each wrapper. |
@@ -2021,7 +2115,7 @@ column. This is checked with a script on this document (section 12).
 | S6 | `feat(iast): build tainted evidence with SQL and command redaction` | Evidence builder (its input type is defined here, so it does not wait for S5); SQL redaction on `go-sqllexer` dialects with fail closed; content-independent redacted representation; command redaction; sensitive sources; `secure_marks` in value parts; report path with cheap gates first | S2 | Unit, property and fuzz tests | AC-F12, AC-F13, AC-R-C9, AC-R-C10, AC-R-C11, AC-R-H26 |
 | S7 | `feat(iast): detect SQL and command injection at database/sql and os/exec` | The 9 SQL hook points and `(*Cmd).Start` (section 1.7), both tools; `Cmd.Path` and `Args`; owner lookup (section 1.3.2); marks at SQL sinks; probe mode and the probe SQL driver for the self-test; report location with both tools; init-time safety; sentinel: sink → report | S4, S5, S6 | Integration tests with the test source API | AC-F4, AC-F5, AC-R-C8, AC-R-H15 |
 | S8 | `feat(iast): taint net/http request data` | Sources of section 1.6 except multipart and chi; body `Read` hooks for HTTP/1 and for the HTTP/2 receiver of each Go minor, with the body origin; the accessors that set specific origins; the `io.ReadAll` wrapper (offset records with origins, no kept buffer); first end-to-end SQLi and CMDi with HTTP/1 and TLS HTTP/2 fixtures, both tools; owner binding tests; README env var rows; sentinel: HTTP request → SQL finding | S7 | End-to-end integration tests | AC-F1, AC-F6, AC-F10, AC-F15, AC-R-C12, AC-R-C13, AC-R-H3, AC-S1, AC-S2, AC-S5, AC-S8, AC-S11 |
-| S9 | `feat(iast): propagate taint through strings, bytes, fmt, strconv and net/url` | P0 text wrappers of section 1.5 (`fmt`, `strings`, `bytes`, `strconv`, `net/url`), with exact copies, mapped transforms, the mapped wrapper of `bytes.Replace`, the observer of `strings.Map` and `bytes.Map` (only proven copies keep an origin), the unknown origin for `Replacer`, the sensitive bit, and the scan budget (section 1.5.2); the escape-analysis check (rule 9 of section 1.5.3); layout check and supported-minor list; self-test of the wrappers; drift goldens; sentinel: `fmt.Sprintf` | S8 | Integration tests with the test source API, real sources and real sinks | AC-F7, AC-F9, AC-F16, AC-F17, AC-R-H1, AC-R-H2, AC-S3, AC-S12, AC-P13 |
+| S9 | `feat(iast): propagate taint through strings, bytes, fmt, strconv and net/url` | P0 text wrappers of section 1.5 (`fmt`, `strings`, `bytes`, `strconv`, `net/url`), with exact copies, mapped transforms, the mapped wrapper of `bytes.Replace`, the observer of `strings.Map` and `bytes.Map` (only the identity alias and the copied prefix keep an origin; the known transforms by code pointer), the unknown origin for `Replacer`, the sensitive bit, and the scan budget (section 1.5.2); the escape-analysis check (rule 9 of section 1.5.3); layout check and supported-minor list; self-test of the wrappers; drift goldens; sentinel: `fmt.Sprintf` | S8 | Integration tests with the test source API, real sources and real sinks | AC-F7, AC-F9, AC-F16, AC-F17, AC-R-H1, AC-R-H2, AC-S3, AC-S12, AC-P13 |
 | S10 | `test(iast): add the JSON coverage matrix` | The matrix of AC-J1, with its golden file and its generated table in `_docs/`; the proposed list of supported patterns. It measures the result **before** the JSON and `bufio` wrappers of S12. | S9 | The matrix test itself | AC-J1, AC-J2 |
 | S11 | `feat(iast): taint chi route parameters` | chi records (origin `http.request.path.parameter`); a chi-only middleware fixture; a chi router inside a traced `net/http` server; no chi import in the root module | S8 | End-to-end test with a chi router | AC-F2 |
 | S16 | `feat(iast): recognize the SQL sanitizers of lib/pq and pgx` | Wrappers of the sanitizers of section 1.3.6 (no import of the drivers in the root module): the `SQL_INJECTION` mark on the ranges of a distinct, successful output (copies keep it); test fixtures with both drivers | S9 | Integration tests with the drivers and a fake SQL server or driver | AC-F14 |
@@ -2182,9 +2276,12 @@ limits.
 11. Objects larger than 4 GiB − 1 are never tainted.
 12. Labels on exposed memory (section 1.2.7) past the snapshot area of a
     request (64 KiB) have the unknown origin when they are used.
-13. `strings.Map`, `bytes.Map` and `strings.Title`: an output rune that the
-    mapping function changed has the unknown origin (only proven copies keep
-    their source, section 1.5.2).
+13. `strings.Map`, `bytes.Map`, `strings.Title` and `bytes.Title`: every
+    rune that the mapping function returned has the unknown origin (no
+    finding from it), also when it is equal to the input rune. Only the input
+    string that Go returns unchanged, and the prefix that Go copies before the
+    first change, keep their source. The known transforms `unicode.ToUpper`,
+    `ToLower` and `ToTitle` are the exception (section 1.5.2).
 14. `text/template` and `html/template` that write to a writer of the
     application (not a `strings.Builder` or a `bytes.Buffer`): the copy gap of
     item 1.
@@ -2382,10 +2479,11 @@ another part of this document to be understood.
      `a+b`, and `s[:1e3]` still compiles.
    - The rule for the allocation test: the hooks add calls across packages,
      and such calls can make the compiler move some values to the heap. The
-     hooks avoid new escapes where possible (addresses passed as `uintptr`,
-     `//go:noescape`, small prologues). Where an escape cannot be avoided, it
-     is in a list with its reason, and its cost is measured against an
-     unwoven build (rule 9 of section 1.5.3, criterion AC-R-H27).
+     hooks avoid new escapes where possible (`//go:noescape` on audited
+     functions that never keep the pointer, small prologues). The check passes
+     on "the unwoven baseline plus the approved, measured deltas": each
+     remaining escape is in a list with its reason and its cost, measured
+     against an unwoven build (rule 9 of section 1.5.3, criterion AC-R-H27).
    - For users: each test protects against a defect that the review found;
      each remaining allocation is documented with its cost.
 10. **Taint memory is reused, but not given back to the system in v0.**
@@ -2411,58 +2509,69 @@ another part of this document to be understood.
 
 ### 10.2 Decisions that are still open
 
-The design is written for the recommended option. For each other option, the
-item says what changes.
+The design is written for the recommended answers. The other answer is a small
+switch (section 1.2.7).
 
-1. **Labels on `[]byte` buffers that the application can change.**
-   - The problem: Go code can change the bytes of a `[]byte` with no hooked
-     function (`buf[i] = c`, or `copy`, which the compiler makes a plain
-     memory copy). The old taint label then stays on bytes that now hold other
-     data, possibly of another request. Strings do not have this problem: Go
-     code cannot change the bytes of a string.
-   - **a. Snapshot at a trusted write (recommended, and written in the
-     design, section 1.2.7).** When a hook labels bytes that the application
-     can write, it keeps a copy of these bytes in the memory of the request.
-     Before the label is used, the bytes of the part that is used are compared
-     with the copy. Equal: the label is used. Different: the origin is
-     "unknown", which never makes a finding. Buffers that only the standard
-     library can write (`strings.Builder`, `fmt`, the JSON decoders) need no
-     copy.
-     - Findings: every value that the application did not change after the
-       hooked write. Past 64 KiB of copies in one request, labels on such
-       buffers are "unknown" (fewer findings for very large bodies).
-     - Wrong reports: only when the application writes, with no hook,
-       exactly the bytes that the labelled source gave. The report then
-       names that source for these bytes, and shows only these bytes. Data
-       of another request that is different never appears.
-     - Cost: up to 64 KiB of memory for each analyzed request (in the
-       64 MiB limit), and a byte comparison when a label is used (at most
-       64 KiB for each operation).
-   - **b. A 32-bit checksum (the v6 design).** The hook stores a checksum of
-     the labelled bytes, and checks it before the label is used.
-     - Findings: the same as a.
-     - Wrong reports: the same as a, and also a checksum collision (about 1
-       time in 4 billion changed ranges), where the bytes can be any data,
-       for example data of another request. The checksum covers the whole
-       labelled range, so it reads bytes outside the part that is used,
-       which another goroutine can be writing at that moment (a false
-       "changed", so a miss).
-     - Cost: 4 bytes for each range, no copies.
-   - **c. Observed writes only.** A label is used only in strings and in the
-     buffers that only the standard library can write. Labels on all other
-     `[]byte` buffers are "unknown".
-     - Findings: many misses. `string(body)` after `io.ReadAll`, and
-       `json.Unmarshal(body, &v)`, give no finding.
-     - Wrong reports: none from buffers that the application changes.
-     - Cost: the lowest.
-   - If Romain picks b: section 1.2.7 uses a checksum in place of the
-     snapshot (the range keeps 32 bits of checksum), and the snapshot areas
-     are removed from section 3.6. If Romain picks c: section 1.2.7 keeps
-     only immutable and private memory; criterion AC-J1 marks the
-     `io.ReadAll` rows as "safe miss".
-   - For users: with a, a value from a request body reports when the
-     application did not change it; a buffer that the application reused
-     with different data gives no finding, never a wrong one.
+1. **When is a taint label on a `[]byte` buffer that the application can
+   change trusted?** It has 2 parts: 4a (ordinary sinks) and 4b (JSON).
+   - **The problem.** The application owns some `[]byte` buffers. The main
+     example is `body, _ := io.ReadAll(r.Body)`. The hooks label these bytes
+     with their source (the request body). The application can then change
+     the bytes with plain writes or with `copy`, and the hooks do not see
+     that. So when the buffer is used later, its label can be out of date.
+     Strings, and the buffers that only the standard library writes
+     (`strings.Builder`, `fmt`, a JSON decoder's own buffer), do not have this
+     problem.
+   - **A. Snapshot.**
+     - When a hook labels the buffer, it keeps a copy of the labelled bytes:
+       at most 64 KiB for each request, inside the 64 MiB taint memory limit.
+       When the buffer is used, the label is trusted only when the bytes of
+       the part that is used are still equal to the copy. Else the bytes are
+       "unknown", which gives no finding.
+     - Findings: the common case works. The application reads the body, then
+       uses it unchanged, for example `db.Query("… " + string(body))`.
+     - Risk: the application overwrites the bytes, with no hook, with
+       **exactly the same bytes** taken from another source (for example
+       another request). Then the report names the old source. The text in the
+       report is still exactly what this request sent, so no other data is
+       shown.
+     - Cost: one copy when the label is set, and one comparison when it is
+       used. When the 64 KiB of a request are used, or the memory limit is
+       reached, a new label is "unknown" (no finding); it is never trusted
+       without a copy.
+   - **C. Observed writes only.**
+     - A label is trusted only when every write to the buffer went through the
+       hooks, and the application never held the buffer in a form that it
+       could write.
+     - Findings: `io.ReadAll` followed by a use gives **no finding**, because
+       the application held the buffer in between. This misses a common
+       pattern.
+     - Risk: no out-of-date label. Cost: the lowest (no copies).
+   - **4a. Ordinary sinks** (a SQL query or a command built from the buffer).
+     **Recommended: A.** The `io.ReadAll`-then-use pattern is common. The
+     remaining risk needs an overwrite with identical bytes, which is rare,
+     and the report then shows only this request's own text.
+   - **4b. JSON decoded from such a buffer** (`io.ReadAll` +
+     `json.Unmarshal`, a very common pattern). Romain's decision (section
+     10.1, item 8) says: a JSON string with bytes from 2 requests gives no
+     finding. Only C fully guarantees this, because A cannot tell identical
+     bytes from 2 requests apart. But C gives **no finding at all** for
+     `io.ReadAll` + `json.Unmarshal`. **Recommended: A.** It keeps the common
+     pattern. In the case that it cannot detect, the decoded string is byte
+     for byte what this request sent, so the report shows no other user's
+     data, which is the goal of that decision.
+   - Not affected: `json.NewDecoder(r.Body).Decode(&v)`. The application
+     never holds the decoder's buffer, so both options give a finding.
+   - What changes with each answer: one switch for each part (section 1.2.7).
+     With C for 4b, a JSON token in a buffer that the application could
+     write, or whose bytes went through such a buffer (for example
+     `string(body)` and then a decoder on that string), is not tainted. With
+     C for both, no copy is taken. The tests of criteria AC-S11 and AC-J4 run
+     with both values.
+   - For users: with A and A, a value from a request body reports when the
+     application did not change it, also through JSON; a buffer that the
+     application reused with different data gives no finding, never a wrong
+     one.
 
 ### 10.3 The check that Romain asked for: older arm64 CPUs
 
@@ -2608,3 +2717,21 @@ claim was checked in the go1.26.10 and go1.27.4 sources; all were correct.
 | Romain: taint memory | – | Recorded as decided (reused, not given back, 64 MiB limit) | 10.1 |
 | Romain: `strings.Replacer` | Survey of the standard library, 7 modules and 8 web services: rare, mostly escaping | Documented gap (unknown origin) | 1.5.2, 8.1, 10.1 |
 | `strings.Replace` and the other replace functions | `strings.Replace` writes with `(*strings.Builder).WriteString` (`strings/strings.go:1136–1171` in go1.27, `:1138–1173` in go1.26); `bytes.Replace` uses the built-in `copy` (`bytes/bytes.go:1162–1199`, `:1155–1192`); `Title` calls `Map`; `text/template` prints with `fmt.Fprint` (`text/template/exec.go:1107`); `html/template` escapers use a `strings.Builder` (`html/template/html.go:144–176`) | `strings.Replace` and `ReplaceAll`: covered by the `Builder` hooks; `bytes.Replace` and `ReplaceAll`: a new mapped wrapper; `Title`: the `Map` rule; templates: covered through `fmt` and the writers that are hooked. New criterion AC-F17 | 1.5.2, 8.1, AC-F17, 6.2 |
+
+### 12.7 The check of v7, and the changes in v8
+
+Adversarial check of v7: record reuse, bounded sweep work and the quick check
+are resolved. Labels on changeable bytes (blocking) and `strings.Map` (major)
+are not; 4 implementation remarks. Each claim was checked in the go1.26.10 and
+go1.27.4 sources; all were correct.
+
+| Item | Verified evidence | What changed | Sections |
+|---|---|---|---|
+| `strings.Map` | After the first change, Go writes the rune that the callback returned for every later call, also when it is equal to the input rune (`strings/strings.go:513–570` in go1.27, `:532–589` in go1.26); `bytes.Map` never copies input bytes (`bytes/bytes.go:597–611`, `:607–621`) | Only the identity alias and the prefix that Go copied keep their origin; every rune that the callback returned is unknown, except for the known transforms `unicode.ToUpper`, `ToLower` and `ToTitle`, which the wrapper recognizes by the code pointer of the function value. `Title` is now a documented gap. Test of the equal-rune case | 1.5.2, 8.1, AC-F7, AC-F17 |
+| Labels on changeable bytes: the options | Equal bytes prove the content, not who wrote it; the checksum reads bytes outside the slice (a Go data race) | Section 10.2 gives only A (snapshot) and C (observed writes), for ordinary sinks and for JSON separately; the design is written for A in both places, and C is a switch for each use | 1.2.7, 1.3.5, 10.2 |
+| Exposure across aliases and copies | The JSON v2 decoder takes the memory of a `bytes.Buffer` with `bb.Next(bb.Len())` (`encoding/json/jsontext/decode.go:183–190`); `Bytes`, `Next` and `AvailableBuffer` return writable slices (`bytes/buffer.go:60, 66, 358`) | Memory kinds are per object; only the wrapper that allocated a buffer can make it private; exposed is absorbing; an "exposed path" bit on ranges follows every later copy, so the JSON switch on C can see it | 1.2, 1.2.7, 1.3.5 |
+| Snapshot budget, slice reads, merged ranges | – | A new range with no snapshot is unknown (no fallback); only the requested slice is read; 2 ranges are merged only when their snapshots are contiguous (`bytes.ReplaceAll(xx, x, ab)`) | 1.2.7, 3.6, AC-F17 |
+| Tests of the 2 cases | – | An identical-byte overwrite from another request in an `io.ReadAll` buffer (AC-S11 for sinks, AC-J4 for JSON); a `bytes.Buffer` changed through `Bytes()` before a JSON v2 decode (AC-J4). Each test runs with both values of its switch | 4 |
+| Sweep clear and Green Tea | `markBitsForIndex` reads the inline mark bits of small-object spans (`runtime/mgcmark_greenteagc.go:228–236`), which `moveInlineMarks` has reset (`:196–216`) | The clear hook reads `s.gcmarkBits`, as `countAlloc` does; a test with inline mark bits, and a job with `GOEXPERIMENT=nogreenteagc` | 1.2.1, AC-S7 |
+| Escape check | Without `all=`, `-gcflags` applies only to the named packages | Pass rule: "the unwoven baseline plus the approved, measured deltas"; built with `-gcflags=all=-m=2` | 1.5.3, 10.1, AC-R-H27 |
+| Pointers into dd-iast-go | `runtime.KeepAlive` keeps an object alive, not a stack address | Typed pointers until the non-splitting classifier; `//go:noescape` only on an audited list of functions that never keep the pointer | 1.2, 1.5.3, 3.5 |
