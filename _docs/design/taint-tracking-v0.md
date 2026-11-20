@@ -164,11 +164,12 @@ its bitmap; they apply in the same way to range records.
 flowchart TB
   P["value: pointer p, length n"] --> SP["spanOfHeap(p)<br/>mspan + added field: entry table"]
   SP -- "no table: clean" --> CLEAN["not tainted"]
-  SP --> ET["entry table (lazy, 4 KiB)<br/>1 entry (32 bits) for each object slot<br/>+ the base address of the span"]
-  ET -- "objIndex(p)" --> E["entry: record index + generation<br/>0 = object not tainted"]
-  E --> R["range record, 128 bytes<br/>up to 7 ranges, chained up to 64 ranges<br/>range = offset, length, origin, marks"]
+  SP --> ET["entry table (lazy): 4 KiB of entries,<br/>1 entry (32 bits) for each object slot,<br/>+ a 64-byte header (base address of the span)"]
+  ET -- "objIndex(p)" --> E["entry: index of the first record<br/>0 = not tainted, POISON = unknown"]
+  E --> R["range record, 128 bytes<br/>up to 4 ranges, chained up to 64 ranges<br/>range = offset, length, origin, marks, fingerprint"]
   R --> O["origin = owner slot + owner generation + source index<br/>→ source record of the request (section 1.3)"]
-  SW["sweep and freegc hooks"] -- "dead object: entry = 0,<br/>record back to the free list" --> E
+  SW["sweep and addReusableNoscan hooks"] -- "dead slot: entry = 0,<br/>chain to the retirement ring of the P" --> E
+  RING["per-P retirement rings"] --> RC["reclaimer goroutine:<br/>free list, after every reader<br/>and writer has left (epochs)"]
   SLAB["slabs of 1 MiB, mapped ahead of time<br/>by a background goroutine (section 1.2.3)<br/>budget: default 64 MiB, max 1 GiB"] --> ET
   SLAB --> R
 ```
@@ -178,26 +179,28 @@ runtime-side code is woven into the runtime):
 
 | Part | Where | Size | Life |
 |---|---|---|---|
-| Entry table | An added field of `runtime.mspan` points to it. Allocated on the first taint in the span. A span with one object (a large object) uses an added inline field instead. | 4 KiB: the base address of the span it belongs to, and 1 024 entries of 32 bits (24 bits of record index, 8 bits of generation) | Stays attached to its `mspan` struct, which the runtime reuses for later spans (fact 5). Its entries are all 0 when the span is freed (all its objects are dead and cleared). A reader that finds a table whose base address is not the base of the span treats it as empty, and the first writer resets it. |
-| Range record | A slot in a pool of fixed records, carved from slabs | 128 bytes: a header (generation, range count, index of the next record) and up to 7 ranges | One record chain for each tainted object. Freed (back to a lock-free free list, with a new generation) when its object dies, or when a write replaces it. |
-| Range | In a record | 16 bytes: offset in the object (32 bits), length (32 bits), origin (40 bits of owner generation, 6 bits of owner slot, 8 bits of source index), marks (8 bits) | – |
+| Entry table | An added field of `runtime.mspan` points to it. Allocated on the first taint in the span. A span with one object (a large object) uses an added inline entry instead. | 4 KiB of entries (1 024 entries of 32 bits) **plus** a 64-byte header (the base address of the span that it belongs to, and its state); both are counted in the budget | Stays attached to its `mspan` struct, which the runtime reuses for later spans (fact 5). Only the sweeper resets it, while it owns the span alone (section 1.2.2). |
+| Entry | In the table | 32 bits: 0 = not tainted; `POISON` (all bits 1) = the taint of this object is unknown (section 1.2.3); else the index of the first record of the chain | – |
+| Range record | A slot in a pool of fixed records, carved from slabs | 128 bytes: a header (range count, flags, index of the next record) and up to 4 ranges | One record chain for each tainted object. A chain that a write replaced, or whose object died, is **retired**, and it goes back to the pool only after every reader and writer that could use it has left (section 1.2.2). |
+| Range | In a record | 24 bytes: offset in the object (32 bits), length (32 bits), origin (40 bits of owner generation, 6 bits of owner slot, 8 bits of source index, 1 "sensitive" bit), marks (8 bits), fingerprint of the bytes (32 bits, for mutable memory, section 1.2.7) | – |
 
-Bounds: at most 64 ranges for each object (a chain of up to 10 records).
+Bounds: at most 64 ranges for each object (a chain of up to 16 records).
 Adjacent ranges with the same origin and marks are merged. Past 64 ranges, the
 rest of the object is one range with the **unknown** origin: those bytes are
 tainted, but foreign for every request (redacted, and they never make a
-finding alone).
+finding alone). Objects larger than 4 GiB − 1 are refused (`Set` and `Copy`
+return false), so 32-bit offsets and lengths are always enough.
 
 **API:**
 
 | Function | Contract |
 |---|---|
 | `Enabled() bool` | The runtime is woven, the platform is supported, and taint tracking is on. |
-| `Set(p, n, origin) bool` | Taint `[p, p+n)` with `origin`. Returns false (and changes nothing) for stack, static, user-arena or off-heap memory, for a range that is not inside one allocation slot, when the budget is used, when no record is ready, when a concurrent write wins (no wait), or when the gate is Off or Tripped. |
-| `Clear(p, n)` | Remove the ranges of `[p, p+n)`. Never allocates a slab. |
+| `Set(p, n, origin) bool` | Taint `[p, p+n)` with `origin`, in place (a source: the bytes do not change). Returns false (and changes nothing) for stack, static, manual-span, user-arena or off-heap memory, for a range that is not inside one allocation slot, for an object larger than 4 GiB − 1, when the budget is used, when no record is ready, when a concurrent write wins (no wait), or when the gate is Off or Tripped. An existing range of **another live request** is not overwritten (section 1.2.7). |
+| `Clear(p, n)` | Remove the ranges of `[p, p+n)`. |
 | `Any(p, n) bool` | One byte or more is tainted. Safe for any address. |
-| `Ranges(p, n, buf)` | The tainted ranges of `[p, p+n)`, with their origins and marks, into a caller buffer (bounded). |
-| `Copy(dst, src, n) bool` | Make the ranges of `dst` equal to the ranges of `src`, with their origins and marks (like `memmove`, overlap is correct). A clean `src` clears `dst`. |
+| `Ranges(p, n, buf)` | The tainted ranges of `[p, p+n)`, with their origins and marks, into a caller buffer (bounded). For mutable memory, each range whose fingerprint does not match the bytes is returned with the unknown origin (section 1.2.7). |
+| `Copy(dst, src, n) bool` | A hooked copy of bytes: make the ranges of `dst` equal to the ranges of `src`, with their origins and marks (like `memmove`, overlap is correct). A clean `src` clears `dst`. |
 | `Map(dst, src, mapping) bool` | For the hooks that change bytes (section 1.5): give each output byte the origin of the input bytes that the mapping names. |
 
 **Cost on the clean path** (the check that every hook does): `spanOfHeap(p)`
@@ -208,88 +211,137 @@ value (v4 read one bitmap word for each 64 bytes).
 
 **Rules of the runtime side:**
 
-- The entry points take `uintptr` values, so that the checked values do not
-  escape to the heap. The Go wrappers call `runtime.KeepAlive` after the call.
-  A `nosplit` classifier decides "inside one heap allocation slot" or "not
-  heap" before the stack can move.
-- All work is bounded by the range count (at most 64 ranges, 10 records): there
-  is no loop over the length of a value, so no preemption checkpoint is
-  needed.
+- **The "not on the heap" checks apply to every operation, reads included.**
+  The entry points take `uintptr` values, so that the checked values do not
+  escape to the heap; the Go wrappers call `runtime.KeepAlive` after the call.
+  A `nosplit` classifier decides "inside one heap allocation slot of an in-use
+  span" before the stack can move. Stack, static, manual-span (`mSpanManual`)
+  and user-arena memory, and an address in no span, are "not tainted" for
+  `Any` and `Ranges`, and are refused by the writes. The classifier never reads
+  an entry table for them.
+- **Every operation that reads or writes a record chain runs as one
+  "critical section":** preemption is disabled (`acquirem`, as the runtime
+  does for short critical sections), and the operation announces itself in the
+  slot of its P (section 1.2.2). The work in it is bounded: at most 16 records,
+  64 ranges, and the scan budget of section 1.2.7.
 - Entries are read and written with 32-bit atomics. Records are immutable once
   published: a write builds a new record chain, then publishes it with one CAS
-  on the entry (copy-on-write). A reader loads the entry, reads the record,
-  then checks that the generation of the record did not change; on a change,
-  it reads again once, else it treats the object as having the unknown origin.
-- The free list of records is a lock-free stack with a tagged head (index and
-  counter), so a reused record cannot confuse it (no ABA).
+  on the entry (copy-on-write), and retires the old chain.
+- A record is never reused while a reader or a writer that started before its
+  retirement is still in its critical section (section 1.2.2). So a reader can
+  follow a whole chain, and a writer's CAS cannot succeed on an entry whose
+  chain was freed and used again (no ABA, no version number to wrap).
 - The sweep hook does not allocate, does not lock, cannot yield, and has a
-  bounded cost (at most 1 024 entries and their record chains for each span).
-- Objects with a finalizer special are not cleared when they die: the
-  finalizer can make them live again.
+  bounded cost (at most 1 024 entries for each span, and one append to a
+  per-P retirement ring for each dead tainted object).
+- A slot with a finalizer that revives it is not cleared (section 1.2.1).
 - The feature is off in `-asan` and `-msan` builds.
 - **arm64 CPUs without LSE atomics are supported** (section 1.2.6).
 
 #### 1.2.1 Clear-before-reuse points
 
 A freed heap slot can be allocated again only through the paths below. Each
-path clears the entry of the dead object (and frees its record chain)
-**before** the slot can be allocated.
+path clears the entry of the dead slot (and retires its record chain) at the
+point where Go **really** makes the slot reusable, and only then.
 
 | Path | When the slot can be allocated again | Clear point | Notes |
 |---|---|---|---|
-| Sweep of a span of small objects | After `(*sweepLocked).sweep` of that span computes the new free slots | A prologue at the start of `(*sweepLocked).sweep`, when the span has an entry table. At this point the mark bits of the cycle are final, and no slot of the span is free for allocation yet. | A span that is cached in an `mcache` is not swept until it is uncached (`mcache.refill` sets `sweepgen = mheap_.sweepgen + 3`, `runtime/mcache.go:214–216`). Its dead objects are thus cleared by the sweep that runs before the reuse, as for any span. |
-| Sweep of a large-object span | When the sweep frees the span to the heap | Same prologue (the inline entry) | O(1): one record chain to free, whatever the size of the object. |
-| `freegc` (`GOEXPERIMENT=runtimefreegc`) | At once: the slot goes back to the P (`runtime/malloc.go:1913–2025`) | A prologue at the start of `freegc`, before the slot is published | **Off by default** in go1.26 and go1.27 (`internal/goexperiment/exp_runtimefreegc_off.go`). A CI job turns the experiment on (AC-S7). |
-| Objects with a finalizer | The finalizer can make the object live again | The sweep prologue **skips** a dead object that has a `_KindSpecialFinalizer` special | When the revived object dies again with no finalizer, a later sweep clears it. Cleanups (`runtime.AddCleanup`) and weak handles do not revive objects. |
-| User arena chunks (`GOEXPERIMENT=arenas`) | Freed without a sweep | None: `Set` refuses user arena memory | Never tainted. |
-| Stacks, `mSpanManual` spans | Not heap objects | None: `Set` refuses them | Never tainted. Their `mspan` structs can carry an entry table from an earlier heap span: it is all 0, and its base address does not match. |
+| Sweep of a span of small objects | After `(*sweepLocked).sweep` of that span computes the new free slots | A prologue at the start of `(*sweepLocked).sweep`, when the span has an entry table. At this point the mark bits of the cycle are final, and no slot of the span is free for allocation yet. The prologue clears only the slots whose mark bit is not set **and** that no finalizer revives (next rows). | A span that is cached in an `mcache` is not swept until it is uncached (`mcache.refill` sets `sweepgen = mheap_.sweepgen + 3`, `runtime/mcache.go:214–216`). A live typed reference keeps its object marked, so the sweep never clears an object that a wrapper holds. |
+| Sweep of a large-object span | When the sweep frees the span to the heap | Same prologue (the inline entry) | One record chain to retire, whatever the size of the object. |
+| `freegc` (`GOEXPERIMENT=runtimefreegc`) | When `freegc` really gives the slot back: it calls `(*mcache).addReusableNoscan` (`runtime/malloc.go:2011`, its only call site; `runtime/mcache.go:373`) | A prologue at the start of **`(*mcache).addReusableNoscan`**, not of `freegc`. `freegc` can refuse to free and return false (for example `!reusableSize(size)` for small sizes, `runtime/malloc.go:1913–1920`); then nothing is cleared. | **Off by default** in go1.26 and go1.27 (`internal/goexperiment/exp_runtimefreegc_off.go`). A CI job turns the experiment on (criterion AC-S7). A refused free next to a tainted neighbour in the same span keeps both entries. |
+| Finalizers | The sweep marks the **whole slot** live when a finalizer special at **any offset** inside the slot revives it (`runtime/mgcsweep.go:550–568`: "a finalizer can be set for an inner byte of an object"; a tiny block can have finalizers at several offsets) | The sweep prologue uses the same rule: for each unmarked slot, it walks the specials whose offset is inside the slot, and when one is a `_KindSpecialFinalizer`, it does not clear the slot | When the revived objects die again with no finalizer, a later sweep clears the slot. Cleanups (`runtime.AddCleanup`) and weak handles do not revive objects. |
+| User arena chunks (`GOEXPERIMENT=arenas`) | Freed without a sweep | None: `Set` refuses user arena memory, and reads treat it as clean | Never tainted. |
+| Stacks, `mSpanManual` spans | Not heap objects | None: `Set` refuses them, and reads treat them as clean | Never tainted. Their `mspan` structs can carry a detached entry table from an earlier heap span (section 1.2.2). |
 
 The drift test (section 3.1) lists every runtime function that frees or reuses
-heap memory, and every call site of `(*mspan).init`. A new path in a Go
-release fails the test until a human checks it.
+heap memory, every call site of `addReusableNoscan` and of `(*mspan).init`, and
+the finalizer revival loop of the sweep. A new path in a Go release fails the
+test until a human checks it.
 
-#### 1.2.2 Memory lifetime
+#### 1.2.2 Memory lifetime: retirement and reuse
 
-- **Records are recycled.** When an object dies, the sweep returns its record
-  chain to the free list. A record is read only through a live object (every
-  wrapper keeps its object alive), so no legitimate reader can hold a record
-  that the sweep frees. A record that a write replaces (copy-on-write on a
-  live, mutable `[]byte`) can still be read by a concurrent reader: the
-  generation check of the reader detects it (only an application with a data
-  race on that buffer can hit this, and then it gets the unknown origin, not a
-  crash).
-- **Entry tables stay attached to their `mspan` struct** and serve the later
-  spans that reuse it. The number of tables is bounded by the peak number of
-  spans that held taint at the same time, and by the budget.
-- **Slabs are never unmapped** in v0. The peak stays mapped, up to
-  `DD_IAST_TAINT_MEMORY_LIMIT`; below the peak, memory is reused for new taint.
+**Records: no reuse while a reader or a writer can still use them.**
 
-#### 1.2.3 Writes, and never waiting
+1. **Announce.** Every operation that reads or writes a record chain is a
+   critical section with preemption disabled, so it stays on one P from start
+   to end. At its start it stores the current global epoch in the
+   announcement slot of its P; at its end it stores 0. (A fixed array of
+   1 024 slots; an operation on a P with a higher index is dropped.)
+2. **Retire.** A chain that a write replaced, or whose object the sweep
+   cleared, is not pushed to the free list. It is appended, with the current
+   epoch, to the **retirement ring of the P** that retired it. The ring has
+   one producer at a time (that P, in a critical section or in the sweep, both
+   with preemption disabled) and one consumer (the reclaimer below): an append
+   is one store and one atomic increment, with no retry. When the ring is
+   full, the chain is not reused (a "leaked" counter grows; the memory stays
+   in the budget).
+3. **Reclaim.** A background goroutine of `heapranges` (the reclaimer) advances
+   the global epoch, reads the announcement slots, and moves to the free list
+   only the chains that were retired before the oldest epoch that an active
+   operation announced. This is epoch-based reclamation: a chain goes back to
+   the pool only after every reader and writer that could have seen it has
+   left its critical section. The free-list push and its retries happen in
+   this goroutine, off the request path and off the sweep path.
+4. **Effects.** A reader paused in the middle of a chain keeps the chain (and
+   every record of it) alive until it resumes and leaves. A writer paused
+   before its CAS keeps the old chain alive, so the entry cannot come back to
+   the same chain index while it is paused: its CAS cannot succeed on a reused
+   chain. No version number is needed, so none can wrap.
+5. A thread that the operating system stops in a critical section delays
+   reclamation; the budget bounds the effect (writes then drop, they never
+   wait).
 
-1. A write (`Set`, `Copy`, `Map`, `Clear`) reads the current record chain of
-   the destination object, builds the new chain (with the new ranges, merged
-   and bounded), and publishes it with one CAS on the entry. Then it returns
-   the old chain to the free list.
-2. When the CAS fails (another write to the same object won), the write tries
-   again at most 4 times, then drops the operation (the taint is lost, a
-   telemetry counter grows). Two writes to the same object at the same time
-   are rare: a string is written once, when it is made; a `[]byte` buffer is
-   written by one goroutine at a time in a correct application. Neighbours in
-   one tiny-allocator block (section 1.2.4) also share an entry.
-3. The first write in a span allocates its entry table, with a CAS on the
-   added field of the span. A loser of this CAS uses the table of the winner.
+**Entry tables: reset only by the sweeper, while it owns the span alone.**
+
+- Writers never reset a table. A table is valid for a span when its header
+  holds the base address of that span.
+- When the sweep finds that all allocated objects of a span are dead (the span
+  will be freed), the sweep prologue (which owns the span: `sweepLocked`)
+  clears all its entries, then **detaches** the table: it stores 0 in the base
+  address of the header.
+- When a writer finds a detached table (base address 0) on a span, its entries
+  are all 0, so it can attach it with one CAS of the base address from 0 to the
+  base of the span; a loser of this CAS uses the result. No entry is zeroed by
+  a writer.
+- When a writer or a reader finds a table with **another** base address (this
+  needs a free path that the sweep did not see, so it should never happen), it
+  treats the span as clean and drops the write; the next sweep of the span
+  resets the table, while it owns the span.
+
+**Slabs are never unmapped** in v0. The peak stays mapped, up to
+`DD_IAST_TAINT_MEMORY_LIMIT`; below the peak, memory is reused for new taint.
+
+#### 1.2.3 Writes, failures, and never waiting
+
+1. A write (`Set`, `Copy`, `Map`, `Clear`) reads the current chain of the
+   destination object, builds the new chain (with the new ranges, merged and
+   bounded), and publishes it with one CAS on the entry. Then it retires the
+   old chain (section 1.2.2).
+2. **A write that cannot publish never leaves old labels on new bytes.** When
+   the CAS fails 4 times, or no record is ready for the new chain, and the
+   write was a hooked copy or a write of new bytes (the bytes of the object
+   really changed), the write stores `POISON` in the entry with one atomic
+   store (no CAS, no spare record needed) and retires the old chain. A poisoned
+   object has the unknown origin for all its bytes: it is foreign for every
+   request, it never makes a finding, and it has no mark (so no stale
+   "safe for SQL" mark). `POISON` is absorbing: writes keep it, and only the
+   sweep clears it when the object dies. A failed in-place source label (the
+   bytes did not change) only drops the label.
+3. The first write in a span attaches its entry table (section 1.2.2).
 4. **Records and tables come from slabs that are ready before they are
-   needed.** A background goroutine of `heapranges` (started at init when
-   taint tracking is on) keeps up to 2 mapped slabs in a lock-free ready list,
-   within the budget. A writer takes records from the free list, and takes a
-   slab from the ready list with one CAS only when the free list is empty. When
-   both are empty, the writer does **not** wait and does not map: the write
-   returns false (the taint is dropped, a telemetry counter grows), and the
-   writer wakes the refiller with a non-blocking send on a channel of capacity
-   1. The refiller maps a new slab with `syscall.Mmap`, off the request path
-   (`syscall.Mmap` takes a lock on a shared map, `syscall/syscall_unix.go:64–69`).
-   At init, the refiller maps the first slab.
-5. After a successful mapping, the refiller adds the bytes to
+   needed.** The background goroutine of `heapranges` keeps up to 2 mapped
+   slabs in a lock-free ready list, within the budget. A writer takes records
+   from the free list (at most 4 CAS tries), and takes a slab from the ready
+   list with one CAS only when the free list is empty. When both are empty,
+   the writer does **not** wait and does not map: the write fails (rule 2), a
+   telemetry counter grows, and the writer sets an atomic "refill needed"
+   flag (one store; no channel send, which can take a lock,
+   `runtime/chan.go:205–222`).
+5. The background goroutine checks the flag and the ready list on a short
+   period while taint tracking is Live, and maps a new slab with
+   `syscall.Mmap`, off the request path (`syscall.Mmap` takes a lock on a
+   shared map, `syscall/syscall_unix.go:64–69`). At init, it maps the first
+   slab. After a successful mapping, it adds the bytes to
    `memstats.other_sys` and `gcController.mappedReady` (through the
    runtime-side code), so `GOMEMLIMIT` sees them.
 
@@ -367,12 +419,74 @@ that Go's own sweep does not have?
 **Result: the same loops, in the same place.** Go's sweep already runs the
 same retry loops, with preemption disabled, on a word that is more contended
 than an entry of an object (an entry is shared only by the values of one
-object) and as contended as the head of the record free list. The sweep hook adds no new kind of risk. **These CPUs are supported**,
+object). In v6 the sweep hook does no retry loop on a shared word at all: it appends to the retirement ring of its own P (section 1.2.2). The writers add no new kind of risk. **These CPUs are supported**,
 like all other arm64 CPUs.
 
 **Test:** the woven heap range tests also run on the arm64 CI runner with
 `GODEBUG=cpu.atomics=off` (a Go option, `internal/cpu/cpu_arm64.go:21`), which
 forces the retry loops on a CPU that has LSE (criterion AC-P11).
+
+
+
+#### 1.2.7 Labels on storage that is shared or changed
+
+A range label says "these bytes came from this source". It stays true only
+while the bytes do not change, and while no other request uses the same
+memory. Three cases need a rule.
+
+**1. Unhooked writes into mutable memory.** An unhooked `copy` (or a
+byte-by-byte write) can overwrite bytes that already have a label, for
+example of request B, and the label stays.
+
+- Memory is **immutable** when a hook made it as the backing of a `string`
+  (`concatstrings`, `slicebytetostring`, the rune conversions, the source
+  strings of `net/http`): Go code cannot write it without `unsafe`. The record
+  of such an object has an "immutable" flag.
+- For **mutable** memory (every other object: `[]byte` buffers, decoder
+  buffers, `bytes.Buffer`), each range keeps a 32-bit fingerprint of its bytes,
+  computed by the hooked write that set the range.
+- **Before a label on mutable memory is trusted**, the bytes are fingerprinted
+  again and compared: when a hook copies the range into another object, when a
+  JSON producer checks its token (section 1.3.5), and when a sink reads a
+  `[]byte` argument. On a mismatch the bytes changed since the hooked write: the
+  range has the unknown origin (foreign, no finding, no mark).
+- The cost is bounded by the scan budget (below). Past the budget, the rest is
+  not verified, so it has the unknown origin.
+- Residual case: an unhooked write of exactly the same bytes keeps the label.
+  The bytes are then exactly the bytes that the labelled source gave, so the
+  evidence shows no other data.
+
+**2. Buffers that the wrappers manage.** For the buffers that a hooked wrapper
+fills by a delegated `Read` (`bufio.Reader`, the JSON decoder buffers,
+`bytes.Buffer.ReadFrom`, the `io.ReadAll` result), the **read rule** applies:
+before the delegated `Read`, the wrapper saves the ranges of the destination
+(bounded) and clears them; after it, the bytes that the `Read` wrote have only
+the labels that a hooked source set during the call (for example the body
+`Read` hook), and the saved ranges come back only on the bytes that the `Read`
+did not write. So every write into these buffers is accounted for: a hooked
+copy (with its exact ranges) or a delegated read (with only the labels that
+its source set).
+
+**3. One memory range in 2 live requests.** HTTP/2 keeps the header values of
+a connection in a dynamic table, and gives the **same string** to later
+requests on that connection (`vendor/golang.org/x/net/http2/hpack/hpack.go:344–350`,
+then `net/http/internal/http2/server.go:2154` copies the value into each
+request's `Header`). Request A labels it; request B, on the same connection,
+would label the same memory.
+
+- A source label (`Set`, in place) never replaces a range that has a label of
+  **another live request**: the range gets the **conflict** state (unknown
+  origin, foreign for both), not "last writer wins".
+- A label of an **ended** request (its owner generation changed) is replaced.
+- Within one request, a more specific origin replaces a coarse one (section
+  1.6: the path parameter replaces the path).
+- A hooked copy (`Copy`, `Map`) is a real write of new bytes: it always sets
+  the ranges of its source on its destination.
+
+**Scan budget.** Fingerprints and the rescans of the transforms (section
+1.5.2) read bytes; the range count does not bound that work. Each operation has
+a separate budget of 64 KiB of bytes scanned. Past it, the rest of the output
+has the unknown origin (it is never shown with a source).
 
 ### 1.3 The origin registry (external map)
 
