@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | **Draft v3 for review.** Section 12 maps each objection of the 2 adversarial review rounds, and each decision of Romain, to its change. Next: one short check round, then approval by Romain. |
+| Status | **Draft v4 for review.** Section 12 maps each objection of the 3 adversarial review rounds, and each decision of Romain, to its change. Next: approval by Romain. |
 | Lifetime | This document is the contract during the implementation. It is **deleted** when the code is approved and CI is green (decision 15): the last PR of the stack (`S14`) deletes it. |
 | Epic | Multica DD-69, Jira [APPSEC-70732](https://datadoghq.atlassian.net/browse/APPSEC-70732) |
 | Target | The full Definition of done of the epic (decision 10: no scope cut on the basis of time estimates) |
@@ -1288,6 +1288,7 @@ section 1.2 and for "off by default".
 | Heap bits | 1 bit per heap byte, only in 128 KiB chunks that held a tainted byte (12.5 % of these chunks), plus the directories (one chunk each). Chunks are never recycled in v0 (section 1.2.2). | `DD_IAST_TAINT_MEMORY_LIMIT`, default 64 MiB, max 1 GiB (1 024 slab descriptors in the runtime BSS, 16 KiB). Slabs and directories are both in this budget. | `Set` returns false; the source or propagation is dropped; telemetry counter |
 | Added runtime fields | 8 bytes per arena, 1 byte per span | Fixed | – |
 | Owner copies | Source names and values, derived entries, body copy; the work of one sink call is also bounded (section 1.3.3: 64 KiB inspected, 1 MiB compared) | 256 KiB per owner; owners ≤ `DD_IAST_MAX_CONCURRENT_REQUESTS` (default 2, clamped to 64): 512 KiB by default, 16 MiB max | Record dropped; its bytes become foreign |
+| Address provenance | Address ranges (no copy, no reference) of the body fills and of the marked sanitizer outputs, and of their hooked copies | 64 ranges for fills and 64 for marks, for each owner | The oldest range is evicted: its body bytes become foreign (a safe miss); a lost mark can make a finding on a sanitized value (a possible false positive, counted) |
 | Owner table | Fixed records per slot | Allocated on the first sampled request | – |
 | Annotation | Existing `internal/spans` store | `DD_IAST_MAX_CONCURRENT_REQUESTS` | Existing behavior, with the `S2` fixes |
 
@@ -1753,8 +1754,11 @@ limits.
    strings from `(*json.Decoder).Token`.
 6. Decompressed bodies (`compress/gzip` and others): the output bytes are new
    bytes.
-7. A transform whose input mixes bytes of 2 requests, or has tainted bytes of
-   no known request: its output is not tainted (section 1.3.5, a safe miss).
+7. Body bytes: a value is tainted only when every byte that contributes to it
+   has a verified owner, the same request (section 1.3.5). Mixed inputs (2
+   requests, a sampled-out request, an evicted provenance range, application
+   bytes inside a JSON token) and body bytes that an unhooked copy moved are a
+   safe miss.
 8. Byte and rune values: `WriteByte`, `WriteRune`, `string(r)` and the
    1-byte results of `string(b)` (they point into a static array) carry no
    taint.
@@ -1814,7 +1818,12 @@ limits.
 5. The SQL context of a sanitizer: an identifier sanitizer used for a literal
    (or `EscapeString` output used with no quotes) is treated as safe (a
    possible missed finding).
-6. Vulnerability types other than `SQL_INJECTION` and `COMMAND_INJECTION`.
+6. A sanitizer mark moves only with hooked copies, by address. A sanitized
+   value that an unhooked copy moved (for example `copy` in user code) loses
+   its taint too, so it does not report; a mark that its owner evicted (more
+   than 64 marked ranges in one request) can make a finding on a sanitized
+   value (a possible false positive, counted).
+7. Vulnerability types other than `SQL_INJECTION` and `COMMAND_INJECTION`.
 
 ### 8.5 Platforms and toolchains
 
@@ -1927,12 +1936,13 @@ item says what changes.
      the body of the reporting request. Catches more, but can be wrong: A's
      bytes can show in B's report, with B's source.
    - **c. Recorded provenance (recommended, and written in the design):** the
-     body reads record which request supplied each range of bytes; the hooks
-     that move bytes move this record; a hook that changes bytes (for example
-     an unescape) checks that all its input comes from the current request,
-     else the value is not tainted (a safe miss). Never wrong; catches the
-     cases that one request feeds. Costs hooks inside the JSON decoders,
-     which can need updates for new Go versions.
+     body reads record which request supplied each range of bytes (by
+     address); every hooked copy moves this record; a decoded value is tainted
+     only when **every** byte that contributes to it is in a range of the
+     current request, else it is not tainted (a safe miss). Equal text is
+     never accepted as proof. Never wrong; catches the cases that one request
+     feeds. Costs hooks inside the JSON decoders, which can need updates for
+     new Go versions.
    - If Romain picks a: one more check in the hooks that change bytes
      (section 1.3.5).
    - If Romain picks b: the provenance record and its checks are removed
@@ -2047,3 +2057,18 @@ the review was checked in the source; all were correct.
 | Romain's question: older arm64 CPUs | `mgcsweep.go:506–511` (sweep runs with preemption disabled) and `:532` (`pagesSwept.Add`); `atomic_arm64.s:238, 294, 444` (the same retry loops) | Supported: Go's own sweep uses the same loops; a CI job forces them with `GODEBUG=cpu.atomics=off` (AC-P11) | 1.2.6, 3.2, 10.3, T24 |
 | Section 10 | – | Rewritten as self-contained items in plain words | 10 |
 
+
+### 12.3 Round 3, and the changes in v4
+
+Adversarial check round 3: 3 items resolved (regression tests, tool parity,
+PR dependencies), 2 blocking and 3 major items left, 1 minor remark. Each claim
+was checked in the source; all were correct.
+
+| Item | Verified evidence | What changed | Sections |
+|---|---|---|---|
+| JSON ownership | A sampled-out request has no owner, so its bytes have no taint; v3 checked only the tainted bytes and credited the whole string to the other request. An evicted read record left bytes with no provenance, and equal text was accepted. | A value has the body origin only when **every** contributing byte is in an address range of the same request. Provenance moves with hooked copies by address (also the runtime copies, through a callback that runs only when the request has address ranges). Body bytes never match by content. Tests: a string split with a sampled-out request, and an evicted range | 1.3.4, 1.3.5, AC-J1, 8.1 |
+| Request ownership | A new request can inherit the context of another request; otelc applies `add_file` rules also when a function rule misses (`tool/internal/setup/match.go:165–176`) | A handle is reused only for the same incoming request (the address of the `RequestURI` bytes, kept by `WithContext` and `Clone`). The proof that a hook is installed comes from the hook code: a self-test at init with safe probes (probe SQL driver, `Cmd` with no path), and a check at the first server span for the dd-trace-go wrappers | 1.3.1, 1.10.5, AC-F15, AC-P13 |
+| Propagation | An `io.Reader` must not retain `p` (`io/io.go:85`); the v2 cache returns the existing string on equal text (`encoding/json/v2/intern.go:47–53`) | The `io.ReadAll` observer records bounded tainted ranges and owners by output offset, and keeps no buffer. The cache wrapper returns a new string on a bit mismatch and never changes the bits of the cached string; both live strings are tested | 1.5.2, AC-F6, AC-F8 |
+| SQL marks | `EscapeString` returns its input when it has no quote (`pgconn/pgconn.go:2134`, `strings.Replace` returns `s`) | A mark only on a distinct (non-overlapping), successful output, and on its copies by address; never by equal text. Tests: an ignored `EscapeString` result, with and with no quote; equal text; raw and sanitized parts in one query | 1.3.6, AC-F14, 8.4 |
+| Slab allocation | `syscall.Mmap` locks a shared map (`syscall/syscall_unix.go:64–69`) | A background goroutine maps slabs ahead of time into a lock-free ready list; a `Set` with no ready slab returns false at once and wakes the refiller with a non-blocking send | 1.2, 1.2.3, 3.8, AC-S4 |
+| Older arm64 (minor) | A contradictory sentence said that arm64 with no LSE is off | Removed. The positive heap bits tests also run on a `GOARM64=v8.0` build with `GODEBUG=cpu.atomics=off` | 3.2, AC-P5, AC-P11 |
