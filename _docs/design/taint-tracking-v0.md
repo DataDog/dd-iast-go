@@ -53,7 +53,8 @@ PoC code. The stack can change and extend it.
 | Foreign | Tainted bytes that do not match a source of the owner. They are redacted and never make a finding alone. |
 | Gate word | One process-wide `uint32` in the runtime: 0 Armed, 1 Live, 2 Off, 3 Tripped (section 1.2.5). Hooks work only when it is 1. It becomes 1 at the first taint and never goes back to 0 ("sticky"). |
 | Hook | Code that Orchestrion or otelc adds to a function at compile time. |
-| `S1` … `S13` | The PRs of the stack (section 6). Not GitHub PR numbers. |
+| `S1` … `S16`, `X1` | The PRs of the stack (section 6). Names, not GitHub PR numbers, and not an order: the dependency graph of section 6.1 gives the order. `X1` is the PR in the `DataDog/system-tests` repository. |
+| `AC-…` | An acceptance criterion of section 4 (for example `AC-F1`). Each one has a check type and exactly one closing PR. |
 
 ## 0. Summary
 
@@ -272,7 +273,7 @@ load. It has 4 values:
 | 2 | Off | The config at init, with `CAS(0 → 2)`, when taint tracking is off or the platform is not supported | Do nothing |
 | 3 | Tripped | The circuit breaker, with a plain atomic store of 3 | Do nothing |
 
-- Hooks run their work only when the value is exactly 1.
+- Hooks run their work only when the value is exactly 1. Exception: the standard library wrappers that read from an `io.Reader` also run when it is 0 (Armed), because the first taint can appear during their call (section 1.5.3, rule 3).
 - Only `CAS(0 → 1)` can make the gate Live. A `Set` that finishes after the
   breaker stored 3 cannot make it Live again: its CAS fails. Tripped and Off
   are terminal for the process.
@@ -1296,7 +1297,7 @@ include the corrections of the round-1 AC audit.
 | AC-R-H5 | A stale owner handle writes into the next owner of the slot | A barrier pauses a pinned accessor across `Finish`. The slot is not given to a new request until the accessor unpins. Then a stale **write** and a stale **`Finish`** against the next owner are both refused. | `unit` (`-race`) | S5 | – |
 
 **Criteria added by the Planner** (other lessons of #51; Romain can remove
-them at approval, decision D5):
+them at approval, section 10.2, item 2):
 
 | ID | Lesson | Criterion and oracle | Check | Closes | Prerequisites |
 |---|---|---|---|---|---|
@@ -1361,7 +1362,7 @@ them at approval, decision D5):
 
 | ID | Criterion | Check | Closes | Prerequisites |
 |---|---|---|---|---|
-| AC-D1 | `README.md`: the env vars (type, default, range, effect); how to turn on and off (kill switch, build-level removal); supported Go versions and platforms; SQL injection and command injection marked as implemented, with their packages. | `doc` | S14 | S3 and S8 update the env var rows (repository rule) |
+| AC-D1 | `README.md`: the env vars (type, default, range, effect); how to turn on and off (kill switch); supported Go versions and platforms; SQL injection and command injection marked as implemented, with their packages. | `doc` | S14 | S3 and S8 update the env var rows (repository rule) |
 | AC-D2 | Known limits, coverage gaps and known false positives (all items of section 8, updated with the results of S10 and S12). | `doc` | S14 | – |
 | AC-D3 | `DD_IAST_DB_ROWS_TO_TAINT` is documented as not implemented (#51 M8). | `doc` | S14 | – |
 | AC-D4 | **This design document is deleted** (decision 15) in the last PR of the stack, after the code of all other PRs is approved and CI is green. Its user-facing content is in `README.md` and the limits document. | `doc` | S14 | All other PRs |
@@ -1652,22 +1653,27 @@ limits.
    byte-by-byte writes into a slice (`b[i] = s[i]`).
 3. Standard library functions with inline copies that v0 does not hook (for
    example `encoding/base64`, `encoding/hex`, `unicode/utf8.AppendRune`).
-4. JSON: third-party decoders (`jsoniter`, `sonic`, `goccy/go-json`,
+4. `%v` and `%d` of a `[]byte` in `fmt` (decimal digits of each byte).
+5. JSON: third-party decoders (`jsoniter`, `sonic`, `goccy/go-json`,
    `easyjson`); custom `UnmarshalJSON` and `UnmarshalText`; the JSON v2
    streaming APIs (`jsontext.Decoder`, `UnmarshalRead`, `UnmarshalDecode`);
    strings from `(*json.Decoder).Token`.
-5. Decompressed bodies (`compress/gzip` and others): the output bytes are new
+6. Decompressed bodies (`compress/gzip` and others): the output bytes are new
    bytes.
-6. Byte and rune values: `WriteByte`, `WriteRune`, `string(r)` and the
+7. A transform whose input mixes bytes of 2 requests, or has tainted bytes of
+   no known request: its output is not tainted (section 1.3.5, a safe miss).
+8. Byte and rune values: `WriteByte`, `WriteRune`, `string(r)` and the
    1-byte results of `string(b)` (they point into a static array) carry no
    taint.
+9. A standard library wrapper that the layout check or the supported-minor list
+   disables (an untested Go version) loses the propagation of its function.
 
 ### 8.2 Attribution limits
 
-1. Equal content: bytes from elsewhere that are equal to a source of the
-   current request (at least 4 bytes) are attributed to that source
+1. Equal content: bytes from elsewhere that are equal to a non-body source of
+   the current request (at least 4 bytes) are attributed to that source
    (decision 6). Bytes of another request that are not equal to a source of
-   the current request are foreign and make no finding.
+   the current request are foreign: they are redacted and make no finding.
 2. Body bytes after the first 64 KiB keep their bits but are foreign: alone,
    they make no finding.
 3. Coarse transforms (escapes, Unicode case, `%q`, URL encoding) taint the
@@ -1676,21 +1682,22 @@ limits.
 4. A content match of 1 to 3 bytes of a longer source is weak: a short
    fragment alone makes no finding.
 5. Bounds: more than `DD_IAST_MAX_RANGE_COUNT` segments, more than 256 source
-   records, or more than 256 KiB of copies for one request: the rest is
-   foreign or dropped.
+   records, more than 64 fills, or more than 256 KiB of copies for one
+   request: the rest is foreign or dropped.
 
 ### 8.3 Scope and lifetime
 
 1. A tainted value used after its request ended (for example in a goroutine
    that outlives the request) makes no finding.
-2. The owner needs the dd-trace-go HTTP server integration (a server span).
-   With Orchestrion or otelc and the dd-trace-go rules, it is automatic.
+2. Servers and middlewares that dd-trace-go does not support are out of scope
+   (decision 12). The instrumentation weaves the dd-trace-go HTTP server
+   integration; the owner starts in its `BeforeHandle` or `StartRequestSpan`.
 3. A sink must find the owner of the current request (section 1.3.2): from
-   its context argument, or from the active span of the goroutine. A sink
-   with no context in a goroutine that the handler started (no active span)
-   is a safe miss.
-4. With much taint in many arenas, the heap bit budget can be used up, because
-   chunks are never recycled in v0 (section 1.2.2): new taint is dropped.
+   the handle in its context argument, or in the goroutine field. A sink with
+   no context in a goroutine that the handler started is a safe miss.
+4. With much taint in many arenas, the heap bit memory can reach
+   `DD_IAST_TAINT_MEMORY_LIMIT`, because v0 never gives it back (section
+   1.2.2): new taint is then dropped.
 5. Sampled-out requests (`DD_IAST_REQUEST_SAMPLING`, default 30 %) and
    requests above `DD_IAST_MAX_CONCURRENT_REQUESTS` (default 2) are not
    analyzed.
@@ -1703,67 +1710,193 @@ limits.
 
 1. `database/sql` rows as a source (`DD_IAST_DB_ROWS_TO_TAINT` is not
    implemented).
-2. Other frameworks (gin, echo, fiber, gorilla/mux, httprouter): only the
+2. Other frameworks (gin, echo, fiber, gorilla/mux, httprouter): only their
    values that come from `net/http` APIs, or that are sub-strings of the path,
-   are detected. fasthttp (not `net/http`): not detected.
+   are detected, and only on a server that dd-trace-go traces. fasthttp (not
+   `net/http`): not detected.
 3. h2c servers from `golang.org/x/net/http2`.
-4. Sanitizers and marks. **Known false positive class:** input that the
-   application escapes or validates (for example
-   `strings.ReplaceAll(v, "'", "''")`) still reports.
-5. Vulnerability types other than `SQL_INJECTION` and `COMMAND_INJECTION`.
+4. Sanitizers other than the SQL sanitizers of section 1.3.6. **Known false
+   positive class:** input that the application escapes or validates with its
+   own code (for example `strings.ReplaceAll(v, "'", "''")`) still reports.
+5. The SQL context of a sanitizer: an identifier sanitizer used for a literal
+   (or `EscapeString` output used with no quotes) is treated as safe (a
+   possible missed finding).
+6. Vulnerability types other than `SQL_INJECTION` and `COMMAND_INJECTION`.
 
 ### 8.5 Platforms and toolchains
 
-1. Off on windows, wasm, 386 and the other unsupported targets, with `-asan`
-   or `-msan`, and on arm64 CPUs without LSE atomics (decision D6).
+1. Off on windows, wasm, 386 and the other unsupported targets, and with
+   `-asan` or `-msan`.
 2. go1.25 and older are not supported. gotip is not supported: today neither
    tool can weave it (section 7.2).
-3. The woven runtime code stays in the binary when taint tracking is off, and
-   some hooked standard library functions are no longer inlined.
-4. Orchestrion skips the injection with a warning (and the build passes) when
-   it cannot type-check a package for a new toolchain.
-5. Memory of user arenas (`GOEXPERIMENT=arenas`) is never tainted.
+3. The woven runtime code stays in the binary when taint tracking is off
+   (decision 14), and some hooked standard library functions are no longer
+   inlined.
+4. A new Go minor that changes a runtime internal that the runtime-side code
+   names can break the woven build (decision 5; the compile-time checks give
+   a clear message). The standard library wrappers never break the build
+   (section 1.5.1).
+5. Orchestrion skips the injection with a warning (and the build passes) when
+   it cannot type-check a package for a new toolchain; the self-check of
+   section 1.10.5 then turns taint tracking off.
+6. Memory of user arenas (`GOEXPERIMENT=arenas`) is never tainted.
 
 ## 9. Risks
 
-| ID | Risk | Effect | Mitigation | PR |
-|---|---|---|---|---|
-| R1 | The milestone of 2026-12-03 is not met | Design partners wait | Option A or B (section 6.3); parallel lanes; reviews within half a working day | all |
-| R1b | Option A: the preview without S9 misses `fmt.Sprintf`, the most common way to build a query in Go | Few real findings in the preview | State it in the preview notes (SP); S9 runs in a parallel lane and merges as soon as it is approved | S9, SP |
-| R2 | One tool cannot express one hook with the 3 primitives (for example a JSON v2 hook point), or a tool skips a rule with no error | No parity, or a gap for both tools | The 3 primitives (section 1.10.1); parity witnesses; manifest and sentinel; upstream change in the tool; else drop the hook for both tools and document it (decision 4 allows otelc-only, not Orchestrion-only) | S3, S12 |
-| R3 | A Go release (minor or patch) changes an allocator internal | Woven build fails, or a missed memory reuse path gives false taint | Compile-time checks, drift goldens, CI on the latest patch of each minor, gotip job, strong-match rule | S3, S4 |
-| R4 | A fault in the runtime-side code | Fatal error of the host (cannot recover) | Rules of section 1.2; stress, negative-control and generated-code tests; off by default; design partners only | S3, S4 |
-| R5 | The woven build is too slow or uses too much memory (#51 C1: 17 to 24 GB; notebook V10: 40 GB) | Customer builds fail | Build time and peak memory in the benchmark report (AC-B2); small injected code; one woven go1.27 build in S12 | S3, S12, S13 |
-| R6 | False-positive rate is unknown | Bad first impression for design partners | Strong-match rule, negative controls, JSON matrix, known false positives documented, feedback loop | S8 to S13 |
-| R7 | gotip jobs stay red (both tools cannot weave gotip today) | No early signal for go1.28 | Non-blocking jobs; follow the tool releases; drift test still runs on gotip without weaving | S1 |
-| R8 | The dd-trace-go hook point for the owner (the private `httptrace.startRequestSpan`) changes | No owner: no taint | The hook is in the manifest (a missing match fails the stable jobs); compile-time signature check in the rule; integration tests with the `net/http` and the chi integrations at the dd-trace-go version of `go.mod` | S5, S11 |
-| R9 | Applications that import the root package get the woven runtime also when taint tracking is off | A Go version that is not supported breaks their build; inlining cost | Clear build error message; README; build-level removal (section 1.9); Q2 | S3 |
-| R10 | Attribution cost with heavy taint (long values, many sources) | Sink latency | Work bounds of section 1.3.3 (64 KiB inspected, 1 MiB compared, 4 096 checks), bounded copies, work only on the tainted path; benchmark "tainted SQL sink in a loop" | S5, S13 |
-| R11 | Chunks are never recycled in v0 | With much taint in many arenas, the budget is reached and new taint is dropped | Telemetry counter; budget up to 1 GiB; recycling with an epoch rule in a later version | S3 |
-| R12 | Sinks with no context, on a goroutine with no active span, find no owner | Missed findings (safe misses) | Telemetry counter "no owner"; documented (section 8.3); the JSON matrix and the end-to-end tests measure it | S7, S8 |
-
-## 10. Decisions to confirm and open questions
-
-### 10.1 Decisions that the Planner made (Romain: correct them if wrong)
-
-| ID | Decision | Section |
-|---|---|---|
-| D1 | Env var names: `DD_IAST_TAINT_TRACKING_ENABLED` (default `false`) and `DD_IAST_TAINT_MEMORY_LIMIT` (default 64 MiB). | 1.9 |
-| D2 | The owner is bound to the root dd-trace-go server span (at the private `httptrace.startRequestSpan`), and sinks use only the owner of the current request. Taint tracking thus needs the dd-trace-go HTTP server integration, and a sink with no context on a goroutine with no active span is a safe miss. | 1.3, T14, T18 |
-| D3 | The "exclusive owner" rule of the issue's known limits is replaced by an equivalent provenance check: an attributed body segment must be in the body copy of the reporting owner. The JSON matrix (S10) checks it with 2 concurrent requests, and gives the real JSON limits. | 1.3.4, T15, 8.1 |
-| D4 | No sanitizer or mark in v0: escaped input still reports (known false positive class). | 1.3, 8.4 |
-| D5 | The criteria marked "added by the Planner" in section 4.2 (H18, H20, H26, H27, H15, C4/C5) are part of v0. | 4.2 |
-| D6 | arm64 CPUs **without LSE atomics** (ARMv8.0, for example Cortex-A72 and AWS Graviton1) are off: the sweep hook needs a bounded `Or64`, and their `Or64` is an unbounded retry loop. All arm64 CPUs with LSE (Graviton2 and later, Apple M) are on. The issue says "arm64": this narrows it. | 1.2, 3.2 |
-| D7 | Chunks of the heap bits are never recycled in v0 (memory bounded by the budget). | 1.2.2 |
-
-### 10.2 Open questions for Romain
-
-| ID | Question | Options | Recommendation |
+| Risk | Effect | Mitigation | PR |
 |---|---|---|---|
-| Q1 | Milestone (asked by the Delivery Lead on the issue): option A, a dated preview on 2026-12-03 with explicit omissions, or option B, the full Definition of done later? | A: preview S1 to S8 + SP (84 h critical path, at risk). B: full DoD on 2026-12-18 at the earliest. | No preference from the Planner: A gives design partners something on 2026-12-03 but without `fmt.Sprintf`; B gives a complete first version 2 weeks later. Both use the same stack. |
-| Q2 | Applications that import the root package get the woven runtime also when taint tracking is off (R9). Accept for v0? | A: accept for v0, revisit before GA. B: move the taint rules behind an opt-in import before S3 merges (for otelc this needs a separate rule package that the root does not load). | A |
-| Q3 | The `DataDog/system-tests` PR (X1) goes to your branch `romain.marcadier/dd-iast-go`, and you approve it (section 6.2). Is this correct? | A: yes, the squad's Implementer makes it, after S8. B: it goes to `main` of system-tests. C: someone else makes it. | A |
-| Q4 | What happens to this document after v0? | A: keep it in `_docs/design/` as the reference, with status "Implemented". B: delete it, like the plans. | A |
+| One tool cannot express one hook with the 3 primitives (for example a JSON v2 hook point), or a tool skips a rule with no error | No parity, or a gap for both tools | The 3 primitives (section 1.10.1); parity witnesses; manifest, self-check and sentinel; upstream change in the tool; else drop the hook for both tools and document it (decision 4 allows otelc-only, not Orchestrion-only) | S3, S12 |
+| A Go minor changes an allocator internal that the runtime-side code names | The woven build fails (decision 5), or a missed memory reuse path gives false taint | Compile-time checks with a clear message, drift goldens, CI on the latest patch of each minor, gotip jobs, strong-match rule | S3, S4 |
+| A Go release changes a standard library function that a wrapper observes | Wrong bits (missed or extra taint), never a wrong result | Wrappers run the original (section 1.5.1); layout check and supported-minor list; drift goldens; woven-against-unwoven tests | S9, S12 |
+| A fault in the runtime-side code | Fatal error of the host (cannot recover) | Rules of section 1.2; stress, negative-control and generated-code tests; off by default | S3, S4 |
+| The woven build is too slow or uses too much memory (#51 C1: 17 to 24 GB; notebook V10: 40 GB) | Customer builds fail | Build time and peak memory in the benchmark report (AC-B2); small injected code; one woven go1.27 build in S12 | S3, S12, S13 |
+| The false-positive rate is unknown | Bad first impression for design partners | Strong-match rule, owner checks, negative controls, the JSON matrix, the SQL sanitizers, known false positives documented, feedback loop | S8 to S16 |
+| gotip jobs stay red (neither tool can weave gotip today) | No early signal for the next Go minor | Non-blocking jobs; follow the tool releases; the drift test still runs on gotip with no weaving | S1 |
+| A customer builds with a dd-trace-go version where the owner wrappers do not apply | No owner: no taint | The 2 wrapped functions are public v2 API; the self-check turns taint tracking off with a log line (AC-P13) | S5 |
+| Attribution cost with heavy taint (long values, many sources) | Sink latency | Work bounds of section 1.3.3 (64 KiB inspected, 1 MiB compared, 4 096 checks), bounded copies, work only on the tainted path; benchmark "tainted SQL sink in a loop" | S5, S13 |
+| Heap bit memory is never given back in v0 | With much taint in many arenas, the limit is reached and new taint is dropped | Telemetry counter; limit up to 1 GiB; giving memory back is a later improvement (section 10.2) | S3 |
+| Sinks with no context, on a goroutine with no owner handle | Missed findings (safe misses) | Telemetry counter "no owner"; documented (section 8.3); end-to-end tests measure it | S7, S8 |
+
+## 10. Decisions
+
+Each item says what it means, why, and what changes for users. No item needs
+another part of this document to be understood.
+
+### 10.1 Decisions that Romain made
+
+1. **The target is the full Definition of done.**
+   - Meaning: the stack delivers everything that the epic's Definition of
+     done lists. Scope is not cut because of time estimates.
+   - Why: agent time estimates are not reliable.
+   - For users: no reduced preview; the stack is ordered by dependencies only
+     (section 6).
+2. **Env var names: `DD_IAST_TAINT_TRACKING_ENABLED` and
+   `DD_IAST_TAINT_MEMORY_LIMIT`.**
+   - Meaning: the first one turns taint tracking on (default: off). The second
+     one limits the memory of the taint bits (default 64 MiB, from 1 MiB to
+     1 GiB, `0` turns taint tracking off).
+   - Why: most other Datadog tracers use the same names.
+   - For users: one env var to set to try taint tracking.
+3. **The dd-trace-go HTTP server integration is always woven, and other
+   servers are out of scope.**
+   - Meaning: taint tracking follows a request from the moment that
+     dd-trace-go starts the server span. Servers and middlewares that
+     dd-trace-go does not support are not analyzed.
+   - Why: the request needs an owner, and the server span is where the
+     instrumentation can make one safely (section 1.3.1).
+   - For users: with Orchestrion or otelc and dd-trace-go, nothing to do.
+     Unsupported servers give no finding.
+4. **SQL sanitizers of `database/sql` and common drivers are in scope.**
+   - Meaning: a value that passed through a sanitizer that the driver exposes
+     does not report SQL injection. The check found these: `lib/pq`
+     (`QuoteLiteral`, `QuoteIdentifier`, `BufferQuoteIdentifier`) and `pgx`
+     (`Identifier.Sanitize`, `PgConn.EscapeString`). `database/sql` and
+     `go-sql-driver/mysql` export none (section 1.3.6).
+   - Why: sanitized values are not vulnerabilities; reporting them would be
+     false positives.
+   - For users: fewer false positives with PostgreSQL drivers. Escaping with
+     the application's own code still reports.
+5. **Applications that import the package always get the woven runtime, also
+   when taint tracking is off.**
+   - Meaning: the hooks are in every build that uses the package. When off,
+     each hook costs one atomic load and one compare, and some standard
+     library functions are no longer inlined.
+   - Why: this is the design of compile-time instrumentation; it is expected
+     and permanent.
+   - For users: turning taint tracking on or off needs no rebuild.
+6. **This design document is deleted when the code is approved and CI is
+   green.**
+   - Meaning: the last PR of the stack (`S14`) deletes
+     `_docs/design/taint-tracking-v0.md`; the user documentation keeps what
+     users need.
+   - Why: the project workflow says so.
+   - For users: nothing.
+7. **The system-tests PR.** Unless Romain disagrees: the squad's Implementer
+   makes a PR in the `DataDog/system-tests` repository, on Romain's branch
+   `romain.marcadier/dd-iast-go` (the branch that the dd-iast-go workflow
+   uses). It turns on the SQL injection and command injection system-tests
+   for the Go weblog. It waits until the first PR with end-to-end detection
+   (HTTP request → SQL or command sink → report) is merged on `main`. Romain
+   approves it.
+
+### 10.2 Decisions that are still open
+
+The design is written for the recommended option. For each other option, the
+item says what changes.
+
+1. **JSON: how a decoded value is linked to the request that sent it.**
+   - The problem: one decoder can read the bodies of 2 requests (for example
+     with `io.MultiReader`, or a pooled buffer). Request A can supply half of
+     an escaped string, and request B the other half.
+   - **a. Exclusive owner:** a value is linked only when exactly one request
+     ever fed the reader. Never wrong; misses mixed cases.
+   - **b. Segment matching:** a value is linked when its bytes are found in
+     the body of the reporting request. Catches more, but can be wrong: A's
+     bytes can show in B's report, with B's source.
+   - **c. Recorded provenance (recommended, and written in the design):** the
+     body reads record which request supplied each range of bytes; the hooks
+     that move bytes move this record; a hook that changes bytes (for example
+     an unescape) checks that all its input comes from the current request,
+     else the value is not tainted (a safe miss). Never wrong; catches the
+     cases that one request feeds. Costs hooks inside the JSON decoders,
+     which can need updates for new Go versions.
+   - If Romain picks a: one more check in the hooks that change bytes
+     (section 1.3.5).
+   - If Romain picks b: the provenance record and its checks are removed
+     (section 1.3.5).
+   - For users: with c, a JSON field from a request body reports SQL injection
+     when the request alone fed the decoder; mixed cases give no finding,
+     never a wrong one.
+2. **The extra tests from the PR #51 review that the design adds.** Each one
+   is a test that v0 must pass:
+   - requests that APM does not keep (sampled out) use no request-tracking
+     slot, so they cannot block detection on kept requests;
+   - under many concurrent reports, the report store never grows past its
+     size limit;
+   - rate limits are checked before the evidence is built: with a quota of 2,
+     40 tainted calls build evidence at most 2 times;
+   - when taint tracking is off, the hooked functions allocate no more memory
+     than with no instrumentation;
+   - command injection: a tainted program path is checked also when it
+     differs from the first argument;
+   - the instrumentation does not change the behavior of 2 edge cases of the
+     language (`len([1]string{a+b})` does not run `a+b`, and `s[:1e3]` still
+     compiles).
+   - Recommended: keep all 6. If one is removed, its criterion is removed
+     from section 4.2; nothing else changes.
+   - For users: each test protects against a defect that the review of the
+     proof of concept found.
+3. **Taint memory is never given back in v0.**
+   - Meaning: the taint bits are stored in separate memory blocks (16 KiB of
+     bits for each 128 KiB of heap). A block stays until the process stops,
+     also after the heap memory that it describes is freed. So taint memory
+     only grows, up to `DD_IAST_TAINT_MEMORY_LIMIT` (default 64 MiB). After
+     that, new taint is dropped: fewer findings, and a telemetry counter. The
+     application is not affected.
+   - Why: freeing a block safely while another goroutine can still use it
+     needs more synchronization (the first blocking objection of the review).
+   - Recommended: accept for v0; giving memory back is a later improvement.
+     If Romain does not accept: section 1.2.2 needs a design with an epoch
+     rule (a block is freed only after every goroutine that could hold it has
+     passed a safe point), and its tests.
+   - For users: a fixed maximum memory cost; with very much taint, fewer
+     findings late in the life of the process.
+
+### 10.3 The check that Romain asked for: older arm64 CPUs
+
+- The question: on arm64 CPUs without the "LSE" instructions (AWS Graviton1,
+  Raspberry Pi 4 and other Cortex-A72 or A53 boards), Go does atomic
+  operations as a retry loop. The hook that clears taint bits during the GC
+  sweep uses such operations. Is this a new risk?
+- **Result: no. Go's own sweep uses the same retry loops in the same place.**
+  The sweep function runs with preemption disabled and updates a counter that
+  all sweepers share with the same kind of atomic operation (section 1.2.6
+  gives the source lines). A taint bitmap word is less contended than that
+  counter.
+- Change: these CPUs are **supported**, like all other arm64 CPUs. A CI job
+  forces the retry loops on a newer arm64 CPU (`GODEBUG=cpu.atomics=off`) to
+  test that path.
+- For users: taint tracking works on all arm64 CPUs.
 
 ## 11. References
 
@@ -1777,7 +1910,9 @@ limits.
 - Sources and sinks catalog: `_docs/sources-and-sinks/net-http.md`, `_docs/sources-and-sinks/chi.md`.
 - Datadog IAST: [documentation](https://docs.datadoghq.com/security/code_security/iast/), [dd-trace-java `ARCHITECTURE.md`](https://github.com/DataDog/dd-trace-java/blob/master/ARCHITECTURE.md).
 
-## 12. Changes in v2
+## 12. Review history
+
+### 12.1 Round 1, and the changes in v2
 
 Adversarial review, round 1 (2026-11-19): 5 blocking and 2 major objections,
 3 minor remarks, and an AC audit. Each objection was checked against the Go
@@ -1791,7 +1926,31 @@ Adversarial review, round 1 (2026-11-19): 5 blocking and 2 major objections,
 | **4 (major).** Propagation table does not cover the promised copies | `io.ReadAll` uses `append(final, chunk...)` (`io/io.go:730–739`, both minors); `%q` uses `strconv.AppendQuote` in `fmtQ` (`fmt/format.go:447–457`); `url.unescape` and `escape` return their input with no escape (`url.go:155–157`, `:208–210`) | Hooks specified by result: `io.ReadAll` twin (S8), `fmtQ`/`fmtSbx` coarse, `Formatter` through `State.Write`, `url` alias not widened, `strconv` P0, ASCII case positional, JSON v1 slide and grow, v2 fetch and cache rule. Twins run application code once, never catch application panics, and keep a correct result after a failed analysis. Tripped is terminal (`CAS(0 → 1)` is the only way to Live) | 1.4, 1.5, 1.2.5, 1.9, AC-F6 to AC-F8, AC-S3 |
 | **5 (major).** A row for each #51 finding, but not a valid test; AC audit | C11 as written is impossible for a fixed mask; concurrent first parses race in plain Go (`net/http/request.go:1350–1377`); `io.ReadAll` takes no destination; `encoding/json.Decoder` has no `Reset` | All #51 rows rewritten with the audit oracles (C11 privacy invariant; C12 changes against unwoven; C13 re-parse after one parse; H3/H4 asserted reuse, both spans; H5 stale `Finish`); positive-control and parity rules; closing rules per check type; H27 against unwoven baselines; H18 with a controllable sampler | 4.0 to 4.8 |
 | **6 (blocking).** A generated rule or one woven package is not parity; platform stubs; gotip witness | otelc has statement-pattern placement (`apply_raw.go:76–126`), Orchestrion does not; the runtime has no Go `mmap` on Windows and wasm; `cmd/app` witnesses only weak crypto | Only 3 primitives that both tools have (twins instead of interior injection); parity witnesses with both tools; platform code injected next to `mmap`, selected at compile time; expected-hook manifest and a growing sentinel, required on stable; gotip drift and sentinel as independent signal-only steps | 1.10, 3.1, 3.2, 3.3, T13, T19, AC-P2, AC-P9, AC-P10 |
-| **7 (blocking).** S1–S11 is neither the DoD nor a 10-day plan | 91 h > 80 h; S12 and S13 owned DoD items | One stack for both options (A: dated preview S1–S8 + SP with explicit omissions; B: full DoD on 2026-12-18 at the earliest); each of the 64 criteria has exactly one closing PR; X1 has an owner, a target branch and a merge order (S8 → X1 → S15) | 0, 4, 6.2, 6.3, Q1, Q3 |
+| **7 (blocking).** The milestone cut and the closing PRs | The cut did not give the Definition of done, and some criteria had no single closing PR | v2: each criterion got exactly one closing PR, and X1 got an owner, a target branch and a merge order (S8 → X1 → S15). (v2 also proposed milestone options; v3 removed them, decision 10.) | 4, 6.2 |
 | Remark: `*sql.Conn` methods | `*sql.Conn` has only the context forms (`sql.go:2027–2064`) | Listed exactly; only the 9 context hook points, so each public call is checked once | 1.7, AC-F4 |
 | Remark: Intel macOS, cross-builds | – | Manual evidence labeled; executed feature-off tests separated from cross-builds; `-msan` job added | 3.2, AC-P4, AC-P5 |
 | Remark: benchmarks report-only | – | Kept: no pass/fail threshold | 4.0, 4.6 |
+
+### 12.2 Round 2 and Romain's decisions, and the changes in v3
+
+Adversarial review, round 2: 1 objection resolved (bitmap lifetime), 6 partly
+resolved. Romain's answers are decisions 10 to 15 of the issue. Each claim of
+the review was checked in the source; all were correct.
+
+| Item | Verified evidence | What changed | Sections |
+|---|---|---|---|
+| JSON provenance | Segment matching alone can give A's bytes B's source, through a transform such as an unescape | Option c of Romain's decision request: fills record which request filled each body range and move with the bytes; every transform checks that all its tainted input belongs to the current request, else the output is not tainted; exact copies match byte by byte and foreign bytes are redacted; the exclusive-owner behavior is the fallback for unhooked carriers. The JSON matrix splits one escaped string across 2 bodies | 1.3.4, 1.3.5, 1.5.2, T15, AC-J1 |
+| Owner binding | `Span.Root()` returns the trace root (`ddtrace/tracer/span.go:623–636`); `go.mod` is a minimum version, not a pin | Wrappers of the exported `BeforeHandle` and `StartRequestSpan` (public v2 API); a request-scoped handle in the request context and in a goroutine field; the owner closes when its own server span finishes; a self-check turns taint tracking off when a wrapper does not apply | 1.3.1, 1.3.2, T14, T23, AC-F15, AC-P13 |
+| Tool parity: `add_file` and twins | otelc `add_file` drops every build constraint and compiles the file on every platform (`match.go:165–172`, `apply_file.go:25–30`, `:72–74`); no tool can check a function body at weave time | The slab allocator moves to an ordinary package with build constraints; the runtime-side file names only symbols that exist on every platform. Twins are replaced by wrappers that run the original function; a layout check by `reflect` at init and a list of supported Go minors disable a wrapper instead of breaking the build; woven-against-unwoven tests | 1.5.1, 1.10.2, 1.10.4, 1.10.5, T21, T22, AC-P12 |
+| `io.ReadAll` and `%v` of `[]byte` | Taint can first appear inside `r.Read` of `ReadAll` (`io/io.go:709–739`); `%v` of a `[]byte` prints decimal digits (`fmt/print.go:502–527`) | The `ReadAll` wrapper observes the buffers that each `Read` returns, and works when the gate is Armed or Live; `%v` and `%d` of a `[]byte` are an explicit miss, tested separately | 1.5.2, 1.5.3, AC-F6, AC-F7, 8.1 |
+| C11 text and H3 test | Section 1.8 still asked for a different character at every position; assigning a `ReadAll` result to a pooled variable does not reuse its array | Section 1.8 states the content-independent invariant; H3 asserts a real handoff of one backing array with 2 carriers, and both span payloads | 1.8, AC-R-H3 |
+| Closing-PR order | Platform, allocation and negative-control criteria closed before the PRs that they need | S9 depends on S8, the matrix baseline comes after S9, the allocation and wrapper criteria close in S12, the platform criterion is about the jobs; a script checks that each prerequisite is an ancestor of the closing PR (69 criteria) | 4, 6.1, 6.2 |
+| Decision 10: full Definition of done | – | All hour estimates, dates, the milestone options and the preview-notes PR are removed; the stack is ordered by dependencies only | 0, 6 |
+| Decision 11: env vars | – | Confirmed in section 10.1 | 1.9, 10.1 |
+| Decision 12: server integration | – | Unsupported servers and middlewares are out of scope | 8.3, 10.1 |
+| Decision 13: SQL sanitizers | `lib/pq` `quote.go:19,29,50` (v1.12.3); `pgx` `conn.go:94–104` and `pgconn/pgconn.go:2125` (v5.11.0); `go-sql-driver/mysql` escapes are unexported (`utils.go:642–718`, v1.10.2); `database/sql` has none | Marks in the external map, a `SQL_INJECTION` mark set by wrappers of the sanitizers, marked segments do not count at SQL sinks; new PR S16 and criterion AC-F14 | 1.3.6, 1.5.2, 1.7, AC-F14 |
+| Decision 14: woven runtime when off | – | Stated as expected and permanent; the "revisit before GA" note and the build-level removal are removed | 1.9, 10.1 |
+| Decision 15: document lifetime | – | The last PR (S14) deletes this document when the code is approved and CI is green (AC-D4) | Header, 6.2, 10.1 |
+| Romain's question: older arm64 CPUs | `mgcsweep.go:506–511` (sweep runs with preemption disabled) and `:532` (`pagesSwept.Add`); `atomic_arm64.s:238, 294, 444` (the same retry loops) | Supported: Go's own sweep uses the same loops; a CI job forces them with `GODEBUG=cpu.atomics=off` (AC-P11) | 1.2.6, 3.2, 10.3, T24 |
+| Section 10 | – | Rewritten as self-contained items in plain words | 10 |
+
