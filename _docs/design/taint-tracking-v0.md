@@ -2186,6 +2186,16 @@ one closing PR.
     expected-hook manifest, and adds its capability to the sentinel (AC-P9).
 13. **Existing system-tests.** The WEAK_HASH, WEAK_CIPHER and deduplication
     system-tests keep passing.
+14. **No identifier of this document in the code** (Romain's rule at the plan
+    review). Code, comments, test names, test data, golden files, generated
+    files, CI files (job and step names included), the expected-hook manifest,
+    the sentinel and the user documentation never contain an identifier from
+    this document or from the execution plan: no criterion ID, no PR name
+    (`S0` to `S16`, `X1`), no decision or section number, and no ID of the
+    PR #51 review. Names describe the behavior. This document is deleted at
+    the end, so such references would point to nothing. The map from each
+    criterion to its tests and CI job is in the PR description (rule 7), not
+    in the code.
 
 ### 5.2 Reviewer specialties
 
@@ -3024,3 +3034,4 @@ Romain's answers on the execution plan (after the design approval):
 | The stack is one GitHub native stack, merged at once | One linear chain of 17 PRs, from this document (PR #92) at the bottom to S14 at the top; each PR is reviewed, approved and checked alone; merging the top PR merges the whole stack (one squashed commit for each PR). The top PR deletes this document and the plan files. Updates keep the chain of branches (a rebase is allowed, not required); members of `DataDog/apm-go` approve the PRs on GitHub | 0, 5.1, 6.1, 6.2, 6.3, 6.4 |
 | X1 and S15 | A stack is in one repository, so X1 stays outside. S15 pins the system-tests revision to the X1 commit; X1 merges after the stack | 6.2 |
 | S14 title | The title no longer has the word "design" (project rule for PR titles) | 6.2 |
+| No identifier of this document in the code | Code, tests, CI files and user documentation never name a criterion, a PR of the stack, a decision or a section; the map from criteria to tests is in the PR descriptions | 5.1, rule 14 |
