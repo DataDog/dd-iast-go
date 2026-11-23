@@ -2354,10 +2354,16 @@ of pull requests**, and they all merge at once.
 - **This document and the plan files never stay on `main`.** S0 adds this
   document, the plan PRs add their `_docs/plans/` files, and S14 deletes all
   of them. Each one stays in the history, in the squashed commit of its PR.
-- **Updates keep the history linear.** A change to a lower PR is followed by
-  a rebase of the PRs above it (`jj` does it at once; then the branches are
-  pushed). When `main` moves, the whole stack is rebased on it, not merged:
-  a native stack needs a linear history.
+- **Updates keep the chain.** GitHub merges a stack only when its branches
+  form one chain: each branch contains the head of the branch below it. A
+  change to a lower PR, or a move of `main`, is followed by an update of the
+  branches above it. The usual way is a rebase (`jj rebase`, which moves
+  every change above at once, or "Rebase stack" on GitHub); a rebase is
+  allowed, but not required (Romain's answer at the plan review). Any update
+  that keeps the chain is valid.
+- **GitHub approvals.** Members of the `DataDog/apm-go` team approve the PRs
+  on GitHub (the rules of `main` need 1 approval from a person who is not
+  the author). Romain also approves each PR for the squad.
 - **The stack is made with** `gh stack link` (with the PR numbers from the
   bottom to the top), or with the REST endpoints `POST /repos/{owner}/{repo}/stacks`
   and `POST /repos/{owner}/{repo}/stacks/{stack_number}/add` when a new top PR
@@ -3015,6 +3021,6 @@ Romain's answers on the execution plan (after the design approval):
 | Item | What changed | Sections |
 |---|---|---|
 | Erratum | The S12 row said "the check of the destination type and value"; the approved rule checks the type only | 6.2 |
-| The stack is one GitHub native stack, merged at once | One linear chain of 17 PRs, from this document (PR #92) at the bottom to S14 at the top; each PR is reviewed, approved and checked alone; merging the top PR merges the whole stack (one squashed commit for each PR). The top PR deletes this document and the plan files. Updates rebase the stack, because a native stack needs a linear history | 0, 5.1, 6.1, 6.2, 6.3, 6.4 |
+| The stack is one GitHub native stack, merged at once | One linear chain of 17 PRs, from this document (PR #92) at the bottom to S14 at the top; each PR is reviewed, approved and checked alone; merging the top PR merges the whole stack (one squashed commit for each PR). The top PR deletes this document and the plan files. Updates keep the chain of branches (a rebase is allowed, not required); members of `DataDog/apm-go` approve the PRs on GitHub | 0, 5.1, 6.1, 6.2, 6.3, 6.4 |
 | X1 and S15 | A stack is in one repository, so X1 stays outside. S15 pins the system-tests revision to the X1 commit; X1 merges after the stack | 6.2 |
 | S14 title | The title no longer has the word "design" (project rule for PR titles) | 6.2 |
