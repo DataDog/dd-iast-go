@@ -2,8 +2,8 @@
 
 | Field | Value |
 |---|---|
-| Status | **Draft v11 for review.** v5 applied Romain's change request (the origin is tracked on heap address ranges, not by value); v6 to v11 fix the objections of the checks of that change, and v7 applies Romain's answers to 4 decisions. Section 12 maps each objection of the review rounds, and each decision and request of Romain, to its change. Next: approval by Romain. |
-| Lifetime | This document is the contract during the implementation. It is **deleted** when the code is approved and CI is green (decision 15): the last PR of the stack (`S14`) deletes it. |
+| Status | **Approved** by Romain at v11 (`c9b87fd`, decision 22). Amended at the plan review (section 12.11): the stack is one GitHub native stack that merges at once, and one erratum. v5 applied Romain's change request (the origin is tracked on heap address ranges, not by value); v6 to v11 fix the objections of the checks of that change. Section 12 maps each objection of the review rounds, and each decision and request of Romain, to its change. |
+| Lifetime | This document is the contract during the implementation. It is **deleted** when the code is approved and CI is green (decision 15): the top PR of the stack (`S14`) deletes it, so it never stays on `main` (section 6.4). |
 | Epic | Multica DD-69, Jira [APPSEC-70732](https://datadoghq.atlassian.net/browse/APPSEC-70732) |
 | Target | The full Definition of done of the epic (decision 10: no scope cut on the basis of time estimates) |
 | Base of this document | `main` at `f79d6f93` (2026-11-18) |
@@ -88,10 +88,13 @@ PoC code. The stack can change and extend it.
 8. Supported: go1.26.x and go1.27.x; linux and darwin on amd64 and arm64
    (all arm64 CPUs, with and without LSE atomics). Off on other platforms, and
    with `-asan` or `-msan`. gotip runs in CI as a signal only.
-9. The stack has 15 PRs in this repository and one PR in `DataDog/system-tests`
-   (section 6), ordered by their dependencies. Each PR leaves `main` green,
-   with the feature off by default. Each acceptance criterion has exactly one
-   closing PR, and that PR comes after every PR that its test needs.
+9. The stack has 17 PRs in this repository (this document is the bottom one)
+   and one PR in `DataDog/system-tests` (section 6), ordered by their
+   dependencies. It is one GitHub native stack: each PR is reviewed and
+   approved alone, with the feature off by default and its CI green, and the
+   whole stack merges at once (section 6.4). Each acceptance criterion has
+   exactly one closing PR, and that PR comes after every PR that its test
+   needs.
 10. Section 10 lists the decisions in plain words: the ones that Romain made,
     and the one that is still open (how a label on a `[]byte` buffer that the
     application can change is trusted).
@@ -2151,15 +2154,16 @@ one closing PR.
 
 1. **Plan.** A PR with a significant feature (S3, S4, S5, S6, S8, S9, S12, S16)
    starts with a plan in `_docs/plans/<slug>.md`, reviewed by a critic and by
-   Romain, committed as `wip(plan): …`, and deleted when the PR is done
-   (repository `AGENTS.md`, "Plans"). The plan refers to this document and
-   lists the criteria that the PR closes.
+   Romain, committed as `wip(plan): …` (repository `AGENTS.md`, "Plans"). The
+   plan refers to this document and lists the criteria that the PR closes.
+   The plan files stay in the stack, and the top PR (S14) deletes them with
+   this document (section 6.4).
 2. **Multi-agent code review** (`code-review` skill): at least 3 specialized,
    read-only reviewers in parallel, chosen from the table in 5.2. One general
    review is not sufficient. The PR fixes or answers every finding before it
    leaves draft.
 3. **Adversarial review** for the high-risk PRs: S3, S4, S5, S6, S8, S9, S12.
-4. **Approval by Romain** before merge (every PR).
+4. **Approval by Romain** of every PR. No PR merges alone: the stack merges once, from its top PR (section 6.4).
 5. **Parity check** (repository `AGENTS.md`): the reviewer compares the
    Orchestrion and otelc rules (targets, sink counts, reported data). A
    difference with no stated reason is a defect.
@@ -2271,8 +2275,10 @@ flowchart TD
   S16 --> S14
 ```
 
-Every PR merges with taint tracking off by default, and with `main` green.
-Until S8, no production source exists: the new code runs only in tests.
+Every PR keeps taint tracking off by default, and its CI green (GitHub runs
+the checks of `main` on each PR of the stack). Until S8, no production source
+exists: the new code runs only in tests. The graph gives the dependencies; the
+PRs form one linear GitHub native stack, in the order of section 6.4.
 
 **Rule for the closing PRs:** the closing PR of a criterion (section 4) comes
 after every PR that its test needs, and after every PR in its "Prerequisites"
@@ -2297,26 +2303,66 @@ column. This is checked with a script on this document (section 12).
 | S10 | `test(iast): add the JSON coverage matrix` | The matrix of AC-J1, with its golden file and its generated table in `_docs/`; the proposed list of supported patterns. It measures the result **before** the JSON and `bufio` wrappers of S12. | S9 | The matrix test itself | AC-J1, AC-J2 |
 | S11 | `feat(iast): taint chi route parameters` | chi records (origin `http.request.path.parameter`); a chi-only middleware fixture; a chi router inside a traced `net/http` server; no chi import in the root module | S8 | End-to-end test with a chi router | AC-F2 |
 | S16 | `feat(iast): recognize the SQL sanitizers of lib/pq and pgx` | Wrappers of the sanitizers of section 1.3.6 (no import of the drivers in the root module): the `SQL_INJECTION` mark on the ranges of a distinct, successful output (copies keep it); test fixtures with both drivers | S9 | Integration tests with the drivers and a fake SQL server or driver | AC-F14 |
-| S12 | `feat(iast): propagate taint through bufio, readers and encoding/json` | P0 JSON v1 and v2 wrappers (the JSON token rule of section 1.3.5, the rules of decoder buffers: private only when recorded at allocation, the internal-call token of `Decode` in a `runtime.g` field, the check of the destination type and value on the actual array), P1 `bufio` and reader wrappers, multipart forms; drift goldens; matrix update to the approved patterns; parity witness `refill`; sentinel: JSON | S10 | Matrix and end-to-end tests | AC-F3, AC-F8, AC-F11, AC-J3, AC-J4, AC-J5, AC-J6, AC-J7, AC-R-H4, AC-R-H27, AC-P10, AC-P12 |
+| S12 | `feat(iast): propagate taint through bufio, readers and encoding/json` | P0 JSON v1 and v2 wrappers (the JSON token rule of section 1.3.5, the rules of decoder buffers: private only when recorded at allocation, the internal-call token of `Decode` in a `runtime.g` field, the check of the destination type on the actual array), P1 `bufio` and reader wrappers, multipart forms; drift goldens; matrix update to the approved patterns; parity witness `refill`; sentinel: JSON | S10 | Matrix and end-to-end tests | AC-F3, AC-F8, AC-F11, AC-J3, AC-J4, AC-J5, AC-J6, AC-J7, AC-R-H4, AC-R-H27, AC-P10, AC-P12 |
 | S13 | `docs: report the taint tracking benchmarks` | Benchmark workloads and the report, with raw outputs | S12 | The report | AC-B1, AC-B2, AC-B3 |
-| X1 | (in `DataDog/system-tests`) `golang: run IAST SQLi and CMDi tests on the dd-iast-go weblog` | Weblog endpoints and manifest for SQL injection and command injection on the `net-http-orchestrion` weblog; scenario env `DD_IAST_TAINT_TRACKING_ENABLED=true` | S8 merged on dd-iast-go `main` | The system-tests CI | – (a prerequisite, not a closing PR) |
-| S15 | `ci(system-tests): require the SQLi and CMDi system-tests` | Add the SQLi and CMDi tests to the "expected IAST tests executed" check of `.github/workflows/system-tests.yml`, with a nonzero count of executed Go cases; record the tested system-tests commit | X1 merged | The system-tests workflow on the PR | AC-ST1 |
-| S14 | `docs: document taint tracking and remove the design document` | README; known limits, gaps and false positives; **delete `_docs/design/taint-tracking-v0.md`** (decision 15). The last PR: it merges when the code of all other PRs is approved and CI is green. | S11, S13, S15, S16 | Review | AC-D1, AC-D2, AC-D3, AC-D4 |
+| X1 | (in `DataDog/system-tests`) `golang: run IAST SQLi and CMDi tests on the dd-iast-go weblog` | Weblog endpoints and manifest for SQL injection and command injection on the `net-http-orchestrion` weblog; scenario env `DD_IAST_TAINT_TRACKING_ENABLED=true`. Not in the stack (another repository) | S8 (its tests need the code of S8; it merges after the stack has merged) | The run of the dd-iast-go system-tests workflow on S15, which uses the X1 commit | – (a prerequisite, not a closing PR) |
+| S15 | `ci(system-tests): require the SQLi and CMDi system-tests` | Add the SQLi and CMDi tests to the "expected IAST tests executed" check of `.github/workflows/system-tests.yml`, with a nonzero count of executed Go cases; **pin** the system-tests revision (the default of `system_tests_ref` and of the checkout `ref`) to the X1 commit that it tested | X1 (its commit, not its merge) | The system-tests workflow on the PR | AC-ST1 |
+| S14 | `docs: document taint tracking v0 and delete its stack contract` | README; known limits, gaps and false positives; **delete `_docs/design/taint-tracking-v0.md` and every `_docs/plans/` file of the stack** (decision 15). The top PR of the stack: merging it merges the whole stack, when every PR is approved and green (section 6.4). | S11, S13, S15, S16 | Review | AC-D1, AC-D2, AC-D3, AC-D4 |
 
 **X1, the `DataDog/system-tests` PR.** The repository is `DataDog/system-tests`;
 `romain.marcadier/dd-iast-go` is its branch that the dd-iast-go workflow uses
 (`.github/workflows/system-tests.yml` checks out this repository and ref). The
 Delivery Lead assigns X1 to the squad's Implementer, as its own sub-issue.
-Romain owns the branch and approves X1. Merge order: **S8 → X1 → S15.** X1
-must not merge before S8: the workflow follows the branch (it is not pinned),
-so enabling the tests earlier would break the dd-iast-go CI. S15 records the
-system-tests commit that it tested. Moving the tests to the `main` branch of
-system-tests is a separate decision for Romain, after v0.
+Romain owns the branch and approves X1. X1 is not part of the native stack
+(a stack is in one repository). S15 pins the dd-iast-go system-tests workflow
+to the X1 commit, so the CI of S15 runs the new tests on the code of the
+stack before X1 merges. **X1 merges only after the stack has merged** on
+dd-iast-go `main`: until then, `main` follows the branch, and the new tests
+would fail on it. X1 merges in a way that keeps its tested commit on the
+branch (a merge commit or a fast-forward), so the pin stays valid. Moving the
+tests to the `main` branch of system-tests is a separate decision for Romain,
+after v0.
 
 ### 6.3 Sub-issues
 
-The Delivery Lead makes one sub-issue for each PR (S1 to S16, and X1). Each
-sub-issue links to this document and copies the "Closes" column of its row.
+The Delivery Lead makes one sub-issue for each PR (S0, which is PR #92, S1 to
+S16, and X1). Each sub-issue links to this document and copies the "Closes"
+column of its row.
+
+### 6.4 The GitHub native stack and its merge
+
+Romain's decision at the plan review: the PRs form one **GitHub native stack
+of pull requests**, and they all merge at once.
+
+- **One linear chain** in this repository. Each PR has the head branch of
+  the PR below it as its base; the bottom PR (S0, PR #92, this document) has
+  `main` as its base. GitHub supports only linear stacks, with a linear
+  history between the branches, in one repository. The order is one order
+  of the graph of section 6.1 that respects every dependency:
+
+  | Position | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 |
+  |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+  | PR | S0 | S1 | S2 | S3 | S6 | S4 | S5 | S7 | S8 | S11 | S9 | S16 | S10 | S12 | S13 | S15 | S14 |
+
+- **Each PR is checked alone.** GitHub runs the required checks of `main` on
+  every PR of the stack, and asks for the reviews of `main` on each one. The
+  review rules of section 5 apply to each PR.
+- **One merge, at the end.** When every PR is approved and green, merging the
+  top PR (S14) merges the whole stack as one atomic operation. The repository
+  allows only squash merges, so `main` gets one squashed commit for each PR,
+  in the order of the stack. Nothing of the stack is on `main` before that.
+- **This document and the plan files never stay on `main`.** S0 adds this
+  document, the plan PRs add their `_docs/plans/` files, and S14 deletes all
+  of them. Each one stays in the history, in the squashed commit of its PR.
+- **Updates keep the history linear.** A change to a lower PR is followed by
+  a rebase of the PRs above it (`jj` does it at once; then the branches are
+  pushed). When `main` moves, the whole stack is rebased on it, not merged:
+  a native stack needs a linear history.
+- **The stack is made with** `gh stack link` (with the PR numbers from the
+  bottom to the top), or with the REST endpoints `POST /repos/{owner}/{repo}/stacks`
+  and `POST /repos/{owner}/{repo}/stacks/{stack_number}/add` when a new top PR
+  is opened.
+- **X1** is in another repository, so it is not in the stack (section 6.2).
 
 ## 7. Answers to the 3 facts to check in code
 
@@ -2961,3 +3007,14 @@ was checked in the source; both were correct.
 |---|---|---|---|
 | Failed copies of ordinary text | v10 dropped a failed copy of a range that was not sensitive; request A's text could then appear as clean text in request B's report | A failed copy or transform of a range with **any** tracked origin uses the fallback (the entry, the inline entry, `SPAN_POISON`, then the circuit breaker); only a failed source label in place is dropped. Test: the budget is full before the first table, and A's cached text is absent from B's serialized report | 1.2.3 rule 4, AC-S11, AC-S13 |
 | JSON destinations | Reading the application's maps can stop the program with "concurrent map iteration and map write" (`internal/runtime/maps/table.go:873–883`) | The walk of the destination value is removed. The check uses only the type: an interface anywhere in the type graph means "may run application code", and the actual array is exposed (still decided after `refill` and `fetch`). Test: the omitted-map control under `-race` with both tools, with the pre-filled-interface and grown-buffer cases | 1.3.5 rule 4, 8.1, 10.2, AC-F8, AC-J5, AC-J7 |
+
+### 12.11 Plan review: the native stack, and the erratum
+
+Romain's answers on the execution plan (after the design approval):
+
+| Item | What changed | Sections |
+|---|---|---|
+| Erratum | The S12 row said "the check of the destination type and value"; the approved rule checks the type only | 6.2 |
+| The stack is one GitHub native stack, merged at once | One linear chain of 17 PRs, from this document (PR #92) at the bottom to S14 at the top; each PR is reviewed, approved and checked alone; merging the top PR merges the whole stack (one squashed commit for each PR). The top PR deletes this document and the plan files. Updates rebase the stack, because a native stack needs a linear history | 0, 5.1, 6.1, 6.2, 6.3, 6.4 |
+| X1 and S15 | A stack is in one repository, so X1 stays outside. S15 pins the system-tests revision to the X1 commit; X1 merges after the stack | 6.2 |
+| S14 title | The title no longer has the word "design" (project rule for PR titles) | 6.2 |
