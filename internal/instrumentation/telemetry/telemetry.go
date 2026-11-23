@@ -59,6 +59,9 @@ var (
 	ExecutedSource executedSource
 	// ExecutedPropagation is the number of propagations that have actually been executed since the last heartbeat.
 	ExecutedPropagation atomic.Uint64
+	// DroppedReport is the number of reports dropped since the last heartbeat
+	// because the root span of the request had finished.
+	DroppedReport atomic.Uint64
 	// ExecutedSink is the number of instrumented sinks that have actually been executed since the last heartbeat.
 	ExecutedSink executedSink
 )

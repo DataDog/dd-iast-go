@@ -7,7 +7,6 @@ package spans
 
 import (
 	"log/slog"
-	"math"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -16,34 +15,54 @@ import (
 	"github.com/DataDog/dd-iast-go/internal/config"
 	"github.com/DataDog/dd-iast-go/internal/instrumentation"
 	"github.com/DataDog/dd-iast-go/internal/instrumentation/heartbeat"
+	"github.com/DataDog/dd-iast-go/internal/instrumentation/telemetry"
 	"github.com/DataDog/dd-iast-go/internal/model"
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
 	"github.com/puzpuzpuz/xsync/v4"
 )
 
 const (
-	// tombstoneBudget is the maximum number of entries kept for finished root
-	// spans, in addition to the entries of the requests in flight. A finished
-	// root stays in the store (closed) until the garbage collector reclaims the
-	// span, so that a late report does not bring its annotation back.
-	tombstoneBudget = 4096
 	// trimInterval is the minimum time between two scans of the store for
 	// entries of spans that no longer exist.
 	trimInterval = 250 * time.Millisecond
 )
 
 var (
+	// closedEntryBudget is the number of entries, in addition to
+	// [config.MaxConcurrentRequests], that the store can hold. They are the
+	// entries of finished root spans. It is a variable for the tests.
+	closedEntryBudget int64 = 16384
+	// refuseWindow is how long new annotations are refused after a finished root
+	// could not be recorded. It is a variable for the tests.
+	refuseWindow = 30 * time.Second
+)
+
+var (
 	// store is the association of tracer spans to annotation objects. An entry is
 	// either open (it holds one unit of capacity), or closed (the root span
-	// finished; it holds no capacity and only prevents a new annotation).
+	// finished; it holds no capacity and only prevents a new annotation). An
+	// entry is removed only when its span no longer exists: a finished root that
+	// is still reachable is never forgotten.
 	store = xsync.NewMap[weak.Pointer[tracer.Span], *Annotation](xsync.WithPresize(2 * config.MaxConcurrentRequests))
-	// open is the number of capacity units in use: the open entries of the
+	// entries is the number of entries of the store, plus the units reserved by
+	// callers that are about to insert one. It never goes above [storeLimit].
+	entries atomic.Int64
+	// open is the number of units of capacity in use: the open entries of the
 	// store, plus the units reserved by callers that are about to insert one.
 	open atomic.Int64
+	// refuseUntil is the time (Unix nanoseconds) until which no annotation is
+	// created. It is set when the finish of a root could not be recorded: a late
+	// report of that root cannot be told apart from the report of a new request.
+	refuseUntil atomic.Int64
 	// nextTrim is the earliest time (Unix nanoseconds) of the next scan for dead
 	// keys.
 	nextTrim atomic.Int64
 )
+
+// storeLimit is the maximum number of entries of the store.
+func storeLimit() int64 {
+	return int64(config.MaxConcurrentRequests) + closedEntryBudget
+}
 
 type Annotation struct {
 	sync.RWMutex
@@ -158,7 +177,13 @@ func AnnotationFor(span *tracer.Span) *Annotation {
 		return new(Annotation)
 	}
 
-	if int64(config.MaxConcurrentRequests) <= open.Load() {
+	if refusing() {
+		// Too many finished roots to remember: a report may come from a root that
+		// finished. Dropping the report is safe.
+		return new(Annotation)
+	}
+
+	if int64(config.MaxConcurrentRequests) <= open.Load() || storeLimit() <= entries.Load() {
 		// Entries of spans that no longer exist may hold capacity.
 		trimStore()
 	}
@@ -172,10 +197,19 @@ func AnnotationFor(span *tracer.Span) *Annotation {
 			if old.spanID == id {
 				return old, xsync.CancelOp
 			}
-			// The entry is from an earlier span that used the same memory.
+			// The entry is from an earlier span that used the same memory. The new
+			// entry takes its place in the store.
 			old.closeAndRelease()
+		} else if refusing() || !reserveEntry() {
+			// A finish may have been refused while this call was waiting for the
+			// bucket of the key: check again.
+			full = true
+			return nil, xsync.CancelOp
 		}
 		if !reserve() {
+			if !loaded {
+				entries.Add(-1)
+			}
 			full = true
 			return old, xsync.CancelOp
 		}
@@ -193,6 +227,23 @@ func AnnotationFor(span *tracer.Span) *Annotation {
 	return usable(ann)
 }
 
+// refusing returns true while new annotations are refused.
+func refusing() bool {
+	return time.Now().UnixNano() < refuseUntil.Load()
+}
+
+// refuseFor refuses new annotations for the given time. A call never shortens
+// the time that an earlier call set.
+func refuseFor(d time.Duration) {
+	until := time.Now().Add(d).UnixNano()
+	for {
+		current := refuseUntil.Load()
+		if current >= until || refuseUntil.CompareAndSwap(current, until) {
+			return
+		}
+	}
+}
+
 // lookup returns the entry of the root span, if it belongs to this span.
 func lookup(key weak.Pointer[tracer.Span], id uint64) (*Annotation, bool) {
 	ann, ok := store.Load(key)
@@ -205,6 +256,7 @@ func lookup(key weak.Pointer[tracer.Span], id uint64) (*Annotation, bool) {
 // usable returns ann, or an unsampled annotation if ann is closed.
 func usable(ann *Annotation) *Annotation {
 	if ann.Closed() {
+		telemetry.DroppedReport.Add(1)
 		return new(Annotation)
 	}
 	return ann
@@ -213,13 +265,22 @@ func usable(ann *Annotation) *Annotation {
 // reserve takes one unit of capacity. The check and the increment are one
 // atomic step, so the number of units never goes above the limit.
 func reserve() bool {
-	limit := int64(config.MaxConcurrentRequests)
+	return reserveUnit(&open, int64(config.MaxConcurrentRequests))
+}
+
+// reserveEntry takes one place in the store. The check and the increment are
+// one atomic step, so the number of entries never goes above [storeLimit].
+func reserveEntry() bool {
+	return reserveUnit(&entries, storeLimit())
+}
+
+func reserveUnit(counter *atomic.Int64, limit int64) bool {
 	for {
-		n := open.Load()
+		n := counter.Load()
 		if n >= limit {
 			return false
 		}
-		if open.CompareAndSwap(n, n+1) {
+		if counter.CompareAndSwap(n, n+1) {
 			return true
 		}
 	}
@@ -242,36 +303,30 @@ func trimStore() {
 	if now < next || !nextTrim.CompareAndSwap(next, now+int64(trimInterval)) {
 		return
 	}
+	var removed int64
 	store.DeleteMatching(func(key weak.Pointer[tracer.Span], ann *Annotation) (delete bool, stop bool) {
 		if key.Value() != nil {
 			return false, false
 		}
 		ann.closeAndRelease()
+		removed++
 		return true, false
 	})
+	// The places are given back after the entries are removed from the map, so
+	// the map never holds more entries than the limit.
+	entries.Add(-removed)
 }
 
 // retainClosed replaces the closed entry of a finished root by a small
 // tombstone, so that a report that arrives after the root finished does not
-// create a new annotation. If the number of entries is over the limit, the
-// entry is removed instead: a late report for that root is then not detected.
+// create a new annotation, and the findings can be freed. The entry keeps its
+// place in the store.
 func retainClosed(key weak.Pointer[tracer.Span], ann *Annotation) {
-	limit := int(min(int64(config.MaxConcurrentRequests), math.MaxInt32)) + tombstoneBudget
-	if store.Size() >= limit {
-		trimStore()
-	}
-	over := store.Size() >= limit
 	store.Compute(key, func(old *Annotation, loaded bool) (*Annotation, xsync.ComputeOp) {
-		switch {
-		case !loaded || old != ann:
+		if !loaded || old != ann || old.tombstone {
 			return old, xsync.CancelOp
-		case over:
-			return nil, xsync.DeleteOp
-		case old.tombstone:
-			return old, xsync.CancelOp
-		default:
-			return newTombstone(old.spanID), xsync.UpdateOp
 		}
+		return newTombstone(old.spanID), xsync.UpdateOp
 	})
 }
 

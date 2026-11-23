@@ -20,17 +20,7 @@ import (
 
 func configure(t *testing.T, capacity, samplingPct int) {
 	t.Helper()
-	previousCapacity, previousPct := config.MaxConcurrentRequests, config.RequestSamplingPct
-	previousVulns, previousDedup := config.VulnerabilitiesPerRequest, config.DeduplicationEnabled
-	previousEnabled := config.Enabled
-	config.Enabled = true
-	config.MaxConcurrentRequests, config.RequestSamplingPct = capacity, samplingPct
-	config.VulnerabilitiesPerRequest, config.DeduplicationEnabled = 100000, false
-	t.Cleanup(func() {
-		config.MaxConcurrentRequests, config.RequestSamplingPct = previousCapacity, previousPct
-		config.VulnerabilitiesPerRequest, config.DeduplicationEnabled = previousVulns, previousDedup
-		config.Enabled = previousEnabled
-	})
+	spans.ConfigureForTest(t, capacity, samplingPct)
 }
 
 func newVulnerability() model.Vulnerability {
@@ -45,46 +35,6 @@ func add(ann *spans.Annotation) {
 		return
 	}
 	ann.AddVulnerability(newVulnerability())
-}
-
-func TestLateReportAfterRootFinish(t *testing.T) {
-	configure(t, 2, 100)
-	mockTracer := mocktracer.Start()
-	t.Cleanup(mockTracer.Stop)
-
-	root := tracer.StartSpan("root")
-	child := root.StartChild("child")
-
-	ann := spans.AnnotationFor(child)
-	if !ann.Sampled {
-		t.Fatal("the request must be sampled")
-	}
-	add(ann)
-
-	spans.Finished(root)
-	root.Finish()
-
-	late := spans.AnnotationFor(child)
-	if late.Sampled || late == ann {
-		t.Fatal("a report after the root finished must not get an annotation")
-	}
-	add(ann) // A report that held the annotation before the finish.
-	ann.RLock()
-	count := len(ann.Vulnerabilities)
-	ann.RUnlock()
-	if count != 1 {
-		t.Fatalf("a finding was added after the root finished: %d findings", count)
-	}
-
-	// Finishing again does nothing, and the capacity was given back.
-	spans.Finished(root)
-	for i := range 2 {
-		other := tracer.StartSpan("other")
-		if !spans.AnnotationFor(other).Sampled {
-			t.Fatalf("capacity was not given back on finish (root %d)", i)
-		}
-		t.Cleanup(func() { spans.Finished(other) })
-	}
 }
 
 func TestLateReportRacesFinish(t *testing.T) {
@@ -114,46 +64,6 @@ func TestLateReportRacesFinish(t *testing.T) {
 		defer ann.RUnlock()
 		if len(ann.Vulnerabilities) != atFinish {
 			t.Fatalf("findings changed after finish: %d then %d", atFinish, len(ann.Vulnerabilities))
-		}
-	}
-}
-
-func TestAnnotationCapacityIsAtomic(t *testing.T) {
-	const capacity, goroutines = 3, 16
-	configure(t, capacity, 100)
-	mockTracer := mocktracer.Start()
-	t.Cleanup(mockTracer.Stop)
-
-	for round := range 20 {
-		roots := make([]*tracer.Span, goroutines)
-		for i := range roots {
-			roots[i] = tracer.StartSpan("root")
-		}
-		var (
-			wg      sync.WaitGroup
-			start   = make(chan struct{})
-			mu      sync.Mutex
-			sampled int
-		)
-		for _, root := range roots {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				<-start
-				if spans.AnnotationFor(root).Sampled {
-					mu.Lock()
-					sampled++
-					mu.Unlock()
-				}
-			}()
-		}
-		close(start)
-		wg.Wait()
-		if sampled != capacity {
-			t.Fatalf("round %d: %d annotations stored, want exactly %d", round, sampled, capacity)
-		}
-		for _, root := range roots {
-			spans.Finished(root)
 		}
 	}
 }

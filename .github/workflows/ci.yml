@@ -246,14 +246,43 @@ jobs:
         env:
           DD_IAST_EXPECTED_BUILD_TOOL: orchestrion
         run: go tool orchestrion go test -race -shuffle=on ./...
+      # The regression tests of the annotation lifecycle skip without
+      # instrumentation: check that they ran and passed.
+      - name: Regression tests ran (orchestrion, race)
+        if: matrix.tool == 'orchestrion'
+        env:
+          DD_IAST_EXPECTED_BUILD_TOOL: orchestrion
+        run: |
+          set -o pipefail
+          go tool orchestrion go test -race -count=1 -v \
+            -run '^(TestLateReportAfterRootFinish|TestAnnotationCapacityIsAtomic)$' \
+            ./internal/spans/regression | tee "${RUNNER_TEMP}/regression.txt"
+          grep -q -- '--- PASS: TestLateReportAfterRootFinish ' "${RUNNER_TEMP}/regression.txt"
+          grep -q -- '--- PASS: TestAnnotationCapacityIsAtomic ' "${RUNNER_TEMP}/regression.txt"
       - name: Unit Tests (otelc, race)
         if: matrix.tool == 'otelc'
         run: scripts/otelc-test.sh -race -shuffle=on
+      - name: Regression tests ran (otelc, race)
+        if: matrix.tool == 'otelc'
+        run: |
+          set -o pipefail
+          scripts/otelc-test.sh -race -count=1 -v \
+            '-run=^(TestLateReportAfterRootFinish|TestAnnotationCapacityIsAtomic)$' | tee "${RUNNER_TEMP}/regression.txt"
+          grep -q -- '--- PASS: TestLateReportAfterRootFinish ' "${RUNNER_TEMP}/regression.txt"
+          grep -q -- '--- PASS: TestAnnotationCapacityIsAtomic ' "${RUNNER_TEMP}/regression.txt"
       - name: Integration Tests (race)
         working-directory: _integration/otelc
         env:
           TOOL: ${{ matrix.tool }}
         run: go tool "${TOOL}" go test -race -shuffle=on . ./internal/...
+      - name: Late report integration test ran (race)
+        working-directory: _integration/otelc
+        env:
+          TOOL: ${{ matrix.tool }}
+        run: |
+          set -o pipefail
+          go tool "${TOOL}" go test -race -count=1 -v -run '^TestLateReportAfterRootFinish$' . | tee "${RUNNER_TEMP}/late.txt"
+          grep -q -- '--- PASS: TestLateReportAfterRootFinish ' "${RUNNER_TEMP}/late.txt"
 
   # Signal only: no other job needs this one, so "Green CI" does not wait for
   # it. The next Go toolchain can break the hooks before a release. The 2 test

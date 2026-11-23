@@ -41,19 +41,33 @@ func Finished(span *tracer.Span) {
 		}
 		// No report came before the finish: remember the root as finished, so
 		// that a report that arrives later does not create an annotation.
+		if entries.Load() >= storeLimit() {
+			trimStore()
+		}
 		ann, _ = store.Compute(key, func(old *Annotation, loaded bool) (*Annotation, xsync.ComputeOp) {
 			if loaded {
 				if old.spanID == id {
 					return old, xsync.CancelOp
 				}
+				// The new entry takes the place of the entry of an earlier span.
 				old.closeAndRelease()
+			} else if !reserveEntry() {
+				// Set while the bucket of the key is locked, so a report of this root
+				// that waits for the bucket sees it.
+				refuseFor(refuseWindow)
+				return nil, xsync.CancelOp
 			}
 			return newTombstone(id), xsync.UpdateOp
 		})
+		if ann == nil {
+			// The store is full of finished roots that are still reachable, and
+			// new annotations are refused for a while: a late report of this root
+			// cannot get one.
+			return
+		}
 	}
 
 	if ann.tombstone {
-		retainClosed(key, ann)
 		return
 	}
 

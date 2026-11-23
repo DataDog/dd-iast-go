@@ -167,4 +167,5 @@ for pkg in "${packages[@]}"; do
     status=1
   fi
 done
+
 exit "${status}"
