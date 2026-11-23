@@ -1,0 +1,43 @@
+name: Set up Go for one tool
+description: >-
+  Installs Go and restores a Go build cache that is only for one tool
+  (Orchestrion or otelc). The cache key of setup-go does not depend on the
+  tool, so the two tools would share one build cache. They must not (see
+  scripts/otelc-test.sh).
+
+inputs:
+  go-version:
+    description: Go version for actions/setup-go (for example "oldstable").
+    required: true
+  tool:
+    description: Name of the build tool ("orchestrion" or "otelc").
+    required: true
+
+  scope:
+    description: >-
+      Name of the job family, so that the jobs that build different things do
+      not save to one cache key.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Setup Go
+      id: setup-go
+      uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      with:
+        go-version: ${{ inputs.go-version }}
+        cache: false
+    - name: Find Go cache directories
+      id: go-env
+      shell: bash
+      run: |
+        echo "gocache=$(go env GOCACHE)" >> "${GITHUB_OUTPUT}"
+        echo "gomodcache=$(go env GOMODCACHE)" >> "${GITHUB_OUTPUT}"
+    - name: Go cache
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: |
+          ${{ steps.go-env.outputs.gocache }}
+          ${{ steps.go-env.outputs.gomodcache }}
+        key: go-${{ runner.os }}-${{ runner.arch }}-${{ steps.setup-go.outputs.go-version }}-${{ inputs.tool }}-${{ inputs.scope }}-${{ hashFiles('**/go.sum') }}

@@ -63,18 +63,19 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
-    name: Unit Tests (${{ matrix.tool }})
+    name: Unit Tests (${{ matrix.tool }}, ${{ matrix.go }})
     strategy:
       fail-fast: false
       matrix:
         tool: [orchestrion, otelc]
+        go: [oldstable, stable]
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Setup Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: oldstable
+          go-version: ${{ matrix.go }}
       - name: Unit Tests (orchestrion)
         if: matrix.tool == 'orchestrion'
         env:
@@ -107,10 +108,10 @@ jobs:
       - name: Overhead benchmark unit tests
         if: matrix.tool == 'orchestrion'
         run: go -C benchmarks/overhead test -shuffle=on ./...
-      # Only the Orchestrion run makes a coverage profile: it builds all the
-      # packages of the module in one command.
+      # Only the Orchestrion run on oldstable makes a coverage profile: it
+      # builds all the packages of the module in one command.
       - name: Upload coverage artifact
-        if: ${{ !cancelled() && matrix.tool == 'orchestrion' }}
+        if: ${{ !cancelled() && matrix.tool == 'orchestrion' && matrix.go == 'oldstable' }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: coverage-profile
@@ -120,52 +121,45 @@ jobs:
 
   integration:
     runs-on: ubuntu-latest
-    name: Integration Tests (${{ matrix.module }}, ${{ matrix.tool }})
+    name: Integration Tests (${{ matrix.module }}, ${{ matrix.tool }}, ${{ matrix.go }})
     strategy:
       fail-fast: false
       matrix:
+        go: [oldstable, stable]
+        # "setup" selects one of the entries of "include" below: each entry
+        # adds its fields to the jobs with the same "setup" value, for each Go
+        # version.
+        setup: [main-orchestrion, main-otelc, hashonly, rootandhash]
         include:
           # The main module of the end-to-end tests runs with both tools, so
           # that the two tools are compared on the same code.
-          - module: _integration/otelc
+          - setup: main-orchestrion
+            module: _integration/otelc
             tool: orchestrion
             packages: . ./internal/...
-          - module: _integration/otelc
+          - setup: main-otelc
+            module: _integration/otelc
             tool: otelc
             packages: . ./internal/...
           # The setups import only a part of dd-iast-go. Only otelc supports
           # this (see _integration/otelc/doc.go).
-          - module: _integration/otelc/setups/hashonly
+          - setup: hashonly
+            module: _integration/otelc/setups/hashonly
             tool: otelc
             packages: ./...
-          - module: _integration/otelc/setups/rootandhash
+          - setup: rootandhash
+            module: _integration/otelc/setups/rootandhash
             tool: otelc
             packages: ./...
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Setup Go
-        id: setup-go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        uses: ./.github/actions/setup-go-tool
         with:
-          go-version: oldstable
-          # The cache key of setup-go does not depend on the tool, so the
-          # orchestrion and otelc legs would share one build cache. The two tools
-          # must not share a build cache (see scripts/otelc-test.sh). The next
-          # steps set up a cache with a key for each tool.
-          cache: false
-      - name: Find Go cache directories
-        id: go-env
-        run: |
-          echo "gocache=$(go env GOCACHE)" >> "${GITHUB_OUTPUT}"
-          echo "gomodcache=$(go env GOMODCACHE)" >> "${GITHUB_OUTPUT}"
-      - name: Go cache
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            ${{ steps.go-env.outputs.gocache }}
-            ${{ steps.go-env.outputs.gomodcache }}
-          key: go-${{ runner.os }}-${{ runner.arch }}-${{ steps.setup-go.outputs.go-version }}-${{ matrix.tool }}-${{ hashFiles(format('{0}/go.sum', matrix.module)) }}
+          go-version: ${{ matrix.go }}
+          tool: ${{ matrix.tool }}
+          scope: ${{ matrix.setup }}
       - name: Integration Tests
         working-directory: ${{ matrix.module }}
         env:
@@ -186,6 +180,157 @@ jobs:
         run: |
           go tool "${TOOL}" go build -o "${RUNNER_TEMP}/app" ./cmd/app
           "${RUNNER_TEMP}/app"
+
+  # Runs the woven program of _integration/otelc/cmd/sentinel. It fails when
+  # the build is not woven, or when a hook of the expected-hook manifest does
+  # not work. It never skips.
+  sentinel:
+    runs-on: ubuntu-latest
+    name: Sentinel (${{ matrix.tool }}, ${{ matrix.go }})
+    strategy:
+      fail-fast: false
+      matrix:
+        tool: [orchestrion, otelc]
+        go: [oldstable, stable]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Setup Go
+        uses: ./.github/actions/setup-go-tool
+        with:
+          go-version: ${{ matrix.go }}
+          tool: ${{ matrix.tool }}
+          scope: sentinel
+      - name: Build and run the sentinel
+        working-directory: _integration/otelc
+        env:
+          TOOL: ${{ matrix.tool }}
+          DD_IAST_EXPECTED_BUILD_TOOL: ${{ matrix.tool }}
+        run: |
+          go tool "${TOOL}" go build -o "${RUNNER_TEMP}/sentinel" ./cmd/sentinel
+          "${RUNNER_TEMP}/sentinel"
+      # Without a tool, the sentinel must fail: this test proves it. (The tests
+      # of the sentinel package run with the tool in the integration tests.)
+      - name: The sentinel fails without a tool
+        working-directory: _integration/otelc
+        run: |
+          set -o pipefail
+          go test -count=1 -v -run '^TestRunFailsWithoutInstrumentation$' ./internal/sentinel | tee "${RUNNER_TEMP}/unwoven.txt"
+          # A skipped test passes, so check that it ran.
+          grep -q -- '--- PASS: TestRunFailsWithoutInstrumentation' "${RUNNER_TEMP}/unwoven.txt"
+
+  # The tests of the woven code with the race detector. The race detector does
+  # not instrument package runtime.
+  race:
+    runs-on: ubuntu-latest
+    name: Race (${{ matrix.tool }})
+    strategy:
+      fail-fast: false
+      matrix:
+        tool: [orchestrion, otelc]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Setup Go
+        uses: ./.github/actions/setup-go-tool
+        with:
+          go-version: stable
+          tool: ${{ matrix.tool }}
+          scope: race
+      - name: Unit Tests (orchestrion, race)
+        if: matrix.tool == 'orchestrion'
+        env:
+          DD_IAST_EXPECTED_BUILD_TOOL: orchestrion
+        run: go tool orchestrion go test -race -shuffle=on ./...
+      - name: Unit Tests (otelc, race)
+        if: matrix.tool == 'otelc'
+        run: scripts/otelc-test.sh -race -shuffle=on
+      - name: Integration Tests (race)
+        working-directory: _integration/otelc
+        env:
+          TOOL: ${{ matrix.tool }}
+        run: go tool "${TOOL}" go test -race -shuffle=on . ./internal/...
+
+  # Signal only: no other job needs this one, so "Green CI" does not wait for
+  # it. The next Go toolchain can break the hooks before a release. The 2 test
+  # steps are independent: a failure of the first one does not stop the
+  # second one. The last step writes a warning in the job summary.
+  gotip:
+    runs-on: ubuntu-latest
+    name: gotip (${{ matrix.tool }})
+    strategy:
+      fail-fast: false
+      matrix:
+        tool: [orchestrion, otelc]
+    env:
+      # Use the toolchain that is installed, never download another one.
+      GOTOOLCHAIN: local
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # gotip is a build of the development branch of Go: a Go release builds it.
+      - name: Setup Go (to build gotip)
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: stable
+          cache: false
+      - name: Install gotip
+        id: install
+        run: |
+          go install golang.org/dl/gotip@latest
+          gotip download
+          echo "${HOME}/sdk/gotip/bin" >> "${GITHUB_PATH}"
+      - name: Go version
+        id: version
+        run: |
+          go version
+          # A development toolchain reports "devel go1.N-<hash>" or
+          # "go1.N-devel_<hash>", depending on the Go version.
+          if [[ "$(go version)" != 'go version devel '* && "$(go version)" != *'-devel_'* ]]; then
+            echo "the go command is not gotip" >&2
+            exit 1
+          fi
+      # No weaving. The drift tests compare the Go source with the checked-in
+      # golden files, and fail for a Go minor that has no golden file.
+      - name: Drift tests
+        id: drift
+        if: ${{ !cancelled() && steps.install.outcome == 'success' && steps.version.outcome == 'success' }}
+        run: go test -count=1 -run '^TestDrift' ./...
+      - name: Sentinel
+        id: sentinel
+        if: ${{ !cancelled() && steps.install.outcome == 'success' && steps.version.outcome == 'success' }}
+        working-directory: _integration/otelc
+        env:
+          TOOL: ${{ matrix.tool }}
+          DD_IAST_EXPECTED_BUILD_TOOL: ${{ matrix.tool }}
+        run: |
+          go tool "${TOOL}" go build -o "${RUNNER_TEMP}/sentinel" ./cmd/sentinel
+          "${RUNNER_TEMP}/sentinel"
+      - name: Warning in the job summary
+        if: ${{ failure() }}
+        env:
+          TOOL: ${{ matrix.tool }}
+          INSTALL: ${{ steps.install.outcome }}
+          VERSION: ${{ steps.version.outcome }}
+          DRIFT: ${{ steps.drift.outcome }}
+          SENTINEL: ${{ steps.sentinel.outcome }}
+        run: |
+          {
+            echo "## :warning: gotip (${TOOL}): the next Go version can break the hooks"
+            echo
+            echo "- Install of gotip: ${INSTALL}"
+            echo "- The go command is gotip: ${VERSION}"
+            echo "- Drift tests: ${DRIFT}"
+            echo "- Sentinel: ${SENTINEL}"
+            echo
+            echo "This job is a signal only: it does not block the merge."
+          } >> "${GITHUB_STEP_SUMMARY}"
 
   upload-coverage:
     needs: test
@@ -283,7 +428,7 @@ jobs:
   green-ci:
     runs-on: ubuntu-latest
     name: Green CI
-    needs: [validate-licenses, lint, test, integration, upload-coverage, benchmark]
+    needs: [validate-licenses, lint, test, integration, sentinel, race, upload-coverage, benchmark]
     if: always()
     steps:
       - name: Success
@@ -292,6 +437,8 @@ jobs:
           && needs.lint.result            == 'success'
           && needs.test.result            == 'success'
           && needs.integration.result     == 'success'
+          && needs.sentinel.result        == 'success'
+          && needs.race.result            == 'success'
           && needs.upload-coverage.result == 'success'
           && needs.benchmark.result       == 'success'
         run: echo "Success!"
@@ -301,6 +448,8 @@ jobs:
           || needs.lint.result            != 'success'
           || needs.test.result            != 'success'
           || needs.integration.result     != 'success'
+          || needs.sentinel.result        != 'success'
+          || needs.race.result            != 'success'
           || needs.upload-coverage.result != 'success'
           || needs.benchmark.result       != 'success'
         run: echo "Failure!" && exit 1

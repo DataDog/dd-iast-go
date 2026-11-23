@@ -1,0 +1,8 @@
+# Expected-hook manifest: the hooks that a woven build must have.
+#
+# Each line is: <go-minor> <goos>/<goarch> <hook>
+# "*" matches all values. See internal/hookmanifest for the format.
+#
+# A change that adds a hook adds a line here, and adds a witness for the hook in
+# witnesses.go. The sentinel fails when a line has no witness, or when its
+# witness fails.
