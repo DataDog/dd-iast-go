@@ -22,8 +22,8 @@ import (
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
 )
 
-// The two tests of this file use only the API that the previous version of the
-// package has, so they can run against it.
+// These tests use only the API that the previous version of the package has,
+// so they can run against it.
 
 // configureRegression sets the capacity and the sampling rate for one test.
 func configureRegression(t *testing.T, capacity, samplingPct int) {
@@ -118,6 +118,61 @@ func TestLateReportAfterRootFinish(t *testing.T) {
 	t.Cleanup(func() { other.Finish() })
 	if !spans.AnnotationFor(other).Sampled {
 		t.Fatal("the late reports used capacity")
+	}
+}
+
+// TestOrphanEnabledTagMatchesAdmission checks the tag on orphan spans after
+// reports that are accepted, sampled out, or rejected for lack of capacity.
+func TestOrphanEnabledTagMatchesAdmission(t *testing.T) {
+	if !build.Instrumented() {
+		t.Skip("this test needs the Finish hook: build with Orchestrion or otelc")
+	}
+
+	for _, test := range []struct {
+		name       string
+		capacity   int
+		sampling   int
+		holdSlot   bool
+		wantTag    any
+		wantReport uint64
+	}{
+		{name: "accepted", capacity: 1, sampling: 100, wantTag: 1.0, wantReport: 1},
+		{name: "sampled out", capacity: 1, sampling: 0, wantTag: 0.0},
+		{name: "zero capacity", capacity: 0, sampling: 100},
+		{name: "capacity in use", capacity: 1, sampling: 100, holdSlot: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			configureRegression(t, test.capacity, test.sampling)
+			mockTracer := mocktracer.Start()
+			t.Cleanup(mockTracer.Stop)
+
+			if test.holdSlot {
+				// Use another goroutine so its active span is not the report's span.
+				holderCh := make(chan *tracer.Span, 1)
+				go func() { holderCh <- tracer.StartSpan("holder") }()
+				holder := <-holderCh
+				if !spans.AnnotationFor(holder).Sampled {
+					t.Fatal("the holder did not take the capacity")
+				}
+				t.Cleanup(func() { holder.Finish() })
+			}
+
+			var executed atomic.Uint64
+			vulnerability.Report(context.Background(), constants.VulnerabilityTypeWeakHash, "MD5", &executed)
+			finished := mockTracer.FinishedSpans()
+			if len(finished) != 1 {
+				t.Fatalf("finished span count = %d, want 1", len(finished))
+			}
+			if got := finished[0].Tag(spans.SpanTagEnabled); got != test.wantTag {
+				t.Errorf("enabled tag = %v, want %v", got, test.wantTag)
+			}
+			if got := executed.Load(); got != test.wantReport {
+				t.Errorf("executed reports = %d, want %d", got, test.wantReport)
+			}
+			if got := vulnerabilityCount(t, finished[0].Tag(spans.SpanTagJson)); got != int(test.wantReport) {
+				t.Errorf("findings = %d, want %d", got, test.wantReport)
+			}
+		})
 	}
 }
 

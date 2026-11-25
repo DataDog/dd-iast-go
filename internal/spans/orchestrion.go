@@ -22,7 +22,7 @@ const samplingMechanismAppSec = 5
 
 // Finished is called by [*tracer.Span.Finish]. It closes the [*Annotation] of
 // the span, which gives back its capacity, and writes the findings to the span.
-// No finding is added after this returns.
+// After this returns, the reporting path cannot add findings to the annotation.
 func Finished(span *tracer.Span) {
 	if span == nil || !config.Enabled || config.RequestSamplingPct == 0 || config.MaxConcurrentRequests == 0 {
 		return
