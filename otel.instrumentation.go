@@ -25,4 +25,5 @@ package ddiast
 import (
 	_ "github.com/DataDog/dd-iast-go/instrumentation/spans" // Reports the vulnerabilities when a span finishes
 	_ "github.com/DataDog/dd-iast-go/internal/build"        // Marks the build as instrumented
+	_ "github.com/DataDog/dd-iast-go/internal/taint/heapranges"
 )

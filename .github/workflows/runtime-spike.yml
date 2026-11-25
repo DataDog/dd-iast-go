@@ -1,0 +1,89 @@
+name: Runtime weaving spike
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  platform:
+    name: Platform (${{ matrix.os }}, ${{ matrix.go }}, ${{ matrix.tool }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, macos-15-intel, ubuntu-24.04-arm]
+        go: ['1.26.10', '1.27.4']
+        tool: [orchestrion, otelc]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+        with:
+          go-version: ${{ matrix.go }}
+      - name: Build and test
+        shell: bash
+        env:
+          TOOL: ${{ matrix.tool }}
+          GODEBUG: cpu.atomics=off
+          GOARM64: v8.0
+          OTELC_TEST_GOCACHE: ${{ runner.temp }}/otelc-cache
+          DD_TRACE_ENABLED: 'false'
+        run: |
+          go build ./...
+          if [[ "$TOOL" == orchestrion ]]; then
+            go tool orchestrion go test -count=1 -v -shuffle=on ./...
+            go tool orchestrion go test -race -count=1 -v -run '^TestNestedBuildAndInit$' ./internal/taint/heapranges/heaprangestest
+          else
+            scripts/otelc-test.sh -count=1 -v -shuffle=on
+            scripts/otelc-test.sh -race -count=1 -v '-run=^TestNestedBuildAndInit$'
+          fi
+  linux:
+    name: Experiments, sanitizer, and assembly (${{ matrix.go }}, ${{ matrix.tool }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        go: ['1.26.10', '1.27.4']
+        tool: [orchestrion, otelc]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+        with:
+          go-version: ${{ matrix.go }}
+      - name: Experiments
+        shell: bash
+        env:
+          TOOL: ${{ matrix.tool }}
+          GOEXPERIMENT: arenas,runtimefreegc
+          DD_TRACE_ENABLED: 'false'
+        run: |
+          go tool "$TOOL" go build -o "$RUNNER_TEMP/arena" ./internal/taint/heapranges/heaprangestest/cmd/arenaprog
+          "$RUNNER_TEMP/arena" | grep 'GOEXPERIMENT=arenas,runtimefreegc'
+      - name: Sanitizers
+        shell: bash
+        env:
+          TOOL: ${{ matrix.tool }}
+          CC: clang
+          DD_TRACE_ENABLED: 'false'
+          OTELC_TEST_GOCACHE: ${{ runner.temp }}/sanitizer-cache
+        run: |
+          for flag in asan msan; do
+            if [[ "$TOOL" == orchestrion ]]; then
+              go tool orchestrion go test "-$flag" -count=1 -v -run '^TestNestedBuildAndInit$' ./internal/taint/heapranges/heaprangestest
+            else
+              scripts/otelc-test.sh "-$flag" -count=1 -v '-run=^TestNestedBuildAndInit$'
+            fi
+          done
+      - name: Runtime assembly
+        shell: bash
+        env:
+          TOOL: ${{ matrix.tool }}
+        run: |
+          bin=$(go tool -n "$TOOL")
+          for target in linux/amd64 linux/arm64 darwin/arm64; do
+            os=${target%/*}; arch=${target#*/}
+            cache=$(mktemp -d); work=$(mktemp -d)
+            GOOS="$os" GOARCH="$arch" CGO_ENABLED=0 GOCACHE="$cache" OTELC_WORK_DIR="$work" "$bin" go build -gcflags=runtime=-S -o "$RUNNER_TEMP/program" ./internal/taint/heapranges/heaprangestest/cmd/initprog > "$RUNNER_TEMP/assembly.txt" 2>&1
+            grep -m1 'runtime.ddiastSweepProbe STEXT' "$RUNNER_TEMP/assembly.txt"
+            grep -m1 'heapranges.spikeRuntime STEXT' "$RUNNER_TEMP/assembly.txt"
+            grep -m1 'heapranges.spikeAccount STEXT' "$RUNNER_TEMP/assembly.txt"
+          done

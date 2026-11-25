@@ -1,0 +1,57 @@
+meta:
+  name: github.com/DataDog/dd-iast-go/internal/taint/heapranges
+  description: Test runtime weaving
+aspects:
+  - id: heap.span
+    tracer-internal: true
+    join-point:
+      struct-definition: runtime.mspan
+    advice:
+      - add-struct-field:
+          name: ddiastSpike
+          type: internal/runtime/atomic.Uint64
+      - add-blank-import: unsafe
+      - inject-declarations:
+          links:
+            - github.com/DataDog/dd-iast-go/internal/taint/heapranges
+          imports:
+            ddheapatomic: internal/runtime/atomic
+          template: |-
+            var ddiastSweepCount ddheapatomic.Uint64
+            //go:linkname ddiastNeed runtime.ddiastHeapRangesNeedTheWovenRuntime
+            func ddiastNeed() {}
+            //go:linkname ddiastSpike github.com/DataDog/dd-iast-go/internal/taint/heapranges.spikeRuntime
+            func ddiastSpike() uint64 { return 42 + ddiastSweepCount.Load() }
+            //go:linkname ddiastAccount github.com/DataDog/dd-iast-go/internal/taint/heapranges.spikeAccount
+            func ddiastAccount(n int64) { memstats.other_sys.add(n); gcController.mappedReady.Add(n) }
+            //go:nosplit
+            func ddiastSweepProbe(s *mspan) { _ = s.ddiastSpike.Load(); ddiastSweepCount.Add(1) }
+  - id: heap.sweep
+    tracer-internal: true
+    join-point:
+      function-body:
+        function:
+          - receiver: '*runtime.mspan'
+          - name: countAlloc
+    advice:
+      - prepend-statements:
+          template: ddiastSweepProbe({{ .Function.Receiver }})
+  - id: heap.package
+    tracer-internal: true
+    join-point:
+      all-of:
+        - import-path: github.com/DataDog/dd-iast-go/internal/taint/heapranges
+        - function-body:
+            function:
+              - name: Probe
+    advice:
+      - add-blank-import: unsafe
+      - inject-declarations:
+          template: |-
+            //go:linkname spikeRuntime
+            func spikeRuntime() uint64
+            //go:linkname spikeAccount
+            func spikeAccount(int64)
+            //go:linkname needWovenRuntime runtime.ddiastHeapRangesNeedTheWovenRuntime
+            func needWovenRuntime()
+            var _ = func() bool { needWovenRuntime(); runtimeProbe = spikeRuntime; runtimeAccount = spikeAccount; return true }()

@@ -1,0 +1,30 @@
+version: v1.2.1-0
+span_field:
+  target: runtime
+  where:
+    struct: mspan
+  do:
+    - add_struct_fields:
+        new_field:
+          - name: ddiastSpike
+            type: atomic.Uint64
+runtime_code:
+  target: runtime
+  do:
+    - add_file:
+        file: runtime_inject.go
+        path: github.com/DataDog/dd-iast-go/internal/taint/heapranges
+package_code:
+  target: github.com/DataDog/dd-iast-go/internal/taint/heapranges
+  do:
+    - add_file:
+        file: heapranges_inject.go
+        path: github.com/DataDog/dd-iast-go/internal/taint/heapranges
+sweep:
+  target: runtime
+  where:
+    func: countAlloc
+    recv: '*mspan'
+  do:
+    - inject_code:
+        raw: ddiastSweepProbe({{ .Receiver }})
