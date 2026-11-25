@@ -25,13 +25,17 @@ type slabWorker struct {
 	queueLimit uint32
 	queues     atomic.Uint32
 	paused     atomic.Bool
+	initial    [][]byte
 }
 
 func newSlabWorker(limit uint64) (*slabWorker, bool) {
 	if limit < slabSize || runtimePublishSlab == nil || runtimeReadySlabs == nil || runtimeTakeRefill == nil || runtimeAllocateUnits == nil || runtimeSetQueue == nil || !slabWorkerClaimed.CompareAndSwap(false, true) {
 		return nil, false
 	}
-	allocator := newSlabAllocator(limit)
+	return initializeSlabWorker(limit, newSlabAllocator(limit))
+}
+
+func initializeSlabWorker(limit uint64, allocator *slabAllocator) (*slabWorker, bool) {
 	if limit > slabSize*maxSlabs {
 		limit = slabSize * maxSlabs
 	}
@@ -41,11 +45,18 @@ func newSlabWorker(limit uint64) (*slabWorker, bool) {
 	}
 	worker := &slabWorker{allocator: allocator, queueLimit: uint32(queueLimit)}
 	target := worker.targetQueues()
+	needed := (uint64(target)*queueBytes + probeBytes + slabSize - 1) / slabSize
+	for i := uint64(0); i < needed; i++ {
+		memory, ok := allocator.allocate()
+		if !ok || len(memory) != slabSize {
+			return nil, false
+		}
+		worker.initial = append(worker.initial, memory)
+	}
 	if !worker.allocateQueues(target) {
 		return nil, false
 	}
-	needed := (uint64(target)*queueBytes + probeBytes + slabSize - 1) / slabSize
-	for allocator.mapped.Load()/slabSize < needed {
+	for len(worker.initial) != 0 {
 		if !worker.publishOne() {
 			return nil, false
 		}
@@ -65,9 +76,17 @@ func (w *slabWorker) publishOne() bool {
 	if runtimeReadySlabs() >= 2 {
 		return false
 	}
-	memory, ok := w.allocator.allocate()
-	if !ok || len(memory) != slabSize {
-		return false
+	var memory []byte
+	if len(w.initial) != 0 {
+		memory = w.initial[0]
+		w.initial[0] = nil
+		w.initial = w.initial[1:]
+	} else {
+		var ok bool
+		memory, ok = w.allocator.allocate()
+		if !ok || len(memory) != slabSize {
+			return false
+		}
 	}
 	return runtimePublishSlab(uintptr(unsafe.Pointer(&memory[0])))
 }
