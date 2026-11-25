@@ -7,13 +7,37 @@ package main
 
 import (
 	"encoding/json"
+	"math"
 	"os"
 	"runtime"
 	"runtime/debug"
+	"strconv"
+	"time"
 
 	"github.com/DataDog/dd-iast-go/internal/taint/heapranges"
 	"github.com/DataDog/dd-iast-go/internal/taint/heapranges/internal/knobs"
 )
+
+func validQueues(count uint32) bool {
+	if knobs.QueueEntry == nil || knobs.SlabAddress == nil {
+		return false
+	}
+	addresses := make(map[uintptr]bool)
+	for index := uint32(0); index < count; index++ {
+		entry := knobs.QueueEntry(index)
+		address := knobs.SlabAddress(entry)
+		if entry == 0 || address == 0 || address%64 != 0 {
+			return false
+		}
+		for other := range addresses {
+			if address < other+(16<<10) && other < address+(16<<10) {
+				return false
+			}
+		}
+		addresses[address] = true
+	}
+	return true
+}
 
 func main() {
 	settings := map[string]string{}
@@ -26,13 +50,20 @@ func main() {
 		}
 	}
 	result := struct {
-		Enabled  bool              `json:"enabled"`
-		Gate     uint32            `json:"gate"`
-		Reason   string            `json:"reason"`
-		Settings map[string]string `json:"settings"`
-		Mapped   uint64            `json:"mapped"`
-		OtherSys uint64            `json:"other_sys"`
-		MapOK    bool              `json:"map_ok"`
+		Enabled     bool              `json:"enabled"`
+		Gate        uint32            `json:"gate"`
+		Reason      string            `json:"reason"`
+		Settings    map[string]string `json:"settings"`
+		Mapped      uint64            `json:"mapped"`
+		OtherSys    uint64            `json:"other_sys"`
+		OtherBefore uint64            `json:"other_before"`
+		MapOK       bool              `json:"map_ok"`
+		Queues      uint32            `json:"queues"`
+		QueuesValid bool              `json:"queues_valid"`
+		Ready       uint32            `json:"ready"`
+		PoolCount   int               `json:"pool_count"`
+		PoolValid   bool              `json:"pool_valid"`
+		PauseValid  bool              `json:"pause_valid"`
 	}{Enabled: heapranges.Enabled(), Settings: settings}
 	if knobs.Gate != nil {
 		result.Gate = knobs.Gate()
@@ -40,11 +71,56 @@ func main() {
 	if knobs.OffReason != nil {
 		result.Reason = knobs.OffReason()
 	}
-	if len(os.Args) > 1 && os.Args[1] == "slab" && knobs.MapSlab != nil {
-		result.MapOK, result.Mapped = knobs.MapSlab()
+	if len(os.Args) > 1 && (os.Args[1] == "slab" || os.Args[1] == "slab-negative") && knobs.MapSlab != nil {
+		debug.SetGCPercent(-1)
+		debug.SetMemoryLimit(math.MaxInt64)
 		var stats runtime.MemStats
 		runtime.ReadMemStats(&stats)
+		result.OtherBefore = stats.OtherSys
+		result.MapOK, result.Mapped = knobs.MapSlab(os.Args[1] == "slab-negative")
+		runtime.ReadMemStats(&stats)
 		result.OtherSys = stats.OtherSys
+	}
+	if len(os.Args) > 2 && (os.Args[1] == "worker" || os.Args[1] == "worker-refill" || os.Args[1] == "worker-grow" || os.Args[1] == "worker-pause") && knobs.InitSlabWorker != nil {
+		limit, err := strconv.ParseUint(os.Args[2], 10, 64)
+		if err != nil {
+			os.Exit(2)
+		}
+		result.Queues, result.Mapped, result.MapOK = knobs.InitSlabWorker(limit)
+		if result.MapOK && os.Args[1] != "worker" && knobs.StartRefiller != nil && knobs.WorkerStats != nil && knobs.ReadySlabs != nil {
+			if os.Args[1] == "worker-grow" {
+				runtime.GOMAXPROCS(32)
+			}
+			if os.Args[1] == "worker-pause" && knobs.PauseRefiller != nil {
+				knobs.PauseRefiller(true)
+			}
+			knobs.StartRefiller()
+			if os.Args[1] == "worker-pause" && knobs.PauseRefiller != nil {
+				time.Sleep(50 * time.Millisecond)
+				queues, mapped := knobs.WorkerStats()
+				result.PauseValid = queues == result.Queues && mapped == result.Mapped && knobs.ReadySlabs() == 0
+				knobs.PauseRefiller(false)
+			}
+			deadline := time.Now().Add(2 * time.Second)
+			for time.Now().Before(deadline) {
+				queues, _ := knobs.WorkerStats()
+				if knobs.ReadySlabs() >= 2 && (os.Args[1] != "worker-grow" || queues >= 32) {
+					break
+				}
+				time.Sleep(time.Millisecond)
+			}
+			result.Queues, result.Mapped = knobs.WorkerStats()
+		}
+		result.QueuesValid = result.MapOK && validQueues(result.Queues)
+		if knobs.ReadySlabs != nil {
+			result.Ready = knobs.ReadySlabs()
+		}
+	}
+	if len(os.Args) > 1 && os.Args[1] == "pool" {
+		result.PoolCount, result.PoolValid = exerciseSlabPool()
+	}
+	if len(os.Args) > 1 && os.Args[1] == "tail" {
+		result.PoolValid = exerciseSlabTail()
 	}
 	if err := json.NewEncoder(os.Stdout).Encode(result); err != nil {
 		os.Exit(1)

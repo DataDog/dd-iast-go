@@ -12,7 +12,16 @@ const (
 	maxSlabs = 1024
 )
 
-var runtimeAccountSlab func()
+var (
+	runtimeAccountSlab   func()
+	runtimePublishSlab   func(uintptr) bool
+	runtimeReadySlabs    func() uint32
+	runtimeTakeRefill    func() bool
+	runtimeAllocateUnits func(uint32) uint32
+	runtimeSlabAddress   func(uint32) uintptr
+	runtimeSetQueue      func(uint32, uint32) bool
+	runtimeQueueEntry    func(uint32) uint32
+)
 
 type slabAllocator struct {
 	limit    uint64

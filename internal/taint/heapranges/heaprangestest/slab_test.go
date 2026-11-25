@@ -26,23 +26,37 @@ func TestSlabMappingAndAccounting(t *testing.T) {
 	if settings["-asan"] == "true" || settings["-msan"] == "true" {
 		t.Skip("unsupported sanitizer")
 	}
-	output, err := exec.Command(initProgram(t), "slab").Output()
-	if err != nil {
-		t.Fatalf("init program: %v", err)
-	}
-	var got struct {
-		MapOK    bool              `json:"map_ok"`
-		Mapped   uint64            `json:"mapped"`
-		OtherSys uint64            `json:"other_sys"`
-		Settings map[string]string `json:"settings"`
-	}
-	if err := json.Unmarshal(output, &got); err != nil {
-		t.Fatalf("init program output %q: %v", output, err)
-	}
-	if !reflect.DeepEqual(got.Settings, settings) {
-		t.Fatalf("build settings = %v, want %v", got.Settings, settings)
-	}
-	if !got.MapOK || got.Mapped != 1<<20 || got.OtherSys < got.Mapped {
-		t.Fatalf("mapping result = %+v", got)
+	program := initProgram(t)
+	t.Setenv("GOMAXPROCS", "1")
+	for _, tc := range []struct {
+		scenario  string
+		accounted bool
+	}{{"slab", true}, {"slab-negative", false}} {
+		t.Run(tc.scenario, func(t *testing.T) {
+			output, err := exec.Command(program, tc.scenario).Output()
+			if err != nil {
+				t.Fatalf("init program: %v", err)
+			}
+			var got struct {
+				MapOK       bool              `json:"map_ok"`
+				Mapped      uint64            `json:"mapped"`
+				OtherSys    uint64            `json:"other_sys"`
+				OtherBefore uint64            `json:"other_before"`
+				Settings    map[string]string `json:"settings"`
+			}
+			if err := json.Unmarshal(output, &got); err != nil {
+				t.Fatalf("init program output %q: %v", output, err)
+			}
+			if !reflect.DeepEqual(got.Settings, settings) {
+				t.Fatalf("build settings = %v, want %v", got.Settings, settings)
+			}
+			if !got.MapOK || got.Mapped != 1<<20 {
+				t.Fatalf("mapping result = %+v", got)
+			}
+			increased := got.OtherSys >= got.OtherBefore && got.OtherSys-got.OtherBefore >= got.Mapped
+			if increased != tc.accounted {
+				t.Fatalf("accounted = %t, want %t: %+v", increased, tc.accounted, got)
+			}
+		})
 	}
 }
