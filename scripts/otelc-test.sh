@@ -78,7 +78,8 @@ if [[ ${#rules[@]} -eq 0 ]]; then
   echo "otelc-test: no otelc rule file found in this module" >&2
   exit 1
 fi
-if [[ ! " ${rules[*]} " == *"/internal/build/otelc.yml "* ]]; then
+normalized_rules="${rules[*]//\\//}"
+if [[ ! " ${normalized_rules} " == *"/internal/build/otelc.yml "* ]]; then
   echo "otelc-test: internal/build/otelc.yml not found: the build is not marked as instrumented" >&2
   exit 1
 fi
