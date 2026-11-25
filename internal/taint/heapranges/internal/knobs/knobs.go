@@ -9,4 +9,5 @@ package knobs
 var (
 	Gate      func() uint32
 	OffReason func() string
+	MapSlab   func() (bool, uint64)
 )

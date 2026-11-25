@@ -12,7 +12,13 @@ import (
 	_ "unsafe"
 )
 
-var ddiastHeapGate ddheapatomic.Uint32
+var (
+	ddiastHeapGate ddheapatomic.Uint32
+	_              *sysMemStat                              = &memstats.other_sys
+	_              *ddheapatomic.Uint64                     = &gcController.mappedReady
+	_              func(*sysMemStat, int64)                 = (*sysMemStat).add
+	_              func(*ddheapatomic.Uint64, int64) uint64 = (*ddheapatomic.Uint64).Add
+)
 
 //go:linkname ddiastHeapRangesNeedRuntime runtime.ddiastHeapRangesNeedTheWovenRuntime
 func ddiastHeapRangesNeedRuntime() {}
@@ -20,4 +26,11 @@ func ddiastHeapRangesNeedRuntime() {}
 //go:linkname ddiastHeapRangesGate github.com/DataDog/dd-iast-go/internal/taint/heapranges.runtimeGate
 func ddiastHeapRangesGate() uint32 {
 	return ddiastHeapGate.Load()
+}
+
+//go:linkname ddiastHeapRangesAccountSlab github.com/DataDog/dd-iast-go/internal/taint/heapranges.accountSlab
+//go:nosplit
+func ddiastHeapRangesAccountSlab() {
+	memstats.other_sys.add(1 << 20)
+	gcController.mappedReady.Add(1 << 20)
 }

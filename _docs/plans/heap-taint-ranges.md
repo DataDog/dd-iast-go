@@ -458,8 +458,10 @@ implementation choices that the design does not fix. Each one is marked
     - **otelc:** the nested command gets a fresh `OTELC_WORK_DIR`
       (`t.TempDir()`). The outer `otelc go test` holds its build lock in its
       own `OTELC_WORK_DIR` until the test ends, so a nested otelc with the
-      inherited value waits for ever. (Orchestrion needs no change: a nested
-      build inside `go tool orchestrion go test` works.)
+      inherited value waits for ever.
+    - **Build cache:** each nested tool build uses a fresh writable `GOCACHE`.
+      A reused cache caused an Orchestrion helper build to link an old runtime
+      archive without the new injected symbols; a fresh cache passed.
     - **Build flags:** the helper reads `-asan`, `-msan` and `-race` from
       `debug.ReadBuildInfo().Settings` of the test binary, and passes the
       same flags to the nested `initprog` build. `initprog` prints its own

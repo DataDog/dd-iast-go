@@ -17,7 +17,13 @@ aspects:
           imports:
             ddheapatomic: internal/runtime/atomic
           template: |-
-            var ddiastHeapGate ddheapatomic.Uint32
+            var (
+            	ddiastHeapGate ddheapatomic.Uint32
+            	_              *sysMemStat                              = &memstats.other_sys
+            	_              *ddheapatomic.Uint64                     = &gcController.mappedReady
+            	_              func(*sysMemStat, int64)                 = (*sysMemStat).add
+            	_              func(*ddheapatomic.Uint64, int64) uint64 = (*ddheapatomic.Uint64).Add
+            )
             
             //go:linkname ddiastHeapRangesNeedRuntime runtime.ddiastHeapRangesNeedTheWovenRuntime
             func ddiastHeapRangesNeedRuntime() {}
@@ -25,6 +31,13 @@ aspects:
             //go:linkname ddiastHeapRangesGate github.com/DataDog/dd-iast-go/internal/taint/heapranges.runtimeGate
             func ddiastHeapRangesGate() uint32 {
             	return ddiastHeapGate.Load()
+            }
+            
+            //go:linkname ddiastHeapRangesAccountSlab github.com/DataDog/dd-iast-go/internal/taint/heapranges.accountSlab
+            //go:nosplit
+            func ddiastHeapRangesAccountSlab() {
+            	memstats.other_sys.add(1 << 20)
+            	gcController.mappedReady.Add(1 << 20)
             }
   - id: heap.package
     tracer-internal: true
@@ -46,10 +59,19 @@ aspects:
             //go:linkname needWovenRuntime runtime.ddiastHeapRangesNeedTheWovenRuntime
             func needWovenRuntime()
             
+            //go:linkname accountSlab
+            func accountSlab()
+            
             var _ = func() bool {
             	needWovenRuntime()
             	ddheapknobs.Gate = runtimeGate
             	ddheapknobs.OffReason = func() string { return offReason }
+            	ddheapknobs.MapSlab = func() (bool, uint64) {
+            		allocator := newSlabAllocator(slabSize)
+            		_, ok := allocator.allocate()
+            		return ok, allocator.mapped.Load()
+            	}
+            	runtimeAccountSlab = accountSlab
             	runtimeEnabled = func() bool { return runtimeGate() == 1 }
             	return true
             }()

@@ -8,6 +8,7 @@ package main
 import (
 	"encoding/json"
 	"os"
+	"runtime"
 	"runtime/debug"
 
 	"github.com/DataDog/dd-iast-go/internal/taint/heapranges"
@@ -29,12 +30,21 @@ func main() {
 		Gate     uint32            `json:"gate"`
 		Reason   string            `json:"reason"`
 		Settings map[string]string `json:"settings"`
+		Mapped   uint64            `json:"mapped"`
+		OtherSys uint64            `json:"other_sys"`
+		MapOK    bool              `json:"map_ok"`
 	}{Enabled: heapranges.Enabled(), Settings: settings}
 	if knobs.Gate != nil {
 		result.Gate = knobs.Gate()
 	}
 	if knobs.OffReason != nil {
 		result.Reason = knobs.OffReason()
+	}
+	if len(os.Args) > 1 && os.Args[1] == "slab" && knobs.MapSlab != nil {
+		result.MapOK, result.Mapped = knobs.MapSlab()
+		var stats runtime.MemStats
+		runtime.ReadMemStats(&stats)
+		result.OtherSys = stats.OtherSys
 	}
 	if err := json.NewEncoder(os.Stdout).Encode(result); err != nil {
 		os.Exit(1)
