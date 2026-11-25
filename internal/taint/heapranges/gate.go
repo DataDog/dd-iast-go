@@ -19,6 +19,9 @@ func Enabled() bool {
 func init() {
 	settings = readEnvironment()
 	offReason = "not woven"
+	if runtimeEnabled != nil {
+		offReason = "not initialized"
+	}
 	switch {
 	case !settings.iastEnabled:
 		offReason = "IAST disabled"

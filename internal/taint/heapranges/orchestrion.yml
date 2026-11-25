@@ -1,0 +1,55 @@
+meta:
+  name: github.com/DataDog/dd-iast-go/internal/taint/heapranges
+  description: Heap taint tracking
+aspects:
+  - id: heap.span
+    tracer-internal: true
+    join-point:
+      struct-definition: runtime.mspan
+    advice:
+      - add-struct-field:
+          name: ddiastTaint
+          type: internal/runtime/atomic.Uint64
+      - add-blank-import: unsafe
+      - inject-declarations:
+          links:
+            - github.com/DataDog/dd-iast-go/internal/taint/heapranges
+          imports:
+            ddheapatomic: internal/runtime/atomic
+          template: |-
+            var ddiastHeapGate ddheapatomic.Uint32
+            
+            //go:linkname ddiastHeapRangesNeedRuntime runtime.ddiastHeapRangesNeedTheWovenRuntime
+            func ddiastHeapRangesNeedRuntime() {}
+            
+            //go:linkname ddiastHeapRangesGate github.com/DataDog/dd-iast-go/internal/taint/heapranges.runtimeGate
+            func ddiastHeapRangesGate() uint32 {
+            	return ddiastHeapGate.Load()
+            }
+  - id: heap.package
+    tracer-internal: true
+    join-point:
+      all-of:
+        - import-path: github.com/DataDog/dd-iast-go/internal/taint/heapranges
+        - function-body:
+            function:
+              - name: Enabled
+    advice:
+      - add-blank-import: unsafe
+      - inject-declarations:
+          imports:
+            ddheapknobs: github.com/DataDog/dd-iast-go/internal/taint/heapranges/internal/knobs
+          template: |-
+            //go:linkname runtimeGate
+            func runtimeGate() uint32
+            
+            //go:linkname needWovenRuntime runtime.ddiastHeapRangesNeedTheWovenRuntime
+            func needWovenRuntime()
+            
+            var _ = func() bool {
+            	needWovenRuntime()
+            	ddheapknobs.Gate = runtimeGate
+            	ddheapknobs.OffReason = func() string { return offReason }
+            	runtimeEnabled = func() bool { return runtimeGate() == 1 }
+            	return true
+            }()
