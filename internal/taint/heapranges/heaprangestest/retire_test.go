@@ -32,6 +32,10 @@ func TestConcurrentPublication(t *testing.T) {
 	testRetirementProgram(t, "publish", "publish_valid")
 }
 
+func TestOwnerLifecycle(t *testing.T) {
+	testRetirementProgram(t, "owner", "owner_valid")
+}
+
 func TestSnapshotAreaLifecycle(t *testing.T) {
 	testRetirementProgram(t, "snapshot", "snapshot_valid")
 }

@@ -7,6 +7,18 @@ package heapranges
 
 import "unsafe"
 
+// Kind describes how the memory can be changed.
+type Kind uint8
+
+const (
+	// Immutable memory is not writable by application code.
+	Immutable Kind = iota
+	// Private memory is writable only by instrumented code.
+	Private
+	// Exposed memory can be changed by application code.
+	Exposed
+)
+
 type writeRange struct {
 	offset   uint32
 	length   uint32
@@ -33,7 +45,17 @@ var (
 	_            [21 - unsafe.Offsetof(writeRange{}.flags)]byte
 	_            [unsafe.Offsetof(writeRange{}.flags) - 21]byte
 	runtimeClear func(unsafe.Pointer, uintptr, unsafe.Pointer)
+	runtimeSet   func(unsafe.Pointer, uintptr, Origin, Kind, unsafe.Pointer) bool
 )
+
+// Set labels the requested range with an origin.
+func Set(p unsafe.Pointer, n uintptr, origin Origin, kind Kind) bool {
+	if runtimeSet == nil {
+		return false
+	}
+	var work [64]writeRange
+	return runtimeSet(noescape(p), n, origin, kind, noescape(unsafe.Pointer(&work[0])))
+}
 
 // Clear removes labels from the requested range.
 func Clear(p unsafe.Pointer, n uintptr) {

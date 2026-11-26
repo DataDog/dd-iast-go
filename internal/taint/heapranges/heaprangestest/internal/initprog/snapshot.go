@@ -35,7 +35,7 @@ func exerciseSnapshotBytes() bool {
 	}
 	p := unsafe.Pointer(&value[0])
 	const slot, generation = uint32(5), uint64(7)
-	if !heapranges.AttachSnapshotArea(slot, generation) {
+	if !heapranges.StartOwner(slot, generation) || !heapranges.AttachSnapshotArea(slot, generation) {
 		return false
 	}
 	first, ok := knobs.StoreSnapshot(slot, generation, p, 16)
@@ -75,11 +75,11 @@ func exerciseSnapshotBytes() bool {
 	if len(got) != 1 || got[0].Origin != 0 || got[0].Marks != 0 {
 		return false
 	}
-	if !heapranges.RetireSnapshotArea(slot, generation) || !heapranges.AttachSnapshotArea(slot, generation+1) {
+	if !heapranges.EndOwner(slot, generation) || !heapranges.StartOwner(slot, generation+1) || !heapranges.AttachSnapshotArea(slot, generation+1) {
 		return false
 	}
 	got = heapranges.Ranges(p, 8, buf[:0])
-	if len(got) != 1 || got[0].Origin != 0 || got[0].Marks != 0 || !heapranges.RetireSnapshotArea(slot, generation+1) {
+	if len(got) != 1 || got[0].Origin != 0 || got[0].Marks != 0 || !heapranges.EndOwner(slot, generation+1) {
 		return false
 	}
 	runtime.KeepAlive(value)
@@ -93,6 +93,9 @@ func exerciseSnapshot() bool {
 	debug.SetGCPercent(-1)
 	debug.SetMemoryLimit(math.MaxInt64)
 	knobs.SetGate(1)
+	if !heapranges.StartOwner(0, 1) {
+		return false
+	}
 	if heapranges.AttachSnapshotArea(0, 1) || heapranges.AttachSnapshotArea(64, 1) || heapranges.AttachSnapshotArea(0, 0) ||
 		heapranges.AttachSnapshotArea(0, 1<<40) || heapranges.RetireSnapshotArea(0, 1) {
 		return false
@@ -109,22 +112,22 @@ func exerciseSnapshot() bool {
 	if heapranges.AttachSnapshotArea(64, 1) || heapranges.AttachSnapshotArea(0, 0) || heapranges.AttachSnapshotArea(0, 1<<40) {
 		return false
 	}
-	var winner, wins atomic.Uint64
+	if !heapranges.StartOwner(3, 1) {
+		return false
+	}
+	var wins atomic.Uint64
 	var group sync.WaitGroup
 	for i := uint64(1); i <= 32; i++ {
 		group.Add(1)
-		go func(generation uint64) {
+		go func() {
 			defer group.Done()
-			if heapranges.AttachSnapshotArea(3, generation) {
-				winner.Store(generation)
+			if heapranges.AttachSnapshotArea(3, 1) {
 				wins.Add(1)
 			}
-		}(i)
+		}()
 	}
 	group.Wait()
-	generation := winner.Load()
-	if wins.Load() != 1 || generation == 0 || heapranges.RetireSnapshotArea(3, generation+100) ||
-		!heapranges.RetireSnapshotArea(3, generation) || heapranges.RetireSnapshotArea(3, generation) {
+	if wins.Load() != 1 || heapranges.EndOwner(3, 101) || !heapranges.EndOwner(3, 1) || heapranges.EndOwner(3, 1) {
 		return false
 	}
 	var retired uint32
@@ -140,7 +143,7 @@ func exerciseSnapshot() bool {
 			retired++
 		}
 	}
-	if retired != 1 || !heapranges.AttachSnapshotArea(3, generation+100) || !heapranges.RetireSnapshotArea(3, generation+100) {
+	if retired != 1 || !heapranges.StartOwner(3, 101) || !heapranges.AttachSnapshotArea(3, 101) || !heapranges.EndOwner(3, 101) {
 		return false
 	}
 	return true

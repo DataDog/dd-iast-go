@@ -142,12 +142,13 @@ type ddiastTable struct {
 }
 
 const (
-	ddiastSpanPoison   = uint64(1)
-	ddiastSpanInline   = uint64(2)
-	ddiastSpanTagMask  = uint64(63)
-	ddiastEntryPoison  = ^uint32(0)
-	ddiastEntryPrivate = ^uint32(1)
-	ddiastFlagConflict = uint8(1)
+	ddiastSpanPoison      = uint64(1)
+	ddiastSpanInline      = uint64(2)
+	ddiastSpanTagMask     = uint64(63)
+	ddiastEntryPoison     = ^uint32(0)
+	ddiastEntryPrivate    = ^uint32(1)
+	ddiastFlagConflict    = uint8(1)
+	ddiastFlagExposedPath = uint8(2)
 )
 
 //go:nosplit
@@ -578,6 +579,8 @@ var (
 	ddiastSnapshotAreas   [64]ddheapatomic.Uint64
 	ddiastSnapshotCursor  [64]ddheapatomic.Uint64
 	ddiastSnapshotLost    ddheapatomic.Uint64
+	ddiastSnapshotsOff    ddheapatomic.Uint32
+	ddiastOwners          [64]ddheapatomic.Uint64
 )
 
 const (
@@ -692,7 +695,10 @@ func ddiastChainRanges(entry uint32, offset, length uintptr, source ddheapunsafe
 			if record.kind > 2 || r.origin&ddiastOriginGenerationMask == 0 {
 				item.origin, item.marks = 0, 0
 			}
-			if record.kind == 2 {
+			if ddiastSnapshotsOff.Load() != 0 && (record.kind == 2 || r.flags&ddiastFlagExposedPath != 0) {
+				item.origin, item.marks = 0, 0
+				verified = uint64(item.length)
+			} else if record.kind == 2 {
 				verified = uint64(item.length)
 				if verified > budget {
 					verified = budget
@@ -764,23 +770,36 @@ func ddiastRanges(p ddheapunsafe.Pointer, n uintptr, out ddheapunsafe.Pointer) u
 	return count
 }
 
-var ddiastClearFailures ddheapatomic.Uint32
+var (
+	ddiastClearFailures ddheapatomic.Uint32
+	ddiastSetFailures   ddheapatomic.Uint32
+)
 
 //go:linkname ddiastTestClearFailures github.com/DataDog/dd-iast-go/internal/taint/heapranges.testClearFailures
 func ddiastTestClearFailures(count uint32) { ddiastClearFailures.Store(count) }
 
+//go:linkname ddiastTestSetFailures github.com/DataDog/dd-iast-go/internal/taint/heapranges.testSetFailures
+func ddiastTestSetFailures(count uint32) { ddiastSetFailures.Store(count) }
+
+//go:linkname ddiastTestSnapshotsOff github.com/DataDog/dd-iast-go/internal/taint/heapranges.testSnapshotsOff
+func ddiastTestSnapshotsOff(value uint32) { ddiastSnapshotsOff.Store(value) }
+
 //go:nosplit
 func ddiastAppendWriteRange(work *[64]ddiastRange, count uint32, item ddiastRange, kind uint8, extent uint32) (uint32, bool) {
+	if count > 64 {
+		return 0, false
+	}
 	if item.length == 0 {
 		return count, true
 	}
 	if count != 0 {
-		previous := &work[count-1]
+		previous := (*ddiastRange)(ddheapunsafe.Add(ddheapunsafe.Pointer(work), uintptr(count-1)*ddheapunsafe.Sizeof(ddiastRange{})))
 		end := uint64(previous.offset) + uint64(previous.length)
 		if uint64(item.offset) < end {
 			return count, false
 		}
-		contiguousSnapshot := uint64(previous.snapshot)+uint64(previous.length) == uint64(item.snapshot)
+		contiguousSnapshot := uint64(previous.snapshot)+uint64(previous.length) == uint64(item.snapshot) ||
+			(previous.snapshot == ^uint32(0) && item.snapshot == ^uint32(0))
 		if uint64(item.offset) == end && previous.origin == item.origin && previous.marks == item.marks && previous.flags == item.flags &&
 			(kind != 2 || previous.origin&ddiastOriginGenerationMask == 0 || contiguousSnapshot) {
 			previous.length += item.length
@@ -788,11 +807,11 @@ func ddiastAppendWriteRange(work *[64]ddiastRange, count uint32, item ddiastRang
 		}
 	}
 	if count == uint32(len(work)) {
-		previous := &work[count-1]
+		previous := (*ddiastRange)(ddheapunsafe.Add(ddheapunsafe.Pointer(work), uintptr(count-1)*ddheapunsafe.Sizeof(ddiastRange{})))
 		*previous = ddiastRange{offset: previous.offset, length: extent - previous.offset}
 		return count, false
 	}
-	work[count] = item
+	*(*ddiastRange)(ddheapunsafe.Add(ddheapunsafe.Pointer(work), uintptr(count)*ddheapunsafe.Sizeof(ddiastRange{}))) = item
 	return count + 1, true
 }
 
@@ -845,10 +864,12 @@ func ddiastPrepareClear(entry uint32, start, end, extent uint32, work *[64]ddias
 				delta := end - item.offset
 				right.offset = end
 				right.length = uint32(itemEnd - uint64(end))
-				if uint64(right.snapshot)+uint64(delta) > uint64(^uint32(0)) {
-					right.origin, right.marks, right.snapshot = 0, 0, 0
-				} else {
-					right.snapshot += delta
+				if right.snapshot != ^uint32(0) {
+					if uint64(right.snapshot)+uint64(delta) > uint64(^uint32(0)) {
+						right.origin, right.marks, right.snapshot = 0, 0, 0
+					} else {
+						right.snapshot += delta
+					}
 				}
 				var ok bool
 				count, ok = ddiastAppendWriteRange(work, count, right, kind, extent)
@@ -942,9 +963,312 @@ func ddiastClear(p ddheapunsafe.Pointer, n uintptr, scratch ddheapunsafe.Pointer
 	KeepAlive(p)
 }
 
+type ddiastSetWork struct {
+	work      *[64]ddiastRange
+	count     uint32
+	start     uint32
+	end       uint32
+	extent    uint32
+	known     uint32
+	snapshot  uint32
+	kind      uint8
+	origin    uint64
+	complete  bool
+	conflict  bool
+	collapsed bool
+	invalid   bool
+}
+
+//go:nosplit
+func ddiastSetAppend(ctx *ddiastSetWork, item ddiastRange) {
+	if ctx.collapsed || item.length == 0 {
+		return
+	}
+	count, ok := ddiastAppendWriteRange(ctx.work, ctx.count, item, ctx.kind, ctx.extent)
+	ctx.count = count
+	if !ok {
+		ctx.collapsed = true
+		if count != 64 {
+			ctx.complete = false
+			ctx.invalid = true
+		} else {
+			last := (*ddiastRange)(ddheapunsafe.Add(ddheapunsafe.Pointer(ctx.work), uintptr(count-1)*ddheapunsafe.Sizeof(ddiastRange{})))
+			if last.offset < ctx.end {
+				ctx.complete = false
+			}
+		}
+	}
+}
+
+//go:nosplit
+func ddiastSetNew(ctx *ddiastSetWork, begin, end uint32) {
+	if begin >= end {
+		return
+	}
+	knownEnd := uint64(ctx.start) + uint64(ctx.known)
+	if uint64(begin) < knownEnd {
+		limit := uint64(end)
+		if limit > knownEnd {
+			limit = knownEnd
+		}
+		item := ddiastRange{offset: begin, length: uint32(limit - uint64(begin)), origin: ctx.origin}
+		if ctx.kind == 2 {
+			item.snapshot = ctx.snapshot
+			if ctx.snapshot != ^uint32(0) {
+				item.snapshot += begin - ctx.start
+			}
+		}
+		ddiastSetAppend(ctx, item)
+		begin = uint32(limit)
+	}
+	if begin < end {
+		ddiastSetAppend(ctx, ddiastRange{offset: begin, length: end - begin})
+		ctx.complete = false
+	}
+}
+
+//go:nosplit
+func ddiastSetPiece(item ddiastRange, begin, end uint32) ddiastRange {
+	delta := begin - item.offset
+	item.offset = begin
+	item.length = end - begin
+	if item.snapshot == ^uint32(0) {
+		return item
+	}
+	if uint64(item.snapshot)+uint64(delta) > uint64(^uint32(0)) {
+		item.origin, item.marks, item.snapshot = 0, 0, 0
+	} else {
+		item.snapshot += delta
+	}
+	return item
+}
+
+//go:nosplit
+func ddiastPrepareSet(entry uint32, ctx *ddiastSetWork) bool {
+	cursor := ctx.start
+	var lastEnd uint64
+	for records := 0; records < 16 && entry != 0; records++ {
+		if !ddiastRecordEntry(entry) || (entry-1)&(ddiastSlabUnits-1) > ddiastSlabUnits-2 {
+			return false
+		}
+		address := ddiastSlabAddress(entry)
+		if address == 0 {
+			return false
+		}
+		record := (*ddiastRecord)(ddheapunsafe.Pointer(address))
+		if record.count == 0 || record.count > 4 || record.kind != ctx.kind {
+			return false
+		}
+		for i := uint8(0); i < record.count; i++ {
+			item := record.ranges[i]
+			itemEnd := uint64(item.offset) + uint64(item.length)
+			if item.length == 0 || uint64(item.offset) < lastEnd || itemEnd > uint64(ctx.extent) {
+				return false
+			}
+			lastEnd = itemEnd
+			if itemEnd <= uint64(ctx.start) {
+				ddiastSetAppend(ctx, item)
+				continue
+			}
+			if item.offset >= ctx.end {
+				if cursor < ctx.end {
+					ddiastSetNew(ctx, cursor, ctx.end)
+					cursor = ctx.end
+				}
+				ddiastSetAppend(ctx, item)
+				continue
+			}
+			if item.offset < ctx.start {
+				ddiastSetAppend(ctx, ddiastSetPiece(item, item.offset, ctx.start))
+			}
+			lo := item.offset
+			if lo < ctx.start {
+				lo = ctx.start
+			}
+			hi := uint32(itemEnd)
+			if hi > ctx.end {
+				hi = ctx.end
+			}
+			if cursor < lo {
+				ddiastSetNew(ctx, cursor, lo)
+			}
+			generation := item.origin & ddiastOriginGenerationMask
+			ownerMask := uint64(1<<46 - 1)
+			if item.flags&ddiastFlagConflict != 0 || generation == 0 {
+				ddiastSetAppend(ctx, ddiastSetPiece(item, lo, hi))
+				ctx.complete = false
+			} else if item.origin&ownerMask != ctx.origin&ownerMask &&
+				ddiastOwnerLive(uint32(item.origin>>ddiastOriginSlotShift&63), generation) {
+				piece := ddiastRange{offset: lo, length: hi - lo, flags: item.flags | ddiastFlagConflict}
+				ddiastSetAppend(ctx, piece)
+				ctx.complete = false
+				ctx.conflict = true
+			} else {
+				ddiastSetNew(ctx, lo, hi)
+			}
+			cursor = hi
+			if itemEnd > uint64(ctx.end) {
+				ddiastSetAppend(ctx, ddiastSetPiece(item, ctx.end, uint32(itemEnd)))
+			}
+		}
+		entry = record.next
+	}
+	if entry != 0 {
+		return false
+	}
+	if cursor < ctx.end {
+		ddiastSetNew(ctx, cursor, ctx.end)
+	}
+	return !ctx.invalid
+}
+
+//go:nosplit
+func ddiastPoisonAndRetire(span *mspan, index, processor uint32) {
+	old, ok := ddiastPoisonEntry(span, index)
+	if ok && ddiastRecordEntry(old) {
+		ddiastRetire(processor, old, ddiastRetireRecord)
+	}
+}
+
+//go:linkname ddiastSet github.com/DataDog/dd-iast-go/internal/taint/heapranges.wovenSet
+//go:nosplit
+func ddiastSet(p ddheapunsafe.Pointer, n uintptr, origin uint64, requestedKind uint8, scratch ddheapunsafe.Pointer) bool {
+	gate := ddiastHeapGate.Load()
+	if gate != 1 {
+		start, end := ddiastProbeStart.Load(), ddiastProbeEnd.Load()
+		address := uintptr(p)
+		if gate != 0 || start == 0 || address < start || address >= end || n > end-address {
+			return false
+		}
+	}
+	if requestedKind > 2 {
+		return false
+	}
+	span, offset, index := ddiastClassify(p, n)
+	if span == nil {
+		return false
+	}
+	mp, processor := ddiastEnter()
+	if mp == nil {
+		old := ddiastReadEntry(span, index)
+		if ddiastRecordEntry(old) {
+			ddiastPoisonAndRetire(span, index, ddiastSlabCount)
+		}
+		KeepAlive(p)
+		return false
+	}
+	work := (*[64]ddiastRange)(scratch)
+	var snapshot, snapshotKnown uint32
+	var snapDone, conflict, result bool
+	for attempt := 0; attempt < 4; attempt++ {
+		old := ddiastReadEntry(span, index)
+		if old == ddiastEntryPoison {
+			break
+		}
+		kind := requestedKind
+		chain := old
+		if old == ddiastEntryPrivate {
+			chain = 0
+			if requestedKind != 2 {
+				kind = 1
+			}
+		} else if old != 0 {
+			if (old-1)&(ddiastSlabUnits-1) > ddiastSlabUnits-2 {
+				ddiastPoisonAndRetire(span, index, processor)
+				break
+			}
+			address := ddiastSlabAddress(old)
+			if address == 0 {
+				ddiastPoisonAndRetire(span, index, processor)
+				break
+			}
+			kind = (*ddiastRecord)(ddheapunsafe.Pointer(address)).kind
+			if kind > 2 || (kind != 2 && requestedKind == 2) {
+				ddiastPoisonAndRetire(span, index, processor)
+				break
+			}
+		}
+		known := uint32(n)
+		snapshotForWrite := snapshot
+		snapshotsOff := ddiastSnapshotsOff.Load() != 0
+		if kind == 2 && !snapshotsOff {
+			if !snapDone {
+				snapDone = true
+				length := n
+				if uint64(length) > ddiastSnapshotSize {
+					length = uintptr(ddiastSnapshotSize)
+				}
+				generation := origin & ddiastOriginGenerationMask
+				slot := uint32(origin >> ddiastOriginSlotShift & 63)
+				if value, ok := ddiastStoreSnapshot(slot, generation, p, length); ok {
+					snapshot, snapshotKnown = value, uint32(length)
+				}
+			}
+			known = snapshotKnown
+			snapshotForWrite = snapshot
+		} else if kind == 2 {
+			snapshotForWrite = ^uint32(0)
+		}
+		ctx := ddiastSetWork{work: work, start: uint32(offset), end: uint32(offset + n), extent: uint32(span.elemsize),
+			kind: kind, origin: origin, snapshot: snapshotForWrite, known: known, complete: true}
+		if !ddiastPrepareSet(chain, &ctx) {
+			ddiastPoisonAndRetire(span, index, processor)
+			break
+		}
+		conflict = conflict || ctx.conflict
+		next, ok := ddiastBuildWriteChain(work, ctx.count, kind, processor)
+		if !ok {
+			if conflict {
+				ddiastPoisonAndRetire(span, index, processor)
+			}
+			break
+		}
+		if uint32(attempt) >= ddiastSetFailures.Load() && ddiastPublishEntry(span, index, old, next, processor) {
+			result = ctx.complete
+			break
+		}
+		if ddiastRecordEntry(next) {
+			ddiastRetire(processor, next, ddiastRetireRecord)
+		}
+		if attempt == 3 && conflict {
+			ddiastPoisonAndRetire(span, index, processor)
+		}
+	}
+	ddiastLeave(mp, processor)
+	KeepAlive(p)
+	return result
+}
+
+//go:linkname ddiastStartOwner github.com/DataDog/dd-iast-go/internal/taint/heapranges.wovenStartOwner
+func ddiastStartOwner(slot uint32, generation uint64) bool {
+	if ddiastHeapGate.Load() != 1 || slot >= uint32(len(ddiastOwners)) || generation == 0 || generation > ddiastOriginGenerationMask {
+		return false
+	}
+	owner := &ddiastOwners[slot]
+	old := owner.Load()
+	return old&1 == 0 && old>>1 < generation && owner.CompareAndSwap(old, generation<<1|1)
+}
+
+//go:linkname ddiastEndOwner github.com/DataDog/dd-iast-go/internal/taint/heapranges.wovenEndOwner
+func ddiastEndOwner(slot uint32, generation uint64) bool {
+	if slot >= uint32(len(ddiastOwners)) || generation == 0 || generation > ddiastOriginGenerationMask ||
+		!ddiastOwners[slot].CompareAndSwap(generation<<1|1, generation<<1) {
+		return false
+	}
+	ddiastRetireSnapshot(slot, generation)
+	return true
+}
+
+//go:linkname ddiastOwnerLive github.com/DataDog/dd-iast-go/internal/taint/heapranges.wovenOwnerLive
+//go:nosplit
+func ddiastOwnerLive(slot uint32, generation uint64) bool {
+	return slot < uint32(len(ddiastOwners)) && generation != 0 && generation <= ddiastOriginGenerationMask &&
+		ddiastOwners[slot].Load() == generation<<1|1
+}
+
 //go:linkname ddiastAttachSnapshot github.com/DataDog/dd-iast-go/internal/taint/heapranges.wovenAttachSnapshot
 func ddiastAttachSnapshot(slot uint32, generation uint64) bool {
-	if ddiastHeapGate.Load() != 1 || slot >= uint32(len(ddiastSnapshotAreas)) || generation == 0 || generation > ddiastOriginGenerationMask {
+	if ddiastHeapGate.Load() != 1 || !ddiastOwnerLive(slot, generation) {
 		return false
 	}
 	area := &ddiastSnapshotAreas[slot]
@@ -961,6 +1285,11 @@ func ddiastAttachSnapshot(slot uint32, generation uint64) bool {
 	}
 	ddiastSnapshotCursor[slot].Store(generation << 24)
 	area.Store(generation<<24 | uint64(entry))
+	// EndOwner can see the busy marker before the area is published.
+	if !ddiastOwnerLive(slot, generation) {
+		ddiastRetireSnapshot(slot, generation)
+		return false
+	}
 	return true
 }
 

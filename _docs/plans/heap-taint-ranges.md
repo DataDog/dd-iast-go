@@ -43,6 +43,9 @@ adjustments to the feature PR:
 
 ### 0.0 Changes in v4 (answers to the third critic round)
 
+Implementation adjustment: owner liveness table for `Set` (conflict and
+replacement rules).
+
 Adjustment: `Ranges` always returns the complete bounded result. A caller
 buffer that is too small causes one allocation on the Go side; see the
 `Ranges` contract below and `TestRangesReturnsEveryRange`.
@@ -149,7 +152,12 @@ implementation choices that the design does not fix. Each one is marked
    type Origin uint64 // 40 bits generation, 6 bits slot, 8 bits source, 1 bit sensitive
    type Range struct { Off, Len uint32; Origin Origin; Marks uint8; Flags uint8 }
    const MaxRanges = 65
+   const MaxOwners = 64
+   const MaxGeneration = 1<<40 - 1
 
+   func StartOwner(slot uint32, gen uint64) bool
+   func EndOwner(slot uint32, gen uint64) bool
+   func OwnerLive(slot uint32, gen uint64) bool
    func Enabled() bool
    func Set(p unsafe.Pointer, n uintptr, o Origin, k Kind) bool
    func Clear(p unsafe.Pointer, n uintptr)
@@ -288,9 +296,27 @@ At most 64 stored ranges plus one split at the snapshot scan budget gives
    PR. This PR adds only the mechanism: a table of 64 area descriptors (one
    per owner slot, with the generation), `AttachSnapshotArea(slot, gen)` and
    `RetireSnapshotArea(slot, gen)` (retired like a record chain), and the
-   comparison of the requested slice in `Ranges` and `Copy`. The tests use a
-   test owner slot and generation. The A/A or C/C switch is an internal
-   variable of `heapranges` (default A/A), changed only by a test knob.
+   comparison of the requested slice in `Ranges` and `Copy`. `AttachSnapshotArea`
+   needs a live owner; `EndOwner` retires its area. The tests use a test owner
+   slot and generation. The A/A or C/C switch is an internal variable of
+   `heapranges` (default A/A), changed only by a test knob.
+
+**Owner liveness.** A BSS array of 64 atomic words stores `generation<<1 | live`
+for each slot. `StartOwner(slot, gen)` uses one CAS and returns false unless
+tracking is Live, the slot is valid and ended, and `gen` is nonzero, at most
+`MaxGeneration`, and greater than the previous generation. Generations never
+wrap. `EndOwner(slot, gen)` uses one CAS to mark the matching owner ended, then
+retires its snapshot area. `OwnerLive(slot, gen)` uses one load; before a slot
+is started no owner is live. All three return false in an unwoven build.
+
+`Set` does not check the new origin's liveness; its caller holds an owner pin.
+For each part of the requested range: an empty part gets the new origin; the
+same owner or an ended owner is replaced; a different live owner becomes an
+unknown conflict with no marks; a conflict or unknown origin stays unchanged.
+`Set` returns true only when every requested byte has the new origin. If a
+conflict cannot be published, poison the object. A read of the old owner's
+liveness just before it ends may conservatively produce a conflict. `Copy`,
+`Map`, and `Clear` do not use owner liveness.
 
 8. **Test knobs (choice).** One runtime-side `uint32` knob word, read only on
    slow paths (never on the `MayHaveTaint` fast path; the generated-code test
@@ -731,6 +757,8 @@ description uses `'-run=^<Name>$'`.)
 | AC-S13 | `TestReservedEntryValues` | `PRIVATE` and `POISON` never followed and never in a queue (queues inspected); `PRIVATE` kept across a sweep, a clear of the last range and a refill; reset to 0 when the object dies (sweep and `addReusableNoscan`); `SPAN_POISON` stored with the budget full before the first table, for an ordinary range, a sensitive range and an unknown range; every object of the span poisoned; a failed source label in place only dropped; a buffer allocated in that span never private; reset only when no object is live; a large object uses its inline entry; `Clear` and a clean `Copy` on a 1-object span give field `0` (`INLINE(e) → 0`); the table of another span (knob) trips the breaker. **`mspan` struct reuse:** one struct is reused small (many objects, gets a table) → 1-object (size class 67, 32 KiB: uses entry 0 of the existing table, never `INLINE`) → small again: the table count does not grow, and no stale inline value or entry is read. A struct first used with `INLINE`, then reused for a small span: the field is `0` after the sweep, and the small span gets a table. At each sweep that frees a span, the field is `0` or a detached table. |
 
 Other tests (not mapped to a criterion of this PR):
+`TestOwnerLifecycle`, `TestSetRespectsOwnerLiveness`,
+`TestOwnerFunctionsWhenNotWoven`,
 `TestRangesReturnsEveryRange` (nil and zero-capacity buffers, exact fit, one
 more than capacity, ignored input length, 65-range maximum, defensive
 collapse and counter, poisoned and clean entries, relative clipping,

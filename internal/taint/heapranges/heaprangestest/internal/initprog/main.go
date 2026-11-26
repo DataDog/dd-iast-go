@@ -70,6 +70,8 @@ func main() {
 		SnapValid    bool              `json:"snapshot_valid"`
 		PublishValid bool              `json:"publish_valid"`
 		ClearValid   bool              `json:"clear_valid"`
+		OwnerValid   bool              `json:"owner_valid"`
+		SetValid     bool              `json:"set_valid"`
 	}{Enabled: heapranges.Enabled(), Settings: settings}
 	if knobs.Gate != nil {
 		result.Gate = knobs.Gate()
@@ -151,6 +153,12 @@ func main() {
 	}
 	if len(os.Args) > 1 && os.Args[1] == "clear" {
 		result.ClearValid = exerciseClear()
+	}
+	if len(os.Args) > 1 && os.Args[1] == "owner" {
+		result.OwnerValid = exerciseOwner()
+	}
+	if len(os.Args) > 2 && os.Args[1] == "set" {
+		result.SetValid = exerciseSet(os.Args[2])
 	}
 	if err := json.NewEncoder(os.Stdout).Encode(result); err != nil {
 		os.Exit(1)

@@ -19,6 +19,7 @@ func staysOnStack() {
 	var target [1024]byte
 	var ranges [heapranges.MaxRanges]heapranges.Range
 	heapranges.Clear(unsafe.Pointer(&target[0]), uintptr(len(target)))
+	_ = heapranges.Set(unsafe.Pointer(&target[0]), uintptr(len(target)), 1, heapranges.Immutable)
 	result = heapranges.MayHaveTaint(unsafe.Pointer(&target[0]), uintptr(len(target))) ||
 		heapranges.Any(unsafe.Pointer(&target[0]), uintptr(len(target))) ||
 		len(heapranges.Ranges(unsafe.Pointer(&target[0]), uintptr(len(target)), ranges[:0])) != 0
