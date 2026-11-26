@@ -147,6 +147,7 @@ const (
 	ddiastSpanTagMask  = uint64(63)
 	ddiastEntryPoison  = ^uint32(0)
 	ddiastEntryPrivate = ^uint32(1)
+	ddiastFlagConflict = uint8(1)
 )
 
 //go:nosplit
@@ -453,6 +454,18 @@ func ddiastTestTableEntry(entry, slot uint32, value uint32, write bool) uint32 {
 var (
 	_ [24 - ddheapunsafe.Sizeof(ddiastRange{})]byte
 	_ [ddheapunsafe.Sizeof(ddiastRange{}) - 24]byte
+	_ [0 - ddheapunsafe.Offsetof(ddiastRange{}.offset)]byte
+	_ [ddheapunsafe.Offsetof(ddiastRange{}.offset) - 0]byte
+	_ [4 - ddheapunsafe.Offsetof(ddiastRange{}.length)]byte
+	_ [ddheapunsafe.Offsetof(ddiastRange{}.length) - 4]byte
+	_ [8 - ddheapunsafe.Offsetof(ddiastRange{}.origin)]byte
+	_ [ddheapunsafe.Offsetof(ddiastRange{}.origin) - 8]byte
+	_ [16 - ddheapunsafe.Offsetof(ddiastRange{}.snapshot)]byte
+	_ [ddheapunsafe.Offsetof(ddiastRange{}.snapshot) - 16]byte
+	_ [20 - ddheapunsafe.Offsetof(ddiastRange{}.marks)]byte
+	_ [ddheapunsafe.Offsetof(ddiastRange{}.marks) - 20]byte
+	_ [21 - ddheapunsafe.Offsetof(ddiastRange{}.flags)]byte
+	_ [ddheapunsafe.Offsetof(ddiastRange{}.flags) - 21]byte
 	_ [128 - ddheapunsafe.Sizeof(ddiastRecord{})]byte
 	_ [ddheapunsafe.Sizeof(ddiastRecord{}) - 128]byte
 	_ [4160 - ddheapunsafe.Sizeof(ddiastTable{})]byte
@@ -749,6 +762,184 @@ func ddiastRanges(p ddheapunsafe.Pointer, n uintptr, out ddheapunsafe.Pointer) u
 	}
 	KeepAlive(p)
 	return count
+}
+
+var ddiastClearFailures ddheapatomic.Uint32
+
+//go:linkname ddiastTestClearFailures github.com/DataDog/dd-iast-go/internal/taint/heapranges.testClearFailures
+func ddiastTestClearFailures(count uint32) { ddiastClearFailures.Store(count) }
+
+//go:nosplit
+func ddiastAppendWriteRange(work *[64]ddiastRange, count uint32, item ddiastRange, kind uint8, extent uint32) (uint32, bool) {
+	if item.length == 0 {
+		return count, true
+	}
+	if count != 0 {
+		previous := &work[count-1]
+		end := uint64(previous.offset) + uint64(previous.length)
+		if uint64(item.offset) < end {
+			return count, false
+		}
+		contiguousSnapshot := uint64(previous.snapshot)+uint64(previous.length) == uint64(item.snapshot)
+		if uint64(item.offset) == end && previous.origin == item.origin && previous.marks == item.marks && previous.flags == item.flags &&
+			(kind != 2 || previous.origin&ddiastOriginGenerationMask == 0 || contiguousSnapshot) {
+			previous.length += item.length
+			return count, true
+		}
+	}
+	if count == uint32(len(work)) {
+		previous := &work[count-1]
+		*previous = ddiastRange{offset: previous.offset, length: extent - previous.offset}
+		return count, false
+	}
+	work[count] = item
+	return count + 1, true
+}
+
+//go:nosplit
+func ddiastPrepareClear(entry uint32, start, end, extent uint32, work *[64]ddiastRange) (uint32, uint8, bool, bool) {
+	var count uint32
+	var kind uint8
+	var changed bool
+	var lastEnd uint64
+	for records := 0; records < 16 && entry != 0; records++ {
+		if !ddiastRecordEntry(entry) || (entry-1)&(ddiastSlabUnits-1) > ddiastSlabUnits-2 {
+			return 0, 0, false, false
+		}
+		address := ddiastSlabAddress(entry)
+		if address == 0 {
+			return 0, 0, false, false
+		}
+		record := (*ddiastRecord)(ddheapunsafe.Pointer(address))
+		if record.count == 0 || record.count > 4 || record.kind > 2 || (records != 0 && record.kind != kind) {
+			return 0, 0, false, false
+		}
+		kind = record.kind
+		for i := uint8(0); i < record.count; i++ {
+			item := record.ranges[i]
+			itemEnd := uint64(item.offset) + uint64(item.length)
+			if item.length == 0 || uint64(item.offset) < lastEnd || itemEnd > uint64(extent) {
+				return 0, 0, false, false
+			}
+			lastEnd = itemEnd
+			if itemEnd <= uint64(start) || item.offset >= end || item.flags&ddiastFlagConflict != 0 {
+				var ok bool
+				count, ok = ddiastAppendWriteRange(work, count, item, kind, extent)
+				if !ok {
+					return count, kind, changed, true
+				}
+				continue
+			}
+			changed = true
+			if item.offset < start {
+				left := item
+				left.length = start - item.offset
+				var ok bool
+				count, ok = ddiastAppendWriteRange(work, count, left, kind, extent)
+				if !ok {
+					return count, kind, changed, true
+				}
+			}
+			if itemEnd > uint64(end) {
+				right := item
+				delta := end - item.offset
+				right.offset = end
+				right.length = uint32(itemEnd - uint64(end))
+				if uint64(right.snapshot)+uint64(delta) > uint64(^uint32(0)) {
+					right.origin, right.marks, right.snapshot = 0, 0, 0
+				} else {
+					right.snapshot += delta
+				}
+				var ok bool
+				count, ok = ddiastAppendWriteRange(work, count, right, kind, extent)
+				if !ok {
+					return count, kind, changed, true
+				}
+			}
+		}
+		entry = record.next
+	}
+	if entry != 0 {
+		return 0, 0, false, false
+	}
+	return count, kind, changed, true
+}
+
+//go:nosplit
+func ddiastBuildWriteChain(work *[64]ddiastRange, count uint32, kind uint8, processor uint32) (uint32, bool) {
+	var next uint32
+	for count != 0 {
+		first := uint32(0)
+		if count > 4 {
+			first = count - 4
+		}
+		entry := ddiastAllocateUnits(2)
+		address := ddiastSlabAddress(entry)
+		if entry == 0 || address == 0 || (entry-1)&(ddiastSlabUnits-1) > ddiastSlabUnits-2 {
+			if next != 0 {
+				ddiastRetire(processor, next, ddiastRetireRecord)
+			}
+			return 0, false
+		}
+		record := (*ddiastRecord)(ddheapunsafe.Pointer(address))
+		record.next = next
+		record.count = uint8(count - first)
+		record.kind = kind
+		for i := first; i < count; i++ {
+			record.ranges[i-first] = work[i]
+		}
+		next = entry
+		count = first
+	}
+	return next, true
+}
+
+//go:linkname ddiastClear github.com/DataDog/dd-iast-go/internal/taint/heapranges.wovenClear
+//go:nosplit
+func ddiastClear(p ddheapunsafe.Pointer, n uintptr, scratch ddheapunsafe.Pointer) {
+	gate := ddiastHeapGate.Load()
+	if gate != 1 {
+		start, end := ddiastProbeStart.Load(), ddiastProbeEnd.Load()
+		address := uintptr(p)
+		if gate != 0 || start == 0 || address < start || address >= end || n > end-address {
+			return
+		}
+	}
+	span, offset, index := ddiastClassify(p, n)
+	if span == nil {
+		return
+	}
+	mp, processor := ddiastEnter()
+	if mp == nil {
+		KeepAlive(p)
+		return
+	}
+	work := (*[64]ddiastRange)(scratch)
+	for attempt := 0; attempt < 4; attempt++ {
+		old := ddiastReadEntry(span, index)
+		if old == 0 || old == ddiastEntryPrivate || old == ddiastEntryPoison {
+			break
+		}
+		count, kind, changed, ok := ddiastPrepareClear(old, uint32(offset), uint32(offset+n), uint32(span.elemsize), work)
+		if !ok || !changed {
+			break
+		}
+		next, ok := ddiastBuildWriteChain(work, count, kind, processor)
+		if !ok {
+			break
+		}
+		if count == 0 && kind == 1 {
+			next = ddiastEntryPrivate
+		}
+		if uint32(attempt) >= ddiastClearFailures.Load() && ddiastPublishEntry(span, index, old, next, processor) {
+			break
+		}
+		if ddiastRecordEntry(next) {
+			ddiastRetire(processor, next, ddiastRetireRecord)
+		}
+	}
+	ddiastLeave(mp, processor)
+	KeepAlive(p)
 }
 
 //go:linkname ddiastAttachSnapshot github.com/DataDog/dd-iast-go/internal/taint/heapranges.wovenAttachSnapshot

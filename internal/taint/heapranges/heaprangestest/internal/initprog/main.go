@@ -69,6 +69,7 @@ func main() {
 		PoisonValid  bool              `json:"poison_valid"`
 		SnapValid    bool              `json:"snapshot_valid"`
 		PublishValid bool              `json:"publish_valid"`
+		ClearValid   bool              `json:"clear_valid"`
 	}{Enabled: heapranges.Enabled(), Settings: settings}
 	if knobs.Gate != nil {
 		result.Gate = knobs.Gate()
@@ -147,6 +148,9 @@ func main() {
 	}
 	if len(os.Args) > 1 && os.Args[1] == "publish" {
 		result.PublishValid = exercisePublish()
+	}
+	if len(os.Args) > 1 && os.Args[1] == "clear" {
+		result.ClearValid = exerciseClear()
 	}
 	if err := json.NewEncoder(os.Stdout).Encode(result); err != nil {
 		os.Exit(1)

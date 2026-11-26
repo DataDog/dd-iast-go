@@ -35,6 +35,10 @@ func wovenAny(ddheapunsafe.Pointer, uintptr) bool
 //go:noescape
 func wovenRanges(ddheapunsafe.Pointer, uintptr, ddheapunsafe.Pointer) uint32
 
+//go:linkname wovenClear
+//go:noescape
+func wovenClear(ddheapunsafe.Pointer, uintptr, ddheapunsafe.Pointer)
+
 //go:linkname testRecord
 func testRecord(uint32, uint32, uint32) uint32
 
@@ -59,6 +63,9 @@ func testSpanPoison(ddheapunsafe.Pointer, bool) bool
 
 //go:linkname testRecordRange
 func testRecordRange(uint32, uint32, uint32, uint32, uint64, uint8, uint8, uint32) bool
+
+//go:linkname testClearFailures
+func testClearFailures(uint32)
 
 //go:linkname testRangeLimit
 func testRangeLimit(uint32)
@@ -179,6 +186,7 @@ var _ = func() bool {
 	}
 	runtimeAny = wovenAny
 	runtimeRanges = wovenRanges
+	runtimeClear = wovenClear
 	runtimeAttachSnapshot = wovenAttachSnapshot
 	runtimeRetireSnapshot = wovenRetireSnapshot
 	ddheapknobs.MakeRecord = testRecord
@@ -186,6 +194,7 @@ var _ = func() bool {
 	ddheapknobs.RecordRange = testRecordRange
 	ddheapknobs.SpanPoison = testSpanPoison
 	ddheapknobs.SetRangeLimit = testRangeLimit
+	ddheapknobs.ClearFailures = testClearFailures
 	ddheapknobs.RangeCollapses = testRangeCollapses
 	ddheapknobs.Snapshot = testSnapshot
 	ddheapknobs.StoreSnapshot = testStoreSnapshot

@@ -23,6 +23,7 @@ var (
 	Retire         func(uint32, uint32, uint32) bool
 	Retirement     func(uint32, uint32) (uint32, uint32, uint64, uint32, uint64)
 	SetRangeLimit  func(uint32)
+	ClearFailures  func(uint32)
 	RangeCollapses func() uint64
 	Snapshot       func(uint32, uint64, unsafe.Pointer, uintptr) bool
 	StoreSnapshot  func(uint32, uint64, unsafe.Pointer, uintptr) (uint32, bool)

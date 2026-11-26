@@ -24,6 +24,10 @@ func TestPoisonEntry(t *testing.T) {
 	testRetirementProgram(t, "poison", "poison_valid")
 }
 
+func TestClearRanges(t *testing.T) {
+	testRetirementProgram(t, "clear", "clear_valid")
+}
+
 func TestConcurrentPublication(t *testing.T) {
 	testRetirementProgram(t, "publish", "publish_valid")
 }
