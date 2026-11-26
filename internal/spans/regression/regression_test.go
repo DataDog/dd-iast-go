@@ -25,7 +25,6 @@ import (
 // These tests use only the API that the previous version of the package has,
 // so they can run against it.
 
-// configureRegression sets the capacity and the sampling rate for one test.
 func configureRegression(t *testing.T, capacity, samplingPct int) {
 	t.Helper()
 	previousCapacity, previousPct := config.MaxConcurrentRequests, config.RequestSamplingPct
@@ -85,7 +84,6 @@ func TestLateReportAfterRootFinish(t *testing.T) {
 		t.Fatalf("the payload of the first Finish has %d findings, want 1", got)
 	}
 
-	// Reports after the finish, one after the other and at the same time.
 	var wg sync.WaitGroup
 	for range 8 {
 		wg.Add(1)

@@ -85,7 +85,6 @@ func Finished(span *tracer.Span) {
 	})
 }
 
-// publish writes the findings to the span, and sends the telemetry.
 func (a *Annotation) publish(span *tracer.Span) {
 	defer a.submitTelemetry()
 

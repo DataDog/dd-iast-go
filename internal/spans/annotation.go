@@ -59,7 +59,6 @@ var (
 	nextTrim atomic.Int64
 )
 
-// storeLimit is the maximum number of entries of the store.
 func storeLimit() int64 {
 	return int64(config.MaxConcurrentRequests) + closedEntryBudget
 }
@@ -103,7 +102,6 @@ func (a *Annotation) close() bool {
 	return a.closed.CompareAndSwap(false, true)
 }
 
-// closeAndRelease closes the annotation and gives back its unit of capacity.
 func (a *Annotation) closeAndRelease() {
 	if a.close() {
 		release()
@@ -112,7 +110,6 @@ func (a *Annotation) closeAndRelease() {
 
 func release() { open.Add(-1) }
 
-// rootOf returns the root of the span, or the span itself if it has none.
 func rootOf(span *tracer.Span) *tracer.Span {
 	root := span.Root()
 	if root == nil {
@@ -227,7 +224,6 @@ func AnnotationFor(span *tracer.Span) *Annotation {
 	return usable(ann)
 }
 
-// refusing returns true while new annotations are refused.
 func refusing() bool {
 	return time.Now().UnixNano() < refuseUntil.Load()
 }
@@ -244,7 +240,6 @@ func refuseFor(d time.Duration) {
 	}
 }
 
-// lookup returns the entry of the root span, if it belongs to this span.
 func lookup(key weak.Pointer[tracer.Span], id uint64) (*Annotation, bool) {
 	ann, ok := store.Load(key)
 	if !ok || ann.spanID != id {
@@ -253,7 +248,6 @@ func lookup(key weak.Pointer[tracer.Span], id uint64) (*Annotation, bool) {
 	return ann, true
 }
 
-// usable returns ann, or an unsampled annotation if ann is closed.
 func usable(ann *Annotation) *Annotation {
 	if ann.Closed() {
 		telemetry.DroppedReport.Add(1)

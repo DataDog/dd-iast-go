@@ -124,7 +124,6 @@ func CheckLateReportAfterRootFinish(t *testing.T) {
 	require.Len(t, event.Vulnerabilities, 1)
 	assert.Equal(t, "MD5", event.Vulnerabilities[0].Evidence.Value)
 
-	// Reports and Finish calls at the same time, after the first Finish.
 	dropped := telemetry.DroppedReport.Load()
 	var wg sync.WaitGroup
 	start := make(chan struct{})

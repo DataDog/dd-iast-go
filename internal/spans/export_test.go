@@ -30,7 +30,6 @@ func ResetForTest(t testing.TB) {
 	t.Cleanup(reset)
 }
 
-// SetClosedEntryBudgetForTest changes the budget of closed entries.
 func SetClosedEntryBudgetForTest(t testing.TB, budget int64) {
 	t.Helper()
 	previous := closedEntryBudget
@@ -38,7 +37,6 @@ func SetClosedEntryBudgetForTest(t testing.TB, budget int64) {
 	t.Cleanup(func() { closedEntryBudget = previous })
 }
 
-// SetRefuseWindowForTest changes how long annotations are refused.
 func SetRefuseWindowForTest(t testing.TB, window time.Duration) {
 	t.Helper()
 	previous := refuseWindow
@@ -46,12 +44,10 @@ func SetRefuseWindowForTest(t testing.TB, window time.Duration) {
 	t.Cleanup(func() { refuseWindow = previous })
 }
 
-// StoreStateForTest returns the number of entries and of open annotations.
 func StoreStateForTest() (entryCount, openCount int64) {
 	return entries.Load(), open.Load()
 }
 
-// StoreSizeForTest returns the number of entries that the map holds.
 func StoreSizeForTest() int { return store.Size() }
 
 // ConfigureForTest sets the capacity and the sampling rate, enables IAST, and
