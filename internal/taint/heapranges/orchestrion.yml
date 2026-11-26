@@ -791,6 +791,7 @@ aspects:
             	ddiastClearFailures ddheapatomic.Uint32
             	ddiastSetFailures   ddheapatomic.Uint32
             	ddiastCopyFailures  ddheapatomic.Uint32
+            	ddiastMapFailures   ddheapatomic.Uint32
             )
             
             //go:linkname ddiastTestClearFailures github.com/DataDog/dd-iast-go/internal/taint/heapranges.testClearFailures
@@ -801,6 +802,9 @@ aspects:
             
             //go:linkname ddiastTestCopyFailures github.com/DataDog/dd-iast-go/internal/taint/heapranges.testCopyFailures
             func ddiastTestCopyFailures(count uint32) { ddiastCopyFailures.Store(count) }
+            
+            //go:linkname ddiastTestMapFailures github.com/DataDog/dd-iast-go/internal/taint/heapranges.testMapFailures
+            func ddiastTestMapFailures(count uint32) { ddiastMapFailures.Store(count) }
             
             //go:linkname ddiastTestSnapshotsOff github.com/DataDog/dd-iast-go/internal/taint/heapranges.testSnapshotsOff
             func ddiastTestSnapshotsOff(value uint32) { ddiastSnapshotsOff.Store(value) }
@@ -1438,20 +1442,21 @@ aspects:
             }
             
             type ddiastCopyContext struct {
-            	out       *[64]ddiastRange
-            	source    *[64]ddiastRange
-            	count     uint32
-            	sources   uint32
-            	start     uint32
-            	end       uint32
-            	extent    uint32
-            	kind      uint8
-            	wasKind   uint8
-            	base      uintptr
-            	self      uint64
-            	budget    *uint64
-            	usable    bool
-            	collapsed bool
+            	out         *[64]ddiastRange
+            	source      *[64]ddiastRange
+            	count       uint32
+            	sources     uint32
+            	start       uint32
+            	end         uint32
+            	extent      uint32
+            	kind        uint8
+            	wasKind     uint8
+            	base        uintptr
+            	self        uint64
+            	budget      *uint64
+            	usable      bool
+            	sourceReady bool
+            	collapsed   bool
             }
             
             //go:nosplit
@@ -1486,7 +1491,7 @@ aspects:
             	for i := uint32(0); i < ctx.sources && !ctx.collapsed; i++ {
             		item := ctx.source[i]
             		item.offset += ctx.start
-            		ddiastCopyPut(ctx, item, ctx.kind == 2)
+            		ddiastCopyPut(ctx, item, ctx.kind == 2 && !ctx.sourceReady)
             	}
             }
             
@@ -1651,6 +1656,317 @@ aspects:
             	ddiastLeave(mp, processor)
             	KeepAlive(dst)
             	KeepAlive(src)
+            	return result
+            }
+            
+            type ddiastMapInput struct {
+            	p ddheapunsafe.Pointer
+            	n uintptr
+            }
+            
+            type ddiastMapSegment struct {
+            	dstOff, dstLen uint32
+            	srcOff, srcLen uint32
+            	src            uint8
+            	flags          uint8
+            }
+            
+            var (
+            	_ [2*ddheapunsafe.Sizeof(uintptr(0)) - ddheapunsafe.Sizeof(ddiastMapInput{})]byte
+            	_ [ddheapunsafe.Sizeof(ddiastMapInput{}) - 2*ddheapunsafe.Sizeof(uintptr(0))]byte
+            	_ [ddheapunsafe.Sizeof(uintptr(0)) - ddheapunsafe.Offsetof(ddiastMapInput{}.n)]byte
+            	_ [ddheapunsafe.Offsetof(ddiastMapInput{}.n) - ddheapunsafe.Sizeof(uintptr(0))]byte
+            	_ [20 - ddheapunsafe.Sizeof(ddiastMapSegment{})]byte
+            	_ [ddheapunsafe.Sizeof(ddiastMapSegment{}) - 20]byte
+            	_ [4 - ddheapunsafe.Offsetof(ddiastMapSegment{}.dstLen)]byte
+            	_ [ddheapunsafe.Offsetof(ddiastMapSegment{}.dstLen) - 4]byte
+            	_ [8 - ddheapunsafe.Offsetof(ddiastMapSegment{}.srcOff)]byte
+            	_ [ddheapunsafe.Offsetof(ddiastMapSegment{}.srcOff) - 8]byte
+            	_ [12 - ddheapunsafe.Offsetof(ddiastMapSegment{}.srcLen)]byte
+            	_ [ddheapunsafe.Offsetof(ddiastMapSegment{}.srcLen) - 12]byte
+            	_ [16 - ddheapunsafe.Offsetof(ddiastMapSegment{}.src)]byte
+            	_ [ddheapunsafe.Offsetof(ddiastMapSegment{}.src) - 16]byte
+            	_ [17 - ddheapunsafe.Offsetof(ddiastMapSegment{}.flags)]byte
+            	_ [ddheapunsafe.Offsetof(ddiastMapSegment{}.flags) - 17]byte
+            )
+            
+            type ddiastMapSource struct {
+            	span   *mspan
+            	index  uint32
+            	offset uint32
+            	count  uint32
+            	kind   uint8
+            	bad    bool
+            	items  *[64]ddiastRange
+            }
+            
+            type ddiastMapWork struct {
+            	inputs      [4][65]ddiastRange
+            	destination [65]ddiastRange
+            	segment     [65]ddiastRange
+            	mapped      [65]ddiastRange
+            	output      [65]ddiastRange
+            }
+            
+            func ddiastMapInputs(srcs []ddiastMapInput, sources *[4]ddiastMapSource, work *ddiastMapWork) {
+            	for i := range srcs {
+            		source := &sources[i]
+            		source.items = (*[64]ddiastRange)(ddheapunsafe.Pointer(&work.inputs[i][0]))
+            		if srcs[i].n == 0 {
+            			continue
+            		}
+            		span, offset, index := ddiastClassify(srcs[i].p, srcs[i].n)
+            		if span == nil {
+            			source.bad = srcs[i].p != nil && spanOfHeap(uintptr(srcs[i].p)) != nil
+            			continue
+            		}
+            		source.span, source.offset, source.index = span, uint32(offset), index
+            		for j := 0; j < i; j++ {
+            			if sources[j].span == span && sources[j].index == index {
+            				source.items, source.count, source.kind, source.bad = sources[j].items, sources[j].count, sources[j].kind, sources[j].bad
+            				break
+            			}
+            		}
+            		if source.items != (*[64]ddiastRange)(ddheapunsafe.Pointer(&work.inputs[i][0])) {
+            			continue
+            		}
+            		entry := ddiastReadEntry(span, index)
+            		if entry == ddiastEntryPoison {
+            			source.bad = true
+            		} else if ddiastRecordEntry(entry) {
+            			var ok bool
+            			source.count, source.kind, ok = ddiastCopyLoad(entry, uint32(span.elemsize), source.items)
+            			source.bad = !ok
+            		}
+            	}
+            }
+            
+            //go:nosplit
+            func ddiastMapValid(seg ddiastMapSegment, next uint32, dstLen uintptr, srcs []ddiastMapInput) bool {
+            	if seg.dstOff != next || uint64(seg.dstOff)+uint64(seg.dstLen) > uint64(dstLen) || int(seg.src) >= len(srcs) ||
+            		uint64(seg.srcOff)+uint64(seg.srcLen) > uint64(srcs[seg.src].n) || seg.flags&^uint8(7) != 0 ||
+            		seg.flags&1 != 0 && (seg.flags != 1 || seg.srcLen != seg.dstLen) ||
+            		seg.flags&4 != 0 && seg.flags&2 == 0 || seg.flags&2 != 0 && seg.flags&1 != 0 {
+            		return false
+            	}
+            	return true
+            }
+            
+            //go:nosplit
+            func ddiastMapScanCost(source *ddiastMapSource, seg ddiastMapSegment) uint64 {
+            	if source.kind != 2 || ddiastSnapshotsOff.Load() != 0 || source.bad {
+            		return 0
+            	}
+            	start := uint64(source.offset) + uint64(seg.srcOff)
+            	end := start + uint64(seg.srcLen)
+            	var cost uint64
+            	for i := uint32(0); i < source.count; i++ {
+            		item := source.items[i]
+            		if item.origin&ddiastOriginGenerationMask == 0 || item.flags&ddiastFlagConflict != 0 {
+            			continue
+            		}
+            		lo, hi := uint64(item.offset), uint64(item.offset)+uint64(item.length)
+            		if lo < start {
+            			lo = start
+            		}
+            		if hi > end {
+            			hi = end
+            		}
+            		if hi > lo {
+            			cost += hi - lo
+            		}
+            	}
+            	return cost
+            }
+            
+            //go:nosplit
+            func ddiastMapSnapshotCost(item ddiastRange, self uint64, usable bool, kind uint8) uint64 {
+            	if kind != 2 || !usable || ddiastSnapshotsOff.Load() != 0 || item.origin&ddiastOriginGenerationMask == 0 ||
+            		item.flags&ddiastFlagConflict != 0 || item.origin&(1<<46-1) != self || item.snapshot != ^uint32(0) {
+            		return 0
+            	}
+            	return uint64(item.length)
+            }
+            
+            //go:nosplit
+            func ddiastMapContributor(segment *[64]ddiastRange, pieces uint32, seg ddiastMapSegment) ddiastRange {
+            	first := segment[0]
+            	owner := first.origin & (1<<46 - 1)
+            	origin := first.origin
+            	flags := first.flags & ddiastFlagExposedPath
+            	unknown := owner&ddiastOriginGenerationMask == 0
+            	for j := uint32(1); j < pieces; j++ {
+            		item := segment[j]
+            		origin |= item.origin & ddiastSensitive
+            		flags |= item.flags & ddiastFlagExposedPath
+            		if item.origin&ddiastOriginGenerationMask == 0 || item.origin&(1<<46-1) != owner {
+            			unknown = true
+            		}
+            	}
+            	if unknown {
+            		origin &= ddiastSensitive
+            	}
+            	return ddiastRange{offset: seg.dstOff, length: seg.dstLen, origin: origin, flags: flags, snapshot: ^uint32(0)}
+            }
+            
+            func ddiastMapSegments(dst ddheapunsafe.Pointer, dstLen uintptr, srcs []ddiastMapInput, segs []ddiastMapSegment, sources *[4]ddiastMapSource, work *ddiastMapWork, budget *uint64, kind uint8, self uint64, usable bool) uint32 {
+            	mapped := (*[64]ddiastRange)(ddheapunsafe.Pointer(&work.mapped[0]))
+            	segment := (*[64]ddiastRange)(ddheapunsafe.Pointer(&work.segment[0]))
+            	ctx := ddiastCopyContext{out: mapped, extent: uint32(dstLen), kind: kind, wasKind: kind, base: uintptr(dst), self: self, budget: budget, usable: usable}
+            	var next uint32
+            	if len(srcs) <= 4 {
+            		for i, seg := range segs {
+            			if i >= 1024 || *budget == 0 || !ddiastMapValid(seg, next, dstLen, srcs) {
+            				break
+            			}
+            			var pieces uint32
+            			if seg.flags&2 != 0 {
+            				origin := uint64(0)
+            				if seg.flags&4 != 0 {
+            					origin = ddiastSensitive
+            				}
+            				segment[0] = ddiastRange{offset: seg.dstOff, length: seg.dstLen, origin: origin, snapshot: ^uint32(0)}
+            				pieces = 1
+            			} else if seg.srcLen != 0 {
+            				source := &sources[seg.src]
+            				if ddiastMapScanCost(source, seg) > *budget {
+            					break
+            				}
+            				if source.bad {
+            					segment[0] = ddiastRange{length: seg.srcLen, origin: ddiastSensitive, flags: ddiastFlagExposedPath, snapshot: ^uint32(0)}
+            					pieces = 1
+            				} else if source.count != 0 {
+            					address := ddheapunsafe.Add(srcs[seg.src].p, uintptr(seg.srcOff))
+            					pieces = ddiastCopySource(source.items, source.count, source.kind, source.offset+seg.srcOff, seg.srcLen, address, segment, budget)
+            				}
+            				if pieces != 0 && seg.flags&1 == 0 {
+            					segment[0] = ddiastMapContributor(segment, pieces, seg)
+            					pieces = 1
+            				} else if seg.flags&1 != 0 {
+            					for j := uint32(0); j < pieces; j++ {
+            						segment[j].offset += seg.dstOff
+            					}
+            				}
+            			}
+            			var cost uint64
+            			for j := uint32(0); j < pieces; j++ {
+            				cost += ddiastMapSnapshotCost(segment[j], self, usable, kind)
+            			}
+            			if cost > *budget {
+            				break
+            			}
+            			for j := uint32(0); j < pieces; j++ {
+            				ddiastCopyPut(&ctx, segment[j], kind == 2)
+            				if ctx.collapsed {
+            					break
+            				}
+            			}
+            			if ctx.collapsed {
+            				break
+            			}
+            			next = seg.dstOff + seg.dstLen
+            		}
+            	}
+            	if !ctx.collapsed && uintptr(next) < dstLen {
+            		ddiastCopyPut(&ctx, ddiastRange{offset: next, length: uint32(dstLen) - next, origin: ddiastSensitive, snapshot: ^uint32(0)}, false)
+            	}
+            	return ctx.count
+            }
+            
+            //go:linkname ddiastMap github.com/DataDog/dd-iast-go/internal/taint/heapranges.wovenMap
+            func ddiastMap(dst ddheapunsafe.Pointer, dstLen uintptr, srcs []ddiastMapInput, segs []ddiastMapSegment, requestedKind uint8, self uint64, scratch ddheapunsafe.Pointer) bool {
+            	if dstLen == 0 {
+            		return true
+            	}
+            	if ddiastHeapGate.Load() != 1 || requestedKind > 2 {
+            		return false
+            	}
+            	span, offset, index := ddiastClassify(dst, dstLen)
+            	if span == nil {
+            		return false
+            	}
+            	mp, processor := ddiastEnter()
+            	if mp == nil {
+            		ddiastPoisonAndRetire(span, index, ddiastSlabCount)
+            		KeepAlive(dst)
+            		return false
+            	}
+            	work := (*ddiastMapWork)(scratch)
+            	destination := (*[64]ddiastRange)(ddheapunsafe.Pointer(&work.destination[0]))
+            	mapped := (*[64]ddiastRange)(ddheapunsafe.Pointer(&work.mapped[0]))
+            	output := (*[64]ddiastRange)(ddheapunsafe.Pointer(&work.output[0]))
+            	var sources [4]ddiastMapSource
+            	if len(srcs) <= 4 {
+            		ddiastMapInputs(srcs, &sources, work)
+            	}
+            	budget := ddiastSnapshotSize
+            	usable := ddiastCopyUsable(self)
+            	var result bool
+            	for attempt := 0; attempt < 4; attempt++ {
+            		old := ddiastReadEntry(span, index)
+            		if old == ddiastEntryPoison {
+            			break
+            		}
+            		kind, oldKind := requestedKind, requestedKind
+            		var oldCount uint32
+            		if old == 0 {
+            			if kind == 1 {
+            				kind = 2
+            			}
+            			oldKind = kind
+            		} else if old == ddiastEntryPrivate {
+            			oldKind = 1
+            			if kind != 2 {
+            				kind = 1
+            			}
+            		} else {
+            			var ok bool
+            			oldCount, oldKind, ok = ddiastCopyLoad(old, uint32(span.elemsize), destination)
+            			if !ok {
+            				ddiastPoisonAndRetire(span, index, processor)
+            				break
+            			}
+            			kind = oldKind
+            			if oldKind == 1 && requestedKind == 2 {
+            				kind = 2
+            			}
+            		}
+            		count := ddiastMapSegments(dst, dstLen, srcs, segs, &sources, work, &budget, kind, self, usable)
+            		ctx := ddiastCopyContext{out: output, source: mapped, sources: count, start: uint32(offset), end: uint32(offset + dstLen),
+            			extent: uint32(span.elemsize), kind: kind, wasKind: oldKind, base: uintptr(dst) - offset, self: self, budget: &budget, usable: usable, sourceReady: true}
+            		ddiastCopyPrepare(destination, oldCount, &ctx)
+            		if ddiastCopySame(old, oldKind, kind, destination, oldCount, output, ctx.count) {
+            			if uint32(attempt) >= ddiastMapFailures.Load() && ddiastCompareEntry(span, index, old, old) {
+            				result = true
+            				break
+            			}
+            			if attempt == 3 {
+            				ddiastPoisonAndRetire(span, index, processor)
+            			}
+            			continue
+            		}
+            		next, ok := ddiastBuildWriteChain(output, ctx.count, kind, processor)
+            		if !ok {
+            			ddiastPoisonAndRetire(span, index, processor)
+            			break
+            		}
+            		if ctx.count == 0 && kind == 1 {
+            			next = ddiastEntryPrivate
+            		}
+            		if uint32(attempt) >= ddiastMapFailures.Load() && ddiastPublishEntry(span, index, old, next, processor) {
+            			result = true
+            			break
+            		}
+            		if ddiastRecordEntry(next) {
+            			ddiastRetire(processor, next, ddiastRetireRecord)
+            		}
+            		if attempt == 3 {
+            			ddiastPoisonAndRetire(span, index, processor)
+            		}
+            	}
+            	ddiastLeave(mp, processor)
+            	KeepAlive(dst)
+            	KeepAlive(srcs)
             	return result
             }
             
@@ -2174,6 +2490,10 @@ aspects:
             //go:noescape
             func wovenCopy(ddheapunsafe.Pointer, ddheapunsafe.Pointer, uintptr, Kind, Owner, ddheapunsafe.Pointer) bool
             
+            //go:linkname wovenMap
+            //go:noescape
+            func wovenMap(ddheapunsafe.Pointer, uintptr, []Input, []Segment, Kind, Owner, ddheapunsafe.Pointer) bool
+            
             //go:linkname testRecord
             func testRecord(uint32, uint32, uint32) uint32
             
@@ -2216,6 +2536,9 @@ aspects:
             
             //go:linkname testCopyFailures
             func testCopyFailures(uint32)
+            
+            //go:linkname testMapFailures
+            func testMapFailures(uint32)
             
             //go:linkname testSnapshotsOff
             func testSnapshotsOff(uint32)
@@ -2346,6 +2669,7 @@ aspects:
             	runtimeClear = wovenClear
             	runtimeSet = wovenSet
             	runtimeCopy = wovenCopy
+            	runtimeMap = wovenMap
             	runtimeStartOwner = wovenStartOwner
             	runtimeEndOwner = wovenEndOwner
             	runtimeOwnerLive = wovenOwnerLive
@@ -2359,6 +2683,7 @@ aspects:
             	ddheapknobs.ClearFailures = testClearFailures
             	ddheapknobs.SetFailures = testSetFailures
             	ddheapknobs.CopyFailures = testCopyFailures
+            	ddheapknobs.MapFailures = testMapFailures
             	ddheapknobs.SnapshotsOff = testSnapshotsOff
             	ddheapknobs.RangeCollapses = testRangeCollapses
             	ddheapknobs.Snapshot = testSnapshot

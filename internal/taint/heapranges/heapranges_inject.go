@@ -47,6 +47,10 @@ func wovenSet(ddheapunsafe.Pointer, uintptr, Origin, Kind, ddheapunsafe.Pointer)
 //go:noescape
 func wovenCopy(ddheapunsafe.Pointer, ddheapunsafe.Pointer, uintptr, Kind, Owner, ddheapunsafe.Pointer) bool
 
+//go:linkname wovenMap
+//go:noescape
+func wovenMap(ddheapunsafe.Pointer, uintptr, []Input, []Segment, Kind, Owner, ddheapunsafe.Pointer) bool
+
 //go:linkname testRecord
 func testRecord(uint32, uint32, uint32) uint32
 
@@ -89,6 +93,9 @@ func testSetFailures(uint32)
 
 //go:linkname testCopyFailures
 func testCopyFailures(uint32)
+
+//go:linkname testMapFailures
+func testMapFailures(uint32)
 
 //go:linkname testSnapshotsOff
 func testSnapshotsOff(uint32)
@@ -219,6 +226,7 @@ var _ = func() bool {
 	runtimeClear = wovenClear
 	runtimeSet = wovenSet
 	runtimeCopy = wovenCopy
+	runtimeMap = wovenMap
 	runtimeStartOwner = wovenStartOwner
 	runtimeEndOwner = wovenEndOwner
 	runtimeOwnerLive = wovenOwnerLive
@@ -232,6 +240,7 @@ var _ = func() bool {
 	ddheapknobs.ClearFailures = testClearFailures
 	ddheapknobs.SetFailures = testSetFailures
 	ddheapknobs.CopyFailures = testCopyFailures
+	ddheapknobs.MapFailures = testMapFailures
 	ddheapknobs.SnapshotsOff = testSnapshotsOff
 	ddheapknobs.RangeCollapses = testRangeCollapses
 	ddheapknobs.Snapshot = testSnapshot

@@ -40,14 +40,32 @@ type Segment struct {
 	Flags          uint8
 }
 
-var runtimeMap func(unsafe.Pointer, uintptr, []Input, []Segment, Kind, Owner, unsafe.Pointer) bool
+var (
+	_          [2*unsafe.Sizeof(uintptr(0)) - unsafe.Sizeof(Input{})]byte
+	_          [unsafe.Sizeof(Input{}) - 2*unsafe.Sizeof(uintptr(0))]byte
+	_          [unsafe.Sizeof(uintptr(0)) - unsafe.Offsetof(Input{}.N)]byte
+	_          [unsafe.Offsetof(Input{}.N) - unsafe.Sizeof(uintptr(0))]byte
+	_          [20 - unsafe.Sizeof(Segment{})]byte
+	_          [unsafe.Sizeof(Segment{}) - 20]byte
+	_          [4 - unsafe.Offsetof(Segment{}.DstLen)]byte
+	_          [unsafe.Offsetof(Segment{}.DstLen) - 4]byte
+	_          [8 - unsafe.Offsetof(Segment{}.SrcOff)]byte
+	_          [unsafe.Offsetof(Segment{}.SrcOff) - 8]byte
+	_          [12 - unsafe.Offsetof(Segment{}.SrcLen)]byte
+	_          [unsafe.Offsetof(Segment{}.SrcLen) - 12]byte
+	_          [16 - unsafe.Offsetof(Segment{}.Src)]byte
+	_          [unsafe.Offsetof(Segment{}.Src) - 16]byte
+	_          [17 - unsafe.Offsetof(Segment{}.Flags)]byte
+	_          [unsafe.Offsetof(Segment{}.Flags) - 17]byte
+	runtimeMap func(unsafe.Pointer, uintptr, []Input, []Segment, Kind, Owner, unsafe.Pointer) bool
+)
 
 // Map propagates ranges after a transform has written dst.
 func Map(dst unsafe.Pointer, dstLen uintptr, srcs []Input, segs []Segment, kind Kind, self Owner) bool {
 	if runtimeMap == nil {
 		return false
 	}
-	var work [MaxMapInputs + 1][65]writeRange
+	var work [MaxMapInputs + 4][65]writeRange
 	inputs := unsafe.Slice((*Input)(noescape(unsafe.Pointer(unsafe.SliceData(srcs)))), len(srcs))
 	segments := unsafe.Slice((*Segment)(noescape(unsafe.Pointer(unsafe.SliceData(segs)))), len(segs))
 	ok := runtimeMap(noescape(dst), dstLen, inputs, segments, kind, self, noescape(unsafe.Pointer(&work[0][0])))

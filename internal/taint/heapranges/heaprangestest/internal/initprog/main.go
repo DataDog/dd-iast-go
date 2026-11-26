@@ -73,6 +73,7 @@ func main() {
 		OwnerValid   bool              `json:"owner_valid"`
 		SetValid     bool              `json:"set_valid"`
 		CopyValid    bool              `json:"copy_valid"`
+		MappingValid bool              `json:"mapping_valid"`
 	}{Enabled: heapranges.Enabled(), Settings: settings}
 	if knobs.Gate != nil {
 		result.Gate = knobs.Gate()
@@ -163,6 +164,9 @@ func main() {
 	}
 	if len(os.Args) > 2 && os.Args[1] == "copy" {
 		result.CopyValid = exerciseCopy(os.Args[2])
+	}
+	if len(os.Args) > 2 && os.Args[1] == "mapping" {
+		result.MappingValid = exerciseMap(os.Args[2])
 	}
 	if err := json.NewEncoder(os.Stdout).Encode(result); err != nil {
 		os.Exit(1)

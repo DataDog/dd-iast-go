@@ -26,6 +26,7 @@ var (
 	ClearFailures  func(uint32)
 	SetFailures    func(uint32)
 	CopyFailures   func(uint32)
+	MapFailures    func(uint32)
 	SnapshotsOff   func(uint32)
 	RangeCollapses func() uint64
 	Snapshot       func(uint32, uint64, unsafe.Pointer, uintptr) bool
