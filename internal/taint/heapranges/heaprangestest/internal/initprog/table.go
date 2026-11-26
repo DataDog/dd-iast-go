@@ -52,7 +52,49 @@ func exerciseTable() bool {
 	other := uintptr(0x300000) - base
 	return knobs.BindTable(entry, base) && !knobs.BindTable(entry, other) &&
 		knobs.TableEntry(entry, 0, 0, false) == 7 && knobs.TableEntry(entry, 1023, 0, false) == 9 &&
-		knobs.SpanRead(entry) && exerciseEntryState()
+		knobs.SpanRead(entry) && exerciseEntryState() && exerciseAny()
+}
+
+func exerciseAny() bool {
+	if knobs.MakeRecord == nil || knobs.CheckEpoch == nil {
+		return false
+	}
+	value := new([65536]byte)
+	pointer := unsafe.Pointer(&value[0])
+	second := knobs.MakeRecord(32, 10, 0)
+	first := knobs.MakeRecord(0, 5, second)
+	if first == 0 || second == 0 || !knobs.CompareEntry(pointer, 0, first) || heapranges.Any(pointer, 1) {
+		return false
+	}
+	knobs.SetGate(1)
+	if !heapranges.Any(pointer, 5) || !heapranges.Any(unsafe.Add(pointer, 31), 2) ||
+		!heapranges.Any(unsafe.Add(pointer, 40), 2) || heapranges.Any(unsafe.Add(pointer, 5), 27) ||
+		heapranges.Any(unsafe.Add(pointer, 42), 1) || !heapranges.MayHaveTaint(unsafe.Add(pointer, 5), 27) ||
+		!knobs.CheckEpoch() {
+		return false
+	}
+	var chain uint32
+	for i := 0; i < 16; i++ {
+		chain = knobs.MakeRecord(128, 1, chain)
+		if chain == 0 {
+			return false
+		}
+	}
+	if !knobs.CompareEntry(pointer, first, chain) || heapranges.Any(pointer, 1) {
+		return false
+	}
+	extra := knobs.MakeRecord(128, 1, chain)
+	if extra == 0 || !knobs.CompareEntry(pointer, chain, extra) || !heapranges.Any(pointer, 1) {
+		return false
+	}
+	if !knobs.CompareEntry(pointer, extra, ^uint32(1)) || heapranges.Any(pointer, 1) ||
+		!knobs.CompareEntry(pointer, ^uint32(1), ^uint32(0)) || !heapranges.Any(pointer, 1) ||
+		!knobs.CompareEntry(pointer, ^uint32(0), 0) || heapranges.Any(pointer, 1) {
+		return false
+	}
+	knobs.SetGate(0)
+	runtime.KeepAlive(value)
+	return true
 }
 
 func exerciseEntryState() bool {

@@ -15,7 +15,7 @@ import (
 
 func TestFastCheckUnwoven(t *testing.T) {
 	var value [32]byte
-	if MayHaveTaint(unsafe.Pointer(&value[0]), uintptr(len(value))) {
+	if MayHaveTaint(unsafe.Pointer(&value[0]), uintptr(len(value))) || Any(unsafe.Pointer(&value[0]), uintptr(len(value))) {
 		t.Fatal("unwoven check reported taint")
 	}
 }

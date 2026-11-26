@@ -32,7 +32,13 @@ aspects:
             	_                func() *g                                = getg
             )
             
-            var _ func(ddheapunsafe.Pointer) ddheapunsafe.Pointer = noescape
+            var (
+            	_ func(ddheapunsafe.Pointer) ddheapunsafe.Pointer = noescape
+            	_ func() *m                                       = acquirem
+            	_ func(*m)                                        = releasem
+            	_ func(puintptr) *p                               = puintptr.ptr
+            	_ func(any)                                       = KeepAlive
+            )
             
             //go:linkname ddiastHeapRangesNeedRuntime runtime.ddiastHeapRangesNeedTheWovenRuntime
             func ddiastHeapRangesNeedRuntime() {}
@@ -47,6 +53,50 @@ aspects:
             func ddiastHeapRangesAccountSlab() {
             	memstats.other_sys.add(1 << 20)
             	gcController.mappedReady.Add(1 << 20)
+            }
+            
+            var (
+            	ddiastEpoch         ddheapatomic.Uint64
+            	ddiastAnnouncements [1024]ddheapatomic.Uint64
+            )
+            
+            //go:linkname ddiastInitEpoch github.com/DataDog/dd-iast-go/internal/taint/heapranges.initEpoch
+            func ddiastInitEpoch() { ddiastEpoch.CompareAndSwap(0, 1) }
+            
+            //go:nosplit
+            func ddiastEnter() (*m, uint32) {
+            	mp := acquirem()
+            	processor := mp.p.ptr()
+            	if processor == nil || uint32(processor.id) >= uint32(len(ddiastAnnouncements)) {
+            		releasem(mp)
+            		return nil, 0
+            	}
+            	epoch := ddiastEpoch.Load()
+            	if epoch == 0 {
+            		releasem(mp)
+            		return nil, 0
+            	}
+            	index := uint32(processor.id)
+            	ddiastAnnouncements[index].Store(epoch)
+            	return mp, index
+            }
+            
+            //go:nosplit
+            func ddiastLeave(mp *m, index uint32) {
+            	ddiastAnnouncements[index].Store(0)
+            	releasem(mp)
+            }
+            
+            //go:linkname ddiastTestEpoch github.com/DataDog/dd-iast-go/internal/taint/heapranges.testEpoch
+            func ddiastTestEpoch() bool {
+            	mp, index := ddiastEnter()
+            	if mp == nil {
+            		return false
+            	}
+            	epoch := ddiastEpoch.Load()
+            	ok := epoch != 0 && ddiastAnnouncements[index].Load() == epoch
+            	ddiastLeave(mp, index)
+            	return ok && ddiastAnnouncements[index].Load() == 0
             }
             
             type ddiastRange struct {
@@ -332,7 +382,82 @@ aspects:
             		return false
             	}
             	entry := ddiastReadEntry(span, index)
+            	KeepAlive(p)
             	return entry != 0 && entry != ddiastEntryPrivate
+            }
+            
+            //go:nosplit
+            func ddiastChainAny(entry uint32, offset, length uintptr) bool {
+            	start := uint64(offset)
+            	end := start + uint64(length)
+            	for records := 0; records < 16 && entry != 0; records++ {
+            		if entry == ddiastEntryPoison || entry == ddiastEntryPrivate || (entry-1)&(ddiastSlabUnits-1) > ddiastSlabUnits-2 {
+            			return true
+            		}
+            		address := ddiastSlabAddress(entry)
+            		if address == 0 {
+            			return true
+            		}
+            		record := (*ddiastRecord)(ddheapunsafe.Pointer(address))
+            		if record.count == 0 || record.count > 4 {
+            			return true
+            		}
+            		for i := uint8(0); i < record.count; i++ {
+            			r := &record.ranges[i]
+            			if r.length != 0 && uint64(r.offset) < end && start < uint64(r.offset)+uint64(r.length) {
+            				return true
+            			}
+            		}
+            		entry = record.next
+            	}
+            	return entry != 0
+            }
+            
+            //go:linkname ddiastAny github.com/DataDog/dd-iast-go/internal/taint/heapranges.wovenAny
+            //go:nosplit
+            func ddiastAny(p ddheapunsafe.Pointer, n uintptr) bool {
+            	if gate := ddiastHeapGate.Load(); gate != 1 {
+            		if gate != 0 {
+            			return false
+            		}
+            		start, end := ddiastProbeStart.Load(), ddiastProbeEnd.Load()
+            		address := uintptr(p)
+            		if start == 0 || address < start || address >= end || n > end-address {
+            			return false
+            		}
+            	}
+            	span, offset, index := ddiastClassify(p, n)
+            	if span == nil {
+            		return false
+            	}
+            	mp, processor := ddiastEnter()
+            	entry := ddiastReadEntry(span, index)
+            	if mp == nil {
+            		KeepAlive(p)
+            		return entry != 0 && entry != ddiastEntryPrivate
+            	}
+            	result := entry == ddiastEntryPoison || (entry != 0 && entry != ddiastEntryPrivate && ddiastChainAny(entry, offset, n))
+            	ddiastLeave(mp, processor)
+            	KeepAlive(p)
+            	return result
+            }
+            
+            //go:linkname ddiastTestRecord github.com/DataDog/dd-iast-go/internal/taint/heapranges.testRecord
+            func ddiastTestRecord(offset, length, next uint32) uint32 {
+            	entry := ddiastAllocateUnits(2)
+            	if entry == 0 {
+            		return 0
+            	}
+            	address := ddiastSlabAddress(entry)
+            	if address == 0 {
+            		return 0
+            	}
+            	record := (*ddiastRecord)(ddheapunsafe.Pointer(address))
+            	record.next = next
+            	record.count = 1
+            	record.ranges[0].offset = offset
+            	record.ranges[0].length = length
+            	return entry
             }
             
             //go:linkname ddiastTestSetGate github.com/DataDog/dd-iast-go/internal/taint/heapranges.testSetGate
@@ -534,6 +659,19 @@ aspects:
             //go:linkname accountSlab
             func accountSlab()
             
+            //go:linkname initEpoch
+            func initEpoch()
+            
+            //go:linkname testEpoch
+            func testEpoch() bool
+            
+            //go:linkname wovenAny
+            //go:noescape
+            func wovenAny(ddheapunsafe.Pointer, uintptr) bool
+            
+            //go:linkname testRecord
+            func testRecord(uint32, uint32, uint32) uint32
+            
             //go:linkname wovenMayHaveTaint
             //go:noescape
             func wovenMayHaveTaint(ddheapunsafe.Pointer, uintptr) bool
@@ -601,6 +739,8 @@ aspects:
             
             var _ = func() bool {
             	needWovenRuntime()
+            	initEpoch()
+            	ddheapknobs.CheckEpoch = testEpoch
             	ddheapknobs.Gate = runtimeGate
             	ddheapknobs.OffReason = func() string { return offReason }
             	ddheapknobs.MapSlab = func(skipAccounting bool) (bool, uint64) {
@@ -624,6 +764,8 @@ aspects:
             		}
             		return worker.queues.Load(), worker.allocator.mapped.Load(), true
             	}
+            	runtimeAny = wovenAny
+            	ddheapknobs.MakeRecord = testRecord
             	runtimeMayHaveTaint = wovenMayHaveTaint
             	ddheapknobs.SetGate = testSetGate
             	ddheapknobs.SetProbe = testSetProbe

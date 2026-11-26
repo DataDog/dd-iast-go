@@ -9,12 +9,14 @@ package knobs
 import "unsafe"
 
 var (
+	CheckEpoch     func() bool
 	Gate           func() uint32
 	SetGate        func(uint32)
 	SetProbe       func(unsafe.Pointer, uintptr)
 	OffReason      func() string
 	MapSlab        func(bool) (bool, uint64)
 	InitSlabWorker func(uint64) (uint32, uint64, bool)
+	MakeRecord     func(uint32, uint32, uint32) uint32
 	CompareEntry   func(unsafe.Pointer, uint32, uint32) bool
 	ReadEntry      func(unsafe.Pointer) uint32
 	SpanState      func(unsafe.Pointer) uint64

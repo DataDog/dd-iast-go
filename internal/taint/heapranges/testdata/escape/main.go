@@ -17,7 +17,8 @@ var sink unsafe.Pointer
 //go:noinline
 func staysOnStack() {
 	var target [1024]byte
-	result = heapranges.MayHaveTaint(unsafe.Pointer(&target[0]), uintptr(len(target)))
+	result = heapranges.MayHaveTaint(unsafe.Pointer(&target[0]), uintptr(len(target))) ||
+		heapranges.Any(unsafe.Pointer(&target[0]), uintptr(len(target)))
 }
 
 //go:noinline

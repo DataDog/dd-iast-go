@@ -21,6 +21,19 @@ func needWovenRuntime()
 //go:linkname accountSlab
 func accountSlab()
 
+//go:linkname initEpoch
+func initEpoch()
+
+//go:linkname testEpoch
+func testEpoch() bool
+
+//go:linkname wovenAny
+//go:noescape
+func wovenAny(ddheapunsafe.Pointer, uintptr) bool
+
+//go:linkname testRecord
+func testRecord(uint32, uint32, uint32) uint32
+
 //go:linkname wovenMayHaveTaint
 //go:noescape
 func wovenMayHaveTaint(ddheapunsafe.Pointer, uintptr) bool
@@ -88,6 +101,8 @@ func queueEntry(uint32) uint32
 
 var _ = func() bool {
 	needWovenRuntime()
+	initEpoch()
+	ddheapknobs.CheckEpoch = testEpoch
 	ddheapknobs.Gate = runtimeGate
 	ddheapknobs.OffReason = func() string { return offReason }
 	ddheapknobs.MapSlab = func(skipAccounting bool) (bool, uint64) {
@@ -111,6 +126,8 @@ var _ = func() bool {
 		}
 		return worker.queues.Load(), worker.allocator.mapped.Load(), true
 	}
+	runtimeAny = wovenAny
+	ddheapknobs.MakeRecord = testRecord
 	runtimeMayHaveTaint = wovenMayHaveTaint
 	ddheapknobs.SetGate = testSetGate
 	ddheapknobs.SetProbe = testSetProbe
