@@ -1874,6 +1874,7 @@ aspects:
             }
             
             //go:linkname ddiastMap github.com/DataDog/dd-iast-go/internal/taint/heapranges.wovenMap
+            //go:nosplit
             func ddiastMap(dst ddheapunsafe.Pointer, dstLen uintptr, srcs []ddiastMapInput, segs []ddiastMapSegment, requestedKind uint8, self uint64, scratch ddheapunsafe.Pointer) bool {
             	if dstLen == 0 {
             		return true
@@ -1885,6 +1886,10 @@ aspects:
             	if span == nil {
             		return false
             	}
+            	return ddiastMapSlow(dst, dstLen, srcs, segs, requestedKind, self, scratch, span, offset, index)
+            }
+            
+            func ddiastMapSlow(dst ddheapunsafe.Pointer, dstLen uintptr, srcs []ddiastMapInput, segs []ddiastMapSegment, requestedKind uint8, self uint64, scratch ddheapunsafe.Pointer, span *mspan, offset uintptr, index uint32) bool {
             	mp, processor := ddiastEnter()
             	if mp == nil {
             		ddiastPoisonAndRetire(span, index, ddiastSlabCount)
