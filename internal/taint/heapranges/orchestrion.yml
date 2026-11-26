@@ -269,6 +269,105 @@ aspects:
             	return table != nil && table.entries[index].CompareAndSwap(old, next)
             }
             
+            //go:nosplit
+            func ddiastPublishEntry(span *mspan, index, old, next, processor uint32) bool {
+            	if old == ddiastEntryPoison || next == ddiastEntryPoison || !ddiastCompareEntry(span, index, old, next) {
+            		return false
+            	}
+            	if old != next && ddiastRecordEntry(old) {
+            		ddiastRetire(processor, old, ddiastRetireRecord)
+            	}
+            	return true
+            }
+            
+            //go:linkname ddiastTestPublishEntry github.com/DataDog/dd-iast-go/internal/taint/heapranges.testPublishEntry
+            func ddiastTestPublishEntry(p ddheapunsafe.Pointer, old, next uint32) bool {
+            	span, _, index := ddiastClassify(p, 1)
+            	if span == nil {
+            		return false
+            	}
+            	mp, processor := ddiastEnter()
+            	if mp == nil {
+            		return false
+            	}
+            	ok := ddiastPublishEntry(span, index, old, next, processor)
+            	ddiastLeave(mp, processor)
+            	KeepAlive(p)
+            	return ok
+            }
+            
+            //go:linkname ddiastTestRetireOwn github.com/DataDog/dd-iast-go/internal/taint/heapranges.testRetireOwn
+            func ddiastTestRetireOwn(entry uint32) bool {
+            	mp, processor := ddiastEnter()
+            	if mp == nil {
+            		return ddiastRetire(ddiastSlabCount, entry, ddiastRetireRecord)
+            	}
+            	ok := ddiastRetire(processor, entry, ddiastRetireRecord)
+            	ddiastLeave(mp, processor)
+            	return ok
+            }
+            
+            //go:nosplit
+            func ddiastPoisonEntry(span *mspan, index uint32) (uint32, bool) {
+            	if index >= uint32(span.nelems) || index >= 1024 {
+            		return 0, false
+            	}
+            	state := span.ddiastTaint.Load()
+            	if state == ddiastSpanPoison {
+            		return 0, true
+            	}
+            	if span.nelems == 1 && (state == 0 || state&ddiastSpanTagMask == ddiastSpanInline) {
+            		old := span.ddiastTaint.Swap(uint64(ddiastEntryPoison)<<32 | ddiastSpanInline)
+            		if old == 0 {
+            			return 0, true
+            		}
+            		return uint32(old >> 32), true
+            	}
+            	if state == 0 {
+            		if span.ddiastTaint.CompareAndSwap(0, ddiastSpanPoison) {
+            			return 0, true
+            		}
+            		state = span.ddiastTaint.Load()
+            	}
+            	if state == ddiastSpanPoison {
+            		return 0, true
+            	}
+            	if state == 0 || state&ddiastSpanTagMask != 0 {
+            		ddiastHeapGate.Store(3)
+            		return 0, false
+            	}
+            	table := (*ddiastTable)(ddheapunsafe.Pointer(uintptr(state)))
+            	if !ddiastBindTable(table, span.base()) {
+            		ddiastHeapGate.Store(3)
+            		return 0, false
+            	}
+            	return table.entries[index].Swap(ddiastEntryPoison), true
+            }
+            
+            //go:linkname ddiastTestPoisonEntry github.com/DataDog/dd-iast-go/internal/taint/heapranges.testPoisonEntry
+            func ddiastTestPoisonEntry(p ddheapunsafe.Pointer) (uint32, uint32, bool) {
+            	span, _, index := ddiastClassify(p, 1)
+            	if span == nil {
+            		return 0, 0, false
+            	}
+            	mp, processor := ddiastEnter()
+            	old, ok := ddiastPoisonEntry(span, index)
+            	if ddiastRecordEntry(old) {
+            		if mp == nil {
+            			ddiastRetire(ddiastSlabCount, old, ddiastRetireRecord)
+            		} else {
+            			ddiastRetire(processor, old, ddiastRetireRecord)
+            		}
+            	}
+            	if mp != nil {
+            		ddiastLeave(mp, processor)
+            	} else {
+            		processor = ddiastSlabCount
+            	}
+            	KeepAlive(p)
+            	return old, processor, ok
+            }
+            
             //go:linkname ddiastTestCompareEntry github.com/DataDog/dd-iast-go/internal/taint/heapranges.testCompareEntry
             func ddiastTestCompareEntry(p ddheapunsafe.Pointer, old, next uint32) bool {
             	span, _, index := ddiastClassify(p, 1)
@@ -470,6 +569,8 @@ aspects:
             	ddiastRangesCollapsed ddheapatomic.Uint64
             	ddiastRangeLimit      ddheapatomic.Uint32
             	ddiastSnapshotAreas   [64]ddheapatomic.Uint64
+            	ddiastSnapshotCursor  [64]ddheapatomic.Uint64
+            	ddiastSnapshotLost    ddheapatomic.Uint64
             )
             
             const (
@@ -477,6 +578,7 @@ aspects:
             	ddiastOriginSlotShift      = 40
             	ddiastSnapshotEntryMask    = uint64(1<<24 - 1)
             	ddiastSnapshotSize         = uint64(64 << 10)
+            	ddiastSnapshotBusy         = ^uint64(0)
             )
             
             //go:nosplit
@@ -521,7 +623,7 @@ aspects:
             	}
             	slot := (r.origin >> ddiastOriginSlotShift) & 63
             	descriptor := ddiastSnapshotAreas[slot].Load()
-            	if descriptor>>24 != generation {
+            	if descriptor == ddiastSnapshotBusy || descriptor>>24 != generation {
             		return 0
             	}
             	entry := uint32(descriptor & ddiastSnapshotEntryMask)
@@ -653,6 +755,101 @@ aspects:
             	}
             	KeepAlive(p)
             	return count
+            }
+            
+            //go:linkname ddiastAttachSnapshot github.com/DataDog/dd-iast-go/internal/taint/heapranges.wovenAttachSnapshot
+            func ddiastAttachSnapshot(slot uint32, generation uint64) bool {
+            	if ddiastHeapGate.Load() != 1 || slot >= uint32(len(ddiastSnapshotAreas)) || generation == 0 || generation > ddiastOriginGenerationMask {
+            		return false
+            	}
+            	area := &ddiastSnapshotAreas[slot]
+            	if !area.CompareAndSwap(0, ddiastSnapshotBusy) {
+            		return false
+            	}
+            	entry := ddiastAllocateUnits(1024)
+            	if entry == 0 || uint64(entry) > ddiastSnapshotEntryMask {
+            		if entry != 0 {
+            			ddiastSnapshotLost.Add(1024)
+            		}
+            		area.Store(0)
+            		return false
+            	}
+            	ddiastSnapshotCursor[slot].Store(generation << 24)
+            	area.Store(generation<<24 | uint64(entry))
+            	return true
+            }
+            
+            //go:nosplit
+            func ddiastStoreSnapshot(slot uint32, generation uint64, data ddheapunsafe.Pointer, length uintptr) (uint32, bool) {
+            	if slot >= uint32(len(ddiastSnapshotAreas)) || generation == 0 || generation > ddiastOriginGenerationMask ||
+            		length == 0 || uint64(length) > ddiastSnapshotSize {
+            		return 0, false
+            	}
+            	descriptor := ddiastSnapshotAreas[slot].Load()
+            	if descriptor == ddiastSnapshotBusy || descriptor>>24 != generation {
+            		return 0, false
+            	}
+            	entry := uint32(descriptor & ddiastSnapshotEntryMask)
+            	if entry == 0 || (entry-1)&(ddiastSlabUnits-1) > ddiastSlabUnits-1024 {
+            		return 0, false
+            	}
+            	address := ddiastSlabAddress(entry)
+            	if address == 0 {
+            		return 0, false
+            	}
+            	cursor := &ddiastSnapshotCursor[slot]
+            	for attempt := 0; attempt < 4; attempt++ {
+            		current := cursor.Load()
+            		if current>>24 != generation {
+            			return 0, false
+            		}
+            		used := current & ddiastSnapshotEntryMask
+            		if used > ddiastSnapshotSize || uint64(length) > ddiastSnapshotSize-used {
+            			return 0, false
+            		}
+            		if cursor.CompareAndSwap(current, current+uint64(length)) {
+            			for i := uintptr(0); i < length; i++ {
+            				*(*byte)(ddheapunsafe.Pointer(address + uintptr(used) + i)) = *(*byte)(ddheapunsafe.Pointer(uintptr(data) + i))
+            			}
+            			return uint32(used), true
+            		}
+            	}
+            	return 0, false
+            }
+            
+            //go:linkname ddiastTestStoreSnapshot github.com/DataDog/dd-iast-go/internal/taint/heapranges.testStoreSnapshot
+            func ddiastTestStoreSnapshot(slot uint32, generation uint64, data ddheapunsafe.Pointer, length uintptr) (uint32, bool) {
+            	mp, processor := ddiastEnter()
+            	if mp == nil {
+            		return 0, false
+            	}
+            	offset, ok := ddiastStoreSnapshot(slot, generation, data, length)
+            	ddiastLeave(mp, processor)
+            	KeepAlive(data)
+            	return offset, ok
+            }
+            
+            //go:linkname ddiastRetireSnapshot github.com/DataDog/dd-iast-go/internal/taint/heapranges.wovenRetireSnapshot
+            func ddiastRetireSnapshot(slot uint32, generation uint64) bool {
+            	if slot >= uint32(len(ddiastSnapshotAreas)) || generation == 0 || generation > ddiastOriginGenerationMask {
+            		return false
+            	}
+            	mp, processor := ddiastEnter()
+            	area := &ddiastSnapshotAreas[slot]
+            	descriptor := area.Load()
+            	ok := descriptor != ddiastSnapshotBusy && descriptor>>24 == generation && area.CompareAndSwap(descriptor, 0)
+            	if ok {
+            		entry := uint32(descriptor & ddiastSnapshotEntryMask)
+            		if mp == nil {
+            			ddiastRetire(ddiastSlabCount, entry, ddiastRetirementSnapshot)
+            		} else {
+            			ddiastRetire(processor, entry, ddiastRetirementSnapshot)
+            		}
+            	}
+            	if mp != nil {
+            		ddiastLeave(mp, processor)
+            	}
+            	return ok
             }
             
             //go:linkname ddiastTestRecord github.com/DataDog/dd-iast-go/internal/taint/heapranges.testRecord
@@ -791,7 +988,93 @@ aspects:
             	ddiastSlabTailLost ddheapatomic.Uint64
             	ddiastRefill       ddheapatomic.Uint32
             	ddiastQueues       [ddiastSlabCount]ddheapatomic.Uint32
+            	ddiastRetireState  [ddiastSlabCount]ddiastRetirementState
+            	ddiastNoPLost      ddheapatomic.Uint64
             )
+            
+            type ddiastRetirementState struct {
+            	producer ddheapatomic.Uint32
+            	consumer ddheapatomic.Uint32
+            	lost     ddheapatomic.Uint64
+            	_        [48]byte
+            }
+            
+            type ddiastRetirement struct {
+            	entry uint32
+            	kind  uint32
+            	epoch uint64
+            }
+            
+            var (
+            	_ [16 - ddheapunsafe.Sizeof(ddiastRetirement{})]byte
+            	_ [ddheapunsafe.Sizeof(ddiastRetirement{}) - 16]byte
+            	_ [64 - ddheapunsafe.Sizeof(ddiastRetirementState{})]byte
+            	_ [ddheapunsafe.Sizeof(ddiastRetirementState{}) - 64]byte
+            )
+            
+            const (
+            	ddiastRetirementCapacity = 1024
+            	ddiastRetireRecord       = 1
+            	ddiastRetirementSnapshot = 2
+            )
+            
+            //go:nosplit
+            func ddiastRecordEntry(entry uint32) bool {
+            	return entry != 0 && entry != ddiastEntryPoison && entry != ddiastEntryPrivate
+            }
+            
+            //go:nosplit
+            func ddiastRetire(index, entry, kind uint32) bool {
+            	if !ddiastRecordEntry(entry) {
+            		return false
+            	}
+            	if index >= uint32(len(ddiastRetireState)) {
+            		ddiastNoPLost.Store(ddiastNoPLost.Load() + 1)
+            		return false
+            	}
+            	state := &ddiastRetireState[index]
+            	queue := ddiastQueues[index].Load()
+            	if queue == 0 || (queue-1)&(ddiastSlabUnits-1) > ddiastSlabUnits-256 {
+            		state.lost.Store(state.lost.Load() + 1)
+            		return false
+            	}
+            	address := ddiastSlabAddress(queue)
+            	producer, consumer := state.producer.Load(), state.consumer.Load()
+            	if address == 0 || producer-consumer >= ddiastRetirementCapacity {
+            		state.lost.Store(state.lost.Load() + 1)
+            		return false
+            	}
+            	slot := (*ddiastRetirement)(ddheapunsafe.Pointer(address + uintptr(producer%ddiastRetirementCapacity)*16))
+            	slot.entry = entry
+            	slot.kind = kind
+            	slot.epoch = ddiastEpoch.Load()
+            	state.producer.Store(producer + 1)
+            	return true
+            }
+            
+            //go:linkname ddiastTestRetire github.com/DataDog/dd-iast-go/internal/taint/heapranges.testRetire
+            func ddiastTestRetire(index, entry, kind uint32) bool {
+            	mp := acquirem()
+            	ok := ddiastRetire(index, entry, kind)
+            	releasem(mp)
+            	return ok
+            }
+            
+            //go:linkname ddiastTestRetirement github.com/DataDog/dd-iast-go/internal/taint/heapranges.testRetirement
+            func ddiastTestRetirement(index, position uint32) (uint32, uint32, uint64, uint32, uint64) {
+            	if index >= uint32(len(ddiastRetireState)) {
+            		return 0, 0, 0, 0, ddiastNoPLost.Load()
+            	}
+            	state := &ddiastRetireState[index]
+            	producer := state.producer.Load()
+            	queue := ddiastQueues[index].Load()
+            	address := ddiastSlabAddress(queue)
+            	if address == 0 || position >= producer || producer-position > ddiastRetirementCapacity {
+            		return 0, 0, 0, producer, state.lost.Load()
+            	}
+            	slot := (*ddiastRetirement)(ddheapunsafe.Pointer(address + uintptr(position%ddiastRetirementCapacity)*16))
+            	return slot.entry, slot.kind, slot.epoch, producer, state.lost.Load()
+            }
             
             //go:linkname ddiastPublishSlab github.com/DataDog/dd-iast-go/internal/taint/heapranges.publishSlab
             func ddiastPublishSlab(base uintptr) bool {
@@ -956,6 +1239,18 @@ aspects:
             //go:linkname testRecordDetails
             func testRecordDetails(uint32, uint64, uint8, uint8, uint8, uint32) bool
             
+            //go:linkname wovenAttachSnapshot
+            func wovenAttachSnapshot(uint32, uint64) bool
+            
+            //go:linkname wovenRetireSnapshot
+            func wovenRetireSnapshot(uint32, uint64) bool
+            
+            //go:linkname testRetire
+            func testRetire(uint32, uint32, uint32) bool
+            
+            //go:linkname testRetirement
+            func testRetirement(uint32, uint32) (uint32, uint32, uint64, uint32, uint64)
+            
             //go:linkname testSpanPoison
             //go:noescape
             func testSpanPoison(ddheapunsafe.Pointer, bool) bool
@@ -968,6 +1263,10 @@ aspects:
             
             //go:linkname testRangeCollapses
             func testRangeCollapses() uint64
+            
+            //go:linkname testStoreSnapshot
+            //go:noescape
+            func testStoreSnapshot(uint32, uint64, ddheapunsafe.Pointer, uintptr) (uint32, bool)
             
             //go:linkname testSnapshot
             //go:noescape
@@ -982,6 +1281,17 @@ aspects:
             
             //go:linkname testSetProbe
             func testSetProbe(ddheapunsafe.Pointer, uintptr)
+            
+            //go:linkname testPublishEntry
+            //go:noescape
+            func testPublishEntry(ddheapunsafe.Pointer, uint32, uint32) bool
+            
+            //go:linkname testRetireOwn
+            func testRetireOwn(uint32) bool
+            
+            //go:linkname testPoisonEntry
+            //go:noescape
+            func testPoisonEntry(ddheapunsafe.Pointer) (uint32, uint32, bool)
             
             //go:linkname testCompareEntry
             //go:noescape
@@ -1067,6 +1377,8 @@ aspects:
             	}
             	runtimeAny = wovenAny
             	runtimeRanges = wovenRanges
+            	runtimeAttachSnapshot = wovenAttachSnapshot
+            	runtimeRetireSnapshot = wovenRetireSnapshot
             	ddheapknobs.MakeRecord = testRecord
             	ddheapknobs.RecordDetails = testRecordDetails
             	ddheapknobs.RecordRange = testRecordRange
@@ -1074,10 +1386,16 @@ aspects:
             	ddheapknobs.SetRangeLimit = testRangeLimit
             	ddheapknobs.RangeCollapses = testRangeCollapses
             	ddheapknobs.Snapshot = testSnapshot
+            	ddheapknobs.StoreSnapshot = testStoreSnapshot
+            	ddheapknobs.Retire = testRetire
+            	ddheapknobs.Retirement = testRetirement
             	runtimeMayHaveTaint = wovenMayHaveTaint
             	ddheapknobs.SetGate = testSetGate
             	ddheapknobs.SetProbe = testSetProbe
             	ddheapknobs.CompareEntry = testCompareEntry
+            	ddheapknobs.PoisonEntry = testPoisonEntry
+            	ddheapknobs.PublishEntry = testPublishEntry
+            	ddheapknobs.RetireOwn = testRetireOwn
             	ddheapknobs.ReadEntry = testReadEntry
             	ddheapknobs.SpanState = testSpanState
             	ddheapknobs.BindTable = testBindTable

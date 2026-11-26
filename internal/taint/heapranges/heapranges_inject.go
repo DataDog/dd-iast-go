@@ -41,6 +41,18 @@ func testRecord(uint32, uint32, uint32) uint32
 //go:linkname testRecordDetails
 func testRecordDetails(uint32, uint64, uint8, uint8, uint8, uint32) bool
 
+//go:linkname wovenAttachSnapshot
+func wovenAttachSnapshot(uint32, uint64) bool
+
+//go:linkname wovenRetireSnapshot
+func wovenRetireSnapshot(uint32, uint64) bool
+
+//go:linkname testRetire
+func testRetire(uint32, uint32, uint32) bool
+
+//go:linkname testRetirement
+func testRetirement(uint32, uint32) (uint32, uint32, uint64, uint32, uint64)
+
 //go:linkname testSpanPoison
 //go:noescape
 func testSpanPoison(ddheapunsafe.Pointer, bool) bool
@@ -53,6 +65,10 @@ func testRangeLimit(uint32)
 
 //go:linkname testRangeCollapses
 func testRangeCollapses() uint64
+
+//go:linkname testStoreSnapshot
+//go:noescape
+func testStoreSnapshot(uint32, uint64, ddheapunsafe.Pointer, uintptr) (uint32, bool)
 
 //go:linkname testSnapshot
 //go:noescape
@@ -67,6 +83,17 @@ func testSetGate(uint32)
 
 //go:linkname testSetProbe
 func testSetProbe(ddheapunsafe.Pointer, uintptr)
+
+//go:linkname testPublishEntry
+//go:noescape
+func testPublishEntry(ddheapunsafe.Pointer, uint32, uint32) bool
+
+//go:linkname testRetireOwn
+func testRetireOwn(uint32) bool
+
+//go:linkname testPoisonEntry
+//go:noescape
+func testPoisonEntry(ddheapunsafe.Pointer) (uint32, uint32, bool)
 
 //go:linkname testCompareEntry
 //go:noescape
@@ -152,6 +179,8 @@ var _ = func() bool {
 	}
 	runtimeAny = wovenAny
 	runtimeRanges = wovenRanges
+	runtimeAttachSnapshot = wovenAttachSnapshot
+	runtimeRetireSnapshot = wovenRetireSnapshot
 	ddheapknobs.MakeRecord = testRecord
 	ddheapknobs.RecordDetails = testRecordDetails
 	ddheapknobs.RecordRange = testRecordRange
@@ -159,10 +188,16 @@ var _ = func() bool {
 	ddheapknobs.SetRangeLimit = testRangeLimit
 	ddheapknobs.RangeCollapses = testRangeCollapses
 	ddheapknobs.Snapshot = testSnapshot
+	ddheapknobs.StoreSnapshot = testStoreSnapshot
+	ddheapknobs.Retire = testRetire
+	ddheapknobs.Retirement = testRetirement
 	runtimeMayHaveTaint = wovenMayHaveTaint
 	ddheapknobs.SetGate = testSetGate
 	ddheapknobs.SetProbe = testSetProbe
 	ddheapknobs.CompareEntry = testCompareEntry
+	ddheapknobs.PoisonEntry = testPoisonEntry
+	ddheapknobs.PublishEntry = testPublishEntry
+	ddheapknobs.RetireOwn = testRetireOwn
 	ddheapknobs.ReadEntry = testReadEntry
 	ddheapknobs.SpanState = testSpanState
 	ddheapknobs.BindTable = testBindTable

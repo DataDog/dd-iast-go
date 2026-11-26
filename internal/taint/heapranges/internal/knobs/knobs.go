@@ -20,10 +20,16 @@ var (
 	RecordDetails  func(uint32, uint64, uint8, uint8, uint8, uint32) bool
 	RecordRange    func(uint32, uint32, uint32, uint32, uint64, uint8, uint8, uint32) bool
 	SpanPoison     func(unsafe.Pointer, bool) bool
+	Retire         func(uint32, uint32, uint32) bool
+	Retirement     func(uint32, uint32) (uint32, uint32, uint64, uint32, uint64)
 	SetRangeLimit  func(uint32)
 	RangeCollapses func() uint64
 	Snapshot       func(uint32, uint64, unsafe.Pointer, uintptr) bool
+	StoreSnapshot  func(uint32, uint64, unsafe.Pointer, uintptr) (uint32, bool)
 	CompareEntry   func(unsafe.Pointer, uint32, uint32) bool
+	PoisonEntry    func(unsafe.Pointer) (uint32, uint32, bool)
+	PublishEntry   func(unsafe.Pointer, uint32, uint32) bool
+	RetireOwn      func(uint32) bool
 	ReadEntry      func(unsafe.Pointer) uint32
 	SpanState      func(unsafe.Pointer) uint64
 	BindTable      func(uint32, uintptr) bool

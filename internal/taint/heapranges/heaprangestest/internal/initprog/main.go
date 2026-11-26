@@ -50,21 +50,25 @@ func main() {
 		}
 	}
 	result := struct {
-		Enabled     bool              `json:"enabled"`
-		Gate        uint32            `json:"gate"`
-		Reason      string            `json:"reason"`
-		Settings    map[string]string `json:"settings"`
-		Mapped      uint64            `json:"mapped"`
-		OtherSys    uint64            `json:"other_sys"`
-		OtherBefore uint64            `json:"other_before"`
-		MapOK       bool              `json:"map_ok"`
-		Queues      uint32            `json:"queues"`
-		QueuesValid bool              `json:"queues_valid"`
-		Ready       uint32            `json:"ready"`
-		PoolCount   int               `json:"pool_count"`
-		PoolValid   bool              `json:"pool_valid"`
-		PauseValid  bool              `json:"pause_valid"`
-		RangeValid  bool              `json:"range_valid"`
+		Enabled      bool              `json:"enabled"`
+		Gate         uint32            `json:"gate"`
+		Reason       string            `json:"reason"`
+		Settings     map[string]string `json:"settings"`
+		Mapped       uint64            `json:"mapped"`
+		OtherSys     uint64            `json:"other_sys"`
+		OtherBefore  uint64            `json:"other_before"`
+		MapOK        bool              `json:"map_ok"`
+		Queues       uint32            `json:"queues"`
+		QueuesValid  bool              `json:"queues_valid"`
+		Ready        uint32            `json:"ready"`
+		PoolCount    int               `json:"pool_count"`
+		PoolValid    bool              `json:"pool_valid"`
+		PauseValid   bool              `json:"pause_valid"`
+		RangeValid   bool              `json:"range_valid"`
+		RetireValid  bool              `json:"retire_valid"`
+		PoisonValid  bool              `json:"poison_valid"`
+		SnapValid    bool              `json:"snapshot_valid"`
+		PublishValid bool              `json:"publish_valid"`
 	}{Enabled: heapranges.Enabled(), Settings: settings}
 	if knobs.Gate != nil {
 		result.Gate = knobs.Gate()
@@ -128,6 +132,21 @@ func main() {
 	}
 	if len(os.Args) > 2 && os.Args[1] == "ranges" {
 		result.RangeValid = exerciseRanges(os.Args[2])
+	}
+	if len(os.Args) > 1 && os.Args[1] == "retire" {
+		result.RetireValid = exerciseRetirement()
+	}
+	if len(os.Args) > 1 && os.Args[1] == "poison" {
+		result.PoisonValid = exercisePoison()
+	}
+	if len(os.Args) > 1 && os.Args[1] == "snapshot" {
+		result.SnapValid = exerciseSnapshot()
+	}
+	if len(os.Args) > 1 && os.Args[1] == "snapshot-bytes" {
+		result.SnapValid = exerciseSnapshotBytes()
+	}
+	if len(os.Args) > 1 && os.Args[1] == "publish" {
+		result.PublishValid = exercisePublish()
 	}
 	if err := json.NewEncoder(os.Stdout).Encode(result); err != nil {
 		os.Exit(1)
