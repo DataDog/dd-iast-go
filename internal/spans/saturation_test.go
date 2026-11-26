@@ -11,6 +11,7 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+	"weak"
 
 	"github.com/DataDog/dd-iast-go/internal/spans"
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/mocktracer"
@@ -21,6 +22,29 @@ func startMock(t *testing.T) {
 	t.Helper()
 	mockTracer := mocktracer.Start()
 	t.Cleanup(mockTracer.Stop)
+}
+
+func waitForCollectedSpans(t *testing.T, pointers []weak.Pointer[tracer.Span]) {
+	t.Helper()
+	allCollected := func() bool {
+		for _, pointer := range pointers {
+			if pointer.Value() != nil {
+				return false
+			}
+		}
+		return true
+	}
+	deadline := time.Now().Add(15 * time.Second)
+	for {
+		runtime.GC()
+		if allCollected() {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("spans were not collected")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
 }
 
 // More finished roots than the budget stay reachable. A report that comes late
@@ -67,20 +91,23 @@ func TestUnrecordedRootStaysRefusedWhenAPlaceIsFree(t *testing.T) {
 	spans.SetRefuseWindowForTest(t, time.Hour)
 	startMock(t)
 
-	// Places held by entries of spans that nothing references.
-	for i := range capacity + budget {
-		spans.InsertEntryOfUnreferencedSpanForTest(uint64(i), false)
+	// Keep the entries alive until the root has finished with the store full.
+	held := make([]*tracer.Span, capacity+budget)
+	pointers := make([]weak.Pointer[tracer.Span], len(held))
+	for i := range held {
+		held[i] = spans.InsertEntryOfUnreferencedSpanForTest(uint64(i), false)
+		pointers[i] = weak.Make(held[i])
 	}
 	root := tracer.StartSpan("unrecorded")
 	child := root.StartChild("child")
 	spans.Finished(root) // The store is full: not recorded.
-
-	for range 5 {
-		runtime.GC()
-	}
-	spans.TrimForTest() // Places are free now.
-	if e, _ := spans.StoreStateForTest(); e != 0 {
-		t.Fatalf("%d entries after the trim, want 0", e)
+	// Clear the slice because debug builds can keep it alive until the test ends.
+	clear(held)
+	runtime.KeepAlive(held)
+	waitForCollectedSpans(t, pointers)
+	spans.TrimForTest()
+	if e, o := spans.StoreStateForTest(); e != 0 || o != 0 {
+		t.Fatalf("entries=%d open=%d, want 0 and 0", e, o)
 	}
 
 	if spans.AnnotationFor(child).Sampled {
@@ -238,13 +265,16 @@ func TestTrimGivesBackPlaces(t *testing.T) {
 	spans.SetClosedEntryBudgetForTest(t, budget)
 	startMock(t)
 
-	// Fill the store with the entries of spans that nothing references.
-	for i := range budget + capacity {
-		spans.InsertEntryOfUnreferencedSpanForTest(uint64(i), i < capacity)
+	// Hold the spans until all entries are in the store.
+	held := make([]*tracer.Span, budget+capacity)
+	pointers := make([]weak.Pointer[tracer.Span], len(held))
+	for i := range held {
+		held[i] = spans.InsertEntryOfUnreferencedSpanForTest(uint64(i), i < capacity)
+		pointers[i] = weak.Make(held[i])
 	}
-	for range 5 {
-		runtime.GC()
-	}
+	clear(held)
+	runtime.KeepAlive(held)
+	waitForCollectedSpans(t, pointers)
 	spans.TrimForTest()
 	if e, o := spans.StoreStateForTest(); e != 0 || o != 0 {
 		t.Fatalf("entries=%d open=%d, want 0 and 0", e, o)

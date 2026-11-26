@@ -72,16 +72,17 @@ func ConfigureForTest(t testing.TB, capacity, samplingPct int) {
 	})
 }
 
-// InsertEntryOfUnreferencedSpanForTest adds an entry whose span is not
-// referenced by anything, so the garbage collector can reclaim it.
-func InsertEntryOfUnreferencedSpanForTest(id uint64, isOpen bool) {
+// InsertEntryOfUnreferencedSpanForTest adds an entry and returns the only strong reference to its span.
+func InsertEntryOfUnreferencedSpanForTest(id uint64, isOpen bool) *tracer.Span {
+	span := new(tracer.Span)
 	entries.Add(1)
 	if isOpen {
 		open.Add(1)
-		store.Store(weak.Make(new(tracer.Span)), &Annotation{Sampled: true, spanID: id})
-		return
+		store.Store(weak.Make(span), &Annotation{Sampled: true, spanID: id})
+	} else {
+		store.Store(weak.Make(span), newTombstone(id))
 	}
-	store.Store(weak.Make(new(tracer.Span)), newTombstone(id))
+	return span
 }
 
 // InsertStaleEntryForTest adds, for span, the entry of an earlier span (one
