@@ -26,6 +26,8 @@ var (
 	_                func() *g                                = getg
 )
 
+var _ func(ddheapunsafe.Pointer) ddheapunsafe.Pointer = noescape
+
 //go:linkname ddiastHeapRangesNeedRuntime runtime.ddiastHeapRangesNeedTheWovenRuntime
 func ddiastHeapRangesNeedRuntime() {}
 

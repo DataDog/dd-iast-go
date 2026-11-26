@@ -128,7 +128,10 @@ implementation choices that the design does not fix. Each one is marked
    and `go test` of this module still link. The pointer arguments go through
    a `noescape` helper (the same trick as the runtime), so the indirect call
    does not make the value escape; an unwoven unit test checks the escape
-   result (`-gcflags=-m`).
+   result (`-gcflags=-m`). The Go-side helper links to `runtime.noescape`:
+   `go vet` rejects the equivalent local pointer conversion. A compile-time
+   runtime check covers its signature, and the link is tested on both
+   supported Go versions.
 
    The injected `heapranges` file also refers to one runtime symbol with a
    name that explains the problem, for example
