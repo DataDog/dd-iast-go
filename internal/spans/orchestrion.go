@@ -36,6 +36,9 @@ func Finished(span *tracer.Span) {
 	key := weak.Make(span)
 	ann, ok := lookup(key, id)
 	if !ok {
+		if _, found := orphans.Load(orphanKey{span, id}); found {
+			return
+		}
 		if !sampled(span) {
 			return
 		}

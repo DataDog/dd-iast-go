@@ -15,9 +15,6 @@ import (
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
 )
 
-// TestLateReportsAfterManyFinishedRoots keeps more finished roots reachable than
-// the store can remember. A report that comes late for any of them must not get
-// an annotation, and must not use capacity.
 func TestLateReportsAfterManyFinishedRoots(t *testing.T) {
 	if !build.Instrumented() {
 		t.Skip("this test needs the Finish hook: build with Orchestrion or otelc")
@@ -42,7 +39,6 @@ func TestLateReportsAfterManyFinishedRoots(t *testing.T) {
 	other := tracer.StartSpan("other")
 	t.Cleanup(func() { other.Finish() })
 	if spans.AnnotationFor(other).Sampled {
-		// New annotations are refused while the store is full of finished roots.
 		t.Log("a new request got an annotation while the store was full")
 	}
 }

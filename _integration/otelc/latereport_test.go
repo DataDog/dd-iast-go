@@ -11,8 +11,6 @@ import (
 	"github.com/DataDog/dd-iast-go/_integration/otelc/internal/suite"
 )
 
-// TestLateReportAfterRootFinish checks the reports that come after the root
-// span finished (see [suite.CheckLateReportAfterRootFinish]).
 func TestLateReportAfterRootFinish(t *testing.T) {
 	suite.CheckLateReportAfterRootFinish(t)
 }

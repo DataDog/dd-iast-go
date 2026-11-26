@@ -27,6 +27,43 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func checkOrphanBurst(t *testing.T) {
+	requireInstrumented(t)
+	oldCapacity, oldStack := config.MaxConcurrentRequests, config.StackTraceEnabled
+	config.MaxConcurrentRequests, config.StackTraceEnabled = 2, false
+	t.Cleanup(func() { config.MaxConcurrentRequests, config.StackTraceEnabled = oldCapacity, oldStack })
+	mt := mocktracer.Start()
+	t.Cleanup(mt.Stop)
+	const total = 17000
+	for range total {
+		_ = indirectCall1(md5.Sum, []byte("hello"))
+	}
+	finished := mt.FinishedSpans()
+	require.Len(t, finished, total)
+	for i, span := range finished {
+		if span.Tag(spans.SpanTagEnabled) != 1.0 {
+			t.Fatalf("span %d: tag=%v, want 1", i, span.Tag(spans.SpanTagEnabled))
+		}
+		event := vulnerabilityEvent(t, span)
+		if len(event.Vulnerabilities) != 1 || event.Vulnerabilities[0].Type != constants.VulnerabilityTypeWeakHash {
+			t.Fatalf("span %d: unexpected findings: %v", i, event.Vulnerabilities)
+		}
+	}
+	root, _ := tracer.StartSpanFromContext(context.Background(), "request")
+	_ = indirectCall1(md5.Sum, []byte("hello"))
+	root.Finish()
+	finished = mt.FinishedSpans()
+	require.Len(t, finished, total+1)
+	request := finished[total]
+	require.Equal(t, 1.0, request.Tag(spans.SpanTagEnabled))
+	var event model.Event
+	payload, ok := request.Tag(spans.SpanTagJson).(string)
+	require.True(t, ok, "request payload missing")
+	require.NoError(t, json.Unmarshal([]byte(payload), &event))
+	require.Len(t, event.Vulnerabilities, 1)
+	require.Equal(t, constants.VulnerabilityTypeWeakHash, event.Vulnerabilities[0].Type)
+}
+
 // checkSpanFinish checks that two rules work together on (*tracer.Span).Finish:
 // the rule of dd-trace-go ("span_gls_finish"), which removes the span from the
 // goroutine-local storage (GLS), and our rule ("span_finish"), which attaches
@@ -84,15 +121,7 @@ func checkSpanFinish(t *testing.T) {
 	assert.Equal(t, "vulnerability", finished[1].Tag(ext.SpanType))
 }
 
-// CheckLateReportAfterRootFinish checks the reports that come after the root
-// span finished, with the real tracer, the Finish hook of the tool under test,
-// and the production report path:
-//
-//  1. The payload of the first Finish has the finding of the first report.
-//  2. Reports after the finish, started at the same time, make no annotation,
-//     no finding, no span, and use no capacity; the counter of dropped reports
-//     grows.
-//  3. Two more calls of Finish at the same time do not change the payload.
+// CheckLateReportAfterRootFinish verifies late reports with the instrumented tracer.
 func CheckLateReportAfterRootFinish(t *testing.T) {
 	requireInstrumented(t)
 
@@ -147,7 +176,6 @@ func CheckLateReportAfterRootFinish(t *testing.T) {
 	assert.Greater(t, telemetry.DroppedReport.Load(), dropped, "the dropped reports are not counted")
 	assert.False(t, spans.AnnotationFor(child).Sampled, "a late report got an annotation")
 
-	// No capacity is used (it is 1): another request is still analyzed.
 	other := tracer.StartSpan("other")
 	t.Cleanup(func() { other.Finish() })
 	assert.True(t, spans.AnnotationFor(other).Sampled, "the late reports used capacity")

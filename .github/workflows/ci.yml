@@ -255,10 +255,13 @@ jobs:
         run: |
           set -o pipefail
           go tool orchestrion go test -race -count=1 -v \
-            -run '^(TestLateReportAfterRootFinish|TestAnnotationCapacityIsAtomic)$' \
-            ./internal/spans/regression | tee "${RUNNER_TEMP}/regression.txt"
+            -run '^(TestLateReportAfterRootFinish|TestAnnotationCapacityIsAtomic|TestOrphanReportBurstKeepsAnalyzingRequests|TestConcurrentOrphanReportBurst|TestOrphanReportBurstWithoutAdmission)$' \
+            ./internal/spans/regression ./internal/spans/regression/orphanburst | tee "${RUNNER_TEMP}/regression.txt"
           grep -q -- '--- PASS: TestLateReportAfterRootFinish ' "${RUNNER_TEMP}/regression.txt"
           grep -q -- '--- PASS: TestAnnotationCapacityIsAtomic ' "${RUNNER_TEMP}/regression.txt"
+          grep -q -- '--- PASS: TestOrphanReportBurstKeepsAnalyzingRequests ' "${RUNNER_TEMP}/regression.txt"
+          grep -q -- '--- PASS: TestConcurrentOrphanReportBurst ' "${RUNNER_TEMP}/regression.txt"
+          grep -q -- '--- PASS: TestOrphanReportBurstWithoutAdmission ' "${RUNNER_TEMP}/regression.txt"
       - name: Unit Tests (otelc, race)
         if: matrix.tool == 'otelc'
         run: scripts/otelc-test.sh -race -shuffle=on
@@ -267,9 +270,12 @@ jobs:
         run: |
           set -o pipefail
           scripts/otelc-test.sh -race -count=1 -v \
-            '-run=^(TestLateReportAfterRootFinish|TestAnnotationCapacityIsAtomic)$' | tee "${RUNNER_TEMP}/regression.txt"
+            '-run=^(TestLateReportAfterRootFinish|TestAnnotationCapacityIsAtomic|TestOrphanReportBurstKeepsAnalyzingRequests|TestConcurrentOrphanReportBurst|TestOrphanReportBurstWithoutAdmission)$' | tee "${RUNNER_TEMP}/regression.txt"
           grep -q -- '--- PASS: TestLateReportAfterRootFinish ' "${RUNNER_TEMP}/regression.txt"
           grep -q -- '--- PASS: TestAnnotationCapacityIsAtomic ' "${RUNNER_TEMP}/regression.txt"
+          grep -q -- '--- PASS: TestOrphanReportBurstKeepsAnalyzingRequests ' "${RUNNER_TEMP}/regression.txt"
+          grep -q -- '--- PASS: TestConcurrentOrphanReportBurst ' "${RUNNER_TEMP}/regression.txt"
+          grep -q -- '--- PASS: TestOrphanReportBurstWithoutAdmission ' "${RUNNER_TEMP}/regression.txt"
       - name: Integration Tests (race)
         working-directory: _integration/otelc
         env:

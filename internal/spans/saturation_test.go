@@ -6,7 +6,9 @@
 package spans_test
 
 import (
+	"math"
 	"runtime"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -17,6 +19,46 @@ import (
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/mocktracer"
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
 )
+
+func TestStoreLimitDoesNotOverflowAtMaxCapacity(t *testing.T) {
+	for _, capacity := range []int{math.MaxInt, math.MaxInt - 16383, math.MaxInt - 16384} {
+		t.Run(strconv.Itoa(capacity), func(t *testing.T) {
+			spans.ConfigureForTest(t, capacity, 100)
+			spans.SetClosedEntryBudgetForTest(t, 16384)
+			startMock(t)
+			want := int64(math.MaxInt64)
+			if int64(capacity) <= math.MaxInt64-16384 {
+				want = int64(capacity) + 16384
+			}
+			if got := spans.StoreLimitForTest(); got != want {
+				t.Fatalf("store limit=%d, want %d", got, want)
+			}
+			root := tracer.StartSpan("request")
+			if !spans.AnnotationFor(root).Sampled {
+				t.Fatal("request was not admitted")
+			}
+			spans.Finished(root)
+			root.Finish()
+			finished := tracer.StartSpan("finished without report")
+			child := finished.StartChild("late")
+			spans.Finished(finished)
+			finished.Finish()
+			if spans.RefusingForTest() {
+				t.Fatal("refusal window started")
+			}
+			if spans.AnnotationFor(child).Sampled {
+				t.Fatal("late report was admitted")
+			}
+			next := tracer.StartSpan("next")
+			if !spans.AnnotationFor(next).Sampled {
+				t.Fatal("next request was not admitted")
+			}
+			spans.Finished(next)
+			next.Finish()
+			child.Finish()
+		})
+	}
+}
 
 func startMock(t *testing.T) {
 	t.Helper()
@@ -47,8 +89,6 @@ func waitForCollectedSpans(t *testing.T, pointers []weak.Pointer[tracer.Span]) {
 	}
 }
 
-// More finished roots than the budget stay reachable. A report that comes late
-// for any of them must not get an annotation, and must not use capacity.
 func TestLateReportsAfterMoreFinishedRootsThanTheBudget(t *testing.T) {
 	const capacity, budget, total = 2, 16, 200
 	spans.ConfigureForTest(t, capacity, 100)
@@ -81,9 +121,6 @@ func TestLateReportsAfterMoreFinishedRootsThanTheBudget(t *testing.T) {
 	}
 }
 
-// A root that finished while the store was full could not be recorded. Even
-// when a place becomes free, a report of that root must not get an annotation
-// while new annotations are refused.
 func TestUnrecordedRootStaysRefusedWhenAPlaceIsFree(t *testing.T) {
 	const capacity, budget = 2, 4
 	spans.ConfigureForTest(t, capacity, 100)
@@ -118,7 +155,6 @@ func TestUnrecordedRootStaysRefusedWhenAPlaceIsFree(t *testing.T) {
 	}
 }
 
-// The limit covers closed and open entries together.
 func TestStoreLimitBoundary(t *testing.T) {
 	const capacity, budget = 2, 4
 	spans.ConfigureForTest(t, capacity, 100)
@@ -140,7 +176,6 @@ func TestStoreLimitBoundary(t *testing.T) {
 		t.Fatalf("%d entries, want %d", e, capacity+budget)
 	}
 
-	// The store is full: no annotation, and no new entry.
 	full := tracer.StartSpan("full")
 	keep = append(keep, full)
 	if spans.AnnotationFor(full).Sampled {
@@ -156,8 +191,6 @@ func TestStoreLimitBoundary(t *testing.T) {
 	_ = keep
 }
 
-// With the limit not reached, open annotations and closed entries add up to it
-// and no more.
 func TestStoreLimitIsSharedByOpenAndClosedEntries(t *testing.T) {
 	const capacity, budget = 2, 4
 	spans.ConfigureForTest(t, capacity, 100)
@@ -193,8 +226,6 @@ func TestStoreLimitIsSharedByOpenAndClosedEntries(t *testing.T) {
 	}
 }
 
-// Many roots finish at the same time with no report before: the number of
-// entries never goes above the limit.
 func TestConcurrentFinishesStayWithinTheLimit(t *testing.T) {
 	const capacity, budget, workers, perWorker = 4, 32, 8, 200
 	spans.ConfigureForTest(t, capacity, 100)
@@ -257,8 +288,6 @@ func TestConcurrentFinishesStayWithinTheLimit(t *testing.T) {
 	}
 }
 
-// Entries of spans that no longer exist are removed, and their places are
-// given back.
 func TestTrimGivesBackPlaces(t *testing.T) {
 	const capacity, budget = 2, 8
 	spans.ConfigureForTest(t, capacity, 100)

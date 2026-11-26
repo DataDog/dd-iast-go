@@ -22,9 +22,6 @@ import (
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
 )
 
-// These tests use only the API that the previous version of the package has,
-// so they can run against it.
-
 func configureRegression(t *testing.T, capacity, samplingPct int) {
 	t.Helper()
 	previousCapacity, previousPct := config.MaxConcurrentRequests, config.RequestSamplingPct
@@ -53,8 +50,6 @@ func vulnerabilityCount(t *testing.T, tag any) int {
 	return len(event.Vulnerabilities)
 }
 
-// TestLateReportAfterRootFinish checks the reports that come after the root
-// span finished, with the real Finish hook and the production report path.
 func TestLateReportAfterRootFinish(t *testing.T) {
 	if !build.Instrumented() {
 		t.Skip("this test needs the Finish hook: build with Orchestrion or otelc")
@@ -100,8 +95,6 @@ func TestLateReportAfterRootFinish(t *testing.T) {
 		t.Fatalf("%d reports were made, want only the first", executed.Load())
 	}
 
-	// A second Finish of the same root, at the same time as another one, does
-	// not change what the first one wrote.
 	for range 2 {
 		wg.Add(1)
 		go func() { defer wg.Done(); root.Finish() }()
@@ -111,7 +104,6 @@ func TestLateReportAfterRootFinish(t *testing.T) {
 		t.Fatalf("the payload changed after the finish: %d findings", got)
 	}
 
-	// No capacity is used: another request is still sampled.
 	other := tracer.StartSpan("other")
 	t.Cleanup(func() { other.Finish() })
 	if !spans.AnnotationFor(other).Sampled {
@@ -119,8 +111,6 @@ func TestLateReportAfterRootFinish(t *testing.T) {
 	}
 }
 
-// TestOrphanEnabledTagMatchesAdmission checks the tag on orphan spans after
-// reports that are accepted, sampled out, or rejected for lack of capacity.
 func TestOrphanEnabledTagMatchesAdmission(t *testing.T) {
 	if !build.Instrumented() {
 		t.Skip("this test needs the Finish hook: build with Orchestrion or otelc")

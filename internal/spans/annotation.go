@@ -7,6 +7,7 @@ package spans
 
 import (
 	"log/slog"
+	"math"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -34,7 +35,8 @@ var (
 	closedEntryBudget int64 = 16384
 	// refuseWindow is how long new annotations are refused after a finished root
 	// could not be recorded. It is a variable for the tests.
-	refuseWindow = 30 * time.Second
+	refuseWindow              = 30 * time.Second
+	refusedOrphanBudget int64 = 16
 )
 
 var (
@@ -56,11 +58,17 @@ var (
 	refuseUntil atomic.Int64
 	// nextTrim is the earliest time (Unix nanoseconds) of the next scan for dead
 	// keys.
-	nextTrim atomic.Int64
+	nextTrim       atomic.Int64
+	refusedOrphans atomic.Int64
+	orphans        = xsync.NewMap[orphanKey, *Orphan]()
 )
 
 func storeLimit() int64 {
-	return int64(config.MaxConcurrentRequests) + closedEntryBudget
+	capacity := int64(config.MaxConcurrentRequests)
+	if capacity > math.MaxInt64-closedEntryBudget {
+		return math.MaxInt64
+	}
+	return capacity + closedEntryBudget
 }
 
 type Annotation struct {
@@ -74,8 +82,7 @@ type Annotation struct {
 	// spanID is the identifier of the root span that this annotation belongs to.
 	// A tracer can reuse the memory of a finished span for a new span, and the
 	// store is keyed by that memory: the identifier tells the two apart.
-	spanID uint64
-	// tombstone is true for an entry that only remembers a finished root.
+	spanID    uint64
 	tombstone bool
 
 	// closed is set once, when the root span finishes (or when the span is
@@ -129,13 +136,17 @@ func SamplingDecision(span *tracer.Span) bool {
 }
 
 func sampled(root *tracer.Span) bool {
+	return sampledID(root.Context().SpanID())
+}
+
+func sampledID(id uint64) bool {
 	switch config.RequestSamplingPct {
 	case 0:
 		return false
 	case 100:
 		return true
 	default:
-		return int(mix64(root.Context().SpanID())%100) < config.RequestSamplingPct
+		return int(mix64(id)%100) < config.RequestSamplingPct
 	}
 }
 

@@ -12,6 +12,7 @@ import (
 
 	"github.com/DataDog/dd-iast-go/internal/config"
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
+	"github.com/puzpuzpuz/xsync/v4"
 )
 
 // ResetForTest empties the store and the counters, so a test does not depend on
@@ -21,6 +22,8 @@ func ResetForTest(t testing.TB) {
 	t.Helper()
 	reset := func() {
 		store.Clear()
+		orphans.Clear()
+		refusedOrphans.Store(0)
 		entries.Store(0)
 		open.Store(0)
 		refuseUntil.Store(0)
@@ -49,6 +52,54 @@ func StoreStateForTest() (entryCount, openCount int64) {
 }
 
 func StoreSizeForTest() int { return store.Size() }
+
+func OrphanCountForTest() int { return orphans.Size() }
+
+func OrphanRegistryStatsForTest() xsync.MapStats { return orphans.Stats() }
+
+func StoreLimitForTest() int64 { return storeLimit() }
+
+func RefusedOrphansForTest() int64 { return refusedOrphans.Load() }
+
+func RefusingForTest() bool { return refusing() }
+
+func RefuseUntilForTest() int64 { return refuseUntil.Load() }
+
+func SetOrphanIDSourceForTest(t testing.TB, source func() uint64) {
+	t.Helper()
+	previous := drawOrphanID
+	drawOrphanID = source
+	t.Cleanup(func() { drawOrphanID = previous })
+}
+
+func ReplaceOrphanEntryForTest(o *Orphan) {
+	orphans.Store(o.key, &Orphan{key: o.key})
+}
+
+func AddOrphanKeyForTest(span *tracer.Span, id uint64) {
+	key := orphanKey{span, id}
+	orphans.Store(key, &Orphan{key: key})
+}
+
+func ReplaceOrphanSpanForTest(o *Orphan, span *tracer.Span) {
+	orphans.Delete(o.key)
+	o.key = orphanKey{span, span.Context().SpanID()}
+	orphans.Store(o.key, o)
+}
+
+func SetOrphanSpanStarterForTest(t testing.TB, start func(string, ...tracer.StartSpanOption) *tracer.Span) {
+	t.Helper()
+	previous := startOrphanSpan
+	startOrphanSpan = start
+	t.Cleanup(func() { startOrphanSpan = previous })
+}
+
+func SetRefusedOrphanBudgetForTest(t testing.TB, budget int64) {
+	t.Helper()
+	previous := refusedOrphanBudget
+	refusedOrphanBudget = budget
+	t.Cleanup(func() { refusedOrphanBudget = previous })
+}
 
 // ConfigureForTest sets the capacity and the sampling rate, enables IAST, and
 // resets the store. Everything is restored when the test ends.

@@ -124,7 +124,6 @@ func TestFirstReportAfterRootFinish(t *testing.T) {
 	if late := spans.AnnotationFor(child); late.Sampled {
 		t.Fatal("the first report after the root finished got an annotation")
 	}
-	// No capacity is used by the finished root.
 	for range 2 {
 		other := tracer.StartSpan("other")
 		if !spans.AnnotationFor(other).Sampled {

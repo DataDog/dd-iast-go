@@ -111,6 +111,7 @@ func Run(t *testing.T, cfg Config) {
 	t.Run("PKCS12", func(t *testing.T) { checkPKCS12(t, cfg) })
 	t.Run("WeakCipherNotSinks", checkWeakCipherNotSinks)
 
+	t.Run("OrphanBurst", checkOrphanBurst)
 	t.Run("SpanFinish", checkSpanFinish)
 }
 
