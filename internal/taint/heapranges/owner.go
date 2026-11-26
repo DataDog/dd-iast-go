@@ -12,6 +12,25 @@ const (
 	MaxGeneration = 1<<40 - 1
 )
 
+// Owner identifies a request by slot and generation.
+type Owner uint64
+
+// NoOwner identifies no request.
+const NoOwner Owner = 0
+
+// OwnerOf returns the owner for a valid slot and generation.
+func OwnerOf(slot uint32, generation uint64) Owner {
+	if slot >= MaxOwners || generation == 0 || generation > MaxGeneration {
+		return NoOwner
+	}
+	return Owner(uint64(slot)<<40 | generation)
+}
+
+// Owner returns the request owner of the origin.
+func (origin Origin) Owner() Owner {
+	return Owner(uint64(origin) & (1<<46 - 1))
+}
+
 var (
 	runtimeStartOwner func(uint32, uint64) bool
 	runtimeEndOwner   func(uint32, uint64) bool

@@ -43,6 +43,9 @@ adjustments to the feature PR:
 
 ### 0.0 Changes in v4 (answers to the third critic round)
 
+Implementation adjustment: caller owner, segment format and real-write rules
+of `Copy` and `Map`.
+
 Implementation adjustment: owner liveness table for `Set` (conflict and
 replacement rules).
 
@@ -164,8 +167,36 @@ implementation choices that the design does not fix. Each one is marked
    func MayHaveTaint(p unsafe.Pointer, n uintptr) bool
    func Any(p unsafe.Pointer, n uintptr) bool
    func Ranges(p unsafe.Pointer, n uintptr, buf []Range) []Range // always complete; buf is used when cap(buf) >= k, else one new array
-   func Copy(dst, src unsafe.Pointer, n uintptr, k Kind) bool
-   func Map(dst, src unsafe.Pointer, m []Segment) bool // Segment: DstOff, SrcOff, Len, Unknown flag
+   // Owner names one request owner (the slot and generation bits of an Origin). NoOwner: no request.
+   type Owner uint64
+   
+   const NoOwner Owner = 0
+   
+   func OwnerOf(slot uint32, gen uint64) Owner // NoOwner when slot >= MaxOwners, gen == 0 or gen > MaxGeneration
+   func (o Origin) Owner() Owner                // the slot and generation bits of the origin
+   
+   // Copy sets the ranges of dst[0:n) from src[0:n), after the n bytes were copied (memmove).
+   func Copy(dst, src unsafe.Pointer, n uintptr, kind Kind, self Owner) bool
+   
+   const (
+   	MaxMapInputs = 4
+   	MaxSegments  = 1024
+   )
+   
+   type Input struct {
+   	P unsafe.Pointer
+   	N uintptr
+   }
+   
+   type Segment struct {
+   	DstOff, DstLen uint32 // output bytes [DstOff, DstOff+DstLen)
+   	SrcOff, SrcLen uint32 // made from bytes [SrcOff, SrcOff+SrcLen) of srcs[Src]
+   	Src            uint8
+   	Flags          uint8 // SegmentExact, SegmentUnknown, SegmentSensitive
+   }
+   
+   // Map sets the ranges of dst[0:dstLen) from the inputs, after the transform wrote dst.
+   func Map(dst unsafe.Pointer, dstLen uintptr, srcs []Input, segs []Segment, kind Kind, self Owner) bool
    ```
 
 **`Ranges` returns every range (choice).** Let `k` be the number of result
@@ -315,8 +346,85 @@ same owner or an ended owner is replaced; a different live owner becomes an
 unknown conflict with no marks; a conflict or unknown origin stays unchanged.
 `Set` returns true only when every requested byte has the new origin. If a
 conflict cannot be published, poison the object. A read of the old owner's
-liveness just before it ends may conservatively produce a conflict. `Copy`,
-`Map`, and `Clear` do not use owner liveness.
+liveness just before it ends may conservatively produce a conflict.
+`Clear` does not use owner liveness. `Copy` and `Map` use it only to check
+whether their explicit caller owner is usable.
+
+**`Copy` and `Map` (choice).**
+
+**Timing (answer to gap 4).** Call `Copy` and `Map` **after** the bytes are in `dst`: after the `memmove`, or after the original function returns. The caller keeps all the objects alive during the call.
+- `Copy` reads the **ranges** of `src` and the **bytes of `dst`**. It never reads the bytes of `src` after the write. To check an exposed source range (A/A), it compares `dst[i]` with the snapshot of that source range. After a `memmove`, `dst[i]` is the old `src[i]`, also when the two overlap, so this check is correct.
+- **Overlap in one object** (a buffer slide): `src` and `dst` have one entry. `Copy` reads that one chain, which still describes the bytes from before the copy. It builds one new chain: the moved ranges on `[dst, dst+n)`, and the old ranges everywhere else. It publishes this chain with one CAS. The part of `src` outside `dst` keeps its ranges, because its bytes did not change.
+- `Map` reads the ranges and the bytes of the inputs (to check exposed input ranges), and the bytes of `dst` (to take new snapshots). The output never aliases an input (design `:1259`). A wrapper that cannot promise this must not call `Map`.
+- If the application changes the bytes at the same time (a data race of the application), the check fails, and the range is unknown. That is the safe result.
+
+**Real write (answer to gap 3).** `Copy` writes `dst[0:n)` and `Map` writes `dst[0:dstLen)`. On these bytes, the old ranges are **replaced completely** by the ranges that the call computes. A clean source gives no range. This includes a **conflict range**: the bytes are new, so the conflict no longer describes them (design `:209`, `:727`). The rule "conflict is absorbing" (`:717`) is about label attempts (`Set`), and stays true for `Set`. Bytes outside the written part keep their ranges, conflicts included.
+
+| State of `dst` | Result |
+|---|---|
+| `POISON` (entry or `INLINE(POISON)`) | No change, return false. `POISON` is absorbing; only the sweep clears it (rule 2 of 1.2.3). |
+| `SPAN_POISON` on its span | No change, return false. Only the sweep resets it. Writers cannot attach a table over it. |
+| `PRIVATE`, or a private chain | Private when `kind` is `Private`. When `kind` is `Exposed`, the object becomes exposed (it never goes back). Its kept ranges then get snapshots, or become unknown, as in the table below. |
+| Entry `0` (no record) | `kind` `Immutable` is accepted: the caller made the object as the backing of a string. `kind` `Private` is **not** accepted and gives exposed: private status comes only from a record that was made at allocation (`:549`). |
+| Recorded exposed or immutable | The recorded kind wins over `kind` (an object never goes back to private or immutable). |
+| Not on the heap, more than one slot, more than 4 GiB − 1, gate not Live | Return false, no change. |
+
+**A source that is not readable:** a source that is not on the heap (stack, static) is clean. A source with `POISON` or `SPAN_POISON`, or a chain that cannot be read (no announcement slot), makes its part unknown.
+
+**Where the result is stored**, for each range that the call computes:
+
+| Range computed for `dst` | `dst` is immutable or private | `dst` is exposed, A/A | `dst` is exposed, C/C |
+|---|---|---|---|
+| A request origin, with `Owner() == self` and `self` usable | Origin kept, no snapshot | Origin kept. It references the snapshot of the source range when that snapshot covers the same bytes (no byte copied, `:645`). Else the bytes of `dst` are stored in the area of `self`. Area full: unknown. | Origin kept, no snapshot (the reads of C/C give unknown) |
+| A request origin of **another owner**, or `self` not usable | Origin kept, no snapshot | **Unknown** (`:654`) | Origin kept, no snapshot |
+| Unknown, conflict, or poisoned source | Unknown | Unknown | Unknown |
+
+- **Unknown** means: generation 0, `Marks: 0`, and the sensitive bit and the "exposed path" bit kept.
+- Every computed range gets the "exposed path" bit when its source range has it, or when its source object is exposed (`:595-600`).
+- Marks are kept by `Copy` and by exact segments of `Map`, and by nothing else (`:1344`).
+- The work is bounded: at most 16 records read for each object, at most 64 ranges written (a 64-range unknown tail), and a scan budget of 64 KiB of compared or stored bytes for each call. Past the budget, the rest is unknown.
+
+**Failure.** A failed publish after 4 CAS attempts, or with no record, is a mandatory write. It stores `POISON` by exchange in the order of rule 4 of 1.2.3 (entry, inline entry, `SPAN_POISON`, or a trip of the breaker). This is also true for a **clean** copy over bytes that had ranges: old labels never stay on new bytes. The records of an unpublished chain go to the retirement queue of the P.
+
+**Return value:** true when the new ranges of the written part are published, or when nothing needed to change. False when the call was refused, when `dst` stayed poisoned, when `POISON` was stored, or when the breaker tripped.
+
+**`Copy`.**
+
+- `dst[0:n)` gets the ranges of `src[0:n)`, shifted to the offset of `dst`, with the rules of section 2.
+- An exact copy keeps the origins and the marks.
+
+**`Map`.**
+
+**Segments** describe the whole output in order:
+- `segs[0].DstOff == 0`.
+- Each segment starts where the previous one ends.
+- `Src < len(srcs)`, and the source part is inside `srcs[Src]`.
+- Source parts can overlap between segments (for example 2 copies of `new` in `bytes.Replace`).
+
+**Kinds of segment:**
+
+| Segment | Output bytes |
+|---|---|
+| `SegmentExact` (`DstLen == SrcLen`) | Byte `i` gets the range of input byte `i`: its origin, marks and bits. |
+| `SrcLen > 0`, no flag (for example `%41` is 3 bytes to 1, or a hex digit pair is 1 byte to 2) | Every output byte of the segment has all the input bytes of the segment as **contributors**. The rule follows `:1326-1343`. |
+| `SrcLen == 0`, no flag | Clean: bytes that the transform makes from constants (for example the quotes of `%q`). |
+| `SegmentUnknown` (with `SegmentSensitive` when the bytes can come from a sensitive value) | Unknown. For example, the bytes that a `strings.Map` callback returned. |
+
+**The contributor rule**, for one segment with no flag:
+- **No tainted contributor:** the output bytes are clean.
+- **All tainted contributors belong to one request** (same `Owner()`): the **first** origin, in input order.
+- **2 or more requests, or any unknown, conflict or poisoned contributor:** unknown.
+- **Clean contributors** do not change the result.
+- **Sensitive bit:** the OR of all contributors.
+- **Exposed path bit:** the OR of the contributors, plus the bit when the input object is exposed.
+- **Marks:** 0.
+
+**Early stop.** `Map` processes the segments in order, and stops at the first segment where one of these is true:
+- the segment is not valid: a gap, an overlap, a part outside `[0, dstLen)`, a bad `Src` or source part, or `SegmentExact` with `DstLen ≠ SrcLen`;
+- it is the segment after `MaxSegments`;
+- the scan budget is used.
+
+When the segments end before `dstLen`, or `Map` stops early, the bytes **from the end of the last processed segment to `dstLen`** are unknown (`:1259-1261`). With `len(srcs) > MaxMapInputs`, the whole output is unknown. With `dstLen == 0`, nothing happens, and the result is true.
 
 8. **Test knobs (choice).** One runtime-side `uint32` knob word, read only on
    slow paths (never on the `MayHaveTaint` fast path; the generated-code test
@@ -757,6 +865,7 @@ description uses `'-run=^<Name>$'`.)
 | AC-S13 | `TestReservedEntryValues` | `PRIVATE` and `POISON` never followed and never in a queue (queues inspected); `PRIVATE` kept across a sweep, a clear of the last range and a refill; reset to 0 when the object dies (sweep and `addReusableNoscan`); `SPAN_POISON` stored with the budget full before the first table, for an ordinary range, a sensitive range and an unknown range; every object of the span poisoned; a failed source label in place only dropped; a buffer allocated in that span never private; reset only when no object is live; a large object uses its inline entry; `Clear` and a clean `Copy` on a 1-object span give field `0` (`INLINE(e) → 0`); the table of another span (knob) trips the breaker. **`mspan` struct reuse:** one struct is reused small (many objects, gets a table) → 1-object (size class 67, 32 KiB: uses entry 0 of the existing table, never `INLINE`) → small again: the table count does not grow, and no stale inline value or entry is read. A struct first used with `INLINE`, then reused for a small span: the field is `0` after the sweep, and the small span gets a table. At each sweep that frees a span, the field is `0` or a detached table. |
 
 Other tests (not mapped to a criterion of this PR):
+`TestCopyContract`, `TestMapContract`, `TestCopyAndMapWhenNotWoven`,
 `TestOwnerLifecycle`, `TestSetRespectsOwnerLiveness`,
 `TestOwnerFunctionsWhenNotWoven`,
 `TestRangesReturnsEveryRange` (nil and zero-capacity buffers, exact fit, one

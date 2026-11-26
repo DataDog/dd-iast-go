@@ -5,7 +5,10 @@
 
 package heapranges
 
-import "unsafe"
+import (
+	"runtime"
+	"unsafe"
+)
 
 // Kind describes how the memory can be changed.
 type Kind uint8
@@ -46,6 +49,7 @@ var (
 	_            [unsafe.Offsetof(writeRange{}.flags) - 21]byte
 	runtimeClear func(unsafe.Pointer, uintptr, unsafe.Pointer)
 	runtimeSet   func(unsafe.Pointer, uintptr, Origin, Kind, unsafe.Pointer) bool
+	runtimeCopy  func(unsafe.Pointer, unsafe.Pointer, uintptr, Kind, Owner, unsafe.Pointer) bool
 )
 
 // Set labels the requested range with an origin.
@@ -55,6 +59,18 @@ func Set(p unsafe.Pointer, n uintptr, origin Origin, kind Kind) bool {
 	}
 	var work [64]writeRange
 	return runtimeSet(noescape(p), n, origin, kind, noescape(unsafe.Pointer(&work[0])))
+}
+
+// Copy propagates ranges after the bytes have been copied to dst.
+func Copy(dst, src unsafe.Pointer, n uintptr, kind Kind, self Owner) bool {
+	if runtimeCopy == nil {
+		return false
+	}
+	var work [2][65]writeRange
+	ok := runtimeCopy(noescape(dst), noescape(src), n, kind, self, noescape(unsafe.Pointer(&work[0][0])))
+	runtime.KeepAlive(dst)
+	runtime.KeepAlive(src)
+	return ok
 }
 
 // Clear removes labels from the requested range.

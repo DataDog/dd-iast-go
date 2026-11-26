@@ -18,6 +18,11 @@ var sink unsafe.Pointer
 func staysOnStack() {
 	var target [1024]byte
 	var ranges [heapranges.MaxRanges]heapranges.Range
+	var in [heapranges.MaxMapInputs]heapranges.Input
+	var segs [8]heapranges.Segment
+	in[0] = heapranges.Input{P: unsafe.Pointer(&target[0]), N: uintptr(len(target))}
+	_ = heapranges.Copy(unsafe.Pointer(&target[0]), unsafe.Pointer(&target[0]), uintptr(len(target)), heapranges.Immutable, heapranges.NoOwner)
+	_ = heapranges.Map(unsafe.Pointer(&target[0]), uintptr(len(target)), in[:1], segs[:], heapranges.Immutable, heapranges.NoOwner)
 	heapranges.Clear(unsafe.Pointer(&target[0]), uintptr(len(target)))
 	_ = heapranges.Set(unsafe.Pointer(&target[0]), uintptr(len(target)), 1, heapranges.Immutable)
 	result = heapranges.MayHaveTaint(unsafe.Pointer(&target[0]), uintptr(len(target))) ||

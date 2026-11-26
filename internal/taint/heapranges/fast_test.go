@@ -26,7 +26,7 @@ func TestFastCheckDoesNotEscape(t *testing.T) {
 		t.Fatalf("build escape test: %v\n%s", err, output)
 	}
 	text := string(output)
-	if !strings.Contains(text, "moved to heap: control") || strings.Contains(text, "moved to heap: target") || strings.Contains(text, "moved to heap: ranges") {
+	if !strings.Contains(text, "moved to heap: control") || strings.Contains(text, "moved to heap: target") || strings.Contains(text, "moved to heap: ranges") || strings.Contains(text, "moved to heap: in") || strings.Contains(text, "moved to heap: segs") {
 		t.Fatalf("escape analysis output:\n%s", text)
 	}
 }
