@@ -99,6 +99,30 @@ aspects:
             	return ok && ddiastAnnouncements[index].Load() == 0
             }
             
+            type ddiastOutputRange struct {
+            	offset uint32
+            	length uint32
+            	origin uint64
+            	marks  uint8
+            	flags  uint8
+            	_      [6]byte
+            }
+            
+            var (
+            	_ [24 - ddheapunsafe.Sizeof(ddiastOutputRange{})]byte
+            	_ [ddheapunsafe.Sizeof(ddiastOutputRange{}) - 24]byte
+            	_ [0 - ddheapunsafe.Offsetof(ddiastOutputRange{}.offset)]byte
+            	_ [ddheapunsafe.Offsetof(ddiastOutputRange{}.offset) - 0]byte
+            	_ [4 - ddheapunsafe.Offsetof(ddiastOutputRange{}.length)]byte
+            	_ [ddheapunsafe.Offsetof(ddiastOutputRange{}.length) - 4]byte
+            	_ [8 - ddheapunsafe.Offsetof(ddiastOutputRange{}.origin)]byte
+            	_ [ddheapunsafe.Offsetof(ddiastOutputRange{}.origin) - 8]byte
+            	_ [16 - ddheapunsafe.Offsetof(ddiastOutputRange{}.marks)]byte
+            	_ [ddheapunsafe.Offsetof(ddiastOutputRange{}.marks) - 16]byte
+            	_ [17 - ddheapunsafe.Offsetof(ddiastOutputRange{}.flags)]byte
+            	_ [ddheapunsafe.Offsetof(ddiastOutputRange{}.flags) - 17]byte
+            )
+            
             type ddiastRange struct {
             	offset   uint32
             	length   uint32
@@ -442,6 +466,195 @@ aspects:
             	return result
             }
             
+            var (
+            	ddiastRangesCollapsed ddheapatomic.Uint64
+            	ddiastRangeLimit      ddheapatomic.Uint32
+            	ddiastSnapshotAreas   [64]ddheapatomic.Uint64
+            )
+            
+            const (
+            	ddiastOriginGenerationMask = uint64(1<<40 - 1)
+            	ddiastOriginSlotShift      = 40
+            	ddiastSnapshotEntryMask    = uint64(1<<24 - 1)
+            	ddiastSnapshotSize         = uint64(64 << 10)
+            )
+            
+            //go:nosplit
+            func ddiastUnknownRange(output *[65]ddiastOutputRange, length uintptr) uint32 {
+            	output[0] = ddiastOutputRange{length: uint32(length)}
+            	return 1
+            }
+            
+            //go:nosplit
+            func ddiastAppendRange(output *[65]ddiastOutputRange, count uint32, r ddiastOutputRange, length uintptr) (uint32, bool) {
+            	if count != 0 {
+            		previous := &output[count-1]
+            		end := uint64(previous.offset) + uint64(previous.length)
+            		if uint64(r.offset) < end {
+            			ddiastRangesCollapsed.Add(1)
+            			return ddiastUnknownRange(output, length), false
+            		}
+            		if uint64(r.offset) == end && previous.origin == r.origin && previous.marks == r.marks && previous.flags == r.flags {
+            			previous.length += r.length
+            			return count, true
+            		}
+            	}
+            	limit := ddiastRangeLimit.Load()
+            	if limit == 0 || limit > uint32(len(output)) {
+            		limit = uint32(len(output))
+            	}
+            	if count >= limit {
+            		previous := &output[count-1]
+            		*previous = ddiastOutputRange{offset: previous.offset, length: uint32(length) - previous.offset}
+            		ddiastRangesCollapsed.Add(1)
+            		return count, false
+            	}
+            	output[count] = r
+            	return count + 1, true
+            }
+            
+            //go:nosplit
+            func ddiastSnapshotAddress(r *ddiastRange, begin, length uint64) uintptr {
+            	generation := r.origin & ddiastOriginGenerationMask
+            	if generation == 0 {
+            		return 0
+            	}
+            	slot := (r.origin >> ddiastOriginSlotShift) & 63
+            	descriptor := ddiastSnapshotAreas[slot].Load()
+            	if descriptor>>24 != generation {
+            		return 0
+            	}
+            	entry := uint32(descriptor & ddiastSnapshotEntryMask)
+            	if entry == 0 || (entry-1)&(ddiastSlabUnits-1) > ddiastSlabUnits-1024 {
+            		return 0
+            	}
+            	snapshot := uint64(r.snapshot) + begin
+            	if snapshot > ddiastSnapshotSize || length > ddiastSnapshotSize-snapshot {
+            		return 0
+            	}
+            	address := ddiastSlabAddress(entry)
+            	if address == 0 {
+            		return 0
+            	}
+            	return address + uintptr(snapshot)
+            }
+            
+            //go:nosplit
+            func ddiastSnapshotEqual(address, snapshot uintptr, length uint64) bool {
+            	for i := uint64(0); i < length; i++ {
+            		if *(*byte)(ddheapunsafe.Pointer(address + uintptr(i))) != *(*byte)(ddheapunsafe.Pointer(snapshot + uintptr(i))) {
+            			return false
+            		}
+            	}
+            	return true
+            }
+            
+            //go:nosplit
+            func ddiastChainRanges(entry uint32, offset, length uintptr, source ddheapunsafe.Pointer, output *[65]ddiastOutputRange) uint32 {
+            	start, end := uint64(offset), uint64(offset)+uint64(length)
+            	var count uint32
+            	budget := ddiastSnapshotSize
+            	for records := 0; records < 16 && entry != 0; records++ {
+            		if entry == ddiastEntryPoison || entry == ddiastEntryPrivate || (entry-1)&(ddiastSlabUnits-1) > ddiastSlabUnits-2 {
+            			return ddiastUnknownRange(output, length)
+            		}
+            		address := ddiastSlabAddress(entry)
+            		if address == 0 {
+            			return ddiastUnknownRange(output, length)
+            		}
+            		record := (*ddiastRecord)(ddheapunsafe.Pointer(address))
+            		if record.count == 0 || record.count > 4 {
+            			return ddiastUnknownRange(output, length)
+            		}
+            		for i := uint8(0); i < record.count; i++ {
+            			r := &record.ranges[i]
+            			lo, hi := uint64(r.offset), uint64(r.offset)+uint64(r.length)
+            			if r.length == 0 || lo >= end || hi <= start {
+            				continue
+            			}
+            			if lo < start {
+            				lo = start
+            			}
+            			if hi > end {
+            				hi = end
+            			}
+            			item := ddiastOutputRange{offset: uint32(lo - start), length: uint32(hi - lo), origin: r.origin, marks: r.marks, flags: r.flags}
+            			var verified uint64
+            			if record.kind > 2 || r.origin&ddiastOriginGenerationMask == 0 {
+            				item.origin, item.marks = 0, 0
+            			}
+            			if record.kind == 2 {
+            				verified = uint64(item.length)
+            				if verified > budget {
+            					verified = budget
+            				}
+            				snapshot := ddiastSnapshotAddress(r, lo-uint64(r.offset), verified)
+            				if snapshot == 0 || !ddiastSnapshotEqual(uintptr(source)+uintptr(item.offset), snapshot, verified) {
+            					item.origin, item.marks = 0, 0
+            				}
+            				budget -= verified
+            				if verified == 0 {
+            					item.origin, item.marks = 0, 0
+            				} else if verified < uint64(item.length) {
+            					item.length = uint32(verified)
+            				}
+            			}
+            			var ok bool
+            			count, ok = ddiastAppendRange(output, count, item, length)
+            			if !ok {
+            				return count
+            			}
+            			if record.kind == 2 && verified != 0 && verified < hi-lo {
+            				tail := ddiastOutputRange{offset: item.offset + item.length, length: uint32(hi - lo - verified), flags: r.flags}
+            				count, ok = ddiastAppendRange(output, count, tail, length)
+            				if !ok {
+            					return count
+            				}
+            			}
+            		}
+            		entry = record.next
+            	}
+            	if entry != 0 {
+            		return ddiastUnknownRange(output, length)
+            	}
+            	return count
+            }
+            
+            //go:linkname ddiastRanges github.com/DataDog/dd-iast-go/internal/taint/heapranges.wovenRanges
+            //go:nosplit
+            func ddiastRanges(p ddheapunsafe.Pointer, n uintptr, out ddheapunsafe.Pointer) uint32 {
+            	if gate := ddiastHeapGate.Load(); gate != 1 {
+            		if gate != 0 {
+            			return 0
+            		}
+            		start, end := ddiastProbeStart.Load(), ddiastProbeEnd.Load()
+            		address := uintptr(p)
+            		if start == 0 || address < start || address >= end || n > end-address {
+            			return 0
+            		}
+            	}
+            	span, offset, index := ddiastClassify(p, n)
+            	if span == nil {
+            		return 0
+            	}
+            	output := (*[65]ddiastOutputRange)(out)
+            	mp, processor := ddiastEnter()
+            	entry := ddiastReadEntry(span, index)
+            	var count uint32
+            	if entry != 0 && entry != ddiastEntryPrivate {
+            		if mp == nil || entry == ddiastEntryPoison {
+            			count = ddiastUnknownRange(output, n)
+            		} else {
+            			count = ddiastChainRanges(entry, offset, n, p, output)
+            		}
+            	}
+            	if mp != nil {
+            		ddiastLeave(mp, processor)
+            	}
+            	KeepAlive(p)
+            	return count
+            }
+            
             //go:linkname ddiastTestRecord github.com/DataDog/dd-iast-go/internal/taint/heapranges.testRecord
             func ddiastTestRecord(offset, length, next uint32) uint32 {
             	entry := ddiastAllocateUnits(2)
@@ -458,6 +671,70 @@ aspects:
             	record.ranges[0].offset = offset
             	record.ranges[0].length = length
             	return entry
+            }
+            
+            //go:linkname ddiastTestRecordDetails github.com/DataDog/dd-iast-go/internal/taint/heapranges.testRecordDetails
+            func ddiastTestRecordDetails(entry uint32, origin uint64, marks, flags, kind uint8, snapshot uint32) bool {
+            	address := ddiastSlabAddress(entry)
+            	if address == 0 {
+            		return false
+            	}
+            	record := (*ddiastRecord)(ddheapunsafe.Pointer(address))
+            	record.kind = kind
+            	record.ranges[0].origin = origin
+            	record.ranges[0].marks = marks
+            	record.ranges[0].flags = flags
+            	record.ranges[0].snapshot = snapshot
+            	return true
+            }
+            
+            //go:linkname ddiastTestSpanPoison github.com/DataDog/dd-iast-go/internal/taint/heapranges.testSpanPoison
+            func ddiastTestSpanPoison(p ddheapunsafe.Pointer, set bool) bool {
+            	span, _, _ := ddiastClassify(p, 1)
+            	if span == nil {
+            		return false
+            	}
+            	if set {
+            		return span.ddiastTaint.CompareAndSwap(0, ddiastSpanPoison)
+            	}
+            	return span.ddiastTaint.CompareAndSwap(ddiastSpanPoison, 0)
+            }
+            
+            //go:linkname ddiastTestRecordRange github.com/DataDog/dd-iast-go/internal/taint/heapranges.testRecordRange
+            func ddiastTestRecordRange(entry, index, offset, length uint32, origin uint64, marks, flags uint8, snapshot uint32) bool {
+            	address := ddiastSlabAddress(entry)
+            	if address == 0 || index >= 4 {
+            		return false
+            	}
+            	record := (*ddiastRecord)(ddheapunsafe.Pointer(address))
+            	record.ranges[index] = ddiastRange{offset: offset, length: length, origin: origin, marks: marks, flags: flags, snapshot: snapshot}
+            	if record.count <= uint8(index) {
+            		record.count = uint8(index) + 1
+            	}
+            	return true
+            }
+            
+            //go:linkname ddiastTestRangeLimit github.com/DataDog/dd-iast-go/internal/taint/heapranges.testRangeLimit
+            func ddiastTestRangeLimit(limit uint32) { ddiastRangeLimit.Store(limit) }
+            
+            //go:linkname ddiastTestRangeCollapses github.com/DataDog/dd-iast-go/internal/taint/heapranges.testRangeCollapses
+            func ddiastTestRangeCollapses() uint64 { return ddiastRangesCollapsed.Load() }
+            
+            //go:linkname ddiastTestSnapshot github.com/DataDog/dd-iast-go/internal/taint/heapranges.testSnapshot
+            func ddiastTestSnapshot(slot uint32, generation uint64, data ddheapunsafe.Pointer, length uintptr) bool {
+            	if slot >= uint32(len(ddiastSnapshotAreas)) || generation == 0 || generation > ddiastOriginGenerationMask || uint64(length) > ddiastSnapshotSize {
+            		return false
+            	}
+            	entry := ddiastAllocateUnits(1024)
+            	address := ddiastSlabAddress(entry)
+            	if entry == 0 || address == 0 {
+            		return false
+            	}
+            	for i := uintptr(0); i < length; i++ {
+            		*(*byte)(ddheapunsafe.Pointer(address + i)) = *(*byte)(ddheapunsafe.Pointer(uintptr(data) + i))
+            	}
+            	KeepAlive(data)
+            	return ddiastSnapshotAreas[slot].CompareAndSwap(0, generation<<24|uint64(entry))
             }
             
             //go:linkname ddiastTestSetGate github.com/DataDog/dd-iast-go/internal/taint/heapranges.testSetGate
@@ -669,8 +946,32 @@ aspects:
             //go:noescape
             func wovenAny(ddheapunsafe.Pointer, uintptr) bool
             
+            //go:linkname wovenRanges
+            //go:noescape
+            func wovenRanges(ddheapunsafe.Pointer, uintptr, ddheapunsafe.Pointer) uint32
+            
             //go:linkname testRecord
             func testRecord(uint32, uint32, uint32) uint32
+            
+            //go:linkname testRecordDetails
+            func testRecordDetails(uint32, uint64, uint8, uint8, uint8, uint32) bool
+            
+            //go:linkname testSpanPoison
+            //go:noescape
+            func testSpanPoison(ddheapunsafe.Pointer, bool) bool
+            
+            //go:linkname testRecordRange
+            func testRecordRange(uint32, uint32, uint32, uint32, uint64, uint8, uint8, uint32) bool
+            
+            //go:linkname testRangeLimit
+            func testRangeLimit(uint32)
+            
+            //go:linkname testRangeCollapses
+            func testRangeCollapses() uint64
+            
+            //go:linkname testSnapshot
+            //go:noescape
+            func testSnapshot(uint32, uint64, ddheapunsafe.Pointer, uintptr) bool
             
             //go:linkname wovenMayHaveTaint
             //go:noescape
@@ -765,7 +1066,14 @@ aspects:
             		return worker.queues.Load(), worker.allocator.mapped.Load(), true
             	}
             	runtimeAny = wovenAny
+            	runtimeRanges = wovenRanges
             	ddheapknobs.MakeRecord = testRecord
+            	ddheapknobs.RecordDetails = testRecordDetails
+            	ddheapknobs.RecordRange = testRecordRange
+            	ddheapknobs.SpanPoison = testSpanPoison
+            	ddheapknobs.SetRangeLimit = testRangeLimit
+            	ddheapknobs.RangeCollapses = testRangeCollapses
+            	ddheapknobs.Snapshot = testSnapshot
             	runtimeMayHaveTaint = wovenMayHaveTaint
             	ddheapknobs.SetGate = testSetGate
             	ddheapknobs.SetProbe = testSetProbe

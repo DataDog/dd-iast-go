@@ -43,6 +43,10 @@ adjustments to the feature PR:
 
 ### 0.0 Changes in v4 (answers to the third critic round)
 
+Adjustment: `Ranges` always returns the complete bounded result. A caller
+buffer that is too small causes one allocation on the Go side; see the
+`Ranges` contract below and `TestRangesReturnsEveryRange`.
+
 | # | Objection | Answer in v4 | Where |
 |---|---|---|---|
 | G | Builds of the helper programs from inside the woven tests: otelc waits for the build lock of the outer otelc, and `-asan`, `-msan`, `-race` are not passed on | Every nested otelc command gets its own fresh `OTELC_WORK_DIR` (`t.TempDir()`). The nested `initprog` build gets the `-asan`, `-msan` and `-race` flags that `debug.ReadBuildInfo().Settings` of the test binary has. `initprog` prints its own flags, and the test checks that they are the same. New spike item 9. | 2.1 item 16; step 1 item 9; 4.1 AC-P5, AC-P7 |
@@ -144,16 +148,37 @@ implementation choices that the design does not fix. Each one is marked
    type Kind uint8   // Immutable, Private, Exposed
    type Origin uint64 // 40 bits generation, 6 bits slot, 8 bits source, 1 bit sensitive
    type Range struct { Off, Len uint32; Origin Origin; Marks uint8; Flags uint8 }
+   const MaxRanges = 65
 
    func Enabled() bool
    func Set(p unsafe.Pointer, n uintptr, o Origin, k Kind) bool
    func Clear(p unsafe.Pointer, n uintptr)
    func MayHaveTaint(p unsafe.Pointer, n uintptr) bool
    func Any(p unsafe.Pointer, n uintptr) bool
-   func Ranges(p unsafe.Pointer, n uintptr, buf []Range) []Range
+   func Ranges(p unsafe.Pointer, n uintptr, buf []Range) []Range // always complete; buf is used when cap(buf) >= k, else one new array
    func Copy(dst, src unsafe.Pointer, n uintptr, k Kind) bool
    func Map(dst, src unsafe.Pointer, m []Segment) bool // Segment: DstOff, SrcOff, Len, Unknown flag
    ```
+
+**`Ranges` returns every range (choice).** Let `k` be the number of result
+ranges, at most `MaxRanges` (65). The runtime writes to a fixed 65-element
+array passed from the Go-side frame, with compile-time checks of the 24-byte
+output layout and its field offsets on both sides. The Go side copies the
+result after the runtime read ends.
+
+| Case | Result |
+|---|---|
+| `k <= cap(buf)` | Return `buf[:k]`, with no allocation; ignore `len(buf)`. |
+| `k > cap(buf)`, including nil and zero capacity | Allocate one array with capacity `MaxRanges`; do not write `buf`. |
+| Clean, unwoven, or gate not Live | Return `buf[:0]` without allocation. |
+| `POISON`, `SPAN_POISON`, or no announcement slot | Return one unknown range covering `[0,n)`, with no marks. |
+| Snapshot mismatch, missing snapshot, or scan budget exhausted | Return the affected part with unknown origin and no marks. |
+| Defensive output limit | Replace the last slot by one unknown range from its start to `n`, and increment the collapse counter. |
+
+Results are sorted and non-overlapping; offsets are relative to `p` and
+clipped to `[0,n)`. Merge adjacent ranges with equal origin, marks and flags.
+At most 64 stored ranges plus one split at the snapshot scan budget gives
+65 output ranges.
 
 3. **The `mspan` field and its state machine (choice).** One added field,
    `ddTaint atomic.Uint64` (type from `internal/runtime/atomic`, so it is
@@ -706,6 +731,11 @@ description uses `'-run=^<Name>$'`.)
 | AC-S13 | `TestReservedEntryValues` | `PRIVATE` and `POISON` never followed and never in a queue (queues inspected); `PRIVATE` kept across a sweep, a clear of the last range and a refill; reset to 0 when the object dies (sweep and `addReusableNoscan`); `SPAN_POISON` stored with the budget full before the first table, for an ordinary range, a sensitive range and an unknown range; every object of the span poisoned; a failed source label in place only dropped; a buffer allocated in that span never private; reset only when no object is live; a large object uses its inline entry; `Clear` and a clean `Copy` on a 1-object span give field `0` (`INLINE(e) → 0`); the table of another span (knob) trips the breaker. **`mspan` struct reuse:** one struct is reused small (many objects, gets a table) → 1-object (size class 67, 32 KiB: uses entry 0 of the existing table, never `INLINE`) → small again: the table count does not grow, and no stale inline value or entry is read. A struct first used with `INLINE`, then reused for a small span: the field is `0` after the sweep, and the small span gets a table. At each sweep that frees a span, the field is `0` or a detached table. |
 
 Other tests (not mapped to a criterion of this PR):
+`TestRangesReturnsEveryRange` (nil and zero-capacity buffers, exact fit, one
+more than capacity, ignored input length, 65-range maximum, defensive
+collapse and counter, poisoned and clean entries, relative clipping,
+adjacent merge, and a seeded capacity-independent model; an unwoven escape
+check keeps the caller buffer on the stack),
 `TestSelfTestFailureKeepsGateOff` (`initprog` built with
 `-ldflags=-X …heapranges.probeFailure=any`: the gate is Off, the reason
 names the probe, and the runtime-side count of `CAS(0 → 1)` successes is 0;

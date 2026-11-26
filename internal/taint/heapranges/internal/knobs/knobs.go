@@ -17,6 +17,12 @@ var (
 	MapSlab        func(bool) (bool, uint64)
 	InitSlabWorker func(uint64) (uint32, uint64, bool)
 	MakeRecord     func(uint32, uint32, uint32) uint32
+	RecordDetails  func(uint32, uint64, uint8, uint8, uint8, uint32) bool
+	RecordRange    func(uint32, uint32, uint32, uint32, uint64, uint8, uint8, uint32) bool
+	SpanPoison     func(unsafe.Pointer, bool) bool
+	SetRangeLimit  func(uint32)
+	RangeCollapses func() uint64
+	Snapshot       func(uint32, uint64, unsafe.Pointer, uintptr) bool
 	CompareEntry   func(unsafe.Pointer, uint32, uint32) bool
 	ReadEntry      func(unsafe.Pointer) uint32
 	SpanState      func(unsafe.Pointer) uint64

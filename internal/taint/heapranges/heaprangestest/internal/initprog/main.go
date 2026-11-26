@@ -64,6 +64,7 @@ func main() {
 		PoolCount   int               `json:"pool_count"`
 		PoolValid   bool              `json:"pool_valid"`
 		PauseValid  bool              `json:"pause_valid"`
+		RangeValid  bool              `json:"range_valid"`
 	}{Enabled: heapranges.Enabled(), Settings: settings}
 	if knobs.Gate != nil {
 		result.Gate = knobs.Gate()
@@ -124,6 +125,9 @@ func main() {
 	}
 	if len(os.Args) > 1 && os.Args[1] == "table" {
 		result.PoolValid = exerciseTable()
+	}
+	if len(os.Args) > 2 && os.Args[1] == "ranges" {
+		result.RangeValid = exerciseRanges(os.Args[2])
 	}
 	if err := json.NewEncoder(os.Stdout).Encode(result); err != nil {
 		os.Exit(1)

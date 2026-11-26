@@ -56,17 +56,39 @@ func exerciseTable() bool {
 }
 
 func exerciseAny() bool {
-	if knobs.MakeRecord == nil || knobs.CheckEpoch == nil {
+	if knobs.MakeRecord == nil || knobs.RecordDetails == nil || knobs.Snapshot == nil || knobs.CheckEpoch == nil {
 		return false
 	}
 	value := new([65536]byte)
 	pointer := unsafe.Pointer(&value[0])
 	second := knobs.MakeRecord(32, 10, 0)
 	first := knobs.MakeRecord(0, 5, second)
-	if first == 0 || second == 0 || !knobs.CompareEntry(pointer, 0, first) || heapranges.Any(pointer, 1) {
+	if first == 0 || second == 0 || !knobs.Snapshot(0, 1, pointer, 64) ||
+		!knobs.RecordDetails(first, 1, 7, 0, 2, 0) || !knobs.RecordDetails(second, 1, 7, 0, 2, 32) ||
+		!knobs.CompareEntry(pointer, 0, first) || heapranges.Any(pointer, 1) {
 		return false
 	}
 	knobs.SetGate(1)
+	var ranges [heapranges.MaxRanges]heapranges.Range
+	got := heapranges.Ranges(pointer, 64, ranges[:0])
+	if len(got) != 2 || got[0].Off != 0 || got[0].Len != 5 || got[0].Origin != 1 || got[0].Marks != 7 ||
+		got[1].Off != 32 || got[1].Len != 10 || got[1].Origin != 1 || got[1].Marks != 7 || &got[0] != &ranges[0] {
+		return false
+	}
+	got = heapranges.Ranges(unsafe.Add(pointer, 3), 31, nil)
+	if len(got) != 2 || cap(got) != heapranges.MaxRanges || got[0].Off != 0 || got[0].Len != 2 || got[1].Off != 29 || got[1].Len != 2 {
+		return false
+	}
+	value[40] = 1
+	got = heapranges.Ranges(pointer, 64, ranges[:0])
+	if len(got) != 2 || got[0].Origin != 1 || got[0].Marks != 7 || got[1].Origin != 0 || got[1].Marks != 0 {
+		return false
+	}
+	got = heapranges.Ranges(unsafe.Add(pointer, 32), 8, ranges[:0])
+	if len(got) != 1 || got[0].Origin != 1 || got[0].Marks != 7 {
+		return false
+	}
+	value[40] = 0
 	if !heapranges.Any(pointer, 5) || !heapranges.Any(unsafe.Add(pointer, 31), 2) ||
 		!heapranges.Any(unsafe.Add(pointer, 40), 2) || heapranges.Any(unsafe.Add(pointer, 5), 27) ||
 		heapranges.Any(unsafe.Add(pointer, 42), 1) || !heapranges.MayHaveTaint(unsafe.Add(pointer, 5), 27) ||
@@ -87,8 +109,12 @@ func exerciseAny() bool {
 	if extra == 0 || !knobs.CompareEntry(pointer, chain, extra) || !heapranges.Any(pointer, 1) {
 		return false
 	}
-	if !knobs.CompareEntry(pointer, extra, ^uint32(1)) || heapranges.Any(pointer, 1) ||
-		!knobs.CompareEntry(pointer, ^uint32(1), ^uint32(0)) || !heapranges.Any(pointer, 1) ||
+	if !knobs.CompareEntry(pointer, extra, ^uint32(1)) || heapranges.Any(pointer, 1) || len(heapranges.Ranges(pointer, 1, nil)) != 0 ||
+		!knobs.CompareEntry(pointer, ^uint32(1), ^uint32(0)) || !heapranges.Any(pointer, 1) {
+		return false
+	}
+	got = heapranges.Ranges(pointer, 16, ranges[:0])
+	if len(got) != 1 || got[0].Off != 0 || got[0].Len != 16 || got[0].Origin != 0 || got[0].Marks != 0 ||
 		!knobs.CompareEntry(pointer, ^uint32(0), 0) || heapranges.Any(pointer, 1) {
 		return false
 	}

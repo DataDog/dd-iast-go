@@ -31,8 +31,32 @@ func testEpoch() bool
 //go:noescape
 func wovenAny(ddheapunsafe.Pointer, uintptr) bool
 
+//go:linkname wovenRanges
+//go:noescape
+func wovenRanges(ddheapunsafe.Pointer, uintptr, ddheapunsafe.Pointer) uint32
+
 //go:linkname testRecord
 func testRecord(uint32, uint32, uint32) uint32
+
+//go:linkname testRecordDetails
+func testRecordDetails(uint32, uint64, uint8, uint8, uint8, uint32) bool
+
+//go:linkname testSpanPoison
+//go:noescape
+func testSpanPoison(ddheapunsafe.Pointer, bool) bool
+
+//go:linkname testRecordRange
+func testRecordRange(uint32, uint32, uint32, uint32, uint64, uint8, uint8, uint32) bool
+
+//go:linkname testRangeLimit
+func testRangeLimit(uint32)
+
+//go:linkname testRangeCollapses
+func testRangeCollapses() uint64
+
+//go:linkname testSnapshot
+//go:noescape
+func testSnapshot(uint32, uint64, ddheapunsafe.Pointer, uintptr) bool
 
 //go:linkname wovenMayHaveTaint
 //go:noescape
@@ -127,7 +151,14 @@ var _ = func() bool {
 		return worker.queues.Load(), worker.allocator.mapped.Load(), true
 	}
 	runtimeAny = wovenAny
+	runtimeRanges = wovenRanges
 	ddheapknobs.MakeRecord = testRecord
+	ddheapknobs.RecordDetails = testRecordDetails
+	ddheapknobs.RecordRange = testRecordRange
+	ddheapknobs.SpanPoison = testSpanPoison
+	ddheapknobs.SetRangeLimit = testRangeLimit
+	ddheapknobs.RangeCollapses = testRangeCollapses
+	ddheapknobs.Snapshot = testSnapshot
 	runtimeMayHaveTaint = wovenMayHaveTaint
 	ddheapknobs.SetGate = testSetGate
 	ddheapknobs.SetProbe = testSetProbe

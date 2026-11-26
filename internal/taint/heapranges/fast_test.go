@@ -15,7 +15,7 @@ import (
 
 func TestFastCheckUnwoven(t *testing.T) {
 	var value [32]byte
-	if MayHaveTaint(unsafe.Pointer(&value[0]), uintptr(len(value))) || Any(unsafe.Pointer(&value[0]), uintptr(len(value))) {
+	if MayHaveTaint(unsafe.Pointer(&value[0]), uintptr(len(value))) || Any(unsafe.Pointer(&value[0]), uintptr(len(value))) || len(Ranges(unsafe.Pointer(&value[0]), uintptr(len(value)), nil)) != 0 {
 		t.Fatal("unwoven check reported taint")
 	}
 }
@@ -26,7 +26,7 @@ func TestFastCheckDoesNotEscape(t *testing.T) {
 		t.Fatalf("build escape test: %v\n%s", err, output)
 	}
 	text := string(output)
-	if !strings.Contains(text, "moved to heap: control") || strings.Contains(text, "moved to heap: target") {
+	if !strings.Contains(text, "moved to heap: control") || strings.Contains(text, "moved to heap: target") || strings.Contains(text, "moved to heap: ranges") {
 		t.Fatalf("escape analysis output:\n%s", text)
 	}
 }
