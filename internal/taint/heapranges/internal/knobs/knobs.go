@@ -25,6 +25,7 @@ var (
 	SetRangeLimit  func(uint32)
 	ClearFailures  func(uint32)
 	SetFailures    func(uint32)
+	CopyFailures   func(uint32)
 	SnapshotsOff   func(uint32)
 	RangeCollapses func() uint64
 	Snapshot       func(uint32, uint64, unsafe.Pointer, uintptr) bool
@@ -35,6 +36,7 @@ var (
 	RetireOwn      func(uint32) bool
 	ReadEntry      func(unsafe.Pointer) uint32
 	SpanState      func(unsafe.Pointer) uint64
+	CloneSpanTable func(unsafe.Pointer, unsafe.Pointer) bool
 	BindTable      func(uint32, uintptr) bool
 	SpanRead       func(uint32) bool
 	TableBase      func(uint32) uint64

@@ -388,6 +388,17 @@ func ddiastTestSpanState(p ddheapunsafe.Pointer) uint64 {
 	return span.ddiastTaint.Load()
 }
 
+//go:linkname ddiastTestCloneSpanTable github.com/DataDog/dd-iast-go/internal/taint/heapranges.testCloneSpanTable
+func ddiastTestCloneSpanTable(dst, src ddheapunsafe.Pointer) bool {
+	to, _, _ := ddiastClassify(dst, 1)
+	from, _, _ := ddiastClassify(src, 1)
+	if to == nil || from == nil || to == from {
+		return false
+	}
+	state := from.ddiastTaint.Load()
+	return state != 0 && state&ddiastSpanTagMask == 0 && to.ddiastTaint.CompareAndSwap(0, state)
+}
+
 //go:linkname ddiastTestBindTable github.com/DataDog/dd-iast-go/internal/taint/heapranges.testBindTable
 func ddiastTestBindTable(entry uint32, base uintptr) bool {
 	address := ddiastSlabAddress(entry)
@@ -693,10 +704,10 @@ func ddiastChainRanges(entry uint32, offset, length uintptr, source ddheapunsafe
 			item := ddiastOutputRange{offset: uint32(lo - start), length: uint32(hi - lo), origin: r.origin, marks: r.marks, flags: r.flags}
 			var verified uint64
 			if record.kind > 2 || r.origin&ddiastOriginGenerationMask == 0 {
-				item.origin, item.marks = 0, 0
+				item.origin, item.marks = item.origin&ddiastSensitive, 0
 			}
 			if ddiastSnapshotsOff.Load() != 0 && (record.kind == 2 || r.flags&ddiastFlagExposedPath != 0) {
-				item.origin, item.marks = 0, 0
+				item.origin, item.marks = item.origin&ddiastSensitive, 0
 				verified = uint64(item.length)
 			} else if record.kind == 2 {
 				verified = uint64(item.length)
@@ -705,11 +716,11 @@ func ddiastChainRanges(entry uint32, offset, length uintptr, source ddheapunsafe
 				}
 				snapshot := ddiastSnapshotAddress(r, lo-uint64(r.offset), verified)
 				if snapshot == 0 || !ddiastSnapshotEqual(uintptr(source)+uintptr(item.offset), snapshot, verified) {
-					item.origin, item.marks = 0, 0
+					item.origin, item.marks = item.origin&ddiastSensitive, 0
 				}
 				budget -= verified
 				if verified == 0 {
-					item.origin, item.marks = 0, 0
+					item.origin, item.marks = item.origin&ddiastSensitive, 0
 				} else if verified < uint64(item.length) {
 					item.length = uint32(verified)
 				}
@@ -720,7 +731,7 @@ func ddiastChainRanges(entry uint32, offset, length uintptr, source ddheapunsafe
 				return count
 			}
 			if record.kind == 2 && verified != 0 && verified < hi-lo {
-				tail := ddiastOutputRange{offset: item.offset + item.length, length: uint32(hi - lo - verified), flags: r.flags}
+				tail := ddiastOutputRange{offset: item.offset + item.length, length: uint32(hi - lo - verified), origin: r.origin & ddiastSensitive, flags: r.flags}
 				count, ok = ddiastAppendRange(output, count, tail, length)
 				if !ok {
 					return count
@@ -773,6 +784,7 @@ func ddiastRanges(p ddheapunsafe.Pointer, n uintptr, out ddheapunsafe.Pointer) u
 var (
 	ddiastClearFailures ddheapatomic.Uint32
 	ddiastSetFailures   ddheapatomic.Uint32
+	ddiastCopyFailures  ddheapatomic.Uint32
 )
 
 //go:linkname ddiastTestClearFailures github.com/DataDog/dd-iast-go/internal/taint/heapranges.testClearFailures
@@ -780,6 +792,9 @@ func ddiastTestClearFailures(count uint32) { ddiastClearFailures.Store(count) }
 
 //go:linkname ddiastTestSetFailures github.com/DataDog/dd-iast-go/internal/taint/heapranges.testSetFailures
 func ddiastTestSetFailures(count uint32) { ddiastSetFailures.Store(count) }
+
+//go:linkname ddiastTestCopyFailures github.com/DataDog/dd-iast-go/internal/taint/heapranges.testCopyFailures
+func ddiastTestCopyFailures(count uint32) { ddiastCopyFailures.Store(count) }
 
 //go:linkname ddiastTestSnapshotsOff github.com/DataDog/dd-iast-go/internal/taint/heapranges.testSnapshotsOff
 func ddiastTestSnapshotsOff(value uint32) { ddiastSnapshotsOff.Store(value) }
@@ -1236,6 +1251,400 @@ func ddiastSet(p ddheapunsafe.Pointer, n uintptr, origin uint64, requestedKind u
 	}
 	ddiastLeave(mp, processor)
 	KeepAlive(p)
+	return result
+}
+
+const ddiastSensitive = uint64(1 << 54)
+
+type ddiastCopyWork struct {
+	destination [65]ddiastRange
+	source      [65]ddiastRange
+	input       [65]ddiastRange
+	output      [65]ddiastRange
+}
+
+//go:nosplit
+func ddiastCopyUnknown(item ddiastRange) ddiastRange {
+	item.origin &= ddiastSensitive
+	item.marks = 0
+	item.flags &= ddiastFlagExposedPath
+	item.snapshot = ^uint32(0)
+	return item
+}
+
+//go:nosplit
+func ddiastCopyAppend(work *[64]ddiastRange, count uint32, item ddiastRange, kind uint8, extent uint32) (uint32, bool) {
+	count, ok := ddiastAppendWriteRange(work, count, item, kind, extent)
+	if !ok && count == 64 {
+		last := &work[63]
+		last.origin = ddiastSensitive
+		last.flags = ddiastFlagExposedPath
+	}
+	return count, ok
+}
+
+//go:nosplit
+func ddiastCopyLoad(entry, extent uint32, work *[64]ddiastRange) (uint32, uint8, bool) {
+	var count uint32
+	var lastEnd uint64
+	var kind uint8
+	for records := 0; records < 16 && entry != 0; records++ {
+		if !ddiastRecordEntry(entry) || (entry-1)&(ddiastSlabUnits-1) > ddiastSlabUnits-2 {
+			return 0, 0, false
+		}
+		address := ddiastSlabAddress(entry)
+		if address == 0 {
+			return 0, 0, false
+		}
+		record := (*ddiastRecord)(ddheapunsafe.Pointer(address))
+		if record.count == 0 || record.count > 4 || record.kind > 2 || (records != 0 && record.kind != kind) {
+			return 0, 0, false
+		}
+		kind = record.kind
+		for i := uint8(0); i < record.count; i++ {
+			item := record.ranges[i]
+			end := uint64(item.offset) + uint64(item.length)
+			if item.length == 0 || uint64(item.offset) < lastEnd || end > uint64(extent) || count >= 64 {
+				return 0, 0, false
+			}
+			lastEnd = end
+			work[count] = item
+			count++
+		}
+		entry = record.next
+	}
+	return count, kind, entry == 0
+}
+
+//go:nosplit
+func ddiastCopySource(input *[64]ddiastRange, inputs uint32, kind uint8, offset, length uint32, dst ddheapunsafe.Pointer, work *[64]ddiastRange, budget *uint64) uint32 {
+	var count uint32
+	for i := uint32(0); i < inputs; i++ {
+		item := input[i]
+		end := uint64(item.offset) + uint64(item.length)
+		if end <= uint64(offset) || uint64(item.offset) >= uint64(offset)+uint64(length) {
+			continue
+		}
+		lo := item.offset
+		if lo < offset {
+			lo = offset
+		}
+		hi := uint32(end)
+		if uint64(hi) > uint64(offset)+uint64(length) {
+			hi = offset + length
+		}
+		item = ddiastSetPiece(item, lo, hi)
+		item.offset = lo - offset
+		if kind == 2 {
+			item.flags |= ddiastFlagExposedPath
+		}
+		if item.origin&ddiastOriginGenerationMask == 0 || item.flags&ddiastFlagConflict != 0 {
+			item = ddiastCopyUnknown(item)
+		} else if kind == 2 && ddiastSnapshotsOff.Load() == 0 {
+			checked := uint64(item.length)
+			if checked > *budget {
+				checked = *budget
+			}
+			*budget -= checked
+			snapshot := ddiastSnapshotAddress(&item, 0, checked)
+			if checked == 0 || snapshot == 0 || !ddiastSnapshotEqual(uintptr(dst)+uintptr(item.offset), snapshot, checked) {
+				item = ddiastCopyUnknown(item)
+			}
+			if checked != 0 && checked < uint64(item.length) {
+				tail := ddiastCopyUnknown(item)
+				tail.offset += uint32(checked)
+				tail.length -= uint32(checked)
+				item.length = uint32(checked)
+				var ok bool
+				count, ok = ddiastCopyAppend(work, count, item, 2, length)
+				if !ok {
+					return count
+				}
+				count, ok = ddiastCopyAppend(work, count, tail, 2, length)
+				if !ok {
+					return count
+				}
+				continue
+			}
+		} else if kind == 2 || (ddiastSnapshotsOff.Load() != 0 && item.flags&ddiastFlagExposedPath != 0) {
+			item = ddiastCopyUnknown(item)
+		} else {
+			item.snapshot = ^uint32(0)
+		}
+		var ok bool
+		count, ok = ddiastCopyAppend(work, count, item, 2, length)
+		if !ok {
+			return count
+		}
+	}
+	return count
+}
+
+//go:nosplit
+func ddiastCopyUsable(self uint64) bool {
+	generation := self & ddiastOriginGenerationMask
+	slot := uint32(self >> ddiastOriginSlotShift & 63)
+	if self == 0 || self>>46 != 0 || !ddiastOwnerLive(slot, generation) {
+		return false
+	}
+	descriptor := ddiastSnapshotAreas[slot].Load()
+	return descriptor != ddiastSnapshotBusy && descriptor>>24 == generation && uint32(descriptor&ddiastSnapshotEntryMask) != 0
+}
+
+//go:nosplit
+func ddiastCopyExpose(item ddiastRange, address uintptr, self uint64, usable bool, budget *uint64) (ddiastRange, ddiastRange) {
+	if item.origin&ddiastOriginGenerationMask == 0 || item.flags&ddiastFlagConflict != 0 {
+		return ddiastCopyUnknown(item), ddiastRange{}
+	}
+	if ddiastSnapshotsOff.Load() != 0 {
+		item.snapshot = ^uint32(0)
+		return item, ddiastRange{}
+	}
+	if !usable || item.origin&(1<<46-1) != self {
+		return ddiastCopyUnknown(item), ddiastRange{}
+	}
+	if item.snapshot != ^uint32(0) {
+		return item, ddiastRange{}
+	}
+	known := uint64(item.length)
+	if known > *budget {
+		known = *budget
+	}
+	*budget -= known
+	if known == 0 {
+		return ddiastCopyUnknown(item), ddiastRange{}
+	}
+	slot := uint32(self >> ddiastOriginSlotShift & 63)
+	generation := self & ddiastOriginGenerationMask
+	snapshot, ok := ddiastStoreSnapshot(slot, generation, ddheapunsafe.Pointer(address), uintptr(known))
+	if !ok {
+		return ddiastCopyUnknown(item), ddiastRange{}
+	}
+	item.snapshot = snapshot
+	if known == uint64(item.length) {
+		return item, ddiastRange{}
+	}
+	tail := ddiastCopyUnknown(item)
+	tail.offset += uint32(known)
+	tail.length -= uint32(known)
+	item.length = uint32(known)
+	return item, tail
+}
+
+type ddiastCopyContext struct {
+	out       *[64]ddiastRange
+	source    *[64]ddiastRange
+	count     uint32
+	sources   uint32
+	start     uint32
+	end       uint32
+	extent    uint32
+	kind      uint8
+	wasKind   uint8
+	base      uintptr
+	self      uint64
+	budget    *uint64
+	usable    bool
+	collapsed bool
+}
+
+//go:nosplit
+func ddiastCopyPut(ctx *ddiastCopyContext, item ddiastRange, expose bool) {
+	if ctx.collapsed || item.length == 0 {
+		return
+	}
+	var tail ddiastRange
+	if expose {
+		if ctx.wasKind == 1 && ctx.kind == 2 && (item.offset < ctx.start || item.offset >= ctx.end) {
+			item.flags |= ddiastFlagExposedPath
+			item.snapshot = ^uint32(0)
+			if item.flags&ddiastFlagConflict == 0 {
+				item, tail = ddiastCopyExpose(item, ctx.base+uintptr(item.offset), ctx.self, ctx.usable, ctx.budget)
+			}
+		} else {
+			item, tail = ddiastCopyExpose(item, ctx.base+uintptr(item.offset), ctx.self, ctx.usable, ctx.budget)
+		}
+	}
+	var ok bool
+	ctx.count, ok = ddiastCopyAppend(ctx.out, ctx.count, item, ctx.kind, ctx.extent)
+	if ok && tail.length != 0 {
+		ctx.count, ok = ddiastCopyAppend(ctx.out, ctx.count, tail, ctx.kind, ctx.extent)
+	}
+	if !ok {
+		ctx.collapsed = true
+	}
+}
+
+//go:nosplit
+func ddiastCopyInsert(ctx *ddiastCopyContext) {
+	for i := uint32(0); i < ctx.sources && !ctx.collapsed; i++ {
+		item := ctx.source[i]
+		item.offset += ctx.start
+		ddiastCopyPut(ctx, item, ctx.kind == 2)
+	}
+}
+
+func ddiastCopyPrepare(input *[64]ddiastRange, inputs uint32, ctx *ddiastCopyContext) {
+	inserted := false
+	for i := uint32(0); i < inputs; i++ {
+		item := input[i]
+		end := uint64(item.offset) + uint64(item.length)
+		expose := ctx.wasKind == 1 && ctx.kind == 2
+		if end <= uint64(ctx.start) {
+			ddiastCopyPut(ctx, item, expose)
+			continue
+		}
+		if item.offset < ctx.start {
+			ddiastCopyPut(ctx, ddiastSetPiece(item, item.offset, ctx.start), expose)
+		}
+		if !inserted {
+			ddiastCopyInsert(ctx)
+			inserted = true
+		}
+		if item.offset >= ctx.end {
+			ddiastCopyPut(ctx, item, expose)
+		} else if end > uint64(ctx.end) {
+			ddiastCopyPut(ctx, ddiastSetPiece(item, ctx.end, uint32(end)), expose)
+		}
+	}
+	if !inserted {
+		ddiastCopyInsert(ctx)
+	}
+}
+
+//go:nosplit
+func ddiastCopySame(old uint32, oldKind, kind uint8, input *[64]ddiastRange, inputs uint32, output *[64]ddiastRange, outputs uint32) bool {
+	if old == 0 {
+		return outputs == 0
+	}
+	if old == ddiastEntryPrivate {
+		return kind == 1 && outputs == 0
+	}
+	if oldKind != kind || inputs != outputs {
+		return false
+	}
+	for i := uint32(0); i < inputs; i++ {
+		if input[i] != output[i] {
+			return false
+		}
+	}
+	return true
+}
+
+//go:linkname ddiastCopy github.com/DataDog/dd-iast-go/internal/taint/heapranges.wovenCopy
+//go:nosplit
+func ddiastCopy(dst, src ddheapunsafe.Pointer, n uintptr, requestedKind uint8, self uint64, scratch ddheapunsafe.Pointer) bool {
+	if ddiastHeapGate.Load() != 1 || requestedKind > 2 {
+		return false
+	}
+	span, offset, index := ddiastClassify(dst, n)
+	if span == nil {
+		return false
+	}
+	sourceSpan, sourceOffset, sourceIndex := ddiastClassify(src, n)
+	if sourceSpan == nil && src != nil && spanOfHeap(uintptr(src)) != nil {
+		return false
+	}
+	mp, processor := ddiastEnter()
+	if mp == nil {
+		ddiastPoisonAndRetire(span, index, ddiastSlabCount)
+		KeepAlive(dst)
+		KeepAlive(src)
+		return false
+	}
+	work := (*ddiastCopyWork)(scratch)
+	destination := (*[64]ddiastRange)(ddheapunsafe.Pointer(&work.destination[0]))
+	source := (*[64]ddiastRange)(ddheapunsafe.Pointer(&work.source[0]))
+	input := (*[64]ddiastRange)(ddheapunsafe.Pointer(&work.input[0]))
+	output := (*[64]ddiastRange)(ddheapunsafe.Pointer(&work.output[0]))
+	budget := ddiastSnapshotSize
+	usable := ddiastCopyUsable(self)
+	var result bool
+	for attempt := 0; attempt < 4; attempt++ {
+		old := ddiastReadEntry(span, index)
+		if old == ddiastEntryPoison {
+			break
+		}
+		kind, oldKind := requestedKind, requestedKind
+		var oldCount uint32
+		if old == 0 {
+			if kind == 1 {
+				kind = 2
+			}
+			oldKind = kind
+		} else if old == ddiastEntryPrivate {
+			oldKind = 1
+			if kind != 2 {
+				kind = 1
+			}
+		} else {
+			var ok bool
+			oldCount, oldKind, ok = ddiastCopyLoad(old, uint32(span.elemsize), destination)
+			if !ok {
+				ddiastPoisonAndRetire(span, index, processor)
+				break
+			}
+			kind = oldKind
+			if oldKind == 1 && requestedKind == 2 {
+				kind = 2
+			}
+		}
+		var sources uint32
+		if sourceSpan != nil {
+			var sourceEntry, inputCount uint32
+			var inputKind uint8
+			sourceInput := input
+			ok := true
+			if sourceSpan == span && sourceIndex == index {
+				sourceEntry, inputCount, inputKind, sourceInput = old, oldCount, oldKind, destination
+			} else {
+				sourceEntry = ddiastReadEntry(sourceSpan, sourceIndex)
+				if ddiastRecordEntry(sourceEntry) {
+					inputCount, inputKind, ok = ddiastCopyLoad(sourceEntry, uint32(sourceSpan.elemsize), input)
+				}
+			}
+			if sourceEntry == ddiastEntryPoison || !ok {
+				source[0] = ddiastRange{length: uint32(n), origin: ddiastSensitive, flags: ddiastFlagExposedPath, snapshot: ^uint32(0)}
+				sources = 1
+			} else if inputCount != 0 {
+				sources = ddiastCopySource(sourceInput, inputCount, inputKind, uint32(sourceOffset), uint32(n), dst, source, &budget)
+			}
+		}
+		ctx := ddiastCopyContext{out: output, source: source, sources: sources, start: uint32(offset), end: uint32(offset + n),
+			extent: uint32(span.elemsize), kind: kind, wasKind: oldKind, base: uintptr(dst) - offset, self: self, budget: &budget, usable: usable}
+		ddiastCopyPrepare(destination, oldCount, &ctx)
+		if ddiastCopySame(old, oldKind, kind, destination, oldCount, output, ctx.count) {
+			if uint32(attempt) >= ddiastCopyFailures.Load() && ddiastCompareEntry(span, index, old, old) {
+				result = true
+				break
+			}
+			if attempt == 3 {
+				ddiastPoisonAndRetire(span, index, processor)
+			}
+			continue
+		}
+		next, ok := ddiastBuildWriteChain(output, ctx.count, kind, processor)
+		if !ok {
+			ddiastPoisonAndRetire(span, index, processor)
+			break
+		}
+		if ctx.count == 0 && kind == 1 {
+			next = ddiastEntryPrivate
+		}
+		if uint32(attempt) >= ddiastCopyFailures.Load() && ddiastPublishEntry(span, index, old, next, processor) {
+			result = true
+			break
+		}
+		if ddiastRecordEntry(next) {
+			ddiastRetire(processor, next, ddiastRetireRecord)
+		}
+		if attempt == 3 {
+			ddiastPoisonAndRetire(span, index, processor)
+		}
+	}
+	ddiastLeave(mp, processor)
+	KeepAlive(dst)
+	KeepAlive(src)
 	return result
 }
 

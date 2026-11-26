@@ -66,7 +66,7 @@ func Copy(dst, src unsafe.Pointer, n uintptr, kind Kind, self Owner) bool {
 	if runtimeCopy == nil {
 		return false
 	}
-	var work [2][65]writeRange
+	var work [4][65]writeRange
 	ok := runtimeCopy(noescape(dst), noescape(src), n, kind, self, noescape(unsafe.Pointer(&work[0][0])))
 	runtime.KeepAlive(dst)
 	runtime.KeepAlive(src)
