@@ -13,6 +13,7 @@ import (
 	"sync/atomic"
 	"unsafe"
 
+	"github.com/DataDog/dd-iast-go/internal/taint/heapranges"
 	"github.com/DataDog/dd-iast-go/internal/taint/heapranges/internal/knobs"
 )
 
@@ -55,7 +56,7 @@ func exerciseTable() bool {
 }
 
 func exerciseEntryState() bool {
-	if knobs.CompareEntry == nil || knobs.ReadEntry == nil || knobs.SpanState == nil {
+	if knobs.CompareEntry == nil || knobs.ReadEntry == nil || knobs.SpanState == nil || knobs.SetGate == nil || knobs.SetProbe == nil {
 		return false
 	}
 	debug.SetGCPercent(-1)
@@ -64,8 +65,31 @@ func exerciseEntryState() bool {
 	largePointer := unsafe.Pointer(&large[0])
 	if knobs.SpanState(largePointer) != 0 || !knobs.CompareEntry(largePointer, 0, 7) ||
 		knobs.SpanState(largePointer) != uint64(7)<<32|2 || knobs.ReadEntry(largePointer) != 7 ||
-		knobs.CompareEntry(largePointer, 0, 8) || !knobs.CompareEntry(largePointer, 7, 0) ||
-		knobs.SpanState(largePointer) != 0 {
+		knobs.CompareEntry(largePointer, 0, 8) || heapranges.MayHaveTaint(largePointer, 1) {
+		return false
+	}
+	knobs.SetProbe(largePointer, 128)
+	if !heapranges.MayHaveTaint(largePointer, 128) || heapranges.MayHaveTaint(largePointer, 129) ||
+		heapranges.MayHaveTaint(unsafe.Add(largePointer, 128), 1) {
+		return false
+	}
+	knobs.SetProbe(nil, 0)
+	knobs.SetGate(1)
+	if !heapranges.MayHaveTaint(largePointer, 1) ||
+		!knobs.CompareEntry(largePointer, 7, ^uint32(1)) || heapranges.MayHaveTaint(largePointer, 1) ||
+		!knobs.CompareEntry(largePointer, ^uint32(1), ^uint32(0)) || !heapranges.MayHaveTaint(largePointer, 1) {
+		return false
+	}
+	knobs.SetGate(2)
+	if heapranges.MayHaveTaint(largePointer, 1) {
+		return false
+	}
+	knobs.SetGate(3)
+	if heapranges.MayHaveTaint(largePointer, 1) {
+		return false
+	}
+	knobs.SetGate(0)
+	if !knobs.CompareEntry(largePointer, ^uint32(0), 0) || knobs.SpanState(largePointer) != 0 {
 		return false
 	}
 	small := new([256]byte)
@@ -83,12 +107,15 @@ func exerciseEntryState() bool {
 	}
 	group.Wait()
 	state := knobs.SpanState(smallPointer)
+	knobs.SetGate(1)
 	if wins.Load() != 1 || state == 0 || state&63 != 0 || knobs.ReadEntry(smallPointer) != 7 ||
-		knobs.CompareEntry(smallPointer, 0, 8) || !knobs.CompareEntry(smallPointer, 7, 0) ||
+		!heapranges.MayHaveTaint(smallPointer, 1) || knobs.CompareEntry(smallPointer, 0, 8) ||
+		!knobs.CompareEntry(smallPointer, 7, 0) || heapranges.MayHaveTaint(smallPointer, 1) ||
 		knobs.SpanState(smallPointer) != state || !knobs.CompareEntry(smallPointer, 0, 9) ||
-		knobs.ReadEntry(smallPointer) != 9 || knobs.SpanState(smallPointer) != state {
+		knobs.ReadEntry(smallPointer) != 9 || !heapranges.MayHaveTaint(smallPointer, 1) || knobs.SpanState(smallPointer) != state {
 		return false
 	}
+	knobs.SetGate(0)
 	runtime.KeepAlive(large)
 	runtime.KeepAlive(small)
 	return true

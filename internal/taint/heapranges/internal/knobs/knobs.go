@@ -10,6 +10,8 @@ import "unsafe"
 
 var (
 	Gate           func() uint32
+	SetGate        func(uint32)
+	SetProbe       func(unsafe.Pointer, uintptr)
 	OffReason      func() string
 	MapSlab        func(bool) (bool, uint64)
 	InitSlabWorker func(uint64) (uint32, uint64, bool)

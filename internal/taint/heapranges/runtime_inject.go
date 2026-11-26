@@ -13,15 +13,17 @@ import (
 )
 
 var (
-	ddiastHeapGate ddheapatomic.Uint32
-	_              *sysMemStat                              = &memstats.other_sys
-	_              *ddheapatomic.Uint64                     = &gcController.mappedReady
-	_              func(*sysMemStat, int64)                 = (*sysMemStat).add
-	_              func(*ddheapatomic.Uint64, int64) uint64 = (*ddheapatomic.Uint64).Add
-	_              func(uintptr) *mspan                     = spanOfHeap
-	_              func(*mspan, uintptr) uintptr            = (*mspan).objIndex
-	_              func(*mspan) uintptr                     = (*mspan).base
-	_              func() *g                                = getg
+	ddiastHeapGate   ddheapatomic.Uint32
+	ddiastProbeStart ddheapatomic.Uintptr
+	ddiastProbeEnd   ddheapatomic.Uintptr
+	_                *sysMemStat                              = &memstats.other_sys
+	_                *ddheapatomic.Uint64                     = &gcController.mappedReady
+	_                func(*sysMemStat, int64)                 = (*sysMemStat).add
+	_                func(*ddheapatomic.Uint64, int64) uint64 = (*ddheapatomic.Uint64).Add
+	_                func(uintptr) *mspan                     = spanOfHeap
+	_                func(*mspan, uintptr) uintptr            = (*mspan).objIndex
+	_                func(*mspan) uintptr                     = (*mspan).base
+	_                func() *g                                = getg
 )
 
 //go:linkname ddiastHeapRangesNeedRuntime runtime.ddiastHeapRangesNeedTheWovenRuntime
@@ -64,10 +66,11 @@ type ddiastTable struct {
 }
 
 const (
-	ddiastSpanPoison  = uint64(1)
-	ddiastSpanInline  = uint64(2)
-	ddiastSpanTagMask = uint64(63)
-	ddiastEntryPoison = ^uint32(0)
+	ddiastSpanPoison   = uint64(1)
+	ddiastSpanInline   = uint64(2)
+	ddiastSpanTagMask  = uint64(63)
+	ddiastEntryPoison  = ^uint32(0)
+	ddiastEntryPrivate = ^uint32(1)
 )
 
 //go:nosplit
@@ -301,6 +304,42 @@ func ddiastClassify(p ddheapunsafe.Pointer, n uintptr) (*mspan, uintptr, uint32)
 		return nil, 0, 0
 	}
 	return span, offset, uint32(index)
+}
+
+//go:linkname ddiastMayHaveTaint github.com/DataDog/dd-iast-go/internal/taint/heapranges.wovenMayHaveTaint
+//go:nosplit
+func ddiastMayHaveTaint(p ddheapunsafe.Pointer, n uintptr) bool {
+	if gate := ddiastHeapGate.Load(); gate != 1 {
+		if gate != 0 {
+			return false
+		}
+		start, end := ddiastProbeStart.Load(), ddiastProbeEnd.Load()
+		address := uintptr(p)
+		if start == 0 || address < start || address >= end || n > end-address {
+			return false
+		}
+	}
+	span, _, index := ddiastClassify(p, n)
+	if span == nil {
+		return false
+	}
+	entry := ddiastReadEntry(span, index)
+	return entry != 0 && entry != ddiastEntryPrivate
+}
+
+//go:linkname ddiastTestSetGate github.com/DataDog/dd-iast-go/internal/taint/heapranges.testSetGate
+func ddiastTestSetGate(value uint32) { ddiastHeapGate.Store(value) }
+
+//go:linkname ddiastTestSetProbe github.com/DataDog/dd-iast-go/internal/taint/heapranges.testSetProbe
+func ddiastTestSetProbe(p ddheapunsafe.Pointer, n uintptr) {
+	start := uintptr(p)
+	if start == 0 || n == 0 || n > ^uintptr(0)-start {
+		ddiastProbeStart.Store(0)
+		ddiastProbeEnd.Store(0)
+		return
+	}
+	ddiastProbeEnd.Store(start + n)
+	ddiastProbeStart.Store(start)
 }
 
 //go:linkname ddiastInspectClassify github.com/DataDog/dd-iast-go/internal/taint/heapranges.inspectClassify

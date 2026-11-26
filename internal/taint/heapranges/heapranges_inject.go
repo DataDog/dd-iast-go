@@ -21,6 +21,16 @@ func needWovenRuntime()
 //go:linkname accountSlab
 func accountSlab()
 
+//go:linkname wovenMayHaveTaint
+//go:noescape
+func wovenMayHaveTaint(ddheapunsafe.Pointer, uintptr) bool
+
+//go:linkname testSetGate
+func testSetGate(uint32)
+
+//go:linkname testSetProbe
+func testSetProbe(ddheapunsafe.Pointer, uintptr)
+
 //go:linkname testCompareEntry
 //go:noescape
 func testCompareEntry(ddheapunsafe.Pointer, uint32, uint32) bool
@@ -101,6 +111,9 @@ var _ = func() bool {
 		}
 		return worker.queues.Load(), worker.allocator.mapped.Load(), true
 	}
+	runtimeMayHaveTaint = wovenMayHaveTaint
+	ddheapknobs.SetGate = testSetGate
+	ddheapknobs.SetProbe = testSetProbe
 	ddheapknobs.CompareEntry = testCompareEntry
 	ddheapknobs.ReadEntry = testReadEntry
 	ddheapknobs.SpanState = testSpanState
