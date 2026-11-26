@@ -122,6 +122,9 @@ func main() {
 	if len(os.Args) > 1 && os.Args[1] == "tail" {
 		result.PoolValid = exerciseSlabTail()
 	}
+	if len(os.Args) > 1 && os.Args[1] == "table" {
+		result.PoolValid = exerciseTable()
+	}
 	if err := json.NewEncoder(os.Stdout).Encode(result); err != nil {
 		os.Exit(1)
 	}

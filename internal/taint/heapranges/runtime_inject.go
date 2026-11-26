@@ -9,7 +9,7 @@ package runtime
 
 import (
 	ddheapatomic "internal/runtime/atomic"
-	_ "unsafe"
+	ddheapunsafe "unsafe"
 )
 
 var (
@@ -18,6 +18,10 @@ var (
 	_              *ddheapatomic.Uint64                     = &gcController.mappedReady
 	_              func(*sysMemStat, int64)                 = (*sysMemStat).add
 	_              func(*ddheapatomic.Uint64, int64) uint64 = (*ddheapatomic.Uint64).Add
+	_              func(uintptr) *mspan                     = spanOfHeap
+	_              func(*mspan, uintptr) uintptr            = (*mspan).objIndex
+	_              func(*mspan) uintptr                     = (*mspan).base
+	_              func() *g                                = getg
 )
 
 //go:linkname ddiastHeapRangesNeedRuntime runtime.ddiastHeapRangesNeedTheWovenRuntime
@@ -33,6 +37,288 @@ func ddiastHeapRangesGate() uint32 {
 func ddiastHeapRangesAccountSlab() {
 	memstats.other_sys.add(1 << 20)
 	gcController.mappedReady.Add(1 << 20)
+}
+
+type ddiastRange struct {
+	offset   uint32
+	length   uint32
+	origin   uint64
+	snapshot uint32
+	marks    uint8
+	flags    uint8
+	_        [2]byte
+}
+
+type ddiastRecord struct {
+	next   uint32
+	count  uint8
+	kind   uint8
+	_      [26]byte
+	ranges [4]ddiastRange
+}
+
+type ddiastTable struct {
+	base    ddheapatomic.Uint64
+	_       [56]byte
+	entries [1024]ddheapatomic.Uint32
+}
+
+const (
+	ddiastSpanPoison  = uint64(1)
+	ddiastSpanInline  = uint64(2)
+	ddiastSpanTagMask = uint64(63)
+	ddiastEntryPoison = ^uint32(0)
+)
+
+//go:nosplit
+func ddiastReadEntry(span *mspan, index uint32) uint32 {
+	state := span.ddiastTaint.Load()
+	if state == 0 {
+		return 0
+	}
+	return ddiastReadEntryState(state, span.base(), uint32(span.nelems), index)
+}
+
+//go:nosplit
+func ddiastReadEntryState(state uint64, base uintptr, count, index uint32) uint32 {
+	if index >= count || index >= 1024 {
+		return 0
+	}
+	if state == 0 {
+		return 0
+	}
+	if state == ddiastSpanPoison {
+		return ddiastEntryPoison
+	}
+	if state&ddiastSpanTagMask == ddiastSpanInline {
+		if count != 1 || index != 0 {
+			return 0
+		}
+		return uint32(state >> 32)
+	}
+	if state&ddiastSpanTagMask != 0 {
+		return 0
+	}
+	table := (*ddiastTable)(ddheapunsafe.Pointer(uintptr(state)))
+	if table.base.Load() != uint64(base) {
+		return 0
+	}
+	return table.entries[index].Load()
+}
+
+//go:nosplit
+func ddiastBindTable(table *ddiastTable, base uintptr) bool {
+	if base == 0 {
+		return false
+	}
+	value := table.base.Load()
+	if value == uint64(base) {
+		return true
+	}
+	if value != 0 {
+		return false
+	}
+	return table.base.CompareAndSwap(0, uint64(base)) || table.base.Load() == uint64(base)
+}
+
+var (
+	ddiastTablesCreated  ddheapatomic.Uint64
+	ddiastTableUnitsLost ddheapatomic.Uint64
+)
+
+//go:nosplit
+func ddiastTableForSpan(span *mspan, create bool) *ddiastTable {
+	state := span.ddiastTaint.Load()
+	if state == 0 && create {
+		entry := ddiastAllocateUnits(65)
+		if entry == 0 {
+			return nil
+		}
+		address := ddiastSlabAddress(entry)
+		if address == 0 {
+			return nil
+		}
+		table := (*ddiastTable)(ddheapunsafe.Pointer(address))
+		table.base.Store(uint64(span.base()))
+		if span.ddiastTaint.CompareAndSwap(0, uint64(address)) {
+			ddiastTablesCreated.Add(1)
+			return table
+		}
+		ddiastTableUnitsLost.Add(65)
+		state = span.ddiastTaint.Load()
+	}
+	if state == 0 || state&ddiastSpanTagMask != 0 {
+		return nil
+	}
+	table := (*ddiastTable)(ddheapunsafe.Pointer(uintptr(state)))
+	if !ddiastBindTable(table, span.base()) {
+		return nil
+	}
+	return table
+}
+
+//go:nosplit
+func ddiastCompareEntry(span *mspan, index, old, next uint32) bool {
+	if index >= uint32(span.nelems) || index >= 1024 {
+		return false
+	}
+	state := span.ddiastTaint.Load()
+	if span.nelems == 1 && (state == 0 || state&ddiastSpanTagMask == ddiastSpanInline) {
+		if index != 0 {
+			return false
+		}
+		expected := uint64(0)
+		if old != 0 {
+			expected = uint64(old)<<32 | ddiastSpanInline
+		}
+		replacement := uint64(0)
+		if next != 0 {
+			replacement = uint64(next)<<32 | ddiastSpanInline
+		}
+		return span.ddiastTaint.CompareAndSwap(expected, replacement)
+	}
+	if state == 0 && old == 0 && next == 0 {
+		return span.ddiastTaint.CompareAndSwap(0, 0)
+	}
+	table := ddiastTableForSpan(span, state == 0 && old == 0 && next != 0)
+	return table != nil && table.entries[index].CompareAndSwap(old, next)
+}
+
+//go:linkname ddiastTestCompareEntry github.com/DataDog/dd-iast-go/internal/taint/heapranges.testCompareEntry
+func ddiastTestCompareEntry(p ddheapunsafe.Pointer, old, next uint32) bool {
+	span, _, index := ddiastClassify(p, 1)
+	return span != nil && ddiastCompareEntry(span, index, old, next)
+}
+
+//go:linkname ddiastTestReadEntry github.com/DataDog/dd-iast-go/internal/taint/heapranges.testReadEntry
+func ddiastTestReadEntry(p ddheapunsafe.Pointer) uint32 {
+	span, _, index := ddiastClassify(p, 1)
+	if span == nil {
+		return 0
+	}
+	return ddiastReadEntry(span, index)
+}
+
+//go:linkname ddiastTestSpanState github.com/DataDog/dd-iast-go/internal/taint/heapranges.testSpanState
+func ddiastTestSpanState(p ddheapunsafe.Pointer) uint64 {
+	span, _, _ := ddiastClassify(p, 1)
+	if span == nil {
+		return 0
+	}
+	return span.ddiastTaint.Load()
+}
+
+//go:linkname ddiastTestBindTable github.com/DataDog/dd-iast-go/internal/taint/heapranges.testBindTable
+func ddiastTestBindTable(entry uint32, base uintptr) bool {
+	address := ddiastSlabAddress(entry)
+	if address == 0 {
+		return false
+	}
+	return ddiastBindTable((*ddiastTable)(ddheapunsafe.Pointer(address)), base)
+}
+
+//go:linkname ddiastTestSpanRead github.com/DataDog/dd-iast-go/internal/taint/heapranges.testSpanRead
+func ddiastTestSpanRead(entry uint32) bool {
+	address := ddiastSlabAddress(entry)
+	if address == 0 {
+		return false
+	}
+	table := (*ddiastTable)(ddheapunsafe.Pointer(address))
+	base := table.base.Load()
+	if base == 0 {
+		return false
+	}
+	if ddiastReadEntryState(0, uintptr(base), 1, 0) != 0 ||
+		ddiastReadEntryState(ddiastSpanPoison, uintptr(base), 1, 0) != ddiastEntryPoison {
+		return false
+	}
+	inline := uint64(41)<<32 | ddiastSpanInline
+	if ddiastReadEntryState(inline, uintptr(base), 1, 0) != 41 ||
+		ddiastReadEntryState(inline, uintptr(base), 1, 1) != 0 ||
+		ddiastReadEntryState(inline, uintptr(base), 2, 0) != 0 {
+		return false
+	}
+	table.entries[0].Store(42)
+	table.entries[1].Store(43)
+	state := uint64(address)
+	if ddiastReadEntryState(state, uintptr(base), 2, 0) != 42 ||
+		ddiastReadEntryState(state, uintptr(base), 2, 1) != 43 ||
+		ddiastReadEntryState(state, uintptr(base), 1, 0) != 42 ||
+		ddiastReadEntryState(state, uintptr(base), 1, 1) != 0 {
+		return false
+	}
+	return ddiastReadEntryState(state, uintptr(base)^0x300000, 1, 0) == 0
+}
+
+//go:linkname ddiastTestTableBase github.com/DataDog/dd-iast-go/internal/taint/heapranges.testTableBase
+func ddiastTestTableBase(entry uint32) uint64 {
+	address := ddiastSlabAddress(entry)
+	if address == 0 {
+		return 0
+	}
+	return (*ddiastTable)(ddheapunsafe.Pointer(address)).base.Load()
+}
+
+//go:linkname ddiastTestTableEntry github.com/DataDog/dd-iast-go/internal/taint/heapranges.testTableEntry
+func ddiastTestTableEntry(entry, slot uint32, value uint32, write bool) uint32 {
+	address := ddiastSlabAddress(entry)
+	if address == 0 || slot >= 1024 {
+		return 0
+	}
+	table := (*ddiastTable)(ddheapunsafe.Pointer(address))
+	if write {
+		table.entries[slot].Store(value)
+	}
+	return table.entries[slot].Load()
+}
+
+var (
+	_ [24 - ddheapunsafe.Sizeof(ddiastRange{})]byte
+	_ [ddheapunsafe.Sizeof(ddiastRange{}) - 24]byte
+	_ [128 - ddheapunsafe.Sizeof(ddiastRecord{})]byte
+	_ [ddheapunsafe.Sizeof(ddiastRecord{}) - 128]byte
+	_ [4160 - ddheapunsafe.Sizeof(ddiastTable{})]byte
+	_ [ddheapunsafe.Sizeof(ddiastTable{}) - 4160]byte
+)
+
+//go:nosplit
+func ddiastClassify(p ddheapunsafe.Pointer, n uintptr) (*mspan, uintptr, uint32) {
+	if p == nil || n == 0 {
+		return nil, 0, 0
+	}
+	address := uintptr(p)
+	span := spanOfHeap(address)
+	if span == nil || span.isUserArenaChunk || span.elemsize == 0 || uint64(span.elemsize) > uint64(^uint32(0)) {
+		return nil, 0, 0
+	}
+	index := span.objIndex(address)
+	if index >= uintptr(span.nelems) || index >= 1024 {
+		return nil, 0, 0
+	}
+	start := span.base() + index*span.elemsize
+	offset := address - start
+	if address < start || offset >= span.elemsize || n > span.elemsize-offset || n > span.limit-address {
+		return nil, 0, 0
+	}
+	return span, offset, uint32(index)
+}
+
+//go:linkname ddiastInspectClassify github.com/DataDog/dd-iast-go/internal/taint/heapranges.inspectClassify
+func ddiastInspectClassify(p ddheapunsafe.Pointer, n uintptr) (uintptr, uintptr, uint32, bool) {
+	span, offset, index := ddiastClassify(p, n)
+	if span == nil {
+		return 0, 0, 0, false
+	}
+	return offset, span.elemsize, index, true
+}
+
+//go:linkname ddiastStackClassify github.com/DataDog/dd-iast-go/internal/taint/heapranges.stackClassify
+func ddiastStackClassify() bool {
+	var value [64]byte
+	address := uintptr(ddheapunsafe.Pointer(&value[0]))
+	g := getg()
+	span, _, _ := ddiastClassify(ddheapunsafe.Pointer(&value[0]), 1)
+	return address >= g.stack.lo && address < g.stack.hi && span == nil
 }
 
 const (

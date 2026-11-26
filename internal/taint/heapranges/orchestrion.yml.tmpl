@@ -16,6 +16,7 @@ aspects:
             - github.com/DataDog/dd-iast-go/internal/taint/heapranges
           imports:
             ddheapatomic: internal/runtime/atomic
+            ddheapunsafe: unsafe
           template: |-
 __RUNTIME__
   - id: heap.package
@@ -31,5 +32,6 @@ __RUNTIME__
       - inject-declarations:
           imports:
             ddheapknobs: github.com/DataDog/dd-iast-go/internal/taint/heapranges/internal/knobs
+            ddheapunsafe: unsafe
           template: |-
 __PACKAGE__

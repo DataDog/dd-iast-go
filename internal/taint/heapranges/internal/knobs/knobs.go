@@ -6,11 +6,22 @@
 // Package knobs provides test-only access to the woven runtime.
 package knobs
 
+import "unsafe"
+
 var (
 	Gate           func() uint32
 	OffReason      func() string
 	MapSlab        func(bool) (bool, uint64)
 	InitSlabWorker func(uint64) (uint32, uint64, bool)
+	CompareEntry   func(unsafe.Pointer, uint32, uint32) bool
+	ReadEntry      func(unsafe.Pointer) uint32
+	SpanState      func(unsafe.Pointer) uint64
+	BindTable      func(uint32, uintptr) bool
+	SpanRead       func(uint32) bool
+	TableBase      func(uint32) uint64
+	TableEntry     func(uint32, uint32, uint32, bool) uint32
+	Classify       func(unsafe.Pointer, uintptr) (uintptr, uintptr, uint32, bool)
+	ClassifyStack  func() bool
 	QueueEntry     func(uint32) uint32
 	PublishSlab    func(uintptr) bool
 	AllocateUnits  func(uint32) uint32
