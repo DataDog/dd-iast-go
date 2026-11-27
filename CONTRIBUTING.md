@@ -161,6 +161,17 @@ go tool checklocks ./...
 go -C benchmarks/overhead vet ./...
 ```
 
+CI also runs `golangci-lint` in each Go module of the repository. Install the
+version that CI uses (`v2.15.0`, see `.github/workflows/ci.yml`) from the
+[install page](https://golangci-lint.run/docs/welcome/install/), then run:
+
+```console
+for module in . benchmarks/overhead _integration/otelc \
+    _integration/otelc/setups/hashonly _integration/otelc/setups/rootandhash; do
+  (cd "${module}" && golangci-lint run ./...)
+done
+```
+
 CI also checks formatting, licenses, test coverage, end-to-end tests with both
 tools, runtime overhead benchmarks, and system tests.
 
