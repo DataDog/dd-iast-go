@@ -154,7 +154,7 @@ func pkcs12Source(t *testing.T, needles ...string) (path string, lines []uint32)
 		sourceFile = filepath.Join(strings.TrimSpace(string(out)), "crypto.go")
 	}
 
-	data, err := os.ReadFile(sourceFile) //nolint:gosec // The path comes from the go command (source file of a dependency).
+	data, err := os.ReadFile(sourceFile) //nolint:gosec // The path comes from pkcs12.Decode runtime metadata or the go list fallback.
 	require.NoError(t, err)
 	source := strings.Split(string(data), "\n")
 	for _, needle := range needles {
