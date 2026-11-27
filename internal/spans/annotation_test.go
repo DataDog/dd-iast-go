@@ -8,16 +8,13 @@ package spans_test
 import (
 	"testing"
 
-	"github.com/DataDog/dd-iast-go/internal/config"
 	"github.com/DataDog/dd-iast-go/internal/spans"
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/mocktracer"
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
 )
 
 func TestAnnotationForDoesNotStoreWithoutCapacity(t *testing.T) {
-	previousMaxConcurrentRequests := config.MaxConcurrentRequests
-	config.MaxConcurrentRequests = 0
-	t.Cleanup(func() { config.MaxConcurrentRequests = previousMaxConcurrentRequests })
+	configure(t, 0, 100)
 
 	mockTracer := mocktracer.Start()
 	t.Cleanup(mockTracer.Stop)
@@ -36,9 +33,7 @@ func TestAnnotationForDoesNotStoreWithoutCapacity(t *testing.T) {
 }
 
 func TestAnnotationForReusesStoredAnnotation(t *testing.T) {
-	previousMaxConcurrentRequests := config.MaxConcurrentRequests
-	config.MaxConcurrentRequests = 1
-	t.Cleanup(func() { config.MaxConcurrentRequests = previousMaxConcurrentRequests })
+	configure(t, 1, 100)
 
 	mockTracer := mocktracer.Start()
 	t.Cleanup(mockTracer.Stop)

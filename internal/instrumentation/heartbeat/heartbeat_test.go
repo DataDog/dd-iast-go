@@ -151,3 +151,23 @@ func TestCount(t *testing.T) {
 		heartbeat.Count(instrumentation.Instance.TelemetryMetrics())("test.metric", nil, 1)
 	})
 }
+
+func TestReportDroppedReports(t *testing.T) {
+	previous := config.TelemetryVerbosity
+	config.TelemetryVerbosity = config.LogLevelInformation
+	t.Cleanup(func() { config.TelemetryVerbosity = previous })
+	telemetry.DroppedReport.Store(3)
+	t.Cleanup(func() { telemetry.DroppedReport.Store(0) })
+
+	var got []submission
+	heartbeat.Report(record(&got))
+	var found bool
+	for _, s := range got {
+		if s.name == "report.dropped" {
+			found = true
+			assert.Equal(t, 3.0, s.value)
+		}
+	}
+	assert.True(t, found, "report.dropped was not submitted")
+	assert.Zero(t, telemetry.DroppedReport.Load(), "the counter is reset when submitted")
+}

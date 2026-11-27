@@ -74,6 +74,10 @@ func Report(count CountFunc) {
 		count("executed.sink", []string{instrumentation.TelemetryTagVulnerabilityType + ":" + vulnType.String()}, float64(cnt))
 	}
 
+	if cnt := telemetry.DroppedReport.Swap(0); cnt != 0 {
+		count("report.dropped", nil, float64(cnt))
+	}
+
 	if config.TelemetryVerbosity != config.LogLevelDebug {
 		return
 	}
