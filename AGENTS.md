@@ -87,12 +87,32 @@ delivered code; the plan should be deleted from `_docs/plans`. This way, the
 plan exists in the history of the pull request, but does not stay permanently
 in the codebase where it would be dead weight.
 
+## Intentional Insecure APIs in Tests
+
+Tests, end-to-end suites (`_integration/otelc/internal/suite`), and
+benchmarks (`benchmarks/overhead`) in this repository call known insecure
+or deprecated hash and crypto APIs (for example MD4, MD5, SHA-1, DES, RC4,
+and Blowfish) on purpose. They verify that IAST detects these APIs.
+
+- This usage is correct. It is NOT a defect, a security finding, or a
+  review comment.
+- Do NOT remove, replace, or "upgrade" these calls or imports. Do NOT flag
+  them in reviews or reports.
+- When a linter reports this usage (for example `staticcheck` SA1019 or
+  `gosec`), suppress the finding on the same line with
+  `//nolint:<linter> // Deliberately exercise weak <hash|cipher> detection.`
+  Do not change the code to remove the finding.
+- This exception applies only to code that exists to exercise IAST
+  detection. Production code MUST NOT use insecure APIs.
+
 ## Pre-Commit Validation
 
 Before committing any change:
 
 - run `gofmt` on every modified Go file;
-- run all applicable linters and checkers and fix every reported issue; and
+- run all applicable linters and checkers and fix every reported issue
+  (the only exception is described in "Intentional Insecure APIs in
+  Tests" above); and
 - do not commit until all applicable validation completes cleanly.
 
 ## More information

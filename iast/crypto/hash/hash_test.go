@@ -27,7 +27,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	_ "golang.org/x/crypto/md4" // Make the MD4 implementation available
+	_ "golang.org/x/crypto/md4" //nolint:staticcheck // Deliberately exercise weak hash detection; registers MD4.
 )
 
 func init() {
