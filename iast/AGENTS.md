@@ -19,6 +19,9 @@ When you add, change, or remove an aspect in a package under `iast`:
 - Add or update the unit tests of the package. They must pass with both
   `go tool orchestrion go test` and `scripts/otelc-test.sh`. Skip them with
   `build.Instrumented()` when the build is not instrumented.
+- Tests that exercise weak hash or weak cipher detection MUST keep calling
+  the insecure APIs that they test. Read the "Intentional Insecure APIs in
+  Tests" section of the repository-root `AGENTS.md`.
 - Add or update the end-to-end checks in `_integration/otelc/internal/suite`.
   These checks run with both tools, so they show differences between the two.
 
