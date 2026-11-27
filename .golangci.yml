@@ -1,0 +1,29 @@
+version: "2"
+
+linters:
+  default: standard # errcheck, govet, ineffassign, staticcheck, unused
+  enable:
+    - errorlint
+    - gosec
+    - misspell
+    - nolintlint
+  settings:
+    gosec:
+      excludes:
+        - G104 # Same check as errcheck. errcheck already ignores hash.Hash.Write.
+    nolintlint:
+      require-explanation: true
+      require-specific: true
+  exclusions:
+    generated: lax
+    rules:
+      # Developer CLI. It is not shipped. It copies source trees, writes files
+      # and runs "go" by design, with paths from its own flags.
+      - path: ^benchmarks/overhead/runner/
+        linters:
+          - gosec
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  uniq-by-line: false
