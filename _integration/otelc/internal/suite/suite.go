@@ -330,7 +330,7 @@ func vulnerabilityEvent(t *testing.T, span *mocktracer.Span) model.Event {
 	t.Helper()
 	require.Equal(t, "vulnerability", span.OperationName())
 	require.Equal(t, "vulnerability", span.Tag(ext.SpanType))
-	require.Equal(t, 1.0, span.Tag(spans.SpanTagEnabled))
+	require.InDelta(t, 1.0, span.Tag(spans.SpanTagEnabled), 0)
 
 	var event model.Event
 	require.NoError(t, json.Unmarshal([]byte(span.Tag(spans.SpanTagJson).(string)), &event))

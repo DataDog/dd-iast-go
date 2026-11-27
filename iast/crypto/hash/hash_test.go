@@ -50,7 +50,7 @@ func TestMD5(t *testing.T) {
 
 	spanList := mockTracer.FinishedSpans()
 	require.Len(t, spanList, 1)
-	assert.Equal(t, 1.0, spanList[0].Tag(spans.SpanTagEnabled))
+	assert.InDelta(t, 1.0, spanList[0].Tag(spans.SpanTagEnabled), 0)
 	var event model.Event
 	require.NoError(t, json.Unmarshal([]byte(spanList[0].Tag(spans.SpanTagJson).(string)), &event))
 	require.Equal(t, "vulnerability", spanList[0].OperationName())
@@ -133,7 +133,7 @@ func TestSHA1(t *testing.T) {
 
 	spanList := mockTracer.FinishedSpans()
 	require.Len(t, spanList, 1)
-	assert.Equal(t, 1.0, spanList[0].Tag(spans.SpanTagEnabled))
+	assert.InDelta(t, 1.0, spanList[0].Tag(spans.SpanTagEnabled), 0)
 	var event model.Event
 	require.NoError(t, json.Unmarshal([]byte(spanList[0].Tag(spans.SpanTagJson).(string)), &event))
 	require.Equal(t, "vulnerability", spanList[0].OperationName())
@@ -234,7 +234,7 @@ func TestHash(t *testing.T) {
 	}
 
 	require.Len(t, spanList, 1)
-	assert.Equal(t, 1.0, spanList[0].Tag(spans.SpanTagEnabled))
+	assert.InDelta(t, 1.0, spanList[0].Tag(spans.SpanTagEnabled), 0)
 	assert.Equal(t, "test", spanList[0].OperationName())
 	var event model.Event
 	require.NoError(t, json.Unmarshal([]byte(spanList[0].Tag(spans.SpanTagJson).(string)), &event))
