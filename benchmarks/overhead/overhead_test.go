@@ -7,9 +7,9 @@ package overhead_test
 
 import (
 	"context"
-	"crypto/des"
-	"crypto/md5"
-	"crypto/sha1"
+	"crypto/des"  //nolint:gosec // Intentionally weak: this benchmarks the IAST sink.
+	"crypto/md5"  //nolint:gosec // Intentionally weak: this benchmarks the IAST sink.
+	"crypto/sha1" //nolint:gosec // Intentionally weak: this benchmarks the IAST sink.
 	"encoding/json"
 	"io"
 	"net/http"
@@ -97,7 +97,7 @@ func BenchmarkHTTPRoundTrip(b *testing.B) {
 			b.Fatal(err)
 		}
 		if _, err := io.Copy(io.Discard, response.Body); err != nil {
-			response.Body.Close()
+			_ = response.Body.Close()
 			b.Fatal(err)
 		}
 		if err := response.Body.Close(); err != nil {

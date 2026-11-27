@@ -10,9 +10,9 @@ package main
 
 import (
 	"context"
-	"crypto/des" //nolint:gosec // Deliberately exercise weak cipher detection.
-	"crypto/md5"
-	"crypto/sha1"
+	"crypto/des"  //nolint:gosec // Deliberately exercise weak cipher detection.
+	"crypto/md5"  //nolint:gosec // Deliberately exercise weak hash detection.
+	"crypto/sha1" //nolint:gosec // Deliberately exercise weak hash detection.
 	"fmt"
 
 	"github.com/DataDog/dd-iast-go/internal/build"
@@ -24,9 +24,9 @@ import (
 // Package-level initializers that run instrumented functions: a sink can run
 // before the init functions of dd-iast-go, and it must not panic.
 var (
-	initialDigest     = md5.Sum([]byte("init"))
-	initialSHA1       = sha1.Sum([]byte("init"))
-	initialBlock, err = des.NewCipher(make([]byte, 8))
+	initialDigest     = md5.Sum([]byte("init"))        //nolint:gosec // Deliberately exercise weak hash detection.
+	initialSHA1       = sha1.Sum([]byte("init"))       //nolint:gosec // Deliberately exercise weak hash detection.
+	initialBlock, err = des.NewCipher(make([]byte, 8)) //nolint:gosec // Deliberately exercise weak cipher detection.
 )
 
 func main() {
@@ -38,7 +38,7 @@ func main() {
 	tracerStarted := span != nil && span.Context().SpanID() != 0
 	active, glsActive := tracer.SpanFromContext(context.Background())
 	glsActive = glsActive && active == span
-	digest := md5.Sum([]byte("main"))
+	digest := md5.Sum([]byte("main")) //nolint:gosec // Deliberately exercise weak hash detection.
 	span.Finish()
 	_, glsActiveAfterFinish := tracer.SpanFromContext(context.Background())
 	if build.Tool() == build.ToolOtelc && (!tracerStarted || !glsActive || glsActiveAfterFinish) {

@@ -61,6 +61,34 @@ jobs:
       - name: 'Linter: overhead benchmarks vet'
         run: go -C benchmarks/overhead vet ./...
 
+  golangci-lint:
+    runs-on: ubuntu-latest
+    name: golangci-lint (${{ matrix.module }})
+    strategy:
+      fail-fast: false
+      matrix:
+        module:
+          - .
+          - benchmarks/overhead
+          - _integration/otelc
+          - _integration/otelc/setups/hashonly
+          - _integration/otelc/setups/rootandhash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Setup Go
+        uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
+        with:
+          go-version: oldstable
+          cache-dependency-path: ${{ matrix.module }}/go.sum
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
+        with:
+          version: v2.15.0
+          working-directory: ${{ matrix.module }}
+
   test:
     runs-on: ubuntu-latest
     name: Unit Tests (${{ matrix.tool }})
@@ -284,13 +312,14 @@ jobs:
   green-ci:
     runs-on: ubuntu-latest
     name: Green CI
-    needs: [validate-licenses, lint, test, integration, upload-coverage, benchmark]
+    needs: [validate-licenses, lint, golangci-lint, test, integration, upload-coverage, benchmark]
     if: always()
     steps:
       - name: Success
         if: |-
           needs.validate-licenses.result  == 'success'
           && needs.lint.result            == 'success'
+          && needs.golangci-lint.result   == 'success'
           && needs.test.result            == 'success'
           && needs.integration.result     == 'success'
           && needs.upload-coverage.result == 'success'
@@ -300,6 +329,7 @@ jobs:
         if: |-
           needs.validate-licenses.result  != 'success'
           || needs.lint.result            != 'success'
+          || needs.golangci-lint.result   != 'success'
           || needs.test.result            != 'success'
           || needs.integration.result     != 'success'
           || needs.upload-coverage.result != 'success'

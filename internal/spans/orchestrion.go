@@ -30,7 +30,7 @@ func Finished(span *tracer.Span) {
 	ann.RLock()
 	defer ann.RUnlock()
 
-	if len(ann.Event.Vulnerabilities) > 0 {
+	if len(ann.Vulnerabilities) > 0 {
 		span.SetTag(ext.ManualKeep, samplingMechanismAppSec)
 		if !span.SetMetaStruct(SpanTagMetaStruct, &ann.Event) {
 			data, err := json.Marshal(ann.Event)

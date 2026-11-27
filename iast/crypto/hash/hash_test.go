@@ -8,8 +8,8 @@ package hash_test
 import (
 	"context"
 	"crypto"
-	"crypto/md5"
-	"crypto/sha1"
+	"crypto/md5"  //nolint:gosec // Deliberately exercise weak hash detection.
+	"crypto/sha1" //nolint:gosec // Deliberately exercise weak hash detection.
 	"encoding/json"
 	"testing"
 
@@ -27,7 +27,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	_ "golang.org/x/crypto/md4" // Make the MD4 implementation available
+	_ "golang.org/x/crypto/md4" //nolint:gosec,staticcheck // Deliberately exercise weak hash detection; registers MD4.
 )
 
 func init() {

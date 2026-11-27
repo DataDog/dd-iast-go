@@ -117,7 +117,7 @@ func samplingDecision() bool {
 	case 100:
 		return true
 	default:
-		return rand.IntN(100) < config.RequestSamplingPct
+		return rand.IntN(100) < config.RequestSamplingPct //nolint:gosec // Request sampling does not need a cryptographic random source.
 	}
 }
 

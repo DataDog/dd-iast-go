@@ -104,7 +104,7 @@ func run(arguments []string) (err error) {
 	if err != nil {
 		return fmt.Errorf("create build directory: %w", err)
 	}
-	defer os.RemoveAll(buildRoot)
+	defer func() { _ = os.RemoveAll(buildRoot) }()
 
 	controlSource := filepath.Join(buildRoot, "control-source")
 	iastSource := filepath.Join(buildRoot, "iast-source")
@@ -270,7 +270,7 @@ func printUsage(output io.Writer) {
 	values := defaultFlagValues()
 	flags := newFlagSet(&values)
 	flags.SetOutput(output)
-	fmt.Fprintln(output, "Usage: runner [flags]")
+	_, _ = fmt.Fprintln(output, "Usage: runner [flags]")
 	flags.PrintDefaults()
 }
 
@@ -346,16 +346,16 @@ func newConfiguration(opts options) (configuration, error) {
 	}
 	moduleInfo, err := os.Stat(module)
 	if err != nil {
-		output.Close()
+		_ = output.Close()
 		return configuration{}, fmt.Errorf("inspect benchmark module: %w", err)
 	}
 	outputInfo, err := output.Stat(".")
 	if err != nil {
-		output.Close()
+		_ = output.Close()
 		return configuration{}, fmt.Errorf("inspect output directory: %w", err)
 	}
 	if os.SameFile(moduleInfo, outputInfo) {
-		output.Close()
+		_ = output.Close()
 		return configuration{}, errors.New("-outputdir must not be the benchmark module directory")
 	}
 
@@ -459,12 +459,12 @@ func copyModule(source, destination string, output *os.Root) error {
 			return err
 		}
 		if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
-			input.Close()
+			_ = input.Close()
 			return err
 		}
 		outputFile, err := os.OpenFile(target, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, info.Mode().Perm())
 		if err != nil {
-			input.Close()
+			_ = input.Close()
 			return err
 		}
 		_, copyErr := io.Copy(outputFile, input)
@@ -683,7 +683,7 @@ func benchmarkNames(fsys fs.FS, path string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 	var names []string
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {

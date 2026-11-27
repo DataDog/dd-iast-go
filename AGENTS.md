@@ -92,6 +92,9 @@ in the codebase where it would be dead weight.
 Before committing any change:
 
 - run `gofmt` on every modified Go file;
+- run `golangci-lint run ./...` (version `v2.15.0`, the version in
+  `.github/workflows/ci.yml`) in each Go module, and fix every finding (see
+  `CONTRIBUTING.md`);
 - run all applicable linters and checkers and fix every reported issue; and
 - do not commit until all applicable validation completes cleanly.
 
