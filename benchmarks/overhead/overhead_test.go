@@ -7,9 +7,9 @@ package overhead_test
 
 import (
 	"context"
-	"crypto/des"
-	"crypto/md5"
-	"crypto/sha1"
+	"crypto/des"  //nolint:gosec // Intentionally weak: this benchmarks the IAST sink.
+	"crypto/md5"  //nolint:gosec // Intentionally weak: this benchmarks the IAST sink.
+	"crypto/sha1" //nolint:gosec // Intentionally weak: this benchmarks the IAST sink.
 	"encoding/json"
 	"io"
 	"net/http"

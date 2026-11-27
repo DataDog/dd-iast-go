@@ -7,7 +7,7 @@ package suite
 
 import (
 	"context"
-	"crypto/md5"
+	"crypto/md5" //nolint:gosec // Deliberately exercise weak hash detection.
 	"encoding/json"
 	"testing"
 

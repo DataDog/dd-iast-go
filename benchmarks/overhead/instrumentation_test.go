@@ -6,7 +6,7 @@
 package overhead_test
 
 import (
-	"crypto/md5"
+	"crypto/md5" //nolint:gosec // Intentionally weak: this benchmarks the IAST sink.
 	"os"
 	"testing"
 
@@ -31,7 +31,7 @@ func TestControlVariant(t *testing.T) {
 	}
 	mt := mocktracer.Start()
 	t.Cleanup(mt.Stop)
-	_ = md5.Sum([]byte("instrumentation probe"))
+	_ = md5.Sum([]byte("instrumentation probe")) //nolint:gosec // Intentionally weak: this benchmarks the IAST sink.
 	if got := len(mt.FinishedSpans()); got != 0 {
 		t.Fatalf("control weak hash unexpectedly produced %d spans", got)
 	}
@@ -47,7 +47,7 @@ func TestWovenVariant(t *testing.T) {
 
 	mt := mocktracer.Start()
 	t.Cleanup(mt.Stop)
-	_ = md5.Sum([]byte("instrumentation probe"))
+	_ = md5.Sum([]byte("instrumentation probe")) //nolint:gosec // Intentionally weak: this benchmarks the IAST sink.
 	finished := mt.FinishedSpans()
 	if len(finished) != 1 {
 		t.Fatalf("weak-hash aspect produced %d spans, want 1", len(finished))

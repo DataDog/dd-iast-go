@@ -154,7 +154,7 @@ func pkcs12Source(t *testing.T, needles ...string) (path string, lines []uint32)
 		sourceFile = filepath.Join(strings.TrimSpace(string(out)), "crypto.go")
 	}
 
-	data, err := os.ReadFile(sourceFile)
+	data, err := os.ReadFile(sourceFile) //nolint:gosec // The path comes from the go command (source file of a dependency).
 	require.NoError(t, err)
 	source := strings.Split(string(data), "\n")
 	for _, needle := range needles {
@@ -307,11 +307,11 @@ func checkWeakCipherNotSinks(t *testing.T) {
 
 	// The constructors are instrumented, and they run outside of the traced
 	// section.
-	desBlock, err := des.NewCipher(make([]byte, 8))
+	desBlock, err := des.NewCipher(make([]byte, 8)) //nolint:gosec // Deliberately exercise weak cipher detection.
 	require.NoError(t, err)
 	blowfishBlock, err := blowfish.NewCipher(make([]byte, 8))
 	require.NoError(t, err)
-	rc4Stream, err := rc4.NewCipher([]byte("Key"))
+	rc4Stream, err := rc4.NewCipher([]byte("Key")) //nolint:gosec // Deliberately exercise weak cipher detection.
 	require.NoError(t, err)
 
 	mockTracer := mocktracer.Start()

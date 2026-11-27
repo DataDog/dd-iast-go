@@ -7,8 +7,8 @@ package suite
 
 import (
 	"crypto"
-	"crypto/md5"
-	"crypto/sha1"
+	"crypto/md5"  //nolint:gosec // Deliberately exercise weak hash detection.
+	"crypto/sha1" //nolint:gosec // Deliberately exercise weak hash detection.
 	"crypto/sha256"
 	"hash"
 	"testing"
@@ -18,7 +18,7 @@ import (
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/mocktracer"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/crypto/md4" //nolint:staticcheck // Deliberately exercise weak hash detection.
+	"golang.org/x/crypto/md4" //nolint:gosec,staticcheck // Deliberately exercise weak hash detection.
 )
 
 var (
@@ -82,7 +82,7 @@ func checkWeakHashNotSinks(t *testing.T) {
 
 	// The constructors are instrumented, and they run outside of the traced
 	// section.
-	hashes := map[string]hash.Hash{"md4": md4.New(), "md5": md5.New(), "sha1": sha1.New()}
+	hashes := map[string]hash.Hash{"md4": md4.New(), "md5": md5.New(), "sha1": sha1.New()} //nolint:gosec // Deliberately exercise weak hash detection.
 
 	mockTracer := mocktracer.Start()
 	t.Cleanup(mockTracer.Stop)

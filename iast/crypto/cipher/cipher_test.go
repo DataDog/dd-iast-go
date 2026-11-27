@@ -9,8 +9,8 @@ import (
 	"context"
 	"crypto/aes"
 	stdcipher "crypto/cipher"
-	"crypto/des"
-	"crypto/rc4"
+	"crypto/des" //nolint:gosec // Deliberately exercise weak cipher detection.
+	"crypto/rc4" //nolint:gosec // Deliberately exercise weak cipher detection.
 	"crypto/x509"
 	"encoding/hex"
 	"encoding/json"
