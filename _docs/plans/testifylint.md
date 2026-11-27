@@ -115,7 +115,7 @@ Measured on the head of each open PR, with only `testifylint` enabled (limits at
 
 | PR | New findings | Where |
 |---|---|---|
-| [DataDog/dd-iast-go#95](https://github.com/DataDog/dd-iast-go/pull/95) (head `8f734fd`) | 7 | 5 `require-error` in `_integration/otelc/internal/sentinel/main_test.go:37,85-88`; `float-compare` in `internal/instrumentation/heartbeat/heartbeat_test.go:168` and in `_integration/otelc/internal/suite/span.go:58` |
+| [DataDog/dd-iast-go#106](https://github.com/DataDog/dd-iast-go/pull/106) (replaces [DataDog/dd-iast-go#95](https://github.com/DataDog/dd-iast-go/pull/95); head `8f734fd`) | 7 | 5 `require-error` in `_integration/otelc/internal/sentinel/main_test.go:37,85-88`; `float-compare` in `internal/instrumentation/heartbeat/heartbeat_test.go:168` and in `_integration/otelc/internal/suite/span.go:58` |
 | [DataDog/dd-iast-go#100](https://github.com/DataDog/dd-iast-go/pull/100) | 6 | the same 5 `require-error`; the same `heartbeat_test.go:168` |
 | [DataDog/dd-iast-go#93](https://github.com/DataDog/dd-iast-go/pull/93) | 5 | the same 5 `require-error` |
 | [DataDog/dd-iast-go#92](https://github.com/DataDog/dd-iast-go/pull/92), [DataDog/dd-iast-go#101](https://github.com/DataDog/dd-iast-go/pull/101), [DataDog/dd-iast-go#102](https://github.com/DataDog/dd-iast-go/pull/102), [DataDog/dd-iast-go#103](https://github.com/DataDog/dd-iast-go/pull/103) | 0 | none |
@@ -177,8 +177,8 @@ All commands run from the repository root with golangci-lint v2.15.0 and Go `old
 | Risk | What reduces it |
 |---|---|
 | [DataDog/dd-iast-go#104](https://github.com/DataDog/dd-iast-go/pull/104) changes its `enable` list or its limits before it merges | The PR is a draft until [DataDog/dd-iast-go#104](https://github.com/DataDog/dd-iast-go/pull/104) merges. The rule "add `testifylint` in alphabetical order" works for each list. The acceptance check runs with the merged file. |
-| An open PR merges first and adds findings ([DataDog/dd-iast-go#93](https://github.com/DataDog/dd-iast-go/pull/93), [DataDog/dd-iast-go#95](https://github.com/DataDog/dd-iast-go/pull/95), [DataDog/dd-iast-go#100](https://github.com/DataDog/dd-iast-go/pull/100)) | The merge-order rule above. The 5-module lint check after the merge of `main` shows each new finding. |
-| Text conflict with [DataDog/dd-iast-go#95](https://github.com/DataDog/dd-iast-go/pull/95) in `_integration/otelc/internal/suite/span.go` (it changes the lines near 60) | The change is 1 line. The PR that merges second keeps the `InDelta` form. |
+| An open PR merges first and adds findings ([DataDog/dd-iast-go#93](https://github.com/DataDog/dd-iast-go/pull/93), [DataDog/dd-iast-go#106](https://github.com/DataDog/dd-iast-go/pull/106), [DataDog/dd-iast-go#100](https://github.com/DataDog/dd-iast-go/pull/100)) | The merge-order rule above. The 5-module lint check after the merge of `main` shows each new finding. |
+| Text conflict with [DataDog/dd-iast-go#106](https://github.com/DataDog/dd-iast-go/pull/106) in `_integration/otelc/internal/suite/span.go` (it changes the lines near 60) | The change is 1 line. The PR that merges second keeps the `InDelta` form. |
 | `InDelta` accepts `int(1)` | The tracer stores all numeric tags as `float64` (see the assertion decision). The value check stays exact. |
 | A later golangci-lint update adds new default testifylint checks | The binary version is pinned (`v2.15.0`). The PR that changes the version fixes the new findings. |
 
