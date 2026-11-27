@@ -304,7 +304,7 @@ func assertWeakCipher(
 	spanList := mockTracer.FinishedSpans()
 	require.Len(t, spanList, 1)
 	span := spanList[0]
-	assert.Equal(t, 1.0, span.Tag(spans.SpanTagEnabled))
+	assert.InDelta(t, 1.0, span.Tag(spans.SpanTagEnabled), 0)
 	assert.Equal(t, "vulnerability", span.OperationName())
 	assert.Equal(t, "vulnerability", span.Tag(ext.SpanType))
 

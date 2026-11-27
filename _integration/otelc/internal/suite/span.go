@@ -57,7 +57,7 @@ func checkSpanFinish(t *testing.T) {
 	require.Len(t, finished, 1)
 	request := finished[0]
 	require.Equal(t, "request", request.OperationName())
-	assert.Equal(t, 1.0, request.Tag(spans.SpanTagEnabled))
+	assert.InDelta(t, 1.0, request.Tag(spans.SpanTagEnabled), 0)
 
 	var event model.Event
 	require.NoError(t, json.Unmarshal([]byte(request.Tag(spans.SpanTagJson).(string)), &event))
