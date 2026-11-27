@@ -52,7 +52,7 @@ func Finished(span *tracer.Span) {
 				if old.spanID == id {
 					return old, xsync.CancelOp
 				}
-				// The new entry takes the place of the entry of an earlier span.
+				// Reuse the existing place instead of reserving another one.
 				old.closeAndRelease()
 			} else if !reserveEntry() {
 				// Set while the bucket of the key is locked, so a report of this root

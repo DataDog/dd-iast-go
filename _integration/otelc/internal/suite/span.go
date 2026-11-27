@@ -121,7 +121,7 @@ func checkSpanFinish(t *testing.T) {
 	assert.Equal(t, "vulnerability", finished[1].Tag(ext.SpanType))
 }
 
-// CheckLateReportAfterRootFinish verifies late reports with the instrumented tracer.
+// CheckLateReportAfterRootFinish exercises the production report path.
 func CheckLateReportAfterRootFinish(t *testing.T) {
 	requireInstrumented(t)
 

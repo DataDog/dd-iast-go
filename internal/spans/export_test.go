@@ -141,7 +141,7 @@ func InsertStaleEntryForTest(span *tracer.Span) *Annotation {
 	return stale
 }
 
-// TrimForTest scans the store for the entries of spans that no longer exist.
+// TrimForTest bypasses the trim interval so collection tests do not wait.
 func TrimForTest() {
 	nextTrim.Store(0)
 	trimStore()
