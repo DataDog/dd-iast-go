@@ -123,7 +123,7 @@ func TestInitializeArtifactsRejectsTraversal(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer output.Close()
+	defer func() { _ = output.Close() }()
 
 	if err := initializeArtifacts(output, "valid.txt"); err != nil {
 		t.Fatal(err)

@@ -97,7 +97,7 @@ func BenchmarkHTTPRoundTrip(b *testing.B) {
 			b.Fatal(err)
 		}
 		if _, err := io.Copy(io.Discard, response.Body); err != nil {
-			response.Body.Close()
+			_ = response.Body.Close()
 			b.Fatal(err)
 		}
 		if err := response.Body.Close(); err != nil {
